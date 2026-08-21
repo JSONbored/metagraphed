@@ -2137,6 +2137,7 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-interactive-data-field {
   --mg-data-field-tooltip: #fafafa;
+  --mg-data-field-muted: #303030;
   margin: 0;
 }
 .dark .mg-interactive-data-field {
@@ -2144,10 +2145,17 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-interactive-data-field-plot {
   position: relative;
-  min-height: clamp(14rem, 28vw, 22rem);
-  padding: var(--mg-space-lg) 0 var(--mg-space-md);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+.mg-interactive-data-field-scroll {
+  min-width: 0;
+}
+.mg-interactive-data-field-chart {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: 2.5rem clamp(15.5rem, 24vw, 21.75rem);
+  gap: 0.75rem;
+  padding: var(--mg-space-md) 0 var(--mg-space-sm);
   background-image:
     radial-gradient(
       circle at 1px 1px,
@@ -2155,160 +2163,149 @@ html[data-density=compact] .bg-card > table td {
       transparent 0.8px);
   background-size: 6px 6px;
 }
-.mg-interactive-data-field-scroll {
-  height: clamp(11rem, 24vw, 18rem);
+.mg-interactive-data-field-axis,
+.mg-interactive-data-field-bars {
+  display: flex;
   min-width: 0;
+  margin-inline: -0.1875rem;
+}
+.mg-interactive-data-field-axis-item,
+.mg-interactive-data-field-bar {
+  box-sizing: border-box;
+  min-width: 0;
+  flex: 1 1 0;
+  padding-inline: 0.1875rem;
+}
+.mg-interactive-data-field-axis-item {
+  position: relative;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  text-transform: uppercase;
+  transition: color 120ms ease;
+}
+.mg-interactive-data-field-axis-item > span {
+  display: block;
+  padding-bottom: 0.1rem;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+.mg-interactive-data-field-axis-item[data-label-hidden=true] > span {
+  visibility: hidden;
+}
+.mg-interactive-data-field-axis-item[data-active=true] {
+  color: var(--ink-strong);
 }
 .mg-interactive-data-field-bars {
-  display: grid;
-  grid-template-columns: repeat(var(--mg-data-field-count), minmax(0, 1fr));
-  align-items: stretch;
-  gap: clamp(1px, 0.22vw, 3px);
   height: 100%;
-}
-.mg-interactive-data-field-bar,
-.mg-interactive-data-field-inspector {
-  --mg-data-field-color: var(--chart-5);
-}
-.mg-interactive-data-field-bar[data-tone=chart-1],
-.mg-interactive-data-field-inspector[data-tone=chart-1] {
-  --mg-data-field-color: var(--chart-1);
-}
-.mg-interactive-data-field-bar[data-tone=chart-2],
-.mg-interactive-data-field-inspector[data-tone=chart-2] {
-  --mg-data-field-color: var(--chart-2);
-}
-.mg-interactive-data-field-bar[data-tone=chart-3],
-.mg-interactive-data-field-inspector[data-tone=chart-3] {
-  --mg-data-field-color: var(--chart-3);
-}
-.mg-interactive-data-field-bar[data-tone=chart-4],
-.mg-interactive-data-field-inspector[data-tone=chart-4] {
-  --mg-data-field-color: var(--chart-4);
-}
-.mg-interactive-data-field-bar[data-tone=chart-5],
-.mg-interactive-data-field-inspector[data-tone=chart-5] {
-  --mg-data-field-color: var(--chart-5);
-}
-.mg-interactive-data-field-bar[data-tone=chart-6],
-.mg-interactive-data-field-inspector[data-tone=chart-6] {
-  --mg-data-field-color: var(--chart-6);
-}
-.mg-interactive-data-field-bar[data-tone=chart-7],
-.mg-interactive-data-field-inspector[data-tone=chart-7] {
-  --mg-data-field-color: var(--chart-7);
-}
-.mg-interactive-data-field-bar[data-tone=chart-8],
-.mg-interactive-data-field-inspector[data-tone=chart-8] {
-  --mg-data-field-color: var(--chart-8);
-}
-.mg-interactive-data-field-bar[data-tone=chart-9],
-.mg-interactive-data-field-inspector[data-tone=chart-9] {
-  --mg-data-field-color: var(--chart-9);
-}
-.mg-interactive-data-field-bar[data-tone=chart-10],
-.mg-interactive-data-field-inspector[data-tone=chart-10] {
-  --mg-data-field-color: var(--chart-10);
-}
-.mg-interactive-data-field-bar[data-tone=chart-11],
-.mg-interactive-data-field-inspector[data-tone=chart-11] {
-  --mg-data-field-color: var(--chart-11);
 }
 .mg-interactive-data-field-bar {
   appearance: none;
   position: relative;
   display: block;
-  min-width: 0;
   height: 100%;
   border: 0;
   border-radius: 0;
-  padding: 0;
   background: transparent;
   cursor: crosshair;
   isolation: isolate;
   scroll-snap-align: center;
-  transition: background 160ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .mg-interactive-data-field-bar-fill {
   position: absolute;
-  right: 0;
+  right: 0.1875rem;
   bottom: 0;
-  left: 0;
+  left: 0.1875rem;
   z-index: 1;
+  display: grid;
   height: var(--mg-data-field-bar-height);
   min-height: 0.25rem;
-  background: var(--mg-data-field-color);
-  box-shadow: inset 0 -1px color-mix(in srgb, #000 28%, transparent);
-  transform-origin: bottom;
-  transition:
-    background 160ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 160ms cubic-bezier(0.16, 1, 0.3, 1),
-    filter 160ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  grid-template-rows: var(--mg-data-field-segment-rows);
+  overflow: hidden;
+  background: var(--mg-data-field-tooltip);
+  box-shadow: 0 -0.25rem 0 var(--mg-data-field-tooltip);
 }
-.mg-interactive-data-field[data-has-active=true] .mg-interactive-data-field-bar:not([data-active=true]) .mg-interactive-data-field-bar-fill {
-  opacity: 0.48;
-  filter: saturate(0.86);
+.mg-interactive-data-field-segment {
+  display: block;
+  min-height: 0;
+  background: var(--chart-5);
+  transition: background 120ms ease;
 }
-.mg-interactive-data-field-bar[data-active=true] {
-  z-index: 1;
-  background: color-mix(in srgb, var(--brand-green) 10%, transparent);
-  box-shadow: inset 1px 0 var(--brand-green), inset -1px 0 var(--brand-green);
+.mg-interactive-data-field-segment[data-tone=chart-1] {
+  background: var(--chart-1);
 }
-.mg-interactive-data-field-bar[data-active=true]::before {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-  background: var(--brand-green);
-  box-shadow: 0 0 0.75rem color-mix(in oklab, var(--brand-green) 68%, transparent);
-  content: "";
-  pointer-events: none;
+.mg-interactive-data-field-segment[data-tone=chart-2] {
+  background: var(--chart-2);
 }
-.mg-interactive-data-field-bar[data-active=true] .mg-interactive-data-field-bar-fill {
-  box-shadow: inset 0 -1px color-mix(in srgb, #000 25%, transparent), 0 0 1rem color-mix(in srgb, var(--mg-data-field-color) 42%, transparent);
-  filter: brightness(1.13) saturate(1.14);
-  transform: scaleX(1.08);
+.mg-interactive-data-field-segment[data-tone=chart-3] {
+  background: var(--chart-3);
 }
-.mg-interactive-data-field-bar:hover .mg-interactive-data-field-bar-fill {
-  filter: brightness(1.08) saturate(1.08);
+.mg-interactive-data-field-segment[data-tone=chart-4] {
+  background: var(--chart-4);
+}
+.mg-interactive-data-field-segment[data-tone=chart-5] {
+  background: var(--chart-5);
+}
+.mg-interactive-data-field-segment[data-tone=chart-6] {
+  background: var(--chart-6);
+}
+.mg-interactive-data-field-segment[data-tone=chart-7] {
+  background: var(--chart-7);
+}
+.mg-interactive-data-field-segment[data-tone=chart-8] {
+  background: var(--chart-8);
+}
+.mg-interactive-data-field-segment[data-tone=chart-9] {
+  background: var(--chart-9);
+}
+.mg-interactive-data-field-segment[data-tone=chart-10] {
+  background: var(--chart-10);
+}
+.mg-interactive-data-field-segment[data-tone=chart-11] {
+  background: var(--chart-11);
+}
+.mg-interactive-data-field-bar[data-muted=true] .mg-interactive-data-field-segment {
+  background: var(--mg-data-field-muted);
 }
 .mg-interactive-data-field-bar:focus-visible {
-  z-index: 2;
+  z-index: 3;
   outline: 2px solid var(--brand-green);
   outline-offset: -2px;
 }
 .mg-interactive-data-field-inspector {
   position: absolute;
-  z-index: 3;
-  bottom: calc(var(--mg-space-md) + 1.25rem);
+  z-index: 4;
+  bottom: 3.85rem;
   display: grid;
-  width: min(13.5rem, calc(100% - 1.5rem));
-  gap: 0.18rem;
-  border: 1px solid color-mix(in oklab, var(--mg-data-field-color) 40%, var(--border));
-  border-left: 2px solid var(--mg-data-field-color);
-  padding: var(--mg-space-sm) var(--mg-space-md);
-  background: var(--mg-data-field-tooltip);
-  box-shadow: 0 0.75rem 2.5rem color-mix(in oklab, #000 28%, transparent);
+  width: 12rem;
+  gap: 0.25rem;
+  padding: 0.65rem 0.5rem;
+  background: color-mix(in srgb, var(--mg-data-field-tooltip) 95%, transparent);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--ink-strong) 14%, transparent),
+    0 0.5rem 1rem rgb(0 0 0 / 24%),
+    0 0.25rem 0.5rem rgb(0 0 0 / 32%);
   color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: var(--mg-type-micro);
   line-height: 1.45;
   pointer-events: none;
-  animation: mg-data-field-inspector-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.mg-interactive-data-field-inspector[data-align=start] {
-  left: var(--mg-space-sm);
+.mg-interactive-data-field-inspector[data-placement=right] {
+  left: calc(100% + 0.5rem);
 }
-.mg-interactive-data-field-inspector[data-align=center] {
-  left: var(--mg-data-field-inspector-position);
+.mg-interactive-data-field-inspector[data-placement=center] {
+  left: 50%;
   transform: translateX(-50%);
 }
-.mg-interactive-data-field-inspector[data-align=end] {
-  right: var(--mg-space-sm);
+.mg-interactive-data-field-inspector[data-placement=left] {
+  right: calc(100% + 0.5rem);
 }
 .mg-interactive-data-field-inspector strong {
   color: var(--ink-strong);
@@ -2318,7 +2315,7 @@ html[data-density=compact] .bg-card > table td {
 .mg-interactive-data-field-inspector-dismiss {
   display: none;
 }
-.mg-interactive-data-field-axis {
+.mg-interactive-data-field-caption {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2331,18 +2328,10 @@ html[data-density=compact] .bg-card > table td {
   line-height: 1.25;
   text-transform: uppercase;
 }
-@keyframes mg-data-field-inspector-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 @media (max-width: 63.99rem) {
   .mg-interactive-data-field-scroll {
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: visible;
     overscroll-behavior-x: contain;
     padding-inline: var(--mg-space-md);
     scroll-padding-inline: var(--mg-space-md);
@@ -2353,28 +2342,18 @@ html[data-density=compact] .bg-card > table td {
   .mg-interactive-data-field-scroll::-webkit-scrollbar {
     display: none;
   }
-  .mg-interactive-data-field-bars {
-    --mg-data-field-mobile-point-width: 1.5rem;
-    --mg-data-field-mobile-gap: 2px;
-    grid-template-columns: repeat(var(--mg-data-field-count), var(--mg-data-field-mobile-point-width));
-    gap: var(--mg-data-field-mobile-gap);
-    width: calc(var(--mg-data-field-count) * (var(--mg-data-field-mobile-point-width) + var(--mg-data-field-mobile-gap)));
-    min-width: max(100%, calc(var(--mg-data-field-count) * (var(--mg-data-field-mobile-point-width) + var(--mg-data-field-mobile-gap))));
+  .mg-interactive-data-field-chart {
+    --mg-data-field-mobile-point-width: 2rem;
+    width: max(100%, calc(var(--mg-data-field-count) * var(--mg-data-field-mobile-point-width)));
   }
   .mg-interactive-data-field-bar {
     cursor: pointer;
   }
 }
 @media (max-width: 47.99rem) {
-  .mg-interactive-data-field-plot {
-    min-height: 18rem;
-    padding-top: var(--mg-space-md);
-  }
-  .mg-interactive-data-field-scroll {
-    height: 16rem;
-  }
-  .mg-interactive-data-field-axis {
-    padding-inline: var(--mg-space-md);
+  .mg-interactive-data-field-chart {
+    grid-template-rows: 2.25rem 16rem;
+    padding-top: var(--mg-space-sm);
   }
   .mg-interactive-data-field-inspector {
     position: fixed;
@@ -2388,7 +2367,7 @@ html[data-density=compact] .bg-card > table td {
   }
   .mg-interactive-data-field-inspector-dismiss {
     position: fixed;
-    z-index: 4;
+    z-index: 5;
     right: 1rem;
     bottom: 1rem;
     display: inline-flex;
@@ -2407,15 +2386,10 @@ html[data-density=compact] .bg-card > table td {
     outline: 2px solid var(--brand-green);
     outline-offset: 2px;
   }
-  .mg-interactive-data-field-inspector[data-align=center] {
-    transform: none;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mg-interactive-data-field-bar,
-  .mg-interactive-data-field-bar-fill,
-  .mg-interactive-data-field-inspector {
-    animation: none;
+  .mg-interactive-data-field-axis-item,
+  .mg-interactive-data-field-segment {
     transition: none;
   }
 }

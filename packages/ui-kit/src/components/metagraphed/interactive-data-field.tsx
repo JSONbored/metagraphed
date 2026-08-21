@@ -169,7 +169,9 @@ export function InteractiveDataField({
 
   const labelInterval = Math.max(1, Math.ceil(data.length / 8));
 
-  function segmentsFor(datum: InteractiveDataFieldDatum): readonly InteractiveDataFieldSegment[] {
+  function segmentsFor(
+    datum: InteractiveDataFieldDatum,
+  ): readonly InteractiveDataFieldSegment[] {
     const segments = datum.segments?.filter(
       (segment) => Number.isFinite(segment.value) && segment.value > 0,
     );

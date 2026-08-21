@@ -2870,7 +2870,8 @@ html[data-density="compact"] .bg-card > table td {
 .mg-interactive-data-field-segment[data-tone="chart-11"] {
   background: var(--chart-11);
 }
-.mg-interactive-data-field-bar[data-muted="true"] .mg-interactive-data-field-segment {
+.mg-interactive-data-field-bar[data-muted="true"]
+  .mg-interactive-data-field-segment {
   background: var(--mg-data-field-muted);
 }
 .mg-interactive-data-field-bar:focus-visible {

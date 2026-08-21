@@ -2600,8 +2600,21 @@ function InteractiveDataField({
     focusDatum(nextIndex);
   }
   if (data.length === 0) return null;
-  const inspectorAlignment = inspectedIndex < Math.ceil(data.length * 0.18) ? "start" : inspectedIndex > Math.floor(data.length * 0.82) ? "end" : "center";
-  const inspectorPosition = `${(inspectedIndex + 0.5) / data.length * 100}%`;
+  const labelInterval = Math.max(1, Math.ceil(data.length / 8));
+  function segmentsFor(datum) {
+    const segments = datum.segments?.filter(
+      (segment) => Number.isFinite(segment.value) && segment.value > 0
+    );
+    if (segments && segments.length > 0) return segments;
+    return [
+      {
+        label: datum.label,
+        value: Math.max(0, datum.value),
+        valueLabel: datum.valueLabel,
+        tone: datum.tone ?? "chart-5"
+      }
+    ];
+  }
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "figure",
     {
@@ -2610,82 +2623,108 @@ function InteractiveDataField({
       "data-has-active": inspectedDatum ? "true" : void 0,
       children: [
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-interactive-data-field-plot", children: [
-          /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-interactive-data-field-scroll", children: /* @__PURE__ */ jsxRuntime.jsx(
-            "div",
-            {
-              className: "mg-interactive-data-field-bars",
-              role: "group",
-              "aria-label": `${ariaLabel} Hover, focus, or tap a data column to inspect it. Use arrow keys after focus to move between columns.`,
-              style: { "--mg-data-field-count": data.length },
-              children: data.map((datum, index) => {
-                const height = max > 0 ? Math.max(2, Math.max(0, datum.value) / max * 100) : 2;
-                const inspected = datum.id === inspectedId;
-                return /* @__PURE__ */ jsxRuntime.jsx(
-                  "button",
-                  {
-                    type: "button",
-                    className: "mg-interactive-data-field-bar",
-                    "data-tone": datum.tone ?? "chart-5",
-                    "data-active": inspected || void 0,
-                    "aria-label": datum.ariaLabel,
-                    "aria-describedby": inspected ? inspectorId : void 0,
-                    "aria-pressed": inspected,
-                    tabIndex: datum.id === (activeId ?? data[0]?.id) ? 0 : -1,
-                    style: {
-                      "--mg-data-field-index": index
+          /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-interactive-data-field-scroll", children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-interactive-data-field-chart", children: [
+            /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-interactive-data-field-axis", "aria-hidden": "true", children: data.map((datum, index) => {
+              const isVisible = Boolean(datum.axisLabel) && index % labelInterval === 0;
+              return /* @__PURE__ */ jsxRuntime.jsx(
+                "span",
+                {
+                  className: "mg-interactive-data-field-axis-item",
+                  "data-active": datum.id === inspectedId || void 0,
+                  "data-label-hidden": !isVisible || void 0,
+                  children: /* @__PURE__ */ jsxRuntime.jsx("span", { children: datum.axisLabel })
+                },
+                datum.id
+              );
+            }) }),
+            /* @__PURE__ */ jsxRuntime.jsx(
+              "div",
+              {
+                className: "mg-interactive-data-field-bars",
+                role: "group",
+                "aria-label": `${ariaLabel} Hover, focus, or tap a data column to inspect it. Use arrow keys after focus to move between columns.`,
+                style: { "--mg-data-field-count": data.length },
+                children: data.map((datum, index) => {
+                  const height = max > 0 ? Math.max(1, Math.max(0, datum.value) / max * 100) : 1;
+                  const inspected = datum.id === inspectedId;
+                  const segments = segmentsFor(datum);
+                  const segmentTotal = segments.reduce(
+                    (total, segment) => total + segment.value,
+                    0
+                  );
+                  const gridRows = segments.map((segment) => `${segment.value / segmentTotal * 100}%`).join(" ");
+                  const tooltipPlacement = index < Math.ceil(data.length * 0.2) ? "right" : index > Math.floor(data.length * 0.8) ? "left" : "center";
+                  return /* @__PURE__ */ jsxRuntime.jsxs(
+                    "button",
+                    {
+                      type: "button",
+                      className: "mg-interactive-data-field-bar",
+                      "data-active": inspected || void 0,
+                      "data-muted": inspectedId && !inspected ? "true" : void 0,
+                      "aria-label": datum.ariaLabel,
+                      "aria-describedby": inspected ? inspectorId : void 0,
+                      "aria-pressed": inspected,
+                      tabIndex: datum.id === (activeId ?? data[0]?.id) ? 0 : -1,
+                      ref: (node) => {
+                        buttonRefs.current[datum.id] = node;
+                      },
+                      onFocus: () => {
+                        setHovered(null);
+                        setActive(datum.id);
+                      },
+                      onPointerEnter: (event) => {
+                        if (event.pointerType !== "touch") setHovered(datum.id);
+                      },
+                      onPointerLeave: (event) => {
+                        if (event.pointerType !== "touch") setHovered(null);
+                      },
+                      onClick: () => {
+                        setHovered(null);
+                        setActive(datum.id);
+                      },
+                      onKeyDown: (event) => handleBarKeyDown(event, index),
+                      children: [
+                        /* @__PURE__ */ jsxRuntime.jsx(
+                          "span",
+                          {
+                            className: "mg-interactive-data-field-bar-fill",
+                            "aria-hidden": "true",
+                            style: {
+                              "--mg-data-field-bar-height": `${height}%`,
+                              "--mg-data-field-segment-rows": gridRows
+                            },
+                            children: segments.map((segment, segmentIndex) => /* @__PURE__ */ jsxRuntime.jsx(
+                              "i",
+                              {
+                                className: "mg-interactive-data-field-segment",
+                                "data-tone": segment.tone
+                              },
+                              `${datum.id}-${segmentIndex}`
+                            ))
+                          }
+                        ),
+                        inspected ? /* @__PURE__ */ jsxRuntime.jsx(
+                          "span",
+                          {
+                            id: inspectorId,
+                            className: "mg-interactive-data-field-inspector",
+                            "data-placement": tooltipPlacement,
+                            role: "status",
+                            "aria-live": "polite",
+                            children: renderInspector ? renderInspector(datum, index) : /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+                              /* @__PURE__ */ jsxRuntime.jsx("span", { children: datum.label }),
+                              /* @__PURE__ */ jsxRuntime.jsx("strong", { children: datum.valueLabel })
+                            ] })
+                          }
+                        ) : null
+                      ]
                     },
-                    ref: (node) => {
-                      buttonRefs.current[datum.id] = node;
-                    },
-                    onFocus: () => {
-                      setHovered(null);
-                      setActive(datum.id);
-                    },
-                    onPointerEnter: (event) => {
-                      if (event.pointerType !== "touch") setHovered(datum.id);
-                    },
-                    onPointerLeave: (event) => {
-                      if (event.pointerType !== "touch") setHovered(null);
-                    },
-                    onClick: () => {
-                      setHovered(null);
-                      setActive(datum.id);
-                    },
-                    onKeyDown: (event) => handleBarKeyDown(event, index),
-                    children: /* @__PURE__ */ jsxRuntime.jsx(
-                      "span",
-                      {
-                        className: "mg-interactive-data-field-bar-fill",
-                        "aria-hidden": "true",
-                        style: {
-                          "--mg-data-field-bar-height": `${height}%`
-                        }
-                      }
-                    )
-                  },
-                  datum.id
-                );
-              })
-            }
-          ) }),
-          inspectedDatum ? /* @__PURE__ */ jsxRuntime.jsx(
-            "div",
-            {
-              id: inspectorId,
-              className: "mg-interactive-data-field-inspector",
-              "data-align": inspectorAlignment,
-              "data-tone": inspectedDatum.tone ?? "chart-5",
-              role: "status",
-              "aria-live": "polite",
-              style: {
-                "--mg-data-field-inspector-position": inspectorPosition
-              },
-              children: renderInspector ? renderInspector(inspectedDatum, inspectedIndex) : /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-                /* @__PURE__ */ jsxRuntime.jsx("span", { children: inspectedDatum.label }),
-                /* @__PURE__ */ jsxRuntime.jsx("strong", { children: inspectedDatum.valueLabel })
-              ] })
-            }
-          ) : null,
+                    datum.id
+                  );
+                })
+              }
+            )
+          ] }) }),
           inspectedDatum ? /* @__PURE__ */ jsxRuntime.jsx(
             "button",
             {
@@ -2700,7 +2739,7 @@ function InteractiveDataField({
             }
           ) : null
         ] }),
-        axisStart || axisEnd ? /* @__PURE__ */ jsxRuntime.jsxs("figcaption", { className: "mg-interactive-data-field-axis", children: [
+        axisStart || axisEnd ? /* @__PURE__ */ jsxRuntime.jsxs("figcaption", { className: "mg-interactive-data-field-caption", children: [
           /* @__PURE__ */ jsxRuntime.jsx("span", { children: axisStart }),
           /* @__PURE__ */ jsxRuntime.jsx("span", { children: axisEnd })
         ] }) : null
