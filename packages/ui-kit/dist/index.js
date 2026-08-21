@@ -3253,10 +3253,10 @@ function BarMini({
             className: "grid grid-cols-[5.5rem_1fr_auto] items-center gap-2",
             children: [
               /* @__PURE__ */ jsx("span", { className: "mg-type-caption text-ink-muted truncate", children: d.label }),
-              /* @__PURE__ */ jsx("span", { className: "relative h-1.5 rounded-full bg-surface overflow-hidden", children: /* @__PURE__ */ jsx(
+              /* @__PURE__ */ jsx("span", { className: "relative h-1.5 bg-surface overflow-hidden", children: /* @__PURE__ */ jsx(
                 "span",
                 {
-                  className: "absolute inset-y-0 left-0 rounded-full",
+                  className: "absolute inset-y-0 left-0",
                   style: {
                     width: `${pct}%`,
                     background: d.color ?? "var(--accent)"

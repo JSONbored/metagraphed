@@ -7,6 +7,8 @@ import { formatTao } from "@/lib/metagraphed/format";
 import type { ChainStakeFlow, GlobalValidators } from "@/lib/metagraphed/types";
 
 const MOBILE_QUERY = "(max-width: 640px)";
+const DESKTOP_SANKEY_LIMIT = 7;
+const MOBILE_SANKEY_LIMIT = 5;
 
 // SSR-safe viewport check, same shape as use-coarse-pointer.ts: default false
 // on the server, corrected on the client after mount. A narrow-viewport
@@ -54,38 +56,49 @@ export function ChainStakeFlowSankey({
 }) {
   const navigate = useNavigate();
   const isMobile = useNarrowViewport();
-  // Fewer nodes on mobile: the vertical layout stacks nodes side by side
-  // along a ~375px width, so 10 subnets read as illegible slivers even with
-  // the primitive's own label-hiding threshold — 5 keeps every shown node
-  // wide enough to label.
+  // A sankey can be technically complete and still fail as a reading surface.
+  // Seven desktop paths preserve comparison without a tangle of labels; the
+  // vertical mobile layout narrows that to five so each path stays tappable.
   const { nodes, links, shownNetuids } = buildStakeFlowSankeyData(
     stakeFlow,
     validators,
-    isMobile ? 5 : undefined,
-    isMobile ? 5 : undefined,
+    isMobile ? MOBILE_SANKEY_LIMIT : DESKTOP_SANKEY_LIMIT,
+    isMobile ? MOBILE_SANKEY_LIMIT : DESKTOP_SANKEY_LIMIT,
   );
   const empty = shownNetuids.length === 0;
 
   return (
     <ChartCard
-      title="Stake flow"
-      caption={`Root → top ${shownNetuids.length || 0} subnets by ${window} stake movement → top validators' current stake in those subnets. The two hops are different kinds of number — flow on the left, current holdings on the right.`}
-      height={isMobile ? 420 : 320}
+      variant="data"
+      className="mg-data-module--stake-flow"
+      title="Stake movement"
+      caption={`Flow over ${window}, then current validator stake in the ${shownNetuids.length || 0} most active subnets. Select a node to inspect it.`}
+      footer={
+        <span>
+          Mint and red links show movement direction; prism links keep each subnet traceable into
+          its validator holdings.
+        </span>
+      }
+      height={isMobile ? 420 : 404}
       empty={empty}
       emptyLabel="No stake movement in this window"
     >
-      <SankeyMini
-        nodes={nodes}
-        links={links}
-        orientation={isMobile ? "vertical" : "horizontal"}
-        columnExtent={isMobile ? 380 : 720}
-        stackExtent={isMobile ? 340 : 300}
-        formatValue={(v) => formatTao(v)}
-        onNodeSelect={(nodeId) => {
-          const target = resolveSankeyNode(nodeId);
-          if (target) navigate({ to: target.to, params: target.params });
-        }}
-      />
+      <div className="mg-data-plot-grid h-full">
+        <SankeyMini
+          nodes={nodes}
+          links={links}
+          className="h-full"
+          orientation={isMobile ? "vertical" : "horizontal"}
+          columnExtent={isMobile ? 380 : 920}
+          stackExtent={isMobile ? 340 : 384}
+          formatValue={(v) => formatTao(v)}
+          ariaLabel="Stake movement from root through active subnets into validator holdings"
+          onNodeSelect={(nodeId) => {
+            const target = resolveSankeyNode(nodeId);
+            if (target) navigate({ to: target.to, params: target.params });
+          }}
+        />
+      </div>
     </ChartCard>
   );
 }

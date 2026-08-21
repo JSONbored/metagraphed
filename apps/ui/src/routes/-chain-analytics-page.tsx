@@ -1,10 +1,10 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { AnalyticsSearch } from "./chain.analytics";
 import { useSuspenseQueries } from "@tanstack/react-query";
-import { SectionLabel, Skeleton } from "@jsonbored/ui-kit";
+import type { ReactNode } from "react";
+import { Skeleton } from "@jsonbored/ui-kit";
+import type { AnalyticsSearch } from "./chain.analytics";
 import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { ChainTabActions } from "./-chain-hub";
 import { ChainStakeFlowSankey } from "@/components/metagraphed/chain-stake-flow-sankey";
 import { ChainConcentrationSnapshot } from "@/components/metagraphed/chain-concentration-snapshot";
 import { ChainIdleStakeSnapshot } from "@/components/metagraphed/chain-idle-stake-snapshot";
@@ -25,20 +25,10 @@ type Window = "7d" | "30d";
 const WINDOWS: Window[] = ["7d", "30d"];
 
 /**
- * Chain hub Analytics tab (#8378). Own route (`/chain/analytics`), not a
- * client-side sub-tab — the hub's tabs are each a real router match, which
- * is what makes "only fetch when this tab is activated" free: the six
- * queries below only run once this route mounts.
- *
- * Deliberately six requests, not the sankey's full theoretical data need:
- * root->subnet uses windowed stake-flow (real flow); subnet->validator uses
- * the global validator leaderboard's CURRENT per-subnet stake (no endpoint
- * gives windowed flow at validator granularity — see chain-analytics.ts).
- * Two deliverables from the issue are scoped out rather than faked: bulk
- * "recycled totals" and a true registration-count trend have no bulk/
- * chain-level source in the current API without exceeding the 6-request
- * budget (either needs ~129 per-subnet calls). Posted as a scope note on
- * #8378 alongside the PR.
+ * This route intentionally holds the core view to six requests: root →
+ * subnet uses real windowed movement while subnet → validator uses current
+ * holdings from the global leaderboard. The visual hierarchy makes that
+ * distinction clear rather than pretending both hops are the same measure.
  */
 function AnalyticsBody() {
   const search = useSearch({ from: "/chain/analytics" }) as AnalyticsSearch;
@@ -63,29 +53,23 @@ function AnalyticsBody() {
   });
 
   return (
-    <>
+    <div className="contents">
       <ChainStakeFlowSankey
         stakeFlow={stakeFlowRes.data}
         validators={validatorsRes.data}
         window={win}
       />
-
-      <div id="analytics-trends" className="mt-6">
-        <SectionLabel as="h2">Trends</SectionLabel>
-        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <ChainConcentrationSnapshot concentration={concentrationRes.data} />
-          <ChainIdleStakeSnapshot idleStake={idleStakeRes.data} />
-          <ChainEmissionTrend days={trendsRes.data.days} window={win} />
-        </div>
-      </div>
-
-      <div id="analytics-registration" className="mt-6">
-        <SectionLabel as="h2">Registration economics</SectionLabel>
-        <div className="mt-3">
-          <ChainRegistrationEconomics subnets={economicsRes.data} />
-        </div>
-      </div>
-    </>
+      <ChainIdleStakeSnapshot idleStake={idleStakeRes.data} />
+      <ChainEmissionTrend days={trendsRes.data.days} window={win} />
+      <ChainConcentrationSnapshot concentration={concentrationRes.data} />
+      <DataModule
+        id="analytics-registration"
+        title="Registration economics"
+        caption="The spread of current cost to open a subnet, from the least to the most expensive."
+      >
+        <ChainRegistrationEconomics subnets={economicsRes.data} />
+      </DataModule>
+    </div>
   );
 }
 
@@ -94,60 +78,59 @@ export function ChainAnalyticsPage() {
   const navigate = useNavigate({ from: "/chain/analytics" });
 
   return (
-    <>
-      <ChainTabActions>
-        <div
-          role="tablist"
-          aria-label="Window"
-          className="mr-auto inline-flex items-center gap-1 rounded-md border border-border bg-surface p-0.5"
-        >
-          {WINDOWS.map((w) => (
-            <button
-              key={w}
-              type="button"
-              role="tab"
-              aria-selected={w === search.window}
-              onClick={() =>
-                navigate({
-                  search: (prev: Record<string, unknown>) => ({ ...prev, window: w }),
-                  resetScroll: false,
-                })
-              }
-              className={classNames(
-                "rounded px-2.5 py-1 mg-type-caption font-medium transition-colors mg-focus-ring",
-                w === search.window
-                  ? "bg-card text-ink-strong"
-                  : "text-ink-muted hover:text-ink-strong",
-              )}
-            >
-              {w}
-            </button>
-          ))}
+    <div className="mg-data-stage">
+      <section className="mg-data-hero" aria-labelledby="network-data-title">
+        <div className="mg-data-hero-field" aria-hidden="true" />
+        <div className="mg-data-hero-content">
+          <div>
+            <span className="mg-data-kicker">
+              <span className="mg-data-kicker-dot" aria-hidden="true" />
+              live chain data
+            </span>
+            <h1 id="network-data-title">Network Data.</h1>
+          </div>
+          <div className="mg-data-hero-detail">
+            <p>
+              Follow where stake moves, where alpha concentrates, and what it costs to enter — one
+              clean question at a time.
+            </p>
+            <div role="tablist" aria-label="Analytics time window" className="mg-data-window">
+              {WINDOWS.map((w) => (
+                <button
+                  key={w}
+                  type="button"
+                  role="tab"
+                  aria-selected={w === search.window}
+                  onClick={() =>
+                    navigate({
+                      search: (prev: Record<string, unknown>) => ({ ...prev, window: w }),
+                      resetScroll: false,
+                    })
+                  }
+                  className={classNames(
+                    "mg-data-window-button mg-focus-ring",
+                    w === search.window && "is-active",
+                  )}
+                >
+                  {w === "7d" ? "7 days" : "30 days"}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </ChainTabActions>
-
-      <p className="mb-6 max-w-3xl mg-type-caption-lg text-ink-muted">
-        Stake flow, concentration, idle stake, and registration economics — the questions analysts
-        currently script against the API, in one view.
-      </p>
-
-      <AsyncPanel context="chain analytics" fallback={<AnalyticsSkeleton />}>
-        <AnalyticsBody />
-      </AsyncPanel>
-
-      {/* #10300: four network-wide surfaces that were published and rendered
-          nowhere. Deliberately BELOW the suspense boundary above rather than
-          inside it — the body's six-request budget is a documented property of
-          that section, and these four fetch independently so a slow one cannot
-          hold the sankey back. */}
-      <section className="mt-8">
-        <SectionLabel>Network concentration & entry cost</SectionLabel>
-        <p className="mb-4 mt-1 max-w-3xl mg-type-caption-lg text-ink-muted">
-          What it costs to register, who holds the alpha, and how evenly — each computed over the
-          subnets that were actually read, which these panels state rather than assume.
-        </p>
-        <ChainNetworkConcentration />
       </section>
+
+      <div className="mg-data-canvas">
+        <AsyncPanel context="chain analytics" fallback={<AnalyticsSkeleton />}>
+          <AnalyticsBody />
+        </AsyncPanel>
+
+        {/* #10300: these network-wide surfaces fetch independently from the
+            six-request core above, so a slow concentration query never holds
+            back the movement view. They share the same data canvas rather than
+            becoming a second wall of dashboard cards. */}
+        <ChainNetworkConcentration />
+      </div>
 
       <ApiSourceFooter
         paths={[
@@ -163,24 +146,40 @@ export function ChainAnalyticsPage() {
           "/api/v1/chain/concentration/history",
         ]}
       />
-    </>
+    </div>
   );
 }
 
 function AnalyticsSkeleton() {
   return (
-    <div className="space-y-6">
-      <Skeleton className="h-80 w-full" />
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Skeleton className="h-20" />
-        <Skeleton className="h-20" />
-        <Skeleton className="h-20" />
-      </div>
+    <div className="mg-data-loading" aria-label="Loading chain analytics">
+      <Skeleton className="h-[30rem] w-full" />
+      <Skeleton className="mt-6 h-56 w-full" />
+      <Skeleton className="mt-6 h-48 w-full" />
     </div>
+  );
+}
+
+function DataModule({
+  id,
+  title,
+  caption,
+  children,
+}: {
+  id?: string;
+  title: string;
+  caption: string;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className="mg-data-module">
+      <header className="mg-data-module-heading">
+        <h2 className="mg-data-module-title">
+          <strong>{title}.</strong>
+          <span>{caption}</span>
+        </h2>
+      </header>
+      <div className="mg-data-module-body">{children}</div>
+    </section>
   );
 }

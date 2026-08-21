@@ -51,9 +51,9 @@ export function BarMini({
             <span className="mg-type-caption text-ink-muted truncate">
               {d.label}
             </span>
-            <span className="relative h-1.5 rounded-full bg-surface overflow-hidden">
+            <span className="relative h-1.5 bg-surface overflow-hidden">
               <span
-                className="absolute inset-y-0 left-0 rounded-full"
+                className="absolute inset-y-0 left-0"
                 style={{
                   width: `${pct}%`,
                   background: d.color ?? "var(--accent)",

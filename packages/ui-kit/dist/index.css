@@ -113,12 +113,12 @@
   --curation-seeded: #b46b00;
   --curation-machine: #7562c6;
   --curation-adapter: #b24f8c;
-  --chart-1: #119b76;
-  --chart-2: #8562d7;
-  --chart-3: #d56b25;
-  --chart-4: #bd4e92;
-  --chart-5: #9c7b11;
-  --chart-6: #6f7b87;
+  --chart-1: #b52cce;
+  --chart-2: #7450d8;
+  --chart-3: #386fdb;
+  --chart-4: #078ab5;
+  --chart-5: #5d9200;
+  --chart-6: #d76000;
   --mg-grid-color: color-mix(in oklab, var(--ink-strong) 6%, transparent);
   --mg-cadence-color: color-mix(in oklab, var(--ink-strong) 13%, transparent);
   --claude-brand: oklch(0.67 0.13 39);
@@ -291,12 +291,12 @@
   --curation-seeded: #e8bb63;
   --curation-machine: #b49aff;
   --curation-adapter: #e79ac9;
-  --chart-1: var(--brand-green);
-  --chart-2: #b69bff;
-  --chart-3: #ffad72;
-  --chart-4: #ec9bcf;
-  --chart-5: #e9ca68;
-  --chart-6: #a6adb7;
+  --chart-1: #e45dff;
+  --chart-2: #9b7bff;
+  --chart-3: #5a8eff;
+  --chart-4: #22c9e4;
+  --chart-5: #a8e31b;
+  --chart-6: #ff9000;
   --mg-grid-color: color-mix(in oklab, var(--ink-strong) 8%, transparent);
   --mg-cadence-color: color-mix(in oklab, var(--ink-strong) 15%, transparent);
 }

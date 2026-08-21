@@ -4,6 +4,7 @@ import {
   computeRegistrationCostStats,
   MAX_SANKEY_SUBNETS,
   MAX_SANKEY_VALIDATORS,
+  STAKE_FLOW_SERIES_COLORS,
 } from "./chain-analytics";
 import type { ChainStakeFlow, GlobalValidators } from "./types";
 
@@ -114,6 +115,27 @@ describe("buildStakeFlowSankeyData", () => {
     const va = nodes.find((n) => n.id === "validator:5AAA");
     expect(va?.value).toBe(40);
     expect(links.some((l) => l.source === "subnet:1" && l.target === "validator:5AAA")).toBe(true);
+  });
+
+  it("uses direction only for the first hop and a stable chart series for the subnet trace", () => {
+    const flow = stakeFlow([subnetFlow(1, 100, "gaining"), subnetFlow(2, 50, "losing")]);
+    const vs = validators([
+      validator("5AAA", [{ netuid: 1, stake_tao: 40 }]),
+      validator("5BBB", [{ netuid: 2, stake_tao: 20 }]),
+    ]);
+    const { nodes, links } = buildStakeFlowSankeyData(flow, vs);
+
+    expect(nodes.find((node) => node.id === "subnet:1")?.color).toBe(STAKE_FLOW_SERIES_COLORS[0]);
+    expect(nodes.find((node) => node.id === "subnet:2")?.color).toBe(STAKE_FLOW_SERIES_COLORS[1]);
+    expect(links.find((link) => link.source === "root" && link.target === "subnet:1")?.color).toBe(
+      "var(--accent)",
+    );
+    expect(links.find((link) => link.source === "root" && link.target === "subnet:2")?.color).toBe(
+      "var(--health-down)",
+    );
+    expect(links.find((link) => link.source === "subnet:1")?.color).toBe(
+      STAKE_FLOW_SERIES_COLORS[0],
+    );
   });
 
   it("ignores a validator's stake in a subnet that wasn't shown", () => {

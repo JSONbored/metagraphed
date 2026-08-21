@@ -19,10 +19,15 @@ import { ChainTabs, activeChainTab } from "./-chain-hub";
 function ChainHubLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const tab = activeChainTab(pathname);
+  // Analytics owns a dedicated, spacious data hero. Keeping the generic
+  // compact Chain masthead above it creates two competing introductions.
+  const hasDedicatedHero = pathname === "/chain/analytics";
 
   return (
     <AppShell>
-      <PageMasthead title="Chain" description={tab.blurb} pathname={pathname} live />
+      {!hasDedicatedHero ? (
+        <PageMasthead title="Chain" description={tab.blurb} pathname={pathname} live />
+      ) : null}
       <ChainTabs />
       <Outlet />
     </AppShell>

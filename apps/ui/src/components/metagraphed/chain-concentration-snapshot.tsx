@@ -21,16 +21,17 @@ export function ChainConcentrationSnapshot({
 
   return (
     <ChartCard
-      title="Stake & emission concentration"
-      caption="Current snapshot, not a trend — the network-wide concentration endpoint has no historical window."
+      variant="data"
+      title="Stake and emission concentration"
+      caption="How much of each sits with the top 10% of holders. This is a current network snapshot, not a trend."
       updatedAt={concentration.captured_at}
-      height={120}
+      height={156}
       empty={!hasData}
     >
       <BarMini
         data={[
-          { label: "Stake", value: stakeShare ?? 0 },
-          { label: "Emission", value: emissionShare ?? 0 },
+          { label: "Stake", value: stakeShare ?? 0, color: "var(--chart-1)" },
+          { label: "Emission", value: emissionShare ?? 0, color: "var(--chart-4)" },
         ]}
         max={1}
         formatValue={formatShare}

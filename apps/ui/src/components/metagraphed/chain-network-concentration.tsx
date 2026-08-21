@@ -1,11 +1,13 @@
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { Sparkline } from "@jsonbored/ui-kit";
 import {
   chainBurnQuery,
   chainHoldersQuery,
   chainConcentrationSubnetsQuery,
   chainConcentrationHistoryQuery,
 } from "@/lib/metagraphed/queries";
-import { Panel } from "@/components/metagraphed/primitives";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { formatNumber, formatTao, formatRelative } from "@/lib/metagraphed/format";
 import {
@@ -13,24 +15,31 @@ import {
   spansBuilderVersions,
   capturesDiverge,
 } from "@/lib/metagraphed/network-coverage.functions";
+import type {
+  ChainBurn,
+  ChainHolders,
+  NetworkConcentrationHistory,
+  NetworkConcentrationSubnets,
+} from "@/lib/metagraphed/types";
 
 const TOP_SHOWN = 8;
+const RANK_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+];
 
 /**
- * The four network-wide surfaces #10300 found rendered nowhere:
- * `/chain/burn`, `/chain/holders`, `/chain/concentration/subnets` and
- * `/chain/concentration/history`.
- *
- * Grouped rather than scattered because they answer one question between them
- * -- how evenly is the network held, and what does it cost to join -- and
- * because they share a caveat that only makes sense stated once per aggregate:
- * EVERY ONE OF THEM PUBLISHES A READ COUNT BESIDE A TOTAL. An aggregate over a
- * partial read describes the subset that was read. The panels say which, rather
- * than presenting a spread over 120 subnets as a fact about 129.
+ * Network-wide concentration is a continuous part of the analytics document,
+ * not a grid of secondary cards. Each module answers a single question and
+ * keeps its coverage caveat beside the measurement it qualifies.
  */
 export function ChainNetworkConcentration() {
   return (
-    <div className="space-y-6">
+    <div className="contents">
       <BurnSpread />
       <HolderConcentration />
       <ConcentrationRanking />
@@ -42,11 +51,24 @@ export function ChainNetworkConcentration() {
 /** What it costs to register, cheapest to dearest. */
 function BurnSpread() {
   const { data, isLoading, isError, error, refetch } = useQuery(chainBurnQuery());
-  if (isLoading) return <Skeleton className="h-[120px] w-full" />;
-  if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
   const b = data?.data;
-  if (!b) return <EmptyState title="No registration costs" description="Nothing read yet." />;
 
+  return (
+    <DataModule
+      title="Registration cost"
+      caption="The current price of entry across the subnets that were read. The rank rail makes the expensive end easy to compare."
+    >
+      {isLoading ? <Skeleton className="h-[15rem] w-full" /> : null}
+      {isError ? <ErrorState error={error} onRetry={() => void refetch()} /> : null}
+      {!isLoading && !isError && !b ? (
+        <EmptyState title="No registration costs" description="Nothing has been read yet." />
+      ) : null}
+      {b ? <BurnSpreadData data={b} /> : null}
+    </DataModule>
+  );
+}
+
+function BurnSpreadData({ data: b }: { data: ChainBurn }) {
   const note = coverageNote(b.subnet_count, b.read_count);
   const dearest = [...b.subnets]
     .filter((s) => s.burn_tao != null)
@@ -54,9 +76,8 @@ function BurnSpread() {
     .slice(0, TOP_SHOWN);
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Registration cost across subnets</h3>
-      <div className="grid grid-cols-3 gap-x-6 gap-y-3">
+    <>
+      <div className="mg-data-measure-grid mg-data-measure-grid--3">
         <Figure
           label="cheapest"
           value={formatTao(b.cheapest_burn_tao)}
@@ -65,94 +86,116 @@ function BurnSpread() {
         <Figure
           label="median"
           value={formatTao(b.median_burn_tao)}
-          hint="Median registration cost — the typical price of entry."
+          hint="The typical current price of entry."
         />
         <Figure
           label="dearest"
           value={formatTao(b.dearest_burn_tao)}
-          hint="Highest current registration cost."
+          hint="Highest current registration cost across the subnets read."
         />
       </div>
       {dearest.length > 0 ? (
-        <ul className="mt-4 space-y-1">
-          {dearest.map((s) => (
-            <li key={s.netuid} className="flex justify-between mg-type-data-sm">
-              <span className="text-ink-muted">SN{s.netuid}</span>
-              <span className="tabular-nums text-ink">{formatTao(s.burn_tao)}</span>
-            </li>
-          ))}
-        </ul>
+        <RankedRows
+          label="Subnets with the highest registration costs"
+          entries={dearest.map((s) => ({
+            id: String(s.netuid),
+            label: `SN${s.netuid}`,
+            netuid: s.netuid,
+            value: s.burn_tao ?? 0,
+            valueLabel: formatTao(s.burn_tao),
+          }))}
+        />
       ) : null}
-      {note ? <p className="mt-3 mg-type-label text-ink-muted">{note}</p> : null}
-    </Panel>
+      {note ? <p className="mg-data-module-note">{note}</p> : null}
+    </>
   );
 }
 
 /** Who holds the alpha, and where one account holds all of it. */
 function HolderConcentration() {
   const { data, isLoading, isError, error, refetch } = useQuery(chainHoldersQuery());
-  if (isLoading) return <Skeleton className="h-[120px] w-full" />;
-  if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
   const h = data?.data;
-  if (!h) return <EmptyState title="No holder data" description="Nothing read yet." />;
 
+  return (
+    <DataModule
+      title="Alpha holders"
+      caption="How concentrated alpha ownership is across measured subnets — including the cases where a single account holds it all."
+    >
+      {isLoading ? <Skeleton className="h-[13rem] w-full" /> : null}
+      {isError ? <ErrorState error={error} onRetry={() => void refetch()} /> : null}
+      {!isLoading && !isError && !h ? (
+        <EmptyState title="No holder data" description="Nothing has been read yet." />
+      ) : null}
+      {h ? <HolderConcentrationData data={h} /> : null}
+    </DataModule>
+  );
+}
+
+function HolderConcentrationData({ data: h }: { data: ChainHolders }) {
   const note = coverageNote(h.subnet_count, h.subnets_measured);
-  // Two stamps, stated separately only when they actually disagree.
   const split = capturesDiverge(h.captured_at, h.positions_captured_at);
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Alpha holders across subnets</h3>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+    <>
+      <div className="mg-data-measure-grid mg-data-measure-grid--3">
         <Figure
           label="median top-1 share"
           value={h.median_top1_share == null ? "—" : `${formatNumber(h.median_top1_share * 100)}%`}
-          hint="In the typical subnet, this is the share held by its largest holder."
+          hint="In the typical subnet, the share held by its largest holder."
         />
         <Figure
           label="majority-held"
           value={formatNumber(h.subnets_with_majority_holder)}
-          hint="Subnets where one account holds over half the alpha."
+          hint="Subnets where one account holds over half of the alpha."
         />
         <Figure
           label="single-holder"
           value={formatNumber(h.subnets_with_single_holder)}
-          hint="Subnets where ONE account holds all of it — a stronger claim than a majority, so it is counted separately."
+          hint="Subnets where one account holds all alpha."
         />
       </div>
       {split ? (
-        <p className="mt-3 mg-type-label text-ink-muted">
+        <p className="mg-data-module-note">
           Subnet set read {formatRelative(h.captured_at)}; holder positions{" "}
           {formatRelative(h.positions_captured_at)}. The two halves describe different moments.
         </p>
       ) : null}
-      {note ? <p className="mt-2 mg-type-label text-ink-muted">{note}</p> : null}
-    </Panel>
+      {note ? <p className="mg-data-module-note">{note}</p> : null}
+    </>
   );
 }
 
 /** Concentration ranked per subnet, with the unmeasured ones named as such. */
 function ConcentrationRanking() {
   const { data, isLoading, isError, error, refetch } = useQuery(chainConcentrationSubnetsQuery());
-  if (isLoading) return <Skeleton className="h-[120px] w-full" />;
-  if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
   const c = data?.data;
-  if (!c) return <EmptyState title="No concentration data" description="Nothing read yet." />;
 
+  return (
+    <DataModule
+      title="Most concentrated subnets"
+      caption="A ranked view of stake inequality. Unmeasured subnets are excluded rather than presented as perfectly even."
+    >
+      {isLoading ? <Skeleton className="h-[18rem] w-full" /> : null}
+      {isError ? <ErrorState error={error} onRetry={() => void refetch()} /> : null}
+      {!isLoading && !isError && !c ? (
+        <EmptyState title="No concentration data" description="Nothing has been read yet." />
+      ) : null}
+      {c ? <ConcentrationRankingData data={c} /> : null}
+    </DataModule>
+  );
+}
+
+function ConcentrationRankingData({ data: c }: { data: NetworkConcentrationSubnets }) {
   const note = coverageNote(c.subnet_count, c.measured_subnet_count);
-  // An unmeasured subnet is DROPPED from the ranking rather than ranked at
-  // zero: no reading is not perfect equality, and sorting it to one end of the
-  // list would put it at an extreme it was never measured to occupy.
   const ranked = c.subnets.filter((s) => !s.unmeasured).slice(0, TOP_SHOWN);
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Most concentrated subnets</h3>
-      <div className="grid grid-cols-3 gap-x-6 gap-y-3">
+    <>
+      <div className="mg-data-measure-grid mg-data-measure-grid--3">
         <Figure
           label="median gini"
           value={formatNumber(c.median_gini)}
-          hint="Median inequality of stake across subnets. 0 is even, 1 is one holder."
+          hint="Median inequality of stake across measured subnets. Zero is even; one is one holder."
         />
         <Figure
           label="median nakamoto"
@@ -162,23 +205,24 @@ function ConcentrationRanking() {
         <Figure
           label="single-holder"
           value={formatNumber(c.single_holder_subnet_count)}
-          hint="Subnets whose stake sits with one account."
+          hint="Measured subnets whose stake sits with one account."
         />
       </div>
       {ranked.length > 0 ? (
-        <ul className="mt-4 space-y-1">
-          {ranked.map((s) => (
-            <li key={s.netuid} className="flex justify-between mg-type-data-sm">
-              <span className="text-ink-muted">SN{s.netuid}</span>
-              <span className="tabular-nums text-ink">
-                gini {formatNumber(s.gini)} · nakamoto {formatNumber(s.nakamoto_coefficient)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <RankedRows
+          label="Subnet concentration ranking"
+          entries={ranked.map((s) => ({
+            id: String(s.netuid),
+            label: `SN${s.netuid}`,
+            netuid: s.netuid,
+            value: s.gini ?? 0,
+            valueLabel: `gini ${formatNumber(s.gini)}`,
+            detail: `nakamoto ${formatNumber(s.nakamoto_coefficient)}`,
+          }))}
+        />
       ) : null}
-      {note ? <p className="mt-3 mg-type-label text-ink-muted">{note}</p> : null}
-    </Panel>
+      {note ? <p className="mg-data-module-note">{note}</p> : null}
+    </>
   );
 }
 
@@ -187,62 +231,150 @@ function ConcentrationDrift() {
   const { data, isLoading, isError, error, refetch } = useQuery(
     chainConcentrationHistoryQuery("30d"),
   );
-  if (isLoading) return <Skeleton className="h-[120px] w-full" />;
-  if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
   const hist = data?.data;
-  if (!hist || hist.points.length === 0) {
-    return (
-      <EmptyState
-        title="No concentration history"
-        description="The daily concentration series has no points in this window."
-      />
-    );
-  }
 
+  return (
+    <DataModule
+      title="Concentration drift"
+      caption="The network-wide stake Gini over time. The definition seam is surfaced rather than smoothed into a false trend."
+    >
+      {isLoading ? <Skeleton className="h-[20rem] w-full" /> : null}
+      {isError ? <ErrorState error={error} onRetry={() => void refetch()} /> : null}
+      {!isLoading && !isError && (!hist || hist.points.length === 0) ? (
+        <EmptyState
+          title="No concentration history"
+          description="The daily concentration series has no points in this window."
+        />
+      ) : null}
+      {hist && hist.points.length > 0 ? <ConcentrationDriftData data={hist} /> : null}
+    </DataModule>
+  );
+}
+
+function ConcentrationDriftData({ data: hist }: { data: NetworkConcentrationHistory }) {
   const first = hist.points[0];
   const last = hist.points[hist.points.length - 1];
   const mixed = spansBuilderVersions(hist.builder_versions);
+  const giniPoints = hist.points
+    .filter((point): point is typeof point & { gini: number } => point.gini != null)
+    .map((point) => ({ t: point.day, v: point.gini }));
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Concentration drift · {hist.window}</h3>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-        <Figure label="days" value={formatNumber(hist.point_count)} hint="Days in the series." />
+    <>
+      <div className="mg-data-wide-chart">
+        <Sparkline
+          values={giniPoints.map((point) => point.v)}
+          points={giniPoints}
+          width={1100}
+          height={168}
+          color="var(--chart-3)"
+          ariaLabel="Network stake Gini over time"
+          formatValue={formatNumber}
+        />
+      </div>
+      <div className="mg-data-measure-grid mg-data-measure-grid--4">
+        <Figure label="days" value={formatNumber(hist.point_count)} hint="Days in this series." />
         <Figure
           label="gini then"
           value={formatNumber(first?.gini)}
-          hint={`Stake gini on ${hist.oldest_day ?? "the oldest day"}.`}
+          hint={`Stake Gini on ${hist.oldest_day ?? "the oldest day"}.`}
         />
         <Figure
           label="gini now"
           value={formatNumber(last?.gini)}
-          hint={`Stake gini on ${hist.newest_day ?? "the newest day"}.`}
+          hint={`Stake Gini on ${hist.newest_day ?? "the newest day"}.`}
         />
         <Figure
           label="nakamoto now"
           value={formatNumber(last?.nakamoto_coefficient)}
-          hint="Accounts needed to reach a controlling share of stake, on the newest day."
+          hint="Accounts needed to reach a controlling share on the newest day."
         />
       </div>
-      {/* THE SEAM. A trend drawn across a builder-version change compares two
-          definitions rather than measuring a movement, so it is named rather
-          than smoothed over. */}
       {mixed ? (
-        <p className="mt-3 mg-type-label text-ink-muted">
+        <p className="mg-data-module-note">
           This window spans builder versions {hist.builder_versions.join(", ")} — points either side
-          were computed differently, so a change across the seam is a change of definition, not of
-          the network.
+          were computed differently, so movement across the seam is a definition change, not a
+          network change.
         </p>
       ) : null}
-    </Panel>
+    </>
+  );
+}
+
+function DataModule({
+  title,
+  caption,
+  children,
+}: {
+  title: string;
+  caption: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="mg-data-module">
+      <header className="mg-data-module-heading">
+        <h2 className="mg-data-module-title">
+          <strong>{title}.</strong>
+          <span>{caption}</span>
+        </h2>
+      </header>
+      <div className="mg-data-module-body">{children}</div>
+    </section>
   );
 }
 
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div title={hint}>
-      <div className="mg-type-label text-ink-muted">{label}</div>
-      <div className="mg-type-data tabular-nums text-ink">{value}</div>
+    <div className="mg-data-measure" title={hint}>
+      <div>{label}</div>
+      <div>{value}</div>
     </div>
+  );
+}
+
+interface RankedEntry {
+  id: string;
+  label: string;
+  netuid: number;
+  value: number;
+  valueLabel: string;
+  detail?: string;
+}
+
+function RankedRows({ label, entries }: { label: string; entries: RankedEntry[] }) {
+  const cap = Math.max(1, ...entries.map((entry) => entry.value));
+
+  return (
+    <ol className="mg-data-rank-list" aria-label={label}>
+      {entries.map((entry, index) => {
+        const width = Math.max(2, Math.round((entry.value / cap) * 100));
+        return (
+          <li key={entry.id}>
+            <Link
+              to="/subnets/$netuid"
+              params={{ netuid: entry.netuid }}
+              className="mg-data-rank-row mg-focus-ring"
+              aria-label={`${entry.label}: ${entry.valueLabel}${entry.detail ? `, ${entry.detail}` : ""}`}
+            >
+              <span className="mg-data-rank-index">{String(index + 1).padStart(2, "0")}</span>
+              <span className="mg-data-rank-label">{entry.label}</span>
+              <span className="mg-data-rank-track" aria-hidden="true">
+                <span
+                  className="mg-data-rank-fill"
+                  style={{
+                    width: `${width}%`,
+                    background: RANK_COLORS[index % RANK_COLORS.length],
+                  }}
+                />
+              </span>
+              <span className="mg-data-rank-value">
+                {entry.valueLabel}
+                {entry.detail ? <small>{entry.detail}</small> : null}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

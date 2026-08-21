@@ -1,4 +1,3 @@
-import { StatTile } from "@jsonbored/ui-kit";
 import { computeRegistrationCostStats } from "@/lib/metagraphed/chain-analytics";
 import { formatTao } from "@/lib/metagraphed/format";
 import type { SubnetEconomics } from "@/lib/metagraphed/types";
@@ -16,10 +15,19 @@ export function ChainRegistrationEconomics({ subnets }: { subnets: SubnetEconomi
   if (stats.count === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <StatTile eyebrow="Lowest registration cost" value={formatTao(stats.minTao)} />
-      <StatTile eyebrow="Median registration cost" value={formatTao(stats.medianTao)} />
-      <StatTile eyebrow="Highest registration cost" value={formatTao(stats.maxTao)} />
+    <dl className="mg-data-measure-grid mg-data-measure-grid--3">
+      <Metric label="lowest entry cost" value={formatTao(stats.minTao)} />
+      <Metric label="median entry cost" value={formatTao(stats.medianTao)} />
+      <Metric label="highest entry cost" value={formatTao(stats.maxTao)} />
+    </dl>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="mg-data-measure">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   );
 }

@@ -19,6 +19,12 @@ export interface ChartCardProps {
   emptyLabel?: ReactNode;
   children?: ReactNode;
   className?: string;
+  /**
+   * `data` turns the card into one continuous section of the analytics canvas
+   * instead of another floating dashboard panel. `panel` remains the default
+   * for the operational routes that still use the compact card treatment.
+   */
+  variant?: "panel" | "data";
 }
 
 /**
@@ -39,6 +45,7 @@ export function ChartCard({
   emptyLabel = "Not enough data yet",
   children,
   className,
+  variant = "panel",
 }: ChartCardProps) {
   const headerAction = (
     <>
@@ -46,6 +53,39 @@ export function ChartCard({
       {action}
     </>
   );
+  const hasHeaderAction = Boolean(updatedAt || action);
+  if (variant === "data") {
+    return (
+      <section className={classNames("mg-data-module", className)}>
+        <header className="mg-data-module-heading">
+          <div className="min-w-0">
+            <h2 className="mg-data-module-title">
+              <strong>{typeof title === "string" ? `${title}.` : title}</strong>
+              {caption ? <span>{caption}</span> : null}
+            </h2>
+          </div>
+          {hasHeaderAction ? <div className="mg-data-module-action">{headerAction}</div> : null}
+        </header>
+        <div
+          className="mg-data-module-chart relative w-full"
+          style={{ height }}
+          aria-busy={loading || undefined}
+        >
+          {loading ? (
+            <div className="absolute inset-0 mg-skel animate-pulse" />
+          ) : empty ? (
+            <div className="absolute inset-0 flex items-center justify-center mg-type-caption-lg text-ink-muted">
+              {emptyLabel}
+            </div>
+          ) : (
+            children
+          )}
+        </div>
+        {footer != null ? <div className="mg-data-module-footer">{footer}</div> : null}
+      </section>
+    );
+  }
+
   return (
     <Panel title={title} caption={caption} action={headerAction} className={className}>
       <div className="relative w-full" style={{ height }} aria-busy={loading || undefined}>

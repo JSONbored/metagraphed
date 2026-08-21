@@ -23,9 +23,10 @@ export function ChainEmissionTrend({
 
   return (
     <ChartCard
-      title="Mean emission share"
-      caption={`Average per-subnet emission share, ${window} — a widening spread means emission is concentrating into fewer subnets.`}
-      height={120}
+      variant="data"
+      title="Emission share"
+      caption={`Average per-subnet share over ${window}. A widening spread means emission is concentrating into fewer subnets.`}
+      height={192}
       empty={points.length === 0}
     >
       <Sparkline
@@ -33,8 +34,9 @@ export function ChainEmissionTrend({
         points={points}
         formatValue={formatShare}
         ariaLabel="Mean emission share over time"
-        width={480}
-        height={100}
+        width={920}
+        height={168}
+        color="var(--chart-2)"
       />
     </ChartCard>
   );

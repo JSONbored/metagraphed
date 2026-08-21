@@ -11,8 +11,22 @@ export const MAX_SANKEY_VALIDATORS = 10;
 const OTHER_SUBNETS_ID = "subnet:other";
 const OTHER_VALIDATORS_ID = "validator:other";
 
+/**
+ * Ordered categorical colors for the second sankey hop. These are purposely
+ * not status colors: they let a reader follow one subnet into its validator
+ * holdings without mistaking a color for a health or direction signal.
+ */
+export const STAKE_FLOW_SERIES_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+] as const;
+
 function directionColor(direction: string): string {
-  if (direction === "gaining") return "var(--health-ok)";
+  if (direction === "gaining") return "var(--accent)";
   if (direction === "losing") return "var(--health-down)";
   return "var(--ink-muted)";
 }
@@ -44,6 +58,12 @@ export function buildStakeFlowSankeyData(
   const rest = bySize.slice(maxSubnets);
   const shownNetuids = shown.map((s) => s.netuid);
   const shownNetuidSet = new Set(shownNetuids);
+  const seriesColorByNetuid = new Map(
+    shown.map((s, index) => [
+      s.netuid,
+      STAKE_FLOW_SERIES_COLORS[index % STAKE_FLOW_SERIES_COLORS.length]!,
+    ]),
+  );
 
   const nodes: SankeyNode[] = [
     {
@@ -51,6 +71,7 @@ export function buildStakeFlowSankeyData(
       label: "Root",
       value: shown.reduce((sum, s) => sum + s.gross_flow_tao, 0),
       column: 0,
+      color: "var(--accent)",
     },
   ];
   const links: SankeyLink[] = [];
@@ -61,7 +82,7 @@ export function buildStakeFlowSankeyData(
       label: `SN${s.netuid}`,
       value: s.gross_flow_tao,
       column: 1,
-      color: directionColor(s.direction),
+      color: seriesColorByNetuid.get(s.netuid),
     });
     links.push({
       source: "root",
@@ -118,7 +139,12 @@ export function buildStakeFlowSankeyData(
       if (!membership || membership.stake_tao <= 0) continue;
       const target = topHotkeys.has(v.hotkey) ? `validator:${v.hotkey}` : null;
       if (target) {
-        links.push({ source: `subnet:${s.netuid}`, target, value: membership.stake_tao });
+        links.push({
+          source: `subnet:${s.netuid}`,
+          target,
+          value: membership.stake_tao,
+          color: seriesColorByNetuid.get(s.netuid),
+        });
       }
     }
     if (hasOtherValidators) {
@@ -131,6 +157,7 @@ export function buildStakeFlowSankeyData(
           source: `subnet:${s.netuid}`,
           target: OTHER_VALIDATORS_ID,
           value: otherStakeForSubnet,
+          color: seriesColorByNetuid.get(s.netuid),
         });
       }
     }
