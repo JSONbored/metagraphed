@@ -1,6 +1,6 @@
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowRight, Copy, Check, ExternalLink as ExternalLinkIcon, Filter, X } from "lucide-react";
 import {
   subnetEndpointsQuery,
@@ -47,7 +47,16 @@ type Seg = "endpoints" | "surfaces" | "schemas";
  */
 
 export function ResourceExplorer({ netuid }: { netuid: number }) {
-  const [seg, setSeg] = useState<Seg>("endpoints");
+  const { resource } = useSearch({ from: "/subnets/$netuid" });
+  const navigate = useNavigate({ from: "/subnets/$netuid" });
+  const seg: Seg = resource ?? "endpoints";
+  const setSeg = (next: Seg) =>
+    navigate({
+      to: ".",
+      search: (prev: Record<string, unknown>) => ({ ...prev, resource: next }),
+      replace: true,
+      resetScroll: false,
+    });
   const filter = useSubnetFilter();
   const endpointOpts = subnetEndpointsQuery(netuid);
   const surfaceOpts = subnetSurfacesQuery(netuid);
@@ -72,7 +81,7 @@ export function ResourceExplorer({ netuid }: { netuid: number }) {
       id="endpoints-glance"
       title="Public resources"
       subtitle="Endpoints, curated surfaces, and tracked schemas for this subnet."
-      info="Probe-derived health and curation metadata. Full detail lives in the dedicated tabs."
+      info="Probe-derived health and curation metadata. The selected lens stays in this URL."
       right={controls}
       tone="accent"
       refreshQueryKeys={[
@@ -353,12 +362,11 @@ function EndpointsView({
           {hidden > 0 ? ` · ${hidden} hidden` : ""}
         </span>
         <Link
-          to="/subnets/$netuid"
-          params={{ netuid }}
-          search={{ tab: "endpoints" }}
+          to="/apis/endpoints"
+          search={{ netuid: String(netuid) }}
           className="inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-accent"
         >
-          full table <ArrowRight className="size-3" />
+          full endpoint directory <ArrowRight className="size-3" />
         </Link>
       </div>
       <ul className="divide-y divide-border">
@@ -376,7 +384,7 @@ function EndpointsView({
               ))}
               {g.items.length > 5 ? (
                 <li className="px-4 py-1.5 mg-type-data-sm text-ink-muted">
-                  + {g.items.length - 5} more — open the Endpoints tab
+                  + {g.items.length - 5} more — use the full endpoint directory above
                 </li>
               ) : null}
             </ul>
@@ -571,14 +579,12 @@ function SurfacesView({
           {ordered.length === 1 ? "" : "s"}
           {hidden > 0 ? ` · ${hidden} hidden` : ""}
         </span>
-        <Link
-          to="/subnets/$netuid"
-          params={{ netuid }}
-          search={{ tab: "surfaces" }}
+        <a
+          href={`/apis?netuid=${encodeURIComponent(String(netuid))}`}
           className="inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-accent"
         >
-          full list <ArrowRight className="size-3" />
-        </Link>
+          full surface catalog <ArrowRight className="size-3" />
+        </a>
       </div>
       <ul className="divide-y divide-border">
         {ordered.map(([kind, items]) => (
@@ -593,7 +599,7 @@ function SurfacesView({
               ))}
               {items.length > 4 ? (
                 <li className="px-4 py-1.5 mg-type-data-sm text-ink-muted">
-                  + {items.length - 4} more
+                  + {items.length - 4} more — use the full surface catalog above
                 </li>
               ) : null}
             </ul>

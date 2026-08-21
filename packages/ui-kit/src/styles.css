@@ -1791,6 +1791,7 @@ html[data-density="compact"] .bg-card > table td {
   --mg-page-max: 68rem;
   --mg-page-gutter: clamp(1rem, 4vw, 3rem);
   --mg-page-module-y: clamp(1.25rem, 3.5vw, 2.5rem);
+  --mg-page-anchor-offset: 8rem;
   --mg-page-rule: color-mix(in oklab, var(--ink-strong) 8%, transparent);
   --mg-page-field-dot: color-mix(in oklab, var(--ink-strong) 16%, transparent);
   --mg-page-command-height: 3rem;
@@ -1888,6 +1889,20 @@ html[data-density="compact"] .bg-card > table td {
 .mg-page-hero-copy {
   min-width: 0;
 }
+.mg-page-hero-banner {
+  position: relative;
+  margin-bottom: var(--mg-space-lg);
+}
+.mg-page-hero-heading {
+  display: flex;
+  min-width: 0;
+  align-items: end;
+  gap: var(--mg-space-md);
+}
+.mg-page-hero-identity {
+  flex: 0 0 auto;
+  padding-bottom: 0.15rem;
+}
 .mg-page-hero h1 {
   max-width: 12ch;
   margin: var(--mg-space-md) 0 0;
@@ -1931,6 +1946,190 @@ html[data-density="compact"] .bg-card > table td {
   color: var(--ink-muted);
   font-size: var(--mg-type-caption);
 }
+.mg-page-hero-primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mg-space-sm) var(--mg-space-lg);
+  margin-top: var(--mg-space-xl);
+}
+.mg-page-hero-aside {
+  align-self: stretch;
+  min-width: 0;
+  display: flex;
+  align-items: end;
+}
+
+/* A source-aware measurement rail for a dossier's decision signals. This is
+   intentionally a ruled field, not a row of cards: a reading's window and
+   origin remain adjacent to that reading rather than being implied globally. */
+.mg-page-signal-rail {
+  width: 100%;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.mg-page-signal {
+  --mg-signal-color: var(--ink-muted);
+  min-width: 0;
+  padding: var(--mg-space-md) 0;
+}
+.mg-page-signal + .mg-page-signal {
+  border-top: 1px solid color-mix(in oklab, var(--ink-strong) 8%, transparent);
+}
+.mg-page-signal[data-tone="brand"] {
+  --mg-signal-color: var(--brand-green);
+}
+.mg-page-signal[data-tone="positive"] {
+  --mg-signal-color: var(--health-ok);
+}
+.mg-page-signal[data-tone="warning"] {
+  --mg-signal-color: var(--health-warn);
+}
+.mg-page-signal[data-tone="negative"] {
+  --mg-signal-color: var(--health-down);
+}
+.mg-page-signal > dt {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-xs);
+  color: var(--ink-muted);
+  font-size: var(--mg-type-micro);
+  font-weight: 600;
+  letter-spacing: var(--mg-tracking-label);
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+.mg-page-signal > dt::before {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: 0 0 auto;
+  background: var(--mg-signal-color);
+  content: "";
+}
+.mg-page-signal > dd {
+  display: block;
+  margin: 0.45rem 0 0;
+}
+.mg-page-signal-value {
+  overflow: hidden;
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-page-signal > dd small,
+.mg-page-signal-freshness {
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--mg-type-micro);
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.45;
+}
+.mg-page-signal > dd small {
+  display: block;
+  margin-top: 0.32rem;
+}
+.mg-page-signal-meter {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
+  margin-top: var(--mg-space-sm);
+}
+.mg-page-signal-meter i {
+  display: block;
+  height: 0.22rem;
+  background: color-mix(in oklab, var(--ink-strong) 10%, transparent);
+}
+.mg-page-signal-meter i.is-active {
+  background: var(--mg-signal-color);
+}
+.mg-page-signal-freshness {
+  margin: var(--mg-space-xs) 0 0;
+}
+
+/* A handful of task paths reads like a compact table of contents, while still
+   carrying enough context to make the next click feel intentional. */
+.mg-page-task-paths {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+.mg-page-task-paths > li {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--mg-space-md);
+  min-width: 0;
+  padding: var(--mg-space-lg) 0;
+  border-bottom: 1px solid var(--border);
+}
+.mg-page-task-index {
+  color: var(--ink-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+}
+.mg-page-task-copy {
+  min-width: 0;
+}
+.mg-page-task-copy h3 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: var(--mg-type-caption-lg);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+}
+.mg-page-task-copy p {
+  max-width: 42rem;
+  margin: 0.25rem 0 0;
+  color: var(--ink-muted);
+  font-size: var(--mg-type-caption);
+  line-height: 1.55;
+}
+.mg-page-task-copy small {
+  display: block;
+  margin-top: 0.38rem;
+  color: var(--ink-subtle);
+  font-size: var(--mg-type-micro);
+  line-height: 1.4;
+}
+.mg-page-task-action {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* A concrete data handoff reads as a two-column record, not a pair of cards.
+   Routes provide the content; the spacing, rule treatment, and responsive
+   switch remain a reusable part of the page grammar. */
+.mg-page-handoff {
+  display: grid;
+  gap: var(--mg-space-lg);
+  min-width: 0;
+  padding-block: var(--mg-space-lg);
+  border-block: 1px solid var(--border);
+}
+.mg-page-handoff-primary,
+.mg-page-handoff-secondary {
+  min-width: 0;
+}
+@media (min-width: 64rem) {
+  .mg-page-handoff {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.8fr);
+    align-items: end;
+  }
+  .mg-page-handoff-secondary {
+    justify-self: end;
+  }
+}
 
 /* The landing variant preserves an expressive thesis without turning it into
    a billboard. The display cap is intentional: the hero should leave room for
@@ -1959,6 +2158,13 @@ html[data-density="compact"] .bg-card > table td {
 }
 .mg-page-hero--analytics {
   min-height: 20rem;
+}
+.mg-page-hero--profile {
+  min-height: 23rem;
+}
+.mg-page-hero--profile h1 {
+  max-width: 15ch;
+  font-size: clamp(2.85rem, 6vw, 5.15rem);
 }
 
 .mg-page-command {
@@ -2039,6 +2245,25 @@ html[data-density="compact"] .bg-card > table td {
   color: var(--ink-strong);
 }
 
+/* Routed profile navigation is a shared document control, not route furniture.
+   The canvas variant supplies its own bottom boundary, so it deliberately does
+   not create the legacy dashboard-sized gap beneath the strip. */
+.mg-profile-tabs {
+  margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
+}
+.mg-profile-tabs--canvas {
+  margin-bottom: 0;
+}
+.mg-profile-tabs ul {
+  gap: clamp(1rem, 3vw, 2rem);
+}
+.mg-profile-tabs button {
+  border-radius: 0;
+}
+.mg-profile-tabs button[aria-current="page"]::after {
+  border-radius: 0;
+}
+
 .mg-page-canvas {
   --mg-list-canvas-bleed: calc(-1 * var(--mg-page-gutter));
   border-right: 1px solid var(--border);
@@ -2057,8 +2282,7 @@ html[data-density="compact"] .bg-card > table td {
 .mg-page-canvas--operations .mg-route-section {
   border-top: 0;
 }
-.mg-page-stage--profile .mg-masthead,
-.mg-page-stage--profile .mg-subnet-masthead {
+.mg-page-stage--profile .mg-masthead {
   margin-bottom: 0 !important;
 }
 .mg-page-module {
@@ -2066,8 +2290,22 @@ html[data-density="compact"] .bg-card > table td {
   padding: var(--mg-page-module-y) var(--mg-page-gutter);
   border-top: 1px solid var(--border);
 }
+.mg-page-module[id],
+.mg-page-disclosure[id] {
+  scroll-margin-top: var(--mg-page-anchor-offset);
+}
 .mg-page-module--profile {
   padding-top: var(--mg-page-module-y);
+}
+.mg-page-module--navigation {
+  padding: 0;
+  border-top: 0;
+}
+.mg-page-module--navigation > .mg-page-module-body {
+  min-width: 0;
+}
+.mg-page-module--navigation + .mg-page-module {
+  border-top: 0;
 }
 .mg-page-module--profile > .mg-page-module-body {
   min-width: 0;
@@ -2153,8 +2391,10 @@ html[data-density="compact"] .bg-card > table td {
 .mg-page-disclosure[open] > summary::after {
   transform: rotate(225deg) translate(-0.15rem, -0.1rem);
 }
-.mg-page-disclosure > div {
-  padding-bottom: var(--mg-space-md);
+.mg-page-disclosure-content {
+  display: grid;
+  gap: var(--mg-space-xl);
+  padding: var(--mg-space-xs) 0 var(--mg-space-md);
 }
 
 /* A directory's controls and output are one instrument, not two floating
@@ -2284,7 +2524,8 @@ html[data-density="compact"] .bg-card > table td {
   }
   .mg-page-hero,
   .mg-page-hero--landing,
-  .mg-page-hero--analytics {
+  .mg-page-hero--analytics,
+  .mg-page-hero--profile {
     min-height: 0;
     padding: var(--mg-space-2xl) 0 var(--mg-space-xl);
   }
@@ -2306,8 +2547,24 @@ html[data-density="compact"] .bg-card > table td {
     font-size: clamp(2.7rem, 12.5vw, 4rem);
     line-height: 0.91;
   }
+  .mg-page-hero-heading {
+    align-items: start;
+    gap: var(--mg-space-sm);
+  }
   .mg-page-hero-actions {
     margin-top: var(--mg-space-xl);
+  }
+  .mg-page-hero-aside {
+    margin-top: var(--mg-space-xl);
+  }
+  .mg-page-task-paths > li {
+    grid-template-columns: 1.8rem minmax(0, 1fr);
+    align-items: start;
+    gap: var(--mg-space-sm);
+  }
+  .mg-page-task-action {
+    grid-column: 2;
+    margin-top: calc(-1 * var(--mg-space-xs));
   }
   .mg-page-canvas {
     margin-inline: calc(-1 * var(--mg-gutter-x, 1rem));

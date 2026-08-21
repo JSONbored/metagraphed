@@ -293,18 +293,6 @@
   padding-top: 0;
   border-top: 0;
 }
-.mg-profile-tabs {
-  margin-bottom: clamp(1.5rem, 4vw, 2.5rem) !important;
-}
-.mg-profile-tabs ul {
-  gap: clamp(1rem, 3vw, 2rem);
-}
-.mg-profile-tabs button {
-  border-radius: 0 !important;
-}
-.mg-profile-tabs button[aria-selected="true"]::after {
-  border-radius: 0 !important;
-}
 .mg-route-frame .mg-panel {
   border-radius: 0;
   box-shadow: none;
@@ -356,49 +344,6 @@
   padding-left: 1rem;
   border-left: 1px solid var(--border);
 }
-.mg-subnet-masthead {
-  position: relative;
-  isolation: isolate;
-  min-height: 15rem;
-  padding: clamp(2rem, 5vw, 4rem) clamp(1rem, 4vw, 3rem) clamp(1.5rem, 3vw, 2.5rem);
-  overflow: hidden;
-  border-bottom: 1px solid var(--border);
-}
-.mg-subnet-masthead::before {
-  position: absolute;
-  z-index: -1;
-  top: clamp(2.25rem, 5vw, 3.5rem);
-  right: -1rem;
-  width: min(65%, 38rem);
-  height: 8.5rem;
-  border: 1px solid color-mix(in oklab, var(--ink-strong) 8%, transparent);
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    color-mix(in oklab, var(--ink-strong) 14%, transparent) 1px,
-    transparent 0
-  );
-  background-size: 4px 4px;
-  content: "";
-  mask-image: linear-gradient(90deg, transparent, #000 20%, #000 84%, transparent);
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 20%, #000 84%, transparent);
-}
-.mg-subnet-masthead > * {
-  position: relative;
-}
-.mg-subnet-masthead h1 {
-  max-width: 14ch;
-  font-size: clamp(2.4rem, 5vw, 4.25rem) !important;
-  font-weight: 500 !important;
-  letter-spacing: -0.065em !important;
-  line-height: 0.94 !important;
-}
-.mg-subnet-masthead .mg-subnet-kpi-grid {
-  border-right: 0;
-  border-bottom: 0;
-  border-left: 0;
-  border-radius: 0;
-  background: color-mix(in oklab, var(--paper) 84%, transparent);
-}
 @media (max-width: 639.98px) {
   .mg-masthead {
     min-height: 0;
@@ -413,20 +358,6 @@
   }
   .mg-masthead h1 {
     font-size: clamp(2.25rem, 12vw, 3.35rem) !important;
-  }
-  .mg-subnet-masthead {
-    min-height: 0;
-    padding: var(--mg-space-xl) 0 var(--mg-space-lg);
-  }
-  .mg-subnet-masthead::before {
-    top: 1.5rem;
-    right: 0;
-    width: 100%;
-    height: 7rem;
-    opacity: 0.6;
-  }
-  .mg-subnet-masthead h1 {
-    font-size: clamp(2.35rem, 12vw, 3.5rem) !important;
   }
   .mg-masthead-kpi > * + * {
     padding-left: 0;

@@ -130,11 +130,18 @@ export {
   DataPageCanvas,
   DataPageModule,
   DataPageDisclosure,
+  DataPageHandoff,
+  DataPageSignalRail,
+  DataPageTaskPaths,
   DataPageWindowTabs,
   type DataPageStageVariant,
   type DataPageHeroVariant,
   type DataPageCanvasVariant,
   type DataPageModuleKind,
+  type DataPageSignal,
+  type DataPageSignalTone,
+  type DataPageTaskPath,
+  type DataPageHandoffProps,
   type DataPageWindowOption,
 } from "@/components/metagraphed/data-page";
 export {

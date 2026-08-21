@@ -8,9 +8,43 @@ import { classNames } from "@/lib/format";
  * reading rhythm without forcing every route into the same content template.
  */
 export type DataPageStageVariant = "default" | "profile" | "tabs";
-export type DataPageHeroVariant = "directory" | "landing" | "analytics";
+export type DataPageHeroVariant =
+  "directory" | "landing" | "analytics" | "profile";
 export type DataPageCanvasVariant = "default" | "profile" | "operations";
-export type DataPageModuleKind = "task" | "question" | "operations" | "profile";
+export type DataPageModuleKind =
+  "task" | "question" | "operations" | "profile" | "navigation";
+
+export type DataPageSignalTone =
+  "brand" | "positive" | "warning" | "negative" | "neutral";
+
+export interface DataPageSignal {
+  /** The decision this reading helps someone make, not an internal field name. */
+  label: ReactNode;
+  value: ReactNode;
+  /** Short unit, method, or qualification immediately adjacent to the value. */
+  detail?: ReactNode;
+  /** The source/window timestamp for this one reading. */
+  freshness?: ReactNode;
+  /** A 0–1 value rendered as a discrete meter only when that scale is meaningful. */
+  level?: number | null;
+  tone?: DataPageSignalTone;
+}
+
+export interface DataPageTaskPath {
+  /** A stable visual index makes a small set of paths scannable without cards. */
+  index?: ReactNode;
+  title: ReactNode;
+  description: ReactNode;
+  meta?: ReactNode;
+  action: ReactNode;
+}
+
+export interface DataPageHandoffProps {
+  /** The first-party record or next concrete step for the current task. */
+  primary: ReactNode;
+  /** A documented external starting point or a truthful unavailable state. */
+  secondary: ReactNode;
+}
 
 export interface DataPageWindowOption<T extends string> {
   value: T;
@@ -41,16 +75,24 @@ export function DataPageStage({
 
 interface DataPageHeroProps {
   eyebrow?: ReactNode;
+  /** Entity icon or compact identifier used by profile-like title fields. */
+  identity?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
   /** A short, in-context operational fact. Never a card wall. */
   summary?: ReactNode;
   /** Export, share, or view controls; visually secondary to the task. */
   actions?: ReactNode;
+  /** Primary route actions placed with the title rather than in the visual aside. */
+  primaryActions?: ReactNode;
+  /** A concise data visual or signal rail. It should answer one question. */
+  aside?: ReactNode;
   /** Primary task control, such as the homepage command field. */
   children?: ReactNode;
   /** Freshness or identity facts that follow the task, not the title. */
   footer?: ReactNode;
+  /** A route-level warning that must appear before the title field. */
+  banner?: ReactNode;
   live?: boolean;
   id?: string;
   className?: string;
@@ -64,12 +106,16 @@ interface DataPageHeroProps {
  */
 export function DataPageHero({
   eyebrow,
+  identity,
   title,
   description,
   summary,
   actions,
+  primaryActions,
+  aside,
   children,
   footer,
+  banner,
   live = false,
   id,
   className,
@@ -85,6 +131,7 @@ export function DataPageHero({
       aria-labelledby={id}
     >
       <div className="mg-page-hero-field" aria-hidden="true" />
+      {banner ? <div className="mg-page-hero-banner">{banner}</div> : null}
       <div className="mg-page-hero-content">
         <div className="mg-page-hero-copy">
           {eyebrow ? (
@@ -95,7 +142,12 @@ export function DataPageHero({
               {eyebrow}
             </span>
           ) : null}
-          <h1 id={id}>{title}</h1>
+          <div className="mg-page-hero-heading">
+            {identity ? (
+              <div className="mg-page-hero-identity">{identity}</div>
+            ) : null}
+            <h1 id={id}>{title}</h1>
+          </div>
           {description ? (
             <div className="mg-page-hero-description">{description}</div>
           ) : null}
@@ -105,11 +157,133 @@ export function DataPageHero({
           {summary ? (
             <div className="mg-page-hero-summary">{summary}</div>
           ) : null}
+          {primaryActions ? (
+            <div className="mg-page-hero-primary-actions">{primaryActions}</div>
+          ) : null}
         </div>
-        {actions ? <div className="mg-page-hero-actions">{actions}</div> : null}
+        {aside ? <aside className="mg-page-hero-aside">{aside}</aside> : null}
+        {!aside && actions ? (
+          <div className="mg-page-hero-actions">{actions}</div>
+        ) : null}
       </div>
       {footer ? <div className="mg-page-hero-footer">{footer}</div> : null}
     </section>
+  );
+}
+
+/**
+ * A quiet, source-aware measurement rail. It deliberately avoids a card wall:
+ * each reading carries its own source/window so unrelated values never pretend
+ * to be one simultaneous snapshot.
+ */
+export function DataPageSignalRail({
+  label,
+  signals,
+  className,
+}: {
+  label: string;
+  signals: readonly DataPageSignal[];
+  className?: string;
+}) {
+  const visible = signals.filter(
+    (signal) =>
+      signal.value !== undefined &&
+      signal.value !== null &&
+      signal.value !== "",
+  );
+
+  if (visible.length === 0) return null;
+
+  return (
+    <dl
+      className={classNames("mg-page-signal-rail", className)}
+      aria-label={label}
+    >
+      {visible.map((signal, index) => {
+        const level =
+          typeof signal.level === "number" && Number.isFinite(signal.level)
+            ? Math.max(0, Math.min(1, signal.level))
+            : null;
+        const activeCells = level == null ? 0 : Math.round(level * 10);
+
+        return (
+          <div
+            key={`${String(signal.label)}-${index}`}
+            className="mg-page-signal"
+            data-tone={signal.tone ?? "neutral"}
+          >
+            <dt>{signal.label}</dt>
+            <dd>
+              <span className="mg-page-signal-value">{signal.value}</span>
+              {signal.detail ? <small>{signal.detail}</small> : null}
+            </dd>
+            {level != null ? (
+              <span
+                className="mg-page-signal-meter"
+                aria-label={`${Math.round(level * 100)}%`}
+                role="img"
+              >
+                {Array.from({ length: 10 }, (_, cell) => (
+                  <i
+                    key={cell}
+                    className={cell < activeCells ? "is-active" : undefined}
+                  />
+                ))}
+              </span>
+            ) : null}
+            {signal.freshness ? (
+              <p className="mg-page-signal-freshness">{signal.freshness}</p>
+            ) : null}
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
+
+/** A small set of explicit next paths, designed as a continuous reading list. */
+export function DataPageTaskPaths({
+  label,
+  paths,
+  className,
+}: {
+  label: string;
+  paths: readonly DataPageTaskPath[];
+  className?: string;
+}) {
+  return (
+    <ol
+      className={classNames("mg-page-task-paths", className)}
+      aria-label={label}
+    >
+      {paths.map((path, index) => (
+        <li key={`${String(path.title)}-${index}`}>
+          <span className="mg-page-task-index" aria-hidden="true">
+            {path.index ?? String(index + 1).padStart(2, "0")}
+          </span>
+          <div className="mg-page-task-copy">
+            <h3>{path.title}</h3>
+            <p>{path.description}</p>
+            {path.meta ? <small>{path.meta}</small> : null}
+          </div>
+          <div className="mg-page-task-action">{path.action}</div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * Two related handoff fields without inventing another card. Used when an
+ * explorer can show both its own machine-readable record and the entity's
+ * public starting point in the same task context.
+ */
+export function DataPageHandoff({ primary, secondary }: DataPageHandoffProps) {
+  return (
+    <div className="mg-page-handoff">
+      <div className="mg-page-handoff-primary">{primary}</div>
+      <div className="mg-page-handoff-secondary">{secondary}</div>
+    </div>
   );
 }
 
@@ -188,11 +362,14 @@ export function DataPageModule({
 
 /** A quiet, keyboard-native disclosure for methodology and advanced context. */
 export function DataPageDisclosure({
+  id,
   label,
   children,
   className,
   open = false,
 }: {
+  /** Optional canonical destination for a deep-linked disclosed record. */
+  id?: string;
   label: ReactNode;
   children: ReactNode;
   className?: string;
@@ -200,11 +377,15 @@ export function DataPageDisclosure({
 }) {
   return (
     <details
+      id={id}
       className={classNames("mg-page-disclosure", className)}
-      open={open}
+      // Keep ordinary disclosures native/uncontrolled. Hash navigation can
+      // reveal one imperatively without a later render forcing it closed;
+      // explicit `open` still makes a saved URL's initial destination visible.
+      open={open || undefined}
     >
       <summary>{label}</summary>
-      <div>{children}</div>
+      <div className="mg-page-disclosure-content">{children}</div>
     </details>
   );
 }

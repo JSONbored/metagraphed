@@ -20,6 +20,12 @@ const KINDS = [
 ] as const;
 type Kind = (typeof KINDS)[number];
 
+function resourceSegmentForKind(kind: Kind): "endpoints" | "surfaces" | "schemas" {
+  if (kind === "endpoint" || kind === "rpc") return "endpoints";
+  if (kind === "openapi") return "schemas";
+  return "surfaces";
+}
+
 type Cell = "present" | "candidate" | "missing" | "unknown";
 
 const CELL_TONE: Record<Cell, { bg: string; ring: string; label: string }> = {
@@ -180,7 +186,8 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
                         <Link
                           to="/subnets/$netuid"
                           params={{ netuid: r.netuid }}
-                          search={{ tab: "surfaces" }}
+                          search={{ tab: "build", resource: resourceSegmentForKind(k) }}
+                          hash="resources"
                           className={classNames(
                             "block h-6 w-full rounded transition-all hover:ring-2",
                             tone.bg,

@@ -12,13 +12,10 @@ import { gotoThroughRestart } from "./server-restart.ts";
 // actually owned it.
 //
 // #8247 retired the Overview preview embed entirely (Overview is now a
-// one-screen page of only the highest-signal facts, and a second, lower-
-// density copy of the same primary-sources list the About tab already owns
-// is exactly the kind of duplicate-fact the redesign removed) and folded the
-// dedicated Evidence tab into the broader About tab. `evidence-preview` stays
-// in SECTION_TO_TAB pointing at "overview" so an old bookmarked link degrades
-// gracefully (lands on Overview, finds no matching element, no-ops) rather
-// than erroring -- but there is no longer a section to assert visible there.
+// one-screen page of only the highest-signal facts) and folded the dedicated
+// Evidence tab into the broader Records dossier. `evidence-preview` is kept as
+// a legacy alias for the canonical Evidence section, so a saved link lands on
+// evidence rather than a quiet, unrelated overview.
 //
 // Deterministic by design, mirroring responsive-overflow.spec.ts: the route
 // replays tests/e2e/har/subnets-1.har rather than hitting live chain data, so
@@ -59,12 +56,12 @@ async function openWithHar(page: import("@playwright/test").Page, url: string) {
   }
 }
 
-test.describe("#6434 evidence deep links (updated for #8247's 7-tab consolidation)", () => {
-  test("#evidence resolves to the About tab", async ({ page }) => {
+test.describe("#6434 evidence deep links (updated for the dossier consolidation)", () => {
+  test("#evidence resolves to the Records view", async ({ page }) => {
     await openWithHar(page, `${ROUTE}#evidence`);
 
     // useHashScroll rewrites the tab search param when the hash's owning tab
-    // isn't active -- Evidence now lives inside the broader About tab rather
+    // isn't active -- Evidence now lives inside the broader Records view rather
     // than a dedicated tab of its own.
     //
     // The rewrite runs in a useEffect, so it waits on HYDRATION, not on a
@@ -74,20 +71,19 @@ test.describe("#6434 evidence deep links (updated for #8247's 7-tab consolidatio
     // then reports the un-rewritten "#evidence" URL. 15s waits for the thing
     // actually being waited on; the assertion is unchanged, so a rewrite that
     // never happens still fails.
-    await expect(page).toHaveURL(/[?&]tab=about/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/[?&]tab=records/, { timeout: 15_000 });
     await expect(page.locator("section#evidence")).toBeVisible();
   });
 
-  test("#evidence-preview lands on Overview without erroring (the preview embed itself was retired)", async ({
+  test("#evidence-preview resolves to canonical Evidence (the preview embed was retired)", async ({
     page,
   }) => {
     await openWithHar(page, `${ROUTE}#evidence-preview`);
 
-    // SECTION_TO_TAB still maps this legacy id to "overview" so an old
-    // bookmarked link degrades gracefully instead of dragging the reader onto
-    // a tab that doesn't own it -- but the Overview preview section itself no
-    // longer exists (retired as a duplicate of About's full EvidencePanel).
-    await expect(page).not.toHaveURL(/[?&]tab=(about|evidence)/);
-    await expect(page.locator("section#evidence-preview")).toHaveCount(0);
+    // The retired preview id intentionally aliases the mounted canonical
+    // Evidence section, preserving old bookmarks without rendering duplicate
+    // source lists on the high-signal overview.
+    await expect(page).toHaveURL(/[?&]tab=records/, { timeout: 15_000 });
+    await expect(page.locator("section#evidence")).toBeVisible();
   });
 });

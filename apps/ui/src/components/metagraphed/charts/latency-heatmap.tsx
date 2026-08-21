@@ -357,8 +357,8 @@ function Cell({ cell }: { cell: Cell }) {
                       <Link
                         to="/subnets/$netuid"
                         params={{ netuid: n }}
-                        search={{ tab: "endpoints" }}
-                        hash="endpoints"
+                        search={{ tab: "build", resource: "endpoints" }}
+                        hash="resources"
                         className="inline-flex h-6 items-center rounded border border-border bg-paper px-2 mg-type-data-sm text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                         aria-label={`Jump to subnet ${n} endpoints`}
                       >

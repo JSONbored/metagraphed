@@ -2,13 +2,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// #5481: every entity-detail route (accounts, blocks, extrinsics, validators)
-// already pairs a ShareButton with an ApiSourceFooter -- except the subnet and
-// provider detail pages, the two busiest ones. This wires those two missing
-// pieces into just those pages/their shared masthead. The route/component
-// files compose TanStack Router/Query context a rendered test can't easily
-// stand up, so this suite is node-environment source assertions, mirroring
-// leaderboards-csv-export-menu.test.ts's own convention.
+// The route/component files compose TanStack Router/Query context a rendered
+// test can't easily stand up, so this suite is node-environment source
+// assertions, mirroring leaderboards-csv-export-menu.test.ts's convention.
 const mastheadSource = readFileSync(
   fileURLToPath(new URL("../components/metagraphed/subnet-masthead.tsx", import.meta.url)),
   "utf8",
@@ -22,57 +18,51 @@ const providerRouteSource = readFileSync(
   "utf8",
 );
 
-describe("subnet-masthead ShareButton", () => {
-  it("imports ShareButton from @jsonbored/ui-kit", () => {
+describe("subnet dossier masthead", () => {
+  it("uses shared page-system primitives instead of route-local masthead furniture", () => {
     const importBlock = mastheadSource.slice(
       0,
       mastheadSource.indexOf('} from "@jsonbored/ui-kit"'),
     );
-    expect(importBlock).toContain("ShareButton");
+    expect(importBlock).toContain("DataPageHero");
+    expect(importBlock).toContain("DataPageSignalRail");
+    expect(mastheadSource).toContain("<DataPageHero");
+    expect(mastheadSource).toContain("<DataPageSignalRail");
   });
 
-  it("#7853: no longer renders its own breadcrumb/status row -- the app-shell row is the single canonical trail, and AppShell's crumbLabel prop carries the padded netuid this used to duplicate", () => {
-    const beforeIdentityRow = mastheadSource.slice(0, mastheadSource.indexOf("{banner ?"));
-    expect(beforeIdentityRow).not.toContain('aria-label="Breadcrumb"');
-    expect(beforeIdentityRow).not.toContain("Registry");
-    expect(beforeIdentityRow).not.toContain("Subnets / ");
-    expect(beforeIdentityRow).not.toContain("<ActionBar");
-    expect(beforeIdentityRow).not.toContain("<ShareButton");
-    expect(beforeIdentityRow).not.toContain("<StaleBanner");
-    expect(beforeIdentityRow).not.toMatch(/>\s*stale\s*</);
+  it("keeps the app-shell breadcrumb canonical and moves profile tools out of the first decision", () => {
+    expect(mastheadSource).not.toContain('aria-label="Breadcrumb"');
+    expect(mastheadSource).not.toContain("<ActionBar");
+    expect(mastheadSource).not.toContain("<ShareButton");
+    // Alerts, compare, and share are configuration in the dossier's Records
+    // view rather than headline actions competing with Build/Research/Participate.
+    expect(subnetRouteSource).toContain('id="watch"');
+    expect(subnetRouteSource).toContain("<CopyLinkButton");
   });
 
-  it("consolidates HealthPill/CurationChip/freshness/Refresh into one identity-row meta strip, not a separate desktop-only side column", () => {
+  it("shows health, readiness, and source coverage with per-reading provenance", () => {
     expect(mastheadSource).not.toContain("hidden md:flex shrink-0 flex-col items-end");
-    const identityBody = mastheadSource.slice(
-      mastheadSource.indexOf('<div className="min-w-0">'),
-      mastheadSource.indexOf("{lede ?"),
-    );
-    expect(identityBody).toContain("<HealthPill");
-    expect(identityBody).toContain("<CurationChip");
-    expect(identityBody).toContain("<StaleBanner");
-    // Refresh only when actually stale -- text (freshness caption) stays
-    // visible unconditionally via StaleBanner's own default hideText=false.
-    expect(identityBody).toContain("refreshQueryKeys={stale ? refreshQueryKeys : undefined}");
+    expect(mastheadSource).toContain("<HealthPill");
+    expect(mastheadSource).toContain("<CurationChip");
+    expect(mastheadSource).toContain("<StaleBanner");
+    expect(mastheadSource).toContain('label: "Availability"');
+    expect(mastheadSource).toContain('label: "Build readiness"');
+    expect(mastheadSource).toContain('label: "Source coverage"');
+    expect(mastheadSource).toContain("Probe record");
+    expect(mastheadSource).toContain("Probe timestamp unavailable");
+    expect(mastheadSource).not.toContain("generated_at ?? generatedAt");
+    expect(mastheadSource).toContain("Profile record");
+    expect(mastheadSource).toContain("refreshQueryKeys={stale ? refreshQueryKeys : undefined}");
   });
 
-  it("renders the Website/Docs/Repo/Dashboard + Share row as one connected icon bar, not separately boxed pills", () => {
-    const linksRow = mastheadSource.slice(
-      mastheadSource.indexOf("{lede ?"),
-      mastheadSource.indexOf("Stat spine"),
-    );
-    // One shared divide-x bar (SegmentedToggle/ViewModeToggle's look), not a
-    // flex-wrap row of individually rounded-full-bordered pills.
-    expect(linksRow).toContain("divide-x divide-border");
-    expect(linksRow).not.toContain("rounded-full border border-border bg-card");
-    // Icon-only -- no <span>{l.label}</span> text label alongside the icon.
-    expect(linksRow).not.toContain("<span>{l.label}</span>");
-    // Share lives in this same bar (a resource/link action, not a status
-    // readout) -- `connected` matches PrimaryLinksRail's icon segments, and
-    // the bar renders unconditionally so Share is always present even when
-    // the subnet has no external links yet.
-    expect(linksRow).toContain("<ShareButton connected />");
-    expect(mastheadSource).not.toContain("{links.length > 0 ?");
+  it("puts the three visitor jobs alongside the title and keeps references quiet", () => {
+    expect(mastheadSource).toContain('search={{ tab: "build" }}');
+    expect(mastheadSource).toContain('search={{ tab: "research" }}');
+    expect(mastheadSource).toContain('search={{ tab: "participate" }}');
+    expect(mastheadSource).toContain("Explore integration");
+    expect(mastheadSource).toContain("Research economics");
+    expect(mastheadSource).toContain("Watch, compare & share");
+    expect(mastheadSource).toContain("footer={");
   });
 });
 
@@ -88,8 +78,8 @@ describe("subnets.$netuid.tsx API source registration (moved to the masthead)", 
   });
 
   it("subnet-masthead.tsx registers the profile/overview/identity-history paths and opens the drawer from a visible chip", () => {
-    expect(mastheadSource).toContain(
-      'import { useRegisterApiSource, useApiSourceCtx } from "@/lib/metagraphed/api-source-context";',
+    expect(mastheadSource).toMatch(
+      /import \{ useApiSourceCtx, useRegisterApiSource \} from "@\/lib\/metagraphed\/api-source-context";/,
     );
     const registerCall = mastheadSource.slice(mastheadSource.indexOf("useRegisterApiSource("));
     expect(registerCall).toContain("`/api/v1/subnets/${netuid}/profile`");

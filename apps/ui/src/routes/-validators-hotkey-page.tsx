@@ -56,7 +56,7 @@ import {
   type ValidatorApyWindow,
 } from "@/lib/metagraphed/validator-apy";
 import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
-import { subnetPositionSearch } from "@/lib/metagraphed/subnet-position-link";
+import { subnetPositionDestination } from "@/lib/metagraphed/subnet-position-link";
 
 // #8251: tabs replace the old single 11,000px+ stacked page — same ProfileTabs
 // convention as subnets.$netuid.tsx.
@@ -221,13 +221,16 @@ function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] })
 }
 
 function SubnetCellLink({ s }: { s: ValidatorDetailSubnet }) {
+  const destination = subnetPositionDestination(s.uid);
   return (
     <Link
       to="/subnets/$netuid"
       params={{ netuid: s.netuid }}
       // Deep-link straight to this row's neuron card rather than the subnet
-      // overview -- subnets.$netuid.tsx reads `tab`/`uid` to render it.
-      search={subnetPositionSearch(s.uid)}
+      // overview. The hash carries the focus target as well as the record
+      // state, so keyboard and mobile visitors land on the selected neuron.
+      search={destination?.search}
+      hash={destination?.hash}
       className="text-ink-strong hover:text-accent hover:underline"
     >
       SN{s.netuid}

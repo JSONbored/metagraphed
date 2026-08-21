@@ -2259,12 +2259,16 @@ function DataPageStage({
 }
 function DataPageHero({
   eyebrow,
+  identity,
   title,
   description,
   summary,
   actions,
+  primaryActions,
+  aside,
   children,
   footer,
+  banner,
   live = false,
   id,
   className,
@@ -2281,23 +2285,109 @@ function DataPageHero({
       "aria-labelledby": id,
       children: [
         /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-field", "aria-hidden": "true" }),
+        banner ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-banner", children: banner }) : null,
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-content", children: [
           /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-copy", children: [
             eyebrow ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-page-kicker", children: [
               live ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-page-kicker-dot", "aria-hidden": "true" }) : null,
               eyebrow
             ] }) : null,
-            /* @__PURE__ */ jsxRuntime.jsx("h1", { id, children: title }),
+            /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-heading", children: [
+              identity ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-identity", children: identity }) : null,
+              /* @__PURE__ */ jsxRuntime.jsx("h1", { id, children: title })
+            ] }),
             description ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-description", children: description }) : null,
             children ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-body", children }) : null,
-            summary ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-summary", children: summary }) : null
+            summary ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-summary", children: summary }) : null,
+            primaryActions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-primary-actions", children: primaryActions }) : null
           ] }),
-          actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-actions", children: actions }) : null
+          aside ? /* @__PURE__ */ jsxRuntime.jsx("aside", { className: "mg-page-hero-aside", children: aside }) : null,
+          !aside && actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-actions", children: actions }) : null
         ] }),
         footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-footer", children: footer }) : null
       ]
     }
   );
+}
+function DataPageSignalRail({
+  label,
+  signals,
+  className
+}) {
+  const visible = signals.filter(
+    (signal) => signal.value !== void 0 && signal.value !== null && signal.value !== ""
+  );
+  if (visible.length === 0) return null;
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "dl",
+    {
+      className: classNames("mg-page-signal-rail", className),
+      "aria-label": label,
+      children: visible.map((signal, index) => {
+        const level = typeof signal.level === "number" && Number.isFinite(signal.level) ? Math.max(0, Math.min(1, signal.level)) : null;
+        const activeCells = level == null ? 0 : Math.round(level * 10);
+        return /* @__PURE__ */ jsxRuntime.jsxs(
+          "div",
+          {
+            className: "mg-page-signal",
+            "data-tone": signal.tone ?? "neutral",
+            children: [
+              /* @__PURE__ */ jsxRuntime.jsx("dt", { children: signal.label }),
+              /* @__PURE__ */ jsxRuntime.jsxs("dd", { children: [
+                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-page-signal-value", children: signal.value }),
+                signal.detail ? /* @__PURE__ */ jsxRuntime.jsx("small", { children: signal.detail }) : null
+              ] }),
+              level != null ? /* @__PURE__ */ jsxRuntime.jsx(
+                "span",
+                {
+                  className: "mg-page-signal-meter",
+                  "aria-label": `${Math.round(level * 100)}%`,
+                  role: "img",
+                  children: Array.from({ length: 10 }, (_, cell) => /* @__PURE__ */ jsxRuntime.jsx(
+                    "i",
+                    {
+                      className: cell < activeCells ? "is-active" : void 0
+                    },
+                    cell
+                  ))
+                }
+              ) : null,
+              signal.freshness ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-page-signal-freshness", children: signal.freshness }) : null
+            ]
+          },
+          `${String(signal.label)}-${index}`
+        );
+      })
+    }
+  );
+}
+function DataPageTaskPaths({
+  label,
+  paths,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "ol",
+    {
+      className: classNames("mg-page-task-paths", className),
+      "aria-label": label,
+      children: paths.map((path, index) => /* @__PURE__ */ jsxRuntime.jsxs("li", { children: [
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-page-task-index", "aria-hidden": "true", children: path.index ?? String(index + 1).padStart(2, "0") }),
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-task-copy", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("h3", { children: path.title }),
+          /* @__PURE__ */ jsxRuntime.jsx("p", { children: path.description }),
+          path.meta ? /* @__PURE__ */ jsxRuntime.jsx("small", { children: path.meta }) : null
+        ] }),
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-task-action", children: path.action })
+      ] }, `${String(path.title)}-${index}`))
+    }
+  );
+}
+function DataPageHandoff({ primary, secondary }) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-handoff", children: [
+    /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-handoff-primary", children: primary }),
+    /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-handoff-secondary", children: secondary })
+  ] });
 }
 function DataPageCanvas({
   children,
@@ -2348,6 +2438,7 @@ function DataPageModule({
   );
 }
 function DataPageDisclosure({
+  id,
   label,
   children,
   className,
@@ -2356,11 +2447,12 @@ function DataPageDisclosure({
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "details",
     {
+      id,
       className: classNames("mg-page-disclosure", className),
-      open,
+      open: open || void 0,
       children: [
         /* @__PURE__ */ jsxRuntime.jsx("summary", { children: label }),
-        /* @__PURE__ */ jsxRuntime.jsx("div", { children })
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-disclosure-content", children })
       ]
     }
   );
@@ -6805,9 +6897,12 @@ exports.CurationChip = CurationChip;
 exports.DailyRollupFreshness = DailyRollupFreshness;
 exports.DataPageCanvas = DataPageCanvas;
 exports.DataPageDisclosure = DataPageDisclosure;
+exports.DataPageHandoff = DataPageHandoff;
 exports.DataPageHero = DataPageHero;
 exports.DataPageModule = DataPageModule;
+exports.DataPageSignalRail = DataPageSignalRail;
 exports.DataPageStage = DataPageStage;
+exports.DataPageTaskPaths = DataPageTaskPaths;
 exports.DataPageWindowTabs = DataPageWindowTabs;
 exports.DefinitionList = DefinitionList;
 exports.DensityToggle = DensityToggle;

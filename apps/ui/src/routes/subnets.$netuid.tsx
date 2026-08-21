@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { economicsQuery, subnetProfileQuery } from "@/lib/metagraphed/queries";
@@ -15,9 +15,20 @@ import { subnetFeedLinks } from "@/lib/metagraphed/feed-links";
 import { stringifyJsonLd, subnetDatasetJsonLd } from "@/lib/metagraphed/json-ld";
 import { repoSlugFrom, SITE_ORIGIN } from "@/lib/metagraphed/seo-meta";
 import { API_BASE } from "@/lib/metagraphed/config";
+import {
+  canonicalSubnetProfileDestination,
+  legacySubnetProfileDestination,
+  normalizeSubnetProfileView,
+  normalizeSubnetResourceSegment,
+  subnetProfileCanonicalizationScript,
+  type SubnetResourceSegment,
+} from "@/lib/metagraphed/subnet-profile-navigation";
 
 export type SearchParams = {
+  /** One modern dossier job, or a recognized retired tab pending canonicalization. */
   tab?: string;
+  /** Build resource lens, kept in the URL so a Surface/Schema link is reproducible. */
+  resource?: SubnetResourceSegment;
   sev?: string;
   uid?: number;
   ev_kind?: string;
@@ -34,16 +45,31 @@ export type SearchParams = {
   compare?: number;
 };
 
+/**
+ * Keep the redirect boundary independent from file-route parameter inference.
+ * It only needs validated search state and the fragment; parseParams remains
+ * the single source of truth for the dossier's numeric netuid.
+ */
+type LegacyRedirectContext = {
+  search: SearchParams;
+  location: { hash: string };
+};
+
 export const Route = createFileRoute("/subnets/$netuid")({
   validateSearch: (s: Record<string, unknown>): SearchParams => {
     const uidNum = Number(s.uid);
     const win = s.window;
+    const rawTab = typeof s.tab === "string" ? s.tab.trim().toLowerCase() : undefined;
     // Number() coerces the string a URL always delivers, and NaN falls through
     // to undefined -- so `?compare=7` and a programmatic `compare: 7` both
     // land as 7, which is what the drawer reads back.
     const compareNum = Number(s.compare);
     return {
-      tab: typeof s.tab === "string" ? s.tab : undefined,
+      // Keep a recognized retired tab long enough for beforeLoad to issue its
+      // canonical redirect. Unknown values are deliberately discarded, so a
+      // malformed bookmark falls back to Overview instead of a blank dossier.
+      tab: normalizeSubnetProfileView(rawTab) ? rawTab : undefined,
+      resource: normalizeSubnetResourceSegment(s.resource),
       sev: typeof s.sev === "string" ? s.sev : undefined,
       uid: Number.isInteger(uidNum) && uidNum >= 0 ? uidNum : undefined,
       ev_kind: typeof s.ev_kind === "string" && s.ev_kind ? s.ev_kind : undefined,
@@ -53,6 +79,30 @@ export const Route = createFileRoute("/subnets/$netuid")({
           ? compareNum
           : undefined,
     };
+  },
+  beforeLoad: ({ search, location }: LegacyRedirectContext) => {
+    // Fragments never reach the server. Direct documents with a retired tab
+    // therefore receive the tiny, route-owned pre-hydration normalizer in
+    // head(), which preserves an explicit fragment before anything paints.
+    // Client-side route transitions do have the fragment available here, so
+    // they can take the same single-step redirect before a view mounts.
+    if (typeof window === "undefined") return;
+    const destination = canonicalSubnetProfileDestination(search, location.hash);
+    if (!destination) return;
+
+    throw redirect({
+      // Relative to the matched dossier route, retaining its parsed netuid
+      // without feeding a serialized parameter back into route inference.
+      to: ".",
+      search: {
+        ...search,
+        tab: destination.tab,
+        ...(destination.resource ? { resource: destination.resource } : {}),
+        ...(destination.clearResource ? { resource: undefined } : {}),
+      },
+      ...(destination.hash ? { hash: destination.hash } : {}),
+      replace: true,
+    });
   },
   parseParams: ({ netuid }) => {
     const n = Number(netuid);
@@ -212,6 +262,12 @@ export const Route = createFileRoute("/subnets/$netuid")({
       // Organization/WebSite/BreadcrumbList nodes on every page, so there is
       // exactly one of each and no duplication between the two.
       scripts: [
+        // HTTP requests cannot carry #fragments. Only old tabs get this
+        // document-head redirect, which runs before first paint and shares
+        // the same mapping as the client router's beforeLoad boundary.
+        ...(legacySubnetProfileDestination(match?.search?.tab)
+          ? [{ type: "text/javascript", children: subnetProfileCanonicalizationScript() }]
+          : []),
         {
           type: "application/ld+json",
           children: stringifyJsonLd(

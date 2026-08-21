@@ -2,7 +2,7 @@
  * Capture Yield tab page screenshots for #3934 PR table (Path C2 contract).
  *
  * Captures the fixed viewport (not fullPage, not element crops) after scrolling
- * the Metagraph → Yield section into view so reviewers see what visitors see.
+ * the Records → Yield section into view so reviewers see what visitors see.
  *
  * Usage (with dev server running — pass its base URL explicitly):
  *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after node tests/e2e/capture-yield-percentile-screenshots.ts
@@ -42,7 +42,7 @@ async function setTheme(page, theme) {
 const SCROLL_OFFSET_PX = 148;
 
 async function openYieldSection(page) {
-  await page.goto(`${BASE_URL}${SUBNET_PATH}?tab=metagraph#yield`, {
+  await page.goto(`${BASE_URL}${SUBNET_PATH}?tab=records#yield`, {
     waitUntil: "networkidle",
     timeout: 90_000,
   });

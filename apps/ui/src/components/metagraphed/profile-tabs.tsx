@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { classNames } from "@/lib/metagraphed/format";
-import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
 import { ScrollShadow } from "@jsonbored/ui-kit";
 import { useStickyStripHeight } from "@/hooks/use-sticky-strip-height";
 
@@ -15,42 +14,34 @@ export interface ProfileTabSpec {
 /**
  * URL-driven tab strip. Reads the `tab` search param (non-strict so any
  * parent route works) and updates it on change. Sticks under the app
- * header for cosmos-directory-style profile navigation. Implements the
- * WAI-ARIA APG tabs pattern (role=tablist + roving tabindex + arrow-key
- * activation) via `useRovingTablist`.
+ * header for cosmos-directory-style profile navigation. These are routed
+ * destinations, not in-place ARIA tabs: normal buttons keep each destination
+ * keyboard-reachable and announce the current page honestly.
  */
 export function ProfileTabs({
   tabs,
   defaultTab,
   trailing,
+  presentation = "sticky",
 }: {
   tabs: ProfileTabSpec[];
   defaultTab?: string;
   trailing?: React.ReactNode;
+  /** `canvas` keeps the strip inside a ruled data document without side controls. */
+  presentation?: "sticky" | "canvas";
 }) {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as Record<string, unknown>;
   const active = (search.tab as string) || defaultTab || tabs[0]?.id;
-  const activeIndex = Math.max(
-    0,
-    tabs.findIndex((t) => t.id === active),
-  );
-
-  const selectAt = useCallback(
-    (i: number) => {
-      const t = tabs[i];
-      if (!t) return;
-      navigate({
-        to: ".",
-        search: (prev: Record<string, unknown>) => ({ ...prev, tab: t.id }),
-        replace: true,
-        resetScroll: false,
-      });
-    },
-    [navigate, tabs],
-  );
-
-  const { tabRef, onKeyDown } = useRovingTablist(tabs.length, selectAt);
+  const select = (id: string) =>
+    navigate({
+      to: ".",
+      search: (prev: Record<string, unknown>) => ({ ...prev, tab: id }),
+      replace: true,
+      // A routed view can be much shorter than the one a visitor just read.
+      // Return to its beginning rather than marooning them at the old offset.
+      resetScroll: true,
+    });
 
   // Publish this strip's height so the page's inner sticky bars stack under
   // it rather than pinning to the same offset (#8254).
@@ -64,14 +55,23 @@ export function ProfileTabs({
   useEffect(() => {
     const btn = activeBtnRef.current;
     if (!btn || typeof btn.scrollIntoView !== "function") return;
-    btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    btn.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      inline: "center",
+      block: "nearest",
+    });
   }, [active]);
 
   return (
     <nav
       ref={navRef}
       aria-label="Profile sections"
-      className="mg-profile-tabs sticky z-[var(--mg-z-sticky)] -mx-4 md:mx-0 mb-8 border-y border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80"
+      className={classNames(
+        "mg-profile-tabs z-[var(--mg-z-sticky)] border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
+        `mg-profile-tabs--${presentation}`,
+        presentation === "sticky" ? "sticky -mx-4 md:mx-0" : "sticky mx-0",
+      )}
       style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
     >
       {/*
@@ -88,25 +88,18 @@ export function ProfileTabs({
         <ScrollShadow className="min-w-0 md:flex-1" innerClassName="scroll-smooth">
           <ul
             ref={listRef}
-            role="tablist"
-            aria-orientation="horizontal"
             className="flex items-center gap-6"
           >
-            {tabs.map((t, i) => {
+            {tabs.map((t) => {
               const isActive = active === t.id;
               return (
-                <li key={t.id} role="presentation">
+                <li key={t.id}>
                   <button
                     type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    tabIndex={rovingTabIndex(i, activeIndex)}
                     ref={(el) => {
-                      tabRef(i)(el);
                       if (isActive) activeBtnRef.current = el;
                     }}
-                    onKeyDown={onKeyDown(i)}
-                    onClick={() => selectAt(i)}
+                    onClick={() => select(t.id)}
                     className={classNames(
                       "relative inline-flex items-center gap-1.5 px-1 py-3 mg-type-caption-lg font-medium whitespace-nowrap transition-colors mg-focus-ring",
                       isActive

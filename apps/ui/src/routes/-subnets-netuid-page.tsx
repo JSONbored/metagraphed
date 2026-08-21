@@ -23,9 +23,11 @@ import {
   AsyncPanel,
   CopyLinkButton,
   DataPageCanvas,
+  DataPageDisclosure,
+  DataPageHandoff,
   DataPageModule,
   DataPageStage,
-  MobileCollapse,
+  DataPageTaskPaths,
   Panel,
   ResponsiveTable,
 } from "@/components/metagraphed/primitives";
@@ -42,7 +44,6 @@ import { SurfacePlayground } from "@/components/metagraphed/surface-playground";
 import { UptimeBadgeEmbed } from "@/components/metagraphed/uptime-badge-embed";
 import {
   CandidateChip,
-  CurationChip,
   ExternalLink,
   TimeAgo,
   LiveTickerProvider,
@@ -100,7 +101,6 @@ import {
   subnetCandidatesQuery,
   subnetEventsQuery,
   subnetGapsQuery,
-  subnetOverviewQuery,
   subnetUptimeQuery,
   lineageQuery,
   agentCatalogDetailQuery,
@@ -146,7 +146,6 @@ import { OperationalPanel } from "@/components/metagraphed/operational-panel";
 import { ResourceExplorer } from "@/components/metagraphed/resource-explorer";
 import { GittensorRegisteredRepos } from "@/components/metagraphed/gittensor-registered-repos";
 import { SubnetProfilePanel } from "@/components/metagraphed/subnet-profile-panel";
-import { SubnetPriorityHighlights } from "@/components/metagraphed/subnet-priority-highlights";
 import { ActivityHeatmap } from "@/components/metagraphed/charts/activity-heatmap";
 import { SubnetValidatorsPreview } from "@/components/metagraphed/subnet-validators-preview";
 import { SubnetFilterProvider } from "@/components/metagraphed/subnet-filter-context";
@@ -154,68 +153,19 @@ import { SubnetCompareDrawer } from "@/components/metagraphed/subnet-compare-dra
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { WatchSubnetAlert } from "@/components/metagraphed/watch-subnet-alert";
 import { SubnetWindowProvider, SubnetWindowToggle } from "@/lib/metagraphed/subnet-window";
+import {
+  SUBNET_PROFILE_SECTIONS,
+  type SubnetProfileView,
+} from "@/lib/metagraphed/subnet-profile-navigation";
 import type { SearchParams } from "./subnets.$netuid";
 
-// #8247: 14 tabs -> 7. "Validators" folds into Metagraph (both are neuron-set
-// views over the same live snapshot); Identity history/Hyperparameters/
-// Surfaces/Endpoints/Schemas/Candidates/Gaps/Evidence/API redistribute into
-// the tab that actually answers the question a visitor has ("is it up + how
-// do I call it" -> API & Endpoints; "who governs/owns it" -> Governance &
-// Ownership; everything else reference-shaped -> About).
 const TABS = [
   { id: "overview", label: "Overview" },
-  { id: "api", label: "API & Endpoints" },
-  { id: "metagraph", label: "Metagraph" },
-  { id: "economics", label: "Economics" },
-  { id: "activity", label: "Activity" },
-  { id: "governance", label: "Governance & Ownership" },
-  { id: "about", label: "About" },
+  { id: "build", label: "Build" },
+  { id: "research", label: "Research" },
+  { id: "participate", label: "Participate" },
+  { id: "records", label: "Records" },
 ] as const;
-
-// Which tab does each section anchor live under? Drives cross-tab deep links.
-const SECTION_TO_TAB: Record<string, string> = {
-  "endpoints-glance": "overview",
-  "start-integrating": "overview",
-  "uptime-90d": "overview",
-  "recent-activity": "overview",
-  incidents: "overview",
-  economics: "economics",
-  "volume-24h": "economics",
-  ohlc: "economics",
-  "stake-quote": "economics",
-  metagraph: "metagraph",
-  neuron: "metagraph",
-  concentration: "metagraph",
-  holders: "metagraph",
-  yield: "metagraph",
-  turnover: "metagraph",
-  validators: "metagraph",
-  history: "metagraph",
-  activity: "activity",
-  "health-trends": "api",
-  reliability: "api",
-  operational: "api",
-  resources: "api",
-  services: "api",
-  "agent-readiness": "api",
-  candidates: "api",
-  api: "api",
-  identity: "about",
-  hyperparameters: "governance",
-  "hyperparameters-history": "governance",
-  conviction: "governance",
-  "ownership-history": "governance",
-  lease: "governance",
-  profile: "about",
-  lineage: "about",
-  gaps: "about",
-  // #6434: the Overview embed is a preview and owns `evidence-preview`; the
-  // bare `evidence` id belongs to the About tab's full EvidencePanel, like
-  // every other tab-owning section. Mirrors the preview-vs-full id split in
-  // providers.$slug.tsx (`subnets-served-preview` vs `subnets-served`).
-  "evidence-preview": "overview",
-  evidence: "about",
-};
 
 export function SubnetDetailPage() {
   const { netuid } = useParams({ from: "/subnets/$netuid" });
@@ -249,18 +199,10 @@ function ProfileShell({ netuid }: { netuid: number }) {
   const { data: profileResult } = useQuery(subnetProfileQuery(netuid));
   const profile = profileResult?.data;
   const meta = profileResult?.meta;
-  const { data: gapsResult } = useQuery(subnetGapsQuery(netuid));
-  const subnetGaps = gapsResult?.data;
   const stale = meta?.stale || isStaleFreshness(meta?.generated_at);
-  const tab = useActiveTab("overview");
-  useHashScroll(tab, SECTION_TO_TAB);
-
-  const gapsCount = subnetGaps?.missing_kinds.length ?? profile?.missing_kinds?.length ?? 0;
-  const tabsWithCounts = TABS.map((t) => {
-    if (t.id === "api") return { ...t, count: profile?.endpoint_count };
-    if (t.id === "about") return { ...t, count: gapsCount || undefined };
-    return { ...t };
-  });
+  const profileSearch = useSearch({ from: "/subnets/$netuid" });
+  const tab = useActiveTab("overview") as SubnetProfileView;
+  useHashScroll(tab, SUBNET_PROFILE_SECTIONS, profileSearch);
 
   const evidenceCount = [
     profile?.website ?? profile?.homepage,
@@ -291,86 +233,16 @@ function ProfileShell({ netuid }: { netuid: number }) {
             />
 
             <DataPageCanvas variant="profile">
-              <DataPageModule kind="profile">
-                <SubnetValidatorsPreview netuid={netuid} />
-
-                <div className="mt-4">
-                  <MethodologyCallout generatedAt={meta?.generated_at} windowLabel="7d" />
-                </div>
-
-                <div className="mt-2">
-                  <ProfileTabs
-                    tabs={tabsWithCounts}
-                    defaultTab="overview"
-                    trailing={
-                      <>
-                        {/* Star (#8256) pins this subnet to your homepage; Follow
-                      (#8257) hands you a feed or webhook. Complementary, not
-                      alternatives: one is for you, the other is for a machine. */}
-                        <WatchStarButton kind="subnet" id={netuid} label={`SN${netuid}`} />
-                        <WatchEntitySheet netuid={netuid} name={profile?.name ?? undefined} />
-                        <SubnetWindowToggle />
-                        {/* Restored, not removed: CopyLinkButton was imported here and
-                      never rendered, and subnet detail had NO share affordance at
-                      all while every comparable page has one (#8294). */}
-                        <CopyLinkButton />
-                        <SubnetCompareDrawer netuid={netuid} />
-                      </>
-                    }
-                  />
-                </div>
-
-                <div className="mt-6 min-w-0 space-y-8">
-                  {tab === "overview" ? <OverviewPanel netuid={netuid} profile={profile} /> : null}
-                  {tab === "api" ? <ApiEndpointsPanel netuid={netuid} /> : null}
-                  {tab === "metagraph" ? <MetagraphPanel netuid={netuid} /> : null}
-                  {tab === "economics" ? <EconomicsTabPanel netuid={netuid} /> : null}
-                  {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
-                  {tab === "governance" ? <GovernancePanel netuid={netuid} /> : null}
-                  {/*
-              #11351: the badge embed also renders here, on the DEFAULT view.
-              It has lived inside ApiEndpointsPanel since #8329 — reachable only
-              at ?tab=api, behind a tab bar that is not even in the server-
-              rendered HTML. Measured 2026-08-15: `badge.svg` appears 0 times on
-              /subnets/64 and 3 times on /subnets/64?tab=api.
-              That is almost certainly why the "subnet-team flywheel" produced
-              0 inbound links from 115 reachable subnet READMEs in five months:
-              the mechanism worked and no operator could find it. With outreach
-              deliberately not being done, discoverability is the only lever
-              left, so it goes where an operator actually lands.
-            */}
-                  {tab === "overview" ? <UptimeBadgeEmbed entity="subnets" id={netuid} /> : null}
-                  {tab === "about" ? <AboutPanel netuid={netuid} profile={profile} /> : null}
-                </div>
-
-                {/* #6558: the backend accepts netuid-scoped alert triggers, but only the
-              validator page exposed a Watch UI. Extend the same pattern here.
-              Outside the tab switch, so it's reachable from any tab -- same as the
-              "Watch this validator" section on the validator page. */}
-                <div className="mt-8">
-                  <SectionAnchor
-                    id="watch"
-                    title="Watch this subnet"
-                    subtitle="Alert on on-chain activity for this subnet, via the existing chain alert-triggers API."
-                    tone="accent"
-                  >
-                    <WatchSubnetAlert netuid={netuid} />
-                  </SectionAnchor>
-                </div>
-
-                {/* #6432: outside the tab switch, so the way back is there whichever
-              tab a reader ends on -- this profile is the longest page in the app
-              and the masthead breadcrumb is far behind by the time they finish.
-              Same placement/styling as blocks.$ref.tsx and extrinsics.$hash.tsx. */}
-                <div className="mt-6">
-                  <Link
-                    to="/subnets"
-                    className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
-                  >
-                    ← All subnets
-                  </Link>
-                </div>
+              <DataPageModule kind="navigation">
+                <ProfileTabs tabs={[...TABS]} defaultTab="overview" presentation="canvas" />
               </DataPageModule>
+              {tab === "overview" ? <OverviewView netuid={netuid} profile={profile} /> : null}
+              {tab === "build" ? <BuildView netuid={netuid} profile={profile} /> : null}
+              {tab === "research" ? <ResearchView netuid={netuid} /> : null}
+              {tab === "participate" ? <ParticipateView netuid={netuid} /> : null}
+              {tab === "records" ? (
+                <RecordsView netuid={netuid} profile={profile} generatedAt={meta?.generated_at} />
+              ) : null}
             </DataPageCanvas>
           </SubnetFilterProvider>
         </SubnetWindowProvider>
@@ -389,83 +261,86 @@ function DetailSkeleton() {
   );
 }
 
-/* ----------------------------- overview ----------------------------- */
+/* ----------------------------- dossier views ----------------------------- */
 
-// #8247: Overview rebuilt as "one screen" answering is-it-up + how-do-I-call-it
-// without scrolling past the fold — the masthead above already carries price
-// (+7d spark), emission, stake, miners/validators, 24h uptime, and readiness,
-// so none of those are restated here. Nine sections became five:
-//   0 — Composed overview summary strip (status/curation/top-gap)
-//   0b — Priority highlight strip
-//   1 — "Start integrating" card (readiness + Start-here link + curl snippet)
-//   2 — 90-day uptime strip (distinct window from the masthead's 24h tile)
-//   3 — Recent activity (5 most recent decoded chain events)
-//   4 — Open incidents (deep-linkable, lower-density context)
-// Everything else moved to a tab that actually owns the question it answers:
-// Economics (economics/volume/OHLC/stake-quote), API & Endpoints (operational
-// status/resources/services/reliability), Governance & Ownership
-// (conviction/ownership history/lease/hyperparameters), About (readiness
-// detail/profile/lineage/evidence/gaps/identity history), Metagraph
-// (validators + network history folded in). The old registry-activity heatmap
-// + duplicate price/pool-composition mini (SubnetPulseStrip) are gone
-// entirely, not relocated — they duplicated facts the masthead and Activity
-// tab already state once each.
-function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetProfile }) {
+function OverviewView({ netuid, profile }: { netuid: number; profile?: SubnetProfile }) {
   return (
-    <div className="space-y-6">
-      {/* 0 — Composed overview summary strip (#3346) */}
-      <AsyncPanel height="sm">
-        <OverviewSummaryStrip netuid={netuid} />
-      </AsyncPanel>
+    <>
+      <DataPageModule
+        kind="question"
+        title="Choose a path"
+        caption="Start with the job you came to do. Detailed chain records remain available without competing with this first decision."
+      >
+        <DataPageTaskPaths
+          label="Subnet paths"
+          paths={[
+            {
+              title: "Build",
+              description: "Inspect public endpoints, callable surfaces, and operational evidence.",
+              meta: `${formatNumber(profile?.endpoint_count)} tracked endpoint${profile?.endpoint_count === 1 ? "" : "s"}`,
+              action: (
+                <Link
+                  to="/subnets/$netuid"
+                  params={{ netuid }}
+                  search={{ tab: "build" }}
+                  className="mg-page-quiet-action mg-focus-ring"
+                >
+                  Open build →
+                </Link>
+              ),
+            },
+            {
+              title: "Research",
+              description:
+                "Read price history, emission context, liquidity, and participation economics.",
+              meta: "Chart-led market context",
+              action: (
+                <Link
+                  to="/subnets/$netuid"
+                  params={{ netuid }}
+                  search={{ tab: "research" }}
+                  className="mg-page-quiet-action mg-focus-ring"
+                >
+                  Open research →
+                </Link>
+              ),
+            },
+            {
+              title: "Participate",
+              description:
+                "Review the validator set and the current network context before delegating or validating.",
+              meta: `${formatNumber(profile?.participants)} active UID${profile?.participants === 1 ? "" : "s"}`,
+              action: (
+                <Link
+                  to="/subnets/$netuid"
+                  params={{ netuid }}
+                  search={{ tab: "participate" }}
+                  className="mg-page-quiet-action mg-focus-ring"
+                >
+                  Open participation →
+                </Link>
+              ),
+            },
+          ]}
+        />
+      </DataPageModule>
 
-      {/* 0b — Priority highlight strip: at-a-glance jump-off to the four
-          most-asked signals for this subnet. Mirrors SubnetsHighlights on
-          the index route. */}
-      <SubnetPriorityHighlights netuid={netuid} />
-
-      {/* 1 — "Start integrating" card: the one new interaction the audit
-          asked for -- readiness score, a jump to the tab that answers "how
-          do I call it", and a copy-paste first request. */}
-      <div id="start-integrating">
-        <QueryErrorBoundary fallback={() => null}>
-          <SubnetStartIntegratingCard netuid={netuid} profile={profile} />
-        </QueryErrorBoundary>
-      </div>
-
-      {/* 2 — 90-day uptime strip: a longer window than the masthead's live
-          24h tile, and distinct from the per-surface SLA/latency breakdown
-          that now lives on the API & Endpoints tab. */}
-      <div id="uptime-90d">
-        <QueryErrorBoundary fallback={() => null}>
-          <SubnetUptime90dStrip netuid={netuid} />
-        </QueryErrorBoundary>
-      </div>
-
-      {/* 3 — Recent activity: a 5-item glance at the same first-party event
-          stream the Activity tab lists in full. */}
-      <div id="recent-activity">
+      <DataPageModule
+        id="recent-activity"
+        title="Latest observed change"
+        caption="A compact, first-party event glance. Open Records for the full historical stream."
+      >
         <QueryErrorBoundary fallback={() => null}>
           <SubnetRecentActivityFeed netuid={netuid} />
         </QueryErrorBoundary>
-      </div>
-
-      {/* 4 — Open incidents (deep-linkable, lower-density context) */}
-      <MobileCollapse label="Open incidents" hint="Recent probe-derived incident timeline">
-        <div id="incidents">
-          <QueryErrorBoundary>
-            <IncidentTimeline netuid={netuid} />
-          </QueryErrorBoundary>
-        </div>
-      </MobileCollapse>
-    </div>
+      </DataPageModule>
+    </>
   );
 }
 
-// #8247: readiness score (already computed for the masthead's KPI tile) +
-// a jump to the tab that actually answers "how do I call it" + a copy-paste
-// first request -- the one genuinely new Overview interaction the issue asks
-// for. Deliberately thin: it links into API & Endpoints rather than
-// duplicating ApiEndpointsPanel's content here.
+// The Build view owns the concrete handoff. It keeps one copyable read-only
+// record endpoint beside the subnet's own documented starting point; readiness
+// itself remains in the hero so it is not repeated as another dashboard tile.
 function SubnetStartIntegratingCard({
   netuid,
   profile,
@@ -473,42 +348,39 @@ function SubnetStartIntegratingCard({
   netuid: number;
   profile?: SubnetProfile;
 }) {
-  const navigate = useNavigate({ from: "/subnets/$netuid" });
-  const score = profile?.integration_readiness;
   const snippet = apiSnippet("curl", `/api/v1/subnets/${netuid}/profile`);
+  const surface = profile?.primary_app_surface;
   return (
-    <Panel dense bodyClassName="flex flex-wrap items-center gap-4" className="border-accent/30">
-      <div className="min-w-0 shrink-0">
-        <div className="mg-label">Start integrating</div>
-        <div className="mt-0.5 flex items-baseline gap-1.5">
-          <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
-            {score != null ? score : "—"}
-          </span>
-          <span className="mg-type-data-sm text-ink-muted">/ 100 readiness</span>
-        </div>
-      </div>
-      {/* #8247/CI: a second, `hidden`-gated copy of this same CopyableCode
-          used to sit alongside a `sm:hidden` one for the mobile/desktop
-          split -- CopyableCode's own base classes hardcode `inline-flex`
-          unconditionally, so a plain (non-responsive) `hidden` utility on
-          top of it loses the cascade to that hardcoded base class and never
-          actually hides, overflowing the 375px viewport. One instance,
-          shrinkable via `min-w-0`/`max-w-full`, truncates instead. */}
-      <CopyableCode label="curl" value={snippet} className="min-w-0 max-w-full flex-1" />
-      <button
-        type="button"
-        onClick={() =>
-          navigate({
-            to: ".",
-            search: (prev: SearchParams) => ({ ...prev, tab: "api" }),
-            replace: true,
-          })
-        }
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/40 bg-accent-surface px-3 py-1.5 mg-type-data font-medium text-accent-text hover:border-accent/70"
-      >
-        Start here →
-      </button>
-    </Panel>
+    <DataPageHandoff
+      primary={
+        <>
+          <div className="mg-label">Registry profile endpoint</div>
+          <p className="mt-1 max-w-xl text-sm leading-relaxed text-ink-muted">
+            A read-only, machine-readable record for this subnet. Use it to inspect the same sources
+            shown in this dossier before wiring an integration.
+          </p>
+          <CopyableCode label="curl" value={snippet} className="mt-3 min-w-0 max-w-full" />
+        </>
+      }
+      secondary={
+        <>
+          <div className="mg-label">Recorded starting point</div>
+          <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+            {surface?.name ?? surface?.kind ?? "No primary callable surface is recorded yet."}
+            {surface?.provider ? ` · ${surface.provider}` : ""}
+          </p>
+          {surface?.url ? (
+            <ExternalLink href={surface.url} className="mg-page-primary-action mg-focus-ring mt-3">
+              Open {surface.name ?? surface.kind ?? "public surface"} →
+            </ExternalLink>
+          ) : (
+            <a href="#resources" className="mg-page-quiet-action mg-focus-ring mt-3">
+              Review the resource catalog →
+            </a>
+          )}
+        </>
+      }
+    />
   );
 }
 
@@ -586,156 +458,312 @@ function SubnetRecentActivityFeed({ netuid }: { netuid: number }) {
   );
 }
 
-/* ----------------------------- API & Endpoints tab ----------------------------- */
-
-// #8247: absorbs the old Overview's Operational status + Public resources,
-// plus the old Callable-services/Surfaces/Endpoints/Schemas/Candidates/API
-// tabs -- every "is it up, and how do I call it" question in one place.
-// ResourceExplorer already supersedes the old standalone Endpoints/Surfaces/
-// Schemas panels with a single segmented view (it superseded them once
-// before, per its own header comment), so those three are not re-rendered
-// here -- doing so would recreate exactly the kind of duplicate this issue
-// exists to remove.
-function ApiEndpointsPanel({ netuid }: { netuid: number }) {
+function BuildView({ netuid, profile }: { netuid: number; profile?: SubnetProfile }) {
   return (
-    <div className="space-y-8">
-      <MobileCollapse label="Operational status" hint="Timeline · incident ribbon" defaultOpen>
-        <div id="operational">
-          <AsyncPanel height="xl">
-            <OperationalPanel netuid={netuid} />
-          </AsyncPanel>
-        </div>
-      </MobileCollapse>
+    <>
+      <DataPageModule
+        id="start-integrating"
+        kind="question"
+        title="Start from the public interface"
+        caption="A build path is only as useful as the evidence behind it. This uses the recorded interface and readiness record, not an inferred integration claim."
+      >
+        <SubnetStartIntegratingCard netuid={netuid} profile={profile} />
+      </DataPageModule>
 
-      <MobileCollapse label="Public resources" hint="Endpoints · surfaces · schemas" defaultOpen>
-        <div id="resources">
-          <QueryErrorBoundary>
-            <ResourceExplorer netuid={netuid} />
+      <DataPageModule
+        id="resources"
+        title="Available resources"
+        caption="Endpoints, surfaces, and schemas in one consolidated catalog. Filter within this task instead of switching into another dashboard."
+      >
+        <QueryErrorBoundary>
+          <ResourceExplorer netuid={netuid} />
+        </QueryErrorBoundary>
+      </DataPageModule>
+
+      <DataPageModule
+        id="operational"
+        title="Can it be used now?"
+        caption="Probe-derived availability stays separate from the profile record so its window and source remain clear."
+      >
+        <div id="uptime-90d">
+          <QueryErrorBoundary fallback={() => null}>
+            <SubnetUptime90dStrip netuid={netuid} />
           </QueryErrorBoundary>
         </div>
-      </MobileCollapse>
+        <DataPageDisclosure id="operational-detail" label="Availability, reliability & incidents">
+          <>
+            <AsyncPanel height="xl">
+              <OperationalPanel netuid={netuid} />
+            </AsyncPanel>
+            <div id="reliability">
+              <ReliabilityPanel netuid={netuid} />
+            </div>
+            <div id="incidents">
+              <QueryErrorBoundary>
+                <IncidentTimeline netuid={netuid} />
+              </QueryErrorBoundary>
+            </div>
+          </>
+        </DataPageDisclosure>
+      </DataPageModule>
 
-      <CallableServicesPanel netuid={netuid} />
-
-      <MobileCollapse label="Reliability" hint="Uptime SLA + latency percentiles">
-        <SectionAnchor
-          id="reliability"
-          title="Reliability"
-          subtitle="Per-surface uptime SLA and latency percentiles (p50/p95/p99) over 7d/30d."
-          info="Live from the 2-minute health prober's history: uptime ratio, reconstructed downtime incidents, and latency distribution per operational surface."
+      <DataPageModule
+        id="build-artifacts"
+        title="Integration artifacts"
+        caption="Callable services, an optional playground, badge embed, and raw API routes remain available without crowding the default build path."
+      >
+        <DataPageDisclosure
+          id="build-artifacts-detail"
+          label="Open integration artifacts"
         >
-          <ReliabilityPanel netuid={netuid} />
-        </SectionAnchor>
-      </MobileCollapse>
-
-      {/* #8258: the registry knows each subnet's callable surfaces and already
-          exposes a guarded way to call them; this is the first place a builder
-          can actually try one without leaving the page. */}
-      <SurfacePlayground netuid={netuid} />
-
-      <CandidatesPanel netuid={netuid} />
-
-      {/* #8329: the subnet-team flywheel -- a badge in their own README
-          advertises the registry to exactly the audience we want, and it's
-          honest in a way a self-reported one can't be. */}
-      <UptimeBadgeEmbed entity="subnets" id={netuid} />
-
-      <ApiPanel netuid={netuid} />
-    </div>
+          <CallableServicesPanel netuid={netuid} />
+          <SurfacePlayground netuid={netuid} />
+          <UptimeBadgeEmbed entity="subnets" id={netuid} />
+          <ApiPanel netuid={netuid} />
+        </DataPageDisclosure>
+      </DataPageModule>
+    </>
   );
 }
 
-/* ----------------------------- Economics tab ----------------------------- */
+/* ----------------------------- research ----------------------------- */
 
-// #8247: economics/volume/OHLC/stake-quote grouped under their own tab
-// instead of stacked on Overview. #8377 then promoted price history to the
-// lead module -- every comparable explorer opens its market view on the
-// price chart, and it's the one module here a visitor scrolls looking for.
-function EconomicsTabPanel({ netuid }: { netuid: number }) {
+function ResearchView({ netuid }: { netuid: number }) {
   return (
-    <div className="space-y-8">
-      <SectionAnchor
+    <>
+      <DataPageModule
         id="ohlc"
+        kind="question"
         title="Price history"
-        subtitle="Open/high/low/close candles and traded volume, built from executed stake/unstake trades."
-        info="GET /api/v1/subnets/{netuid}/ohlc — OHLCV candles over a ?days= window, bucketed by ?interval=1h|1d, from the same account_events StakeAdded/StakeRemoved stream as 24h Volume below. Each trade's price is amount_tao / alpha_amount; empty buckets are gaps, never synthesized flat candles."
+        caption="Open/high/low/close candles and traded volume, built from executed stake and unstake trades. Empty periods stay visibly empty."
       >
         <QueryErrorBoundary>
           <SubnetOhlcChart netuid={netuid} />
         </QueryErrorBoundary>
-      </SectionAnchor>
+      </DataPageModule>
 
-      <SectionAnchor
+      <DataPageModule
         id="economics"
-        title="Economics"
-        subtitle="On-chain emission share, stake, validators, and market data."
-        info="Live chain economics from the Bittensor metagraph — emission share, alpha price, stake, validator/miner counts, and subnet volume."
+        title="Market context"
+        caption="Read current economics alongside its market window—not as a generic profile score."
       >
         <EconomicsPanel netuid={netuid} />
-      </SectionAnchor>
+        <DataPageDisclosure id="market-detail" label="Volume, slippage & economics detail">
+          <>
+            <div id="volume-24h">
+              <QueryErrorBoundary>
+                <AlphaVolumeScorecard netuid={netuid} />
+              </QueryErrorBoundary>
+            </div>
+            <div id="stake-quote">
+              <StakeQuoteCalculator netuid={netuid} />
+            </div>
+          </>
+        </DataPageDisclosure>
+      </DataPageModule>
 
-      <SectionAnchor
-        id="revenue-coverage"
-        title="Revenue vs emissions"
-        subtitle="What this subnet earns from outside Bittensor, against the TAO the network emits to it."
-        info="GET /api/v1/subnets/{netuid}/revenue — external revenue over emission received. Only chain-verified and probe-derived readings reach the ratio; a subnet with no readable public figure shows 'not observed', which is not the same as zero. 127 of 129 subnets are in that state."
-      >
-        <QueryErrorBoundary>
-          <SubnetRevenuePanel netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
-
-      <SectionAnchor
-        id="money-map"
-        title="Money map"
-        subtitle="What comes in, what is emitted, who gets it, and where it goes."
-        info="GET /api/v1/subnets/{netuid}/owner-cut and /wallets — the owner cut (SubnetOwnerCut is 11796/65535 ≈ 18%, not one sixth) and what became of it, beside every declared wallet with the evidence that backs it. `unresolved` is a first-class answer: the cut is paid as stake rather than a liquid balance, so where it went is frequently not determinable from what we index."
-      >
-        <QueryErrorBoundary>
-          <SubnetMoneyMapPanel netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
-
-      <SectionAnchor
+      <DataPageModule
         id="emission-pipeline"
-        title="Emission pipeline"
-        subtitle="Where this subnet's share of block emission is decided, and whether the TAO arrives as pool liquidity or chain buys."
-        info="GET /api/v1/chain/emission-pipeline — the v440 decomposition at one pinned block: price share, miner-burn reweighting, the Hill gate, and the final share of block emission. Every share is reconstructed from chain storage; the chain publishes the pipeline's inputs, not its output."
+        title="Revenue and emission context"
+        caption="External revenue, emissions, ownership capture, and participation costs are evidence-rich research records—not headline profile furniture."
       >
-        <QueryErrorBoundary>
-          <SubnetEmissionPanel netuid={netuid} />
-          <SubnetEmissionSplitPanel netuid={netuid} />
-          <SubnetOwnerCapturePanel netuid={netuid} />
-          <SubnetCostToParticipatePanel netuid={netuid} />
-          <SubnetTreasuryPanel netuid={netuid} />
-          <SubnetMinerFairnessPanel netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
-
-      <SectionAnchor
-        id="volume-24h"
-        title="24h Volume"
-        subtitle="Rolling 24h buy vs sell alpha volume — a windowed market-depth figure, distinct from the cumulative volume shown in Economics."
-        info="GET /api/v1/subnets/{netuid}/volume — unsigned buy + sell alpha volume summed from the account_events stream over a fixed 24h window (not netted, no ?window= param)."
-      >
-        <QueryErrorBoundary>
-          <AlphaVolumeScorecard netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
-
-      <SectionAnchor
-        id="stake-quote"
-        title="Stake-quote calculator"
-        subtitle="Estimate the slippage and price impact of a stake or unstake before it happens."
-        info="GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake — a read-only constant-product AMM estimate against the subnet's live pool reserves. Pure math, no chain write, no custody."
-      >
-        <StakeQuoteCalculator netuid={netuid} />
-      </SectionAnchor>
-    </div>
+        <DataPageDisclosure
+          id="emission-detail"
+          label="Open revenue, emission & treasury research"
+        >
+          <>
+            <div id="revenue-coverage">
+              <QueryErrorBoundary>
+                <SubnetRevenuePanel netuid={netuid} />
+              </QueryErrorBoundary>
+            </div>
+            <div id="money-map">
+              <QueryErrorBoundary>
+                <SubnetMoneyMapPanel netuid={netuid} />
+              </QueryErrorBoundary>
+            </div>
+            <QueryErrorBoundary>
+              <SubnetEmissionPanel netuid={netuid} />
+              <SubnetEmissionSplitPanel netuid={netuid} />
+              <SubnetOwnerCapturePanel netuid={netuid} />
+              <SubnetCostToParticipatePanel netuid={netuid} />
+              <SubnetTreasuryPanel netuid={netuid} />
+              <SubnetMinerFairnessPanel netuid={netuid} />
+            </QueryErrorBoundary>
+          </>
+        </DataPageDisclosure>
+      </DataPageModule>
+    </>
   );
 }
 
-/* ----------------------------- Governance & Ownership tab ----------------------------- */
+/* ----------------------------- participation ----------------------------- */
+
+function ParticipateView({ netuid }: { netuid: number }) {
+  const { uid } = useSearch({ from: "/subnets/$netuid" });
+  const navigate = useNavigate({ from: "/subnets/$netuid" });
+  const inspectNeuron = (next: number) =>
+    navigate({
+      to: ".",
+      search: (prev: SearchParams) => ({ ...prev, tab: "records", uid: next }),
+      hash: "neuron",
+    });
+
+  return (
+    <>
+      <DataPageModule
+        id="validators"
+        kind="question"
+        title="Start with the validator context"
+        caption="The highest-stake validators are a compact starting point. Their deeper network, reward, and weight context stays one deliberate disclosure away."
+      >
+        <SubnetValidatorsPreview netuid={netuid} />
+        <DataPageDisclosure
+          id="validator-detail"
+          label="Inspect the validator set & participation evidence"
+        >
+          <ValidatorGuide />
+          <AsyncPanel height="xl">
+            <ValidatorsTableLoader
+              netuid={netuid}
+              selectedUid={uid}
+              onSelect={inspectNeuron}
+            />
+          </AsyncPanel>
+          <AsyncPanel height="sm">
+            <WeightsSummaryLoader netuid={netuid} />
+          </AsyncPanel>
+          <AsyncPanel height="lg">
+            <WeightSettersLoader netuid={netuid} />
+          </AsyncPanel>
+        </DataPageDisclosure>
+      </DataPageModule>
+
+      <DataPageModule
+        id="participation-distribution"
+        title="Participation distribution"
+        caption="Concentration and return context are useful only after the validator path is clear."
+      >
+        <DataPageDisclosure id="participation-detail" label="Open distribution, yield & turnover analysis">
+          <>
+            <div id="concentration">
+              <QueryErrorBoundary>
+                <DistributionPanel netuid={netuid} />
+              </QueryErrorBoundary>
+            </div>
+            <div id="yield">
+              <AsyncPanel height="lg">
+                <YieldLoader netuid={netuid} />
+              </AsyncPanel>
+            </div>
+            <div id="turnover">
+              <AsyncPanel height="lg">
+                <TurnoverLoader netuid={netuid} />
+              </AsyncPanel>
+            </div>
+          </>
+        </DataPageDisclosure>
+      </DataPageModule>
+    </>
+  );
+}
+
+/* ----------------------------- records ----------------------------- */
+
+function RecordsView({
+  netuid,
+  profile,
+  generatedAt,
+}: {
+  netuid: number;
+  profile?: SubnetProfile;
+  generatedAt?: string;
+}) {
+  const { uid } = useSearch({ from: "/subnets/$netuid" });
+
+  return (
+    <>
+      <DataPageModule
+        id="activity-record"
+        title="On-chain record"
+        caption="The full activity stream is intentionally separate from the first-read dossier."
+      >
+        <DataPageDisclosure
+          id="activity-record-detail"
+          label="Open decoded activity & event history"
+        >
+          <ActivityPanel netuid={netuid} />
+        </DataPageDisclosure>
+      </DataPageModule>
+
+      <DataPageModule
+        id="metagraph-record"
+        title="Metagraph record"
+        caption="Raw neuron snapshots, historic network readings, and holders remain available for investigation."
+      >
+        <DataPageDisclosure
+          id="metagraph-record-detail"
+          label="Open raw metagraph & network history"
+          open={uid != null}
+        >
+          <MetagraphRecordPanel netuid={netuid} />
+        </DataPageDisclosure>
+      </DataPageModule>
+
+      <DataPageModule
+        id="governance-record"
+        title="Ownership and governance"
+        caption="Lifecycle, ownership, hyperparameters, and audit trails belong together as a durable record."
+      >
+        <DataPageDisclosure
+          id="governance-record-detail"
+          label="Open governance & ownership record"
+        >
+          <GovernancePanel netuid={netuid} />
+        </DataPageDisclosure>
+      </DataPageModule>
+
+      <DataPageModule
+        id="profile-record"
+        title="Profile evidence"
+        caption="Primary sources, registry history, readiness detail, and identified gaps are preserved here."
+      >
+        <DataPageDisclosure
+          id="profile-record-detail"
+          label="Open profile, evidence & audit history"
+        >
+          <AboutPanel netuid={netuid} profile={profile} />
+          <CandidatesPanel netuid={netuid} />
+        </DataPageDisclosure>
+      </DataPageModule>
+
+      <DataPageModule
+        id="watch"
+        title="Watch, compare & share"
+        caption="Personal follow controls and alert setup are configuration, not a competing task in every dossier view."
+      >
+        <DataPageDisclosure id="profile-tools-detail" label="Open alerts and profile tools">
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <WatchStarButton kind="subnet" id={netuid} label={`SN${netuid}`} />
+              <WatchEntitySheet netuid={netuid} name={profile?.name ?? undefined} />
+              <SubnetWindowToggle />
+              <CopyLinkButton />
+              <SubnetCompareDrawer netuid={netuid} />
+            </div>
+            <WatchSubnetAlert netuid={netuid} />
+            <MethodologyCallout generatedAt={generatedAt} windowLabel="7d" />
+            <Link to="/subnets" className="mg-page-quiet-action mg-focus-ring">
+              ← All subnets
+            </Link>
+          </>
+        </DataPageDisclosure>
+      </DataPageModule>
+    </>
+  );
+}
+
+/* ----------------------------- governance record ----------------------------- */
 
 // #8247: hyperparameters are governance-set config, and the ownership-contest
 // + lease panels are all "who controls this subnet" questions -- one tab.
@@ -863,46 +891,12 @@ function AboutPanel({ netuid, profile }: { netuid: number; profile?: SubnetProfi
   );
 }
 
-// #3346: the server-composed summary — counts + lifecycle status + curation
-// level + (if any) the top gap-priority hint — sourced from the one dedicated
-// /overview route instead of re-deriving equivalent state from the several
-// separate calls the sub-panels below already make. `status` here is the
-// subnet's on-chain lifecycle (e.g. "active"/"deregistered"), a different
-// vocabulary than health.status's probe-derived ok/warn/down/unknown — so it
-// renders as a plain badge rather than through HealthPill, which only knows
-// the probe vocabulary and would otherwise mislabel e.g. "active" as
-// "Unknown". health.status (when present) uses HealthPill correctly.
-function OverviewSummaryStrip({ netuid }: { netuid: number }) {
-  const { data } = useSuspenseQuery(subnetOverviewQuery(netuid));
-  const overview = data.data;
-  const health = overview.health as Record<string, unknown> | undefined;
-  const curation = overview.curation as Record<string, unknown> | undefined;
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Surface / endpoint / candidate counts are already shown (and stay
-          visible while scrolling) in the tab-bar badges above, so they're not
-          restated as StatTiles here — the strip keeps only the status/curation
-          chips (#5316). The top-gap hint that used to sit here was maintainer
-          queue language ("Top gap: evaluate for subnet-specific adapter") --
-          not subnet-page furniture; that same gap already renders on
-          /contribute (#8363). */}
-      {overview.status ? (
-        <span className="mg-type-caption inline-flex items-center rounded border border-border bg-card px-2 py-0.5 text-ink-muted">
-          {overview.status}
-        </span>
-      ) : null}
-      {typeof health?.status === "string" ? <HealthPill state={health.status} /> : null}
-      {typeof curation?.level === "string" ? <CurationChip level={curation.level} /> : null}
-    </div>
-  );
-}
-
 // #1113: cross-network lineage. Non-blocking (useQuery, shared cache across all
-// subnet pages); renders nothing unless this netuid is paired with a counterpart.
+// subnet pages), but always mounts its stable anchor so a shared #lineage URL
+// has a visible, truthful destination even when no counterpart is registered.
 // Reads lineageRes.data.links (NOT a top-level array).
 function SubnetLineageSection({ netuid }: { netuid: number }) {
-  const { data: lineageRes, isError, error, refetch } = useQuery(lineageQuery());
+  const { data: lineageRes, isError, isPending, error, refetch } = useQuery(lineageQuery());
   const lineage = lineageRes?.data;
 
   if (isError) {
@@ -926,7 +920,33 @@ function SubnetLineageSection({ netuid }: { netuid: number }) {
   const link = (lineage?.links ?? []).find(
     (l) => l.mainnet_netuid === netuid || l.testnet_netuid === netuid,
   );
-  if (!lineage || !link) return null;
+  if (isPending) {
+    return (
+      <SectionAnchor
+        id="lineage"
+        title="Lineage"
+        subtitle="Checking for a paired deployment across networks."
+        info="Cross-network lineage links the testnet and mainnet deployments of the same subnet, matched by chain name or source repo."
+      >
+        <Skeleton className="h-20 w-full" />
+      </SectionAnchor>
+    );
+  }
+  if (!lineage || !link) {
+    return (
+      <SectionAnchor
+        id="lineage"
+        title="Lineage"
+        subtitle="No paired deployment is recorded for this subnet."
+        info="Cross-network lineage links the testnet and mainnet deployments of the same subnet, matched by chain name or source repo."
+      >
+        <EmptyState
+          title="No lineage record"
+          description="No mainnet or testnet counterpart is currently recorded for this subnet."
+        />
+      </SectionAnchor>
+    );
+  }
 
   const onMainnet = link.mainnet_netuid === netuid;
   const counterpartName = onMainnet ? link.testnet_name : link.mainnet_name;
@@ -1998,10 +2018,10 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
 
 /* ----------------------------- metagraph depth ----------------------------- */
 
-// Subnet economic depth (#1302+): the live metagraph snapshot — sortable neuron
-// table + stake distribution + validator-permit filter — with a per-UID
-// drill-in detail card (snapshot + history) driven by the `?uid=` search param.
-function MetagraphPanel({ netuid }: { netuid: number }) {
+// The raw metagraph remains a deliberate record view. Participation exposes a
+// compact validator path first; selecting a UID here keeps the inspector next
+// to the full neuron snapshot rather than interrupting that path.
+function MetagraphRecordPanel({ netuid }: { netuid: number }) {
   const { uid } = useSearch({ from: "/subnets/$netuid" });
   const navigate = useNavigate({ from: "/subnets/$netuid" });
 
@@ -2044,39 +2064,6 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
         </AsyncPanel>
       </SectionAnchor>
 
-      {/* #8247: folded in from the old standalone Validators tab -- both are
-          neuron-set views over the same live snapshot, and this one already
-          linked UID selection back into Metagraph. */}
-      <SectionAnchor
-        id="validators"
-        title="Validators"
-        subtitle="Active validator set ranked by stake — emission, trust, and consensus."
-        info="GET /api/v1/subnets/{netuid}/validators — the permitted, stake-ranked validator set from the latest snapshot. Select a UID to drill into its detail above."
-      >
-        <ValidatorGuide />
-        <AsyncPanel height="xl">
-          <ValidatorsTableLoader netuid={netuid} selectedUid={uid} onSelect={(u) => select(u)} />
-        </AsyncPanel>
-        <AsyncPanel height="sm">
-          <WeightsSummaryLoader netuid={netuid} />
-        </AsyncPanel>
-        <AsyncPanel height="lg">
-          <WeightSettersLoader netuid={netuid} />
-        </AsyncPanel>
-      </SectionAnchor>
-
-      <SectionAnchor
-        id="concentration"
-        title="Concentration"
-        subtitle="Stake, emission, and reward distribution: Gini, HHI, Nakamoto coefficient, and top-percentile shares with daily drift."
-        info="GET /api/v1/subnets/{netuid}/concentration and /performance (plus their /history) — how concentrated stake, emission, and rewards (incentive/dividends) are across neurons."
-        tone="muted"
-      >
-        <QueryErrorBoundary>
-          <DistributionPanel netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
-
       <SectionAnchor
         id="holders"
         title="Alpha holders"
@@ -2089,32 +2076,6 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
         </QueryErrorBoundary>
       </SectionAnchor>
 
-      <SectionAnchor
-        id="yield"
-        title="Yield"
-        subtitle="Per-UID emission yield (emission ÷ stake return rate): distribution summary, validator/miner split, and the ranked neuron leaderboard with daily drift."
-        info="GET /api/v1/subnets/{netuid}/yield and /yield/history — the return-rate twin of concentration, computed per-UID from the live neuron snapshot."
-      >
-        <AsyncPanel height="lg">
-          <YieldLoader netuid={netuid} />
-        </AsyncPanel>
-      </SectionAnchor>
-
-      <SectionAnchor
-        id="turnover"
-        title="Turnover"
-        subtitle="Validator-set and registration churn: entered/exited validators, deregistered UIDs, retention, and a stability score across the window."
-        info="GET /api/v1/subnets/{netuid}/turnover — diffs the window's start/end metagraph snapshots into a validator-set + registration-churn scorecard."
-        tone="muted"
-      >
-        <AsyncPanel height="lg">
-          <TurnoverLoader netuid={netuid} />
-        </AsyncPanel>
-      </SectionAnchor>
-
-      {/* #8247: folded in from the old Overview -- daily neuron/validator
-          counts, stake, and emission are metagraph-shaped time-series data,
-          a sibling of concentration/yield/turnover above. */}
       <SectionAnchor
         id="history"
         title="Network history"

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { SUBNET_PROFILE_SECTIONS } from "@/lib/metagraphed/subnet-profile-navigation";
 
 // The alpha-holders section (#9597), pinned by source assertions.
 //
@@ -139,10 +140,10 @@ describe("the section is wired into the page", () => {
     expect(page.slice(at, at + 900)).toContain("QueryErrorBoundary");
   });
 
-  it("registers the anchor in SECTION_TO_TAB", () => {
+  it("registers the anchor in the typed profile destination registry", () => {
     // Missing here, a cross-tab deep link to /subnets/7#holders silently lands
     // on the wrong tab and scrolls nowhere -- useHashScroll reads this map.
-    expect(page).toMatch(/holders: "metagraph"/);
+    expect(SUBNET_PROFILE_SECTIONS.holders).toEqual({ tab: "records", target: "holders" });
   });
 
   it("declares the endpoint in the API drawer", () => {

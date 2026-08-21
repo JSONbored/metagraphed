@@ -108,7 +108,7 @@ import { summarizeCall } from "@/lib/metagraphed/chain-summaries";
 import { ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
-import { subnetPositionSearch } from "@/lib/metagraphed/subnet-position-link";
+import { subnetPositionDestination } from "@/lib/metagraphed/subnet-position-link";
 import {
   accountRole,
   isDualRoleAccount,
@@ -2993,7 +2993,9 @@ function AccountFootprintSection({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {rows.slice(0, visibleCount).map((r) => (
+            {rows.slice(0, visibleCount).map((r) => {
+              const destination = subnetPositionDestination(r.uid);
+              return (
               <tr key={`${r.netuid}-${r.uid}`} className="hover:bg-surface/30">
                 <td className="px-4 py-4 font-mono mg-type-caption">
                   {r.netuid != null ? (
@@ -3002,7 +3004,8 @@ function AccountFootprintSection({
                       params={{ netuid: r.netuid }}
                       // Same deep-link as SubnetPerformanceTable: this row already
                       // knows its uid, so land on the neuron card, not the overview.
-                      search={subnetPositionSearch(r.uid)}
+                      search={destination?.search}
+                      hash={destination?.hash}
                       className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
                     >
                       SN{r.netuid}
@@ -3036,13 +3039,16 @@ function AccountFootprintSection({
                   )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </DataPanel>
 
       <ul className="space-y-2 md:hidden">
-        {rows.slice(0, visibleCount).map((r) => (
+        {rows.slice(0, visibleCount).map((r) => {
+          const destination = subnetPositionDestination(r.uid);
+          return (
           <li key={`${r.netuid}-${r.uid}`} className="rounded-md border border-border bg-card p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
@@ -3050,6 +3056,8 @@ function AccountFootprintSection({
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: r.netuid }}
+                    search={destination?.search}
+                    hash={destination?.hash}
                     className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-mono mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
                   >
                     SN{r.netuid}
@@ -3080,7 +3088,8 @@ function AccountFootprintSection({
               </dd>
             </dl>
           </li>
-        ))}
+          );
+        })}
       </ul>
       {rows.length > visibleCount ? (
         <div className="flex justify-center pt-3">

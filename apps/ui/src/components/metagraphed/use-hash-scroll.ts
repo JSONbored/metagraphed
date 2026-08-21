@@ -11,6 +11,10 @@ export interface FocusableEl {
   focus(options?: { preventScroll?: boolean }): void;
 }
 
+export type HashDestination =
+  | string
+  | { tab: string; target?: string; search?: Readonly<Record<string, unknown>> };
+
 /**
  * Move DOM focus — and with it the screen-reader cursor — to a hash-nav target
  * after it has scrolled into view (#6421). `scrollIntoView` moves only the
@@ -44,14 +48,19 @@ export function focusHashTarget(el: FocusableEl): void {
  * Watches `location.hash` and:
  *  - if the hash is in `sectionToTab` and the current tab differs, switches
  *    the `tab` search param to the matching tab,
- *  - then smooth-scrolls the element with that id into view and moves focus to
- *    it so the deep link is announced to assistive tech (#6421).
+ *  - then smooth-scrolls the mapped element into view and moves focus to it so
+ *    legacy hashes can resolve to a consolidated section without silently
+ *    losing a deep link (#6421).
  *
  * This wires up cross-tab deep links like
  *   /subnets/7?tab=overview#endpoints
  * even when the section actually lives under a different tab.
  */
-export function useHashScroll(activeTab: string, sectionToTab: Record<string, string>) {
+export function useHashScroll(
+  activeTab: string,
+  sectionToTab: Record<string, HashDestination>,
+  activeSearch?: Readonly<Record<string, unknown>>,
+) {
   const navigate = useNavigate();
   const hash = useRouterState({ select: (s) => s.location.hash });
 
@@ -60,11 +69,21 @@ export function useHashScroll(activeTab: string, sectionToTab: Record<string, st
     const id = hash.replace(/^#/, "");
     if (!id) return;
 
-    const expectedTab = sectionToTab[id];
-    if (expectedTab && expectedTab !== activeTab) {
+    const destination = sectionToTab[id];
+    const expectedTab = typeof destination === "string" ? destination : destination?.tab;
+    const targetId = typeof destination === "string" ? id : (destination?.target ?? id);
+    const expectedSearch = typeof destination === "string" ? undefined : destination?.search;
+    const searchDiffers = Object.entries(expectedSearch ?? {}).some(
+      ([key, value]) => activeSearch?.[key] !== value,
+    );
+    if ((expectedTab && expectedTab !== activeTab) || searchDiffers) {
       navigate({
         to: ".",
-        search: (prev: Record<string, unknown>) => ({ ...prev, tab: expectedTab }),
+        search: (prev: Record<string, unknown>) => ({
+          ...prev,
+          tab: expectedTab,
+          ...expectedSearch,
+        }),
         hash: id,
         replace: true,
       });
@@ -75,9 +94,14 @@ export function useHashScroll(activeTab: string, sectionToTab: Record<string, st
     // move focus to it, so keyboard/screen-reader users following the link
     // land on the section rather than having only the viewport shift (#6421).
     const scroll = () => {
-      const el = document.getElementById(id);
+      const el = document.getElementById(targetId);
       if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Deep links should also reveal intentionally-disclosed forensic data;
+      // otherwise the browser can focus a hidden target with no visible result.
+      const disclosure = el.closest("details");
+      if (disclosure) disclosure.open = true;
+      const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
       // Focus the section's heading when it has one, else the section itself
       // (#6421 permits either). The heading is the better target: its focus
       // ring is a tight, legible indicator rather than an outline around the
@@ -88,5 +112,5 @@ export function useHashScroll(activeTab: string, sectionToTab: Record<string, st
     // Defer so the panel for the new tab has time to mount.
     const t = window.setTimeout(scroll, 80);
     return () => window.clearTimeout(t);
-  }, [hash, activeTab, sectionToTab, navigate]);
+  }, [hash, activeTab, sectionToTab, activeSearch, navigate]);
 }

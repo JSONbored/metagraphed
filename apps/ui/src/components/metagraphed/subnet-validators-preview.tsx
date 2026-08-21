@@ -62,13 +62,14 @@ function SubnetValidatorsPreviewLoader({ netuid }: { netuid: number }) {
             onClick={() =>
               navigate({
                 to: ".",
-                search: (prev: Record<string, unknown>) => ({ ...prev, tab: "validators" }),
+                search: (prev: Record<string, unknown>) => ({ ...prev, tab: "participate" }),
+                hash: "validators",
                 replace: true,
               })
             }
             className="inline-flex items-center gap-1 mg-type-caption text-ink-muted transition-colors hover:text-accent"
           >
-            View all validators
+            Inspect validator set
             <ArrowRight className="size-3" aria-hidden />
           </button>
         </div>

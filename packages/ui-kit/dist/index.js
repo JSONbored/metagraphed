@@ -2230,12 +2230,16 @@ function DataPageStage({
 }
 function DataPageHero({
   eyebrow,
+  identity,
   title,
   description,
   summary,
   actions,
+  primaryActions,
+  aside,
   children,
   footer,
+  banner,
   live = false,
   id,
   className,
@@ -2252,23 +2256,109 @@ function DataPageHero({
       "aria-labelledby": id,
       children: [
         /* @__PURE__ */ jsx("div", { className: "mg-page-hero-field", "aria-hidden": "true" }),
+        banner ? /* @__PURE__ */ jsx("div", { className: "mg-page-hero-banner", children: banner }) : null,
         /* @__PURE__ */ jsxs("div", { className: "mg-page-hero-content", children: [
           /* @__PURE__ */ jsxs("div", { className: "mg-page-hero-copy", children: [
             eyebrow ? /* @__PURE__ */ jsxs("span", { className: "mg-page-kicker", children: [
               live ? /* @__PURE__ */ jsx("span", { className: "mg-page-kicker-dot", "aria-hidden": "true" }) : null,
               eyebrow
             ] }) : null,
-            /* @__PURE__ */ jsx("h1", { id, children: title }),
+            /* @__PURE__ */ jsxs("div", { className: "mg-page-hero-heading", children: [
+              identity ? /* @__PURE__ */ jsx("div", { className: "mg-page-hero-identity", children: identity }) : null,
+              /* @__PURE__ */ jsx("h1", { id, children: title })
+            ] }),
             description ? /* @__PURE__ */ jsx("div", { className: "mg-page-hero-description", children: description }) : null,
             children ? /* @__PURE__ */ jsx("div", { className: "mg-page-hero-body", children }) : null,
-            summary ? /* @__PURE__ */ jsx("div", { className: "mg-page-hero-summary", children: summary }) : null
+            summary ? /* @__PURE__ */ jsx("div", { className: "mg-page-hero-summary", children: summary }) : null,
+            primaryActions ? /* @__PURE__ */ jsx("div", { className: "mg-page-hero-primary-actions", children: primaryActions }) : null
           ] }),
-          actions ? /* @__PURE__ */ jsx("div", { className: "mg-page-hero-actions", children: actions }) : null
+          aside ? /* @__PURE__ */ jsx("aside", { className: "mg-page-hero-aside", children: aside }) : null,
+          !aside && actions ? /* @__PURE__ */ jsx("div", { className: "mg-page-hero-actions", children: actions }) : null
         ] }),
         footer ? /* @__PURE__ */ jsx("div", { className: "mg-page-hero-footer", children: footer }) : null
       ]
     }
   );
+}
+function DataPageSignalRail({
+  label,
+  signals,
+  className
+}) {
+  const visible = signals.filter(
+    (signal) => signal.value !== void 0 && signal.value !== null && signal.value !== ""
+  );
+  if (visible.length === 0) return null;
+  return /* @__PURE__ */ jsx(
+    "dl",
+    {
+      className: classNames("mg-page-signal-rail", className),
+      "aria-label": label,
+      children: visible.map((signal, index) => {
+        const level = typeof signal.level === "number" && Number.isFinite(signal.level) ? Math.max(0, Math.min(1, signal.level)) : null;
+        const activeCells = level == null ? 0 : Math.round(level * 10);
+        return /* @__PURE__ */ jsxs(
+          "div",
+          {
+            className: "mg-page-signal",
+            "data-tone": signal.tone ?? "neutral",
+            children: [
+              /* @__PURE__ */ jsx("dt", { children: signal.label }),
+              /* @__PURE__ */ jsxs("dd", { children: [
+                /* @__PURE__ */ jsx("span", { className: "mg-page-signal-value", children: signal.value }),
+                signal.detail ? /* @__PURE__ */ jsx("small", { children: signal.detail }) : null
+              ] }),
+              level != null ? /* @__PURE__ */ jsx(
+                "span",
+                {
+                  className: "mg-page-signal-meter",
+                  "aria-label": `${Math.round(level * 100)}%`,
+                  role: "img",
+                  children: Array.from({ length: 10 }, (_, cell) => /* @__PURE__ */ jsx(
+                    "i",
+                    {
+                      className: cell < activeCells ? "is-active" : void 0
+                    },
+                    cell
+                  ))
+                }
+              ) : null,
+              signal.freshness ? /* @__PURE__ */ jsx("p", { className: "mg-page-signal-freshness", children: signal.freshness }) : null
+            ]
+          },
+          `${String(signal.label)}-${index}`
+        );
+      })
+    }
+  );
+}
+function DataPageTaskPaths({
+  label,
+  paths,
+  className
+}) {
+  return /* @__PURE__ */ jsx(
+    "ol",
+    {
+      className: classNames("mg-page-task-paths", className),
+      "aria-label": label,
+      children: paths.map((path, index) => /* @__PURE__ */ jsxs("li", { children: [
+        /* @__PURE__ */ jsx("span", { className: "mg-page-task-index", "aria-hidden": "true", children: path.index ?? String(index + 1).padStart(2, "0") }),
+        /* @__PURE__ */ jsxs("div", { className: "mg-page-task-copy", children: [
+          /* @__PURE__ */ jsx("h3", { children: path.title }),
+          /* @__PURE__ */ jsx("p", { children: path.description }),
+          path.meta ? /* @__PURE__ */ jsx("small", { children: path.meta }) : null
+        ] }),
+        /* @__PURE__ */ jsx("div", { className: "mg-page-task-action", children: path.action })
+      ] }, `${String(path.title)}-${index}`))
+    }
+  );
+}
+function DataPageHandoff({ primary, secondary }) {
+  return /* @__PURE__ */ jsxs("div", { className: "mg-page-handoff", children: [
+    /* @__PURE__ */ jsx("div", { className: "mg-page-handoff-primary", children: primary }),
+    /* @__PURE__ */ jsx("div", { className: "mg-page-handoff-secondary", children: secondary })
+  ] });
 }
 function DataPageCanvas({
   children,
@@ -2319,6 +2409,7 @@ function DataPageModule({
   );
 }
 function DataPageDisclosure({
+  id,
   label,
   children,
   className,
@@ -2327,11 +2418,12 @@ function DataPageDisclosure({
   return /* @__PURE__ */ jsxs(
     "details",
     {
+      id,
       className: classNames("mg-page-disclosure", className),
-      open,
+      open: open || void 0,
       children: [
         /* @__PURE__ */ jsx("summary", { children: label }),
-        /* @__PURE__ */ jsx("div", { children })
+        /* @__PURE__ */ jsx("div", { className: "mg-page-disclosure-content", children })
       ]
     }
   );
@@ -6744,4 +6836,4 @@ function RoutePending({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DataPageCanvas, DataPageDisclosure, DataPageHero, DataPageModule, DataPageStage, DataPageWindowTabs, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, Indicator, InfoTooltip, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, defaultVisible, fmtYield, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, rovingTabIndex, safeExternalUrl, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DataPageCanvas, DataPageDisclosure, DataPageHandoff, DataPageHero, DataPageModule, DataPageSignalRail, DataPageStage, DataPageTaskPaths, DataPageWindowTabs, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, Indicator, InfoTooltip, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, defaultVisible, fmtYield, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, rovingTabIndex, safeExternalUrl, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };

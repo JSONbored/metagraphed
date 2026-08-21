@@ -571,7 +571,7 @@ test.describe("#11319 the SEO invariants are derived, not listed", () => {
   /**
    * Minimum share of tokens that are words rather than identifiers.
    *
-   * The floor #11313 §3 ships under. `?tab=metagraph` renders 8,112 words of
+   * The floor #11313 §3 ships under. `?tab=records` renders 8,112 words of
    * which 45% are ss58 hashes and bare numbers — the page shape that put 5,797
    * URLs in "Crawled – currently not indexed". Any page family we ask Google to
    * index has to clear this.

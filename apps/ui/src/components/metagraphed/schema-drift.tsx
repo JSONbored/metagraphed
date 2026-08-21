@@ -73,7 +73,8 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
           <Link
             to="/subnets/$netuid"
             params={{ netuid: netuid }}
-            search={(prev: Record<string, unknown>) => ({ ...prev, tab: "schemas" })}
+            search={{ tab: "build", resource: "schemas" }}
+            hash="resources"
             className="mg-type-data-sm text-ink-muted hover:text-ink-strong"
           >
             view all →
