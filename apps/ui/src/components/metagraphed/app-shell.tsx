@@ -71,8 +71,8 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
       aria-label="Metagraphed — home"
       className="flex items-center shrink-0 group text-ink-strong"
     >
-      {/* Adaptive wordmark: mint M + currentColor text → follows text-ink-strong
-          across light/dark. h-6 ≈ the prior 24px logo footprint. */}
+      {/* Adaptive wordmark: the existing mark remains Metagraphed's own while
+          the surrounding terminal system follows the active theme. */}
       <Wordmark className="h-6 w-auto" />
     </Link>
   );
@@ -237,12 +237,12 @@ export function AppShell({
           {/* Top bar */}
           <header
             data-scrolled={scrolled ? "true" : "false"}
-            className="mg-header sticky top-0 z-[var(--mg-z-nav)] border-b border-border bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75"
+            className="mg-header sticky top-0 z-[var(--mg-z-nav)] border-b border-border bg-paper"
           >
             <div className="max-w-shell-max mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
               <button
                 ref={hamburgerRef}
-                className="lg:hidden rounded-md p-2 text-ink hover:bg-surface min-h-11 min-w-11 inline-flex items-center justify-center"
+                className="lg:hidden rounded p-2 text-ink hover:bg-surface-2 min-h-11 min-w-11 inline-flex items-center justify-center"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open menu"
               >
@@ -270,7 +270,7 @@ export function AppShell({
                   onClick={(e) => openPaletteFrom(e.currentTarget)}
                   aria-label="Open search"
                   title="Search"
-                  className="md:hidden inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                  className="md:hidden inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-accent/60 transition-colors"
                 >
                   <Search className="size-4" aria-hidden="true" />
                 </button>
@@ -288,7 +288,7 @@ export function AppShell({
                     <Link
                       to="/settings"
                       aria-label="Developer settings"
-                      className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                      className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-accent/60 transition-colors"
                     >
                       <Webhook className="size-3.5" aria-hidden="true" />
                     </Link>
@@ -453,11 +453,7 @@ function ApiBaseRow() {
 
 function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-border bg-surface/30 relative overflow-hidden">
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent"
-      />
+    <footer className="mt-20 border-t border-border bg-surface/30 relative overflow-hidden">
       <div className="max-w-shell-max mx-auto px-4 md:px-10 py-12 grid gap-10 md:grid-cols-5 mg-type-caption text-ink-muted">
         <div className="md:col-span-2">
           <div className="font-display text-base font-semibold text-ink-strong inline-flex items-baseline gap-1">
@@ -477,7 +473,7 @@ function SiteFooter() {
               href={GITHUB_HREF}
               ariaLabel="GitHub repository"
               title="Open source on GitHub"
-              className="inline-flex items-center justify-center rounded-md size-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+              className="inline-flex items-center justify-center rounded size-8 text-ink-muted hover:text-ink-strong hover:bg-surface-2 transition-colors"
             >
               <Github className="size-4" />
             </ExternalLink>
@@ -486,7 +482,7 @@ function SiteFooter() {
               href={DISCORD_HREF}
               ariaLabel="Discord community"
               title="Join us on Discord"
-              className="inline-flex items-center justify-center rounded-md size-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+              className="inline-flex items-center justify-center rounded size-8 text-ink-muted hover:text-ink-strong hover:bg-surface-2 transition-colors"
             >
               <DiscordIcon className="size-4" />
             </ExternalLink>
@@ -499,7 +495,7 @@ function SiteFooter() {
               href={`${API_BASE}/api/v1/feeds/registry.rss`}
               ariaLabel="Registry changes RSS feed"
               title="Subscribe to the registry-changes feed (RSS)"
-              className="inline-flex items-center justify-center rounded-md size-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+              className="inline-flex items-center justify-center rounded size-8 text-ink-muted hover:text-ink-strong hover:bg-surface-2 transition-colors"
             >
               <Rss className="size-4" />
             </ExternalLink>

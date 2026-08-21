@@ -17,11 +17,17 @@
  */
 
 /*
- * Brand fonts, self-hosted. Weights are the exact set the app uses — verified
- * by grepping every font-weight utility class in src/ (font-normal/-medium/
- * -semibold only; font-bold never appears). Without these, --font-display/
- * --font-sans/--font-mono below fall back to system fonts.
+ * Metagraph Terminal typography. IBM Plex Mono carries the data interface
+ * (and deliberately has only the Latin subset we serve); DM Sans remains
+ * available as the proportional reading face for long-form content. The older
+ * local Space Grotesk / JetBrains files stay as offline fallbacks while route
+ * families migrate, rather than making the foundation change a font-loading
+ * risk for an existing surface.
  */
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+@import "@fontsource/ibm-plex-mono/latin-600.css";
+
 @font-face {
   font-family: "Space Grotesk";
   font-style: normal;
@@ -89,11 +95,13 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Metagraphed design system — "Bone & Ink" (Blockmachine-inspired).
- * Light (default): warm bone canvas, deep ink text, mint used sparingly.
- * Dark:            quiet ink canvas, dialed-down mint.
- * Surfaces are flat — hairline borders, no shadows or gradients.
- * A very faint dot pattern lives on the body for premium texture.
+ * Metagraph Terminal design system.
+ *
+ * The application is a public evidence terminal, not a trading dashboard:
+ * carbon and graphite carry the data plane, ash carries the reading plane,
+ * blue means "you can act here", and health/trust keep their own semantics.
+ * Light is a practical reading inverse of the dark terminal, not a second
+ * visual language. Surfaces stay flat, bounded by one-pixel rules.
  */
 
 @theme inline {
@@ -166,9 +174,10 @@
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
 
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "IBM Plex Mono", "Space Grotesk", ui-monospace, monospace;
+  --font-sans: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+  --font-prose: "DM Sans", ui-sans-serif, system-ui, sans-serif;
 
   /* Preserved metagraphed-ui design-system tokens (not in the Lovable source):
      section rhythm + the accent surface used by SectionHeading,
@@ -177,25 +186,26 @@
   --color-accent-surface: color-mix(in oklab, var(--accent) 6%, transparent);
 
   /* Layout geometry tokens — single source of truth for structural offsets. */
-  --spacing-nav: 3.5rem; /* app header height (h-nav in app-shell) */
+  --spacing-nav: 3.25rem; /* app header height (h-nav in app-shell) */
   --spacing-section-gap: 4rem; /* between top-level page sections */
   --spacing-shell-max: 1400px; /* page shell max width (max-w-shell-max) */
 }
 
-/* ============ LIGHT (default) — Bone + Ink ============ */
+/* ============ LIGHT — paper inverse of the terminal ============ */
 :root {
-  --radius: 0.75rem;
+  /* Keep Tailwind's derived radius ladder non-negative: rounded-sm resolves
+     to a square terminal edge, while rounded/md/lg remain subtle fallbacks
+     for legacy components during the route-by-route migration. */
+  --radius: 0.25rem;
 
-  --paper: oklch(0.975 0.006 95); /* warm bone */
-  --surface: oklch(1 0 0); /* cards = pure white, lifted by hairline */
-  --surface-2: oklch(0.945 0.008 95); /* table headers / inset rows */
-  --ink: oklch(0.32 0.012 200);
-  --ink-strong: oklch(0.2 0.012 200); /* deep ink */
-  --ink-muted: oklch(0.52 0.012 200);
-  --ink-subtle: oklch(0.74 0.008 200);
-  /* AA text variant of --ink-subtle (same hue/chroma, darker L). 4.69:1 on
-     paper, 5.04:1 on card. Used only where --ink-subtle styles small text. */
-  --ink-subtle-text: oklch(0.54 0.008 200);
+  --paper: #f7f7f4;
+  --surface: #ffffff;
+  --surface-2: #eeeeeb;
+  --ink: #383838;
+  --ink-strong: #161616;
+  --ink-muted: #686868;
+  --ink-subtle: #a3a3a3;
+  --ink-subtle-text: #686868;
 
   --background: var(--paper);
   --foreground: var(--ink-strong);
@@ -205,64 +215,51 @@
   --popover: var(--surface);
   --popover-foreground: var(--ink-strong);
 
-  --primary: oklch(0.74 0.15 168); /* trimmed mint */
-  --primary-foreground: oklch(0.2 0.012 200);
-  --primary-soft: color-mix(in oklab, oklch(0.74 0.15 168) 12%, var(--paper));
+  --primary: #1f6feb;
+  --primary-foreground: #ffffff;
+  --primary-soft: color-mix(in oklab, var(--primary) 10%, var(--paper));
   --secondary: var(--surface-2);
   --secondary-foreground: var(--ink-strong);
   --muted: var(--surface-2);
   --muted-foreground: var(--ink-muted);
-  --accent: oklch(0.74 0.15 168);
-  --accent-foreground: oklch(0.2 0.012 200);
-  /* AA text variant of --accent (same hue/chroma, darker L). 4.58:1 on paper,
-     4.92:1 on card. Used only where --accent styles small text. */
-  --accent-text: oklch(0.515 0.15 168);
+  --accent: #1f6feb;
+  --accent-foreground: #ffffff;
+  /* Text-only action token. The filled accent stays blue; this one clears AA
+     on paper for compact links, labels, and table controls. */
+  --accent-text: #1857b7;
 
-  --destructive: oklch(0.58 0.22 28);
-  --destructive-foreground: oklch(1 0 0);
+  --destructive: #c93f3c;
+  --destructive-foreground: #ffffff;
 
   --border: color-mix(in oklab, var(--ink-strong) 8%, transparent);
   --input: color-mix(in oklab, var(--ink-strong) 12%, transparent);
   --ring: color-mix(in oklab, var(--accent) 45%, transparent);
 
-  --health-ok: oklch(
-    0.68 0.16 160
-  ); /* brand mint — same hue family as --accent */
-  --health-warn: oklch(0.72 0.16 75); /* softened amber, not neon */
-  /* AA text variant of --health-warn (same hue/chroma, darker L). 4.58:1 on
-     paper, 4.92:1 on card. Used only where --health-warn styles small text. */
-  --health-warn-text: oklch(0.55 0.12 80);
-  --health-bad: oklch(
-    0.66 0.18 50
-  ); /* orange — between warn (75) and down (28) */
-  --health-down: oklch(0.58 0.22 28);
-  --health-unknown: oklch(0.66 0.01 200);
+  --health-ok: #16824a;
+  --health-warn: #a56100;
+  --health-warn-text: #8a5000;
+  --health-bad: #c86400;
+  --health-down: #c93f3c;
+  --health-unknown: #737373;
 
   --curation-native: var(--ink-strong);
-  --curation-verified: oklch(
-    0.68 0.16 160
-  ); /* kept in lockstep with --health-ok */
-  --curation-pilot: oklch(0.6 0.15 150);
+  --curation-verified: #1f6feb;
+  --curation-pilot: #4f77c8;
   --curation-candidate: var(--ink-muted);
-  --curation-seeded: oklch(
-    0.64 0.15 80
-  ); /* same warm hue family as --chart-3 */
-  --curation-machine: oklch(0.54 0.14 250);
-  --curation-adapter: oklch(0.62 0.15 305);
+  --curation-seeded: #b46b00;
+  --curation-machine: #7562c6;
+  --curation-adapter: #b24f8c;
 
-  /* Categorical chart ramp — muted, on-brand; first color is blue to avoid
-     reading as the mint "healthy" semantic. */
-  --chart-1: oklch(0.64 0.13 250);
-  --chart-2: oklch(0.72 0.13 168);
-  --chart-3: oklch(0.76 0.12 80);
-  --chart-4: oklch(0.62 0.15 305);
-  --chart-5: oklch(0.66 0.14 350);
-  --chart-6: oklch(0.66 0.02 220);
+  /* Arbitrary chart series, intentionally distinct from health and trust. */
+  --chart-1: #3679e8;
+  --chart-2: #8562d7;
+  --chart-3: #d56b25;
+  --chart-4: #bd4e92;
+  --chart-5: #9c7b11;
+  --chart-6: #6f7b87;
 
-  /* Dot pattern tuning */
-  --mg-dot-color: color-mix(in oklab, var(--ink-strong) 6%, transparent);
-  --mg-dot-size: 24px;
-  --mg-grid-color: color-mix(in oklab, var(--ink-strong) 3.5%, transparent);
+  --mg-grid-color: color-mix(in oklab, var(--ink-strong) 6%, transparent);
+  --mg-cadence-color: color-mix(in oklab, var(--accent) 20%, transparent);
 
   /* Third-party brand mark (ClaudeIcon) -- fixed regardless of theme, unlike
      the semantic tokens above. Converted from Claude's official simple-icons
@@ -271,7 +268,7 @@
 }
 
 /* ============================================================
- * Bone & Ink rhythm + type tokens. Relocated (2026-07-23) from
+ * Metagraph Terminal rhythm + type tokens. Relocated (2026-07-23) from
  * apps/ui/src/styles.css alongside <Panel>/<SectionLabel> and the other
  * dependency-free primitives that moved into this package so ui-kit's own
  * components can use them too; briefly duplicated in both files to keep
@@ -529,18 +526,16 @@
   background: color-mix(in oklab, var(--card) 95%, transparent);
 }
 
-/* ============ DARK — Ink + dialed mint ============ */
+/* ============ DARK — carbon terminal ============ */
 .dark {
-  --paper: oklch(0.14 0.003 250);
-  --surface: oklch(0.175 0.003 250);
-  --surface-2: oklch(0.215 0.004 250);
-  --ink: oklch(0.86 0.005 250);
-  --ink-strong: oklch(0.96 0.006 250);
-  --ink-muted: oklch(0.64 0.005 250);
-  --ink-subtle: oklch(0.42 0.004 250);
-  /* AA text variant of --ink-subtle (same hue/chroma, lighter L for the dark
-     canvas). 4.98:1 on paper, 4.63:1 on card. */
-  --ink-subtle-text: oklch(0.61 0.01 200);
+  --paper: #161616;
+  --surface: #1e1e1e;
+  --surface-2: #303030;
+  --ink: #d4d4d4;
+  --ink-strong: #ffffff;
+  --ink-muted: #a3a3a3;
+  --ink-subtle: #707070;
+  --ink-subtle-text: #b3b3b3;
 
   --background: var(--paper);
   --foreground: var(--ink-strong);
@@ -550,58 +545,48 @@
   --popover: var(--surface-2);
   --popover-foreground: var(--ink-strong);
 
-  --primary: oklch(0.85 0.14 168);
-  --primary-foreground: oklch(0.14 0.003 250);
-  --primary-soft: color-mix(in oklab, oklch(0.85 0.14 168) 10%, var(--paper));
+  --primary: #72a6ff;
+  --primary-foreground: #0d0d0d;
+  --primary-soft: color-mix(in oklab, var(--primary) 12%, var(--paper));
   --secondary: var(--surface-2);
   --secondary-foreground: var(--ink-strong);
   --muted: var(--surface);
   --muted-foreground: var(--ink-muted);
-  --accent: oklch(0.85 0.14 168);
-  --accent-foreground: oklch(0.14 0.003 250);
-  /* Dark --accent already clears AA as text (≈11.7:1), so the text variant is
-     the brand mint itself — no visual change in dark mode. */
-  --accent-text: var(--accent);
+  --accent: #72a6ff;
+  --accent-foreground: #0d0d0d;
+  --accent-text: #9bbdff;
 
-  --destructive: oklch(0.7 0.22 28);
-  --destructive-foreground: oklch(0.14 0.003 250);
+  --destructive: #fb7974;
+  --destructive-foreground: #161616;
 
   --border: color-mix(in oklab, var(--ink-strong) 11%, transparent);
   --input: color-mix(in oklab, var(--ink-strong) 16%, transparent);
   --ring: color-mix(in oklab, var(--accent) 50%, transparent);
 
-  --health-ok: oklch(0.85 0.14 168); /* brand mint — already matches --accent */
-  --health-warn: oklch(0.82 0.15 75); /* softened amber, not neon */
-  /* Dark --health-warn already clears AA as text (≈10.6:1), so the text variant
-     is the shared token itself — no visual change in dark mode. */
-  --health-warn-text: var(--health-warn);
-  --health-bad: oklch(
-    0.75 0.18 52
-  ); /* orange — between warn (75) and down (28) */
-  --health-down: oklch(0.72 0.2 28);
-  --health-unknown: oklch(0.52 0.005 250);
+  --health-ok: #54d98a;
+  --health-warn: #f4b65f;
+  --health-warn-text: #f4b65f;
+  --health-bad: #fb9a4c;
+  --health-down: #fb7974;
+  --health-unknown: #8b8b8b;
 
   --curation-native: var(--ink-strong);
-  --curation-verified: oklch(0.85 0.14 168);
-  --curation-pilot: oklch(0.8 0.14 150);
+  --curation-verified: #72a6ff;
+  --curation-pilot: #91b4ef;
   --curation-candidate: var(--ink-muted);
-  --curation-seeded: oklch(
-    0.78 0.14 80
-  ); /* same warm hue family as --chart-3 */
-  --curation-machine: oklch(0.76 0.12 250);
-  --curation-adapter: oklch(0.78 0.13 305);
+  --curation-seeded: #e8bb63;
+  --curation-machine: #b49aff;
+  --curation-adapter: #e79ac9;
 
-  /* Categorical chart ramp — lifted for the dark surface */
-  --chart-1: oklch(0.76 0.12 250);
-  --chart-2: oklch(0.85 0.13 168);
-  --chart-3: oklch(0.84 0.12 80);
-  --chart-4: oklch(0.76 0.14 305);
-  --chart-5: oklch(0.8 0.13 350);
-  --chart-6: oklch(0.62 0.02 220);
+  --chart-1: #75a9ff;
+  --chart-2: #b69bff;
+  --chart-3: #ffad72;
+  --chart-4: #ec9bcf;
+  --chart-5: #e9ca68;
+  --chart-6: #a6adb7;
 
-  --mg-dot-color: color-mix(in oklab, var(--ink-strong) 10%, transparent);
-  --mg-dot-size: 26px;
-  --mg-grid-color: color-mix(in oklab, var(--ink-strong) 5%, transparent);
+  --mg-grid-color: color-mix(in oklab, var(--ink-strong) 8%, transparent);
+  --mg-cadence-color: color-mix(in oklab, var(--accent) 28%, transparent);
 }
 
 @layer base {
@@ -613,32 +598,22 @@
     background-color: var(--color-paper);
     color: var(--color-ink-strong);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv11";
+    font-feature-settings: "zero", "ss01";
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: clip;
   }
-  /* Premium Blockmachine background: hairline grid + dot field + soft top
-     vignette. Layered top to bottom so the grid lives behind the dots. */
+  /* A quiet terminal lattice gives long explorer pages orientation without
+     competing with evidence, tables, or data visualisations. */
   body {
     background-image:
-      radial-gradient(var(--mg-dot-color) 1px, transparent 1px),
       linear-gradient(to right, var(--mg-grid-color) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--mg-grid-color) 1px, transparent 1px),
-      radial-gradient(
-        ellipse 110% 60% at 50% 0%,
-        color-mix(in oklab, var(--accent) 5%, transparent) 0%,
-        transparent 70%
-      );
+      linear-gradient(to bottom, var(--mg-grid-color) 1px, transparent 1px);
     background-size:
-      var(--mg-dot-size) var(--mg-dot-size),
-      96px 96px,
-      96px 96px,
-      100% 100%;
+      32px 32px,
+      32px 32px;
     background-position:
-      0 0,
-      0 0,
       0 0,
       0 0;
     background-attachment: fixed;
@@ -863,30 +838,36 @@ html[data-density="compact"] .bg-card > table td {
   animation-delay: 240ms;
 }
 
-/* Hero — calm, no slab fill. Just a mint hairline at the top so the
-   hero sits flush with the page while still feeling anchored. */
+/* Hero — a calm evidence field. The cadence lattice is the visual signature:
+   it evokes block intervals without pretending to be a data chart. */
 .mg-hero-slab {
   position: relative;
-  background: transparent;
-  border: 0;
+  background-color: color-mix(in oklab, var(--surface) 52%, transparent);
+  background-image:
+    linear-gradient(to right, var(--mg-cadence-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--mg-cadence-color) 1px, transparent 1px);
+  background-size: 16px 16px;
+  border-bottom: 1px solid var(--border);
   border-radius: 0;
-  border-top: 1px solid color-mix(in oklab, var(--accent) 55%, transparent);
+  border-top: 1px solid color-mix(in oklab, var(--accent) 68%, transparent);
 }
 .mg-hero-slab::before {
   content: none;
 }
 
-/* Mint accent band — quiet bone band with hairline mint top. */
+/* Restrained action band — a structural inverse surface, not a marketing
+   gradient. The left rule is the only accent signal. */
 .mg-accent-band {
-  background: color-mix(in oklab, var(--accent) 6%, var(--paper));
-  border-top: 1px solid color-mix(in oklab, var(--accent) 35%, transparent);
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
-/* Mint dot pattern — used inside accent bands. */
+/* Cadence pattern — used inside the one deliberate action band. */
 .mg-dot-grid {
   background-image: radial-gradient(
-    color-mix(in oklab, var(--accent) 30%, transparent) 1px,
+    color-mix(in oklab, var(--accent) 36%, transparent) 1px,
     transparent 1px
   );
   background-size: 14px 14px;
@@ -921,21 +902,21 @@ html[data-density="compact"] .bg-card > table td {
   }
 }
 
-/* Live dot — small pulsing mint pip. */
+/* Live data is a health state, not an interactive action. */
 .mg-live-dot {
   position: relative;
   display: inline-block;
   width: 0.45rem;
   height: 0.45rem;
   border-radius: 9999px;
-  background: var(--accent);
+  background: var(--health-ok);
 }
 .mg-live-dot::after {
   content: "";
   position: absolute;
   inset: -3px;
   border-radius: 9999px;
-  background: var(--accent);
+  background: var(--health-ok);
   opacity: 0.3;
   animation: mg-pulse 1.8s ease-in-out infinite;
 }
@@ -1071,10 +1052,7 @@ html[data-density="compact"] .bg-card > table td {
 .mg-mega-surface {
   background: var(--paper);
   border: 1px solid var(--border);
-  box-shadow:
-    0 1px 0 var(--border) inset,
-    0 24px 60px -20px color-mix(in oklab, var(--ink-strong) 22%, transparent),
-    0 2px 8px -2px color-mix(in oklab, var(--ink-strong) 8%, transparent);
+  box-shadow: 0 1px 0 var(--border) inset;
 }
 .mg-mega-scrim {
   position: fixed;
@@ -1217,14 +1195,12 @@ html[data-density="compact"] .bg-card > table td {
    .mg-metric-tile, so the glow adapts across themes instead of a fixed
    slate-900 rgba that vanishes on a dark background (#6398). */
 .mg-card-glow {
-  box-shadow: 0 24px 80px -58px
-    color-mix(in oklab, var(--ink-strong) 45%, transparent);
+  box-shadow: 0 1px 0 var(--border);
 }
 
 /* Accent-tinted variant for the primary/summary card on the same pages. */
 .mg-card-glow-accent {
-  box-shadow: 0 24px 80px -52px
-    color-mix(in oklab, var(--accent) 45%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .mg-skel-crossfade > * {
@@ -1425,8 +1401,8 @@ html[data-density="compact"] .bg-card > table td {
 }
 
 .mg-header[data-scrolled="true"] {
-  background-color: color-mix(in oklab, var(--paper) 88%, transparent);
-  border-bottom-color: color-mix(in oklab, var(--ink-strong) 14%, transparent);
+  background-color: var(--paper);
+  border-bottom-color: var(--border);
 }
 
 .mg-glyph-rule {

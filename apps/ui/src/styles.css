@@ -116,6 +116,24 @@
   height: 0;
 }
 
+/* The subnet directory's sheet is the whole refinement surface below lg.
+   Its close affordance must be as easy to hit as the controls it contains.
+   This stays route-scoped because FilterSheet's desktop compactness remains
+   appropriate for the other, denser directories. */
+.mg-subnets-filter-sheet [aria-label="Close filters"] {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+/* FilterSheet's modal is rendered beside the trigger. Backdrop filters create
+   a containing block for a fixed descendant, so leaving the list toolbar's
+   blur on would constrain the sheet to that toolbar instead of the viewport.
+   The nearly opaque paper background preserves the same visual treatment. */
+.sticky:has(.mg-subnets-directory-controls) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* The subnets table header used to be styled here, by a bespoke
    `.mg-subnets-sticky-head` rule that pinned it with
    `top: var(--mg-sticky-offset)` -- the app-header stack height (131px live),

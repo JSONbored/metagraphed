@@ -249,7 +249,11 @@ export function SubnetsPage() {
         // naming the page differently.
         description={hubLede("/subnets")}
         actions={
-          <>
+          /* Display/export are useful desktop controls, but on phone and
+             tablet they previously became an unexplained row of icons before
+             the directory task. Narrow layouts expose the same choices as
+             named controls in the Filters sheet below. */
+          <div className="hidden lg:flex flex-wrap items-center gap-2">
             {search.section === "registry" ? (
               <>
                 <ViewModeToggle value={search.view} onChange={setView} />
@@ -269,7 +273,7 @@ export function SubnetsPage() {
               )}
               <ShareButton bare />
             </ActionBar>
-          </>
+          </div>
         }
       />
       {/* #8248: masthead trim -- the old nine meta-cards (SubnetsHighlights +
@@ -304,7 +308,12 @@ export function SubnetsPage() {
               />
             }
           >
-            <SubnetsTable view={search.view} density={effectiveDensity} />
+            <SubnetsTable
+              view={search.view}
+              density={effectiveDensity}
+              onViewChange={setView}
+              onDensityChange={setDensity}
+            />
           </AsyncPanel>
           <AsyncPanel
             context="domains rollup"
@@ -529,7 +538,7 @@ function ExcludeToggle({
       aria-pressed={hidden}
       title={title}
       className={classNames(
-        "mg-type-caption inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
+        "mg-type-caption inline-flex min-h-11 items-center gap-1.5 rounded border px-2 py-1 transition-colors lg:min-h-9",
         hidden
           ? "border-accent/40 bg-accent/10 text-accent"
           : "border-border bg-card text-ink-muted hover:text-ink-strong",
@@ -542,7 +551,17 @@ function ExcludeToggle({
   );
 }
 
-function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; density?: Density }) {
+function SubnetsTable({
+  view,
+  density = "comfortable",
+  onViewChange,
+  onDensityChange,
+}: {
+  view: ViewMode;
+  density?: Density;
+  onViewChange: (view: ViewMode) => void;
+  onDensityChange: (density: Density) => void;
+}) {
   const search = useSearch({ from: "/subnets/" }) as SubnetsSearch;
   const navigate = useNavigate({ from: "/subnets/" });
   const columns = useColumnVisibility("subnets", SUBNET_COLUMNS);
@@ -858,6 +877,12 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     (search.watched ? 1 : 0) +
     (!search.includeRoot ? 1 : 0);
 
+  const resetDirectoryFilters = () =>
+    navigate({
+      search: { view: search.view },
+      replace: true,
+    });
+
   const resultCount = rows.length;
   const totalCount = total ?? all.length;
 
@@ -899,7 +924,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   };
 
   const secondaryFilters = (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 [&>label]:min-h-11">
       <FilterChip
         label="Health"
         ariaLabel="Filter by exact health state"
@@ -945,30 +970,161 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         onChange={(v) => setSearch({ kind: v })}
         options={kindOptions}
       />
+      {activeFilterCount > 0 ? (
+        <button
+          type="button"
+          onClick={resetDirectoryFilters}
+          className="inline-flex min-h-11 items-center justify-center rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-muted transition-colors hover:border-accent/40 hover:text-ink-strong"
+        >
+          Clear all filters
+        </button>
+      ) : null}
     </div>
   );
 
-  const secondaryFilterCount =
-    (search.health && search.health !== "unhealthy" ? 1 : 0) +
+  // The filter-sheet badge needs to represent every refinement it now owns at
+  // phone/tablet widths — not just the five dropdowns it originally held.
+  // Search remains outside the sheet, so it deliberately is not counted here.
+  const filterSheetCount =
+    (search.health ? 1 : 0) +
     (search.curation ? 1 : 0) +
     (search.readiness ? 1 : 0) +
     (search.serviceKind ? 1 : 0) +
-    (search.kind ? 1 : 0);
+    (search.kind ? 1 : 0) +
+    (search.watched ? 1 : 0) +
+    (!search.includeRoot ? 1 : 0);
+
+  const rootToggleLabel = search.includeRoot ? "Hide root" : "Show root";
+  const rootToggleTitle = search.includeRoot
+    ? `Showing the root subnet — click to hide ${rootCount} root netuid${rootCount === 1 ? "" : "s"}`
+    : "Root subnet hidden — click to show it again";
+  const subnetsCsvUrl = buildUrl("/api/v1/subnets", { limit: SUBNETS_ALL_LIMIT });
+
+  const mobileRefinements = (
+    <div className="flex flex-col gap-3 border-b border-border pb-4 lg:hidden">
+      <div className="flex flex-col gap-2">
+        <span className="mg-type-label uppercase text-ink-muted">Display</span>
+        <ViewModeToggle
+          value={view}
+          onChange={onViewChange}
+          className="w-full [&>div>button>span]:inline"
+        />
+        {view === "table" ? (
+          <DensityToggle
+            value={density}
+            onChange={onDensityChange}
+            className="w-full [&>div>button>span]:inline"
+          />
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="mg-type-label uppercase text-ink-muted">Export &amp; share</span>
+        <div className="grid grid-cols-2 gap-2">
+          <DownloadCsvButton
+            url={subnetsCsvUrl}
+            className="w-full justify-center rounded [&>span]:!inline"
+          />
+          <ShareButton className="w-full justify-center rounded [&>span]:!inline" />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="mg-type-label uppercase text-ink-muted">Quick views</span>
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Quick filter">
+          {quickTabOptions.map((option) => {
+            const active = quickTab === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => onQuickTab(option.value)}
+                aria-pressed={active}
+                className={classNames(
+                  "inline-flex min-h-11 items-center justify-center rounded border px-3 py-2 mg-type-caption font-medium transition-colors",
+                  option.value === "new" && "col-span-2",
+                  active
+                    ? "border-accent/40 bg-accent/10 text-accent-text"
+                    : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="mg-type-label uppercase text-ink-muted">View options</span>
+        <ExcludeToggle
+          hidden={!search.includeRoot}
+          onToggle={() => setSearch({ includeRoot: !search.includeRoot })}
+          label={rootToggleLabel}
+          count={rootCount}
+          title={rootToggleTitle}
+        />
+        {view === "table" ? (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <span className="mg-type-caption text-ink-muted">Sparkline window</span>
+              <div
+                className="grid grid-cols-3 gap-2"
+                role="group"
+                aria-label="Trend window for row sparklines"
+              >
+                {(["7d", "30d", "90d"] as const).map((window) => {
+                  const active = trendWindow === window;
+                  return (
+                    <button
+                      key={window}
+                      type="button"
+                      onClick={() => setTrendWindow(window)}
+                      aria-pressed={active}
+                      className={classNames(
+                        "inline-flex min-h-11 items-center justify-center rounded border px-2 py-2 mg-type-caption font-medium transition-colors",
+                        active
+                          ? "border-accent/40 bg-accent/10 text-accent-text"
+                          : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
+                      )}
+                    >
+                      {window}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="mg-type-caption text-ink-muted">Visible table columns</span>
+              <ColumnCustomizer
+                columns={SUBNET_COLUMNS}
+                isVisible={columns.isVisible}
+                onToggle={columns.toggle}
+                onReset={columns.reset}
+                className="[&>button]:min-h-11"
+              />
+            </div>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
 
   const filters = (
-    <div className="flex w-full flex-col gap-0 min-w-0">
+    <div className="mg-subnets-directory-controls flex w-full flex-col gap-0 min-w-0">
       <div className="flex w-full items-center gap-2 min-w-0">
-        <QueryBar className="flex-1 min-w-0">
+        <QueryBar className="flex-1 min-w-0 min-h-12 lg:min-h-0">
           <QueryBar.Search
             value={search.q}
             onChange={(v) => setSearch({ q: v })}
             placeholder="Search by netuid, name, or symbol"
             shortcut
             debounceMs={200}
+            className="min-h-11 lg:min-h-0"
           />
 
           <QueryBar.Divider />
-          <div className="hidden sm:flex items-center">
+          <div className="hidden lg:flex items-center">
             <SegmentedToggle
               options={quickTabOptions}
               value={quickTab}
@@ -977,17 +1133,13 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
               className="border-0 bg-transparent"
             />
           </div>
-          <QueryBar.Utility className="ml-auto">
+          <QueryBar.Utility className="ml-auto hidden lg:flex">
             <ExcludeToggle
               hidden={!search.includeRoot}
               onToggle={() => setSearch({ includeRoot: !search.includeRoot })}
-              label="Hide root"
+              label={rootToggleLabel}
               count={rootCount}
-              title={
-                search.includeRoot
-                  ? `Showing the root subnet — click to hide ${rootCount} root netuid${rootCount === 1 ? "" : "s"}`
-                  : "Root subnet hidden — click to show it again"
-              }
+              title={rootToggleTitle}
             />
             {view === "table" ? (
               <>
@@ -1012,7 +1164,12 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
             ) : null}
           </QueryBar.Utility>
         </QueryBar>
-        <FilterSheet label="Filters" activeCount={secondaryFilterCount}>
+        <FilterSheet
+          className="mg-subnets-filter-sheet shrink-0 [&>button]:min-h-11"
+          label="Filters"
+          activeCount={filterSheetCount}
+        >
+          {mobileRefinements}
           {secondaryFilters}
         </FilterSheet>
       </div>
@@ -1021,15 +1178,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         total={totalCount}
         noun="subnets"
         activeCount={activeFilterCount}
-        onReset={
-          activeFilterCount > 0
-            ? () =>
-                navigate({
-                  search: { view: search.view },
-                  replace: true,
-                })
-            : undefined
-        }
+        onReset={activeFilterCount > 0 ? resetDirectoryFilters : undefined}
       />
       {(() => {
         const chipItems: FilterChipItem[] = [];
@@ -1116,15 +1265,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           <FilterChipRow
             items={chipItems}
             onRemove={clearKey}
-            onClearAll={
-              chipItems.length > 1
-                ? () =>
-                    navigate({
-                      search: { view: search.view },
-                      replace: true,
-                    })
-                : undefined
-            }
+            onClearAll={chipItems.length > 1 ? resetDirectoryFilters : undefined}
           />
         );
       })()}

@@ -419,94 +419,109 @@ function HomeHero() {
       : 128;
 
   return (
-    <section className="mg-hero-slab relative overflow-hidden px-4 py-12 sm:px-6 md:py-20">
-      <div className="relative z-[var(--mg-z-sticky)] mx-auto flex max-w-4xl flex-col items-center text-center">
-        {/* eslint-disable-next-line no-restricted-syntax -- display-size hero heading (30/40/48px responsive); the mg-type-* scale tops out at caption-lg (13px) with no display tier, so there is no matching token (#8717 req 2 exception) */}
-        <h1 className="mg-fade-in mt-2 font-display text-[30px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.08] text-ink-strong">
-          <span className="block">Bittensor,</span>
-          <span className="block text-accent">de-mystified.</span>
-        </h1>
-        <p className="mg-fade-in mg-fade-in-delay-1 mt-4 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed">
-          One search bar for every subnet, endpoint, and account — and yes, it&rsquo;s all a live
-          API.
-        </p>
+    <section className="mg-hero-slab relative overflow-hidden px-4 py-10 sm:px-6 md:py-16">
+      <div className="relative z-[var(--mg-z-sticky)] mx-auto grid max-w-6xl gap-8 md:gap-12 lg:grid-cols-[minmax(0,1.25fr)_minmax(16rem,0.75fr)] lg:items-end">
+        <div className="min-w-0 text-left">
+          <div className="mg-hero-caption mg-fade-in">Metagraph Terminal · Finney</div>
+          {/* eslint-disable-next-line no-restricted-syntax -- display-size hero heading (30/40/48px responsive); the mg-type-* scale tops out at caption-lg (13px) with no display tier, so there is no matching token (#8717 req 2 exception) */}
+          <h1 className="mg-fade-in mt-4 font-display text-[30px] sm:text-[40px] md:text-[48px] font-medium leading-[1.08] tracking-[-0.04em] text-ink-strong">
+            <span className="block">Find the signal.</span>
+            <span className="block text-accent">Verify the surface.</span>
+          </h1>
+          <p className="mg-fade-in mg-fade-in-delay-1 mt-4 max-w-2xl text-sm md:text-base text-ink-muted leading-relaxed">
+            A public map of Bittensor subnets, chain activity, and interfaces — built to show what
+            is live, credible, and ready to use.
+          </p>
 
-        {/* Unified search field: query trigger on the left, mint Search button flush right. */}
-        <div className="mg-fade-in mg-fade-in-delay-2 mt-8 w-full max-w-2xl">
-          {/* eslint-disable-next-line no-restricted-syntax -- not a card shell: this is the search field's flush query-trigger + Search-button row (items-stretch, overflow-hidden, rounded-2xl, focus-within/hover border states); <Panel> hardcodes `rounded border` and can't express this composite input geometry (#8717 req 2 exception) */}
-          <div className="mg-focus-ring flex items-stretch overflow-hidden rounded-2xl border border-border bg-card transition-colors focus-within:border-accent/60 hover:border-accent/40">
-            <button
-              type="button"
-              onClick={openCommandPalette}
-              aria-label="Search subnets, validators, endpoints, accounts. Opens command palette (⌘K)"
-              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left text-sm text-ink-muted transition-colors hover:text-ink"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                className="size-4 shrink-0 text-ink-muted"
+          {/* Unified search shell: one plain-language primary task, no decorative chrome. */}
+          <div className="mg-fade-in mg-fade-in-delay-2 mt-8 w-full max-w-2xl">
+            {/* eslint-disable-next-line no-restricted-syntax -- not a card shell: this is the search field's flush query-trigger + Search-button row (items-stretch, overflow-hidden, focus-within/hover border states); <Panel> hardcodes its own content padding and can't express this composite input geometry (#8717 req 2 exception) */}
+            <div className="mg-focus-ring flex items-stretch overflow-hidden rounded-sm border border-border bg-card transition-colors focus-within:border-accent/80 hover:border-accent/60">
+              <button
+                type="button"
+                onClick={openCommandPalette}
+                aria-label="Search subnets, validators, endpoints, accounts. Opens command palette (⌘K)"
+                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left text-sm text-ink-muted transition-colors hover:text-ink"
               >
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" strokeLinecap="round" />
-              </svg>
-              <span className="min-w-0 flex-1 truncate">
-                Search subnets, validators, endpoints, accounts…
-              </span>
-              <kbd className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted">
-                ⌘K
-              </kbd>
-            </button>
-            <button
-              type="button"
-              onClick={openCommandPalette}
-              aria-label="Open search"
-              className="flex size-12 shrink-0 items-center justify-center border-l border-border bg-primary-soft text-accent-text transition-colors hover:bg-accent hover:text-accent-foreground sm:h-auto sm:w-auto sm:px-4"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                className="size-4 sm:hidden"
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  className="size-4 shrink-0 text-ink-muted"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+                </svg>
+                <span className="min-w-0 flex-1 truncate">
+                  Search subnets, validators, endpoints, accounts…
+                </span>
+                <kbd className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted">
+                  ⌘K
+                </kbd>
+              </button>
+              <button
+                type="button"
+                onClick={openCommandPalette}
+                aria-label="Open search"
+                className="flex size-12 shrink-0 items-center justify-center border-l border-border bg-primary-soft text-accent-text transition-colors hover:bg-accent hover:text-accent-foreground sm:h-auto sm:w-auto sm:px-4"
               >
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" strokeLinecap="round" />
-              </svg>
-              <span className="hidden text-sm font-medium sm:inline">Search</span>
-            </button>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  className="size-4 sm:hidden"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+                </svg>
+                <span className="hidden text-sm font-medium sm:inline">Search</span>
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className="mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-col items-center gap-3 sm:flex-row sm:gap-4 mg-type-caption-lg">
-          <Link
-            to="/subnets"
-            className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 font-medium text-accent-foreground transition-opacity hover:opacity-90"
-          >
-            Explore all {subnetCount} subnets
-            <ArrowUpRight className="size-3.5" />
-          </Link>
-          <Link
-            to="/apis/schemas"
-            className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
-          >
-            Read the API
-          </Link>
-        </div>
-        {/* inline-flex, not flex: this is a control shell (a copyable command
+          <div className="mg-fade-in mg-fade-in-delay-3 mt-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4 mg-type-caption-lg">
+            <Link
+              to="/subnets"
+              className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded bg-accent px-4 py-2 font-medium text-accent-foreground transition-opacity hover:opacity-90"
+            >
+              Explore all {subnetCount} subnets
+              <ArrowUpRight className="size-3.5" />
+            </Link>
+            <Link
+              to="/apis/schemas"
+              className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-4 py-2 font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
+            >
+              Read the API
+            </Link>
+          </div>
+          {/* inline-flex, not flex: this is a control shell (a copyable command
             row), not a content panel — same distinction the card-shell lint
             rule draws for segmented controls. */}
-        <div className="mg-fade-in mg-fade-in-delay-3 mt-6 inline-flex w-full max-w-xl items-center gap-2 rounded-md border border-border bg-card px-3 py-2">
-          <Terminal className="size-3.5 shrink-0 text-accent" aria-hidden />
-          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-left font-mono mg-type-caption-lg text-ink-muted">
-            {MCP_CORE_INSTALL}
-          </code>
-          <CopyButton value={MCP_CORE_INSTALL} label="MCP install command" />
+          <div className="mg-fade-in mg-fade-in-delay-3 mt-4 inline-flex w-full max-w-xl items-center gap-2 rounded border border-border bg-card px-3 py-2">
+            <Terminal className="size-3.5 shrink-0 text-accent" aria-hidden />
+            <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-left font-mono mg-type-caption-lg text-ink-muted">
+              {MCP_CORE_INSTALL}
+            </code>
+            <CopyButton value={MCP_CORE_INSTALL} label="MCP install command" />
+          </div>
         </div>
-        <ChainHeadTip />
+        <aside className="mg-fade-in mg-fade-in-delay-2 border-l-2 border-accent bg-card p-4 md:p-6">
+          <div className="mg-type-label text-ink-muted">Registry pulse</div>
+          <div className="mt-4 font-display text-4xl font-medium tracking-[-0.05em] text-ink-strong tabular-nums">
+            {formatNumber(subnetCount)}
+          </div>
+          <p className="mt-1 mg-type-caption-lg text-ink-muted">
+            active subnets mapped across chain data and public interfaces
+          </p>
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="mg-type-label text-ink-muted">Chain head</div>
+            <ChainHeadTip />
+          </div>
+        </aside>
       </div>
 
       <div className="relative z-[var(--mg-z-sticky)] mx-auto mt-10 max-w-6xl px-0 sm:px-2">
@@ -652,7 +667,7 @@ function TrackedGrid() {
         <Link
           key={item.label}
           to={item.to}
-          className="mg-hover-lift group rounded-xl border border-border bg-card p-6 flex flex-col"
+          className="mg-hover-lift group rounded border border-border bg-card p-6 flex flex-col"
         >
           <div className="mg-type-caption text-ink-muted">{item.label}</div>
           <p className="mt-3 text-sm text-ink-strong leading-relaxed flex-1">{item.desc}</p>

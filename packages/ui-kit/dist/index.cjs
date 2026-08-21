@@ -536,7 +536,7 @@ function Panel({
     {
       ...rest,
       className: classNames(
-        "rounded border",
+        "rounded-sm border",
         toneStyle.border,
         tintBorderOnly ? "bg-card" : toneStyle.bg,
         interactive ? "mg-hover-lift" : null,
