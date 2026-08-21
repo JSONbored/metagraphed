@@ -1,20 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { type CSSProperties, type ReactNode, useState } from "react";
+import { type CSSProperties, useState } from "react";
 import { InteractiveDataField, type InteractiveDataFieldTone } from "@jsonbored/ui-kit";
-import { useHydrated } from "@/hooks/use-hydrated";
 import {
-  economicsQuery,
-  SUBNETS_ALL_LIMIT,
-  subnetHealthMapQuery,
-  subnetsQuery,
+  subnetPriceShareCompositionQuery,
   type SubnetHealthEntry,
 } from "@/lib/metagraphed/queries";
-import type { HealthState, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
+import type {
+  HealthState,
+  Subnet,
+  SubnetEconomics,
+  SubnetPriceShareCompositionArtifact,
+} from "@/lib/metagraphed/types";
 
 /** A fast desktop read, with the exhaustive ranking one explicit step away. */
 export const HOME_NETWORK_SIGNAL_LIMIT = 24;
-const HOME_NETWORK_SIGNAL_LEADER_LIMIT = 6;
 
 export interface HomeNetworkSignalRow {
   netuid: number;
@@ -185,65 +185,42 @@ export function formatHomePriceShare(share: number): string {
  */
 export function HomeNetworkSignalField() {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const hydrated = useHydrated();
-  // These keys are shared by the homepage chrome and directory routes. React
-  // Query resolves an already-warm visit without another request, while a cold
-  // visit fetches the same small, cacheable registry artifacts those routes use.
-  // Do not query live economics while SSR is producing the initial document:
-  // the price field belongs to the client-owned live read and must hydrate from
-  // the same deterministic loading state the server sent.
-  const economics = useQuery({ ...economicsQuery(), enabled: hydrated, retry: 0 });
-  const subnets = useQuery({
-    ...subnetsQuery({ limit: SUBNETS_ALL_LIMIT }),
-    enabled: hydrated,
-    retry: 0,
-  });
-  const health = useQuery({ ...subnetHealthMapQuery(), enabled: hydrated, retry: 0 });
+  const composition = useQuery({ ...subnetPriceShareCompositionQuery(), retry: 0 });
 
-  if (!hydrated || economics.isPending || subnets.isPending) {
+  if (composition.isPending) {
     return <HomeNetworkSignalFieldLoading />;
   }
 
-  if (economics.isError) {
+  if (composition.isError) {
     return (
       <section className="mg-home-signal-field" aria-labelledby="home-price-share-field-title">
         <SignalFieldHeader />
         <p className="mg-home-signal-status" role="status">
-          Current price-share data is unavailable. Try again in a moment.
+          Historical price-share composition is unavailable. Try again in a moment.
         </p>
       </section>
     );
   }
 
-  const allRows = buildHomeNetworkSignalRows({
-    economics: economics.data?.data ?? [],
-    subnets: subnets.data?.data ?? [],
-    healthByNetuid: health.data?.data ?? {},
-    limit: economics.data?.data.length ?? 0,
-  });
-  const rows = allRows.slice(0, HOME_NETWORK_SIGNAL_LIMIT);
+  const artifact = composition.data?.data;
+  const series = artifact?.series ?? [];
+  const days = artifact?.days ?? [];
 
-  if (rows.length === 0) {
+  if (series.length === 0 || days.length === 0) {
     return (
       <section className="mg-home-signal-field" aria-labelledby="home-price-share-field-title">
         <SignalFieldHeader />
         <p className="mg-home-signal-status" role="status">
-          No current subnet price-share data has been published yet.
+          No complete daily price-share snapshots have been published yet.
         </p>
       </section>
     );
   }
 
-  const leaders = rows.slice(0, HOME_NETWORK_SIGNAL_LEADER_LIMIT);
-  const leader = leaders[0];
-  const inspectedId = hoveredId ?? activeId;
-  const categories = [
-    ...new Map(
-      rows.map((row) => [row.category, { label: row.categoryLabel, tone: row.seriesTone }]),
-    ).values(),
-  ];
-  const chartSummary = `Top ${rows.length} of ${allRows.length} subnets ranked by stage-one alpha-price share. ${leader.name} is largest at ${formatHomePriceShare(leader.priceShare)}.`;
+  const tones = INTERACTIVE_DATA_FIELD_TONES;
+  const seriesById = new Map(series.map((entry) => [entry.id, entry]));
+  const toneById = new Map(series.map((entry, index) => [entry.id, tones[index % tones.length]]));
+  const chartSummary = `${days.length} daily snapshots of artifact-normalized moving price-share composition. The stable cohort contains ${series.length - 1} subnets plus Other.`;
 
   return (
     <section
@@ -259,101 +236,38 @@ export function HomeNetworkSignalField() {
           className="mg-home-signal-chart"
           activeId={activeId}
           onActiveChange={setActiveId}
-          onHoverChange={setHoveredId}
-          axisStart="Price share · registry family color"
-          axisEnd={`Top ${rows.length} of ${allRows.length}`}
-          data={rows.map((row, index) => ({
-            id: String(row.netuid),
-            label: `SN${row.netuid} · ${row.name}`,
-            value: row.priceShare,
-            valueLabel: formatHomePriceShare(row.priceShare),
-            tone: row.seriesTone,
-            ariaLabel: `Rank ${String(index + 1).padStart(2, "0")}. Subnet ${row.netuid}, ${row.name}. ${formatHomePriceShare(row.priceShare)} stage-one alpha-price share. Registry family ${row.categoryLabel}. Registry tags ${row.categoryTags.join(", ") || "unclassified"}. Probe health ${row.health}.`,
+          axisStart={artifact ? compositionWindowLabel(artifact) : "Daily snapshots"}
+          axisEnd={artifact?.newest_day ?? ""}
+          data={days.map((day) => ({
+            id: day.snapshot_date,
+            label: day.snapshot_date,
+            value: 1,
+            valueLabel: `${day.priced_subnet_count} priced subnets`,
+            axisLabel: shortDayLabel(day.snapshot_date),
+            ariaLabel: `${day.snapshot_date}. ${day.priced_subnet_count} priced subnets. ${series
+              .map((entry) => {
+                const value =
+                  day.values.find((item) => item.series_id === entry.id)?.price_share ?? 0;
+                return `${seriesLabel(entry)} ${formatHomePriceShare(value)}`;
+              })
+              .join(", ")}.`,
+            segments: series.map((entry) => ({
+              label: seriesLabel(entry),
+              value: day.values.find((item) => item.series_id === entry.id)?.price_share ?? 0,
+              valueLabel: formatHomePriceShare(
+                day.values.find((item) => item.series_id === entry.id)?.price_share ?? 0,
+              ),
+              tone: toneById.get(entry.id) ?? "chart-11",
+            })),
           }))}
-          renderInspector={(datum, index) => {
-            const row = rows[index];
-            if (!row) return null;
+          renderInspector={(_datum, index) => {
+            const day = days[index];
+            if (!day) return null;
             return (
-              <HomeSignalInspector
-                rank={index + 1}
-                name={datum.label}
-                priceShare={datum.valueLabel}
-                category={row.categoryLabel}
-                categoryTags={row.categoryTags}
-                health={row.health}
-              />
+              <HomeCompositionInspector day={day} seriesById={seriesById} toneById={toneById} />
             );
           }}
         />
-      </div>
-
-      <ul className="mg-home-signal-legend" aria-label="Subnet registry family color legend">
-        {categories.map((category) => (
-          <li key={category.label} data-tone={category.tone}>
-            <span
-              aria-hidden="true"
-              className="mg-home-signal-series"
-              style={
-                {
-                  "--mg-home-signal-series-color": `var(--${category.tone})`,
-                } as CSSProperties
-              }
-            />
-            {category.label}
-          </li>
-        ))}
-      </ul>
-
-      <div className="mg-home-signal-leaders-wrap">
-        <div className="mg-home-signal-readout">
-          <span className="mg-home-signal-readout-label">Largest price share</span>
-          <strong className="mg-home-signal-readout-value">
-            {formatHomePriceShare(leader.priceShare)}
-          </strong>
-          <span className="mg-home-signal-readout-name">
-            SN{leader.netuid} · {leader.name}
-          </span>
-        </div>
-
-        <ol
-          className="mg-home-signal-leaders"
-          aria-label="Leading subnets by stage-one alpha-price share"
-        >
-          {leaders.map((row, index) => (
-            <li
-              key={row.netuid}
-              data-active={inspectedId === String(row.netuid) || undefined}
-              style={
-                {
-                  "--mg-home-signal-series-color": `var(--${row.seriesTone})`,
-                } as CSSProperties
-              }
-            >
-              <Link
-                to="/subnets/$netuid"
-                params={{ netuid: row.netuid }}
-                className="mg-home-signal-leader"
-                onFocus={() => setActiveId(String(row.netuid))}
-                onPointerEnter={() => setHoveredId(String(row.netuid))}
-                onPointerLeave={() => setHoveredId(null)}
-                aria-label={`Subnet ${row.netuid} · ${row.name} · ${formatHomePriceShare(row.priceShare)} stage-one alpha-price share · probe health ${row.health}`}
-              >
-                <span className="mg-home-signal-rank" aria-hidden="true">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className="mg-home-signal-leader-name">
-                  <span className="mg-home-signal-series" aria-hidden="true" />
-                  <span className="truncate">
-                    SN{row.netuid} · {row.name}
-                  </span>
-                </span>
-                <span className="mg-home-signal-leader-share">
-                  {formatHomePriceShare(row.priceShare)}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ol>
       </div>
 
       <div className="mg-home-signal-footer">
@@ -369,44 +283,70 @@ export function HomeNetworkSignalField() {
   );
 }
 
-function HomeSignalInspector({
-  rank,
-  name,
-  priceShare,
-  category,
-  categoryTags,
-  health,
+const INTERACTIVE_DATA_FIELD_TONES: readonly InteractiveDataFieldTone[] = [
+  "chart-1",
+  "chart-2",
+  "chart-3",
+  "chart-4",
+  "chart-5",
+  "chart-6",
+  "chart-7",
+  "chart-8",
+  "chart-9",
+  "chart-10",
+  "chart-11",
+];
+
+type CompositionDay = SubnetPriceShareCompositionArtifact["days"][number];
+type CompositionSeries = SubnetPriceShareCompositionArtifact["series"][number];
+
+function seriesLabel(series: CompositionSeries): string {
+  if (series.kind === "other") return "Other";
+  return series.label?.trim() || `SN${series.netuid ?? "?"}`;
+}
+
+function shortDayLabel(day: string): string {
+  return day.slice(5).replace("-", "/");
+}
+
+function compositionWindowLabel(artifact: SubnetPriceShareCompositionArtifact): string {
+  return `${artifact.oldest_day ?? ""} — ${artifact.newest_day ?? ""}`;
+}
+
+function HomeCompositionInspector({
+  day,
+  seriesById,
+  toneById,
 }: {
-  rank: number;
-  name: ReactNode;
-  priceShare: ReactNode;
-  category: string;
-  categoryTags: readonly string[];
-  health: HealthState;
+  day: CompositionDay;
+  seriesById: ReadonlyMap<string, CompositionSeries>;
+  toneById: ReadonlyMap<string, InteractiveDataFieldTone>;
 }) {
   return (
     <div className="mg-home-signal-inspector">
-      <span className="mg-home-signal-inspector-rank">
-        {String(rank).padStart(2, "0")} · Price-share readout
-      </span>
-      <strong>{name}</strong>
+      <span className="mg-home-signal-inspector-rank">{day.snapshot_date}</span>
+      <strong>{day.priced_subnet_count} priced subnets</strong>
       <dl>
-        <div>
-          <dt>Price share</dt>
-          <dd>{priceShare}</dd>
-        </div>
-        <div>
-          <dt>Registry family</dt>
-          <dd>{category}</dd>
-        </div>
-        <div>
-          <dt>Registry tags</dt>
-          <dd>{categoryTags.join(", ") || "Unclassified"}</dd>
-        </div>
-        <div>
-          <dt>Probe</dt>
-          <dd>{health}</dd>
-        </div>
+        {day.values.map((value) => {
+          const series = seriesById.get(value.series_id);
+          return (
+            <div key={value.series_id}>
+              <dt>
+                <span
+                  aria-hidden="true"
+                  className="mg-home-signal-series"
+                  style={
+                    {
+                      "--mg-home-signal-series-color": `var(--${toneById.get(value.series_id) ?? "chart-11"})`,
+                    } as CSSProperties
+                  }
+                />
+                {series ? seriesLabel(series) : value.series_id}
+              </dt>
+              <dd>{formatHomePriceShare(value.price_share)}</dd>
+            </div>
+          );
+        })}
       </dl>
     </div>
   );
@@ -418,10 +358,12 @@ function SignalFieldHeader() {
       <div>
         <span className="mg-home-signal-kicker">Network economics</span>
         <h2 id="home-price-share-field-title" className="mg-home-signal-title">
-          Market pulse.
+          Price composition.
         </h2>
       </div>
-      <p className="mg-home-signal-description">Where price share is concentrating now.</p>
+      <p className="mg-home-signal-description">
+        A 56-day view of the selected price-share cohort. Inspect a day for exact values.
+      </p>
     </header>
   );
 }

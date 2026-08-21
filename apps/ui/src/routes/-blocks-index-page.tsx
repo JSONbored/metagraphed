@@ -312,7 +312,7 @@ function BlocksTable() {
             />
           </QueryBar.Utility>
         </QueryBar>
-        <FilterSheet label="Controls" activeCount={activeCount}>
+        <FilterSheet label="Filters" activeCount={activeCount}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
               <span className="mg-type-caption text-ink-muted">Spec version</span>
@@ -456,7 +456,7 @@ function BlocksTable() {
     <>
       <ListShell
         presentation="canvas"
-        responsiveAt="lg"
+        responsiveAt="md"
         filters={filters}
         isEmpty={rows.length === 0}
         empty={emptyNode}

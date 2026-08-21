@@ -1079,7 +1079,7 @@ function SubnetsTable({
             placeholder="Search by netuid, name, or symbol"
             shortcut
             debounceMs={200}
-            className="min-h-11 lg:min-h-0"
+            className="min-h-11 min-w-[180px] lg:min-h-0"
           />
 
           <QueryBar.Divider />
@@ -1125,7 +1125,7 @@ function SubnetsTable({
         </QueryBar>
         <FilterSheet
           className="mg-subnets-filter-sheet shrink-0 [&>button]:min-h-11"
-          label="Controls"
+          label="Filters"
           activeCount={filterSheetCount}
         >
           {directoryRefinements}
@@ -1272,7 +1272,7 @@ function SubnetsTable({
       <QueryProgress active={isFetching} position="sticky" />
       <ListShell
         presentation="canvas"
-        responsiveAt="lg"
+        responsiveAt="md"
         filters={filters}
         isEmpty={rows.length === 0}
         isStale={isFetching}

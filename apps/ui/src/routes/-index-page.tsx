@@ -98,6 +98,7 @@ const HOME_DESTINATIONS = [
   { label: "Validators", detail: "Stake, weights, and performance", to: "/validators" },
   { label: "Blocks", detail: "Recent chain activity", to: "/blocks" },
   { label: "Accounts", detail: "Identity, holdings, and events", to: "/accounts" },
+  { label: "Updates", detail: "Registry changes and release notes", to: "/news/$" },
   { label: "Public APIs", detail: "Verified interfaces and schemas", to: "/apis" },
 ] as const;
 
@@ -106,7 +107,12 @@ function HomeRouteRail() {
   return (
     <nav className="mg-home-route-rail" aria-label="Explore Metagraphed">
       {HOME_DESTINATIONS.map((destination) => (
-        <Link key={destination.to} to={destination.to} className="mg-home-route-link">
+        <Link
+          key={destination.to}
+          to={destination.to}
+          params={destination.to === "/news/$" ? { _splat: "" } : undefined}
+          className="mg-home-route-link"
+        >
           <span className="mg-home-route-name">{destination.label}</span>
           <span className="mg-home-route-detail">{destination.detail}</span>
           <ArrowUpRight className="mg-home-route-arrow" aria-hidden="true" />

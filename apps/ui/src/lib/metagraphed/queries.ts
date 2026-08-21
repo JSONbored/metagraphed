@@ -20,6 +20,7 @@ import type {
   BulkHealthTrends,
   BulkHealthTrendSubnet,
   BulkHealthTrendPoint,
+  SubnetPriceShareCompositionArtifact,
   HealthTrendDay,
   RegistrySummary,
   RegistrySummaryTopSubnet,
@@ -1835,12 +1836,12 @@ export function normalizeSubnet(raw: unknown): Subnet {
 /**
  * One-shot ceiling for "every active subnet" reads (#8248).
  *
- * /api/v1/subnets has no server-side sort and the registry is ~129 subnets, so
- * the page fetches the whole set once and works over it client-side. Shared so
- * the registry table and the crawlable index cannot drift onto two different
- * limits and disagree about what "every subnet" means.
+ * /api/v1/subnets has no server-side sort, so the page fetches the whole set
+ * once and works over it client-side. This matches the sitemap's ceiling:
+ * directory, category, and crawlable-index views must derive from the same
+ * complete response or they can disagree about which category URLs exist.
  */
-export const SUBNETS_ALL_LIMIT = 200;
+export const SUBNETS_ALL_LIMIT = 500;
 
 export const subnetsQuery = (params?: QueryParams) =>
   queryOptions({
@@ -3918,6 +3919,25 @@ export const chainActivityQuery = (window: ChainWindow = "7d") =>
       } as ApiResult<ChainActivity>;
     },
     staleTime: STALE_SHORT,
+  });
+
+/**
+ * Bounded daily composition used by the landing-page data field. It is
+ * deliberately fetched as its published artifact rather than reconstructed
+ * from the current economics snapshot, because a temporal chart must not
+ * synthesize history from a live point-in-time value.
+ */
+export const subnetPriceShareCompositionQuery = () =>
+  queryOptions({
+    queryKey: k("subnet-price-share-composition"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<SubnetPriceShareCompositionArtifact>(
+        "/api/v1/chain/subnet-price-share-composition",
+        { signal },
+      );
+      return res as ApiResult<SubnetPriceShareCompositionArtifact>;
+    },
+    staleTime: STALE_MED,
   });
 
 // #3365: network-wide economics rollup (GET /api/v1/economics/trends), a distinct

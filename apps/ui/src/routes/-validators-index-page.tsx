@@ -305,7 +305,7 @@ function ValidatorsDirectory({
           </QueryBar>
           <FilterSheet
             className="shrink-0 [&>button]:min-h-11 lg:[&>button]:min-h-9"
-            label="Controls"
+            label="Filters"
             activeCount={activeFilterCount}
           >
             {directoryRefinements}
@@ -321,7 +321,7 @@ function ValidatorsDirectory({
       </div>
 
       {rows.length > 0 ? (
-        <div className="mg-directory-table hidden lg:block border border-border">
+        <div className="mg-directory-table hidden md:block border border-border">
           {/* ONE scroll container carrying BOTH sets of styling.
               This was split into single-axis wrappers (#8314) because a
               combined overflow-auto div left the extra columns
@@ -458,7 +458,7 @@ function ValidatorsDirectory({
       {rows.length > 0 ? (
         <ValidatorCardList
           validators={rows.slice(0, 50)}
-          className="grid gap-3 sm:grid-cols-2 lg:hidden"
+          className="grid gap-3 sm:grid-cols-2 md:hidden"
         />
       ) : null}
 

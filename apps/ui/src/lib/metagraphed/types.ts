@@ -72,6 +72,13 @@ export type HealthStatus = ApiSchema<"HealthStatus">;
 export type SurfaceKind = ApiSchema<"SurfaceKind">;
 export type Classification = ApiSchema<"Classification">;
 
+/**
+ * Bounded artifact-normalized price-share composition for the landing-page
+ * timeline. This remains a wire shape: presentation code must preserve the
+ * endpoint's explicit provenance rather than relabel it as stake or emission.
+ */
+export type SubnetPriceShareCompositionArtifact = ApiSchema<"SubnetPriceShareCompositionArtifact">;
+
 export interface ApiPagination {
   collection?: string;
   total?: number;
