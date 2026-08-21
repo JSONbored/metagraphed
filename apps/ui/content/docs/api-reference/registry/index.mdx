@@ -5,39 +5,39 @@ description: Every Registry endpoint in the metagraphed API, with its method and
 
 18 endpoints.
 
-- [Compare](/docs/api-reference/registry/compare) — `GET /api/v1/compare`  
+- [Compare](/docs/api-reference/registry/compare) — `GET /api/v1/compare`\
   Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order.
-- [Coverage](/docs/api-reference/registry/coverage) — `GET /api/v1/coverage`  
+- [Coverage](/docs/api-reference/registry/coverage) — `GET /api/v1/coverage`\
   Fetch registry coverage summary.
-- [Coverage By Network](/docs/api-reference/registry/coverage-by-network) — `GET /api/v1/{network}/coverage`  
+- [Coverage By Network](/docs/api-reference/registry/coverage-by-network) — `GET /api/v1/{network}/coverage`\
   Network-scoped form of /api/v1/coverage — prefix the route with a network to choose which chain answers it.
-- [Coverage Depth](/docs/api-reference/registry/coverage-depth) — `GET /api/v1/coverage-depth`  
+- [Coverage Depth](/docs/api-reference/registry/coverage-depth) — `GET /api/v1/coverage-depth`\
   Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.
-- [Curation](/docs/api-reference/registry/curation) — `GET /api/v1/curation`  
+- [Curation](/docs/api-reference/registry/curation) — `GET /api/v1/curation`\
   Fetch curation states by subnet.
-- [Fixture Detail](/docs/api-reference/registry/fixture-detail) — `GET /api/v1/fixtures/{surface_id}`  
+- [Fixture Detail](/docs/api-reference/registry/fixture-detail) — `GET /api/v1/fixtures/{surface_id}`\
   Fetch one captured, sanitized live request/response fixture by surface id.
-- [Fixtures](/docs/api-reference/registry/fixtures) — `GET /api/v1/fixtures`  
+- [Fixtures](/docs/api-reference/registry/fixtures) — `GET /api/v1/fixtures`\
   Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample).
-- [Gaps](/docs/api-reference/registry/gaps) — `GET /api/v1/gaps`  
+- [Gaps](/docs/api-reference/registry/gaps) — `GET /api/v1/gaps`\
   Fetch interface gap report.
-- [Lineage](/docs/api-reference/registry/lineage) — `GET /api/v1/lineage`  
+- [Lineage](/docs/api-reference/registry/lineage) — `GET /api/v1/lineage`\
   Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).
-- [Registry Leaderboards](/docs/api-reference/registry/registry-leaderboards) — `GET /api/v1/registry/leaderboards`  
+- [Registry Leaderboards](/docs/api-reference/registry/registry-leaderboards) — `GET /api/v1/registry/leaderboards`\
   Fetch registry leaderboards computed live from the store + registry projections + the economics tier.
-- [Registry Summary](/docs/api-reference/registry/registry-summary) — `GET /api/v1/registry/summary`  
+- [Registry Summary](/docs/api-reference/registry/registry-summary) — `GET /api/v1/registry/summary`\
   Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
-- [Review Attribution Candidates](/docs/api-reference/registry/review-attribution-candidates) — `GET /api/v1/review/attribution-candidates`  
+- [Review Attribution Candidates](/docs/api-reference/registry/review-attribution-candidates) — `GET /api/v1/review/attribution-candidates`\
   Fetch the attribution sweep's review queue.
-- [Review Enrichment Evidence](/docs/api-reference/registry/review-enrichment-evidence) — `GET /api/v1/review/enrichment-evidence`  
+- [Review Enrichment Evidence](/docs/api-reference/registry/review-enrichment-evidence) — `GET /api/v1/review/enrichment-evidence`\
   Fetch detailed candidate evidence behind the enrichment queue.
-- [Review Enrichment Queue](/docs/api-reference/registry/review-enrichment-queue) — `GET /api/v1/review/enrichment-queue`  
+- [Review Enrichment Queue](/docs/api-reference/registry/review-enrichment-queue) — `GET /api/v1/review/enrichment-queue`\
   Fetch the prioritized all-subnet enrichment queue.
-- [Review Enrichment Targets](/docs/api-reference/registry/review-enrichment-targets) — `GET /api/v1/review/enrichment-targets`  
+- [Review Enrichment Targets](/docs/api-reference/registry/review-enrichment-targets) — `GET /api/v1/review/enrichment-targets`\
   Fetch contributor-ready enrichment targets grouped by missing surface kind and review route.
-- [Review Gaps](/docs/api-reference/registry/review-gaps) — `GET /api/v1/review/gaps`  
+- [Review Gaps](/docs/api-reference/registry/review-gaps) — `GET /api/v1/review/gaps`\
   Fetch contributor-targeted subnet gap priorities.
-- [Review Profile Completeness](/docs/api-reference/registry/review-profile-completeness) — `GET /api/v1/review/profile-completeness`  
+- [Review Profile Completeness](/docs/api-reference/registry/review-profile-completeness) — `GET /api/v1/review/profile-completeness`\
   Fetch profile completeness gaps for contributor targeting.
-- [Subnet Gaps](/docs/api-reference/registry/subnet-gaps) — `GET /api/v1/subnets/{netuid}/gaps`  
+- [Subnet Gaps](/docs/api-reference/registry/subnet-gaps) — `GET /api/v1/subnets/{netuid}/gaps`\
   Fetch interface gap priorities and enrichment queue for one subnet.

@@ -5,143 +5,143 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
 
 70 endpoints.
 
-- [Deregistration Ranking](/docs/api-reference/subnets/deregistration-ranking) — `GET /api/v1/chain/deregistration-ranking`  
+- [Deregistration Ranking](/docs/api-reference/subnets/deregistration-ranking) — `GET /api/v1/chain/deregistration-ranking`\
   Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it.
-- [Domain Summary](/docs/api-reference/subnets/domain-summary) — `GET /api/v1/domains/{tag}/summary`  
+- [Domain Summary](/docs/api-reference/subnets/domain-summary) — `GET /api/v1/domains/{tag}/summary`\
   Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration.
-- [Domains](/docs/api-reference/subnets/domains) — `GET /api/v1/domains`  
+- [Domains](/docs/api-reference/subnets/domains) — `GET /api/v1/domains`\
   Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration.
-- [Economics](/docs/api-reference/subnets/economics) — `GET /api/v1/economics`  
+- [Economics](/docs/api-reference/subnets/economics) — `GET /api/v1/economics`\
   List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height).
-- [Economics By Network](/docs/api-reference/subnets/economics-by-network) — `GET /api/v1/{network}/economics`  
+- [Economics By Network](/docs/api-reference/subnets/economics-by-network) — `GET /api/v1/{network}/economics`\
   Network-scoped form of /api/v1/economics — prefix the route with a network to choose which chain answers it.
-- [Economics Trends](/docs/api-reference/subnets/economics-trends) — `GET /api/v1/economics/trends`  
+- [Economics Trends](/docs/api-reference/subnets/economics-trends) — `GET /api/v1/economics/trends`\
   Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup.
-- [Emission Pipeline](/docs/api-reference/subnets/emission-pipeline) — `GET /api/v1/chain/emission-pipeline`  
+- [Emission Pipeline](/docs/api-reference/subnets/emission-pipeline) — `GET /api/v1/chain/emission-pipeline`\
   Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`.
-- [Subnet Alpha Volume](/docs/api-reference/subnets/subnet-alpha-volume) — `GET /api/v1/subnets/{netuid}/volume`  
+- [Subnet Alpha Volume](/docs/api-reference/subnets/subnet-alpha-volume) — `GET /api/v1/subnets/{netuid}/volume`\
   Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/\{netuid}/stake-flow.
-- [Subnet Axon Removals](/docs/api-reference/subnets/subnet-axon-removals) — `GET /api/v1/subnets/{netuid}/axon-removals`  
+- [Subnet Axon Removals](/docs/api-reference/subnets/subnet-axon-removals) — `GET /api/v1/subnets/{netuid}/axon-removals`\
   Fetch axon-removal activity for one subnet over a 7d or 30d window: the distinct removers (hotkeys), the AxonInfoRemoved event count, and the average removals per remover, read from the account_events AxonInfoRemoved stream, which the runtime has never populated — an empty card is marked `degraded` rather than published as a measured zero.
-- [Subnet Burn](/docs/api-reference/subnets/subnet-burn) — `GET /api/v1/subnets/{netuid}/burn`  
+- [Subnet Burn](/docs/api-reference/subnets/subnet-burn) — `GET /api/v1/subnets/{netuid}/burn`\
   Fetch the live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/\{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache.
-- [Subnet Burn By Network](/docs/api-reference/subnets/subnet-burn-by-network) — `GET /api/v1/{network}/subnets/{netuid}/burn`  
+- [Subnet Burn By Network](/docs/api-reference/subnets/subnet-burn-by-network) — `GET /api/v1/{network}/subnets/{netuid}/burn`\
   Network-scoped form of /api/v1/subnets/\{netuid}/burn — prefix the route with a network to choose which chain answers it.
-- [Subnet Burn History](/docs/api-reference/subnets/subnet-burn-history) — `GET /api/v1/subnets/{netuid}/burn/history`  
+- [Subnet Burn History](/docs/api-reference/subnets/subnet-burn-history) — `GET /api/v1/subnets/{netuid}/burn/history`\
   Fetch one subnet's registration-cost series.
-- [Subnet Concentration](/docs/api-reference/subnets/subnet-concentration) — `GET /api/v1/subnets/{netuid}/concentration`  
+- [Subnet Concentration](/docs/api-reference/subnets/subnet-concentration) — `GET /api/v1/subnets/{netuid}/concentration`\
   Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons store).
-- [Subnet Concentration History](/docs/api-reference/subnets/subnet-concentration-history) — `GET /api/v1/subnets/{netuid}/concentration/history`  
+- [Subnet Concentration History](/docs/api-reference/subnets/subnet-concentration-history) — `GET /api/v1/subnets/{netuid}/concentration/history`\
   Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily rollup).
-- [Subnet Conviction](/docs/api-reference/subnets/subnet-conviction) — `GET /api/v1/subnets/{netuid}/conviction`  
+- [Subnet Conviction](/docs/api-reference/subnets/subnet-conviction) — `GET /api/v1/subnets/{netuid}/conviction`\
   Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e.
-- [Subnet Cost To Participate](/docs/api-reference/subnets/subnet-cost-to-participate) — `GET /api/v1/subnets/{netuid}/cost-to-participate`  
+- [Subnet Cost To Participate](/docs/api-reference/subnets/subnet-cost-to-participate) — `GET /api/v1/subnets/{netuid}/cost-to-participate`\
   Read what one subnet says it takes to participate there, beside what the chain exactly charges to enter.
-- [Subnet Deregistration Ranking History](/docs/api-reference/subnets/subnet-deregistration-ranking-history) — `GET /api/v1/subnets/{netuid}/deregistration-ranking/history`  
+- [Subnet Deregistration Ranking History](/docs/api-reference/subnets/subnet-deregistration-ranking-history) — `GET /api/v1/subnets/{netuid}/deregistration-ranking/history`\
   Fetch one subnet's deregistration-rank trajectory.
-- [Subnet Deregistrations](/docs/api-reference/subnets/subnet-deregistrations) — `GET /api/v1/subnets/{netuid}/deregistrations`  
+- [Subnet Deregistrations](/docs/api-reference/subnets/subnet-deregistrations) — `GET /api/v1/subnets/{netuid}/deregistrations`\
   Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, DERIVED from UID reuse in the NeuronRegistered stream (NeuronDeregistered has never been emitted by the runtime).
-- [Subnet Detail](/docs/api-reference/subnets/subnet-detail) — `GET /api/v1/subnets/{netuid}`  
+- [Subnet Detail](/docs/api-reference/subnets/subnet-detail) — `GET /api/v1/subnets/{netuid}`\
   Fetch per-subnet detail.
-- [Subnet Detail By Network](/docs/api-reference/subnets/subnet-detail-by-network) — `GET /api/v1/{network}/subnets/{netuid}`  
+- [Subnet Detail By Network](/docs/api-reference/subnets/subnet-detail-by-network) — `GET /api/v1/{network}/subnets/{netuid}`\
   Network-scoped form of /api/v1/subnets/\{netuid} — prefix the route with a network to choose which chain answers it.
-- [Subnet Emission Pipeline History](/docs/api-reference/subnets/subnet-emission-pipeline-history) — `GET /api/v1/subnets/{netuid}/emission-pipeline/history`  
+- [Subnet Emission Pipeline History](/docs/api-reference/subnets/subnet-emission-pipeline-history) — `GET /api/v1/subnets/{netuid}/emission-pipeline/history`\
   Fetch one subnet's emission-pipeline series.
-- [Subnet Emission Split History](/docs/api-reference/subnets/subnet-emission-split-history) — `GET /api/v1/subnets/{netuid}/emission-split/history`  
+- [Subnet Emission Split History](/docs/api-reference/subnets/subnet-emission-split-history) — `GET /api/v1/subnets/{netuid}/emission-split/history`\
   Fetch the per-day split of one subnet's emission by recipient class over a 7d/30d/90d window: how much went to the owner, to validators, and to miners, one point per day (computed live from the neuron_daily rollup).
-- [Subnet Event Summary](/docs/api-reference/subnets/subnet-event-summary) — `GET /api/v1/subnets/{netuid}/event-summary`  
+- [Subnet Event Summary](/docs/api-reference/subnets/subnet-event-summary) — `GET /api/v1/subnets/{netuid}/event-summary`\
   Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice.
-- [Subnet Events](/docs/api-reference/subnets/subnet-events) — `GET /api/v1/subnets/{netuid}/events`  
+- [Subnet Events](/docs/api-reference/subnets/subnet-events) — `GET /api/v1/subnets/{netuid}/events`\
   Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events store filtered by netuid.
-- [Subnet History](/docs/api-reference/subnets/subnet-history) — `GET /api/v1/subnets/{netuid}/history`  
+- [Subnet History](/docs/api-reference/subnets/subnet-history) — `GET /api/v1/subnets/{netuid}/history`\
   Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily rollup tier.
-- [Subnet Holders](/docs/api-reference/subnets/subnet-holders) — `GET /api/v1/subnets/{netuid}/holders`  
+- [Subnet Holders](/docs/api-reference/subnets/subnet-holders) — `GET /api/v1/subnets/{netuid}/holders`\
   Fetch who owns one subnet's alpha (#9557) — the top coldkeys by alpha held on that netuid, with each holder's share of the subnet total, how many hotkeys they hold it through, and whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration).
-- [Subnet Hyperparameters](/docs/api-reference/subnets/subnet-hyperparameters) — `GET /api/v1/subnets/{netuid}/hyperparameters`  
+- [Subnet Hyperparameters](/docs/api-reference/subnets/subnet-hyperparameters) — `GET /api/v1/subnets/{netuid}/hyperparameters`\
   Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the subnet_hyperparams tier.
-- [Subnet Hyperparameters History](/docs/api-reference/subnets/subnet-hyperparameters-history) — `GET /api/v1/subnets/{netuid}/hyperparameters/history`  
+- [Subnet Hyperparameters History](/docs/api-reference/subnets/subnet-hyperparameters-history) — `GET /api/v1/subnets/{netuid}/hyperparameters/history`\
   Fetch the append-only hyperparameter-change timeline for one subnet (#4309): each entry is a subnet_hyperparams snapshot recorded when any hyperparameter changed.
-- [Subnet Identity History](/docs/api-reference/subnets/subnet-identity-history) — `GET /api/v1/subnets/{netuid}/identity-history`  
+- [Subnet Identity History](/docs/api-reference/subnets/subnet-identity-history) — `GET /api/v1/subnets/{netuid}/identity-history`\
   Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed.
-- [Subnet Idle Stake](/docs/api-reference/subnets/subnet-idle-stake) — `GET /api/v1/subnets/{netuid}/idle-stake`  
+- [Subnet Idle Stake](/docs/api-reference/subnets/subnet-idle-stake) — `GET /api/v1/subnets/{netuid}/idle-stake`\
   Fetch stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike (computed live from the neurons store).
-- [Subnet Lease](/docs/api-reference/subnets/subnet-lease) — `GET /api/v1/subnets/{netuid}/lease`  
+- [Subnet Lease](/docs/api-reference/subnets/subnet-lease) — `GET /api/v1/subnets/{netuid}/lease`\
   Fetch the live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms + accumulated-but-undistributed alpha dividends, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache.
-- [Subnet Lease By Network](/docs/api-reference/subnets/subnet-lease-by-network) — `GET /api/v1/{network}/subnets/{netuid}/lease`  
+- [Subnet Lease By Network](/docs/api-reference/subnets/subnet-lease-by-network) — `GET /api/v1/{network}/subnets/{netuid}/lease`\
   Network-scoped form of /api/v1/subnets/\{netuid}/lease — prefix the route with a network to choose which chain answers it.
-- [Subnet Lease History](/docs/api-reference/subnets/subnet-lease-history) — `GET /api/v1/subnets/{netuid}/lease/history`  
+- [Subnet Lease History](/docs/api-reference/subnets/subnet-lease-history) — `GET /api/v1/subnets/{netuid}/lease/history`\
   Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing.
-- [Subnet Lifecycle](/docs/api-reference/subnets/subnet-lifecycle) — `GET /api/v1/subnets/{netuid}/lifecycle`  
+- [Subnet Lifecycle](/docs/api-reference/subnets/subnet-lifecycle) — `GET /api/v1/subnets/{netuid}/lifecycle`\
   Fetch when one subnet was registered or deregistered (#10263): an append-only timeline, newest first, from the subnet_lifecycle Neon table.
-- [Subnet Metagraph](/docs/api-reference/subnets/subnet-metagraph) — `GET /api/v1/subnets/{netuid}/metagraph`  
+- [Subnet Metagraph](/docs/api-reference/subnets/subnet-metagraph) — `GET /api/v1/subnets/{netuid}/metagraph`\
   Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons store.
-- [Subnet Miner Fairness](/docs/api-reference/subnets/subnet-miner-fairness) — `GET /api/v1/subnets/{netuid}/miner-fairness`  
+- [Subnet Miner Fairness](/docs/api-reference/subnets/subnet-miner-fairness) — `GET /api/v1/subnets/{netuid}/miner-fairness`\
   Measure whether a subnet's registered miners actually earn, over a 7d/30d/90d window rather than from a snapshot.
-- [Subnet Movers](/docs/api-reference/subnets/subnet-movers) — `GET /api/v1/subnets/movers`  
+- [Subnet Movers](/docs/api-reference/subnets/subnet-movers) — `GET /api/v1/subnets/movers`\
   Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end.
-- [Subnet Neuron](/docs/api-reference/subnets/subnet-neuron) — `GET /api/v1/subnets/{netuid}/neurons/{uid}`  
+- [Subnet Neuron](/docs/api-reference/subnets/subnet-neuron) — `GET /api/v1/subnets/{netuid}/neurons/{uid}`\
   Fetch a single neuron's metagraph state by UID, computed live from the neurons store.
-- [Subnet Neuron History](/docs/api-reference/subnets/subnet-neuron-history) — `GET /api/v1/subnets/{netuid}/neurons/{uid}/history`  
+- [Subnet Neuron History](/docs/api-reference/subnets/subnet-neuron-history) — `GET /api/v1/subnets/{netuid}/neurons/{uid}/history`\
   Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily rollup tier.
-- [Subnet OHLC](/docs/api-reference/subnets/subnet-ohlc) — `GET /api/v1/subnets/{netuid}/ohlc`  
+- [Subnet OHLC](/docs/api-reference/subnets/subnet-ohlc) — `GET /api/v1/subnets/{netuid}/ohlc`\
   Fetch open/high/low/close/volume candles for one subnet's alpha price, bucketed by ?interval= (1h or 1d, default 1h) from the same account_events StakeAdded/StakeRemoved stream as GET /api/v1/subnets/\{netuid}/volume — each row is one executed trade, price = amount_tao / alpha_amount.
-- [Subnet Overview](/docs/api-reference/subnets/subnet-overview) — `GET /api/v1/subnets/{netuid}/overview`  
+- [Subnet Overview](/docs/api-reference/subnets/subnet-overview) — `GET /api/v1/subnets/{netuid}/overview`\
   Fetch a composed overview (profile + health + curation + gaps + counts) for one subnet.
-- [Subnet Owner Capture](/docs/api-reference/subnets/subnet-owner-capture) — `GET /api/v1/subnets/{netuid}/owner-capture`  
+- [Subnet Owner Capture](/docs/api-reference/subnets/subnet-owner-capture) — `GET /api/v1/subnets/{netuid}/owner-capture`\
   Measure how much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window.
-- [Subnet Owner Cut](/docs/api-reference/subnets/subnet-owner-cut) — `GET /api/v1/subnets/{netuid}/owner-cut`  
+- [Subnet Owner Cut](/docs/api-reference/subnets/subnet-owner-cut) — `GET /api/v1/subnets/{netuid}/owner-cut`\
   Fetch one subnet's owner-cut accrual and its disposition.
-- [Subnet Ownership History](/docs/api-reference/subnets/subnet-ownership-history) — `GET /api/v1/subnets/{netuid}/ownership-history`  
+- [Subnet Ownership History](/docs/api-reference/subnets/subnet-ownership-history) — `GET /api/v1/subnets/{netuid}/ownership-history`\
   Fetch every ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302) — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required).
-- [Subnet Performance](/docs/api-reference/subnets/subnet-performance) — `GET /api/v1/subnets/{netuid}/performance`  
+- [Subnet Performance](/docs/api-reference/subnets/subnet-performance) — `GET /api/v1/subnets/{netuid}/performance`\
   Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons store).
-- [Subnet Performance History](/docs/api-reference/subnets/subnet-performance-history) — `GET /api/v1/subnets/{netuid}/performance/history`  
+- [Subnet Performance History](/docs/api-reference/subnets/subnet-performance-history) — `GET /api/v1/subnets/{netuid}/performance/history`\
   Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily rollup).
-- [Subnet Prometheus](/docs/api-reference/subnets/subnet-prometheus) — `GET /api/v1/subnets/{netuid}/prometheus`  
+- [Subnet Prometheus](/docs/api-reference/subnets/subnet-prometheus) — `GET /api/v1/subnets/{netuid}/prometheus`\
   Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted — an empty card is marked `degraded` rather than published as a measured zero.
-- [Subnet Recycled](/docs/api-reference/subnets/subnet-recycled) — `GET /api/v1/subnets/{netuid}/recycled`  
+- [Subnet Recycled](/docs/api-reference/subnets/subnet-recycled) — `GET /api/v1/subnets/{netuid}/recycled`\
   Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache.
-- [Subnet Recycled By Network](/docs/api-reference/subnets/subnet-recycled-by-network) — `GET /api/v1/{network}/subnets/{netuid}/recycled`  
+- [Subnet Recycled By Network](/docs/api-reference/subnets/subnet-recycled-by-network) — `GET /api/v1/{network}/subnets/{netuid}/recycled`\
   Network-scoped form of /api/v1/subnets/\{netuid}/recycled — prefix the route with a network to choose which chain answers it.
-- [Subnet Registrations](/docs/api-reference/subnets/subnet-registrations) — `GET /api/v1/subnets/{netuid}/registrations`  
+- [Subnet Registrations](/docs/api-reference/subnets/subnet-registrations) — `GET /api/v1/subnets/{netuid}/registrations`\
   Fetch neuron-registration activity for one subnet over a 7d or 30d window: the distinct registrants (hotkeys), the NeuronRegistered event count, and the average registrations per registrant, computed live from the account_events NeuronRegistered stream.
-- [Subnet Revenue](/docs/api-reference/subnets/subnet-revenue) — `GET /api/v1/subnets/{netuid}/revenue`  
+- [Subnet Revenue](/docs/api-reference/subnets/subnet-revenue) — `GET /api/v1/subnets/{netuid}/revenue`\
   Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios.
-- [Subnet Serving](/docs/api-reference/subnets/subnet-serving) — `GET /api/v1/subnets/{netuid}/serving`  
+- [Subnet Serving](/docs/api-reference/subnets/subnet-serving) — `GET /api/v1/subnets/{netuid}/serving`\
   Fetch axon-serving announcement activity for one subnet over a 7d or 30d window: the distinct servers (hotkeys), the AxonServed event count, and the average announcements per server, computed live from the account_events AxonServed stream.
-- [Subnet Stake Flow](/docs/api-reference/subnets/subnet-stake-flow) — `GET /api/v1/subnets/{netuid}/stake-flow`  
+- [Subnet Stake Flow](/docs/api-reference/subnets/subnet-stake-flow) — `GET /api/v1/subnets/{netuid}/stake-flow`\
   Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream.
-- [Subnet Stake Moves](/docs/api-reference/subnets/subnet-stake-moves) — `GET /api/v1/subnets/{netuid}/stake-moves`  
+- [Subnet Stake Moves](/docs/api-reference/subnets/subnet-stake-moves) — `GET /api/v1/subnets/{netuid}/stake-moves`\
   Fetch stake-movement (re-delegation) activity for one subnet over a 7d or 30d window: the distinct movers (accounts), the StakeMoved event count, and the average movements per mover, computed live from the account_events StakeMoved stream.
-- [Subnet Stake Quote](/docs/api-reference/subnets/subnet-stake-quote) — `GET /api/v1/subnets/{netuid}/stake-quote`  
+- [Subnet Stake Quote](/docs/api-reference/subnets/subnet-stake-quote) — `GET /api/v1/subnets/{netuid}/stake-quote`\
   Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool).
-- [Subnet Stake Transfers](/docs/api-reference/subnets/subnet-stake-transfers) — `GET /api/v1/subnets/{netuid}/stake-transfers`  
+- [Subnet Stake Transfers](/docs/api-reference/subnets/subnet-stake-transfers) — `GET /api/v1/subnets/{netuid}/stake-transfers`\
   Fetch stake-transfer activity for one subnet over a 7d or 30d window: the distinct senders (accounts), the StakeTransferred event count, and the average transfers per sender, computed live from the account_events StakeTransferred stream.
-- [Subnet Surface History](/docs/api-reference/subnets/subnet-surface-history) — `GET /api/v1/subnets/{netuid}/surface-history`  
+- [Subnet Surface History](/docs/api-reference/subnets/subnet-surface-history) — `GET /api/v1/subnets/{netuid}/surface-history`\
   Fetch one subnet's surface audit trail.
-- [Subnet Trajectory](/docs/api-reference/subnets/subnet-trajectory) — `GET /api/v1/subnets/{netuid}/trajectory`  
+- [Subnet Trajectory](/docs/api-reference/subnets/subnet-trajectory) — `GET /api/v1/subnets/{netuid}/trajectory`\
   Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from the store).
-- [Subnet Treasury](/docs/api-reference/subnets/subnet-treasury) — `GET /api/v1/subnets/{netuid}/treasury`  
+- [Subnet Treasury](/docs/api-reference/subnets/subnet-treasury) — `GET /api/v1/subnets/{netuid}/treasury`\
   Read what one subnet's own published source declares it allocates to a treasury, against what the chain shows.
-- [Subnet Turnover](/docs/api-reference/subnets/subnet-turnover) — `GET /api/v1/subnets/{netuid}/turnover`  
+- [Subnet Turnover](/docs/api-reference/subnets/subnet-turnover) — `GET /api/v1/subnets/{netuid}/turnover`\
   Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score.
-- [Subnet Validator Economics](/docs/api-reference/subnets/subnet-validator-economics) — `GET /api/v1/subnets/{netuid}/validator-economics`  
+- [Subnet Validator Economics](/docs/api-reference/subnets/subnet-validator-economics) — `GET /api/v1/subnets/{netuid}/validator-economics`\
   Fetch what it costs to become a validator on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), the TAO to reach each priced against live AMM pool reserves plus the registration burn, how many validator slots are open, the commission (take) distribution across permit-holders, whether the emission gate is open and the daily TAO inflow, and the live StakeThreshold/TaoWeight the floors were computed against.
-- [Subnet Validator Economics History](/docs/api-reference/subnets/subnet-validator-economics-history) — `GET /api/v1/subnets/{netuid}/validator-economics/history`  
+- [Subnet Validator Economics History](/docs/api-reference/subnets/subnet-validator-economics-history) — `GET /api/v1/subnets/{netuid}/validator-economics/history`\
   Fetch whether validating on one subnet is getting cheaper or more expensive: a daily series of the observed permit floor and earning floor in alpha, the validator set composition as three separate counts, and the emission-gate state with daily TAO inflow, over a 7d/30d/90d window (default 30d), newest first.
-- [Subnet Validators](/docs/api-reference/subnets/subnet-validators) — `GET /api/v1/subnets/{netuid}/validators`  
+- [Subnet Validators](/docs/api-reference/subnets/subnet-validators) — `GET /api/v1/subnets/{netuid}/validators`\
   Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons store.
-- [Subnet Wallets](/docs/api-reference/subnets/subnet-wallets) — `GET /api/v1/subnets/{netuid}/wallets`  
+- [Subnet Wallets](/docs/api-reference/subnets/subnet-wallets) — `GET /api/v1/subnets/{netuid}/wallets`\
   Fetch one subnet's declared wallets: the chain-derived owner keys, plus any treasury, burn, payment-collector or multisig address the team has published and somebody has evidenced.
-- [Subnet Weight Setters](/docs/api-reference/subnets/subnet-weight-setters) — `GET /api/v1/subnets/{netuid}/weights/setters`  
+- [Subnet Weight Setters](/docs/api-reference/subnets/subnet-weight-setters) — `GET /api/v1/subnets/{netuid}/weights/setters`\
   Fetch the per-subnet weight-setter leaderboard over a 7d or 30d window: the individual validators behind /weights ranked by activity, each with its WeightsSet count, its share of the subnet's total weight-setting, and when it first and last set weights in the window, computed live from the account_events WeightsSet stream.
-- [Subnet Weights](/docs/api-reference/subnets/subnet-weights) — `GET /api/v1/subnets/{netuid}/weights`  
+- [Subnet Weights](/docs/api-reference/subnets/subnet-weights) — `GET /api/v1/subnets/{netuid}/weights`\
   Fetch validator weight-setting activity for one subnet over a 7d or 30d window: the distinct weight-setting validators, the WeightsSet event count, and the average updates per validator, computed live from the account_events WeightsSet stream.
-- [Subnet Yield](/docs/api-reference/subnets/subnet-yield) — `GET /api/v1/subnets/{netuid}/yield`  
+- [Subnet Yield](/docs/api-reference/subnets/subnet-yield) — `GET /api/v1/subnets/{netuid}/yield`\
   Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons store.
-- [Subnet Yield History](/docs/api-reference/subnets/subnet-yield-history) — `GET /api/v1/subnets/{netuid}/yield/history`  
+- [Subnet Yield History](/docs/api-reference/subnets/subnet-yield-history) — `GET /api/v1/subnets/{netuid}/yield/history`\
   Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily rollup).
-- [Subnets](/docs/api-reference/subnets/subnets) — `GET /api/v1/subnets`  
+- [Subnets](/docs/api-reference/subnets/subnets) — `GET /api/v1/subnets`\
   List active Finney subnets.
-- [Subnets By Network](/docs/api-reference/subnets/subnets-by-network) — `GET /api/v1/{network}/subnets`  
+- [Subnets By Network](/docs/api-reference/subnets/subnets-by-network) — `GET /api/v1/{network}/subnets`\
   Network-scoped form of /api/v1/subnets — prefix the route with a network to choose which chain answers it.

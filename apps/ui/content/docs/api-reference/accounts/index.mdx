@@ -5,83 +5,83 @@ description: Every Accounts endpoint in the metagraphed API, with its method and
 
 40 endpoints.
 
-- [Account Axon Removals](/docs/api-reference/accounts/account-axon-removals) — `GET /api/v1/accounts/{ss58}/axon-removals`  
+- [Account Axon Removals](/docs/api-reference/accounts/account-axon-removals) — `GET /api/v1/accounts/{ss58}/axon-removals`\
   Fetch one account's axon-removal footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonInfoRemoved count with the first and last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet — read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty footprint is marked `degraded` rather than published as a measured zero.
-- [Account Balance](/docs/api-reference/accounts/account-balance) — `GET /api/v1/accounts/{ss58}/balance`  
+- [Account Balance](/docs/api-reference/accounts/account-balance) — `GET /api/v1/accounts/{ss58}/balance`\
   Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache.
-- [Account Balance By Network](/docs/api-reference/accounts/account-balance-by-network) — `GET /api/v1/{network}/accounts/{ss58}/balance`  
+- [Account Balance By Network](/docs/api-reference/accounts/account-balance-by-network) — `GET /api/v1/{network}/accounts/{ss58}/balance`\
   Network-scoped form of /api/v1/accounts/\{ss58}/balance — prefix the route with a network to choose which chain answers it.
-- [Account Children](/docs/api-reference/accounts/account-children) — `GET /api/v1/accounts/{ss58}/children`  
+- [Account Children](/docs/api-reference/accounts/account-children) — `GET /api/v1/accounts/{ss58}/children`\
   Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache.
-- [Account Children By Network](/docs/api-reference/accounts/account-children-by-network) — `GET /api/v1/{network}/accounts/{ss58}/children`  
+- [Account Children By Network](/docs/api-reference/accounts/account-children-by-network) — `GET /api/v1/{network}/accounts/{ss58}/children`\
   Network-scoped form of /api/v1/accounts/\{ss58}/children — prefix the route with a network to choose which chain answers it.
-- [Account Counterparties](/docs/api-reference/accounts/account-counterparties) — `GET /api/v1/accounts/{ss58}/counterparties`  
+- [Account Counterparties](/docs/api-reference/accounts/account-counterparties) — `GET /api/v1/accounts/{ss58}/counterparties`\
   Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=\<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events store.
-- [Account Deregistrations](/docs/api-reference/accounts/account-deregistrations) — `GET /api/v1/accounts/{ss58}/deregistrations`  
+- [Account Deregistrations](/docs/api-reference/accounts/account-deregistrations) — `GET /api/v1/accounts/{ss58}/deregistrations`\
   Fetch one account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered eviction count with the first and last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — DERIVED from UID reuse (the slots where this account was the PREVIOUS holder); NeuronDeregistered has never been emitted by the runtime, the payload's `derivation` block states the lower bound, and `degraded` marks an answer nothing derived.
-- [Account Entities](/docs/api-reference/accounts/account-entities) — `GET /api/v1/accounts/{ss58}/entities`  
+- [Account Entities](/docs/api-reference/accounts/account-entities) — `GET /api/v1/accounts/{ss58}/entities`\
   Fetch one address's community-contributed entity labels plus every subnet-ownership tie it has via the chain_events SubnetOwnerChanged stream (#6737-#6740) — either side of an automatic conviction-contest transfer.
-- [Account Events](/docs/api-reference/accounts/account-events) — `GET /api/v1/accounts/{ss58}/events`  
+- [Account Events](/docs/api-reference/accounts/account-events) — `GET /api/v1/accounts/{ss58}/events`\
   Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first.
-- [Account Extrinsics](/docs/api-reference/accounts/account-extrinsics) — `GET /api/v1/accounts/{ss58}/extrinsics`  
+- [Account Extrinsics](/docs/api-reference/accounts/account-extrinsics) — `GET /api/v1/accounts/{ss58}/extrinsics`\
   Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics tier.
-- [Account History](/docs/api-reference/accounts/account-history) — `GET /api/v1/accounts/{ss58}/history`  
+- [Account History](/docs/api-reference/accounts/account-history) — `GET /api/v1/accounts/{ss58}/history`\
   Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854).
-- [Account Identity](/docs/api-reference/accounts/account-identity) — `GET /api/v1/accounts/{ss58}/identity`  
+- [Account Identity](/docs/api-reference/accounts/account-identity) — `GET /api/v1/accounts/{ss58}/identity`\
   Fetch the latest-only personal chain identity for one account (epic #4301/5.4), computed live from the account_identity tier.
-- [Account Identity History](/docs/api-reference/accounts/account-identity-history) — `GET /api/v1/accounts/{ss58}/identity-history`  
+- [Account Identity History](/docs/api-reference/accounts/account-identity-history) — `GET /api/v1/accounts/{ss58}/identity-history`\
   Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed.
-- [Account Parents](/docs/api-reference/accounts/account-parents) — `GET /api/v1/accounts/{ss58}/parents`  
+- [Account Parents](/docs/api-reference/accounts/account-parents) — `GET /api/v1/accounts/{ss58}/parents`\
   Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache.
-- [Account Parents By Network](/docs/api-reference/accounts/account-parents-by-network) — `GET /api/v1/{network}/accounts/{ss58}/parents`  
+- [Account Parents By Network](/docs/api-reference/accounts/account-parents-by-network) — `GET /api/v1/{network}/accounts/{ss58}/parents`\
   Network-scoped form of /api/v1/accounts/\{ss58}/parents — prefix the route with a network to choose which chain answers it.
-- [Account Portfolio](/docs/api-reference/accounts/account-portfolio) — `GET /api/v1/accounts/{ss58}/portfolio`  
+- [Account Portfolio](/docs/api-reference/accounts/account-portfolio) — `GET /api/v1/accounts/{ss58}/portfolio`\
   Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration).
-- [Account Positions](/docs/api-reference/accounts/account-positions) — `GET /api/v1/accounts/{ss58}/positions`  
+- [Account Positions](/docs/api-reference/accounts/account-positions) — `GET /api/v1/accounts/{ss58}/positions`\
   Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view.
-- [Account Prometheus](/docs/api-reference/accounts/account-prometheus) — `GET /api/v1/accounts/{ss58}/prometheus`  
+- [Account Prometheus](/docs/api-reference/accounts/account-prometheus) — `GET /api/v1/accounts/{ss58}/prometheus`\
   Fetch one account's Prometheus-endpoint serving footprint per subnet over a recent window (7d/30d/90d): each subnet's PrometheusServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet — read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty footprint is marked `degraded` rather than published as a measured zero.
-- [Account Registrations](/docs/api-reference/accounts/account-registrations) — `GET /api/v1/accounts/{ss58}/registrations`  
+- [Account Registrations](/docs/api-reference/accounts/account-registrations) — `GET /api/v1/accounts/{ss58}/registrations`\
   Fetch one account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first and last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events store.
-- [Account Root Claim](/docs/api-reference/accounts/account-root-claim) — `GET /api/v1/accounts/{ss58}/root-claim`  
+- [Account Root Claim](/docs/api-reference/accounts/account-root-claim) — `GET /api/v1/accounts/{ss58}/root-claim`\
   Fetch the live root-claim current state for one Finney ss58 account (#7229) — RootClaimType setting, per-hotkey RootClaimable rates, RootClaimed cumulative watermarks, and RootClaimableThreshold — queried from the finney RPC at request time with 120s KV cache.
-- [Account Root Claim By Network](/docs/api-reference/accounts/account-root-claim-by-network) — `GET /api/v1/{network}/accounts/{ss58}/root-claim`  
+- [Account Root Claim By Network](/docs/api-reference/accounts/account-root-claim-by-network) — `GET /api/v1/{network}/accounts/{ss58}/root-claim`\
   Network-scoped form of /api/v1/accounts/\{ss58}/root-claim — prefix the route with a network to choose which chain answers it.
-- [Account Serving](/docs/api-reference/accounts/account-serving) — `GET /api/v1/accounts/{ss58}/serving`  
+- [Account Serving](/docs/api-reference/accounts/account-serving) — `GET /api/v1/accounts/{ss58}/serving`\
   Fetch one account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events store.
-- [Account Stake Flow](/docs/api-reference/accounts/account-stake-flow) — `GET /api/v1/accounts/{ss58}/stake-flow`  
+- [Account Stake Flow](/docs/api-reference/accounts/account-stake-flow) — `GET /api/v1/accounts/{ss58}/stake-flow`\
   Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events store.
-- [Account Stake Moves](/docs/api-reference/accounts/account-stake-moves) — `GET /api/v1/accounts/{ss58}/stake-moves`  
+- [Account Stake Moves](/docs/api-reference/accounts/account-stake-moves) — `GET /api/v1/accounts/{ss58}/stake-moves`\
   Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events store.
-- [Account Subnet Position History](/docs/api-reference/accounts/account-subnet-position-history) — `GET /api/v1/accounts/{ss58}/subnets/{netuid}/history`  
+- [Account Subnet Position History](/docs/api-reference/accounts/account-subnet-position-history) — `GET /api/v1/accounts/{ss58}/subnets/{netuid}/history`\
   Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the account_position_daily rollup tier.
-- [Account Subnets](/docs/api-reference/accounts/account-subnets) — `GET /api/v1/accounts/{ss58}/subnets`  
+- [Account Subnets](/docs/api-reference/accounts/account-subnets) — `GET /api/v1/accounts/{ss58}/subnets`\
   Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons store.
-- [Account Summary](/docs/api-reference/accounts/account-summary) — `GET /api/v1/accounts/{ss58}`  
+- [Account Summary](/docs/api-reference/accounts/account-summary) — `GET /api/v1/accounts/{ss58}`\
   Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake.
-- [Account Transfers](/docs/api-reference/accounts/account-transfers) — `GET /api/v1/accounts/{ss58}/transfers`  
+- [Account Transfers](/docs/api-reference/accounts/account-transfers) — `GET /api/v1/accounts/{ss58}/transfers`\
   Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events store.
-- [Account Weight Setters](/docs/api-reference/accounts/account-weight-setters) — `GET /api/v1/accounts/{ss58}/weight-setters`  
+- [Account Weight Setters](/docs/api-reference/accounts/account-weight-setters) — `GET /api/v1/accounts/{ss58}/weight-setters`\
   Fetch one account's (validator's) weight-setting footprint per subnet over a recent window (7d/30d): each subnet's WeightsSet count with the first and last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet — summed live from the account_events store.
-- [Accounts List](/docs/api-reference/accounts/accounts-list) — `GET /api/v1/accounts`  
+- [Accounts List](/docs/api-reference/accounts/accounts-list) — `GET /api/v1/accounts`\
   Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows.
-- [Evm Address Mapping](/docs/api-reference/accounts/evm-address-mapping) — `GET /api/v1/evm/address/{h160}`  
+- [Evm Address Mapping](/docs/api-reference/accounts/evm-address-mapping) — `GET /api/v1/evm/address/{h160}`\
   Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache.
-- [Evm Address Mapping By Network](/docs/api-reference/accounts/evm-address-mapping-by-network) — `GET /api/v1/{network}/evm/address/{h160}`  
+- [Evm Address Mapping By Network](/docs/api-reference/accounts/evm-address-mapping-by-network) — `GET /api/v1/{network}/evm/address/{h160}`\
   Network-scoped form of /api/v1/evm/address/\{h160} — prefix the route with a network to choose which chain answers it.
-- [Network Parameters](/docs/api-reference/accounts/network-parameters) — `GET /api/v1/network/parameters`  
+- [Network Parameters](/docs/api-reference/accounts/network-parameters) — `GET /api/v1/network/parameters`\
   Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache.
-- [Network Parameters By Network](/docs/api-reference/accounts/network-parameters-by-network) — `GET /api/v1/{network}/network/parameters`  
+- [Network Parameters By Network](/docs/api-reference/accounts/network-parameters-by-network) — `GET /api/v1/{network}/network/parameters`\
   Network-scoped form of /api/v1/network/parameters — prefix the route with a network to choose which chain answers it.
-- [Randomness](/docs/api-reference/accounts/randomness) — `GET /api/v1/network/randomness`  
+- [Randomness](/docs/api-reference/accounts/randomness) — `GET /api/v1/network/randomness`\
   Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache.
-- [Randomness By Network](/docs/api-reference/accounts/randomness-by-network) — `GET /api/v1/{network}/network/randomness`  
+- [Randomness By Network](/docs/api-reference/accounts/randomness-by-network) — `GET /api/v1/{network}/network/randomness`\
   Network-scoped form of /api/v1/network/randomness — prefix the route with a network to choose which chain answers it.
-- [Sudo Key](/docs/api-reference/accounts/sudo-key) — `GET /api/v1/sudo/key`  
+- [Sudo Key](/docs/api-reference/accounts/sudo-key) — `GET /api/v1/sudo/key`\
   Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310).
-- [Sudo Key By Network](/docs/api-reference/accounts/sudo-key-by-network) — `GET /api/v1/{network}/sudo/key`  
+- [Sudo Key By Network](/docs/api-reference/accounts/sudo-key-by-network) — `GET /api/v1/{network}/sudo/key`\
   Network-scoped form of /api/v1/sudo/key — prefix the route with a network to choose which chain answers it.
-- [TAO Usd](/docs/api-reference/accounts/tao-usd) — `GET /api/v1/network/tao-usd`  
+- [TAO Usd](/docs/api-reference/accounts/tao-usd) — `GET /api/v1/network/tao-usd`\
   Fetch the TAO/USD index.
-- [Top Holders](/docs/api-reference/accounts/top-holders) — `GET /api/v1/accounts/top-holders`  
+- [Top Holders](/docs/api-reference/accounts/top-holders) — `GET /api/v1/accounts/top-holders`\
   Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive.

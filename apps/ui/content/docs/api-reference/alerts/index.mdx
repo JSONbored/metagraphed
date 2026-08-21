@@ -5,5 +5,5 @@ description: Every Alerts endpoint in the metagraphed API, with its method and p
 
 1 endpoint.
 
-- [Alert Trigger](/docs/api-reference/alerts/alert-trigger) — `GET /api/v1/alerts/triggers/{id}`  
+- [Alert Trigger](/docs/api-reference/alerts/alert-trigger) — `GET /api/v1/alerts/triggers/{id}`\
   Read back one alert trigger: what it watches (`table_filter` plus the four narrowing fields `netuid`, `event_kind`, `account`, `min_amount_tao` -- all nullable, so a trigger that sets none of them matches every event on its table), where it delivers (`channel`, `destination`), whether it is `active`, and its firing record.
