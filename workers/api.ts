@@ -458,6 +458,7 @@ import {
 import {
   canonicalCompareCachePath,
   canonicalEconomicsTrendsCachePath,
+  canonicalSubnetPriceShareCompositionCachePath,
   canonicalLeaderboardsCachePath,
   canonicalTrajectoryCachePath,
   canonicalUptimeCachePath,
@@ -467,6 +468,7 @@ import {
   handleDomains,
   handleDomainSummary,
   handleEconomicsTrends,
+  handleSubnetPriceShareComposition,
   handleEmissionPipeline,
   handleDeregistrationRanking,
   handleLeaderboards,
@@ -8234,6 +8236,19 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
         canonicalEconomicsTrendsCachePath(resolved.url, request),
       );
     }
+    if (
+      resolved.url.pathname === "/api/v1/chain/subnet-price-share-composition"
+    ) {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-price-share-composition",
+        (cacheRequest) =>
+          handleSubnetPriceShareComposition(cacheRequest, env, ctx),
+        canonicalSubnetPriceShareCompositionCachePath(resolved.url),
+      );
+    }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);
   }
 
@@ -8461,6 +8476,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/chain/yield" ||
     pathname === "/api/v1/chain/turnover" ||
     pathname === "/api/v1/economics/trends" ||
+    pathname === "/api/v1/chain/subnet-price-share-composition" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     pathname.startsWith("/api/v1/alerts/triggers") ||
     pathname === "/api/v1/auth/wallet/challenge" ||

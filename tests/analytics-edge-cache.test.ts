@@ -99,6 +99,46 @@ function rowsForSql(sql: string) {
       { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
     ];
   }
+  if (
+    sql.includes(
+      "SELECT snapshot_date, netuid, emission_share, captured_at FROM subnet_snapshots",
+    )
+  ) {
+    return [
+      {
+        snapshot_date: "2026-06-17",
+        netuid: 1,
+        emission_share: 0.6,
+        captured_at: 1_750_000_000_000,
+      },
+      {
+        snapshot_date: "2026-06-17",
+        netuid: 2,
+        emission_share: 0.4,
+        captured_at: 1_750_000_000_000,
+      },
+      {
+        snapshot_date: "2026-06-16",
+        netuid: 1,
+        emission_share: 0.55,
+        captured_at: 1_749_913_600_000,
+      },
+      {
+        snapshot_date: "2026-06-16",
+        netuid: 2,
+        emission_share: 0.45,
+        captured_at: 1_749_913_600_000,
+      },
+    ];
+  }
+  if (sql.includes("FROM subnet_snapshots")) {
+    return [
+      { snapshot_date: "2026-06-17", netuid: 1, total_stake_tao: "10" },
+      { snapshot_date: "2026-06-17", netuid: 2, total_stake_tao: "5" },
+      { snapshot_date: "2026-06-16", netuid: 1, total_stake_tao: "8" },
+      { snapshot_date: "2026-06-16", netuid: 2, total_stake_tao: "7" },
+    ];
+  }
   if (sql.includes("FROM neurons")) {
     return [{ captured_at: 1_750_009_000_000 }];
   }
@@ -1516,6 +1556,10 @@ describe("analytics edge cache", () => {
         search: "",
       },
       {
+        path: "/api/v1/chain/subnet-price-share-composition",
+        search: "",
+      },
+      {
         path: "/api/v1/subnets/7/uptime",
         search: "?window=90d",
       },
@@ -1703,6 +1747,65 @@ describe("analytics edge cache", () => {
       queriesAfterFirst,
       "no ?window hits cache of ?window=30d",
     );
+  });
+
+  test("subnet price-share composition caches the fixed timeline after one store read", async () => {
+    const queries: Row[] = [];
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv(queries);
+    const path = "/api/v1/chain/subnet-price-share-composition";
+
+    const miss = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      mockEnv(env) as unknown as Env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(miss.status, 200);
+    assert.equal(
+      ((await miss.json()) as { data: { point_count: number } }).data
+        .point_count,
+      2,
+      "the cached response must contain the observed composition, not only an empty envelope",
+    );
+    const queriesAfterMiss = queries.length;
+    assert.ok(
+      queries.some((query) =>
+        String(query.sql).includes("FROM subnet_snapshots"),
+      ),
+      "the composition timeline must read its bounded snapshot source",
+    );
+    assert.deepEqual(cache.putKeys, [
+      expectedKey("subnet-price-share-composition", path),
+    ]);
+
+    const hit = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      mockEnv(env) as unknown as Env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "a warm composition timeline must not re-read the snapshot store",
+    );
+
+    const head = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`, { method: "HEAD" }),
+      mockEnv(env) as unknown as Env,
+      ctx,
+    );
+    assert.equal(head.status, 200);
+    assert.equal(head.headers.get("x-metagraph-cache"), "hit");
+    assert.equal(await head.text(), "", "HEAD carries no body");
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "a warm HEAD composition request must not re-read the snapshot store",
+    );
+    assert.equal(cache.putKeys.length, 1, "a warm HEAD must not re-put");
   });
 
   test("health percentiles: bare path populates cache; explicit ?window=7d is a HIT", async () => {

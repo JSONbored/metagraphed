@@ -2301,6 +2301,10 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
     "days come from the economics daily rollup, which the harness does not stand up -- the surface this gate was blind on",
   ],
   [
+    "get_subnet_price_share_composition",
+    "the fixed-cohort rows come from the daily subnet snapshot rollup, which the hermetic harness does not bind; populated series and day items are exercised directly in tests/subnet-price-share-composition.test.ts",
+  ],
+  [
     "get_chain_concentration_subnets",
     "per-subnet concentration comes from the holders tier, unbound in the harness",
   ],

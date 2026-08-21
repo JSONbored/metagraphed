@@ -872,6 +872,61 @@ function normalizeSubnetStakeTransfersSample(out: Sample): Sample {
   return out;
 }
 
+function normalizeSubnetPriceShareCompositionSample(out: Sample): Sample {
+  // The generic sampler cannot infer the fixed cohort's cross-field contract:
+  // every daily bar must contain each stable series, including the derived
+  // residual, and their shares must compose the normalized unit. A worked
+  // full stack keeps the API reference honest about the visual payload.
+  if (out.metric !== "artifact_normalized_moving_price_share") return out;
+
+  const snapshotDate = DATE_ONLY;
+  const writerCapturedAt = ISO;
+  out.target_day_count = 56;
+  out.series_limit = 6;
+  out.reference_day = snapshotDate;
+  out.reference_writer_captured_at = writerCapturedAt;
+  out.point_count = 1;
+  out.oldest_day = snapshotDate;
+  out.newest_day = snapshotDate;
+  out.series = [
+    {
+      id: "subnet:1",
+      kind: "subnet",
+      netuid: 1,
+      label: null,
+      reference_price_share: 0.6,
+    },
+    {
+      id: "subnet:2",
+      kind: "subnet",
+      netuid: 2,
+      label: null,
+      reference_price_share: 0.4,
+    },
+    {
+      id: "other",
+      kind: "other",
+      netuid: null,
+      label: "Other artifact-normalized price share",
+      reference_price_share: 0,
+    },
+  ];
+  out.days = [
+    {
+      snapshot_date: snapshotDate,
+      writer_captured_at: writerCapturedAt,
+      priced_subnet_count: 2,
+      observed_price_share_total: 1,
+      values: [
+        { series_id: "subnet:1", price_share: 0.6, source: "recorded" },
+        { series_id: "subnet:2", price_share: 0.4, source: "recorded" },
+        { series_id: "other", price_share: 0, source: "derived" },
+      ],
+    },
+  ];
+  return out;
+}
+
 function normalizeObjectSample(out: Sample): Sample {
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
@@ -890,6 +945,7 @@ function normalizeObjectSample(out: Sample): Sample {
   normalizeChainStakeMovesSample(out);
   normalizeChainStakeTransfersSample(out);
   normalizeSubnetStakeTransfersSample(out);
+  normalizeSubnetPriceShareCompositionSample(out);
   return out;
 }
 

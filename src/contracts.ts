@@ -1116,6 +1116,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-price-share-composition",
+    "/metagraph/chain/subnet-price-share-composition.json",
+    "A bounded, visual composition history of artifact-normalized moving-price shares, served live at /api/v1/chain/subnet-price-share-composition (no static file). It selects a stable top-netuid cohort from the newest eligible date and publishes each member across up to 56 observed days beside a six-decimal Other residual, so a data visual can compare the same colors through time without inventing a historical ranking. This route does not join identity history, so a reused netuid is not asserted to be one project throughout the series. `emission_share` is the legacy economics artifact's alpha price / reported-alpha-price sum, including Root when it reports a price; it is not the runtime v440 Stage-1 share. Each returned date has one persisted writer timestamp for numeric shares and a stored price-share sum within the source's six-decimal rounding envelope. That timestamp detects certain mixed writes but is not an upstream artifact identifier. The legacy rollup has no completed-pass manifest: this is explicitly an estimated observed-price set, not total stake, final TAO emission, or a certificate that every chain subnet was captured. Current UTC day is excluded while its snapshot may still be written.",
+    "SubnetPriceShareCompositionArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "registry-summary",
     "/metagraph/registry-summary.json",
     "Registry-wide summary: completeness rollup, top subnets, level counts, latest changes.",
@@ -2780,6 +2787,17 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     csvRouteQuery([]),
+    [],
+  ),
+  route(
+    "subnet-price-share-composition",
+    "GET",
+    "/api/v1/chain/subnet-price-share-composition",
+    "/metagraph/chain/subnet-price-share-composition.json",
+    "Fetch a bounded daily artifact-normalized moving-price-share timeline for visual analysis: a fixed cohort of at most six netuids selected from the newest eligible recorded date, the same cohort across every returned day, and a six-decimal residual as `other`. This is deliberately neither a current leaderboard nor a zero-padded series. The route does not join identity history, so a reused netuid is not asserted to be one project throughout the series. `emission_share` is the legacy economics artifact's alpha price / reported-alpha-price sum, including Root when it reports a price; historic runtime eligibility inputs were not persisted, so it is deliberately not the runtime v440 Stage-1 share. A returned day has one persisted writer timestamp for numeric shares, unique priced netuids, and a stored price-share sum within the known six-decimal rounding envelope; a mixed, malformed, partial-normalization, or uncaptured date is omitted. The writer timestamp detects certain mixed writes but is not an upstream artifact identifier. The legacy daily rollup has no completed-pass manifest, so observation_basis is `estimated_observed_price_set`: it is neither total stake, final TAO emission, nor proof that every chain subnet was present in the upstream economics artifact. Served live (no static file); an unavailable/cold rollup is a schema-stable empty timeline.",
+    "short",
+    ["subnets", "analytics"],
+    [],
     [],
   ),
   route(
@@ -5417,6 +5435,7 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // and a testnet-addressed request would be served MAINNET rankings.
   "/api/v1/subnets/{netuid}/deregistration-ranking/history",
   "/api/v1/economics/trends",
+  "/api/v1/chain/subnet-price-share-composition",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",
   "/api/v1/health/trends",

@@ -3759,6 +3759,8 @@ export type Query = {
   subnet_performance: SubnetPerformance;
   /** Per-subnet per-day reward-distribution and score-spread trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's incentive/dividends Gini, Nakamoto coefficient, and top-10% share plus mean/median trust, consensus, and validator_trust, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/performance/history. */
   subnet_performance_history: SubnetPerformanceHistory;
+  /** Bounded daily artifact-normalized moving-price-share composition for visual comparison: one fixed latest-day netuid cohort through up to 56 recorded observations, plus a six-decimal Other residual. It does not join identity history, so a reused netuid is not asserted to be one project throughout the series. `emission_share` is the legacy artifact's alpha price / reported-alpha-price sum, including Root when present; it is not the runtime v440 Stage-1 share. Each returned day has one persisted writer timestamp for its numeric shares; that detects certain mixed writes but is not a source artifact identifier. This is an estimated observed-price set, not final TAO emission or a certified complete daily pass. Mirrors GET /api/v1/chain/subnet-price-share-composition. */
+  subnet_price_share_composition: SubnetPriceShareComposition;
   /** One subnet's contributor-review profile: candidate surfaces, contract version, endpoints, and completeness/curation metadata. Null when no profile has been baked for that netuid (rather than a GraphQL error); a negative netuid is a BAD_USER_INPUT error. Opaque JSON passed through verbatim, matching the get_subnet_profile MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/profile. */
   subnet_profile?: Maybe<Scalars['JSON']['output']>;
   /** Per-subnet Prometheus telemetry-endpoint serving activity over a 7d/30d window (default 7d): distinct exporters (hotkeys), PrometheusServed announcement count, and announcements per exporter, summed live from the account_events stream. A subnet with no announcements resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/prometheus. */
@@ -7303,6 +7305,52 @@ export type SubnetPipelineHistory = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
+/** Bounded recorded artifact-normalized moving-price-share composition. `emission_share` is alpha price / sum of reported alpha prices from the legacy economics artifact; it includes Root when Root reports a price and does not preserve historic runtime eligibility inputs. It is deliberately not the runtime v440 Stage-1 share, final TAO emission, or a certified complete daily snapshot pass. The stable netuid cohort comes from reference_day; this route does not join identity history, so it does not claim a reused netuid is one project throughout the series. A day is omitted unless its numeric shares have one persisted writer_captured_at value and sum to one within six-decimal rounding tolerance. The timestamp check detects certain mixed writes but does not certify one upstream artifact or complete chain coverage. */
+export type SubnetPriceShareComposition = {
+  __typename?: 'SubnetPriceShareComposition';
+  days: Array<SubnetPriceShareCompositionDay>;
+  metric: Scalars['String']['output'];
+  newest_day?: Maybe<Scalars['String']['output']>;
+  /** Legacy daily snapshots do not include a completed-pass manifest. This is an estimated normalized observed-price set, not proof that every chain subnet was present in the source economics artifact. A shared writer timestamp can detect certain mixed writes but is not a source artifact identifier. */
+  observation_basis: Scalars['String']['output'];
+  oldest_day?: Maybe<Scalars['String']['output']>;
+  point_count: Scalars['Int']['output'];
+  reference_day?: Maybe<Scalars['String']['output']>;
+  reference_writer_captured_at?: Maybe<Scalars['String']['output']>;
+  schema_version: Scalars['Int']['output'];
+  series: Array<SubnetPriceShareCompositionSeries>;
+  series_limit: Scalars['Int']['output'];
+  target_day_count: Scalars['Int']['output'];
+};
+
+/** One UTC day whose priced observations share one writer_captured_at and sum to one within the source's six-decimal rounding envelope. observed_price_share_total is a diagnostic of the stored shares, not a count of chain coverage. */
+export type SubnetPriceShareCompositionDay = {
+  __typename?: 'SubnetPriceShareCompositionDay';
+  observed_price_share_total: Scalars['Float']['output'];
+  priced_subnet_count: Scalars['Int']['output'];
+  snapshot_date: Scalars['String']['output'];
+  values: Array<SubnetPriceShareCompositionValue>;
+  writer_captured_at: Scalars['String']['output'];
+};
+
+/** A stable netuid chart series selected from one observed writer timestamp. It is not an identity-history join, so a reused netuid is not asserted to represent one project throughout the series. `other` is the non-negative six-decimal residual against the source's global artifact-normalized price-share unit; it is not a persisted bucket or the sum of stored unselected rows. Root remains in the source denominator when it reports a price. */
+export type SubnetPriceShareCompositionSeries = {
+  __typename?: 'SubnetPriceShareCompositionSeries';
+  id: Scalars['String']['output'];
+  kind: Scalars['String']['output'];
+  label?: Maybe<Scalars['String']['output']>;
+  netuid?: Maybe<Scalars['Int']['output']>;
+  reference_price_share: Scalars['Float']['output'];
+};
+
+/** One series inside one observed writer timestamp. Subnet values are recorded artifact-normalized moving-price shares; `other` is the derived non-negative six-decimal residual. A day whose selected recorded values exceed one is omitted rather than normalized or silently clamped. */
+export type SubnetPriceShareCompositionValue = {
+  __typename?: 'SubnetPriceShareCompositionValue';
+  price_share: Scalars['Float']['output'];
+  series_id: Scalars['String']['output'];
+  source: Scalars['String']['output'];
+};
+
 export type SubnetProfile = {
   __typename?: 'SubnetProfile';
   candidate_count: Scalars['Int']['output'];
@@ -8858,6 +8906,10 @@ export type ResolversTypes = ResolversObject<{
   SubnetPerformanceHistory: ResolverTypeWrapper<SubnetPerformanceHistory>;
   SubnetPerformanceHistoryPoint: ResolverTypeWrapper<SubnetPerformanceHistoryPoint>;
   SubnetPipelineHistory: ResolverTypeWrapper<SubnetPipelineHistory>;
+  SubnetPriceShareComposition: ResolverTypeWrapper<SubnetPriceShareComposition>;
+  SubnetPriceShareCompositionDay: ResolverTypeWrapper<SubnetPriceShareCompositionDay>;
+  SubnetPriceShareCompositionSeries: ResolverTypeWrapper<SubnetPriceShareCompositionSeries>;
+  SubnetPriceShareCompositionValue: ResolverTypeWrapper<SubnetPriceShareCompositionValue>;
   SubnetProfile: ResolverTypeWrapper<SubnetProfile>;
   SubnetProfileCompleteness: ResolverTypeWrapper<SubnetProfileCompleteness>;
   SubnetProfileGithubCommitsWeekly: ResolverTypeWrapper<SubnetProfileGithubCommitsWeekly>;
@@ -9328,6 +9380,10 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetPerformanceHistory: SubnetPerformanceHistory;
   SubnetPerformanceHistoryPoint: SubnetPerformanceHistoryPoint;
   SubnetPipelineHistory: SubnetPipelineHistory;
+  SubnetPriceShareComposition: SubnetPriceShareComposition;
+  SubnetPriceShareCompositionDay: SubnetPriceShareCompositionDay;
+  SubnetPriceShareCompositionSeries: SubnetPriceShareCompositionSeries;
+  SubnetPriceShareCompositionValue: SubnetPriceShareCompositionValue;
   SubnetProfile: SubnetProfile;
   SubnetProfileCompleteness: SubnetProfileCompleteness;
   SubnetProfileGithubCommitsWeekly: SubnetProfileGithubCommitsWeekly;
@@ -12278,6 +12334,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_ownership_history?: Resolver<ResolversTypes['SubnetOwnershipHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Ownership_HistoryArgs, 'netuid'>>;
   subnet_performance?: Resolver<ResolversTypes['SubnetPerformance'], ParentType, ContextType, RequireFields<QuerySubnet_PerformanceArgs, 'netuid'>>;
   subnet_performance_history?: Resolver<ResolversTypes['SubnetPerformanceHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Performance_HistoryArgs, 'netuid'>>;
+  subnet_price_share_composition?: Resolver<ResolversTypes['SubnetPriceShareComposition'], ParentType, ContextType>;
   subnet_profile?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_ProfileArgs, 'netuid'>>;
   subnet_prometheus?: Resolver<ResolversTypes['SubnetPrometheus'], ParentType, ContextType, RequireFields<QuerySubnet_PrometheusArgs, 'netuid'>>;
   subnet_recycled?: Resolver<Maybe<ResolversTypes['SubnetRecycled']>, ParentType, ContextType, RequireFields<QuerySubnet_RecycledArgs, 'netuid'>>;
@@ -13817,6 +13874,43 @@ export type SubnetPipelineHistoryResolvers<ContextType = GqlContext, ParentType 
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type SubnetPriceShareCompositionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPriceShareComposition'] = ResolversParentTypes['SubnetPriceShareComposition']> = ResolversObject<{
+  days?: Resolver<Array<ResolversTypes['SubnetPriceShareCompositionDay']>, ParentType, ContextType>;
+  metric?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  newest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observation_basis?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  oldest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  reference_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  reference_writer_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  series?: Resolver<Array<ResolversTypes['SubnetPriceShareCompositionSeries']>, ParentType, ContextType>;
+  series_limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  target_day_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetPriceShareCompositionDayResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPriceShareCompositionDay'] = ResolversParentTypes['SubnetPriceShareCompositionDay']> = ResolversObject<{
+  observed_price_share_total?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  priced_subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  values?: Resolver<Array<ResolversTypes['SubnetPriceShareCompositionValue']>, ParentType, ContextType>;
+  writer_captured_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type SubnetPriceShareCompositionSeriesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPriceShareCompositionSeries'] = ResolversParentTypes['SubnetPriceShareCompositionSeries']> = ResolversObject<{
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  label?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  reference_price_share?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type SubnetPriceShareCompositionValueResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPriceShareCompositionValue'] = ResolversParentTypes['SubnetPriceShareCompositionValue']> = ResolversObject<{
+  price_share?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  series_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type SubnetProfileResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfile'] = ResolversParentTypes['SubnetProfile']> = ResolversObject<{
   candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   categories?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
@@ -15067,6 +15161,10 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetPerformanceHistory?: SubnetPerformanceHistoryResolvers<ContextType>;
   SubnetPerformanceHistoryPoint?: SubnetPerformanceHistoryPointResolvers<ContextType>;
   SubnetPipelineHistory?: SubnetPipelineHistoryResolvers<ContextType>;
+  SubnetPriceShareComposition?: SubnetPriceShareCompositionResolvers<ContextType>;
+  SubnetPriceShareCompositionDay?: SubnetPriceShareCompositionDayResolvers<ContextType>;
+  SubnetPriceShareCompositionSeries?: SubnetPriceShareCompositionSeriesResolvers<ContextType>;
+  SubnetPriceShareCompositionValue?: SubnetPriceShareCompositionValueResolvers<ContextType>;
   SubnetProfile?: SubnetProfileResolvers<ContextType>;
   SubnetProfileCompleteness?: SubnetProfileCompletenessResolvers<ContextType>;
   SubnetProfileGithubCommitsWeekly?: SubnetProfileGithubCommitsWeeklyResolvers<ContextType>;

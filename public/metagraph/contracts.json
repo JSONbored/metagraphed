@@ -399,6 +399,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "A bounded, visual composition history of artifact-normalized moving-price shares, served live at /api/v1/chain/subnet-price-share-composition (no static file). It selects a stable top-netuid cohort from the newest eligible date and publishes each member across up to 56 observed days beside a six-decimal Other residual, so a data visual can compare the same colors through time without inventing a historical ranking. This route does not join identity history, so a reused netuid is not asserted to be one project throughout the series. `emission_share` is the legacy economics artifact's alpha price / reported-alpha-price sum, including Root when it reports a price; it is not the runtime v440 Stage-1 share. Each returned date has one persisted writer timestamp for numeric shares and a stored price-share sum within the source's six-decimal rounding envelope. That timestamp detects certain mixed writes but is not an upstream artifact identifier. The legacy rollup has no completed-pass manifest: this is explicitly an estimated observed-price set, not total stake, final TAO emission, or a certificate that every chain subnet was captured. Current UTC day is excluded while its snapshot may still be written.",
+      "id": "subnet-price-share-composition",
+      "path": "/metagraph/chain/subnet-price-share-composition.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetPriceShareCompositionArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Registry-wide summary: completeness rollup, top subnets, level counts, latest changes.",
       "id": "registry-summary",
       "path": "/metagraph/registry-summary.json",
@@ -3035,7 +3046,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 171,
+    "mainnet_only_route_count": 172,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

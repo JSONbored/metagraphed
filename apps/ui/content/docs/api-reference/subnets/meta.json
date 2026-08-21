@@ -48,6 +48,7 @@
     "subnet-ownership-history",
     "subnet-performance",
     "subnet-performance-history",
+    "subnet-price-share-composition",
     "subnet-prometheus",
     "subnet-recycled",
     "subnet-recycled-by-network",

@@ -245,6 +245,7 @@ import {
 } from "./routes/subnet-profile.ts";
 import { SubnetOverviewArtifactSchema } from "./routes/subnet-overview.ts";
 import { EconomicsTrendsArtifactSchema } from "./routes/economics-trends.ts";
+import { SubnetPriceShareCompositionArtifactSchema } from "./routes/subnet-price-share-composition.ts";
 import { EmissionPipelineArtifactSchema } from "./routes/emission-pipeline.ts";
 import { SubnetDeregistrationRankingArtifactSchema } from "./routes/subnet-deregistration-ranking.ts";
 import {
@@ -679,6 +680,10 @@ register(SubnetOverviewArtifactSchema, "SubnetOverviewArtifact");
 
 // Batch 2 (#8056) additions.
 register(EconomicsTrendsArtifactSchema, "EconomicsTrendsArtifact");
+register(
+  SubnetPriceShareCompositionArtifactSchema,
+  "SubnetPriceShareCompositionArtifact",
+);
 register(EmissionPipelineArtifactSchema, "EmissionPipelineArtifact");
 // The chain's own subnet pruning order (#10285).
 register(
@@ -1177,6 +1182,7 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "SubnetProfile",
   "SubnetOverviewArtifact",
   "EconomicsTrendsArtifact",
+  "SubnetPriceShareCompositionArtifact",
   "SubnetConcentrationArtifact",
   "SubnetConcentrationHistoryArtifact",
   "SubnetTurnoverArtifact",

@@ -106,6 +106,9 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_economics: { operation: "economics" },
   get_subnet_trajectory: { operation: "subnet-trajectory" },
   get_economics_trends: { operation: "economics-trends" },
+  get_subnet_price_share_composition: {
+    operation: "subnet-price-share-composition",
+  },
   get_emission_pipeline: { operation: "emission-pipeline" },
   get_deregistration_ranking: {
     operation: "deregistration-ranking",

@@ -31,6 +31,7 @@ import {
 } from "../../src/route-query.ts";
 import { EMISSION_PIPELINE_LIMIT_MAX } from "../../src/route-limits.ts";
 import { loadEconomicsTrends } from "../../src/economics-trends.ts";
+import { loadSubnetPriceShareComposition } from "../../src/subnet-price-share-composition.ts";
 import {
   EMISSION_PIPELINE_UNAVAILABLE_CODE,
   EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
@@ -389,6 +390,36 @@ export async function handleEconomicsTrends(
   return isFallback ? markDataApiTierFallbackResponse(response) : response;
 }
 
+// Bounded composition history for the explorer landing page (#11550). This is
+// one store query and a pure fixed-cohort projection, so it remains cheap at
+// the edge and does not turn the browser into a fan-out client.
+export async function handleSubnetPriceShareComposition(
+  request: Request,
+  env: Env,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const readFailureGeneration = currentStoreReadFailureGeneration();
+  const { data } = await loadSubnetPriceShareComposition({
+    db: observationsReadDb(env, ctx),
+  });
+  const isFallback =
+    !env.HYPERDRIVE?.connectionString ||
+    currentStoreReadFailureGeneration() !== readFailureGeneration;
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await analyticsMeta(
+        env,
+        "/metagraph/chain/subnet-price-share-composition.json",
+        null,
+      ),
+    },
+    "short",
+  );
+  return isFallback ? markDataApiTierFallbackResponse(response) : response;
+}
+
 // Long-term daily uptime history for one subnet's operational surfaces.
 export async function handleUptime(
   request: Request,
@@ -488,6 +519,15 @@ export function canonicalEconomicsTrendsCachePath(
     request,
     `${url.pathname}?window=${encodeURIComponent(historyWindow(url).label)}`,
   );
+}
+
+// This fixed visualization contract accepts no query knobs. Preserve an
+// invalid query verbatim so it cannot collide with the canonical bare path.
+export function canonicalSubnetPriceShareCompositionCachePath(
+  url: URL,
+): string {
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
+  return url.pathname;
 }
 
 // Normalises the per-subnet trajectory URL so JSON and CSV variants get distinct

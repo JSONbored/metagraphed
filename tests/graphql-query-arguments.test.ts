@@ -89,7 +89,8 @@ describe("checkQueryArguments", () => {
     // for the first time. The companion assertion is `skipped`, below -- a
     // count of what reproduces exactly means nothing without the count of what
     // was never compared.
-    // 206 after #10932 added subnet_cost_to_participate, and 205 after #10933
+    // 207 after #11550 added subnet_price_share_composition, 206 after #10932
+    // added subnet_cost_to_participate, and 205 after #10933
     // added subnet_treasury -- both take NO query arguments --
     // it lands in `exact` by reproducing an empty parameter set, which is the
     // case a route absent from NO_QUERY_PARAMETERS would fail. 204 after
@@ -99,7 +100,7 @@ describe("checkQueryArguments", () => {
     // query schema rather than restating it, so they land in `exact` rather
     // than in `violations` -- which is the outcome this count exists to
     // confirm. Bumping it is a prompt to check that, not a formality.
-    assert.equal(report.exact, 206);
+    assert.equal(report.exact, 207);
     assert.equal(report.skipped, 0);
   });
 

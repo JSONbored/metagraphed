@@ -482,6 +482,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     ).optional(),
     format: formatSchema().optional(),
   }),
+  "/api/v1/chain/subnet-price-share-composition": z.object({}),
   "/api/v1/health/trends": z.object({
     // Integers, not strings (#10089). handleBulkHealthTrends runs
     // parseLimitParam / parseNonNegativeIntParam, so `?limit=abc` has always

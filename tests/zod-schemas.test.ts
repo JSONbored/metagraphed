@@ -41,6 +41,7 @@ import {
   DomainsArtifactSchema,
 } from "../schemas-src/routes/domains.ts";
 import { EconomicsTrendsArtifactSchema } from "../schemas-src/routes/economics-trends.ts";
+import { SubnetPriceShareCompositionArtifactSchema } from "../schemas-src/routes/subnet-price-share-composition.ts";
 import {
   SubnetConcentrationArtifactSchema,
   SubnetConcentrationHistoryArtifactSchema,
@@ -527,6 +528,11 @@ const batch2Cases: [string, string, z.ZodType][] = [
     "economics-trends",
     "/api/v1/economics/trends",
     successEnvelopeSchema(EconomicsTrendsArtifactSchema),
+  ],
+  [
+    "subnet-price-share-composition",
+    "/api/v1/chain/subnet-price-share-composition",
+    successEnvelopeSchema(SubnetPriceShareCompositionArtifactSchema),
   ],
   [
     "subnet-concentration",

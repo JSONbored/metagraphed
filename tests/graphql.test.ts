@@ -17413,6 +17413,82 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
   });
 });
 
+describe("graphql — subnet_price_share_composition (#11550)", () => {
+  const compositionQuery = `{ subnet_price_share_composition {
+    schema_version metric observation_basis target_day_count series_limit reference_day reference_writer_captured_at
+    point_count oldest_day newest_day
+    series { id kind netuid label reference_price_share }
+    days { snapshot_date writer_captured_at priced_subnet_count observed_price_share_total values { series_id price_share source } }
+  } }`;
+
+  test("serves the schema-stable empty composition when the snapshot store is cold", async () => {
+    const { status, body } = await gql(compositionQuery);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_price_share_composition, {
+      schema_version: 1,
+      metric: "artifact_normalized_moving_price_share",
+      observation_basis: "estimated_observed_price_set",
+      target_day_count: 56,
+      series_limit: 6,
+      reference_day: null,
+      reference_writer_captured_at: null,
+      point_count: 0,
+      oldest_day: null,
+      newest_day: null,
+      series: [],
+      days: [],
+    });
+  });
+
+  test("serves the observed fixed cohort from the snapshot store", async () => {
+    const { env, ctx } = observationsEnv([
+      {
+        snapshot_date: "2026-08-20",
+        netuid: 1,
+        emission_share: 0.6,
+        captured_at: Date.parse("2026-08-20T12:00:00.000Z"),
+      },
+      {
+        snapshot_date: "2026-08-20",
+        netuid: 2,
+        emission_share: 0.4,
+        captured_at: Date.parse("2026-08-20T12:00:00.000Z"),
+      },
+      {
+        snapshot_date: "2026-08-19",
+        netuid: 1,
+        emission_share: 0.55,
+        captured_at: Date.parse("2026-08-19T12:00:00.000Z"),
+      },
+      {
+        snapshot_date: "2026-08-19",
+        netuid: 2,
+        emission_share: 0.45,
+        captured_at: Date.parse("2026-08-19T12:00:00.000Z"),
+      },
+    ]);
+    const { status, body } = await gql(compositionQuery, env, {}, ctx);
+    assert.equal(status, 200);
+    const composition = body.data.subnet_price_share_composition;
+    assert.equal(composition.reference_day, "2026-08-20");
+    assert.equal(composition.point_count, 2);
+    assert.deepEqual(
+      composition.series.map((series: Row) => series.id),
+      ["subnet:1", "subnet:2", "other"],
+    );
+    assert.deepEqual(
+      composition.days.map((day: Row) => day.snapshot_date),
+      ["2026-08-19", "2026-08-20"],
+    );
+    assert.ok(
+      pg.control.queries.some((query) =>
+        query.text.includes("FROM subnet_snapshots"),
+      ),
+      "the resolver must read the bounded snapshot source",
+    );
+  });
+});
+
 describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback leaderboard)", () => {
   function moversQuery(argsClause: string) {
     return `{ subnet_movers${argsClause} {

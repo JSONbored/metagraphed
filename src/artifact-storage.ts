@@ -73,6 +73,11 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^subnets\/(?:\d+|\{netuid\})\/lifecycle\.json$/,
   // The network-wide counterpart, same table, same reasoning.
   /^chain\/subnet-lifecycle\.json$/,
+  // Compact price-share chart history: assembled live from the snapshot store.
+  // It deliberately excludes an in-progress UTC day and validates each
+  // returned observed set at read time, so a baked copy would be stale and
+  // would bypass those integrity checks.
+  /^chain\/subnet-price-share-composition\.json$/,
   // One subnet's alpha holder leaderboard (#9557), computed live from the D1
   // positions ledger joined to the proven pool totals. A baked ranking would
   // freeze a leaderboard whose whole value is that it is current, and would also

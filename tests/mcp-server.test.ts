@@ -12475,6 +12475,72 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.days, []);
   });
 
+  test("get_subnet_price_share_composition returns a schema-stable empty timeline on a cold store", async () => {
+    const res = await callTool("get_subnet_price_share_composition", {});
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.metric, "artifact_normalized_moving_price_share");
+    assert.equal(out.observation_basis, "estimated_observed_price_set");
+    assert.equal(out.target_day_count, 56);
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.series, []);
+    assert.deepEqual(out.days, []);
+  });
+
+  test("get_subnet_price_share_composition serves the observed fixed cohort from the snapshot store", async () => {
+    pg.control.rows = [
+      {
+        snapshot_date: "2026-08-20",
+        netuid: 1,
+        emission_share: 0.6,
+        captured_at: Date.parse("2026-08-20T12:00:00.000Z"),
+      },
+      {
+        snapshot_date: "2026-08-20",
+        netuid: 2,
+        emission_share: 0.4,
+        captured_at: Date.parse("2026-08-20T12:00:00.000Z"),
+      },
+      {
+        snapshot_date: "2026-08-19",
+        netuid: 1,
+        emission_share: 0.55,
+        captured_at: Date.parse("2026-08-19T12:00:00.000Z"),
+      },
+      {
+        snapshot_date: "2026-08-19",
+        netuid: 2,
+        emission_share: 0.45,
+        captured_at: Date.parse("2026-08-19T12:00:00.000Z"),
+      },
+    ];
+    const res = await callTool(
+      "get_subnet_price_share_composition",
+      {},
+      {
+        env: pgMockEnv(["subnet_snapshots"]),
+      },
+    );
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.reference_day, "2026-08-20");
+    assert.equal(out.point_count, 2);
+    assert.deepEqual(
+      out.series.map((series: Row) => series.id),
+      ["subnet:1", "subnet:2", "other"],
+    );
+    assert.deepEqual(
+      out.days.map((day: Row) => day.snapshot_date),
+      ["2026-08-19", "2026-08-20"],
+    );
+    assert.ok(
+      pg.control.queries.some((query) =>
+        query.text.includes("FROM subnet_snapshots"),
+      ),
+      "the tool must read the bounded snapshot source",
+    );
+  });
+
   test("get_subnet_concentration returns schema-stable null blocks on a cold store", async () => {
     const res = await callTool("get_subnet_concentration", { netuid: 7 });
     const out = res.body.result.structuredContent;

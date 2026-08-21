@@ -806,6 +806,11 @@ type Query {
   economics_trends(window: String): EconomicsTrends!
 
   """
+  Bounded daily artifact-normalized moving-price-share composition for visual comparison: one fixed latest-day netuid cohort through up to 56 recorded observations, plus a six-decimal Other residual. It does not join identity history, so a reused netuid is not asserted to be one project throughout the series. \`emission_share\` is the legacy artifact's alpha price / reported-alpha-price sum, including Root when present; it is not the runtime v440 Stage-1 share. Each returned day has one persisted writer timestamp for its numeric shares; that detects certain mixed writes but is not a source artifact identifier. This is an estimated observed-price set, not final TAO emission or a certified complete daily pass. Mirrors GET /api/v1/chain/subnet-price-share-composition.
+  """
+  subnet_price_share_composition: SubnetPriceShareComposition!
+
+  """
   One subnet's external revenue against the TAO the network emits to it. ALWAYS read provenance and verification.verified: only chain-verified and probe-derived figures reach the headline, and revenue_usd/coverage_ratio/subsidy_multiple are NULL whenever revenue is unobserved -- the normal case, true of 127 of 129 subnets. NULL MEANS NOT OBSERVED, NEVER ZERO: rendering an unmeasured subnet as '0% covered' is a false claim about it. A declared surface that did not reach the headline is still reported in sources, with excluded_reason saying why. Never errors for a subnet with no revenue data. Mirrors GET /api/v1/subnets/{netuid}/revenue Takes ?window=1d|7d|30d (default 1d): a surface contributes only when the window is a whole number of its declared grain's periods, so a monthly figure needs 30d and is invisible at 1d.
   """
   subnet_revenue(netuid: Int!, window: String): SubnetRevenueCard!
@@ -6876,6 +6881,59 @@ type EconomicsTrendsDay {
   validator_count: Int
   miner_count: Int
   mean_emission_share: Float
+}
+
+"""
+Bounded recorded artifact-normalized moving-price-share composition. \`emission_share\` is alpha price / sum of reported alpha prices from the legacy economics artifact; it includes Root when Root reports a price and does not preserve historic runtime eligibility inputs. It is deliberately not the runtime v440 Stage-1 share, final TAO emission, or a certified complete daily snapshot pass. The stable netuid cohort comes from reference_day; this route does not join identity history, so it does not claim a reused netuid is one project throughout the series. A day is omitted unless its numeric shares have one persisted writer_captured_at value and sum to one within six-decimal rounding tolerance. The timestamp check detects certain mixed writes but does not certify one upstream artifact or complete chain coverage.
+"""
+type SubnetPriceShareComposition {
+  schema_version: Int!
+  metric: String!
+
+  """
+  Legacy daily snapshots do not include a completed-pass manifest. This is an estimated normalized observed-price set, not proof that every chain subnet was present in the source economics artifact. A shared writer timestamp can detect certain mixed writes but is not a source artifact identifier.
+  """
+  observation_basis: String!
+  target_day_count: Int!
+  series_limit: Int!
+  reference_day: String
+  reference_writer_captured_at: String
+  point_count: Int!
+  oldest_day: String
+  newest_day: String
+  series: [SubnetPriceShareCompositionSeries!]!
+  days: [SubnetPriceShareCompositionDay!]!
+}
+
+"""
+A stable netuid chart series selected from one observed writer timestamp. It is not an identity-history join, so a reused netuid is not asserted to represent one project throughout the series. \`other\` is the non-negative six-decimal residual against the source's global artifact-normalized price-share unit; it is not a persisted bucket or the sum of stored unselected rows. Root remains in the source denominator when it reports a price.
+"""
+type SubnetPriceShareCompositionSeries {
+  id: String!
+  kind: String!
+  netuid: Int
+  label: String
+  reference_price_share: Float!
+}
+
+"""
+One UTC day whose priced observations share one writer_captured_at and sum to one within the source's six-decimal rounding envelope. observed_price_share_total is a diagnostic of the stored shares, not a count of chain coverage.
+"""
+type SubnetPriceShareCompositionDay {
+  snapshot_date: String!
+  writer_captured_at: String!
+  priced_subnet_count: Int!
+  observed_price_share_total: Float!
+  values: [SubnetPriceShareCompositionValue!]!
+}
+
+"""
+One series inside one observed writer timestamp. Subnet values are recorded artifact-normalized moving-price shares; \`other\` is the derived non-negative six-decimal residual. A day whose selected recorded values exceed one is omitted rather than normalized or silently clamped.
+"""
+type SubnetPriceShareCompositionValue {
+  series_id: String!
+  price_share: Float!
+  source: String!
 }
 
 """

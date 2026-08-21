@@ -1201,6 +1201,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends.",
   },
   {
+    field: "subnet_price_share_composition",
+    operation: "subnet-price-share-composition",
+    returns: "SubnetPriceShareComposition!",
+    description:
+      "Bounded daily artifact-normalized moving-price-share composition for visual comparison: one fixed latest-day netuid cohort through up to 56 recorded observations, plus a six-decimal Other residual. It does not join identity history, so a reused netuid is not asserted to be one project throughout the series. `emission_share` is the legacy artifact's alpha price / reported-alpha-price sum, including Root when present; it is not the runtime v440 Stage-1 share. Each returned day has one persisted writer timestamp for its numeric shares; that detects certain mixed writes but is not a source artifact identifier. This is an estimated observed-price set, not final TAO emission or a certified complete daily pass. Mirrors GET /api/v1/chain/subnet-price-share-composition.",
+  },
+  {
     field: "subnet_revenue",
     operation: "subnet-revenue",
     returns: "SubnetRevenueCard!",

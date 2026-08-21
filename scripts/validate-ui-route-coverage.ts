@@ -106,6 +106,14 @@ export const MAX_UNREFERENCED_ROUTES = 0;
  * where it can be read, instead of being cleared by a table row.
  */
 export const PROSE_ONLY_ROUTES: readonly string[] = [
+  // The bounded price-share timeline is intentionally API-first in #11550 so
+  // its store semantics, cache contract, and generated reference can be
+  // reviewed independently of the visual redesign. #11544 consumes it with
+  // the mounted homepage composition chart and must remove this entry in that
+  // same PR; a placeholder string or hidden fetch here would only deceive this
+  // check about the user-facing state.
+  "/api/v1/chain/subnet-price-share-composition",
+
   // `/api/v1/accounts/{ss58}/identity-history` WAS HERE, and the reason it is
   // not any more is that the omission it recorded has been fixed: previous
   // revisions now render inside the account page's Identity section, from a

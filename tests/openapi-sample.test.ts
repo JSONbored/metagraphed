@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
+import { z } from "zod";
 import { sampleFromSchema } from "../src/openapi-sample.ts";
+import { SubnetPriceShareCompositionArtifactSchema } from "../schemas-src/routes/subnet-price-share-composition.ts";
 import type { Row } from "./row-type.ts";
 
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
@@ -88,6 +90,46 @@ describe("sampleFromSchema", () => {
     ]);
     // array without items -> samples the empty schema (null) as the lone item
     assert.deepEqual(s({ type: "array" }), [null]);
+  });
+
+  test("a price-share composition sample is a complete fixed-cohort stack", () => {
+    const schema = z.toJSONSchema(SubnetPriceShareCompositionArtifactSchema, {
+      target: "draft-2020-12",
+    });
+    const out = s(schema as Row) as Row;
+    assert.equal(out.target_day_count, 56);
+    assert.equal(out.series_limit, 6);
+    assert.equal(out.point_count, 1);
+    assert.deepEqual(out.series, [
+      {
+        id: "subnet:1",
+        kind: "subnet",
+        netuid: 1,
+        label: null,
+        reference_price_share: 0.6,
+      },
+      {
+        id: "subnet:2",
+        kind: "subnet",
+        netuid: 2,
+        label: null,
+        reference_price_share: 0.4,
+      },
+      {
+        id: "other",
+        kind: "other",
+        netuid: null,
+        label: "Other artifact-normalized price share",
+        reference_price_share: 0,
+      },
+    ]);
+    const day = (out.days as Row[])[0]!;
+    assert.equal(day.observed_price_share_total, 1);
+    assert.deepEqual(day.values, [
+      { series_id: "subnet:1", price_share: 0.6, source: "recorded" },
+      { series_id: "subnet:2", price_share: 0.4, source: "recorded" },
+      { series_id: "other", price_share: 0, source: "derived" },
+    ]);
   });
 
   test("string seeds cover the field-name dictionary", () => {

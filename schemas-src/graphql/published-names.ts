@@ -302,6 +302,12 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   EconomicsArtifactSummary: "EconomicsSummary",
   EconomicsTrendsArtifact: "EconomicsTrends",
   EconomicsTrendsArtifactDays: "EconomicsTrendsDay",
+  SubnetPriceShareCompositionArtifact: "SubnetPriceShareComposition",
+  SubnetPriceShareCompositionArtifactSeries:
+    "SubnetPriceShareCompositionSeries",
+  SubnetPriceShareCompositionArtifactDays: "SubnetPriceShareCompositionDay",
+  SubnetPriceShareCompositionArtifactDaysValues:
+    "SubnetPriceShareCompositionValue",
   EmissionGateChangesArtifact: "EmissionGateChanges",
   // #10476: the coverage ratio. Both artifacts nest the SAME SubnetRevenue
   // shape, so the per-subnet card and the network table resolve to one type

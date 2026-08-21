@@ -219,6 +219,10 @@ import {
   GetEconomicsTrendsOutputSchema,
 } from "../schemas-src/mcp-tools/get-economics-trends.ts";
 import {
+  GetSubnetPriceShareCompositionInputSchema,
+  GetSubnetPriceShareCompositionOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-price-share-composition.ts";
+import {
   GetEmissionPipelineInputSchema,
   GetEmissionPipelineOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-pipeline.ts";
@@ -1248,6 +1252,7 @@ import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
 } from "./economics-trends.ts";
+import { loadSubnetPriceShareComposition } from "./subnet-price-share-composition.ts";
 import {
   FREE_HISTORY_WINDOW_DAYS,
   requireTierForDepth,
@@ -6668,6 +6673,33 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const { data } = await loadEconomicsTrends({
         windowLabel: label,
         windowDays: days,
+        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES),
+      });
+      return data;
+    },
+  },
+  {
+    name: "get_subnet_price_share_composition",
+    title: "Get subnet price-share composition timeline",
+    description:
+      "Fetch the compact artifact-normalized moving-price-share timeline used by the explorer: " +
+      "up to 56 recorded UTC days, a fixed cohort of at most six netuids from " +
+      "the newest eligible observation, and a rounded `other` residual. The same " +
+      "netuid cohort appears on every day so each series can be compared through time; " +
+      "this route does not join identity history, so a reused netuid is not asserted " +
+      "to be one project throughout the series. " +
+      "Every returned day has one persisted writer timestamp for numeric price shares " +
+      "and a stored price-share sum within the source rounding envelope. The timestamp " +
+      "detects certain mixed writes but is not a source artifact ID. This is an estimated " +
+      "observed-price set -- not the runtime v440 Stage-1 share, final TAO emission, or a certified complete daily pass. " +
+      "`emission_share` is the legacy artifact's alpha price / reported-alpha-price sum, including Root when present. Mirrors " +
+      "GET /api/v1/chain/subnet-price-share-composition.",
+    inputSchema: inputJsonSchema(GetSubnetPriceShareCompositionInputSchema),
+    async handler(
+      _args: z.infer<typeof GetSubnetPriceShareCompositionInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const { data } = await loadSubnetPriceShareComposition({
         db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES),
       });
       return data;
@@ -15269,6 +15301,9 @@ const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
   get_health_history: GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
   get_subnet_trajectory: outputJsonSchema(GetSubnetTrajectoryOutputSchema),
   get_economics_trends: outputJsonSchema(GetEconomicsTrendsOutputSchema),
+  get_subnet_price_share_composition: outputJsonSchema(
+    GetSubnetPriceShareCompositionOutputSchema,
+  ),
   get_emission_pipeline: outputJsonSchema(GetEmissionPipelineOutputSchema),
   get_deregistration_ranking: outputJsonSchema(
     GetDeregistrationRankingOutputSchema,

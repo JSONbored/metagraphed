@@ -628,6 +628,7 @@ import {
 } from "./neuron-daily-cold-tier.ts";
 import { buildValidatorHistory } from "./validator-history.ts";
 import { loadEconomicsTrends } from "./economics-trends.ts";
+import { loadSubnetPriceShareComposition } from "./subnet-price-share-composition.ts";
 import { loadSubnetTrajectory } from "./analytics-live.ts";
 import {
   EMISSION_PIPELINE_UNAVAILABLE_CODE,
@@ -7512,6 +7513,17 @@ const rootValue = {
       day_count: data.day_count ?? 0,
       days: data.days || [],
     };
+  },
+
+  async subnet_price_share_composition(_args: unknown, context: GqlContext) {
+    // Same bounded closed-day loader REST and MCP use. The graph does not add
+    // range knobs because changing the cohort/range would change the visual
+    // contract and defeat the shared edge-cache shape.
+    return (
+      await loadSubnetPriceShareComposition({
+        db: observationsReadDb(context.env, context.ctx),
+      })
+    ).data;
   },
 
   // #10476: the coverage ratio, mirrored onto GraphQL.

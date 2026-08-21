@@ -2498,6 +2498,17 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/chain/subnet-price-share-composition",
+    (body) => {
+      assert.equal(body.data.metric, "artifact_normalized_moving_price_share");
+      assert.equal(body.data.observation_basis, "estimated_observed_price_set");
+      assert.equal(body.data.target_day_count, 56);
+      assert.equal(typeof body.data.point_count, "number");
+      assert.equal(Array.isArray(body.data.series), true);
+      assert.equal(Array.isArray(body.data.days), true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/uptime",
     (body) => {
       assert.equal(body.data.netuid, 7);

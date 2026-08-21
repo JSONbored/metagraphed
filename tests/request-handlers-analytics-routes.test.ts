@@ -24,6 +24,7 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import {
   canonicalCompareCachePath,
   canonicalEconomicsTrendsCachePath,
+  canonicalSubnetPriceShareCompositionCachePath,
   canonicalLeaderboardsCachePath,
   canonicalTrajectoryCachePath,
   canonicalUptimeCachePath,
@@ -32,6 +33,7 @@ import {
   handleCompare,
   handleCompareValidators,
   handleEconomicsTrends,
+  handleSubnetPriceShareComposition,
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
@@ -42,6 +44,7 @@ import { mockEnv, type Row } from "./row-type.ts";
 
 const NETUID = 7;
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
+const WRITER_CAPTURED_AT = Date.parse("2026-08-20T12:00:00.000Z");
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -546,6 +549,55 @@ describe("handleEconomicsTrends", () => {
     );
     assert.equal(res.status, 200);
     const body = (await res.json()) as Row;
+    assert.deepEqual(body.data.days, []);
+  });
+});
+
+describe("handleSubnetPriceShareComposition", () => {
+  test("serves one stable cohort from the snapshot store", async () => {
+    const { env, ctx } = snapshotStoreEnv([
+      {
+        snapshot_date: "2026-08-20",
+        netuid: 1,
+        emission_share: 0.6,
+        captured_at: WRITER_CAPTURED_AT,
+      },
+      {
+        snapshot_date: "2026-08-20",
+        netuid: 2,
+        emission_share: 0.4,
+        captured_at: WRITER_CAPTURED_AT,
+      },
+      {
+        snapshot_date: "2026-08-19",
+        netuid: 1,
+        emission_share: 0.55,
+        captured_at: WRITER_CAPTURED_AT,
+      },
+      {
+        snapshot_date: "2026-08-19",
+        netuid: 2,
+        emission_share: 0.45,
+        captured_at: WRITER_CAPTURED_AT,
+      },
+    ]);
+    const body = await json(
+      await handleSubnetPriceShareComposition(req("/"), env, ctx),
+    );
+    assert.equal(body.data.metric, "artifact_normalized_moving_price_share");
+    assert.equal(body.data.reference_day, "2026-08-20");
+    assert.equal(body.data.point_count, 2);
+    assert.deepEqual(
+      (body.data.series as Row[]).map((series) => series.id),
+      ["subnet:1", "subnet:2", "other"],
+    );
+  });
+
+  test("is schema-stable when the snapshot store is cold", async () => {
+    const body = await json(
+      await handleSubnetPriceShareComposition(req("/"), mockEnv()),
+    );
+    assert.equal(body.data.point_count, 0);
     assert.deepEqual(body.data.days, []);
   });
 });
@@ -1440,6 +1492,22 @@ describe("canonicalEconomicsTrendsCachePath", () => {
   test("falls back to raw search on invalid format", () => {
     const raw = "/api/v1/economics/trends?format=pdf";
     assert.equal(canonicalEconomicsTrendsCachePath(url(raw)), raw);
+  });
+});
+
+describe("canonicalSubnetPriceShareCompositionCachePath", () => {
+  test("uses the bare path for the fixed no-query visual contract", () => {
+    assert.equal(
+      canonicalSubnetPriceShareCompositionCachePath(
+        url("/api/v1/chain/subnet-price-share-composition"),
+      ),
+      "/api/v1/chain/subnet-price-share-composition",
+    );
+  });
+
+  test("does not collide an invalid query with the canonical path", () => {
+    const raw = "/api/v1/chain/subnet-price-share-composition?window=7d";
+    assert.equal(canonicalSubnetPriceShareCompositionCachePath(url(raw)), raw);
   });
 });
 
