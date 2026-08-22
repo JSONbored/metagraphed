@@ -37,6 +37,8 @@ export interface LineWithWindowProps {
   formatValue?: (value: number) => string;
   /** Tooltip title / table label for a point. Defaults to an en-US "AUG 22" date. */
   formatDate?: (t: number) => string;
+  /** The window's extent for the summary and the accessible name; defaults to dates. */
+  formatRange?: (from: number, to: number) => string;
   /** Group name for the plot and caption for the table. */
   ariaLabel: string;
   /** Entity key for a point; defaults to `${source}:${t}`. */
@@ -70,6 +72,7 @@ export function LineWithWindow({
   unit,
   formatValue = defaultFormat,
   formatDate = formatLineDate,
+  formatRange,
   ariaLabel,
   keyOf,
   source = "line",
@@ -93,7 +96,9 @@ export function LineWithWindow({
   const pct = (n: number, of: number) => `${((n / of) * 100).toFixed(2)}%`;
   const rangeLabel =
     wStart && wEnd
-      ? `${rangeFormat.format(new Date(wStart.t)).toUpperCase()} → ${rangeFormat.format(new Date(wEnd.t)).toUpperCase()}`
+      ? formatRange
+        ? formatRange(wStart.t, wEnd.t)
+        : `${rangeFormat.format(new Date(wStart.t)).toUpperCase()} → ${rangeFormat.format(new Date(wEnd.t)).toUpperCase()}`
       : "";
   const summary = momentumAriaLabel(
     unit,

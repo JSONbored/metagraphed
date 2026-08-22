@@ -16,7 +16,7 @@ type TopActiveAccountRowLinkProps = {
  * cohort share. The ss58 address is paired with a `CopyButton` (matching the
  * shared `AddressDisplay` idiom) so the full address can be copied without a
  * hover-only tooltip, which is unusable on touch/mobile (#5856). Replaces the
- * duplicated BarMini + pill list pair on `/accounts` (#5315).
+ * duplicated bar chart + pill list pair on `/accounts` (#5315).
  */
 export function TopActiveAccountRowLink({ row }: TopActiveAccountRowLinkProps) {
   return (

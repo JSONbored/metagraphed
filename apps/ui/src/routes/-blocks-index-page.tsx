@@ -27,7 +27,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { PageSizeSelect } from "@/components/metagraphed/table-controls";
 import { LiveBlockRail } from "@/components/metagraphed/blocks/live-block-rail";
-import { CadenceHeatmap } from "@/components/metagraphed/blocks/cadence-heatmap";
+import { CadenceTrend } from "@/components/metagraphed/blocks/cadence-trend";
 import { AuthorSharePanel } from "@/components/metagraphed/blocks/author-share-panel";
 import { blocksQuery, blocksSummaryQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
@@ -430,7 +430,7 @@ function BlocksTable() {
     <>
       {rows.length > 0 ? (
         <>
-          <CadenceHeatmap rows={rows} />
+          <CadenceTrend rows={rows} />
           <AuthorSharePanel rows={rows} />
         </>
       ) : null}

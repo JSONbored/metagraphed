@@ -1,81 +1,70 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertOctagon, AlertTriangle, Info } from "lucide-react";
+import { AnalyticsSection, RankedRails, type RankedRailItem } from "@jsonbored/ui-kit";
 import { subnetHealthIncidentsQuery, flattenSurfaceIncidents } from "@/lib/metagraphed/queries";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
-import { TimeAgo, AnalyticsSection } from "@jsonbored/ui-kit";
-import { classNames } from "@/lib/metagraphed/format";
-import { incidentDurationLabel } from "@/lib/metagraphed/incident-duration";
-
-function severityIcon(sev?: string) {
-  if (sev === "high") return <AlertOctagon className="size-3.5 text-health-down" />;
-  if (sev === "medium") return <AlertTriangle className="size-3.5 text-health-warn" />;
-  return <Info className="size-3.5 text-ink-muted" />;
-}
+import { formatRelative, humaniseSeconds } from "@/lib/metagraphed/format";
+import type { FlatSurfaceIncident } from "@/lib/metagraphed/types";
 
 /** Trim the "sn-<netuid>-" / "community-sn-<netuid>-" prefix from a surface id. */
 function shortSurfaceId(id: string, netuid: number): string {
   return id.replace(new RegExp(`^(community-)?sn-${netuid}-`), "");
 }
 
+/** Incident length in seconds; an open incident runs to now. */
+function incidentSeconds(inc: FlatSurfaceIncident, now: number): number {
+  if (typeof inc.duration_ms === "number" && Number.isFinite(inc.duration_ms)) {
+    return Math.max(0, inc.duration_ms / 1000);
+  }
+  const start = inc.started_at ? Date.parse(inc.started_at) : NaN;
+  if (!Number.isFinite(start)) return 0;
+  const end = inc.ended_at ? Date.parse(inc.ended_at) : now;
+  return Math.max(0, (end - start) / 1000);
+}
+
 export function IncidentTimeline({ netuid }: { netuid: number }) {
   const { data, isLoading, isError, error, refetch } = useQuery(subnetHealthIncidentsQuery(netuid));
-  const incidents = flattenSurfaceIncidents(data?.data ?? []);
+  const items = useMemo<RankedRailItem[]>(() => {
+    const now = Date.now();
+    return flattenSurfaceIncidents(data?.data ?? [])
+      .map((inc, i) => ({
+        key: `incident:${inc.surface_id}:${inc.started_at ?? i}`,
+        label: shortSurfaceId(inc.surface_id, netuid),
+        value: incidentSeconds(inc, now),
+        detail: [
+          { key: "state", label: "state", value: inc.ended_at ? "resolved" : "open" },
+          { key: "started", label: "started", value: formatRelative(inc.started_at) },
+          { key: "resolved", label: "resolved", value: formatRelative(inc.ended_at) },
+        ],
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [data, netuid]);
 
   return (
     <AnalyticsSection
       id="incidents"
       name="Incident history"
-      question="Recorded health regressions and SLA breaks for this subnet."
+      question="Recorded health regressions and SLA breaks for this subnet, longest first."
       footnote="GET /api/v1/subnets/{netuid}/health/incidents"
     >
       {isLoading ? (
         <Skeleton className="h-24 w-full" />
       ) : isError ? (
         <ErrorState error={error} onRetry={() => refetch()} context="incident history" />
-      ) : incidents.length === 0 ? (
+      ) : items.length === 0 ? (
         <EmptyState
           title="No incidents recorded"
           description="This subnet has a clean health history in the registry."
         />
       ) : (
-        <ol className="rounded border border-border bg-card divide-y divide-border overflow-hidden">
-          {incidents.slice(0, 12).map((inc, i) => {
-            const open = !inc.ended_at;
-            const duration = incidentDurationLabel(inc.started_at, inc.ended_at);
-            return (
-              <li
-                key={`${inc.surface_id}-${inc.started_at ?? i}`}
-                className="px-4 py-2.5 flex items-center gap-3 text-13"
-              >
-                {severityIcon(inc.severity)}
-                <div className="flex-1 min-w-0">
-                  <div className="truncate text-ink-strong" title={inc.surface_id}>
-                    {shortSurfaceId(inc.surface_id, netuid)}
-                  </div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-13 text-ink-muted">
-                    {inc.started_at ? (
-                      <span>
-                        started <TimeAgo at={inc.started_at} />
-                      </span>
-                    ) : null}
-                    {duration ? <span>· {duration}</span> : null}
-                    {inc.failed_samples != null ? <span>· {inc.failed_samples} failed</span> : null}
-                  </div>
-                </div>
-                <span
-                  className={classNames(
-                    "shrink-0 rounded border px-2 py-0.5 text-10",
-                    open
-                      ? "border-health-down/40 bg-health-down/10 text-health-down"
-                      : "border-border bg-surface text-ink-muted",
-                  )}
-                >
-                  {open ? "open" : "resolved"}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+        <RankedRails
+          items={items}
+          formatValue={(v) => humaniseSeconds(v)}
+          columns={{ value: "Duration", name: "Surface", track: "longest first" }}
+          limit={10}
+          ariaLabel="Incidents ranked by duration"
+          source="incident-timeline"
+        />
       )}
     </AnalyticsSection>
   );

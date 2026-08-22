@@ -125,29 +125,6 @@ export {
 } from "@/components/metagraphed/search-scope";
 export { McpToolsList } from "@/components/metagraphed/mcp-tools-list";
 export { fmtYield } from "@/components/metagraphed/yield-format";
-export {
-  type YieldPercentileStripProps,
-  YieldPercentileStrip,
-} from "@/components/metagraphed/yield-percentile-strip";
-export {
-  type BarMiniDatum,
-  BarMini,
-} from "@/components/metagraphed/charts/bar-mini";
-export {
-  type DonutSegment,
-  Donut,
-  DonutLegend,
-} from "@/components/metagraphed/charts/donut";
-export {
-  type TreemapMiniDatum,
-  TreemapMini,
-} from "@/components/metagraphed/charts/treemap-mini";
-export {
-  type SankeyNode,
-  type SankeyLink,
-  layoutSankey,
-  SankeyMini,
-} from "@/components/metagraphed/charts/sankey-mini";
 
 // Relocated from apps/ui/.../primitives (2026-07-23): dependency-free design-
 // system primitives, moved here so ui-kit's own components can use them too
@@ -238,10 +215,6 @@ export {
   type PanelSkeletonProps,
   type PanelSkeletonHeight,
 } from "@/components/metagraphed/panel-skeleton";
-export {
-  ReadinessGauge,
-  type ReadinessGaugeProps,
-} from "@/components/metagraphed/readiness-gauge";
 export { ProvenanceChip } from "@/components/metagraphed/provenance-chip";
 export {
   QueryBar,
@@ -318,3 +291,37 @@ export {
   provenanceSentence,
   type ProvenanceProps,
 } from "@/components/metagraphed/interaction/provenance";
+export {
+  RankedRails,
+  railFill,
+  type RankedRailItem,
+  type RankedRailsProps,
+} from "@/components/metagraphed/charts/ranked-rails";
+export {
+  MarkerRail,
+  markerPosition,
+  type MarkerRailItem,
+  type MarkerRailProps,
+} from "@/components/metagraphed/charts/marker-rail";
+export {
+  RankGrid,
+  type RankGridItem,
+  type RankGridProps,
+} from "@/components/metagraphed/charts/rank-grid";
+export {
+  LeaderCards,
+  deltaLabel,
+  type LeaderCardItem,
+  type LeaderCardsProps,
+} from "@/components/metagraphed/charts/leader-cards";
+export {
+  CompositionBreakdown,
+  type CompositionBreakdownProps,
+  type CompositionSegment,
+} from "@/components/metagraphed/charts/composition-breakdown";
+export {
+  COMPOSITION_SPECIMEN,
+  LEADER_SPECIMEN,
+  MARKER_SPECIMEN,
+  RAIL_SPECIMEN,
+} from "@/components/metagraphed/charts/rank-specimens";

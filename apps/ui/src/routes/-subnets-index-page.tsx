@@ -25,7 +25,6 @@ import {
   QueryBar,
   QueryProgress,
   Panel,
-  ReadinessGauge,
   StatusBadge,
   TableSkeleton,
   useColumnVisibility,
@@ -1565,12 +1564,11 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                       ) : null}
                       {columns.isVisible("readiness") ? (
                         <td className={classNames(cellPad, "text-right")}>
-                          <ReadinessGauge
-                            score={s.integration_readiness}
-                            tier={s.readiness_tier}
-                            details={s.service_kinds}
-                            compact={compact}
-                          />
+                          <span className="tabular-nums text-ink-strong">
+                            {s.integration_readiness != null
+                              ? `${Math.round(s.integration_readiness)}/100`
+                              : "—"}
+                          </span>
                         </td>
                       ) : null}
                       {columns.isVisible("registration") ? (
@@ -1843,9 +1841,8 @@ const HEALTH_BG: Record<string, string> = {
   // Solid, not /85 like the others (#6407): at /85 no text color clears
   // 4.5:1 against this fill for every health palette (verified against all
   // 3 HEALTH_PALETTES x both themes) -- the small margin needed pushed this
-  // one fill to fully opaque. .mg-pulse-cell:hover already provides a scale
-  // + outline hover cue independent of fill opacity, so this loses only the
-  // (redundant) opacity-based hover tint the other 3 states still get.
+  // one fill to fully opaque, so this state loses only the (redundant)
+  // opacity-based hover tint the other 3 states still get.
   down: "bg-health-down hover:bg-health-down",
   unknown: "bg-health-unknown/40 hover:bg-health-unknown/70",
 };
@@ -1890,7 +1887,7 @@ function SubnetMatrix({ rows }: { rows: Subnet[] }) {
             aria-label={`Subnet ${s.netuid}${s.name ? ` — ${s.name}` : ""}`}
             title={`#${s.netuid}${s.name ? ` · ${s.name}` : ""} · ${s.health ?? "unknown"}`}
             className={classNames(
-              "mg-pulse-cell flex aspect-square items-center justify-center rounded text-10 font-medium transition-transform",
+              "flex aspect-square items-center justify-center rounded text-10 font-medium hover:outline hover:outline-1 hover:outline-ink-strong",
               HEALTH_BG[s.health ?? "unknown"] ?? HEALTH_BG.unknown,
               HEALTH_TEXT[s.health ?? "unknown"] ?? HEALTH_TEXT.unknown,
             )}

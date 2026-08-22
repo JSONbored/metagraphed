@@ -1,39 +1,28 @@
-import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { ChevronRight, ExternalLink as ExtIcon } from "lucide-react";
+import { RankedRails, type RankedRailItem } from "@jsonbored/ui-kit";
 import { endpointIncidentsQuery, endpointsQuery, rpcPoolsQuery } from "@/lib/metagraphed/queries";
-import { classNames } from "@/lib/metagraphed/format";
-import { TimeAgo, Definition } from "@jsonbored/ui-kit";
+import { formatNumber, formatRelative, humaniseSeconds } from "@/lib/metagraphed/format";
 import { EmptyState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { useTimeRange, RANGE_HOURS, RANGE_LABEL } from "./time-range-context";
-import type { Endpoint, EndpointIncident, HealthState, RpcPool } from "@/lib/metagraphed/types";
-
-const SEVERITY_RANK: Record<string, number> = { down: 3, warn: 2, unknown: 1, ok: 0 };
-
-const SEVERITY_TINT: Record<string, string> = {
-  down: "bg-health-down",
-  warn: "bg-health-warn",
-  unknown: "bg-ink-subtle/60",
-  ok: "bg-health-ok",
-};
+import type { Endpoint, EndpointIncident, RpcPool } from "@/lib/metagraphed/types";
 
 interface Row {
   host: string;
-  netuid: number | null;
-  pool: string | null;
-  worst: HealthState;
+  /** Seconds spent inside an incident within the active range (clamped). */
+  seconds: number;
+  count: number;
   ongoing: number;
-  total: number;
-  items: EndpointIncident[];
+  lastState: string;
+  lastStart: string | undefined;
+  href: string | undefined;
 }
 
 /**
- * Severity-colored incidents timeline. Each row is a host; each pill is an
- * incident positioned by start time inside the active range, sized by
- * duration, and tinted by state. Rows deep-link to the host subnet and
- * RPC pool when those associations can be inferred.
+ * Hosts ranked by time spent in an incident inside the active range (or by
+ * incident count when no incident carries a start time). Rows deep-link to
+ * the host subnet, or to the RPC pool when only that can be inferred.
  */
 export function IncidentsTimeline({ className }: { className?: string }) {
   const { range } = useTimeRange();
@@ -49,7 +38,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
   const endpoints = useMemo(() => (eRes.data ?? []) as Endpoint[], [eRes.data]);
   const pools = useMemo(() => (pRes.data ?? []) as RpcPool[], [pRes.data]);
 
-  // Map endpoint_id → endpoint metadata so each incident can deep-link.
+  // Map endpoint_id → endpoint metadata so each host can deep-link.
   const endpointMap = useMemo(() => {
     const m = new Map<string, Endpoint>();
     for (const e of endpoints) {
@@ -59,256 +48,116 @@ export function IncidentsTimeline({ className }: { className?: string }) {
     return m;
   }, [endpoints]);
 
-  const [filter, setFilter] = useState<"all" | "ongoing" | "down" | "warn" | "resolved">("all");
-
-  const filtered = useMemo(() => {
-    return incidents.filter((i) => {
-      const start = i.started_at ? Date.parse(i.started_at) : 0;
-      if (start && start < cutoff && !!i.ended_at) return false;
-      const ongoing = !i.ended_at;
-      switch (filter) {
-        case "ongoing":
-          return ongoing;
-        case "down":
-          return i.state === "down";
-        case "warn":
-          return i.state === "warn";
-        case "resolved":
-          return !ongoing;
-        default:
-          return true;
-      }
-    });
-  }, [incidents, filter, cutoff]);
+  // Pools we can identify the host as part of (best-effort).
+  const poolByName = useMemo(() => {
+    const m = new Map<string, RpcPool>();
+    for (const p of pools) {
+      const name = (asString(p.name) ?? asString(p.id) ?? "").toLowerCase();
+      if (name) m.set(name, p);
+    }
+    return m;
+  }, [pools]);
 
   const rows = useMemo<Row[]>(() => {
     const byHost = new Map<string, EndpointIncident[]>();
-    for (const i of filtered) {
+    for (const i of incidents) {
+      const start = i.started_at ? Date.parse(i.started_at) : 0;
+      // Resolved before the range began: out of scope. Ongoing ones always count.
+      if (start && start < cutoff && !!i.ended_at) continue;
       const host = hostKey(i.endpoint_id);
-      const arr = byHost.get(host) ?? [];
-      arr.push(i);
-      byHost.set(host, arr);
+      byHost.set(host, [...(byHost.get(host) ?? []), i]);
     }
     const out: Row[] = [];
     for (const [host, items] of byHost) {
+      items.sort((a, b) => Date.parse(b.started_at ?? "0") - Date.parse(a.started_at ?? "0"));
       const sample = items[0]!;
       const endpointId = asString(sample.endpoint_id);
       const ep = endpointId ? endpointMap.get(endpointId) : undefined;
       const netuid =
         (sample.netuid as number | undefined) ?? (ep?.netuid as number | undefined) ?? null;
-      const pool = asString(ep?.pool) ?? null;
-      const worst = items.reduce<HealthState>(
-        (acc, cur) =>
-          (SEVERITY_RANK[cur.state ?? "unknown"] ?? 0) > (SEVERITY_RANK[acc ?? "unknown"] ?? 0)
-            ? (cur.state as HealthState)
-            : acc,
-        "unknown",
-      );
+      const pool = asString(ep?.pool)
+        ? poolByName.get(asString(ep?.pool)!.toLowerCase())
+        : undefined;
+      const poolName = pool ? (asString(pool.name) ?? asString(pool.id)) : undefined;
+      const href =
+        netuid != null
+          ? `/subnets/${netuid}`
+          : poolName
+            ? `/apis/endpoints?q=${encodeURIComponent(poolName)}`
+            : undefined;
+      let seconds = 0;
+      for (const i of items) {
+        const start = i.started_at ? Date.parse(i.started_at) : NaN;
+        if (!Number.isFinite(start)) continue;
+        const end = i.ended_at ? Date.parse(i.ended_at) : now;
+        const overlap = Math.min(end, now) - Math.max(start, cutoff);
+        if (overlap > 0) seconds += overlap / 1000;
+      }
       out.push({
         host,
-        netuid,
-        pool,
-        worst,
+        seconds,
+        count: items.length,
         ongoing: items.filter((i) => !i.ended_at).length,
-        total: items.length,
-        items: items.sort(
-          (a, b) => Date.parse(b.started_at ?? "0") - Date.parse(a.started_at ?? "0"),
-        ),
+        lastState: String(sample.state ?? "unknown"),
+        lastStart: sample.started_at,
+        href,
       });
     }
-    return out.sort((a, b) => {
-      const sev = (SEVERITY_RANK[b.worst] ?? 0) - (SEVERITY_RANK[a.worst] ?? 0);
-      if (sev !== 0) return sev;
-      return b.total - a.total;
-    });
-  }, [filtered, endpointMap]);
+    return out;
+  }, [incidents, cutoff, now, endpointMap, poolByName]);
 
-  const counts = useMemo(() => {
-    return {
-      all: incidents.length,
-      ongoing: incidents.filter((i) => !i.ended_at).length,
-      down: incidents.filter((i) => i.state === "down").length,
-      warn: incidents.filter((i) => i.state === "warn").length,
-      resolved: incidents.filter((i) => !!i.ended_at).length,
-    };
-  }, [incidents]);
-
-  // Pools we can identify the host as part of (best-effort).
-  const poolByHost = useMemo(() => {
-    const m = new Map<string, RpcPool>();
-    for (const p of pools) {
-      const name = (asString(p.name) ?? asString(p.id) ?? "").toLowerCase();
-      if (!name) continue;
-      m.set(name, p);
-    }
-    return m;
-  }, [pools]);
+  const byDuration = rows.some((r) => r.seconds > 0);
+  const items = useMemo<RankedRailItem[]>(
+    () =>
+      rows
+        .map((r) => ({
+          key: `host:${r.host}`,
+          label: r.host,
+          value: byDuration ? r.seconds : r.count,
+          href: r.href,
+          detail: [
+            {
+              key: "count",
+              label: "incidents",
+              value: r.ongoing > 0 ? `${r.count} (${r.ongoing} ongoing)` : String(r.count),
+            },
+            { key: "state", label: "last state", value: r.lastState },
+            { key: "start", label: "last start", value: formatRelative(r.lastStart) },
+          ],
+        }))
+        .sort((a, b) => b.value - a.value),
+    [rows, byDuration],
+  );
 
   return (
-    <Panel flush className={classNames("overflow-hidden", className)}>
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="text-13 text-ink-muted">Incidents · {RANGE_LABEL[range]}</div>
-          <Definition term="Incidents timeline" />
-        </div>
-        <div className="flex flex-wrap items-center gap-1">
-          {(["all", "ongoing", "down", "warn", "resolved"] as const).map((k) => {
-            const active = filter === k;
-            return (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setFilter(k)}
-                className={classNames(
-                  "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-13 transition-colors",
-                  active
-                    ? "border-accent/60 bg-accent/10 text-accent"
-                    : "border-border text-ink-muted hover:text-ink-strong hover:border-ink-muted/50",
-                )}
-                aria-pressed={active}
-              >
-                {k} <span className="tabular-nums text-ink-muted/80">{counts[k]}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {rows.length === 0 ? (
-        <div className="p-6">
-          <EmptyState
-            title="No incidents in this range"
-            description="Widen the time range or change the filter to see resolved incidents."
-          />
-        </div>
+    <Panel
+      title={`Incidents · ${RANGE_LABEL[range]}`}
+      caption={
+        byDuration
+          ? "Hosts ranked by time spent in an incident inside the range."
+          : "Hosts ranked by incident count; no incident in range carries a start time."
+      }
+      className={className}
+    >
+      {items.length === 0 ? (
+        <EmptyState
+          title="No incidents in this range"
+          description="Widen the time range to see resolved incidents."
+        />
       ) : (
-        <ul className="divide-y divide-border">
-          {/* Header axis */}
-          <li className="grid grid-cols-[minmax(180px,260px)_1fr_min-content] items-center gap-3 px-4 py-1.5 bg-paper text-13 text-ink-muted">
-            <span>Host</span>
-            <span className="flex items-center justify-between">
-              <span>-{RANGE_LABEL[range]}</span>
-              <span>now</span>
-            </span>
-            <span className="text-right">links</span>
-          </li>
-          {rows.map((r) => {
-            const pool = r.pool ? poolByHost.get(r.pool.toLowerCase()) : undefined;
-            return (
-              <li
-                key={r.host}
-                className="grid grid-cols-[minmax(180px,260px)_1fr_min-content] items-center gap-3 px-4 py-3 group hover:bg-paper transition-colors"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={classNames(
-                        "inline-block size-2 rounded",
-                        SEVERITY_TINT[r.worst] ?? SEVERITY_TINT.unknown,
-                      )}
-                      aria-hidden
-                    />
-                    <span className="font-mono text-13 text-ink-strong truncate">{r.host}</span>
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-2 text-10 text-ink-muted">
-                    {r.ongoing > 0 ? (
-                      <span className="text-health-down">{r.ongoing} ongoing</span>
-                    ) : null}
-                    <span>{r.total} total</span>
-                  </div>
-                </div>
-                <TimelineTrack now={now} totalMs={totalMs} items={r.items} />
-                <div className="flex items-center justify-end gap-2 text-13">
-                  {r.netuid != null ? (
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: r.netuid }}
-                      className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-accent hover:border-accent/40"
-                    >
-                      SN{r.netuid}
-                      <ChevronRight className="size-3" aria-hidden />
-                    </Link>
-                  ) : null}
-                  {pool ? (
-                    <Link
-                      to="/apis/endpoints"
-                      search={(prev: Record<string, unknown>) => ({
-                        ...prev,
-                        q: pool.name ?? pool.id,
-                      })}
-                      className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-accent hover:border-accent/40"
-                    >
-                      pool · {pool.name ?? pool.id}
-                      <ExtIcon className="size-3" aria-hidden />
-                    </Link>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <RankedRails
+          items={items}
+          formatValue={byDuration ? (v) => humaniseSeconds(v) : (v) => formatNumber(v)}
+          columns={
+            byDuration
+              ? { value: "Downtime", name: "Host", track: "in range" }
+              : { value: "Incidents", name: "Host", track: "count" }
+          }
+          ariaLabel={`Hosts ranked by ${byDuration ? "incident time" : "incident count"} over ${RANGE_LABEL[range]}`}
+          source="incidents"
+        />
       )}
     </Panel>
-  );
-}
-
-function TimelineTrack({
-  items,
-  now,
-  totalMs,
-}: {
-  items: EndpointIncident[];
-  now: number;
-  totalMs: number;
-}) {
-  const cutoff = now - totalMs;
-  return (
-    <div className="relative h-6 rounded bg-border/30 overflow-hidden" role="presentation">
-      {/* tick guides */}
-      {[0.25, 0.5, 0.75].map((t) => (
-        <span
-          key={t}
-          aria-hidden
-          className="absolute top-0 bottom-0 w-px bg-border/60"
-          style={{ left: `${t * 100}%` }}
-        />
-      ))}
-      {items.map((i) => {
-        const start = i.started_at ? Date.parse(i.started_at) : null;
-        const end = i.ended_at ? Date.parse(i.ended_at) : now;
-        if (!start || !Number.isFinite(start)) return null;
-        const s = Math.max(start, cutoff);
-        const e = Math.min(end, now);
-        if (e < cutoff || s > now) return null;
-        const left = ((s - cutoff) / totalMs) * 100;
-        const width = Math.max(1.5, ((e - s) / totalMs) * 100);
-        const tone = SEVERITY_TINT[i.state ?? "unknown"] ?? SEVERITY_TINT.unknown;
-        const ongoing = !i.ended_at;
-        return (
-          <span
-            key={i.id}
-            className={classNames(
-              "absolute top-1 bottom-1 rounded transition-all",
-              tone,
-              ongoing && "ring-1 ring-paper/40",
-            )}
-            style={{ left: `${left}%`, width: `${width}%` }}
-          >
-            <span className="sr-only">
-              {i.state} started <TimeAgo at={i.started_at} />
-              {i.ended_at ? (
-                <>
-                  {" "}
-                  ended <TimeAgo at={i.ended_at} />
-                </>
-              ) : (
-                " ongoing"
-              )}
-            </span>
-          </span>
-        );
-      })}
-    </div>
   );
 }
 

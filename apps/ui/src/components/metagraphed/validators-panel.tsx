@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
-import { TableState, BarMini, TreemapMini, type TreemapMiniDatum } from "@jsonbored/ui-kit";
+import { TableState, RankedRails } from "@jsonbored/ui-kit";
 import { NeuronTable } from "@/components/metagraphed/neuron-table";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { SponsoredValidatorCallout } from "@/components/metagraphed/sponsored-validator-callout";
-import { TopShareCaption } from "@/components/metagraphed/top-share-caption";
 import { Panel } from "@/components/metagraphed/primitives";
+import { railItems } from "@/lib/metagraphed/rails";
 
 const TOP_N = 10;
 
@@ -41,19 +41,6 @@ export function ValidatorsTableLoader({
       }));
   }, [validators]);
 
-  // Same top-N stake-ranked set as `stakeBars`, but sized by area so the
-  // concentration of stake across the leading validators reads at a glance —
-  // a complement to the ranked bar list, not a replacement. Shares are derived
-  // client-side from the values already in hand (no network-wide total exists
-  // on the payload).
-  // #8255 (accent budget): tiles drop the bars' accent colour and take
-  // TreemapMini's quiet surface fill -- accent marks what's interactive or
-  // current, and a full-map area fill is neither.
-  const stakeTiles = useMemo<TreemapMiniDatum[]>(
-    () => stakeBars.map((b) => ({ label: b.label, value: b.value })),
-    [stakeBars],
-  );
-
   if (validators.length === 0) {
     return (
       <TableState
@@ -78,20 +65,12 @@ export function ValidatorsTableLoader({
               </span>
             </span>
           </div>
-          <BarMini data={stakeBars} />
-          {stakeTiles.length > 1 ? (
-            <div className="mt-4 border-t border-border pt-3">
-              <div className="mb-2 text-13 text-ink-muted">
-                Stake dominance
-                <TopShareCaption n={stakeTiles.length} />
-              </div>
-              <TreemapMini
-                data={stakeTiles}
-                formatValue={(v) => `${taoCompact(v)} τ`}
-                ariaLabel={`Validator stake dominance across the top ${stakeTiles.length} validators, sized by stake share`}
-              />
-            </div>
-          ) : null}
+          <RankedRails
+            items={railItems(stakeBars)}
+            formatValue={(v) => `${taoCompact(v)} τ`}
+            ariaLabel={`Validator stake, top ${stakeBars.length} by stake`}
+            onActivate={(item) => onSelect?.(Number(item.label.slice(1)))}
+          />
         </Panel>
       ) : null}
 

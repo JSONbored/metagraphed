@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
-import { CopyableCode, BarMini, SectionHead } from "@jsonbored/ui-kit";
+import { CopyableCode, SectionHead, LineWithWindow } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { useWallet } from "@/hooks/use-wallet";
 import { useApiSession } from "@/hooks/use-api-session";
+import { toLinePoints } from "@/components/metagraphed/metric-history";
 
 interface ApiKeyRow {
   key_id: string;
@@ -360,6 +361,11 @@ async function exportUsageCsv(token: string) {
 function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; token: string }) {
   if (!usage || usage.days.length === 0) return null;
   const chronological = [...usage.days].reverse();
+  const requestPoints = toLinePoints(
+    chronological,
+    (d) => d.day,
+    (d) => d.count,
+  );
   const quota = usage.quota;
   // Percent of the day's cost-unit budget consumed. Clamped at 100 because the
   // quota rejects a spend that would exceed the limit rather than letting it
@@ -438,13 +444,17 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
         </p>
       ) : null}
 
-      <BarMini
-        data={chronological.map((d) => ({
-          label: new Date(d.day).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-          value: d.count,
-        }))}
-        ariaLabel={`Daily request count, last ${usage.window_days} days`}
-      />
+      {requestPoints.length > 1 ? (
+        <LineWithWindow
+          compact
+          points={requestPoints}
+          window={{ from: requestPoints[0]!.t, to: requestPoints[requestPoints.length - 1]!.t }}
+          unit="requests per day"
+          formatValue={(v) => v.toLocaleString("en-US")}
+          ariaLabel={`Daily request count, last ${usage.window_days} days`}
+          source="api-key-usage"
+        />
+      ) : null}
       {usage.top_routes.length > 0 ? (
         <div>
           <p className="text-13 text-ink-muted">Top routes</p>

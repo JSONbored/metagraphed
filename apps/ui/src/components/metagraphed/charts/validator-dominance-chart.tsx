@@ -1,22 +1,19 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { BarMini, TreemapMini, type TreemapMiniDatum } from "@jsonbored/ui-kit";
+import { RankedRails } from "@jsonbored/ui-kit";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { EmptyState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { TopShareCaption } from "@/components/metagraphed/top-share-caption";
 import {
   VALIDATOR_DOMINANCE_TOP_N,
   buildValidatorDominanceChartData,
 } from "./validator-dominance-ranking";
-
-const DOMINANCE_COLOR = "var(--accent)";
+import { formatTao } from "@/lib/metagraphed/format";
 
 /**
  * Network-wide validator-dominance chart (#2565) — the network-wide
  * counterpart to `ValidatorsTableLoader`'s per-subnet stake-dominance block
- * (src/components/metagraphed/validators-panel.tsx): a ranked BarMini paired
- * with an area-proportional TreemapMini, both fed by the same top-N rows so
- * the two views never drift. Reads GET /api/v1/validators?sort=stake_dominance
+ * (src/components/metagraphed/validators-panel.tsx): ranked rails of the
+ * top-N operators by network stake share. Reads GET /api/v1/validators?sort=stake_dominance
  * directly (self-contained fetch, independent of the leaderboard table's own
  * sort selector above it) so this block always shows the dominance ranking
  * regardless of how the table is currently sorted.
@@ -36,15 +33,6 @@ export function ValidatorDominanceChart() {
     );
   }
 
-  const barData = rows.map((r) => ({ label: r.label, value: r.value, color: DOMINANCE_COLOR }));
-  // #8255 (accent budget): the tiles deliberately omit `color` so they take
-  // TreemapMini's quiet surface fill. The ranked bars keep accent -- a thin
-  // series stroke is the one accent moment here; painting the treemap's whole
-  // area in the same colour made a magnitude encoding read as interactive.
-  const tiles: TreemapMiniDatum[] = rows.map((r) => ({
-    label: r.label,
-    value: r.value,
-  }));
   // Sum of the top-N shares only — not full network coverage (the API caps
   // this fetch to VALIDATOR_DOMINANCE_TOP_N rows), so the label says "top N"
   // rather than implying it accounts for every validator.
@@ -56,24 +44,20 @@ export function ValidatorDominanceChart() {
         <span className="text-13 text-ink-muted">Stake dominance · top {rows.length}</span>
         <span className="text-10 text-ink-muted">{coveredPct.toFixed(1)}% of network stake</span>
       </div>
-      <BarMini
-        data={barData}
+      <RankedRails
+        items={rows.map((r) => ({
+          key: r.hotkey,
+          label: r.label,
+          value: r.value,
+          href: `/validators/${r.hotkey}`,
+          detail: [
+            { key: "stake", label: "Stake", value: formatTao(r.stakeTao) },
+            { key: "subnets", label: "Subnets", value: String(r.subnetCount) },
+          ],
+        }))}
         formatValue={(v) => `${v.toFixed(2)}%`}
         ariaLabel={`Validator stake dominance, top ${rows.length} operators ranked by network stake share`}
       />
-      {tiles.length > 1 ? (
-        <div className="mt-4 border-t border-border pt-3">
-          <div className="mb-2 text-13 text-ink-muted">
-            Concentration
-            <TopShareCaption n={tiles.length} />
-          </div>
-          <TreemapMini
-            data={tiles}
-            formatValue={(v) => `${v.toFixed(2)}%`}
-            ariaLabel={`Validator stake dominance treemap across the top ${tiles.length} operators, sized by network stake share`}
-          />
-        </div>
-      ) : null}
     </Panel>
   );
 }

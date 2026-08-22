@@ -27,8 +27,8 @@ function Notice({ children }: { children: string }) {
 // 30-day window, from the already-shipped subnetStakeMovesQuery. The endpoint
 // returns a flat window aggregate (count / distinct movers / avg) rather than a
 // series, so — per the issue — it renders as a single FactCell using the
-// MiniStack + Provenance single-snapshot idiom instead of a literal chart. The
-// MiniStack splits the total into unique movers vs repeat moves so the lone
+// FactCell + Provenance single-snapshot idiom instead of a literal chart. The
+// hint splits the total into unique movers vs repeat moves so the lone
 // aggregate still reads as a composition.
 function StakeMovesTile({ netuid }: { netuid: number }) {
   const { data: res, isPending, isError } = useQuery(subnetStakeMovesQuery(netuid));
@@ -47,8 +47,8 @@ function StakeMovesTile({ netuid }: { netuid: number }) {
 // #3484: recent stake-transfer activity for a subnet, 30-day window, from the
 // already-shipped subnetStakeTransfersQuery. Like the sibling stake-moves tile,
 // the endpoint returns a flat window aggregate (count / distinct senders / avg)
-// rather than a series, so it renders as a single FactCell using the MiniStack +
-// Provenance single-snapshot idiom. The MiniStack splits the total into unique
+// rather than a series, so it renders as a single FactCell using the FactCell +
+// Provenance single-snapshot idiom. The hint splits the total into unique
 // senders vs repeat transfers so the lone aggregate still reads as a composition.
 function StakeTransfersTile({ netuid }: { netuid: number }) {
   const { data: res, isPending, isError } = useQuery(subnetStakeTransfersQuery(netuid));

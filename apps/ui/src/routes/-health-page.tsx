@@ -17,8 +17,7 @@ import {
   TableState,
   TimeAgo,
   AnimatedNumber,
-  Donut,
-  DonutLegend,
+  CompositionBreakdown,
   AnalyticsSection,
   EntityHero,
   FactSentence,
@@ -37,7 +36,12 @@ import {
   sourceHealthQuery,
   endpointIncidentsQuery,
 } from "@/lib/metagraphed/queries";
-import { humaniseSeconds, isStaleFreshness, classNames } from "@/lib/metagraphed/format";
+import {
+  humaniseSeconds,
+  isStaleFreshness,
+  classNames,
+  formatNumber,
+} from "@/lib/metagraphed/format";
 import type { EndpointIncident, HealthState } from "@/lib/metagraphed/types";
 import type { HealthView, StateFilter } from "./health";
 
@@ -134,7 +138,7 @@ export function HealthPage() {
           <AnalyticsSection
             id="network-pulse"
             name="ok / warn / down distribution"
-            question="Aggregate status over the selected range, with incident markers per bucket."
+            question="Aggregate status over the selected range."
           >
             <AsyncPanel height="lg">
               <NetworkPulseBand />
@@ -144,7 +148,7 @@ export function HealthPage() {
           <AnalyticsSection
             id="status-mosaic"
             name="Live status mosaic"
-            question="Every monitored endpoint, colored by latest probe state. Filter by state; click a tile to open."
+            question="Every monitored endpoint by its latest probe state."
           >
             <AsyncPanel height="lg">
               <StatusMosaic />
@@ -435,18 +439,16 @@ function StatusBoard({ interval }: { interval: number | false }) {
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
         <BoardCard title="Status mix">
-          <div className="flex items-center gap-4">
-            <Donut
-              segments={segs}
-              size={112}
-              strokeWidth={14}
-              centerLabel={uptimePct}
-              centerSub="uptime 24h"
-            />
-            <div className="min-w-0 flex-1">
-              <DonutLegend segments={segs} />
-            </div>
-          </div>
+          <CompositionBreakdown
+            segments={segs.map((seg) => ({
+              key: `status:${seg.label}`,
+              label: seg.label,
+              value: seg.value,
+            }))}
+            formatValue={(v) => formatNumber(v)}
+            legendCols={4}
+            ariaLabel={`Status mix · ${uptimePct} uptime 24h`}
+          />
         </BoardCard>
 
         <BoardCard title="Source freshness">

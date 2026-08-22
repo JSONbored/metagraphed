@@ -1,8 +1,9 @@
-import { BarMini } from "@jsonbored/ui-kit";
+import { RankedRails } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { EmptyState } from "@/components/metagraphed/states";
 import { formatTao } from "@/lib/metagraphed/format";
 import type { ChainIdleStake } from "@/lib/metagraphed/types";
+import { railItems } from "@/lib/metagraphed/rails";
 
 const MAX_SHOWN = 8;
 
@@ -25,8 +26,14 @@ export function ChainIdleStakeSnapshot({ idleStake }: { idleStake: ChainIdleStak
       {top.length === 0 ? (
         <EmptyState title="No idle stake" />
       ) : (
-        <BarMini
-          data={top.map((s) => ({ label: `SN${s.netuid}`, value: s.idle_stake_alpha ?? 0 }))}
+        <RankedRails
+          items={railItems(
+            top.map((s) => ({
+              label: `SN${s.netuid}`,
+              value: s.idle_stake_alpha ?? 0,
+              href: `/subnets/${s.netuid}`,
+            })),
+          )}
           formatValue={formatTao}
           ariaLabel="Idle stake by subnet"
         />

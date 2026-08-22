@@ -10,13 +10,13 @@ import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
   ShareButton,
   TimeAgo,
-  BarMini,
-  Donut,
   SectionHead,
   FactStrip,
   FactCell,
   RangeControl,
   LineWithWindow,
+  CompositionBreakdown,
+  RankedRails,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
@@ -62,7 +62,6 @@ import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { ChainTabActions } from "./-chain-hub";
 import { BlockCard } from "./-blocks-index-page";
-import { CHART_PALETTE } from "@/lib/metagraphed/chart-palette";
 import type {
   ChainCalls,
   ChainEventsStats,
@@ -78,6 +77,7 @@ import type {
   ChainTransfers,
 } from "@/lib/metagraphed/types";
 import { HubSections } from "@/components/metagraphed/hub-prose";
+import { railItems } from "@/lib/metagraphed/rails";
 
 // #3373: compact live chain-head tip in the hero — "head #NNNN · N ago" from the
 // live /api/v1/blocks feed (limit 1), linking to that block. Mirrors #3372's
@@ -417,21 +417,13 @@ function MiniSeries({
 }
 
 /**
- * Call mix — the top modules as a BarMini, plus a click-through drill-down into
+ * Call mix — the top modules as a composition bar, plus a click-through drill-down into
  * the selected module's call_function rows (where the grouping exposes them).
  */
-// #3384: cycle the shared chart palette across the call-mix donut segments +
-// their legend swatches, matching providers.index.tsx's ProviderOverview.
-const CALL_MIX_PALETTE = CHART_PALETTE;
 
 function CallMixSection({ calls }: { calls: ChainCalls }) {
   const modules = calls.calls.slice(0, 10);
   const [selected, setSelected] = useState<string | null>(null);
-  const moduleSegments = modules.map((c, i) => ({
-    label: c.call_module,
-    value: c.count,
-    color: CALL_MIX_PALETTE[i % CALL_MIX_PALETTE.length]!,
-  }));
   // Function-level rows exist only when the aggregate is grouped by function;
   // at module grouping call_function is null, so this stays empty until then.
   const functions = calls.calls.filter(
@@ -446,60 +438,31 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
       </div>
       {modules.length > 0 ? (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <Donut
-              segments={moduleSegments}
-              centerLabel={formatNumber(calls.total_extrinsics)}
-              centerSub="calls"
-            />
-            {/* Interactive legend: `Donut`/`DonutLegend` are presentational, so
-                the click-to-drill-in affordance lives on these legend rows,
-                preserving the module-select behaviour the bar list had. */}
-            <ul className="min-w-0 flex-1 space-y-1">
-              {modules.map((c, i) => {
-                const active = selected === c.call_module;
-                return (
-                  <li key={c.call_module}>
-                    <button
-                      type="button"
-                      onClick={() => setSelected(active ? null : c.call_module)}
-                      className="flex w-full items-center gap-2 text-left"
-                      aria-pressed={active}
-                    >
-                      <span
-                        aria-hidden
-                        className="inline-block size-2 shrink-0 rounded"
-                        style={{ background: CALL_MIX_PALETTE[i % CALL_MIX_PALETTE.length] }}
-                      />
-                      <span
-                        className={
-                          active
-                            ? "text-13 truncate text-accent"
-                            : "text-13 truncate text-ink-muted"
-                        }
-                      >
-                        {c.call_module}
-                      </span>
-                      <span className="ml-auto shrink-0 text-10 tabular-nums text-ink-strong">
-                        {formatNumber(c.count)}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+          <CompositionBreakdown
+            segments={modules.map((c) => ({
+              key: c.call_module,
+              label: c.call_module,
+              value: c.count,
+            }))}
+            formatValue={(v) => formatNumber(v)}
+            ariaLabel="Calls by module"
+            onActivate={(key) => setSelected(selected === key ? null : key)}
+          />
 
           {functions.length > 0 ? (
             <div className="border-t border-border pt-3">
               <div className="mb-2 text-13 text-ink-muted">
                 {selected ? `${selected} functions` : "Function breakdown"}
               </div>
-              <BarMini
-                data={functions.slice(0, 10).map((c) => ({
-                  label: c.call_function ?? c.call_module,
-                  value: c.count,
-                }))}
+              <RankedRails
+                items={railItems(
+                  functions.slice(0, 10).map((c) => ({
+                    label: c.call_function ?? c.call_module,
+                    value: c.count,
+                  })),
+                )}
+                formatValue={(v) => formatNumber(v)}
+                ariaLabel={selected ? `${selected} functions` : "Function breakdown"}
               />
             </div>
           ) : (
@@ -1766,7 +1729,7 @@ function ExplorerDashboard({
                   </span>
                 </div>
                 {fees.top_fee_payers.length > 0 ? (
-                  // Table alone — the former BarMini restated the same ranked fee
+                  // Table alone — the former bar chart restated the same ranked fee
                   // list with no distinct cut of the data (#5313).
                   <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
                     <thead>

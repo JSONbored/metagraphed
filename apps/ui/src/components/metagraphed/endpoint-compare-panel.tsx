@@ -3,7 +3,8 @@ import { X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { BrandIcon, TimeAgo, TrendDelta } from "@jsonbored/ui-kit";
 import { Chip } from "@/components/metagraphed/primitives";
-import { EndpointUptimeBar } from "./endpoint-uptime-bar";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { formatUptime, sevenDayUptime, uptimeToneClass } from "@/lib/metagraphed/endpoint-uptime";
 import { EndpointChipCluster } from "./endpoint-chip-cluster";
 import { useLatencyHistory } from "@/hooks/use-latency-history";
 import { endpointEligibility, ELIGIBILITY_LABEL } from "@/lib/metagraphed/endpoint-pool";
@@ -116,6 +117,9 @@ function CompareColumn({
     () => incidents.filter((i) => i.endpoint_id === endpoint.id).length,
     [incidents, endpoint.id],
   );
+  // Live time only after hydration, so the SSR and first client render agree.
+  const hydrated = useHydrated();
+  const uptime = hydrated ? sevenDayUptime(endpoint.id, incidents) : null;
 
   return (
     <div className="min-w-0 space-y-3 px-3 py-3">
@@ -229,7 +233,9 @@ function CompareColumn({
 
       <div>
         <div className="text-10 text-ink-muted mb-1">7d uptime</div>
-        <EndpointUptimeBar endpointId={endpoint.id} incidents={incidents} />
+        <span className={classNames("text-13 tabular-nums", uptimeToneClass(uptime))}>
+          {formatUptime(uptime)}
+        </span>
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ import {
  * Top accounts ranked by extrinsics signed in the last 7 days (#5315).
  *
  * Shown once as a navigable list (account + tx count + share of the top-N
- * cohort). The previous BarMini + identical pill list pairing was removed so
+ * cohort). The previous bar chart + identical pill list pairing was removed so
  * the ranking is not duplicated across two visual forms.
  */
 export function TopActiveAccounts() {

@@ -1,0 +1,205 @@
+import { useState, type CSSProperties, type ReactNode } from "react";
+import { classNames } from "@/lib/format";
+import {
+  useEntityMark,
+  type ActiveEntityData,
+} from "../interaction/active-entity";
+import { ChartTooltip } from "../interaction/chart-tooltip";
+import { markAriaLabel } from "./chart-aria";
+
+/**
+ * Ranked horizontal bars (#11609): value · name · track, one 28px button
+ * per row, the track a 5px rail filled by `--fill`. The answer to "which
+ * is largest?". Rows are entity marks; the active row's fill turns accent
+ * and its `detail` rows show in the chart tooltip.
+ */
+export interface RankedRailItem {
+  key: string;
+  label: string;
+  value: number;
+  /** Second track (e.g. emission next to stake). */
+  secondary?: number;
+  avatar?: ReactNode;
+  href?: string;
+  /** Rows for the tooltip on active. */
+  detail?: ActiveEntityData["rows"];
+}
+
+export interface RankedRailsProps {
+  items: readonly RankedRailItem[];
+  formatValue: (value: number) => string;
+  formatSecondary?: (value: number) => string;
+  /** `sqrt` for heavy tails. */
+  scale?: "linear" | "sqrt";
+  /** Pin the scale (e.g. across two rails); defaults to the largest value. */
+  max?: number;
+  /** Header labels; omitted = no header row. */
+  columns?: { value: string; name: string; track: string; secondary?: string };
+  /** Rows shown before "Show all". */
+  limit?: number;
+  ariaLabel: string;
+  source?: string;
+  onActivate?: (item: RankedRailItem) => void;
+  className?: string;
+}
+
+/** Track fill as a 0–100 percentage. */
+export function railFill(
+  value: number,
+  max: number,
+  scale: "linear" | "sqrt" = "linear",
+): number {
+  if (!(max > 0) || !(value > 0)) return 0;
+  const ratio = Math.min(1, value / max);
+  return Math.round((scale === "sqrt" ? Math.sqrt(ratio) : ratio) * 1000) / 10;
+}
+
+export function RankedRails({
+  items,
+  formatValue,
+  formatSecondary,
+  scale = "linear",
+  max,
+  columns,
+  limit = 10,
+  ariaLabel,
+  source = "ranked-rails",
+  onActivate,
+  className,
+}: RankedRailsProps) {
+  const [expanded, setExpanded] = useState(false);
+  const cap =
+    max ??
+    Math.max(0, ...items.map((i) => Math.max(i.value, i.secondary ?? 0)));
+  const shown = expanded ? items : items.slice(0, limit);
+  const hasSecondary = items.some((i) => i.secondary !== undefined);
+  return (
+    <div
+      className={classNames("mg-rails", className)}
+      data-mg-rails=""
+      data-secondary={hasSecondary ? "true" : undefined}
+    >
+      {columns ? (
+        <div className="mg-rails-head" aria-hidden="true">
+          <span>{columns.value}</span>
+          <span>{columns.name}</span>
+          <span>{columns.track}</span>
+          {hasSecondary ? <span>{columns.secondary ?? ""}</span> : null}
+        </div>
+      ) : null}
+      <div
+        className="mg-rails-rows"
+        role="group"
+        aria-label={ariaLabel}
+        data-marks
+      >
+        <ChartTooltip top={8} />
+        {shown.map((item) => (
+          <Rail
+            key={item.key}
+            item={item}
+            cap={cap}
+            scale={scale}
+            formatValue={formatValue}
+            formatSecondary={formatSecondary ?? formatValue}
+            hasSecondary={hasSecondary}
+            source={source}
+            onActivate={onActivate}
+          />
+        ))}
+      </div>
+      {items.length > limit && !expanded ? (
+        <button
+          type="button"
+          className="mg-rails-more"
+          onClick={() => setExpanded(true)}
+        >
+          Show all {items.length}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function Rail({
+  item,
+  cap,
+  scale,
+  formatValue,
+  formatSecondary,
+  hasSecondary,
+  source,
+  onActivate,
+}: {
+  item: RankedRailItem;
+  cap: number;
+  scale: "linear" | "sqrt";
+  formatValue: (v: number) => string;
+  formatSecondary: (v: number) => string;
+  hasSecondary: boolean;
+  source: string;
+  onActivate?: (item: RankedRailItem) => void;
+}) {
+  const mark = useEntityMark(item.key, {
+    source,
+    label: markAriaLabel(item.label, formatValue(item.value)),
+    data: item.detail
+      ? { title: item.label, total: formatValue(item.value), rows: item.detail }
+      : { title: item.label, total: formatValue(item.value) },
+    onActivate: item.href
+      ? undefined
+      : onActivate
+        ? () => onActivate(item)
+        : undefined,
+  });
+  const body = (
+    <>
+      <span className="mg-rails-value">{formatValue(item.value)}</span>
+      <span className="mg-rails-name">
+        {item.avatar ? (
+          <span className="mg-rails-avatar">{item.avatar}</span>
+        ) : null}
+        <span>{item.label}</span>
+      </span>
+      <span className="mg-rails-track">
+        <b
+          style={
+            {
+              "--fill": `${railFill(item.value, cap, scale)}%`,
+            } as CSSProperties
+          }
+        />
+      </span>
+      {hasSecondary ? (
+        <span
+          className="mg-rails-track"
+          data-secondary
+          title={
+            item.secondary === undefined
+              ? undefined
+              : formatSecondary(item.secondary)
+          }
+        >
+          <b
+            style={
+              {
+                "--fill": `${railFill(item.secondary ?? 0, cap, scale)}%`,
+              } as CSSProperties
+            }
+          />
+        </span>
+      ) : null}
+    </>
+  );
+  const { role: _role, ...linkMark } = mark;
+  void _role;
+  return item.href ? (
+    <a {...linkMark} href={item.href} className="mg-rails-row">
+      {body}
+    </a>
+  ) : (
+    <button type="button" {...mark} className="mg-rails-row">
+      {body}
+    </button>
+  );
+}

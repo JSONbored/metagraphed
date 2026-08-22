@@ -9,7 +9,7 @@ export interface StakeMovesTileModel {
   repeats: number;
   /** Average moves per mover, or null on a cold / junk store. */
   perMover: number | null;
-  /** MiniStack composition: unique movers vs repeat moves. */
+  /** Composition hint: unique movers vs repeat moves. */
   segments: Array<{ label: string; value: number; color: string }>;
   /** Short human summary for the Provenance tooltip. */
   summary: string;
@@ -17,7 +17,7 @@ export interface StakeMovesTileModel {
 
 /**
  * #3485: derive the economics-panel stake-moves tile model from the flat
- * StakeMoved window summary. `movements` is the headline count; the MiniStack
+ * StakeMoved window summary. `movements` is the headline count; the hint
  * splits it into unique re-delegators (`distinct_movers`) vs repeat moves so a
  * single-snapshot aggregate still reads as a composition rather than a lone
  * number. Everything coerces defensively — a cold / undefined card degrades to a

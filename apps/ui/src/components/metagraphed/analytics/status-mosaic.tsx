@@ -1,24 +1,18 @@
-import { Definition } from "@jsonbored/ui-kit";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { CompositionBreakdown, type CompositionSegment } from "@jsonbored/ui-kit";
 import { endpointsQuery } from "@/lib/metagraphed/queries";
-import { classNames } from "@/lib/metagraphed/format";
+import { formatNumber } from "@/lib/metagraphed/format";
+import { EmptyState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { useTimeRange, RANGE_HOURS, RANGE_LABEL } from "./time-range-context";
-import type { Endpoint, HealthState } from "@/lib/metagraphed/types";
+import type { Endpoint } from "@/lib/metagraphed/types";
 
-const TONE: Record<string, string> = {
-  ok: "bg-health-ok",
-  warn: "bg-health-warn",
-  down: "bg-health-down",
-  unknown: "bg-border",
-};
+const STATES = ["ok", "warn", "down", "unknown"] as const;
 
 /**
- * Dense status mosaic: one tile per probed endpoint, tinted by current
- * health state. Hover a tile to peek metadata; click to jump to the host
- * subnet. Useful as a single-glance "is anything red right now?" view.
+ * Probed endpoints by latest health state, as one composition bar. The
+ * single-glance "is anything red right now?" view.
  */
 export function StatusMosaic({ className, limit = 240 }: { className?: string; limit?: number }) {
   const { range } = useTimeRange();
@@ -35,96 +29,32 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
       }),
     [allEndpoints, cutoff],
   );
-  const [filter, setFilter] = useState<HealthState | "all">("all");
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { ok: 0, warn: 0, down: 0, unknown: 0 };
-    for (const e of endpoints) c[e.health ?? "unknown"] = (c[e.health ?? "unknown"] ?? 0) + 1;
-    return c;
+  const segments = useMemo<CompositionSegment[]>(() => {
+    const counts: Record<string, number> = { ok: 0, warn: 0, down: 0, unknown: 0 };
+    for (const e of endpoints) {
+      const state = e.health ?? "unknown";
+      counts[state] = (counts[state] ?? 0) + 1;
+    }
+    return STATES.map((k) => ({ key: `health:${k}`, label: k, value: counts[k] ?? 0 }));
   }, [endpoints]);
 
-  const rows =
-    filter === "all" ? endpoints : endpoints.filter((e) => (e.health ?? "unknown") === filter);
-
   return (
-    <Panel flush className={className}>
-      <div className="p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <div>
-            <div className="text-13 text-ink-muted">Status mosaic · {RANGE_LABEL[range]}</div>
-            <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
-              {rows.length} endpoint{rows.length === 1 ? "" : "s"}
-            </h3>
-          </div>
-          <div className="flex flex-wrap items-center gap-1">
-            {(["all", "ok", "warn", "down", "unknown"] as const).map((k) => {
-              const active = filter === k;
-              const n = k === "all" ? endpoints.length : (counts[k] ?? 0);
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setFilter(k)}
-                  className={classNames(
-                    "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-13 transition-colors",
-                    active
-                      ? "border-accent/60 bg-accent/10 text-accent"
-                      : "border-border text-ink-muted hover:text-ink-strong hover:border-ink-muted/50",
-                  )}
-                  aria-pressed={active}
-                >
-                  {k !== "all" ? (
-                    <span
-                      className={classNames("inline-block size-1.5 rounded", TONE[k])}
-                      aria-hidden
-                    />
-                  ) : null}
-                  {k} <span className="text-ink-muted/80 tabular-nums">{n}</span>
-                </button>
-              );
-            })}
-            <Definition term="Status mosaic" />
-          </div>
-        </div>
-        <div
-          className="grid gap-[3px]"
-          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(14px, 1fr))" }}
-          role="list"
-        >
-          {rows.map((e) => {
-            const state = (e.health ?? "unknown") as HealthState;
-            const tile = (
-              <span
-                className={classNames(
-                  // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
-                  "block aspect-square rounded transition-transform hover:scale-110 hover:ring-1 hover:ring-accent/60",
-                  TONE[state] ?? TONE.unknown,
-                )}
-              />
-            );
-            return (
-              <span key={e.id} role="listitem">
-                {e.netuid != null ? (
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: e.netuid }}
-                    className="block focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
-                  >
-                    {tile}
-                  </Link>
-                ) : (
-                  tile
-                )}
-              </span>
-            );
-          })}
-          {rows.length === 0 ? (
-            <div className="col-span-full py-6 text-center text-10 text-ink-muted">
-              No endpoints match this filter.
-            </div>
-          ) : null}
-        </div>
-      </div>
+    <Panel
+      title={`Endpoint status · ${RANGE_LABEL[range]}`}
+      caption={`${formatNumber(endpoints.length)} endpoint${endpoints.length === 1 ? "" : "s"} probed in range, by latest state.`}
+      className={className}
+    >
+      {endpoints.length === 0 ? (
+        <EmptyState title="No endpoints probed in this range" />
+      ) : (
+        <CompositionBreakdown
+          segments={segments}
+          formatValue={(v) => formatNumber(v)}
+          ariaLabel="Endpoints by health state"
+          source="status-mosaic"
+        />
+      )}
     </Panel>
   );
 }

@@ -24,8 +24,16 @@ import {
   AccordionItem,
   AccordionTrigger,
   AnimatedNumber,
-  BarMini,
   LineWithWindow,
+  CompositionBreakdown,
+  LeaderCards,
+  MarkerRail,
+  RankGrid,
+  RankedRails,
+  COMPOSITION_SPECIMEN,
+  LEADER_SPECIMEN,
+  MARKER_SPECIMEN,
+  RAIL_SPECIMEN,
   StackedColumns,
   TrendDelta,
   lineSpecimen,
@@ -51,8 +59,6 @@ import {
   DialogTrigger,
   Divider,
   DiscordIcon,
-  Donut,
-  DonutLegend,
   DownloadCsvButton,
   EligibilityChip,
   EntityHero,
@@ -90,7 +96,6 @@ import {
   ProvenanceChip,
   QueryBar,
   QueryProgress,
-  ReadinessGauge,
   ResponsiveTable,
   ReviewChip,
   RoutePending,
@@ -106,10 +111,8 @@ import {
   Skeleton,
   TableState,
   TimeAgo,
-  TreemapMini,
   ViewModeToggle,
   Wordmark,
-  YieldPercentileStrip,
 } from "@jsonbored/ui-kit";
 import { GITHUB_REPO_URL } from "@/lib/metagraphed/identity";
 import { DEFINITIONS } from "@/lib/metagraphed/definitions";
@@ -487,25 +490,6 @@ function LayoutSection({ updated }: { updated: string }) {
 
 /* ---------- Data display ---------- */
 
-const BAR_DATA = [
-  { label: "SubtensorModule", value: 399_432 },
-  { label: "Drand", value: 201_572 },
-  { label: "Ethereum", value: 146_714 },
-];
-
-const DONUT_DATA = [
-  { label: "RPC", value: 42, color: "var(--chart-1)" },
-  { label: "WSS", value: 28, color: "var(--chart-2)" },
-  { label: "API", value: 18, color: "var(--chart-3)" },
-  { label: "SSE", value: 12, color: "var(--chart-4)" },
-];
-
-const TREEMAP_DATA = [
-  { label: "Official", value: 91, color: "var(--accent)" },
-  { label: "Provider-claimed", value: 24, color: "var(--chart-2)" },
-  { label: "Community", value: 14, color: "var(--ink-subtle)" },
-];
-
 const SPARK_VALUES = [12, 14, 13, 18, 22, 20, 26];
 const LINE_SPECIMEN = lineSpecimen(120);
 const STACKED_SPECIMEN = stackedSpecimen();
@@ -534,6 +518,62 @@ function ChartsSection() {
               source="line-specimen"
             />
           </Show>
+          <Show name="RankedRails">
+            <RankedRails
+              items={RAIL_SPECIMEN}
+              formatValue={(v) => `${(v / 1_000_000).toFixed(2)}M τ`}
+              formatSecondary={(v) => `${(v / 1000).toFixed(0)}k τ`}
+              columns={{
+                value: "Stake",
+                name: "Validator",
+                track: "0–100%",
+                secondary: "Emission",
+              }}
+              ariaLabel="Validators by stake (specimen)"
+              source="rails-specimen"
+            />
+          </Show>
+          <Show name="MarkerRail">
+            <MarkerRail
+              items={MARKER_SPECIMEN}
+              formatValue={(v) => `${v.toFixed(1)}%`}
+              columns={{ ratio: "Uptime", name: "Surface", scale: "0–100%" }}
+              ariaLabel="Uptime by surface (specimen)"
+              source="marker-specimen"
+            />
+          </Show>
+          <Show name="CompositionBreakdown, RankGrid">
+            <CompositionBreakdown
+              segments={COMPOSITION_SPECIMEN}
+              formatValue={(v) => `${v}%`}
+              legendCols={3}
+              ariaLabel="Emission split (specimen)"
+              source="composition-specimen"
+            />
+          </Show>
+          <Show name="RankGrid">
+            <RankGrid
+              items={RAIL_SPECIMEN.slice(0, 10).map((r, i) => ({
+                key: r.key,
+                label: r.label,
+                value: `${(r.value / 1_000_000).toFixed(2)}M τ`,
+                share: `${Math.round((r.value / 5_500_000) * 100)}%`,
+                swatch: `var(--chart-${i + 1})`,
+                href: `/subnets/${i + 1}`,
+                current: i === 2,
+              }))}
+              cols={5}
+              ariaLabel="Peers by emission (specimen)"
+              source="rank-grid-specimen"
+            />
+          </Show>
+          <Show name="LeaderCards">
+            <LeaderCards
+              items={LEADER_SPECIMEN}
+              ariaLabel="Top subnets (specimen)"
+              source="leaders-specimen"
+            />
+          </Show>
           <Show name="LineWithWindow compact">
             <LineWithWindow
               {...LINE_SPECIMEN}
@@ -554,15 +594,6 @@ function DataDisplaySection() {
   return (
     <Section id="data-display" title="Data display">
       <div className="grid gap-4 md:grid-cols-2">
-        <Show name="BarMini">
-          <BarMini data={BAR_DATA} showValue formatValue={(v) => v.toLocaleString("en-US")} />
-        </Show>
-        <Show name="Donut, DonutLegend">
-          <div className="flex items-center gap-4">
-            <Donut segments={DONUT_DATA} centerLabel="100" centerSub="endpoints" />
-            <DonutLegend segments={DONUT_DATA} />
-          </div>
-        </Show>
         <Show name="TrendDelta">
           <div className="flex items-center gap-3">
             <TrendDelta values={SPARK_VALUES} label="7d specimen" />
@@ -570,10 +601,6 @@ function DataDisplaySection() {
             <TrendDelta values={[3, 3]} label="7d specimen" />
           </div>
         </Show>
-        <Show name="TreemapMini">
-          <TreemapMini data={TREEMAP_DATA} className="h-32" />
-        </Show>
-
         <Show name="TableState">
           <div className="space-y-3">
             <TableState variant="empty" title="No rows match this filter" />
@@ -583,14 +610,6 @@ function DataDisplaySection() {
               generatedAt={SAMPLE_UPDATED_AT}
             />
           </div>
-        </Show>
-        <Show name="YieldPercentileStrip">
-          <YieldPercentileStrip
-            p25_yield={0.08}
-            median_yield={0.12}
-            p75_yield={0.16}
-            p90_yield={0.21}
-          />
         </Show>
       </div>
 
@@ -932,9 +951,6 @@ function FeedbackSection({ updated }: { updated: string }) {
           <McpToolsList
             tools={[{ name: "get_subnet" }, { name: "list_endpoints" }, { name: "search_subnets" }]}
           />
-        </Show>
-        <Show name="ReadinessGauge">
-          <ReadinessGauge score={72} tier="buildable" details={["subnet-api", "docs"]} />
         </Show>
         <Show name="ProvenanceChip, CurationChip, ReviewChip, CandidateChip">
           <div className="flex flex-wrap gap-2">

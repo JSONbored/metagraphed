@@ -7,8 +7,8 @@ import {
   sourceHealthProvidersQuery,
   healthQuery,
 } from "@/lib/metagraphed/queries";
-import { classNames } from "@/lib/metagraphed/format";
-import { HealthPill, TimeAgo, TableState, BarMini, type BarMiniDatum } from "@jsonbored/ui-kit";
+import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { HealthPill, TimeAgo, TableState, RankedRails } from "@jsonbored/ui-kit";
 import {
   SortHeader,
   ariaSort,
@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { HealthHistorySurface, SourceHealthProvider } from "@/lib/metagraphed/types";
+import { railItems } from "@/lib/metagraphed/rails";
 
 /* ================================================================== *
  * #8a — /health/history/{date} date-picker drill-down
@@ -115,7 +116,7 @@ function HealthHistoryBody({ date }: { date: string }) {
     });
   };
 
-  const classData: BarMiniDatum[] = useMemo(
+  const classData: Array<{ label: string; value: number }> = useMemo(
     () =>
       Object.entries(summary.classification_counts)
         .sort(([, a], [, b]) => b - a)
@@ -180,7 +181,11 @@ function HealthHistoryBody({ date }: { date: string }) {
         </Panel>
         <Panel>
           <div className="text-10 text-ink-muted mb-1.5">Classification mix</div>
-          <BarMini data={classData} showValue />
+          <RankedRails
+            items={railItems(classData)}
+            formatValue={(v) => formatNumber(v)}
+            ariaLabel="Classification mix"
+          />
         </Panel>
       </div>
 

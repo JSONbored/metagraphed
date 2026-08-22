@@ -3,7 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo } from "react";
 import { BrandIcon, CopyButton, ExternalLink, TimeAgo, TrendDelta } from "@jsonbored/ui-kit";
 import { EndpointDetailDrawer } from "./endpoint-detail-drawer";
-import { EndpointUptimeBar } from "./endpoint-uptime-bar";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { formatUptime, sevenDayUptime, uptimeToneClass } from "@/lib/metagraphed/endpoint-uptime";
 import { recordLatencyObservations } from "@/hooks/use-latency-history";
 import { endpointEligibility, ELIGIBILITY_LABEL } from "@/lib/metagraphed/endpoint-pool";
 import { classNames } from "@/lib/metagraphed/format";
@@ -105,6 +106,8 @@ export function EndpointOperationalList({
   compareMax = 4,
 }: EndpointOperationalListProps) {
   const groups = useMemo(() => groupByNetuid(rows, subnetById), [rows, subnetById]);
+  // Live time only after hydration, so the SSR and first client render agree.
+  const hydrated = useHydrated();
 
   // Snapshot current latency values into the client-side history collector so
   // sparklines gain a real multi-point trace even when the backend only ships
@@ -176,6 +179,7 @@ export function EndpointOperationalList({
                 const providerSlug = endpoint.provider_slug;
                 const provider = providerSlug ? providerById.get(providerSlug) : undefined;
                 const series = latencySeries(endpoint);
+                const uptime = hydrated ? sevenDayUptime(endpoint.id, incidents) : null;
                 const eligibility = endpointEligibility(endpoint, poolsById);
                 return (
                   <Fragment key={endpoint.id}>
@@ -355,7 +359,14 @@ export function EndpointOperationalList({
                           {/* 7d uptime */}
                           <div className="min-w-0">
                             <div className="text-10 text-ink-muted mb-1 lg:hidden">7d uptime</div>
-                            <EndpointUptimeBar endpointId={endpoint.id} incidents={incidents} />
+                            <span
+                              className={classNames(
+                                "text-13 tabular-nums",
+                                uptimeToneClass(uptime),
+                              )}
+                            >
+                              {formatUptime(uptime)}
+                            </span>
                             <div className="mt-1 text-10 text-ink-muted">
                               probed <TimeAgo at={endpoint.last_probed_at} />
                             </div>

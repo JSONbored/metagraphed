@@ -1,7 +1,7 @@
 /**
  * Ranking helpers for the Accounts index "Most active accounts" widget (#5315).
  *
- * Previously the page rendered both a `BarMini` chart and an identical pill
+ * Previously the page rendered both a ranked bar chart and an identical pill
  * list of the same signers / tx counts. Keep a single navigable list so the
  * ranking is shown once with account + tx count clearly linked.
  *

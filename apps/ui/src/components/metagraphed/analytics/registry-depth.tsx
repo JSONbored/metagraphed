@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { registrySummaryQuery, coverageDepthQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { TableState, BarMini, type BarMiniDatum, Definition } from "@jsonbored/ui-kit";
+import { TableState, Definition, MarkerRail } from "@jsonbored/ui-kit";
 import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { CoverageDepthQueueRow } from "@/lib/metagraphed/types";
@@ -125,7 +125,7 @@ function Stat({ label, value }: { label: string; value: string }) {
  * #5b — dimension coverage (docs vs openapi vs sse … coverage %)
  * Fed by /api/v1/registry/summary → coverage.dimension_coverage, the
  * registry-wide { dimension: { pct, present } } rollup. Rendered as a
- * BarMini distribution coloured by coverage band.
+ * marker rail per dimension.
  * ------------------------------------------------------------------ */
 
 // Stable display order, most-fundamental first; unknown keys append after.
@@ -140,13 +140,6 @@ const DIMENSION_ORDER = [
   "sse",
 ];
 
-function dimensionColor(pct: number): string {
-  if (pct >= 75) return "var(--health-ok)";
-  if (pct >= 40) return "var(--chart-3)";
-  if (pct >= 15) return "var(--health-warn)";
-  return "var(--health-down)";
-}
-
 export function DimensionCoverageHeatmap({ className }: { className?: string }) {
   const { data: res } = useSuspenseQuery(registrySummaryQuery());
   const dims = res.data.coverage.dimension_coverage;
@@ -158,10 +151,7 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
     return [...ordered, ...extra];
   }, [dims]);
 
-  const data: BarMiniDatum[] = keys.map((k) => {
-    const pct = dims[k]?.pct ?? 0;
-    return { label: k, value: pct, color: dimensionColor(pct) };
-  });
+  const data = keys.map((k) => ({ key: k, label: k, value: dims[k]?.pct ?? null }));
   const subnetCount = res.data.subnet_count;
 
   return (
@@ -176,27 +166,15 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
           </div>
           <Definition term="Kind coverage" />
         </header>
-        <BarMini data={data} max={100} showValue />
-        <div className="mt-3 flex items-center justify-between text-10 text-ink-muted">
-          <span>% of {subnetCount ?? "all"} subnets covered</span>
-          <span className="inline-flex items-center gap-2">
-            <Swatch color="var(--health-ok)" label="≥75" />
-            <Swatch color="var(--chart-3)" label="≥40" />
-            <Swatch color="var(--health-warn)" label="≥15" />
-            <Swatch color="var(--health-down)" label="<15" />
-          </span>
-        </div>
+        <MarkerRail
+          items={data}
+          max={100}
+          formatValue={(v) => `${Math.round(v)}%`}
+          columns={{ ratio: "Coverage", name: "Dimension", scale: "0–100%" }}
+          ariaLabel={`Surface dimension coverage across ${subnetCount ?? "all"} subnets`}
+        />
       </div>
     </Panel>
-  );
-}
-
-function Swatch({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1">
-      <span className="inline-block size-2 rounded" style={{ background: color }} aria-hidden />
-      {label}
-    </span>
   );
 }
 

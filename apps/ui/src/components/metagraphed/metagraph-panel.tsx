@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ShieldCheck } from "lucide-react";
 import { subnetMetagraphQuery } from "@/lib/metagraphed/queries";
-import { TableState, BarMini, FactStrip, FactCell } from "@jsonbored/ui-kit";
+import { TableState, FactStrip, FactCell, RankedRails } from "@jsonbored/ui-kit";
 import { NeuronTable } from "@/components/metagraphed/neuron-table";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
+import { railItems } from "@/lib/metagraphed/rails";
 
 const TOP_N = 12;
 
@@ -92,7 +93,11 @@ export function MetagraphTableLoader({
               </span>
             </span>
           </div>
-          <BarMini data={stakeBars} />
+          <RankedRails
+            items={railItems(stakeBars)}
+            formatValue={(v) => `${taoCompact(v)} τ`}
+            ariaLabel={`Stake distribution, top ${stakeBars.length} UIDs`}
+          />
         </Panel>
       ) : null}
 

@@ -19,7 +19,7 @@ export interface ValidatorDominanceSource {
   subnet_count: number;
 }
 
-/** One chart-ready row — BarMini and TreemapMini both accept `{ label, value, color? }`. */
+/** One chart-ready row for the dominance rails. */
 export interface ValidatorDominanceDatum {
   hotkey: string;
   label: string;

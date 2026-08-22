@@ -1,8 +1,10 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { BarMini, type BarMiniDatum, FactStrip, FactCell } from "@jsonbored/ui-kit";
+import { FactStrip, FactCell, MarkerRail, RankedRails } from "@jsonbored/ui-kit";
 import { coverageQuery } from "@/lib/metagraphed/queries";
 import type { Coverage } from "@/lib/metagraphed/types";
 import { Panel } from "@/components/metagraphed/primitives";
+import { railItems } from "@/lib/metagraphed/rails";
+import { formatNumber } from "@/lib/metagraphed/format";
 
 // Fixed bucket order for the score distribution (the API keys are unordered).
 const SCORE_BUCKETS = ["0-24", "25-49", "50-74", "75-99", "100"];
@@ -24,7 +26,7 @@ export function IntegrabilityBoard() {
   const completeness = coverage.completeness;
   const dims = completeness?.dimension_coverage ?? {};
 
-  const dimensionData: BarMiniDatum[] = Object.entries(dims)
+  const dimensionData = Object.entries(dims)
     .map(([label, d]) => ({
       label,
       value: Math.round(d?.pct ?? 0),
@@ -32,7 +34,7 @@ export function IntegrabilityBoard() {
     }))
     .sort((a, b) => a.value - b.value);
 
-  const distribution: BarMiniDatum[] = SCORE_BUCKETS.filter(
+  const distribution = SCORE_BUCKETS.filter(
     (b) => completeness?.score_distribution?.[b] != null,
   ).map((b) => ({ label: b, value: completeness?.score_distribution?.[b] ?? 0 }));
 
@@ -72,7 +74,13 @@ export function IntegrabilityBoard() {
               </h3>
               <span className="text-10 text-ink-muted">% of subnets</span>
             </div>
-            <BarMini data={dimensionData} max={100} />
+            <MarkerRail
+              items={dimensionData.map((d) => ({ key: d.label, label: d.label, value: d.value }))}
+              max={100}
+              formatValue={(v) => `${Math.round(v)}%`}
+              columns={{ ratio: "Coverage", name: "Dimension", scale: "0–100%" }}
+              ariaLabel="Coverage by dimension"
+            />
             <p className="mt-2 text-13 text-ink-muted">
               Lowest-coverage dimensions first — the biggest gaps to fill.
             </p>
@@ -87,7 +95,11 @@ export function IntegrabilityBoard() {
               </h3>
               <span className="text-10 text-ink-muted">subnets</span>
             </div>
-            <BarMini data={distribution} />
+            <RankedRails
+              items={railItems(distribution)}
+              formatValue={(v) => formatNumber(v)}
+              ariaLabel="Completeness score distribution"
+            />
             <p className="mt-2 text-13 text-ink-muted">
               How subnet completeness scores are distributed across the registry.
             </p>

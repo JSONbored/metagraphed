@@ -17,7 +17,7 @@ import { formatNumber, isStaleFreshness, classNames } from "@/lib/metagraphed/fo
 import { matchesQuery, sortBy } from "@/lib/metagraphed/url-state";
 import { groupByOperator } from "@/lib/metagraphed/group-validators";
 import { useWatchlist } from "@/lib/metagraphed/watchlist";
-import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
+import { ValidatorSubnetCoverage } from "@/components/metagraphed/charts/validator-subnet-coverage";
 import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { VALIDATOR_COLUMNS } from "@/components/metagraphed/validator-columns";
@@ -440,12 +440,12 @@ function ConcentrationSection({ validators }: { validators: GlobalValidator[] })
         {showDetail ? "Hide concentration detail" : "Concentration detail"}
       </button>
       {showDetail ? (
-        <div id="validator-subnet-heatmap">
+        <div id="validator-subnet-coverage">
           <AsyncPanel
-            context="validator subnet heatmap"
+            context="validator subnet coverage"
             fallback={<Skeleton className="h-64 w-full" />}
           >
-            <ValidatorSubnetHeatmap />
+            <ValidatorSubnetCoverage />
           </AsyncPanel>
         </div>
       ) : null}

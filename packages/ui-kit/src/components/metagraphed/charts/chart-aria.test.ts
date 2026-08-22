@@ -1,54 +1,23 @@
 import { describe, expect, it } from "vitest";
+import { markAriaLabel, momentumAriaLabel } from "./chart-aria";
 
-import {
-  chartSegmentsAriaLabel,
-  synthesizeBarMiniAriaLabel,
-  synthesizeDonutAriaLabel,
-} from "./chart-aria";
-
-describe("chartSegmentsAriaLabel", () => {
-  it("joins label/value pairs", () => {
-    expect(
-      chartSegmentsAriaLabel([
-        { label: "stake", value: 3 },
-        { label: "serving", value: 1 },
-      ]),
-    ).toBe("stake 3, serving 1");
+describe("markAriaLabel", () => {
+  it("is the domain label, with the total when the mark carries one", () => {
+    expect(markAriaLabel("AUG 22", "7.4T")).toBe("AUG 22 · 7.4T total");
+    expect(markAriaLabel("AUG 22", 12)).toBe("AUG 22 · 12 total");
+    expect(markAriaLabel("AUG 22")).toBe("AUG 22");
+    expect(markAriaLabel("AUG 22", null)).toBe("AUG 22");
+    expect(markAriaLabel("AUG 22", "")).toBe("AUG 22");
   });
 });
 
-describe("synthesizeBarMiniAriaLabel", () => {
-  it("returns a stable empty-state label", () => {
-    expect(synthesizeBarMiniAriaLabel([])).toBe("Bar chart with no data");
-  });
-
-  it("summarizes non-empty data", () => {
-    expect(synthesizeBarMiniAriaLabel([{ label: "high", value: 2 }])).toBe(
-      "high 2",
+describe("momentumAriaLabel", () => {
+  it("reads the unit, the end value, the delta and the range", () => {
+    expect(momentumAriaLabel("tokens", "254T", "+89%", "JUN 28 → AUG 22")).toBe(
+      "Tokens: 254T, +89% over JUN 28 → AUG 22",
     );
-  });
-});
-
-describe("synthesizeDonutAriaLabel", () => {
-  it("returns a stable empty-state label", () => {
-    expect(synthesizeDonutAriaLabel([])).toBe("Donut chart with no data");
-  });
-
-  it("returns a stable zero-total label", () => {
-    expect(
-      synthesizeDonutAriaLabel([
-        { label: "a", value: 0 },
-        { label: "b", value: -1 },
-      ]),
-    ).toBe("Donut chart with no data");
-  });
-
-  it("summarizes segments with positive total", () => {
-    expect(
-      synthesizeDonutAriaLabel([
-        { label: "ok", value: 4 },
-        { label: "warn", value: 1 },
-      ]),
-    ).toBe("ok 4, warn 1");
+    expect(momentumAriaLabel("tokens", null, "—", "")).toBe(
+      "Tokens: no data in the window",
+    );
   });
 });

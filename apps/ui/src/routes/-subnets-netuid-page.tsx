@@ -124,7 +124,6 @@ import { ResourceExplorer } from "@/components/metagraphed/resource-explorer";
 import { GittensorRegisteredRepos } from "@/components/metagraphed/gittensor-registered-repos";
 import { SubnetProfilePanel } from "@/components/metagraphed/subnet-profile-panel";
 import { SubnetPriorityHighlights } from "@/components/metagraphed/subnet-priority-highlights";
-import { ActivityHeatmap } from "@/components/metagraphed/charts/activity-heatmap";
 import { SubnetValidatorsPreview } from "@/components/metagraphed/subnet-validators-preview";
 import { SubnetFilterProvider } from "@/components/metagraphed/subnet-filter-context";
 import { SubnetCompareDrawer } from "@/components/metagraphed/subnet-compare-drawer";
@@ -1126,15 +1125,6 @@ function ActivityPanel({ netuid }: { netuid: number }) {
   const navigate = useNavigate({ from: "/subnets/$netuid" });
   return (
     <div className="space-y-6">
-      {/* #8247: moved from the Overview's SubnetPulseStrip -- the registry
-          activity heatmap belongs beside the rest of the activity data, not
-          duplicated above every tab. */}
-      <div id="registry-activity">
-        <QueryErrorBoundary fallback={() => null}>
-          <ActivityHeatmap netuid={netuid} />
-        </QueryErrorBoundary>
-      </div>
-
       <AnalyticsSection
         id="activity"
         name="On-chain activity"

@@ -14,10 +14,9 @@ import {
   KeyChip,
   CurationChip,
   TimeAgo,
-  Donut,
-  DonutLegend,
   Definition,
   AnalyticsSection,
+  CompositionBreakdown,
 } from "@jsonbored/ui-kit";
 import type { Endpoint } from "@/lib/metagraphed/types";
 
@@ -105,7 +104,6 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
     { label: "Alpha in", value: inP, color: "var(--accent)" },
     { label: "Alpha out", value: outP, color: "var(--health-warn)" },
   ];
-  const ratio = inP + outP > 0 ? (inP / (inP + outP)) * 100 : null;
 
   // No historical alpha-price series is exposed by the API, so there is no
   // honest price delta to show. Render only the current price (no fabricated Δ).
@@ -227,69 +225,42 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
             queries, so gate behind hydration — see the lineage callout above. */}
         {hydrated && (poolSegments.some((s) => s.value > 0) || topology.length > 0) ? (
           <div className="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border border-b border-border">
-            <div className="flex items-center gap-4 p-4">
+            <div className="p-4">
+              <div className="mb-3 flex items-center gap-1.5 text-13 text-ink-muted">
+                Pool composition
+                <Definition term="Alpha reserve ratio" />
+              </div>
               {poolSegments.some((s) => s.value > 0) ? (
-                <>
-                  <Donut
-                    segments={poolSegments}
-                    size={80}
-                    strokeWidth={12}
-                    centerLabel={ratio != null ? `${ratio.toFixed(0)}%` : "—"}
-                    centerSub="in"
-                  />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-13 text-ink-muted">
-                      Pool composition
-                      <Definition term="Alpha reserve ratio" />
-                    </div>
-                    <div className="mt-1 space-y-1 text-10 text-ink-muted">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          aria-hidden
-                          className="inline-block size-2 rounded"
-                          style={{ background: "var(--accent)" }}
-                        />
-                        <span className="text-ink">In</span>
-                        <span className="ml-auto tabular-nums text-ink-strong">
-                          {formatNumber(inP)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          aria-hidden
-                          className="inline-block size-2 rounded"
-                          style={{ background: "var(--health-warn)" }}
-                        />
-                        <span className="text-ink">Out</span>
-                        <span className="ml-auto tabular-nums text-ink-strong">
-                          {formatNumber(outP)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </>
+                <CompositionBreakdown
+                  segments={poolSegments.map((p) => ({
+                    key: `pool:${p.label}`,
+                    label: p.label,
+                    value: p.value,
+                  }))}
+                  formatValue={(v) => formatNumber(v)}
+                  legendCols={3}
+                  ariaLabel="Pool composition"
+                />
               ) : (
                 <div className="text-10 text-ink-muted">No pool data</div>
               )}
             </div>
-            <div className="flex items-center gap-4 p-4">
+            <div className="p-4">
+              <div className="mb-3 flex items-center gap-1.5 text-13 text-ink-muted">
+                Endpoint topology
+                <Definition term="Endpoint kinds" />
+              </div>
               {topology.length > 0 ? (
-                <>
-                  <Donut
-                    segments={topology}
-                    size={80}
-                    strokeWidth={12}
-                    centerLabel={String(endpoints.length)}
-                    centerSub="endpoints"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 text-13 text-ink-muted">
-                      Endpoint topology
-                      <Definition term="Endpoint kinds" />
-                    </div>
-                    <DonutLegend segments={topology} />
-                  </div>
-                </>
+                <CompositionBreakdown
+                  segments={topology.map((t) => ({
+                    key: `kind:${t.label}`,
+                    label: t.label,
+                    value: t.value,
+                  }))}
+                  formatValue={(v) => formatNumber(v)}
+                  legendCols={3}
+                  ariaLabel="Endpoint topology"
+                />
               ) : (
                 <div className="text-10 text-ink-muted">No endpoints tracked</div>
               )}
