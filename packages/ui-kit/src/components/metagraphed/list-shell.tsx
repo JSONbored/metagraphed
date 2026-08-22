@@ -18,6 +18,21 @@ const RESPONSIVE_CLASSES = {
     table: "hidden lg:block",
     footer: "lg:hidden mt-3",
   },
+  /**
+   * A directory, not a table — the row list IS the desktop presentation.
+   *
+   * Some lists are not spreadsheets. Forcing a subnet into columns made every
+   * cell speak a different language (a count beside an unlabelled bar beside a
+   * four-part price stack), and no column could explain itself. A directory row
+   * gives each entry one coherent block instead, at every width.
+   */
+  always: {
+    filter:
+      "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3 border-b border-border md:border md:rounded md:bg-card px-3 py-2 md:p-2.5",
+    cards: "",
+    table: "hidden",
+    footer: "mt-3",
+  },
 } as const;
 
 /**
@@ -91,8 +106,11 @@ export function ListShell({
    * repair them with negative-margin selectors.
    */
   presentation?: "panel" | "canvas";
-  /** Keep touch-first cards through tablet when a table has many columns. */
-  responsiveAt?: "md" | "lg";
+  /**
+   * Where the card list gives way to the table. `always` keeps the row list at
+   * every width, for a directory whose rows are the presentation.
+   */
+  responsiveAt?: "md" | "lg" | "always";
 }) {
   const responsive = RESPONSIVE_CLASSES[responsiveAt];
   const tableCard = classNames(

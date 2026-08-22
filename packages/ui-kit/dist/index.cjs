@@ -1210,9 +1210,8 @@ function BrandIcon({
     [candidate, advance, host, size, theme]
   );
   const baseClasses = classNames(
-    "relative inline-flex items-center justify-center shrink-0 overflow-hidden",
-    "rounded-md border border-border",
-    needsContrastTile ? "bg-white/95" : "bg-surface",
+    "mg-brand-icon",
+    needsContrastTile && "mg-brand-icon--contrast",
     className
   );
   const style = { width: size, height: size };
@@ -1232,7 +1231,7 @@ function BrandIcon({
         children: /* @__PURE__ */ jsxRuntime.jsx(
           "span",
           {
-            className: "font-display font-semibold tabular-nums leading-none",
+            className: "mg-brand-icon-initials",
             style: { fontSize: Math.max(10, Math.round(size * 0.42)) },
             "aria-hidden": "true",
             children: monogramFor(name, fallback)
@@ -1251,21 +1250,14 @@ function BrandIcon({
       "aria-label": ariaLabel,
       title: decorative ? void 0 : labelText || void 0,
       children: [
-        !loaded ? /* @__PURE__ */ jsxRuntime.jsx(
+        !loaded ? /* @__PURE__ */ jsxRuntime.jsx("span", { "aria-hidden": "true", className: "mg-brand-icon-fallback", children: /* @__PURE__ */ jsxRuntime.jsx(
           "span",
           {
-            "aria-hidden": "true",
-            className: "absolute inset-0 flex items-center justify-center bg-accent/10 text-ink-muted/70",
-            children: /* @__PURE__ */ jsxRuntime.jsx(
-              "span",
-              {
-                className: "font-display font-semibold tabular-nums leading-none",
-                style: { fontSize: Math.max(10, Math.round(size * 0.42)) },
-                children: monogramFor(name, fallback)
-              }
-            )
+            className: "mg-brand-icon-initials",
+            style: { fontSize: Math.max(10, Math.round(size * 0.42)) },
+            children: monogramFor(name, fallback)
           }
-        ) : null,
+        ) }) : null,
         /* @__PURE__ */ jsxRuntime.jsx(
           "img",
           {
@@ -1277,10 +1269,8 @@ function BrandIcon({
             decoding: "async",
             referrerPolicy: "no-referrer",
             crossOrigin: shouldUseAnonymousCors(candidate) ? "anonymous" : void 0,
-            className: classNames(
-              "relative block transition-opacity duration-150",
-              loaded ? "opacity-100" : "opacity-0"
-            ),
+            className: "mg-brand-icon-img",
+            "data-loaded": loaded ? "true" : void 0,
             style: {
               width: size,
               height: size,
@@ -2047,6 +2037,20 @@ var RESPONSIVE_CLASSES = {
     cards: "lg:hidden space-y-2",
     table: "hidden lg:block",
     footer: "lg:hidden mt-3"
+  },
+  /**
+   * A directory, not a table — the row list IS the desktop presentation.
+   *
+   * Some lists are not spreadsheets. Forcing a subnet into columns made every
+   * cell speak a different language (a count beside an unlabelled bar beside a
+   * four-part price stack), and no column could explain itself. A directory row
+   * gives each entry one coherent block instead, at every width.
+   */
+  always: {
+    filter: "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3 border-b border-border md:border md:rounded md:bg-card px-3 py-2 md:p-2.5",
+    cards: "",
+    table: "hidden",
+    footer: "mt-3"
   }
 };
 function ListShell({
@@ -2746,6 +2750,39 @@ function InteractiveDataField({
       ]
     }
   );
+}
+function DirectoryRow({
+  media,
+  title,
+  identifier,
+  purpose,
+  facts,
+  value,
+  valueMeta,
+  className
+}) {
+  const shownFacts = (facts ?? []).filter(
+    (fact) => fact !== null && fact !== void 0
+  );
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: classNames("mg-directory-row", className), children: [
+    media ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-directory-row-media", "aria-hidden": "true", children: media }) : null,
+    /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-directory-row-body", children: [
+      /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-directory-row-head", children: [
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-directory-row-title", children: title }),
+        identifier ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-directory-row-id", children: identifier }) : null
+      ] }),
+      purpose ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-directory-row-purpose", children: purpose }) : null,
+      shownFacts.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("ul", { className: "mg-directory-row-facts", children: shownFacts.map((fact, index) => (
+        // Facts are caller-ordered and often not otherwise keyable
+        // (a health verdict, a count, a date); position is their identity.
+        /* @__PURE__ */ jsxRuntime.jsx("li", { children: fact }, index)
+      )) }) : null
+    ] }),
+    value !== void 0 && value !== null ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-directory-row-value", children: [
+      /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-directory-row-measure", children: value }),
+      valueMeta ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-directory-row-meta", children: valueMeta }) : null
+    ] }) : null
+  ] });
 }
 var DIRECTORY_MODES = [
   {
@@ -7539,6 +7576,7 @@ exports.DialogPortal = DialogPortal;
 exports.DialogTitle = DialogTitle;
 exports.DialogTrigger = DialogTrigger;
 exports.DirectoryModeTabs = DirectoryModeTabs;
+exports.DirectoryRow = DirectoryRow;
 exports.DiscordIcon = DiscordIcon;
 exports.Divider = Divider;
 exports.Donut = Donut;

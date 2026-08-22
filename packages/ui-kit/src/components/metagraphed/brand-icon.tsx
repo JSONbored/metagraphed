@@ -401,10 +401,13 @@ export function BrandIcon({
     [candidate, advance, host, size, theme],
   );
 
+  // Real CSS classes, not utility strings. This component renders once per row
+  // in every directory on the site, and the utility version emitted ~700 bytes
+  // of repeated class text per instance — 90 KiB of it on /subnets alone, which
+  // is main-thread parse work on whatever phone loaded the page.
   const baseClasses = classNames(
-    "relative inline-flex items-center justify-center shrink-0 overflow-hidden",
-    "rounded-md border border-border",
-    needsContrastTile ? "bg-white/95" : "bg-surface",
+    "mg-brand-icon",
+    needsContrastTile && "mg-brand-icon--contrast",
     className,
   );
   const style = { width: size, height: size };
@@ -427,7 +430,7 @@ export function BrandIcon({
         title={decorative ? undefined : labelText || undefined}
       >
         <span
-          className="font-display font-semibold tabular-nums leading-none"
+          className="mg-brand-icon-initials"
           style={{ fontSize: Math.max(10, Math.round(size * 0.42)) }}
           aria-hidden="true"
         >
@@ -447,12 +450,9 @@ export function BrandIcon({
       title={decorative ? undefined : labelText || undefined}
     >
       {!loaded ? (
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 flex items-center justify-center bg-accent/10 text-ink-muted/70"
-        >
+        <span aria-hidden="true" className="mg-brand-icon-fallback">
           <span
-            className="font-display font-semibold tabular-nums leading-none"
+            className="mg-brand-icon-initials"
             style={{ fontSize: Math.max(10, Math.round(size * 0.42)) }}
           >
             {monogramFor(name, fallback)}
@@ -474,10 +474,8 @@ export function BrandIcon({
         crossOrigin={
           shouldUseAnonymousCors(candidate) ? "anonymous" : undefined
         }
-        className={classNames(
-          "relative block transition-opacity duration-150",
-          loaded ? "opacity-100" : "opacity-0",
-        )}
+        className="mg-brand-icon-img"
+        data-loaded={loaded ? "true" : undefined}
         style={{
           width: size,
           height: size,

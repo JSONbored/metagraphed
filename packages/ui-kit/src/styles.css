@@ -3440,6 +3440,188 @@ html[data-density="compact"] .bg-card > table td {
 }
 
 /* ============================================================
+ * Brand icon
+ *
+ * One instance per row in every directory on the site. Authored as real
+ * classes rather than utility strings because the utility version emitted
+ * ~700 bytes of repeated class text per icon — 90 KiB on /subnets alone,
+ * paid as parse work on whatever device loaded the page.
+ * ============================================================ */
+.mg-brand-icon {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: var(--surface);
+}
+.mg-brand-icon--contrast {
+  background: rgb(255 255 255 / 95%);
+}
+.mg-brand-icon-initials {
+  font-family: var(--font-display, var(--font-mono));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.mg-brand-icon-fallback {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  inset: 0;
+  justify-content: center;
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+  color: color-mix(in oklab, var(--ink-muted) 70%, transparent);
+}
+.mg-brand-icon-img {
+  position: relative;
+  display: block;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.mg-brand-icon-img[data-loaded="true"] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-brand-icon-img {
+    transition: none;
+  }
+}
+
+/* ============================================================
+ * Directory row
+ *
+ * A listing entry, not a table row. Three tracks — who / what / how much —
+ * so the eye lands in the same place on every entry, and one quiet fact line
+ * beneath instead of five columns each inventing their own unit.
+ * ============================================================ */
+.mg-directory-row {
+  display: grid;
+  align-items: start;
+  gap: 0 var(--mg-space-lg);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--mg-space-md) var(--mg-space-xs);
+  border-bottom: 1px solid var(--border);
+  transition: background-color 140ms ease-out;
+}
+.mg-directory-row-media {
+  display: flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.mg-directory-row-body {
+  min-width: 0;
+}
+.mg-directory-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--mg-space-xs);
+}
+.mg-directory-row-title {
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.mg-directory-row-id {
+  color: var(--ink-subtle, var(--ink-muted));
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  letter-spacing: var(--mg-tracking-label);
+  text-transform: uppercase;
+}
+.mg-directory-row-purpose {
+  display: -webkit-box;
+  overflow: hidden;
+  max-width: 52ch;
+  margin: 0.25rem 0 0;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--ink-muted);
+  font-size: var(--mg-type-caption);
+  line-height: 1.45;
+}
+/* One separated line. The separators are drawn by the list, not typed into
+   each fact, so a caller can never leave a trailing dot on the last item. */
+.mg-directory-row-facts {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  gap: 0 var(--mg-space-sm);
+  list-style: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  line-height: 1.5;
+}
+.mg-directory-row-facts > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.mg-directory-row-facts > li + li::before {
+  color: var(--border);
+  content: "·";
+  margin-right: var(--mg-space-xs);
+}
+.mg-directory-row-value {
+  display: grid;
+  justify-items: end;
+  gap: 0.15rem;
+  text-align: right;
+  white-space: nowrap;
+}
+.mg-directory-row-measure {
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption-lg);
+  font-variant-numeric: tabular-nums;
+}
+.mg-directory-row-meta {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (hover: hover) {
+  a:hover > .mg-directory-row,
+  .mg-directory-row:hover {
+    background: color-mix(in oklab, var(--ink-strong) 3%, transparent);
+  }
+}
+
+/* The phone keeps all three tracks but lets the measure sit under the body,
+   so a long name never squeezes the number into a two-character column. */
+@media (max-width: 47.99rem) {
+  .mg-directory-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: var(--mg-space-xs);
+  }
+  .mg-directory-row-value {
+    justify-items: start;
+    grid-column: 2;
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-directory-row {
+    transition: none;
+  }
+}
+
+/* ============================================================
  * Directory mode
  *
  * The task switch at the head of a directory route (#11520). Weighted like a

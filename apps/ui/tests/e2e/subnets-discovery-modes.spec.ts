@@ -54,24 +54,32 @@ test.describe("#11520 subnet discovery modes", () => {
     expect(new URL(page.url()).searchParams.get("mode")).toBeNull();
   });
 
-  test("leads with what each subnet does, not with its metrics", async ({ page }) => {
+  test("renders a directory of rows, not a spreadsheet", async ({ page }) => {
     await openSubnets(page);
 
-    const purposes = page.locator(".mg-subnet-purpose");
-    expect(await purposes.count()).toBeGreaterThan(5);
-    // A real sentence, not a placeholder or a truncated identifier.
-    const first = (await purposes.first().textContent())?.trim() ?? "";
-    expect(first.length).toBeGreaterThan(8);
-    expect(first).not.toBe("—");
+    // Browse is a listing at every width — the table belongs to Research.
+    expect(await page.locator(".mg-directory-row").count()).toBeGreaterThan(5);
+    await expect(page.locator("table thead")).toHaveCount(0);
+  });
 
-    const browseHeaders = await headers(page);
-    // Plain language: the reader is told "Interfaces", not "Surfaces".
-    expect(browseHeaders).toContain("Interfaces");
-    expect(browseHeaders).not.toContain("Surfaces");
-    // And the advanced measures are simply absent.
-    for (const advanced of ["Emission", "Total stake", "Market cap", "Reg. cost"]) {
-      expect(browseHeaders).not.toContain(advanced);
-    }
+  test("makes every row explain itself", async ({ page }) => {
+    await openSubnets(page);
+    const row = page.locator(".mg-directory-row").first();
+    const text = (await row.innerText()).replace(/\s+/g, " ");
+
+    // A real sentence saying what this is.
+    await expect(row.locator(".mg-directory-row-purpose")).toHaveCount(1);
+    const purpose = (await row.locator(".mg-directory-row-purpose").innerText()).trim();
+    expect(purpose.length).toBeGreaterThan(8);
+    expect(purpose).not.toBe("—");
+
+    // A health verdict a reader can check, not a bare adjective.
+    expect(text).toMatch(/\d+\/\d+ probed surfaces up/);
+    // A labelled count, not an unscaled bar.
+    expect(text).toMatch(/(\d[\d,]* public interfaces?|No public interfaces yet)/);
+    // A date, not "N days old" — which read as stale data next to a live price.
+    expect(text).toMatch(/Registered [A-Z][a-z]{2} \d{4}/);
+    expect(text).not.toMatch(/days old/);
   });
 
   test("withholds the research instrument from the default view", async ({ page }) => {
@@ -93,8 +101,8 @@ test.describe("#11520 subnet discovery modes", () => {
     expect(researchHeaders).toContain("Emission");
     expect(researchHeaders).toContain("Total stake");
     expect(researchHeaders.length).toBeGreaterThan(5);
-    // Research is a measurement view; the prose line steps out of the way.
-    await expect(page.locator(".mg-subnet-purpose")).toHaveCount(0);
+    // Research is the measurement view: a table, and no directory rows.
+    await expect(page.locator(".mg-directory-row")).toHaveCount(0);
   });
 
   test("keeps the mode in the URL so a view can be shared", async ({ page }) => {
@@ -136,7 +144,10 @@ test.describe("#11520 subnet discovery modes", () => {
     // A card is the phone's primary row, so it must not be the terse version
     // of the page — that is how "mobile-first" quietly becomes "mobile-less".
     await openSubnets(page, "", 375, 812);
-    expect(await page.locator(".mg-subnet-purpose").count()).toBeGreaterThan(3);
+    expect(await page.locator(".mg-directory-row").count()).toBeGreaterThan(3);
+    expect(
+      await page.locator(".mg-directory-row .mg-directory-row-purpose").count(),
+    ).toBeGreaterThan(3);
   });
 
   test("leaves existing directory deep links working", async ({ page }) => {

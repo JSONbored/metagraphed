@@ -30,6 +30,13 @@ import { gotoThroughRestart } from "./server-restart.ts";
 // called the broken tree green.
 const ROUTES = ["/subnets", "/chain/blocks", "/chain/extrinsics", "/validators"];
 
+// #11520: /subnets now defaults to Browse, a directory of rows with no table to
+// pin. Its table lives in Research, so this sweep navigates there. The search
+// is kept OUT of the route id above because `harPathForRoute` derives a fixture
+// filename from it — pointing the sweep at the default instead would have
+// quietly stopped testing the thing it exists to test.
+const ROUTE_SEARCH: Record<string, string> = { "/subnets": "?mode=research" };
+
 // Both sides of the `md` breakpoint where ListShell swaps cards for a table.
 // 768 is not decoration: /subnets shipped with its sticky rule gated to
 // `@media (min-width: 1024px)` while the table itself renders from 768px, so
@@ -161,7 +168,7 @@ for (const route of ROUTES) {
           if (fixture) await page.route(pattern, (r) => r.fulfill(fixture));
         }
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
-        await gotoThroughRestart(page, route);
+        await gotoThroughRestart(page, `${route}${ROUTE_SEARCH[route] ?? ""}`);
         try {
           await page.waitForLoadState("networkidle", { timeout: 5000 });
         } catch {

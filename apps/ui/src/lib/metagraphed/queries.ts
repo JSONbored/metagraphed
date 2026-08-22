@@ -1133,7 +1133,18 @@ export const selfHealthQuery = () =>
 // subnets table joins this map in so the Health + Updated columns (and the
 // health filter) resolve; subnets with no probed surfaces have no entry and stay
 // "unknown" (correct — there is nothing to probe).
-export type SubnetHealthEntry = { health: HealthState; last_checked?: string };
+export type SubnetHealthEntry = {
+  health: HealthState;
+  last_checked?: string;
+  /**
+   * The basis for the verdict. /api/v1/health has always returned these and
+   * this map has always dropped them, which is why a row could say "Degraded"
+   * with nothing a reader could check it against. A verdict that cannot show
+   * its working is just an assertion.
+   */
+  ok_count?: number;
+  surface_count?: number;
+};
 
 export const subnetHealthMapQuery = () =>
   queryOptions({
@@ -1151,6 +1162,8 @@ export const subnetHealthMapQuery = () =>
           if (typeof netuid !== "number") continue;
           map[netuid] = {
             health: statusToHealth(sn.status) ?? "unknown",
+            ok_count: typeof sn.ok_count === "number" ? sn.ok_count : undefined,
+            surface_count: typeof sn.surface_count === "number" ? sn.surface_count : undefined,
             last_checked:
               typeof sn.last_checked === "string"
                 ? sn.last_checked

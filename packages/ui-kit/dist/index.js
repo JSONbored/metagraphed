@@ -1181,9 +1181,8 @@ function BrandIcon({
     [candidate, advance, host, size, theme]
   );
   const baseClasses = classNames(
-    "relative inline-flex items-center justify-center shrink-0 overflow-hidden",
-    "rounded-md border border-border",
-    needsContrastTile ? "bg-white/95" : "bg-surface",
+    "mg-brand-icon",
+    needsContrastTile && "mg-brand-icon--contrast",
     className
   );
   const style = { width: size, height: size };
@@ -1203,7 +1202,7 @@ function BrandIcon({
         children: /* @__PURE__ */ jsx(
           "span",
           {
-            className: "font-display font-semibold tabular-nums leading-none",
+            className: "mg-brand-icon-initials",
             style: { fontSize: Math.max(10, Math.round(size * 0.42)) },
             "aria-hidden": "true",
             children: monogramFor(name, fallback)
@@ -1222,21 +1221,14 @@ function BrandIcon({
       "aria-label": ariaLabel,
       title: decorative ? void 0 : labelText || void 0,
       children: [
-        !loaded ? /* @__PURE__ */ jsx(
+        !loaded ? /* @__PURE__ */ jsx("span", { "aria-hidden": "true", className: "mg-brand-icon-fallback", children: /* @__PURE__ */ jsx(
           "span",
           {
-            "aria-hidden": "true",
-            className: "absolute inset-0 flex items-center justify-center bg-accent/10 text-ink-muted/70",
-            children: /* @__PURE__ */ jsx(
-              "span",
-              {
-                className: "font-display font-semibold tabular-nums leading-none",
-                style: { fontSize: Math.max(10, Math.round(size * 0.42)) },
-                children: monogramFor(name, fallback)
-              }
-            )
+            className: "mg-brand-icon-initials",
+            style: { fontSize: Math.max(10, Math.round(size * 0.42)) },
+            children: monogramFor(name, fallback)
           }
-        ) : null,
+        ) }) : null,
         /* @__PURE__ */ jsx(
           "img",
           {
@@ -1248,10 +1240,8 @@ function BrandIcon({
             decoding: "async",
             referrerPolicy: "no-referrer",
             crossOrigin: shouldUseAnonymousCors(candidate) ? "anonymous" : void 0,
-            className: classNames(
-              "relative block transition-opacity duration-150",
-              loaded ? "opacity-100" : "opacity-0"
-            ),
+            className: "mg-brand-icon-img",
+            "data-loaded": loaded ? "true" : void 0,
             style: {
               width: size,
               height: size,
@@ -2018,6 +2008,20 @@ var RESPONSIVE_CLASSES = {
     cards: "lg:hidden space-y-2",
     table: "hidden lg:block",
     footer: "lg:hidden mt-3"
+  },
+  /**
+   * A directory, not a table — the row list IS the desktop presentation.
+   *
+   * Some lists are not spreadsheets. Forcing a subnet into columns made every
+   * cell speak a different language (a count beside an unlabelled bar beside a
+   * four-part price stack), and no column could explain itself. A directory row
+   * gives each entry one coherent block instead, at every width.
+   */
+  always: {
+    filter: "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3 border-b border-border md:border md:rounded md:bg-card px-3 py-2 md:p-2.5",
+    cards: "",
+    table: "hidden",
+    footer: "mt-3"
   }
 };
 function ListShell({
@@ -2717,6 +2721,39 @@ function InteractiveDataField({
       ]
     }
   );
+}
+function DirectoryRow({
+  media,
+  title,
+  identifier,
+  purpose,
+  facts,
+  value,
+  valueMeta,
+  className
+}) {
+  const shownFacts = (facts ?? []).filter(
+    (fact) => fact !== null && fact !== void 0
+  );
+  return /* @__PURE__ */ jsxs("div", { className: classNames("mg-directory-row", className), children: [
+    media ? /* @__PURE__ */ jsx("div", { className: "mg-directory-row-media", "aria-hidden": "true", children: media }) : null,
+    /* @__PURE__ */ jsxs("div", { className: "mg-directory-row-body", children: [
+      /* @__PURE__ */ jsxs("div", { className: "mg-directory-row-head", children: [
+        /* @__PURE__ */ jsx("span", { className: "mg-directory-row-title", children: title }),
+        identifier ? /* @__PURE__ */ jsx("span", { className: "mg-directory-row-id", children: identifier }) : null
+      ] }),
+      purpose ? /* @__PURE__ */ jsx("p", { className: "mg-directory-row-purpose", children: purpose }) : null,
+      shownFacts.length > 0 ? /* @__PURE__ */ jsx("ul", { className: "mg-directory-row-facts", children: shownFacts.map((fact, index) => (
+        // Facts are caller-ordered and often not otherwise keyable
+        // (a health verdict, a count, a date); position is their identity.
+        /* @__PURE__ */ jsx("li", { children: fact }, index)
+      )) }) : null
+    ] }),
+    value !== void 0 && value !== null ? /* @__PURE__ */ jsxs("div", { className: "mg-directory-row-value", children: [
+      /* @__PURE__ */ jsx("span", { className: "mg-directory-row-measure", children: value }),
+      valueMeta ? /* @__PURE__ */ jsx("span", { className: "mg-directory-row-meta", children: valueMeta }) : null
+    ] }) : null
+  ] });
 }
 var DIRECTORY_MODES = [
   {
@@ -7454,4 +7491,4 @@ function RoutePending({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, COMPOSITION_TIMELINE_TONES, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionTimeline, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DIRECTORY_MODES, DailyRollupFreshness, DataPageCanvas, DataPageDisclosure, DataPageHandoff, DataPageHero, DataPageHeroTitleLine, DataPageModule, DataPageSignalRail, DataPageStage, DataPageTaskPaths, DataPageWindowTabs, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DirectoryModeTabs, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, INTERACTIVE_DATA_FIELD_TONES, Indicator, InfoTooltip, InteractiveDataField, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, compositionToneAt, defaultVisible, fmtYield, formatCompositionShare, isDirectoryMode, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, resolveColumnEmphasis, resolveSegmentEmphasis, rovingTabIndex, safeExternalUrl, segmentRows, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, COMPOSITION_TIMELINE_TONES, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionTimeline, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DIRECTORY_MODES, DailyRollupFreshness, DataPageCanvas, DataPageDisclosure, DataPageHandoff, DataPageHero, DataPageHeroTitleLine, DataPageModule, DataPageSignalRail, DataPageStage, DataPageTaskPaths, DataPageWindowTabs, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DirectoryModeTabs, DirectoryRow, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, INTERACTIVE_DATA_FIELD_TONES, Indicator, InfoTooltip, InteractiveDataField, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, compositionToneAt, defaultVisible, fmtYield, formatCompositionShare, isDirectoryMode, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, resolveColumnEmphasis, resolveSegmentEmphasis, rovingTabIndex, safeExternalUrl, segmentRows, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };

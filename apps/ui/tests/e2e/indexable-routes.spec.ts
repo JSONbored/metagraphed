@@ -488,21 +488,26 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
   // for the data-heavy pages — /apis/endpoints 4,948 KB, /validators 1,297 KB —
   // because the stub's fixtures are smaller; the ratchet still catches a code
   // change that inflates the document, which is what it is for.
+  // #11520 lowered seven of these. BrandIcon renders once per row in every
+  // directory here and emitted ~700 bytes of repeated Tailwind class text per
+  // instance; authoring those as real CSS classes took /subnets 573 -> 551 KiB
+  // and every icon-bearing hub with it. Measured twice against the stub,
+  // byte-identical both runs.
   const MAX_HTML_KIB: Record<keyof typeof HUB_COPY, number> = {
     "/": 130,
     "/subnets": 560,
-    "/validators": 1300,
-    "/apis": 620,
-    "/apis/providers": 400,
+    "/validators": 1240,
+    "/apis": 570,
+    "/apis/providers": 350,
     // #11326 lowered this from 2,700 after dropping five API fields nothing in
     // the app reads: 2,609 -> 2,128 KiB here, 4,948 -> 3,883 KiB in production.
     // Still the heaviest page on the site — it fetches all 3,372 endpoints —
     // so this ceiling has further to fall.
-    "/apis/endpoints": 2200,
-    "/apis/schemas": 700,
-    "/chain": 240,
+    "/apis/endpoints": 2160,
+    "/apis/schemas": 670,
+    "/chain": 200,
     // #11316: a filtered projection of 66 rows, so it is small by construction.
-    "/subnets/with-api": 300,
+    "/subnets/with-api": 270,
   };
 
   for (const path of Object.keys(HUB_COPY) as Array<keyof typeof HUB_COPY>) {
