@@ -64,8 +64,8 @@ function QueryBarRoot({
       aria-label={ariaLabel}
       className={classNames(
         "mg-query-shell",
-        "flex w-full items-center gap-1 min-w-0",
-        "h-10 rounded-md border border-border mg-glass-soft",
+        "flex w-full flex-wrap items-center gap-1 min-w-0",
+        "h-10 rounded border border-border",
         "px-1 transition-colors",
         "focus-within:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
         "focus-within:ring-2 focus-within:ring-ring/60",
@@ -166,7 +166,7 @@ function QueryBarSearch({
         aria-label={placeholder}
         className={classNames(
           "peer flex-1 min-w-0 bg-transparent border-0 outline-none",
-          "py-1.5 mg-type-caption-lg text-ink-strong placeholder:text-ink-subtle-text",
+          "py-1.5 text-13 text-ink-strong placeholder:text-ink-subtle-text",
           "focus:outline-none focus:ring-0",
           className,
         )}
@@ -187,7 +187,7 @@ function QueryBarSearch({
       ) : shortcut ? (
         <kbd
           aria-hidden
-          className="pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 mg-type-data-sm text-ink-muted"
+          className="pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 text-10 text-ink-muted"
         >
           /
         </kbd>
@@ -323,8 +323,8 @@ function QueryBarFilterTrigger(props: QueryBarFilterTriggerProps) {
           type="button"
           aria-label={`${label} filter${active ? `, ${selected.length} selected` : ""}`}
           className={classNames(
-            "mg-ghost-trigger group inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2",
-            "mg-type-caption transition-colors",
+            "mg-ghost-trigger group inline-flex h-8 shrink-0 items-center gap-1.5 rounded px-2",
+            "text-13 transition-colors",
             "hover:bg-surface-2",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             active ? "text-ink-strong" : "text-ink-muted",
@@ -334,7 +334,7 @@ function QueryBarFilterTrigger(props: QueryBarFilterTriggerProps) {
           {icon ? (
             <span className="shrink-0 text-ink-muted">{icon}</span>
           ) : null}
-          <span className="mg-type-micro opacity-80">{label}</span>
+          <span className="text-10 opacity-80">{label}</span>
           <span
             className={classNames(
               "truncate max-w-[120px] font-medium",
@@ -396,7 +396,7 @@ function QueryBarFilterTrigger(props: QueryBarFilterTriggerProps) {
           </CommandList>
           {active ? (
             <div className="flex items-center justify-between border-t border-border px-2 py-1.5">
-              <span className="mg-type-micro text-ink-muted">
+              <span className="text-10 text-ink-muted">
                 {selected.length} selected
               </span>
               <button
@@ -405,7 +405,7 @@ function QueryBarFilterTrigger(props: QueryBarFilterTriggerProps) {
                   clear();
                   if (!props.multi) setOpen(false);
                 }}
-                className="mg-focus-ring rounded px-2 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong"
+                className="mg-focus-ring rounded px-2 py-0.5 text-10 text-ink-muted hover:text-ink-strong"
               >
                 Clear
               </button>
@@ -450,7 +450,7 @@ function QueryBarMetaRow({
     <div
       className={classNames(
         "flex w-full items-center gap-2 pt-1.5",
-        "mg-type-micro text-ink-muted",
+        "text-10 text-ink-muted",
         className,
       )}
     >

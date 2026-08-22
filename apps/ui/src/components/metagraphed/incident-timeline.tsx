@@ -38,21 +38,21 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
           description="This subnet has a clean health history in the registry."
         />
       ) : (
-        <ol className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+        <ol className="rounded border border-border bg-card divide-y divide-border overflow-hidden">
           {incidents.slice(0, 12).map((inc, i) => {
             const open = !inc.ended_at;
             const duration = incidentDurationLabel(inc.started_at, inc.ended_at);
             return (
               <li
                 key={`${inc.surface_id}-${inc.started_at ?? i}`}
-                className="px-4 py-2.5 flex items-center gap-3 text-sm"
+                className="px-4 py-2.5 flex items-center gap-3 text-13"
               >
                 {severityIcon(inc.severity)}
                 <div className="flex-1 min-w-0">
                   <div className="truncate text-ink-strong" title={inc.surface_id}>
                     {shortSurfaceId(inc.surface_id, netuid)}
                   </div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 mg-type-caption text-ink-muted">
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-13 text-ink-muted">
                     {inc.started_at ? (
                       <span>
                         started <TimeAgo at={inc.started_at} />
@@ -64,10 +64,10 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
                 </div>
                 <span
                   className={classNames(
-                    "shrink-0 rounded-full border px-2 py-0.5 mg-type-micro",
+                    "shrink-0 rounded border px-2 py-0.5 text-10",
                     open
                       ? "border-health-down/40 bg-health-down/10 text-health-down"
-                      : "border-border bg-surface/40 text-ink-muted",
+                      : "border-border bg-surface text-ink-muted",
                   )}
                 >
                   {open ? "open" : "resolved"}

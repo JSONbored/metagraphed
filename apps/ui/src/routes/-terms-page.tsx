@@ -136,19 +136,19 @@ export function TermsPage() {
             <div className="grid gap-1.5">
               <Link
                 to="/privacy"
-                className="mg-type-data text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
+                className="text-11 text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
               >
                 → Privacy policy
               </Link>
               <ExternalLink
                 href={`${API_BASE}/auth.md`}
-                className="mg-type-data text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
+                className="text-11 text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
               >
                 → auth.md — rate limits &amp; auth
               </ExternalLink>
               <Link
                 to="/about"
-                className="mg-type-data text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
+                className="text-11 text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
               >
                 → Methodology &amp; scope
               </Link>
@@ -163,10 +163,8 @@ export function TermsPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-        {title}
-      </h2>
-      <div className="text-sm leading-relaxed text-ink space-y-2">{children}</div>
+      <h2 className="font-display text-13 font-semibold text-ink-strong mb-2">{title}</h2>
+      <div className="text-13 leading-relaxed text-ink space-y-2">{children}</div>
     </section>
   );
 }

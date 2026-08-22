@@ -78,15 +78,15 @@ export function DriftActivity({ schemas, fromPath }: Props) {
   return (
     <Panel as="div" flush className="overflow-hidden">
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-paper/40 px-4 py-2.5">
-        <div className="flex items-center gap-2 mg-type-caption text-ink-muted">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-paper px-4 py-2.5">
+        <div className="flex items-center gap-2 text-13 text-ink-muted">
           <span
-            className="inline-flex size-1.5 rounded-full bg-health-warn animate-pulse"
+            className="inline-flex size-1.5 rounded-full mg-dot bg-health-warn animate-pulse"
             aria-hidden
           />
           <span>drift activity</span>
         </div>
-        <div className="mg-type-data text-ink">
+        <div className="text-11 text-ink">
           <span className="text-health-warn">{drifting.length} drifting</span>
           <span className="text-ink-muted"> · {stable.length} stable</span>
         </div>
@@ -108,7 +108,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
                 aria-selected={on}
                 onClick={() => setScope(v)}
                 className={classNames(
-                  "rounded px-2 py-1 mg-type-caption transition-colors",
+                  "rounded px-2 py-1 text-13 transition-colors",
                   on ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
                 )}
               >
@@ -141,7 +141,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
             <button
               type="button"
               onClick={() => setShowAllDrift((v) => !v)}
-              className="flex w-full items-center justify-center gap-1 border-t border-border/60 px-4 py-2 mg-type-caption text-ink-muted hover:bg-surface hover:text-ink-strong"
+              className="flex w-full items-center justify-center gap-1 border-t border-border/60 px-4 py-2 text-13 text-ink-muted hover:bg-surface hover:text-ink-strong"
             >
               {showAllDrift ? "Show recent only" : `Show all ${drifting.length} drifting`}
             </button>
@@ -151,8 +151,8 @@ export function DriftActivity({ schemas, fromPath }: Props) {
 
       {/* Stable list (toggled) */}
       {visibleStable.length > 0 ? (
-        <div className="border-t border-border bg-paper/30">
-          <div className="px-4 pt-3 pb-1.5 mg-type-caption text-ink-muted">
+        <div className="border-t border-border bg-paper">
+          <div className="px-4 pt-3 pb-1.5 text-13 text-ink-muted">
             stable · {visibleStable.length}
           </div>
           <ul className="divide-y divide-border/40">
@@ -163,7 +163,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
         </div>
       ) : null}
 
-      <div className="border-t border-border px-4 py-2 mg-type-data-sm text-ink-muted">
+      <div className="border-t border-border px-4 py-2 text-10 text-ink-muted">
         click a drifting row for change details · stable rows open in the explorer below
       </div>
     </Panel>
@@ -190,24 +190,24 @@ function DriftRow({ schema, onClick }: { schema: SchemaInfo; onClick: () => void
         <WeightBar weight={w} tone="warn" />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="min-w-0 break-words font-display mg-type-caption-lg font-medium text-ink-strong">
+            <span className="min-w-0 break-words font-display text-13 font-medium text-ink-strong">
               {label}
             </span>
             {schema.netuid != null ? (
-              <span className="shrink-0 rounded-full border border-border bg-paper px-1.5 py-0.5 mg-type-micro text-ink-muted">
+              <span className="shrink-0 rounded border border-border bg-paper px-1.5 py-0.5 text-10 text-ink-muted">
                 SN{schema.netuid}
               </span>
             ) : null}
             {schema.drift_status ? (
               <span
-                className="min-w-0 max-w-full truncate rounded-full border border-health-warn/30 bg-health-warn/10 px-1.5 py-0.5 mg-type-micro text-health-warn"
+                className="min-w-0 max-w-full truncate rounded border border-health-warn/30 bg-health-warn/10 px-1.5 py-0.5 text-10 text-health-warn"
                 title={schema.drift_status}
               >
                 {schema.drift_status}
               </span>
             ) : null}
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-2 mg-type-data text-ink-muted">
+          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-11 text-ink-muted">
             {added != null ? <span className="text-health-ok">+{added}</span> : null}
             {removed != null ? <span className="text-health-down">−{removed}</span> : null}
             {schema.previous_hash && schema.hash ? (
@@ -238,14 +238,12 @@ function StableRow({ schema, onClick }: { schema: SchemaInfo; onClick: () => voi
         className="group flex w-full items-center gap-3 px-4 py-1.5 text-left hover:bg-surface focus:outline-none focus-visible:bg-surface"
       >
         <span
-          className="inline-block size-1.5 shrink-0 rounded-full bg-ink-subtle/50"
+          className="inline-block size-1.5 shrink-0 rounded-full mg-dot bg-ink-subtle/50"
           aria-hidden
         />
-        <span className="truncate mg-type-caption text-ink-muted group-hover:text-ink-strong">
-          {label}
-        </span>
+        <span className="truncate text-13 text-ink-muted group-hover:text-ink-strong">{label}</span>
         {schema.netuid != null ? (
-          <span className="shrink-0 mg-type-caption text-ink-muted/70">SN{schema.netuid}</span>
+          <span className="shrink-0 text-13 text-ink-muted/70">SN{schema.netuid}</span>
         ) : null}
         <ChevronRight className="ml-auto size-3.5 text-ink-muted opacity-0 transition-opacity group-hover:opacity-60" />
       </button>
@@ -270,8 +268,7 @@ function WeightBar({ weight: w, tone }: { weight: number; tone: "warn" | "muted"
             key={i}
             aria-hidden
             className={classNames(
-              // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
-              "h-3 w-1 rounded-[1px]",
+              "h-3 w-1 rounded",
               on ? (tone === "warn" ? "bg-health-warn" : "bg-ink-strong") : "bg-ink-subtle/25",
             )}
           />

@@ -462,9 +462,9 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
   };
 
   const cardFor = (s: Surface) => (
-    <Panel as="div" dense key={s.id} className="min-h-11">
+    <Panel as="div" key={s.id} className="min-h-11">
       <div className="flex items-center justify-between gap-2">
-        <span className="mg-label">{s.kind ?? "surface"}</span>
+        <span className="text-10 text-ink-muted">{s.kind ?? "surface"}</span>
         <div className="flex items-center gap-1.5">
           <CurationChip level={s.curation_level} />
           <ReviewChip state={s.review?.state} />
@@ -482,7 +482,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
         <span className="font-medium text-ink-strong truncate">{s.name ?? "—"}</span>
       </div>
       {s.url ? (
-        <div className="mt-1 mg-type-caption truncate">
+        <div className="mt-1 text-13 truncate">
           <ExternalLink
             href={s.url}
             authRequired={s.auth_required}
@@ -493,7 +493,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           </ExternalLink>
         </div>
       ) : null}
-      <div className="mt-2 flex items-center justify-between gap-2 mg-type-data text-ink-muted">
+      <div className="mt-2 flex items-center justify-between gap-2 text-11 text-ink-muted">
         <span className="inline-flex items-center gap-2 min-w-0">
           {renderSubnetCell(s.netuid)}
           <span aria-hidden>·</span>
@@ -533,8 +533,8 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           view === "grid" ? (
             gridBody
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="bg-surface/50">
+            <table className="w-full text-left text-13">
+              <thead className="bg-surface">
                 <tr>
                   <th
                     className="px-3 py-2"
@@ -592,15 +592,15 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
               </thead>
               <tbody className="divide-y divide-border">
                 {rows.map((s) => (
-                  <tr key={s.id} className="mg-row-accent hover:bg-surface/40">
-                    <td className="px-3 py-2 mg-type-data text-ink-muted">
+                  <tr key={s.id} className="mg-row-accent hover:bg-surface">
+                    <td className="px-3 py-2 text-11 text-ink-muted">
                       {renderSubnetCell(s.netuid)}
                     </td>
-                    <td className="px-3 py-2 mg-type-data">{s.kind ?? "—"}</td>
+                    <td className="px-3 py-2 text-11">{s.kind ?? "—"}</td>
                     <td className="px-3 py-2 font-medium text-ink-strong">
                       <span className="truncate">{s.name ?? "—"}</span>
                     </td>
-                    <td className="px-3 py-2 mg-type-caption">
+                    <td className="px-3 py-2 text-13">
                       {s.url ? (
                         <ExternalLink
                           href={s.url}
@@ -613,14 +613,14 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
                         "—"
                       )}
                     </td>
-                    <td className="px-3 py-2 mg-type-caption">{renderProviderCell(s)}</td>
+                    <td className="px-3 py-2 text-13">{renderProviderCell(s)}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1.5">
                         <CurationChip level={s.curation_level} />
                         <ReviewChip state={s.review?.state} />
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-right mg-type-data text-ink-muted">
+                    <td className="px-3 py-2 text-right text-11 text-ink-muted">
                       <SparkLegend
                         metric="Surface verification"
                         source="/api/v1/surfaces"

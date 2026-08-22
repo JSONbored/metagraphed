@@ -6,81 +6,30 @@
    below carries no Tailwind bootstrap of its own, see that file header
    comment), so without this line every utility class used only inside
    packages/ui-kit/src (never duplicated verbatim in apps/ui/src) was
-   silently absent from the built CSS. Confirmed against command.tsx in
-   ui-kit: its cmdk-group-heading variant selectors and its arbitrary
-   max-w and max-h values did not appear in a real production build
-   output before this line existed. */
+   silently absent from the built CSS. */
 @source "../../../packages/ui-kit/src";
 @import "tw-animate-css";
 
 @import "@jsonbored/ui-kit/styles.css";
 @import "./styles/fumadocs-theme.css";
 
-/* #6421: on-brand focus ring for a hash-nav target (the heading/section
-   useHashScroll focuses). Replaces the browser's boxy default outline with the
-   app's soft accent ring + offset, matching the `focus-visible:ring-2 ring-ring`
-   treatment interactive elements use. Programmatic focus fires `:focus` but not
-   `:focus-visible`, so this targets `:focus`; the `mg-hash-focus` class persists
-   harmlessly and only paints while the element is actually focused. */
+/* Hash-nav focus target (useHashScroll focuses the heading/section).
+   Programmatic focus fires `:focus` but not `:focus-visible`, so both. */
 .mg-hash-focus:focus-visible,
 .mg-hash-focus:focus {
-  outline: none;
-  border-radius: 0.5rem;
-  box-shadow:
-    0 0 0 2px var(--background, var(--paper, #fff)),
-    0 0 0 4px var(--ring);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }
 
-/* ============================================================
- * Page-level rhythm tokens (Batch B, plan step 1; consolidated #7846).
- * The --mg-space-*, --mg-panel-pad*, --mg-type-micro/label, and
- * --mg-tracking-* tokens, their utility classes, and the mg-skel-pulse
- * keyframes now live solely in packages/ui-kit/src/styles.css (imported
- * above) -- this
- * block only keeps the tokens that describe apps/ui's own page shell
- * (section/stack/hero/toolbar rhythm), not a reusable component concern.
- * Contributors must reach for these — the ESLint guardrails in
- * eslint.config.js now block raw p-* / gap-* / space-y-* outside
- * the primitives folder and the vendor snapshot.
- * ============================================================ */
-:root {
-  /* Semantic layout rhythm — use in page/panel/hero shells. Reference the
-     --mg-space-* base scale defined in ui-kit's styles.css (imported above);
-     custom properties resolve across the cascade regardless of which
-     stylesheet declares them, as long as that stylesheet loads first. */
-  --mg-section-gap: var(--mg-space-2xl);
-  --mg-section-gap-sm: var(--mg-space-xl);
-  --mg-stack-gap: var(--mg-space-md);
-  --mg-stack-gap-tight: var(--mg-space-sm);
-  --mg-hero-pad-y: var(--mg-space-2xl);
-  --mg-hero-pad-y-sm: var(--mg-space-xl);
-  --mg-toolbar-pad-y: var(--mg-space-sm);
-  --mg-gutter-x: clamp(1rem, 4vw, 1.5rem);
-}
-
-/* Page-level rhythm helpers — reserved for Panel / PageHero / route shells. */
-.mg-section-stack > * + * {
-  margin-top: var(--mg-section-gap);
-}
-@media (max-width: 640px) {
-  .mg-section-stack > * + * {
-    margin-top: var(--mg-section-gap-sm);
-  }
-}
-.mg-stack-gap > * + * {
-  margin-top: var(--mg-stack-gap);
-}
-.mg-stack-gap-tight > * + * {
-  margin-top: var(--mg-stack-gap-tight);
-}
+/* Page gutter. The section rhythm tokens (--mg-section-*) live in ui-kit. */
 .mg-gutter-x {
-  padding-left: var(--mg-gutter-x);
-  padding-right: var(--mg-gutter-x);
+  padding-left: var(--mg-section-x);
+  padding-right: var(--mg-section-x);
 }
 
 /* Horizontal scroll fade for mobile tables — apply to overflow-x containers
-   to hint at scrollable content off-canvas. Kept subtle (24px) so it doesn't
-   obscure adjacent columns. */
+   to hint at scrollable content off-canvas. */
 .mg-x-scroll-fade {
   mask-image: linear-gradient(
     to right,
@@ -104,9 +53,7 @@
   }
 }
 
-/* Horizontal rails should never allocate a cross-axis gutter. Touch, wheel,
-   keyboard, and trackpad scrolling remain available; edge fades communicate
-   overflow without a stray nested scrollbar. */
+/* Horizontal rails never allocate a cross-axis gutter. */
 .mg-scroll {
   overscroll-behavior: contain;
   scrollbar-width: none;
@@ -116,58 +63,9 @@
   height: 0;
 }
 
-/* The subnets table header used to be styled here, by a bespoke
-   `.mg-subnets-sticky-head` rule that pinned it with
-   `top: var(--mg-sticky-offset)` -- the app-header stack height (131px live),
-   applied inside a 504px-tall bounded scrollport, which parked the column
-   labels a third of the way down the table on top of the first three rows.
-   It also only applied at >=1024px while the table renders from 768px, so
-   tablet had no header at all.
-
-   Both are gone, and so is the rule: /subnets now uses ui-kit's shared
-   `.mg-table-head-pinned`, the single definition every list table in the app
-   pins with. A second, page-specific copy of "how a table header sticks" is
-   what let these two drift apart from the rest in the first place. */
-
-/* ============================================================
- * Paint-safety invariants.
- *
- * Entrance motion must never be responsible for making content visible.
- * Embedded/backgrounded browsers can pause animations on their first frame;
- * opacity-based keyframes then leave a healthy DOM looking completely blank.
- * Keep motion as a transform-only enhancement with visible endpoints.
- * ============================================================ */
-@keyframes mg-safe-rise {
-  from {
-    transform: translateY(8px);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-@keyframes mg-safe-scale {
-  from {
-    transform: scale(0.8);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-.mg-fade-in {
-  opacity: 1;
-  animation-name: mg-safe-rise;
-  animation-fill-mode: none;
-}
-.mg-pulse-cell {
-  opacity: 1;
-  animation-name: mg-safe-scale;
-  animation-fill-mode: none;
-}
-
 /* Radix portals normally unmount closed overlays. If an interrupted route or
    exit animation leaves one behind, it must not remain a full-viewport black
-   layer above a working page. This guards the shared Dialog and Sheet
-   primitives without modifying the vendored UI snapshot. */
+   layer above a working page. */
 [data-state="closed"].fixed.inset-0 {
   visibility: hidden !important;
   pointer-events: none !important;
@@ -175,7 +73,8 @@
   animation: none !important;
 }
 
-/* Compact page masthead — data-explorer counterpart to .mg-hero-slab. */
+/* Compact page masthead (PageMasthead). Replaced by EntityHero in #11607;
+   the hairline grid survives here until then. */
 .mg-masthead {
   background: transparent;
 }
@@ -184,7 +83,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem 1.25rem;
   padding-top: 0.5rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--rule);
 }
 @media (min-width: 640px) {
   .mg-masthead-kpi {
@@ -198,7 +97,7 @@
 }
 .mg-masthead-kpi > * + * {
   padding-left: 1rem;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--rule);
 }
 @media (max-width: 639.98px) {
   .mg-masthead-kpi > * + * {
@@ -207,14 +106,12 @@
   }
   .mg-masthead-kpi > *:nth-child(odd) {
     padding-right: 0.5rem;
-    border-right: 1px solid var(--border);
+    border-right: 1px solid var(--rule);
   }
 }
 
-/* ============================================================
- * Loading / progress microinteractions (used by ChartSkeleton,
- * QueryProgress). Both respect prefers-reduced-motion.
- * ============================================================ */
+/* Loading / progress (ChartSkeleton, QueryProgress). Both respect
+   prefers-reduced-motion. */
 @keyframes mg-shimmer-sweep {
   0% {
     transform: translateX(0);
@@ -224,12 +121,7 @@
   }
 }
 .mg-shimmer-sweep {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in oklab, var(--ink-strong) 6%, transparent),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--layer), transparent);
   animation: mg-shimmer-sweep 1.6s ease-in-out infinite;
 }
 @keyframes mg-query-progress-track {

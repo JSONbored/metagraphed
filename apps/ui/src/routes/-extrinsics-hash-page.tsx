@@ -157,9 +157,9 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         title={shortHash(extrinsic.extrinsic_hash, 10) ?? "Extrinsic"}
         description={
           sentence ? (
-            <span className="text-sm">{sentence}</span>
+            <span className="text-13">{sentence}</span>
           ) : (
-            <span className="font-mono text-sm break-all">
+            <span className="font-mono text-13 break-all">
               {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
             </span>
           )
@@ -221,7 +221,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       {realAccount ? (
         <div className="mb-8 flex flex-wrap items-center gap-3 rounded border border-accent/30 bg-accent-surface px-4 py-3">
           <UserCog className="size-4 shrink-0 text-accent" aria-hidden="true" />
-          <span className="text-sm text-ink">
+          <span className="text-13 text-ink">
             Executed on behalf of{" "}
             {/* #8372: inline prose, not a table cell/field row -- stays a plain
                 Link (resolveAddress, not AddressDisplay) so it doesn't grow a
@@ -275,7 +275,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
               <Link
                 to="/blocks/$ref"
                 params={{ ref: String(extrinsic.block_number) }}
-                className="font-mono text-sm text-ink-strong hover:underline tabular-nums"
+                className="font-mono text-13 text-ink-strong hover:underline tabular-nums"
               >
                 #{formatNumber(extrinsic.block_number)}
               </Link>
@@ -284,12 +284,12 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             )}
           </FieldRow>
           <FieldRow label="Index in block">
-            <span className="font-mono text-sm text-ink tabular-nums">
+            <span className="font-mono text-13 text-ink tabular-nums">
               {extrinsic.extrinsic_index != null ? formatNumber(extrinsic.extrinsic_index) : "—"}
             </span>
           </FieldRow>
           <FieldRow label="Call">
-            <span className="font-mono text-sm text-ink-strong break-all">
+            <span className="font-mono text-13 text-ink-strong break-all">
               {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
             </span>
           </FieldRow>
@@ -313,7 +313,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             </span>
           </FieldRow>
           <FieldRow label="Result">
-            <span className="font-mono text-sm text-ink">{result}</span>
+            <span className="font-mono text-13 text-ink">{result}</span>
           </FieldRow>
           <FieldRow label="Inclusion fee">
             <TaoValue amount={extrinsic.fee_tao} precision={4} align="left" />
@@ -322,7 +322,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             <TaoValue amount={extrinsic.tip_tao} precision={4} align="left" />
           </FieldRow>
           <FieldRow label="Observed at">
-            <span className="font-mono mg-type-caption text-ink-muted">
+            <span className="font-mono text-13 text-ink-muted">
               <TimeAgo at={extrinsic.observed_at} />
             </span>
           </FieldRow>
@@ -336,7 +336,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       >
         {renderCallArgs(callArgs, extrinsic.call_module, extrinsic.call_function)}
         {callArgsOmitted > 0 ? (
-          <p className="mt-2 mg-type-data text-ink-muted">
+          <p className="mt-2 text-11 text-ink-muted">
             Showing 64 of {formatNumber(callArgsTotal)} call args — {formatNumber(callArgsOmitted)}{" "}
             more omitted.
           </p>
@@ -371,26 +371,23 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                   <Link
                     to="/extrinsics/$hash"
                     params={{ hash: e.extrinsic_hash ?? "" }}
-                    className="flex items-center gap-2 rounded border border-border bg-card px-3 py-2 text-sm hover:border-ink/30"
+                    className="flex items-center gap-2 rounded border border-border bg-card px-3 py-2 text-13 hover:border-ink/30"
                   >
                     <Link2 className="size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
                     <span className="font-mono text-ink-strong">
                       {extrinsicCall(e.call_module, e.call_function)}
                     </span>
                     <span className="text-ink-muted">·</span>
-                    <span className="mg-type-data text-ink-muted">
+                    <span className="text-11 text-ink-muted">
                       #{formatNumber(e.block_number ?? 0)}
                     </span>
-                    <TimeAgo
-                      at={e.observed_at}
-                      className="ml-auto mg-type-caption text-ink-muted"
-                    />
+                    <TimeAgo at={e.observed_at} className="ml-auto text-13 text-ink-muted" />
                   </Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-ink-muted">
+            <p className="text-13 text-ink-muted">
               No other extrinsics reference this call_hash yet.
             </p>
           )}
@@ -400,8 +397,8 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       <SectionAnchor id="events" title="Emitted events" tone="accent">
         {events.length > 0 ? (
           <Panel as="div" flush className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-surface/40">
+            <table className="w-full text-left text-13">
+              <thead className="bg-surface">
                 <tr>
                   <th className="px-4 py-2.5">Block</th>
                   <th className="px-4 py-2.5">Kind</th>
@@ -414,9 +411,9 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                 {events.map((ev, i) => (
                   <tr
                     key={`${ev.block_number}-${ev.event_index}-${i}`}
-                    className="hover:bg-surface/40"
+                    className="hover:bg-surface"
                   >
-                    <td className="px-4 py-2.5 font-mono mg-type-caption">
+                    <td className="px-4 py-2.5 font-mono text-13">
                       {ev.block_number != null ? (
                         <Link
                           to="/blocks/$ref"
@@ -430,18 +427,18 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                       )}
                     </td>
                     <td
-                      className="px-4 py-2.5 mg-type-data text-ink-strong"
+                      className="px-4 py-2.5 text-11 text-ink-strong"
                       title={ev.event_kind ?? undefined}
                     >
                       {eventKindLabel(ev.event_kind)}
                     </td>
-                    <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                    <td className="px-4 py-2.5 text-11 text-ink-muted">
                       <AddressDisplay ss58={ev.hotkey} compact fallback="—" />
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <TaoValue amount={ev.amount_tao} precision={4} />
                     </td>
-                    <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
+                    <td className="px-4 py-2.5 text-right text-11 text-ink-muted">
                       <TimeAgo at={ev.observed_at} />
                     </td>
                   </tr>
@@ -456,7 +453,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           />
         )}
         {eventsOmitted > 0 ? (
-          <p className="mt-2 mg-type-data text-ink-muted">
+          <p className="mt-2 text-11 text-ink-muted">
             Showing 100 of {formatNumber(eventsTotal)} events — {formatNumber(eventsOmitted)} more
             omitted.
           </p>
@@ -466,7 +463,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       <div className="mt-6">
         <Link
           to="/chain/extrinsics"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
         >
           ← All extrinsics
         </Link>
@@ -511,12 +508,12 @@ function renderCallArgs(
   if (Array.isArray(callArgs)) {
     const args = (callArgs as Array<{ name?: string | null; value?: unknown }>).slice(0, 64);
     if (args.length === 0) {
-      return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
+      return <p className="text-13 text-ink-muted">No call args were indexed.</p>;
     }
     return (
       <Panel as="div" flush className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/40">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface">
             <tr>
               <th className="px-4 py-2.5">Name</th>
               <th className="px-4 py-2.5">Value</th>
@@ -524,11 +521,11 @@ function renderCallArgs(
           </thead>
           <tbody className="divide-y divide-border">
             {args.map((arg, i) => (
-              <tr key={`${arg.name ?? i}`} className="hover:bg-surface/40">
-                <td className="px-4 py-2.5 mg-type-data text-ink-strong align-top">
+              <tr key={`${arg.name ?? i}`} className="hover:bg-surface">
+                <td className="px-4 py-2.5 text-11 text-ink-strong align-top">
                   {arg.name ?? `arg_${i + 1}`}
                 </td>
-                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                <td className="px-4 py-2.5 text-11 text-ink-muted">
                   {renderCallArgValue(arg.value, arg.name, callModule, callFunction, depth)}
                 </td>
               </tr>
@@ -542,12 +539,12 @@ function renderCallArgs(
   if (callArgs && typeof callArgs === "object") {
     const entries = Object.entries(callArgs as Record<string, unknown>).slice(0, 64);
     if (entries.length === 0) {
-      return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
+      return <p className="text-13 text-ink-muted">No call args were indexed.</p>;
     }
     return (
       <Panel as="div" flush className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/40">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface">
             <tr>
               <th className="px-4 py-2.5">Key</th>
               <th className="px-4 py-2.5">Value</th>
@@ -555,9 +552,9 @@ function renderCallArgs(
           </thead>
           <tbody className="divide-y divide-border">
             {entries.map(([key, value]) => (
-              <tr key={key} className="hover:bg-surface/40">
-                <td className="px-4 py-2.5 mg-type-data text-ink-strong align-top">{key}</td>
-                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+              <tr key={key} className="hover:bg-surface">
+                <td className="px-4 py-2.5 text-11 text-ink-strong align-top">{key}</td>
+                <td className="px-4 py-2.5 text-11 text-ink-muted">
                   {renderCallArgValue(value, key, callModule, callFunction, depth)}
                 </td>
               </tr>
@@ -568,7 +565,7 @@ function renderCallArgs(
     );
   }
 
-  return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
+  return <p className="text-13 text-ink-muted">No call args were indexed.</p>;
 }
 
 // One arg's value: a nested call (or a list of them, e.g. a batch's `calls`)
@@ -629,9 +626,9 @@ function renderCallArgValue(
 
 function NestedCallCard({ call, depth }: { call: DecodedCall; depth: number }) {
   return (
-    <div className="rounded border border-border/70 bg-surface/30 p-3">
+    <div className="rounded border border-border/70 bg-surface p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="mg-type-data font-semibold text-ink-strong">
+        <span className="text-11 font-semibold text-ink-strong">
           {extrinsicCall(call.call_module, call.call_function)}
         </span>
         {typeof call.call_hash === "string" && call.call_hash ? (
@@ -657,7 +654,7 @@ function formatCallArgValue(value: unknown): string {
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-      <dt className="mg-type-caption text-ink-muted sm:w-40 sm:shrink-0">{label}</dt>
+      <dt className="text-13 text-ink-muted sm:w-40 sm:shrink-0">{label}</dt>
       <dd className="min-w-0">{children}</dd>
     </div>
   );

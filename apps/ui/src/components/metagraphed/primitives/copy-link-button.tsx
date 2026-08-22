@@ -76,7 +76,7 @@ export function CopyLinkButton({
           aria-label={copied ? `${label} — copied` : label}
           aria-live="polite"
           className={cn(
-            "inline-flex items-center justify-center rounded-md text-ink-muted transition-colors",
+            "inline-flex items-center justify-center rounded text-ink-muted transition-colors",
             "hover:text-ink-strong hover:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             dim,
             className,

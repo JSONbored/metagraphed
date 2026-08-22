@@ -69,21 +69,21 @@ export function ShortcutsDialog({ blockRef }: { blockRef: string }) {
       role="dialog"
       aria-modal
       aria-labelledby="mg-shortcut-title"
-      className="fixed inset-0 z-[var(--mg-z-modal)] flex items-center justify-center bg-ink-strong/30 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[var(--mg-z-modal)] flex items-center justify-center bg-ink-strong/30 p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) setOpen(false);
       }}
     >
       <Panel as="div" flush className="w-full max-w-md">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 id="mg-shortcut-title" className="mg-type-caption text-ink-muted">
+          <h2 id="mg-shortcut-title" className="text-13 text-ink-muted">
             Keyboard shortcuts
           </h2>
           <button
             type="button"
             autoFocus
             onClick={() => setOpen(false)}
-            className="mg-focus-ring rounded px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong"
+            className="mg-focus-ring rounded px-2 py-1 text-13 text-ink-muted hover:text-ink-strong"
           >
             Esc
           </button>
@@ -91,7 +91,7 @@ export function ShortcutsDialog({ blockRef }: { blockRef: string }) {
         <dl className="divide-y divide-border/60">
           {SHORTCUTS.map((s) => (
             <div key={s.label} className="flex items-center justify-between gap-3 px-4 py-2.5">
-              <dt className="mg-type-caption-lg text-ink">{s.label}</dt>
+              <dt className="text-13 text-ink">{s.label}</dt>
               <dd className="flex items-center gap-1">
                 {s.keys.map((k) => (
                   <Kbd key={k}>{k}</Kbd>

@@ -1,109 +1,131 @@
 /*
- * The design system's real styling — fonts, tokens, and shared component
- * utilities — extracted from apps/ui/src/styles.css (#4861, part of the
- * packages/ui-kit epic, #4867). apps/ui imports this back via
- * `@import "@jsonbored/ui-kit/styles.css"` at the top of its own
- * styles.css, which still owns the actual Tailwind build (the
- * `@import "tailwindcss"` / `@source` / `@import "tw-animate-css"`
- * bootstrap lines stay there, not here -- Tailwind's own compiler needs to
- * see them, and this package's tsup build only ever passes CSS through
- * untouched, never runs Tailwind itself).
+ * The design system (v2, #11605) — fonts, tokens, and the few shared
+ * utilities that carry the contract:
  *
- * Font files (./fonts/*.woff2) are shipped by this package, not apps/ui's
- * public/ dir -- a root-absolute `/fonts/...` url() doesn't survive
- * bundling (esbuild resolves it as a filesystem path, not a browser
- * runtime path, and fails the build); relative paths let tsup copy the
- * files into dist/fonts/ and rewrite the CSS to match.
+ *   one family · six sizes · normal tracking · one 4px radius · three rules ·
+ *   no resting shadow · 80×40 sections · 120–140ms motion on colour only.
+ *
+ * apps/ui imports this via `@import "@jsonbored/ui-kit/styles.css"` at the top
+ * of its own styles.css, which still owns the Tailwind build (the
+ * `@import "tailwindcss"` / `@source` bootstrap lines live there, not here --
+ * Tailwind's compiler needs to see them, and this package's tsup build only
+ * passes CSS through untouched).
+ *
+ * Font files (./fonts/*.woff2) ship with this package; a relative url() is
+ * what survives bundling (a root-absolute /fonts/... path does not).
+ *
+ * The counts this file is held to are enforced by
+ * apps/ui/tests/e2e/token-inventory.spec.ts against every route in both themes:
+ * font families == 1 (2 on prose routes), font sizes ⊆ {10,11,13,16,28,40,64},
+ * letter-spacing ⊆ {normal, th}, border radii ⊆ {0, 4px, 50%}, pills == 0,
+ * resting box-shadow == none.
  */
 
-/*
- * Brand fonts, self-hosted. Weights are the exact set the app uses — verified
- * by grepping every font-weight utility class in src/ (font-normal/-medium/
- * -semibold only; font-bold never appears). Without these, --font-display/
- * --font-sans/--font-mono below fall back to system fonts.
- */
+/* ------------------------------------------------------------------ fonts */
 @font-face {
-  font-family: "Space Grotesk";
+  font-family: "IBM Plex Mono";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("./fonts/Space-Grotesk-400-normal.woff2") format("woff2");
+  src: url("./fonts/IBM-Plex-Mono-400-normal.woff2") format("woff2");
 }
 @font-face {
-  font-family: "Space Grotesk";
+  font-family: "IBM Plex Mono";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url("./fonts/Space-Grotesk-500-normal.woff2") format("woff2");
+  src: url("./fonts/IBM-Plex-Mono-500-normal.woff2") format("woff2");
 }
 @font-face {
-  font-family: "Space Grotesk";
+  font-family: "IBM Plex Mono";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("./fonts/Space-Grotesk-600-normal.woff2") format("woff2");
+  src: url("./fonts/IBM-Plex-Mono-600-normal.woff2") format("woff2");
 }
+/* Prose face. Only the docs/news article body (`.mg-prose`) may use it. */
 @font-face {
-  font-family: "DM Sans";
+  font-family: "IBM Plex Sans";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("./fonts/DM-Sans-400-normal.woff2") format("woff2");
+  src: url("./fonts/IBM-Plex-Sans-400-normal.woff2") format("woff2");
 }
 @font-face {
-  font-family: "DM Sans";
+  font-family: "IBM Plex Sans";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url("./fonts/DM-Sans-500-normal.woff2") format("woff2");
+  src: url("./fonts/IBM-Plex-Sans-500-normal.woff2") format("woff2");
 }
 @font-face {
-  font-family: "DM Sans";
+  font-family: "IBM Plex Sans";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("./fonts/DM-Sans-600-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "JetBrains Mono";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("./fonts/JetBrains-Mono-400-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "JetBrains Mono";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("./fonts/JetBrains-Mono-500-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "JetBrains Mono";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("./fonts/JetBrains-Mono-600-normal.woff2") format("woff2");
+  src: url("./fonts/IBM-Plex-Sans-600-normal.woff2") format("woff2");
 }
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Metagraphed design system — "Bone & Ink" (Blockmachine-inspired).
- * Light (default): warm bone canvas, deep ink text, mint used sparingly.
- * Dark:            quiet ink canvas, dialed-down mint.
- * Surfaces are flat — hairline borders, no shadows or gradients.
- * A very faint dot pattern lives on the body for premium texture.
- */
-
+/* ------------------------------------------------------- tailwind bridge */
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  /* Type: Tailwind's default size ramp is removed so `text-sm`/`text-xl`/...
+     generate nothing; the only sizes that exist are the seven below. The
+     line-height rides along with each size, so a call site never sets one. */
+  --text-*: initial;
+  --text-10: 10px;
+  --text-10--line-height: 1.4;
+  --text-11: 11px;
+  --text-11--line-height: 1.45;
+  --text-13: 13px;
+  --text-13--line-height: 1.5;
+  --text-16: 16px;
+  --text-16--line-height: 1.55;
+  --text-28: 28px;
+  --text-28--line-height: 1.25;
+  --text-40: 40px;
+  --text-40--line-height: 1.1;
+  --text-64: 64px;
+  --text-64--line-height: 1;
+
+  /* No tracking utilities exist. `th` is the single exception, in CSS below. */
+  --tracking-*: initial;
+
+  /* One radius. The named steps stay as aliases so nothing can render a
+     second value; the lint rule removes the class names themselves. */
+  --radius-*: initial;
+  /* The bare `rounded` utility reads the theme key `--radius` -- without it
+     here the class generates nothing (which is what main shipped: 521 inert
+     `rounded`s). 4px, inlined. */
+  --radius: 4px;
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: var(--radius);
+  --radius-2xl: var(--radius);
+  --radius-3xl: var(--radius);
+
+  /* No resting shadows and no blur. The tooltip's ring+drop is a token, not a
+     utility (see --mg-shadow-tooltip). */
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --blur-*: initial;
+
+  --font-display: var(--font-mono);
+  --font-sans: var(--font-mono);
+  --font-mono:
+    "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-prose: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-layer: var(--layer);
+  --color-raised: var(--raised);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
   --color-paper: var(--paper);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
@@ -111,9 +133,6 @@
   --color-ink-strong: var(--ink-strong);
   --color-ink-muted: var(--ink-muted);
   --color-ink-subtle: var(--ink-subtle);
-  /* AA-compliant text-only variant of --ink-subtle. The shared --ink-subtle is
-     also used as a border/fill where its lighter value is correct; this token is
-     for small body text that must clear WCAG AA (4.5:1) on paper/card. */
   --color-ink-subtle-text: var(--ink-subtle-text);
 
   --color-card: var(--card);
@@ -129,22 +148,20 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  /* AA-compliant text-only variant of --accent. --accent stays the brand mint
-     for fills, borders, focus rings and icons (graphics, 3:1); this darker token
-     is only for small accent *text* on paper/card, which needs 4.5:1. */
   --color-accent-text: var(--accent-text);
+  --color-brand: var(--brand);
+  --color-focus: var(--focus);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
   --color-health-ok: var(--health-ok);
   --color-health-warn: var(--health-warn);
-  /* AA-compliant text-only variant of --health-warn. The shared token stays the
-     softened amber for status dots, chips and borders; this darker token is only
-     for small "warn" *text* on paper/card, which needs 4.5:1 (light theme only —
-     dark-theme --health-warn already passes). */
   --color-health-warn-text: var(--health-warn-text);
   --color-health-bad: var(--health-bad);
   --color-health-down: var(--health-down);
@@ -158,129 +175,191 @@
   --color-curation-machine: var(--curation-machine);
   --color-curation-adapter: var(--curation-adapter);
 
-  /* Categorical chart ramp — arbitrary, non-semantic series (e.g. provider kinds) */
+  /* Categorical ramp -- eleven stable swatches, the same order in both
+     themes, used only where every colour is a named series. */
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-chart-9: var(--chart-9);
+  --color-chart-10: var(--chart-10);
+  --color-chart-11: var(--chart-11);
 
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-accent-surface: color-mix(in oklab, var(--accent) 8%, transparent);
 
-  /* Preserved metagraphed-ui design-system tokens (not in the Lovable source):
-     section rhythm + the accent surface used by SectionHeading,
-     readiness-scorecard, rpc-proxy, and the agents route. */
-  --spacing-section: 3rem;
-  --color-accent-surface: color-mix(in oklab, var(--accent) 6%, transparent);
-
-  /* Layout geometry tokens — single source of truth for structural offsets. */
-  --spacing-nav: 3.5rem; /* app header height (h-nav in app-shell) */
-  --spacing-section-gap: 4rem; /* between top-level page sections */
-  --spacing-shell-max: 1400px; /* page shell max width (max-w-shell-max) */
+  /* Layout geometry -- single source of truth for structural offsets. */
+  --spacing-nav: 3.75rem; /* app header height (h-nav in app-shell) */
+  --spacing-shell-max: 1280px; /* page shell max width (max-w-shell-max) */
 }
 
-/* ============ LIGHT (default) — Bone + Ink ============ */
+/* ============================== LIGHT (default) — paper + ink ============ */
 :root {
-  --radius: 0.75rem;
+  --radius: 4px;
 
-  --paper: oklch(0.975 0.006 95); /* warm bone */
-  --surface: oklch(1 0 0); /* cards = pure white, lifted by hairline */
-  --surface-2: oklch(0.945 0.008 95); /* table headers / inset rows */
-  --ink: oklch(0.32 0.012 200);
-  --ink-strong: oklch(0.2 0.012 200); /* deep ink */
-  --ink-muted: oklch(0.52 0.012 200);
-  --ink-subtle: oklch(0.74 0.008 200);
-  /* AA text variant of --ink-subtle (same hue/chroma, darker L). 4.69:1 on
-     paper, 5.04:1 on card. Used only where --ink-subtle styles small text. */
-  --ink-subtle-text: oklch(0.54 0.008 200);
+  --canvas: #f8f8f5;
+  --layer: #f0f0ec;
+  --raised: #e6e6e1;
+  --ink-strong: #161616; /* values, headings, the active row */
+  --ink: #4a4a47; /* body */
+  --ink-muted: #6b6b67; /* labels */
+  --ink-subtle: #8c8c87; /* tertiary */
+  --ink-subtle-text: #8c8c87;
+  --rule: rgba(22, 22, 22, 0.11);
+  --rule-strong: rgba(22, 22, 22, 0.24);
 
-  --background: var(--paper);
+  /* Accent = metagraphed green. `--brand` is the wordmark/live-dot mint and
+     is never used as text; `--accent` is the readable green for text,
+     selection and focus. */
+  --brand: #30ffc0;
+  --accent: #0f8f66;
+  --accent-text: #0f8f66;
+  --accent-foreground: #ffffff;
+  --focus: #0f8f66;
+
+  --good: #1a8f4a;
+  --warn: #a86a00;
+  --bad: #b83239;
+
+  /* Legacy names, aliased onto the tokens above. Removed in #11628. */
+  --paper: var(--canvas);
+  --surface: var(--layer);
+  --surface-2: var(--raised);
+
+  --background: var(--canvas);
   --foreground: var(--ink-strong);
-
-  --card: var(--surface);
+  --card: var(--canvas);
   --card-foreground: var(--ink-strong);
-  --popover: var(--surface);
+  --popover: var(--layer);
   --popover-foreground: var(--ink-strong);
 
-  --primary: oklch(0.74 0.15 168); /* trimmed mint */
-  --primary-foreground: oklch(0.2 0.012 200);
-  --primary-soft: color-mix(in oklab, oklch(0.74 0.15 168) 12%, var(--paper));
-  --secondary: var(--surface-2);
+  --primary: var(--accent);
+  --primary-foreground: #ffffff;
+  --primary-soft: color-mix(in oklab, var(--accent) 10%, var(--canvas));
+  --secondary: var(--layer);
   --secondary-foreground: var(--ink-strong);
-  --muted: var(--surface-2);
+  --muted: var(--layer);
   --muted-foreground: var(--ink-muted);
-  --accent: oklch(0.74 0.15 168);
-  --accent-foreground: oklch(0.2 0.012 200);
-  /* AA text variant of --accent (same hue/chroma, darker L). 4.58:1 on paper,
-     4.92:1 on card. Used only where --accent styles small text. */
-  --accent-text: oklch(0.515 0.15 168);
 
-  --destructive: oklch(0.58 0.22 28);
-  --destructive-foreground: oklch(1 0 0);
+  --destructive: var(--bad);
+  --destructive-foreground: #ffffff;
 
-  --border: color-mix(in oklab, var(--ink-strong) 8%, transparent);
-  --input: color-mix(in oklab, var(--ink-strong) 12%, transparent);
-  --ring: color-mix(in oklab, var(--accent) 45%, transparent);
+  --border: var(--rule);
+  --input: var(--rule-strong);
+  --ring: color-mix(in oklab, var(--focus) 45%, transparent);
 
-  --health-ok: oklch(
-    0.68 0.16 160
-  ); /* brand mint — same hue family as --accent */
-  --health-warn: oklch(0.72 0.16 75); /* softened amber, not neon */
-  /* AA text variant of --health-warn (same hue/chroma, darker L). 4.58:1 on
-     paper, 4.92:1 on card. Used only where --health-warn styles small text. */
-  --health-warn-text: oklch(0.55 0.12 80);
-  --health-bad: oklch(
-    0.66 0.18 50
-  ); /* orange — between warn (75) and down (28) */
-  --health-down: oklch(0.58 0.22 28);
-  --health-unknown: oklch(0.66 0.01 200);
+  --health-ok: var(--good);
+  --health-warn: var(--warn);
+  --health-warn-text: var(--warn);
+  --health-bad: #c25a16;
+  --health-down: var(--bad);
+  --health-unknown: var(--ink-subtle);
 
   --curation-native: var(--ink-strong);
-  --curation-verified: oklch(
-    0.68 0.16 160
-  ); /* kept in lockstep with --health-ok */
-  --curation-pilot: oklch(0.6 0.15 150);
+  --curation-verified: var(--good);
+  --curation-pilot: #2f8f5a;
   --curation-candidate: var(--ink-muted);
-  --curation-seeded: oklch(
-    0.64 0.15 80
-  ); /* same warm hue family as --chart-3 */
-  --curation-machine: oklch(0.54 0.14 250);
-  --curation-adapter: oklch(0.62 0.15 305);
+  --curation-seeded: var(--warn);
+  --curation-machine: #4d6bff;
+  --curation-adapter: #7a5cf0;
 
-  /* Categorical chart ramp — muted, on-brand; first color is blue to avoid
-     reading as the mint "healthy" semantic. */
-  --chart-1: oklch(0.64 0.13 250);
-  --chart-2: oklch(0.72 0.13 168);
-  --chart-3: oklch(0.76 0.12 80);
-  --chart-4: oklch(0.62 0.15 305);
-  --chart-5: oklch(0.66 0.14 350);
-  --chart-6: oklch(0.66 0.02 220);
+  --chart-1: #c84fd6;
+  --chart-2: #7a5cf0;
+  --chart-3: #4d6bff;
+  --chart-4: #2a8fe6;
+  --chart-5: #00a7bf;
+  --chart-6: #00a38f;
+  --chart-7: #0f9a5f;
+  --chart-8: #6fae00;
+  --chart-9: #d79a00;
+  --chart-10: #e06e00;
+  --chart-11: #d9484c;
 
-  /* Dot pattern tuning */
-  --mg-dot-color: color-mix(in oklab, var(--ink-strong) 6%, transparent);
-  --mg-dot-size: 24px;
-  --mg-grid-color: color-mix(in oklab, var(--ink-strong) 3.5%, transparent);
-
-  /* Third-party brand mark (ClaudeIcon) -- fixed regardless of theme, unlike
-     the semantic tokens above. Converted from Claude's official simple-icons
-     hex (#D97757) via the standard sRGB->OKLab->OKLCH formulas. */
-  --claude-brand: oklch(0.67 0.13 39);
+  /* Third-party brand mark (ClaudeIcon) -- fixed regardless of theme. */
+  --claude-brand: #d97757;
 }
 
-/* ============================================================
- * Bone & Ink rhythm + type tokens. Relocated (2026-07-23) from
- * apps/ui/src/styles.css alongside <Panel>/<SectionLabel> and the other
- * dependency-free primitives that moved into this package so ui-kit's own
- * components can use them too; briefly duplicated in both files to keep
- * that move shippable, then consolidated here as the sole source of truth
- * (#7846) -- apps/ui/src/styles.css now only keeps the page-shell-specific
- * rhythm tokens (--mg-section-gap*, --mg-stack-gap*, --mg-hero-pad-y*,
- * --mg-toolbar-pad-y, --mg-gutter-x) that describe its own layout, not a
- * reusable component concern.
- * ============================================================ */
+/* ============================== DARK — graphite ========================== */
+.dark {
+  --canvas: #161616;
+  --layer: #1f1f1f;
+  --raised: #2a2a2a;
+  --ink-strong: #f2f2f2;
+  --ink: #d4d4d4;
+  --ink-muted: #a3a3a3;
+  --ink-subtle: #7d7d7d;
+  --ink-subtle-text: #7d7d7d;
+  --rule: rgba(255, 255, 255, 0.11);
+  --rule-strong: rgba(255, 255, 255, 0.24);
+
+  --brand: #30ffc0;
+  --accent: #3ddc97;
+  --accent-text: #3ddc97;
+  --accent-foreground: #161616;
+  --focus: #3ddc97;
+
+  --good: #3fc66e;
+  --warn: #e9b84a;
+  --bad: #ff6b6f;
+
+  --paper: var(--canvas);
+  --surface: var(--layer);
+  --surface-2: var(--raised);
+
+  --background: var(--canvas);
+  --foreground: var(--ink-strong);
+  --card: var(--canvas);
+  --card-foreground: var(--ink-strong);
+  --popover: var(--layer);
+  --popover-foreground: var(--ink-strong);
+
+  --primary: var(--accent);
+  --primary-foreground: #161616;
+  --primary-soft: color-mix(in oklab, var(--accent) 10%, var(--canvas));
+  --secondary: var(--layer);
+  --secondary-foreground: var(--ink-strong);
+  --muted: var(--layer);
+  --muted-foreground: var(--ink-muted);
+
+  --destructive: var(--bad);
+  --destructive-foreground: #161616;
+
+  --border: var(--rule);
+  --input: var(--rule-strong);
+  --ring: color-mix(in oklab, var(--focus) 50%, transparent);
+
+  --health-ok: var(--good);
+  --health-warn: var(--warn);
+  --health-warn-text: var(--warn);
+  --health-bad: #f58a3c;
+  --health-down: var(--bad);
+  --health-unknown: var(--ink-subtle);
+
+  --curation-native: var(--ink-strong);
+  --curation-verified: var(--good);
+  --curation-pilot: #5fd08a;
+  --curation-candidate: var(--ink-muted);
+  --curation-seeded: var(--warn);
+  --curation-machine: #7c86ff;
+  --curation-adapter: #a684ff;
+
+  --chart-1: #ed6aff;
+  --chart-2: #a684ff;
+  --chart-3: #7c86ff;
+  --chart-4: #51a2ff;
+  --chart-5: #00d3f2;
+  --chart-6: #00d5be;
+  --chart-7: #00bc7d;
+  --chart-8: #9ae600;
+  --chart-9: #ffb900;
+  --chart-10: #ff8904;
+  --chart-11: #ff6467;
+}
+
+/* ============================ rhythm, motion, layers ===================== */
 :root {
   --mg-space-3xs: 0.125rem; /* 2  */
   --mg-space-2xs: 0.25rem; /* 4  */
@@ -292,367 +371,84 @@
   --mg-space-2xl: 3rem; /* 48 */
   --mg-space-3xl: 4rem; /* 64 */
 
+  /* Section rhythm (opencode-measured): 80×40 desktop, 64×32 tablet, 48×24
+     mobile; 40px under a section heading; 28px rank rows; 44px table rows. */
+  --mg-section-y: 80px;
+  --mg-section-x: 40px;
+  --mg-heading-gap: 40px;
+  --mg-row: 28px;
+  --mg-table-row: 44px;
+
   --mg-panel-pad: var(--mg-space-lg);
-  --mg-panel-pad-dense: var(--mg-space-md);
 
-  /* Type scale — locks the micro/label/caption/data idiom into named tokens. */
-  --mg-type-micro: 9.5px;
-  --mg-type-label: 11px;
-  --mg-tracking-label: 0.14em;
-  --mg-tracking-micro: 0.18em;
+  /* Motion: colour-only, one duration. Transforms never animate. */
+  --mg-motion: 140ms ease;
+  --mg-ease-out: ease;
 
-  /* #7844: the 12/13px body-adjacent band and the mono data/numeric band --
-     both had a bare-arbitrary-text-size guardrail warning at every site (no
-     utility class existed to reach for), unlike mg-type-micro/label above. */
-  --mg-type-caption: 12px;
-  --mg-type-caption-lg: 13px;
+  /* The only shadow: the floating tooltip's ring + drop. */
+  --mg-shadow-tooltip:
+    0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.08);
 
-  /* #7846: moved from apps/ui/src/styles.css -- part of the same type scale
-     as micro/label/caption above, so it belongs alongside them here rather
-     than in apps/ui's page-shell-only rhythm block. Not yet consumed by any
-     utility class in either package (no .mg-type-body/-h1..-h4 exists) --
-     kept as the reserved next step up the scale above mg-type-caption-lg. */
-  --mg-type-body: 14px;
-  --mg-type-body-lg: 15px;
-  --mg-type-h4: 16px;
-  --mg-type-h3: 18px;
-  --mg-type-h2: 22px;
-  --mg-type-h1: 28px;
-}
+  --mg-sticky-offset: 3.75rem;
+  /* The bounded scroll viewport a list's sticky <thead> pins to. Owned by
+     the DataTable primitive once #11610 lands; until then ListShell and
+     /validators share it here. */
+  --mg-list-viewport-max: 70vh;
 
-.mg-panel-pad {
-  padding: var(--mg-panel-pad);
+  /* Layer tokens (#7841) -- named stacking order. Radix portals default to
+     z-50, so --mg-z-modal stays 50. */
+  --mg-z-sticky: 10;
+  --mg-z-raised: 20;
+  --mg-z-nav: 30;
+  --mg-z-overlay: 40;
+  --mg-z-modal: 50;
+  --mg-z-progress: 60;
+  --mg-z-skip-link: 100;
 }
-.mg-panel-pad-dense {
-  padding: var(--mg-panel-pad-dense);
-}
-.mg-panel-pad-flush {
-  padding: 0;
-}
-.mg-type-micro {
-  font-family: var(--font-mono);
-  font-size: var(--mg-type-micro);
-  line-height: 1.2;
-  text-transform: uppercase;
-  letter-spacing: var(--mg-tracking-micro);
-}
-.mg-type-label {
-  font-family: var(--font-mono);
-  font-size: var(--mg-type-label);
-  line-height: 1.25;
-  letter-spacing: var(--mg-tracking-label);
-}
-/* Sans/inherited family -- captions, descriptions, secondary prose. Not the
-   uppercase-tracking label idiom above; a set line-height replaces today's
-   bare text-[12px]/[13px]'s inherited one, so a dense-row sweep site may
-   need an explicit leading-* override to avoid a layout shift (#7844). */
-.mg-type-caption {
-  font-size: var(--mg-type-caption);
-  line-height: 1.45;
-}
-.mg-type-caption-lg {
-  font-size: var(--mg-type-caption-lg);
-  line-height: 1.5;
-}
-/* Mono data/numeric idiom (timestamps, hashes, tabular values) -- deliberately
-   NOT uppercase/tracked, which is exactly why #7808 correctly left these
-   sites alone when it converted every eyebrow label to mg-type-micro/label. */
-.mg-type-data {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.4;
-}
-.mg-type-data-sm {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.35;
-}
-@keyframes mg-skel-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 0.9;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  [style*="mg-skel-pulse"] {
-    animation: none !important;
-  }
-}
-
-/* ============================================================
- * Elevation tokens (#7840) — the 8 distinct raw shadow-[…] values
- * found across apps/ui + ui-kit collapsed into a named scale, so
- * new shadows reach for one of these instead of inventing another
- * bespoke recipe. color-mix(in oklab, var(--ink-strong) …) tracks
- * the active theme automatically; two of the values converted here
- * previously used a hard-coded rgba(15,23,42,…) that did NOT adapt
- * in dark mode (account-history-chart.tsx's pill toggle) — this is
- * a small visual fix alongside the token move, not just a rename.
- * ============================================================ */
-:root {
-  --mg-shadow-hairline: 0 1px 0 0 var(--border);
-  --mg-shadow-hairline-inset: inset 0 -1px 0 var(--border);
-  --mg-shadow-pop: 0 8px 24px -12px
-    color-mix(in oklab, var(--ink-strong) 35%, transparent);
-  --mg-shadow-drawer: 0 -8px 32px -12px
-    color-mix(in oklab, var(--ink-strong) 35%, transparent);
-  --mg-shadow-pill: 0 18px 50px -44px
-    color-mix(in oklab, var(--ink-strong) 45%, transparent);
-  --mg-shadow-pill-active: 0 12px 30px -24px
-    color-mix(in oklab, var(--ink-strong) 85%, transparent);
-  --mg-shadow-ring-accent: 0 0 0 1px
-    color-mix(in oklab, var(--accent) 25%, transparent);
-}
-
-/* ============================================================
- * Layer tokens (#7841) — a named stacking-order scale so a new
- * component reaches for one of these instead of guessing a bare
- * z-* step. Radix's own portals default to z-50, so --mg-z-modal
- * stays 50 to avoid needing per-primitive overrides.
- * ============================================================ */
-:root {
-  --mg-z-sticky: 10; /* sticky theads/toolbars, scroll shadows, in-flow progress bars */
-  --mg-z-raised: 20; /* must clear sticky content within the same page section */
-  --mg-z-nav: 30; /* site header/nav chrome */
-  --mg-z-overlay: 40; /* drawers, back-to-top, hover cards, lightweight menus */
-  --mg-z-modal: 50; /* dialogs, popovers, sheets, command palette (Radix default) */
-  --mg-z-progress: 60; /* route-transition progress bar -- must beat modal */
-  --mg-z-skip-link: 100; /* a11y skip-link -- must beat everything */
-}
-
-/* ============================================================
- * Surface-translucency tiers (#7842) — the recurring
- * `bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80` idiom
- * (copy-pasted across every sticky table header and the compare-drawer
- * shells) collapsed into one class, plus a second, blur-free tier for the
- * softer `bg-card/60` inset panels. Both compose var(--card), so they
- * theme automatically -- no separate dark-mode override needed.
- * ============================================================ */
-/* The bounded viewport a long list's table scrolls inside, and the element
-   `.mg-table-head-pinned` pins to. One class so ListShell and any route that
-   builds its own shell (/validators) cannot disagree about it.
-
-   `overscroll-behavior: contain` is load-bearing, not polish. Without it,
-   scrolling past the last row CHAINS to the page, which drags the table --
-   and the header pinned to its top -- up underneath the app header while the
-   reader is still looking at rows. The header is correctly pinned the whole
-   time; it is just off-screen with the top of its own scrollport. Containing
-   the scroll means reaching the end of the table stops there, so the header
-   stays put for as long as the table is what you are reading. (The page
-   still scrolls normally from anywhere outside the table.)
-
-   The height cap reads a token with a literal fallback: a bare var() that
-   fails to resolve computes `max-height: none`, unbounding the viewport and
-   making every sticky header in the app inert again. */
-.mg-list-viewport {
-  max-height: var(--mg-list-viewport-max, 70vh);
-  /* BOTH axes, on ONE element -- pair this with .mg-table-scroll on the same
-     div rather than nesting them.
-
-     Splitting them does not work, and the reason is the same CSS rule behind
-     the original inert-header bug: `overflow-y: auto` coerces `overflow-x`
-     from `visible` to `auto` (CSS Overflow 3 §3). So an inner vertical
-     scroller silently becomes a horizontal one too and STEALS that axis from
-     the .mg-table-scroll wrapper around it. Measured on /chain/extrinsics at
-     820px: the inner div scrolled x (958 > 708) while the outer could not
-     scroll at all -- which stranded the edge-fade affordance and the thin
-     scrollbar styling on an element that no longer moved, and put a 15px
-     default scrollbar INSIDE the bounded region.
-
-     One element scrolls both axes, carries both sets of styling, and the
-     sticky header pins to it vertically while travelling with the content
-     horizontally, which is what a table header should do. */
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-
-/* A table header pinned inside a bounded list viewport (ListShell's, or a
-   route that builds its own). One definition so every list agrees on where
-   the header sits and what it looks like.
-
-   `top: 0` because the viewport it pins to IS the reference -- never
-   --mg-sticky-offset, which measures the app-header stack and belongs to
-   things sticking against the PAGE. Getting that wrong is what put the
-   /subnets column labels 131px down inside their own table.
-
-   Opaque, deliberately, where these headers used to be `mg-glass` (80% where
-   backdrop-filter is supported). Glass was harmless while the headers were
-   inert and never actually overlapped anything; the moment they started
-   pinning for real, the row passing underneath read straight through the
-   column labels. Nothing shows through an opaque header. */
-.mg-table-head-pinned {
-  position: sticky;
-  top: 0;
-  z-index: var(--mg-z-sticky);
-  background: var(--card);
-  box-shadow: var(--mg-shadow-hairline);
-}
-
-.mg-glass {
-  background: color-mix(in oklab, var(--card) 95%, transparent);
-}
-@supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
-  .mg-glass {
-    background: color-mix(in oklab, var(--card) 80%, transparent);
-  }
-}
-/* Kept as its own unconditional, unnested rule rather than folded into the
-   @supports block above -- the CSS build (Lightning CSS, via tsup, and again
-   via apps/ui's own Tailwind pipeline) nests an additional color-mix()
-   feature-query fallback inside that block, which doesn't mix cleanly with
-   backdrop-filter there. A plain unsupported `backdrop-filter` declaration is
-   simply ignored by browsers that lack it, so this alone still achieves the
-   same progressive-enhancement result. No -webkit- fallback: Safari has
-   shipped unprefixed backdrop-filter since 18 (2024), and Lightning CSS's
-   minifier collapses two textually-identical blur(8px) declarations down to
-   just the prefixed one when both are present -- dropping the standard
-   property entirely, which is the opposite of what every other browser
-   needs. */
-.mg-glass {
-  backdrop-filter: blur(8px);
-}
-.mg-glass-soft {
-  background: color-mix(in oklab, var(--card) 60%, transparent);
-}
-/* Elevated opaque panel (#8554): an unconditional 95%-opaque card surface with
-   NO backdrop-filter and no @supports branch -- it renders identically whether
-   or not backdrop-filter is supported. This is the flat elevated-panel tier the
-   `bg-card/95` + mg-card-glow detail cards want: `.mg-glass` can't serve them
-   because it drops to 80% + blur(8px) wherever backdrop-filter IS supported (a
-   real visual change), and `.mg-glass-soft` is 60%. Byte-for-byte the same
-   surface Tailwind's `bg-card/95` produces (both compose var(--card) at 95% via
-   the same color-mix), so swapping a raw `bg-card/95` for this is pixel-identical. */
-.mg-glass-opaque {
-  background: color-mix(in oklab, var(--card) 95%, transparent);
-}
-
-/* ============ DARK — Ink + dialed mint ============ */
 .dark {
-  --paper: oklch(0.14 0.003 250);
-  --surface: oklch(0.175 0.003 250);
-  --surface-2: oklch(0.215 0.004 250);
-  --ink: oklch(0.86 0.005 250);
-  --ink-strong: oklch(0.96 0.006 250);
-  --ink-muted: oklch(0.64 0.005 250);
-  --ink-subtle: oklch(0.42 0.004 250);
-  /* AA text variant of --ink-subtle (same hue/chroma, lighter L for the dark
-     canvas). 4.98:1 on paper, 4.63:1 on card. */
-  --ink-subtle-text: oklch(0.61 0.01 200);
-
-  --background: var(--paper);
-  --foreground: var(--ink-strong);
-
-  --card: var(--surface);
-  --card-foreground: var(--ink-strong);
-  --popover: var(--surface-2);
-  --popover-foreground: var(--ink-strong);
-
-  --primary: oklch(0.85 0.14 168);
-  --primary-foreground: oklch(0.14 0.003 250);
-  --primary-soft: color-mix(in oklab, oklch(0.85 0.14 168) 10%, var(--paper));
-  --secondary: var(--surface-2);
-  --secondary-foreground: var(--ink-strong);
-  --muted: var(--surface);
-  --muted-foreground: var(--ink-muted);
-  --accent: oklch(0.85 0.14 168);
-  --accent-foreground: oklch(0.14 0.003 250);
-  /* Dark --accent already clears AA as text (≈11.7:1), so the text variant is
-     the brand mint itself — no visual change in dark mode. */
-  --accent-text: var(--accent);
-
-  --destructive: oklch(0.7 0.22 28);
-  --destructive-foreground: oklch(0.14 0.003 250);
-
-  --border: color-mix(in oklab, var(--ink-strong) 11%, transparent);
-  --input: color-mix(in oklab, var(--ink-strong) 16%, transparent);
-  --ring: color-mix(in oklab, var(--accent) 50%, transparent);
-
-  --health-ok: oklch(0.85 0.14 168); /* brand mint — already matches --accent */
-  --health-warn: oklch(0.82 0.15 75); /* softened amber, not neon */
-  /* Dark --health-warn already clears AA as text (≈10.6:1), so the text variant
-     is the shared token itself — no visual change in dark mode. */
-  --health-warn-text: var(--health-warn);
-  --health-bad: oklch(
-    0.75 0.18 52
-  ); /* orange — between warn (75) and down (28) */
-  --health-down: oklch(0.72 0.2 28);
-  --health-unknown: oklch(0.52 0.005 250);
-
-  --curation-native: var(--ink-strong);
-  --curation-verified: oklch(0.85 0.14 168);
-  --curation-pilot: oklch(0.8 0.14 150);
-  --curation-candidate: var(--ink-muted);
-  --curation-seeded: oklch(
-    0.78 0.14 80
-  ); /* same warm hue family as --chart-3 */
-  --curation-machine: oklch(0.76 0.12 250);
-  --curation-adapter: oklch(0.78 0.13 305);
-
-  /* Categorical chart ramp — lifted for the dark surface */
-  --chart-1: oklch(0.76 0.12 250);
-  --chart-2: oklch(0.85 0.13 168);
-  --chart-3: oklch(0.84 0.12 80);
-  --chart-4: oklch(0.76 0.14 305);
-  --chart-5: oklch(0.8 0.13 350);
-  --chart-6: oklch(0.62 0.02 220);
-
-  --mg-dot-color: color-mix(in oklab, var(--ink-strong) 10%, transparent);
-  --mg-dot-size: 26px;
-  --mg-grid-color: color-mix(in oklab, var(--ink-strong) 5%, transparent);
+  --mg-shadow-tooltip:
+    0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 8px 16px rgba(0, 0, 0, 0.24),
+    0 4px 8px rgba(0, 0, 0, 0.32);
+}
+@media (max-width: 74rem) {
+  :root {
+    --mg-section-y: 64px;
+    --mg-section-x: 32px;
+  }
+}
+@media (max-width: 40rem) {
+  :root {
+    --mg-section-y: 48px;
+    --mg-section-x: 24px;
+  }
 }
 
+/* ================================== base ================================= */
 @layer base {
   * {
     border-color: var(--color-border);
   }
   html,
   body {
-    background-color: var(--color-paper);
-    color: var(--color-ink-strong);
-    font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv11";
+    background-color: var(--canvas);
+    color: var(--ink-strong);
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: clip;
   }
-  /* Premium Blockmachine background: hairline grid + dot field + soft top
-     vignette. Layered top to bottom so the grid lives behind the dots. */
-  body {
-    background-image:
-      radial-gradient(var(--mg-dot-color) 1px, transparent 1px),
-      linear-gradient(to right, var(--mg-grid-color) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--mg-grid-color) 1px, transparent 1px),
-      radial-gradient(
-        ellipse 110% 60% at 50% 0%,
-        color-mix(in oklab, var(--accent) 5%, transparent) 0%,
-        transparent 70%
-      );
-    background-size:
-      var(--mg-dot-size) var(--mg-dot-size),
-      96px 96px,
-      96px 96px,
-      100% 100%;
-    background-position:
-      0 0,
-      0 0,
-      0 0,
-      0 0;
-    background-attachment: fixed;
-  }
   html.theme-transition,
   html.theme-transition * {
     transition:
-      background-color 160ms ease,
-      color 160ms ease,
-      border-color 160ms ease;
+      background-color var(--mg-motion),
+      color var(--mg-motion),
+      border-color var(--mg-motion);
   }
   ::selection {
-    background-color: var(--color-accent);
-    color: var(--color-accent-foreground);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
   html {
     scroll-behavior: smooth;
@@ -660,245 +456,131 @@
   [data-section-anchor] {
     scroll-margin-top: 8rem;
   }
+  /* Table headers are the one place uppercase + tracking exist: 10px, 600,
+     muted, 0.05em -- the blockmachine header discipline on v2 tokens. */
+  thead th {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.4;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-muted);
+  }
+  /* A sort button inside a header cell is the header: the UA stylesheet
+     gives <button> text-transform: none, so re-inherit the lot. */
+  thead th button {
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+  }
+  /* Prose: the docs/news article body is the only sans-serif text on the
+     site -- 16px, 1.65, a 68ch measure. Everything else stays mono. */
+  .mg-prose {
+    font-family: var(--font-prose);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  .mg-prose :where(p, li, blockquote, td) {
+    max-width: 68ch;
+  }
+  .mg-prose :where(h1, h2, h3, h4, code, pre, kbd, table, th, nav, figcaption) {
+    font-family: var(--font-mono);
+  }
 }
 
-/* Subtle pulse for warn/down health dots. Reduced motion → static. */
-@keyframes mg-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.55;
-    transform: scale(0.85);
-  }
+/* ============================ shared utilities =========================== */
+.mg-panel-pad {
+  padding: var(--mg-panel-pad);
 }
-.mg-pulse {
-  animation: mg-pulse 1.8s ease-in-out infinite;
+.mg-panel-pad-flush {
+  padding: 0;
 }
-
-@keyframes mg-flash-up {
-  0% {
-    background-color: color-mix(in oklab, var(--accent) 28%, transparent);
-  }
-  100% {
-    background-color: transparent;
-  }
+.mg-num {
+  font-variant-numeric: tabular-nums;
 }
-@keyframes mg-flash-down {
-  0% {
-    background-color: color-mix(in oklab, var(--health-down) 28%, transparent);
-  }
-  100% {
-    background-color: transparent;
-  }
+.mg-divider {
+  border-top: 1px solid var(--rule);
 }
-.mg-flash-up {
-  animation: mg-flash-up 700ms ease-out;
-  border-radius: 3px;
+/* A status dot: the one element allowed to be round. 8×8, colour = current. */
+.mg-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
 }
-.mg-flash-down {
-  animation: mg-flash-down 700ms ease-out;
-  border-radius: 3px;
+.mg-live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand);
+  flex: none;
 }
-
-/* #8367: one-shot background pulse on a row whose entity just acted on-chain.
-   Distinct from mg-flash-up/down, which signal DIRECTION of a value change --
-   this only says "something happened here", so it carries the neutral accent
-   and no up/down variant. The keyframes end at the resting state, so removing
-   the class after it plays causes no visual jump. */
-@keyframes mg-row-flash {
-  0% {
-    background-color: color-mix(in oklab, var(--accent) 18%, transparent);
-  }
-  100% {
-    background-color: transparent;
-  }
+.mg-health-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
 }
-.mg-row-flash {
-  animation: mg-row-flash 1600ms ease-out;
+/* A leading 6px dot drawn as a pseudo-element (chips that colour their dot
+   with `before:bg-*`). */
+.mg-dot-before::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
 }
-
-/* #8367: the header block ticker's arrival cue. Deliberately a brief opacity
-   dip and nothing else -- the issue rules out a counter-roll tween and rules
-   out color cycling, so this neither moves the digits nor tints them. */
-@keyframes mg-value-pulse {
-  0% {
-    opacity: 0.45;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-.mg-value-pulse {
-  animation: mg-value-pulse 200ms ease-out;
-}
-
-.mg-row-hover {
-  transition: background-color 120ms ease;
-}
-.mg-row-hover:hover {
-  background-color: color-mix(in oklab, var(--ink-strong) 4%, transparent);
-}
-
-.mg-refreshing {
-  transition: opacity 200ms ease;
-  opacity: 0.72;
-}
-
-.mg-anchor-btn {
-  opacity: 0;
+.mg-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule);
+  background: var(--canvas);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: nowrap;
   transition:
-    opacity 120ms ease,
-    color 120ms ease;
+    border-color var(--mg-motion),
+    color var(--mg-motion);
 }
-@media (hover: none) {
-  .mg-anchor-btn {
-    opacity: 0.55;
-  }
+.mg-chip:hover {
+  border-color: var(--rule-strong);
 }
-.mg-section:hover .mg-anchor-btn,
-.mg-anchor-btn:focus-visible {
-  opacity: 1;
+.mg-section {
+  scroll-margin-top: 6rem;
 }
-
-/* Density */
-:root[data-density="spacious"],
-:root:not([data-density]) {
-  --mg-card-pad: 1.25rem;
-  --mg-row-pad-y: 0.6rem;
+/* A plain hairline. */
+.mg-rule {
+  height: 1px;
+  background: var(--rule);
 }
-html[data-density="compact"] {
-  --mg-card-pad: 0.625rem;
-  --mg-row-pad-y: 0.3rem;
-}
-html[data-density="compact"] .mg-kpi {
-  padding: 0.5rem 0.75rem;
-}
-html[data-density="compact"] .mg-kpi .mg-kpi-num {
-  font-size: 1.125rem;
+.mg-hero-caption {
+  font-family: var(--font-mono);
+  font-size: 10px;
   line-height: 1.4;
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-html[data-density="compact"] .bg-card > .overflow-x-auto table th,
-html[data-density="compact"] .bg-card > .overflow-x-auto table td,
-html[data-density="compact"] .bg-card > table th,
-html[data-density="compact"] .bg-card > table td {
-  padding-block: 0.3rem;
-  padding-inline: 0.5rem;
-  font-size: 12px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  .mg-pulse,
-  .mg-flash-up,
-  .mg-flash-down,
-  /* #8367: both liveness cues are ambience, so under reduced motion they
-     simply don't play -- the row and the block number still update, they just
-     don't announce it. `animation: none` leaves no residual tint, because
-     each keyframe set ends at the resting state rather than starting there. */
-  .mg-row-flash,
-  .mg-value-pulse {
-    animation: none;
-  }
-  .mg-row-hover,
-  .mg-refreshing {
-    transition: none;
-  }
-  html.theme-transition,
-  html.theme-transition * {
-    transition: none;
-  }
-}
-
-@keyframes mg-loader {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(300%);
-  }
-}
-
-/* Flat hover — no shadow, just a hairline border tint shift. */
-.mg-hover-lift {
-  transition:
-    border-color 150ms ease-out,
-    background-color 150ms ease-out;
-}
-@media (hover: hover) {
-  .mg-hover-lift:hover {
-    border-color: color-mix(in oklab, var(--ink-strong) 22%, var(--border));
-  }
-}
-.mg-hover-lift:focus-visible {
-  outline: none;
-  border-color: color-mix(in oklab, var(--accent) 60%, var(--border));
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 25%, transparent);
-}
-
-@keyframes mg-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.mg-fade-in {
-  animation: mg-fade-in 480ms ease-out both;
-}
-.mg-fade-in-delay-1 {
-  animation-delay: 80ms;
-}
-.mg-fade-in-delay-2 {
-  animation-delay: 160ms;
-}
-.mg-fade-in-delay-3 {
-  animation-delay: 240ms;
-}
-
-/* Hero — calm, no slab fill. Just a mint hairline at the top so the
-   hero sits flush with the page while still feeling anchored. */
-.mg-hero-slab {
-  position: relative;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  border-top: 1px solid color-mix(in oklab, var(--accent) 55%, transparent);
-}
-.mg-hero-slab::before {
-  content: none;
-}
-
-/* Mint accent band — quiet bone band with hairline mint top. */
-.mg-accent-band {
-  background: color-mix(in oklab, var(--accent) 6%, var(--paper));
-  border-top: 1px solid color-mix(in oklab, var(--accent) 35%, transparent);
-  border-bottom: 1px solid var(--border);
-}
-
-/* Mint dot pattern — used inside accent bands. */
-.mg-dot-grid {
-  background-image: radial-gradient(
-    color-mix(in oklab, var(--accent) 30%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 14px 14px;
-}
-
-/* Hairline KPI strip used in heroes (Blockmachine signature). */
+/* Hairline KPI strip: shared edges, no gap, no card. Replaced by FactStrip
+   (#11607); the grid survives here so heroes keep their shape until then. */
 .mg-kpi-strip {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
 }
 @media (min-width: 640px) {
   .mg-kpi-strip {
@@ -907,7 +589,7 @@ html[data-density="compact"] .bg-card > table td {
 }
 .mg-kpi-strip > * {
   padding: 1rem 1.25rem;
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--rule);
 }
 .mg-kpi-strip > *:last-child {
   border-right: 0;
@@ -920,762 +602,172 @@ html[data-density="compact"] .bg-card > table td {
     border-bottom: 0;
   }
 }
-
-/* Live dot — small pulsing mint pip. */
-.mg-live-dot {
-  position: relative;
-  display: inline-block;
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 9999px;
-  background: var(--accent);
-}
-.mg-live-dot::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 9999px;
-  background: var(--accent);
-  opacity: 0.3;
-  animation: mg-pulse 1.8s ease-in-out infinite;
-}
-
-/* Health dot — like mg-live-dot, but colour follows currentColor so it can
-   reflect endpoint health (text-health-ok / -warn / -bad / -down). */
-.mg-health-dot {
-  position: relative;
-  display: inline-block;
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 9999px;
-  background: currentColor;
-}
-.mg-health-dot::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 9999px;
-  background: currentColor;
-  opacity: 0.3;
-  animation: mg-pulse 1.8s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mg-fade-in,
-  .mg-live-dot::after,
-  .mg-health-dot::after {
-    animation: none;
-  }
-}
-
-/* ============ Premium polish utilities ============ */
-.mg-num {
-  font-variant-numeric: tabular-nums;
-}
-.mg-divider {
-  border-top: 1px solid color-mix(in oklab, var(--ink-strong) 12%, transparent);
-}
-.mg-display-tight {
-  letter-spacing: -0.02em;
-}
-.mg-chip {
-  display: inline-flex;
-  align-items: center;
-  height: 1.5rem;
-  padding: 0 0.625rem;
-  border-radius: 9999px;
-  border: 1px solid var(--border);
-  background: var(--paper);
-  font-size: 11px;
-  white-space: nowrap;
-  transition:
-    border-color 120ms ease-out,
-    color 120ms ease-out;
-}
-.mg-chip:hover {
-  border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
-}
-.mg-section {
-  scroll-margin-top: 6rem;
-}
-
-/* Blockmachine signature: short mint rule above section eyebrows. */
-.mg-section-rule {
-  position: relative;
-}
-.mg-section-rule::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: -1rem;
-  width: 2.5rem;
-  height: 1px;
-  background: color-mix(in oklab, var(--accent) 65%, transparent);
-}
-
-/* Section divider — hairline that runs the full width with a mint pip. */
-.mg-rule {
-  position: relative;
-  height: 1px;
-  background: var(--border);
-}
-.mg-rule::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 3.5rem;
-  height: 1px;
-  background: color-mix(in oklab, var(--accent) 75%, transparent);
-}
-
-/* Premium hero caption pinned to the corner — used by PageHero. */
-.mg-hero-caption {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.mg-hero-caption::before {
-  content: "";
-  display: inline-block;
-  width: 1.25rem;
-  height: 1px;
-  background: color-mix(in oklab, var(--accent) 70%, transparent);
-}
-
-/* Ticker strip — narrow, mono, scrolls horizontally on overflow. */
-.mg-ticker {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-muted);
-  white-space: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.mg-ticker::-webkit-scrollbar {
-  display: none;
-}
-.mg-ticker > * {
-  flex-shrink: 0;
-}
-
-/* ============ Mega menu surface ============ */
-.mg-mega-surface {
-  background: var(--paper);
-  border: 1px solid var(--border);
-  box-shadow:
-    0 1px 0 var(--border) inset,
-    0 24px 60px -20px color-mix(in oklab, var(--ink-strong) 22%, transparent),
-    0 2px 8px -2px color-mix(in oklab, var(--ink-strong) 8%, transparent);
-}
-.mg-mega-scrim {
-  position: fixed;
-  /* Sit below the sticky app header so navbar items remain hoverable
-     while the panel is open. */
-  top: var(--spacing-nav);
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 20;
-  background: color-mix(in oklab, var(--paper) 78%, transparent);
-  backdrop-filter: blur(2px);
-  animation: mg-scrim-in 160ms ease-out both;
-}
-
-@keyframes mg-scrim-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mg-mega-scrim {
-    animation: none;
-  }
-}
-
-/* Subnet pulse grid cells — stagger in on mount. */
-.mg-pulse-cell {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: 3px;
-  opacity: 0;
-  animation: mg-pulse-in 320ms ease-out both;
-  transition:
-    transform 120ms ease-out,
-    outline-color 120ms ease-out;
-  outline: 1px solid transparent;
-}
-.mg-pulse-cell:hover {
-  transform: scale(1.35);
-  outline-color: color-mix(in oklab, var(--ink-strong) 35%, transparent);
-}
-@keyframes mg-pulse-in {
-  from {
-    opacity: 0;
-    transform: scale(0.55);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mg-pulse-cell {
-    animation: none;
-    opacity: 1;
-  }
-  .mg-pulse-cell:hover {
-    transform: none;
-  }
-}
-
-/* Preserved metagraphed-ui utility. The Lovable source inlined this everywhere,
-   but components kept from production (evidence-panel, primary-links-rail) still
-   reference the class. */
-.mg-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ink-muted);
-}
-
-/* Hero ornament rotation — referenced by hero-ornament.tsx (the Lovable source
-   uses the animation but dropped the keyframe). */
-@keyframes mg-orn-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* ── Lovable redesign utilities (#1124 port batch 1) ── */
-:root {
-  --mg-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --mg-sticky-offset: 3.5rem;
-  /* How tall a list's bounded scroll viewport may grow before it scrolls
-     internally -- the box a sticky <thead> pins to at top: 0. Proportional
-     rather than a pixel constant so it tracks the viewport, and defined once
-     because two places need to agree on it: ListShell (every list route) and
-     /validators, which builds its own shell. When they disagreed by hand
-     nothing broke loudly -- the tables just capped at different heights. */
-  --mg-list-viewport-max: 70vh;
-}
-@media (prefers-reduced-motion: reduce) {
-  .mg-fade-in,
-  .mg-live-dot::after,
-  .mg-route-enter {
-    animation: none;
-  }
-}
-
-/* `backwards` (not `both`): applies the 0% keyframe pre-start so there's no
-   flash of fully-visible content, but does NOT persist the 100% keyframe's
-   `transform: translateY(0)` after the animation finishes. `both` did persist
-   it -- a computed `transform` other than `none` establishes a new containing
-   block, which silently broke `position: sticky` for every descendant on
-   every route (the header would "stick" relative to this div instead of the
-   viewport) for as long as that route stayed mounted. `translateY(0)` is
-   visually a no-op either way, so this changes nothing about how the
-   animation looks, only what it leaves behind once it's done. */
-.mg-route-enter {
-  animation: mg-route-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
-}
-
-@media (hover: hover) {
-  .mg-row-accent:hover {
-    box-shadow: inset 3px 0 0 0 var(--accent);
-    background-color: color-mix(in oklab, var(--surface) 55%, transparent);
-  }
-}
-
-.mg-row-accent:focus-within {
-  box-shadow: inset 3px 0 0 0 var(--accent);
-}
-
-.mg-row-accent[data-selected="true"],
-.mg-row-accent[aria-selected="true"] {
-  box-shadow: inset 3px 0 0 0 var(--accent);
-  background-color: color-mix(in oklab, var(--accent) 8%, var(--surface));
-}
-
-/* Soft card elevation for detail-page panels. Derives the tint from
-   --ink-strong (near-white in .dark) via the same color-mix idiom as
-   .mg-metric-tile, so the glow adapts across themes instead of a fixed
-   slate-900 rgba that vanishes on a dark background (#6398). */
-.mg-card-glow {
-  box-shadow: 0 24px 80px -58px
-    color-mix(in oklab, var(--ink-strong) 45%, transparent);
-}
-
-/* Accent-tinted variant for the primary/summary card on the same pages. */
-.mg-card-glow-accent {
-  box-shadow: 0 24px 80px -52px
-    color-mix(in oklab, var(--accent) 45%, transparent);
-}
-
-.mg-skel-crossfade > * {
-  transition: opacity 200ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.mg-skel-crossfade[data-loaded="false"] > [data-mg-content] {
-  opacity: 0;
-}
-
-.mg-skel-crossfade[data-loaded="true"] > [data-mg-skel] {
-  opacity: 0;
-}
-
-@media (hover: hover) {
-  .mg-metric-tile:hover {
-    transform: translateY(-1px);
-    box-shadow:
-      0 1px 0 var(--border),
-      0 6px 16px -12px color-mix(in oklab, var(--ink-strong) 35%, transparent),
-      inset 1px 0 0 0 color-mix(in oklab, var(--accent) 55%, transparent);
-    border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
-  }
-}
-
-.mg-metric-tile:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 1px var(--ring),
-    0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
-}
-
-.mg-metric-tile[data-loaded="true"] [data-mg-fade] {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.mg-sticky-toolbar[data-scrolled="true"] {
-  box-shadow: 0 6px 16px -10px
-    color-mix(in oklab, var(--ink-strong) 35%, transparent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mg-row-accent,
-  .mg-skel-crossfade > *,
-  .mg-sticky-toolbar,
-  .mg-metric-tile,
-  [data-mg-fade] {
-    transition: none;
-  }
-  .mg-metric-tile:hover {
-    transform: none;
-  }
-}
-
-.mg-chip-rail > div::-webkit-scrollbar {
-  display: none;
-}
-
-.mg-chip-rail > div {
-  scrollbar-width: none;
-  /* Fade the leading/trailing edges so chips clip visually cleanly rather than
-     mid-word at the container edge (matches .mg-ticker treatment). */
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 1.25rem,
-    #000 calc(100% - 1.25rem),
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 1.25rem,
-    #000 calc(100% - 1.25rem),
-    transparent 100%
-  );
-}
-
-@keyframes mg-lb-in {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.mg-row-spark-line {
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
-  animation: mg-spark-draw 700ms ease-out 80ms forwards;
-}
-
-@keyframes mg-spark-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-.mg-leaderboard-list a:hover .mg-row-spark-line {
-  stroke: var(--ink-strong);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mg-leaderboard-row {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-  .mg-row-spark-line {
-    animation: none;
-    stroke-dashoffset: 0;
-  }
-}
-
-/* Animated underline on idle leaderboard tabs */
-.mg-lb-tab:hover .mg-lb-tab-underline,
-.mg-lb-tab:focus-visible .mg-lb-tab-underline {
-  transform: scaleX(1);
-  opacity: 0.6;
-}
-
-.mg-leaderboard-list a:hover .mg-lb-value {
-  transform: translateX(-2px);
-  letter-spacing: 0.01em;
-}
-
-.mg-lb-value-missing {
-  transition: color 160ms ease-out;
-}
-
-.mg-leaderboard-list a:hover .mg-lb-value-missing {
-  color: var(--ink-muted);
-}
-
-.mg-quick-tile:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
-  box-shadow: 0 8px 24px -16px
-    color-mix(in oklab, var(--accent) 50%, transparent);
-}
-
-.mg-quick-tile .mg-quick-arrow {
-  transition:
-    transform 200ms ease-out,
-    color 200ms ease-out;
-}
-
-.mg-quick-tile:hover .mg-quick-arrow {
-  transform: translate(2px, -2px);
-  color: var(--accent);
-}
-
-.mg-quick-tile .mg-quick-icon {
-  transition:
-    transform 220ms ease-out,
-    color 220ms ease-out;
-}
-
-.mg-quick-tile:hover .mg-quick-icon {
-  transform: scale(1.08) rotate(-2deg);
-  color: var(--accent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mg-lb-tab-underline,
-  .mg-lb-value,
-  .mg-lb-value-missing,
-  .mg-quick-tile,
-  .mg-quick-tile .mg-quick-arrow,
-  .mg-quick-tile .mg-quick-icon {
-    transition: none !important;
-    animation: none !important;
-  }
-  .mg-quick-tile:hover {
-    transform: none;
-    box-shadow: none;
-  }
-  .mg-quick-tile:hover .mg-quick-arrow,
-  .mg-quick-tile:hover .mg-quick-icon {
-    transform: none;
-  }
-  .mg-leaderboard-list a:hover .mg-lb-value {
-    transform: none;
-    letter-spacing: normal;
-  }
-}
-
-.mg-focus:focus-visible {
-  outline: 2px solid color-mix(in oklab, var(--accent) 70%, transparent);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-
-.mg-header {
-  transition:
-    background-color 220ms ease,
-    border-color 220ms ease;
-}
-
-.mg-header[data-scrolled="true"] {
-  background-color: color-mix(in oklab, var(--paper) 88%, transparent);
-  border-bottom-color: color-mix(in oklab, var(--ink-strong) 14%, transparent);
-}
-
-.mg-glyph-rule {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  margin: 3.5rem 0 0;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.35em;
-  color: var(--ink-subtle);
-  user-select: none;
-}
-
-.mg-glyph-rule::before,
-.mg-glyph-rule::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--border),
-    transparent
-  );
-}
-
-.mg-reveal {
-  opacity: 0;
-  transform: translateY(10px);
-  transition:
-    opacity 520ms var(--mg-ease-out),
-    transform 520ms var(--mg-ease-out);
-  will-change: opacity, transform;
-}
-
-.mg-reveal[data-revealed="true"] {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mg-reveal {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
-
-.mg-scanline {
-  position: relative;
-  overflow: hidden;
-}
-
-.mg-scanline::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in oklab, var(--accent) 18%, transparent) 50%,
-    transparent 100%
-  );
-  transform: translateX(-100%);
-  opacity: 0;
-}
-
-.mg-scanline[data-sweep="true"]::after {
-  animation: mg-sweep 1100ms var(--mg-ease-out) 1;
-}
-
-@keyframes mg-sweep {
-  0% {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mg-scanline[data-sweep="true"]::after {
-    animation: none;
-  }
-}
-
-.mg-eyebrow-rot {
-  display: inline-flex;
-  align-items: center;
-  position: relative;
-  min-height: 1.1em;
-}
-
-.mg-eyebrow-rot > span {
-  position: absolute;
-  inset: 0;
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  opacity: 0;
-  transform: translateY(4px);
-  transition:
-    opacity 380ms var(--mg-ease-out),
-    transform 380ms var(--mg-ease-out);
-}
-
-.mg-eyebrow-rot > span[data-active="true"] {
-  opacity: 1;
-  transform: translateY(0);
-  position: relative;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mg-eyebrow-rot > span {
-    transition: none;
-  }
-}
-
 .mg-substat {
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-
 @media (min-width: 640px) {
   .mg-substat {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
-
 .mg-substat > div {
   padding: 0.85rem 1rem;
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--rule);
 }
-
 .mg-substat > div:last-child {
   border-right: 0;
 }
-
 @media (max-width: 640px) {
   .mg-substat > div:nth-child(2n) {
     border-right: 0;
   }
 }
-
-.mg-quick-tile {
+.mg-hero-slab {
   position: relative;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--rule);
+}
+.mg-accent-band {
+  background: var(--layer);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.mg-pulse-cell {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius);
+  outline: 1px solid transparent;
+  transition: outline-color var(--mg-motion);
+}
+.mg-pulse-cell:hover {
+  outline-color: var(--rule-strong);
 }
 
-.mg-quick-tile::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1px;
-  background: conic-gradient(
-    from 140deg,
-    transparent 0deg,
-    color-mix(in oklab, var(--accent) 55%, transparent) 60deg,
-    transparent 140deg,
-    color-mix(in oklab, var(--ink-strong) 18%, transparent) 220deg,
-    transparent 320deg
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+/* ----------------------------------------------------------- interaction */
+.mg-row-hover {
+  transition: background-color var(--mg-motion);
+}
+.mg-row-hover:hover {
+  background-color: var(--layer);
+}
+@media (hover: hover) {
+  .mg-row-accent:hover {
+    box-shadow: inset 2px 0 0 0 var(--accent);
+    background-color: var(--layer);
+  }
+}
+.mg-row-accent:focus-within {
+  box-shadow: inset 2px 0 0 0 var(--accent);
+}
+.mg-row-accent[data-selected="true"],
+.mg-row-accent[aria-selected="true"] {
+  box-shadow: inset 2px 0 0 0 var(--accent);
+  background-color: var(--layer);
+}
+.mg-refreshing {
+  transition: opacity var(--mg-motion);
+  opacity: 0.72;
+}
+.mg-anchor-btn {
   opacity: 0;
-  transition: opacity 220ms var(--mg-ease-out);
-  pointer-events: none;
+  transition:
+    opacity var(--mg-motion),
+    color var(--mg-motion);
 }
-
-.mg-quick-tile:hover::before {
+@media (hover: none) {
+  .mg-anchor-btn {
+    opacity: 0.55;
+  }
+}
+.mg-section:hover .mg-anchor-btn,
+.mg-anchor-btn:focus-visible {
   opacity: 1;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .mg-quick-tile::before {
-    transition: none;
+/* Hover = a stronger hairline. Never a lift, never a shadow. */
+.mg-hover-lift {
+  transition:
+    border-color var(--mg-motion),
+    background-color var(--mg-motion);
+}
+@media (hover: hover) {
+  .mg-hover-lift:hover {
+    border-color: var(--rule-strong);
   }
 }
-
-@keyframes mg-route-enter {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
+.mg-hover-lift:focus-visible,
+.mg-focus:focus-visible,
 .mg-focus-ring:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 1px var(--ring),
-    0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
-  border-radius: 6px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
-
-/* Expands a small control's touch area to the 44x44 CSS-px minimum without
-   changing its painted size or the surrounding layout (#8254). Icon buttons
-   in dense rows -- watchlist stars, copy buttons, row overflow triggers --
-   are deliberately 24-32px so they don't dominate a card; the ::after
-   overlay gives the finger the target the eye doesn't need.
-
-   The overlay is centred via the 50%/translate pair rather than negative
-   insets so it stays correct whatever the control's own size is. */
-.mg-tap-target {
-  position: relative;
+.mg-header {
+  background-color: var(--canvas);
+  border-bottom: 1px solid var(--rule);
 }
-.mg-tap-target::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 44px;
-  min-height: 44px;
-  width: 100%;
-  height: 100%;
+.mg-skel-crossfade > * {
+  transition: opacity var(--mg-motion);
 }
-/* Pointer-precise input doesn't need the slop, and on a dense desktop table
-   the invisible 44px boxes would overlap each other and swallow neighbouring
-   clicks. Gate it to coarse pointers. */
-@media (pointer: fine) {
-  .mg-tap-target::after {
-    display: none;
+.mg-skel-crossfade[data-loaded="false"] > [data-mg-content] {
+  opacity: 0;
+}
+.mg-skel-crossfade[data-loaded="true"] > [data-mg-skel] {
+  opacity: 0;
+}
+.mg-sticky-toolbar[data-scrolled="true"] {
+  border-bottom: 1px solid var(--rule-strong);
+}
+.mg-query-shell {
+  transition:
+    border-color var(--mg-motion),
+    background-color var(--mg-motion);
+}
+.mg-ghost-trigger {
+  transition:
+    background-color var(--mg-motion),
+    color var(--mg-motion);
+}
+/* One-shot 200ms opacity dip when a live value changes. Not perpetual. */
+@keyframes mg-value-pulse {
+  0% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 1;
   }
 }
+.mg-value-pulse {
+  animation: mg-value-pulse 200ms ease-out;
+}
 
-/* Horizontal-scroll fade mask for wide data tables — soft-clips left/right
-   edges instead of hard-cutting mid-column so users see there's more to
-   scroll. Horizontal only: ListShell nests a `max-h-[70vh] overflow-y-auto`
-   div inside this one, and THAT is the viewport a sticky <thead> pins
-   against (`top: 0`). Don't put a max-height on this element instead -- the
-   mask would then fade the pinned header's own left/right edges as it
-   travels. */
+/* ---------------------------------------------------------------- tables */
+/* The bounded viewport a long list's table scrolls inside, and the element
+   `.mg-table-head-pinned` pins to. `overscroll-behavior: contain` is
+   load-bearing: without it scrolling past the last row chains to the page
+   and drags the pinned header off-screen. Both axes on ONE element --
+   `overflow-y: auto` coerces `overflow-x` to auto (CSS Overflow 3 §3), so a
+   nested horizontal scroller would steal that axis. */
+.mg-list-viewport {
+  max-height: var(--mg-list-viewport-max, 70vh);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+/* A table header pinned inside a bounded list viewport. `top: 0` because the
+   viewport it pins to IS the reference -- never --mg-sticky-offset. Opaque,
+   so a row passing underneath never reads through the labels. */
+.mg-table-head-pinned {
+  position: sticky;
+  top: 0;
+  z-index: var(--mg-z-sticky);
+  background: var(--canvas);
+  border-bottom: 1px solid var(--rule);
+}
+/* Horizontal-scroll fade for wide tables. Horizontal only -- the vertical
+   viewport is .mg-list-viewport on the same element. */
 .mg-table-scroll {
   mask-image: linear-gradient(
     to right,
@@ -1691,13 +783,9 @@ html[data-density="compact"] .bg-card > table td {
     #000 calc(100% - 1rem),
     transparent 100%
   );
-  /* Thin, modern horizontal scrollbar. */
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklab, var(--ink-strong) 20%, transparent)
-    transparent;
+  scrollbar-color: var(--rule-strong) transparent;
 }
-/* Only apply the mask when the table actually overflows — on desktop where
-   everything fits, the mask would fade content pointlessly. */
 @media (min-width: 1024px) {
   .mg-table-scroll {
     mask-image: none;
@@ -1709,11 +797,8 @@ html[data-density="compact"] .bg-card > table td {
   width: 6px;
 }
 .mg-table-scroll::-webkit-scrollbar-thumb {
-  background: color-mix(in oklab, var(--ink-strong) 18%, transparent);
-  border-radius: 9999px;
-}
-.mg-table-scroll::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklab, var(--ink-strong) 32%, transparent);
+  background: var(--rule-strong);
+  border-radius: var(--radius);
 }
 .mg-table-scroll::-webkit-scrollbar-track {
   background: transparent;
@@ -1724,23 +809,69 @@ html[data-density="compact"] .bg-card > table td {
   }
 }
 
-/* QueryBar — the shared hairline command surface that anchors search,
-   filter triggers, and utility controls on every list route. Focus-within
-   promotes the whole shell to accent so the bar reads as one control. */
-.mg-query-shell {
-  transition:
-    border-color 140ms ease-out,
-    box-shadow 140ms ease-out,
-    background-color 140ms ease-out;
+/* ------------------------------------------------------------- a11y / touch */
+/* Expands a small control's touch area to the 44×44 minimum without changing
+   its painted size (#8254). Gated to coarse pointers. */
+.mg-tap-target {
+  position: relative;
 }
-.mg-ghost-trigger {
-  transition:
-    background-color 120ms ease-out,
-    color 120ms ease-out;
+.mg-tap-target::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
+  width: 100%;
+  height: 100%;
 }
+@media (pointer: fine) {
+  .mg-tap-target::after {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------- skeletons */
+@keyframes mg-skel-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+/* Route-transition bar (the one allowed moving element). */
+@keyframes mg-loader {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+/* --------------------------------------------------------- reduced motion */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  [style*="mg-skel-pulse"],
+  .mg-value-pulse {
+    animation: none !important;
+  }
+  .mg-row-hover,
+  .mg-refreshing,
+  .mg-anchor-btn,
+  .mg-hover-lift,
+  .mg-skel-crossfade > *,
   .mg-query-shell,
-  .mg-ghost-trigger {
+  .mg-ghost-trigger,
+  .mg-pulse-cell,
+  .mg-chip,
+  html.theme-transition,
+  html.theme-transition * {
     transition: none;
   }
 }

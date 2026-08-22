@@ -44,12 +44,12 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
       <div className="p-4">
         <header className="mb-2 flex items-center justify-between">
           <div>
-            <div className="mg-type-caption text-ink-muted">Completeness</div>
-            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+            <div className="text-13 text-ink-muted">Completeness</div>
+            <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
               Score distribution
             </h3>
           </div>
-          <div className="flex items-center gap-3 mg-type-data-sm text-ink-muted">
+          <div className="flex items-center gap-3 text-10 text-ink-muted">
             {cov.median_score != null ? <Stat label="p50" value={`${cov.median_score}`} /> : null}
             {cov.average_score != null ? <Stat label="μ" value={`${cov.average_score}`} /> : null}
             <InfoTooltip label="Per-subnet completeness_score (0–100) bucketed by /api/v1/registry/summary. The rightmost bin (100) is the fully-complete set." />
@@ -103,7 +103,7 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
             );
           })}
         </svg>
-        <p className="mt-1 mg-type-data-sm text-ink-muted">
+        <p className="mt-1 text-10 text-ink-muted">
           {scored != null ? `${scored} subnets scored.` : ""} Each bin is a completeness band; the
           goal is to push the registry rightward.
         </p>
@@ -115,7 +115,7 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <span className="inline-flex items-baseline gap-1">
-      <span className="uppercase tracking-widest">{label}</span>
+      <span className="">{label}</span>
       <span className="tabular-nums text-ink-strong">{value}</span>
     </span>
   );
@@ -169,15 +169,15 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
       <div className="p-4">
         <header className="mb-4 flex items-center justify-between">
           <div>
-            <div className="mg-type-caption text-ink-muted">Coverage</div>
-            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+            <div className="text-13 text-ink-muted">Coverage</div>
+            <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
               Surface dimensions
             </h3>
           </div>
           <InfoTooltip label="Share of subnets with at least one surface of each kind, registry-wide (/api/v1/registry/summary). Green ≥75%, amber/red are the enrichment frontier." />
         </header>
         <BarMini data={data} max={100} showValue />
-        <div className="mt-3 flex items-center justify-between mg-type-data-sm text-ink-muted">
+        <div className="mt-3 flex items-center justify-between text-10 text-ink-muted">
           <span>% of {subnetCount ?? "all"} subnets covered</span>
           <span className="inline-flex items-center gap-2">
             <Swatch color="var(--health-ok)" label="≥75" />
@@ -250,8 +250,8 @@ export function EnrichmentQueueTable({ limit = 12 }: { limit?: number }) {
 
   return (
     <Panel as="div" flush className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-surface/50 mg-type-micro text-ink-muted">
+      <table className="w-full text-left text-13">
+        <thead className="bg-surface text-10 text-ink-muted">
           <tr>
             <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "rank", order)}>
               <SortHeader
@@ -304,16 +304,14 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
   const tone = SEVERITY_TONE[row.severity ?? ""] ?? "text-ink-muted border-border";
   return (
     <tr className="mg-row-hover">
-      <td className="px-3 py-2.5 mg-type-data tabular-nums text-ink-muted">{row.rank}</td>
+      <td className="px-3 py-2.5 text-11 tabular-nums text-ink-muted">{row.rank}</td>
       <td className="px-3 py-2.5">
         <Link
           to="/subnets/$netuid"
           params={{ netuid: row.netuid }}
           className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
         >
-          <span className="mg-type-data text-ink-muted">
-            #{String(row.netuid).padStart(3, "0")}
-          </span>
+          <span className="text-11 text-ink-muted">#{String(row.netuid).padStart(3, "0")}</span>
           <span className="truncate">{row.name ?? `Subnet ${row.netuid}`}</span>
         </Link>
       </td>
@@ -321,7 +319,7 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
         {row.severity ? (
           <span
             className={classNames(
-              "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption",
+              "inline-flex items-center rounded border px-1.5 py-0.5 text-13",
               tone,
             )}
           >
@@ -331,13 +329,13 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
           "—"
         )}
       </td>
-      <td className="px-3 py-2.5 text-right mg-type-data tabular-nums text-ink-strong">
+      <td className="px-3 py-2.5 text-right text-11 tabular-nums text-ink-strong">
         {row.priority_score ?? "—"}
       </td>
-      <td className="px-3 py-2.5 text-right mg-type-data tabular-nums text-ink-muted">
+      <td className="px-3 py-2.5 text-right text-11 tabular-nums text-ink-muted">
         {row.score ?? "—"}
       </td>
-      <td className="px-3 py-2.5 mg-type-caption text-ink">
+      <td className="px-3 py-2.5 text-13 text-ink">
         <span className="line-clamp-1" title={row.recommended_next_action}>
           {row.recommended_next_action ?? "—"}
         </span>
@@ -346,7 +344,7 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
             {row.top_gap_codes.slice(0, 4).map((g) => (
               <span
                 key={g}
-                className="rounded border border-dashed border-ink-subtle bg-paper px-1 py-0.5 mg-type-data-sm text-ink-muted"
+                className="rounded border border-dashed border-ink-subtle bg-paper px-1 py-0.5 text-10 text-ink-muted"
               >
                 {g}
               </span>

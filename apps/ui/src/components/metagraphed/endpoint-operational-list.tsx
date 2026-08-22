@@ -130,7 +130,7 @@ export function EndpointOperationalList({
         return (
           <section key={String(group.netuid)} aria-labelledby={`group-${group.netuid}`}>
             <header
-              className="mg-section-rule sticky z-[var(--mg-z-sticky)] -mx-1 flex items-center justify-between gap-3 bg-paper/92 px-1 py-2 backdrop-blur"
+              className="sticky z-[var(--mg-z-sticky)] -mx-1 flex items-center justify-between gap-3 bg-paper px-1 py-2"
               // #8302: was a hardcoded +3.75rem for the old page's sub-header. Inside
               // the APIs hub the chrome above this is the hub tab strip, which
               // publishes its measured height as --mg-tabs-h; the literal is
@@ -154,7 +154,7 @@ export function EndpointOperationalList({
                 )}
                 <h3
                   id={`group-${group.netuid}`}
-                  className="truncate font-display mg-type-caption-lg font-medium text-ink-strong"
+                  className="truncate font-display text-13 font-medium text-ink-strong"
                 >
                   {group.label}
                 </h3>
@@ -162,13 +162,13 @@ export function EndpointOperationalList({
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: group.netuid }}
-                    className="mg-focus-ring mg-type-caption text-ink-muted hover:text-accent-text"
+                    className="mg-focus-ring text-13 text-ink-muted hover:text-accent-text"
                   >
                     Open subnet →
                   </Link>
                 ) : null}
               </div>
-              <div className="flex items-center gap-2 mg-type-caption text-ink-muted">
+              <div className="flex items-center gap-2 text-13 text-ink-muted">
                 {okCount ? <span className="text-health-ok">{okCount} live</span> : null}
                 {warnCount ? <span className="text-health-warn-text">{warnCount} warn</span> : null}
                 {downCount ? <span className="text-health-down">{downCount} down</span> : null}
@@ -177,7 +177,7 @@ export function EndpointOperationalList({
               </div>
             </header>
 
-            <div className="border-y border-border mg-glass-soft">
+            <div className="border-y border-border">
               {group.rows.map((endpoint, idx) => {
                 const open = expandedId === endpoint.id;
                 const providerSlug = endpoint.provider_slug;
@@ -193,7 +193,7 @@ export function EndpointOperationalList({
                         // eslint-disable-next-line no-restricted-syntax -- `scroll-mt-32` is anchor scroll-margin (8rem sticky-header clearance for deep-linked endpoint rows), not layout spacing; the guardrail's `mt` matcher flags it as a false positive and no on-scale step equals 8rem
                         "group relative scroll-mt-32 transition-colors",
                         idx > 0 && "border-t border-border",
-                        open ? "bg-surface/70" : "hover:bg-surface/50",
+                        open ? "bg-surface" : "hover:bg-surface",
                       )}
                     >
                       {/* Full-height health rail — the strongest visual signal per row. */}
@@ -207,7 +207,7 @@ export function EndpointOperationalList({
                       />
                       {onToggleCompare ? (
                         <label
-                          className="absolute left-2 top-2 z-[var(--mg-z-sticky)] flex items-center gap-1 rounded border border-border bg-paper/85 px-1 py-0.5 mg-type-caption text-ink-muted backdrop-blur hover:text-ink-strong"
+                          className="absolute left-2 top-2 z-[var(--mg-z-sticky)] flex items-center gap-1 rounded border border-border bg-paper px-1 py-0.5 text-13 text-ink-muted hover:text-ink-strong"
                           onClick={(e) => e.stopPropagation()}
                           title={
                             compareIds?.has(endpoint.id)
@@ -265,7 +265,7 @@ export function EndpointOperationalList({
                         >
                           {/* Headline: kind chip + URL as h4 */}
                           <div className="min-w-0">
-                            <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 mg-type-caption text-ink-muted">
+                            <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-13 text-ink-muted">
                               <span className="text-ink-strong">{endpoint.kind ?? "endpoint"}</span>
                               <span className="text-ink-subtle-text" aria-hidden>
                                 ·
@@ -292,14 +292,14 @@ export function EndpointOperationalList({
                                 <>
                                   <ExternalLink
                                     href={endpoint.url}
-                                    className="truncate font-mono mg-type-caption-lg font-medium text-ink-strong hover:text-accent-text"
+                                    className="truncate font-mono text-13 font-medium text-ink-strong hover:text-accent-text"
                                   >
                                     {endpoint.url}
                                   </ExternalLink>
                                   <CopyButton value={endpoint.url} label="endpoint URL" />
                                 </>
                               ) : (
-                                <span className="font-mono mg-type-caption-lg text-ink-muted">
+                                <span className="font-mono text-13 text-ink-muted">
                                   URL unavailable
                                 </span>
                               )}
@@ -309,7 +309,7 @@ export function EndpointOperationalList({
                                 <Link
                                   to="/providers/$slug"
                                   params={{ slug: providerSlug }}
-                                  className="mg-focus-ring inline-flex items-center gap-1.5 mg-type-caption text-ink-muted hover:text-ink-strong"
+                                  className="mg-focus-ring inline-flex items-center gap-1.5 text-13 text-ink-muted hover:text-ink-strong"
                                 >
                                   <BrandIcon
                                     url={provider?.website ?? provider?.homepage}
@@ -326,7 +326,7 @@ export function EndpointOperationalList({
                                 </Link>
                               </div>
                             ) : endpoint.provider ? (
-                              <div className="mt-1.5 mg-type-caption text-ink-muted">
+                              <div className="mt-1.5 text-13 text-ink-muted">
                                 {endpoint.provider}
                               </div>
                             ) : null}
@@ -334,12 +334,11 @@ export function EndpointOperationalList({
 
                           {/* Latency block: big number + sparkline underneath */}
                           <div className="min-w-0">
-                            <div className="mg-label mb-0.5 lg:hidden">Latency</div>
+                            <div className="text-10 text-ink-muted mb-0.5 lg:hidden">Latency</div>
                             <div className="flex items-baseline gap-1.5">
                               <span
                                 className={classNames(
-                                  // eslint-disable-next-line no-restricted-syntax -- 20px mono latency stat; the type scale tops out at mg-type-data (11px) with no large-numeric token, so this hero figure has no equivalent
-                                  "font-mono text-[20px] leading-none tabular-nums",
+                                  "font-mono text-28 leading-none tabular-nums",
                                   latencyTone(endpoint.latency_ms),
                                 )}
                               >
@@ -348,7 +347,7 @@ export function EndpointOperationalList({
                                   : "—"}
                               </span>
                               {endpoint.latency_ms != null ? (
-                                <span className="mg-type-caption text-ink-muted">ms</span>
+                                <span className="text-13 text-ink-muted">ms</span>
                               ) : null}
                             </div>
                             <div className="mt-1.5 h-[18px]">
@@ -370,9 +369,9 @@ export function EndpointOperationalList({
 
                           {/* 7d uptime */}
                           <div className="min-w-0">
-                            <div className="mg-label mb-1 lg:hidden">7d uptime</div>
+                            <div className="text-10 text-ink-muted mb-1 lg:hidden">7d uptime</div>
                             <EndpointUptimeBar endpointId={endpoint.id} incidents={incidents} />
-                            <div className="mt-1 mg-type-data-sm text-ink-muted">
+                            <div className="mt-1 text-10 text-ink-muted">
                               probed <TimeAgo at={endpoint.last_probed_at} />
                             </div>
                           </div>

@@ -15,8 +15,8 @@ import {
 } from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 
-const TH_BASE = "px-3 py-2 mg-type-caption text-ink-muted";
-const TD_BASE = "px-3 py-2 mg-type-data";
+const TH_BASE = "px-3 py-2";
+const TD_BASE = "px-3 py-2 text-11";
 const TD_NUM = `${TD_BASE} text-right tabular-nums`;
 
 /**
@@ -155,7 +155,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
           </Link>
           {group != null && group.size > 1 && group.index === 0 ? (
             <span
-              className="shrink-0 rounded-full border border-border bg-surface px-1.5 mg-type-caption tabular-nums text-ink-muted"
+              className="shrink-0 rounded border border-border bg-surface px-1.5 text-13 tabular-nums text-ink-muted"
               title={`This operator runs ${group.size} validator keys — grouped under its best-ranked one`}
             >
               ×{group.size}
@@ -170,7 +170,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
             fallback={<>{v.hotkey}</>}
             compact
             linkToAccount={false}
-            valueClassName="shrink-0 font-mono mg-type-data-sm text-ink-muted"
+            valueClassName="shrink-0 font-mono text-10 text-ink-muted"
           />
         </div>
       );

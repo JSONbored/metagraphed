@@ -142,7 +142,7 @@ function ProvidersSkeleton() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <Panel as="div" dense className="animate-pulse h-[180px]" key={i}>
+        <Panel as="div" className="animate-pulse h-[180px]" key={i}>
           <div className="flex items-start gap-3">
             <div className="size-9 rounded bg-surface" />
             <div className="flex-1 space-y-2">
@@ -327,7 +327,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
 
       <SourceHealthRollup />
 
-      <div className="sticky top-[var(--mg-sticky-offset)] z-[var(--mg-z-raised)] bg-paper/95 py-2 backdrop-blur-sm">
+      <div className="sticky top-[var(--mg-sticky-offset)] z-[var(--mg-z-raised)] bg-paper py-2">
         <QueryBar ariaLabel="Provider directory filters">
           <QueryBar.Search
             value={q}
@@ -395,7 +395,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
               onReset={() => setSearch({ q: "", kind: "", authority: "", sort: "name" })}
               bare
             />
-            <span className="hidden px-2 mg-type-caption tabular-nums sm:inline">
+            <span className="hidden px-2 text-13 tabular-nums sm:inline">
               {sorted.length} of {rows.length} providers
             </span>
           </QueryBar.Utility>
@@ -456,15 +456,13 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                       />
                       <span className="min-w-0">
                         <span className="block truncate font-medium text-ink-strong">{f.name}</span>
-                        <span className="block truncate mg-type-data-sm text-ink-muted">
-                          {p.slug}
-                        </span>
+                        <span className="block truncate text-10 text-ink-muted">{p.slug}</span>
                       </span>
                     </span>
                     {p.authority ? (
                       <span
                         className={classNames(
-                          "shrink-0 rounded border px-1.5 py-0.5 mg-type-caption",
+                          "shrink-0 rounded border px-1.5 py-0.5 text-13",
                           authorityTone(p.authority),
                         )}
                       >
@@ -472,7 +470,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                       </span>
                     ) : null}
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2 mg-type-data text-ink-muted">
+                  <div className="mt-2 flex items-center justify-between gap-2 text-11 text-ink-muted">
                     <span className="inline-flex min-w-0 items-center gap-2">
                       <span className="shrink-0">{f.kindLabel}</span>
                       {host ? <span className="max-w-[20ch] truncate">{host}</span> : null}
@@ -495,8 +493,8 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
             className="hidden rounded border border-border bg-card lg:block"
             minWidth={960}
           >
-            <table className="w-full text-left text-sm">
-              <thead className="mg-type-micro bg-surface/50 text-ink-muted">
+            <table className="w-full text-left text-13">
+              <thead className="text-10 bg-surface text-ink-muted">
                 <tr>
                   <th className="px-3 py-2">Provider</th>
                   <th className="px-3 py-2">Kind</th>
@@ -516,7 +514,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                     <tr
                       key={p.slug}
                       id={`provider-${p.slug}`}
-                      className="mg-row-accent hover:bg-surface/40 target:bg-accent/5"
+                      className="mg-row-accent hover:bg-surface target:bg-accent/5"
                     >
                       <td className="px-3 py-2">
                         <Link
@@ -536,15 +534,15 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                           <span className="font-medium text-ink-strong truncate">
                             {p.name ?? p.slug}
                           </span>
-                          <span className="mg-type-data-sm text-ink-muted truncate">{p.slug}</span>
+                          <span className="text-10 text-ink-muted truncate">{p.slug}</span>
                         </Link>
                       </td>
-                      <td className="px-3 py-2 mg-type-data text-ink-muted">{p.kind ?? "—"}</td>
+                      <td className="px-3 py-2 text-11 text-ink-muted">{p.kind ?? "—"}</td>
                       <td className="px-3 py-2">
                         {p.authority ? (
                           <span
                             className={classNames(
-                              "mg-type-caption rounded border px-1.5 py-0.5",
+                              "text-13 rounded border px-1.5 py-0.5",
                               authorityTone(p.authority),
                             )}
                           >
@@ -554,19 +552,19 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                           <span className="text-ink-muted">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 mg-type-data text-ink-muted truncate max-w-[22ch]">
+                      <td className="px-3 py-2 text-11 text-ink-muted truncate max-w-[22ch]">
                         {host ?? "—"}
                       </td>
-                      <td className="px-3 py-2 text-right mg-type-data tabular-nums">
+                      <td className="px-3 py-2 text-right text-11 tabular-nums">
                         {c?.subnets ?? 0}
                       </td>
-                      <td className="px-3 py-2 text-right mg-type-data tabular-nums">
+                      <td className="px-3 py-2 text-right text-11 tabular-nums">
                         {c?.surfaces ?? 0}
                       </td>
-                      <td className="px-3 py-2 text-right mg-type-data tabular-nums">
+                      <td className="px-3 py-2 text-right text-11 tabular-nums">
                         {c?.endpoints ?? 0}
                       </td>
-                      <td className="px-3 py-2 text-right mg-type-data text-ink-muted">
+                      <td className="px-3 py-2 text-right text-11 text-ink-muted">
                         <div className="inline-flex items-center gap-1 justify-end">
                           <TimeAgo
                             at={typeof p.updated_at === "string" ? p.updated_at : undefined}
@@ -599,8 +597,8 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                   to="/providers/$slug"
                   params={{ slug: p.slug }}
                   className={classNames(
-                    "group block rounded-md border border-border bg-card p-4 transition-colors",
-                    "hover:border-accent/60 hover:shadow-[var(--mg-shadow-ring-accent)]",
+                    "group block rounded border border-border bg-card p-4 transition-colors",
+                    "hover:border-accent/60",
                     "target:border-accent/60",
                   )}
                 >
@@ -616,7 +614,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                         size={36}
                       />
                       <div className="min-w-0">
-                        <div className="mg-label">{p.kind ?? "provider"}</div>
+                        <div className="text-10 text-ink-muted">{p.kind ?? "provider"}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {isOfficial ? (
                             // #6423: see hero-subnet-chips -- role="img" so the
@@ -625,20 +623,20 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                               role="img"
                               aria-label="Official provider"
                               title="Official"
-                              className="inline-block size-1.5 rounded-full bg-accent shrink-0"
+                              className="inline-block size-1.5 rounded-full mg-dot bg-accent shrink-0"
                             />
                           ) : null}
-                          <div className="font-display text-base font-semibold text-ink-strong line-clamp-2 leading-tight">
+                          <div className="font-display text-16 font-semibold text-ink-strong line-clamp-2 leading-tight">
                             {p.name ?? p.slug}
                           </div>
                         </div>
-                        <div className="mg-type-data-sm text-ink-muted truncate">{p.slug}</div>
+                        <div className="text-10 text-ink-muted truncate">{p.slug}</div>
                       </div>
                     </div>
                     {p.authority ? (
                       <span
                         className={classNames(
-                          "mg-type-caption rounded border px-1.5 py-0.5 shrink-0",
+                          "text-13 rounded border px-1.5 py-0.5 shrink-0",
                           authorityTone(p.authority),
                         )}
                       >
@@ -647,11 +645,11 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                     ) : null}
                   </div>
                   {p.notes ? (
-                    <p className="mt-3 mg-type-caption text-ink-muted leading-relaxed line-clamp-2">
+                    <p className="mt-3 text-13 text-ink-muted leading-relaxed line-clamp-2">
                       {p.notes}
                     </p>
                   ) : null}
-                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 mg-type-caption text-ink-muted">
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-13 text-ink-muted">
                     {webHost ? (
                       <span className="inline-flex items-center gap-1 min-w-0">
                         <Globe className="size-3 shrink-0" />
@@ -671,7 +669,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                       </span>
                     ) : null}
                     {!webHost && !repoHost && !docsHost ? (
-                      <span className="mg-type-data-sm">no public links yet</span>
+                      <span className="text-10">no public links yet</span>
                     ) : null}
                     <TimeAgo
                       at={typeof p.updated_at === "string" ? p.updated_at : undefined}
@@ -721,8 +719,8 @@ function ProviderCountsRow({
 function ProviderCardStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col">
-      <span className="mg-type-caption text-ink-muted">{label}</span>
-      <span className="font-mono mg-type-caption-lg tabular-nums text-ink-strong">{value}</span>
+      <span className="text-13 text-ink-muted">{label}</span>
+      <span className="font-mono text-13 tabular-nums text-ink-strong">{value}</span>
     </div>
   );
 }
@@ -730,13 +728,13 @@ function ProviderCardStat({ label, value }: { label: string; value: string }) {
 function CountTile({ icon, label, value }: { icon?: ReactNode; label: string; value: number }) {
   return (
     <div className="flex flex-col">
-      <span className="inline-flex items-center gap-1 mg-type-caption text-ink-muted">
+      <span className="inline-flex items-center gap-1 text-13 text-ink-muted">
         {icon}
         {label}
       </span>
       <span
         className={classNames(
-          "font-mono text-sm tabular-nums",
+          "font-mono text-13 tabular-nums",
           value > 0 ? "text-ink-strong" : "text-ink-muted",
         )}
       >
@@ -756,11 +754,10 @@ function SourceHealthRollup() {
   return (
     <Panel
       as="div"
-      dense
       className="mt-3"
-      bodyClassName="flex flex-wrap items-center gap-4 font-mono mg-type-caption tabular-nums"
+      bodyClassName="flex flex-wrap items-center gap-4 font-mono text-13 tabular-nums"
     >
-      <span className="mg-label">Source health</span>
+      <span className="text-10 text-ink-muted">Source health</span>
       <span className="text-health-ok">{status.ok ?? 0} ok</span>
       <span className="text-health-warn">{status.degraded ?? 0} degraded</span>
       <span className="text-health-down">{status.failed ?? 0} failed</span>

@@ -44,7 +44,7 @@ export function PageSection({
       className={classNames(
         "mg-section",
         tone === "muted" &&
-          "rounded-xl bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
+          "rounded bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
         className,
       )}
     >
@@ -52,20 +52,18 @@ export function PageSection({
         <header
           className={classNames(
             "grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end",
-            divider === "hairline" &&
-              tone !== "muted" &&
-              "mg-section-rule pt-8",
+            divider === "hairline" && tone !== "muted" && "pt-8",
             "pb-6",
           )}
         >
           <div className="min-w-0">
             {eyebrow ? (
-              <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
+              <div className="text-13 text-ink-muted inline-flex items-center gap-2">
                 {eyebrow}
               </div>
             ) : null}
             {title ? (
-              <h2 className="group/anchor mt-2 flex items-baseline gap-2 font-display text-2xl md:text-3xl font-semibold tracking-[-0.02em] text-ink-strong">
+              <h2 className="group/anchor mt-2 flex items-baseline gap-2 font-display text-28 md:text-28 font-semibold text-ink-strong">
                 <span>{title}</span>
                 {id ? (
                   <a
@@ -79,7 +77,7 @@ export function PageSection({
               </h2>
             ) : null}
             {description ? (
-              <p className="mt-2 max-w-2xl text-sm text-ink-muted leading-relaxed">
+              <p className="mt-2 max-w-2xl text-13 text-ink-muted leading-relaxed">
                 {description}
               </p>
             ) : null}

@@ -76,9 +76,9 @@ export function HealthDot({
       aria-label={`Health: ${label.toLowerCase()}`}
       title={label}
       className={classNames(
-        "relative inline-block size-2 rounded-full shrink-0",
+        "relative inline-block size-2 rounded-full mg-dot shrink-0",
         color,
-        shouldPulse && "mg-pulse",
+        shouldPulse && "",
         className,
       )}
     />
@@ -89,7 +89,7 @@ export function HealthDot({
   return (
     <span className="inline-flex items-center gap-1.5">
       {dot}
-      <span className="mg-type-caption font-medium text-ink">{label}</span>
+      <span className="text-13 font-medium text-ink">{label}</span>
     </span>
   );
 }
@@ -109,7 +109,7 @@ export function HealthPill({
     return (
       <span className="inline-flex items-center gap-1.5">
         <HealthDot state={state} />
-        <span className="mg-type-caption font-medium text-ink">{label}</span>
+        <span className="text-13 font-medium text-ink">{label}</span>
       </span>
     );
   }
@@ -172,7 +172,7 @@ export function CurationChip({ level }: { level?: CurationLevel | string }) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider",
+        "inline-flex items-center rounded border px-1.5 py-0.5 text-13 font-medium",
         cls,
       )}
     >
@@ -200,7 +200,7 @@ export function ReviewChip({ state }: { state?: string }) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider",
+        "inline-flex items-center rounded border px-1.5 py-0.5 text-13 font-medium",
         reviewCls[key],
       )}
       title={`Maintainer review: ${key}`}
@@ -212,7 +212,7 @@ export function ReviewChip({ state }: { state?: string }) {
 
 export function CandidateChip() {
   return (
-    <span className="inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider text-ink-muted">
+    <span className="inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 text-13 font-medium text-ink-muted">
       Unverified
     </span>
   );

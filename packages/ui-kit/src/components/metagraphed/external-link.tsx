@@ -148,7 +148,7 @@ export function ExternalLink({
       {authRequired ? (
         <span
           title="Authentication required"
-          className="inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 mg-type-micro text-ink-muted"
+          className="inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 text-10 text-ink-muted"
         >
           <Lock className="size-2.5" /> auth
         </span>
@@ -156,7 +156,7 @@ export function ExternalLink({
       {!publicSafe ? (
         <span
           title="Not public-safe — handle with care"
-          className="inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 mg-type-micro text-health-warn"
+          className="inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 text-10 text-health-warn"
         >
           <AlertTriangle className="size-2.5" /> private
         </span>
@@ -164,8 +164,12 @@ export function ExternalLink({
     </>
   );
 
+  // max-w-full: an inline-flex box is sized by its content, so without a
+  // bound the truncating child never truncates and a long URL walks off a
+  // 375px viewport (the /apis/schemas overflow gate caught this on CI's
+  // Linux font metrics where the Mac ones had a pixel to spare).
   const classes = classNames(
-    "inline-flex items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong",
+    "inline-flex max-w-full items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong",
     safeHref ? "hover:decoration-ink" : "cursor-default decoration-transparent",
     className,
   );

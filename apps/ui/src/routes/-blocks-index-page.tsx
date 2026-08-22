@@ -159,15 +159,15 @@ export function BlockCard({ block }: { block: Block }) {
       className="block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
     >
       <div className="flex items-center justify-between gap-2">
-        <div className="font-mono text-sm font-medium text-ink-strong">
+        <div className="font-mono text-13 font-medium text-ink-strong">
           #{formatNumber(block.block_number)}
         </div>
-        <span className="mg-type-data text-ink-muted">
+        <span className="text-11 text-ink-muted">
           <TimeAgo at={block.observed_at} />
         </span>
       </div>
-      <div className="mt-1 mg-type-data text-ink-muted truncate">{shortHash(block.block_hash)}</div>
-      <div className="mt-2 flex items-center justify-between mg-type-data text-ink-muted">
+      <div className="mt-1 text-11 text-ink-muted truncate">{shortHash(block.block_hash)}</div>
+      <div className="mt-2 flex items-center justify-between text-11 text-ink-muted">
         <span>{shortHash(block.author) ?? "no author"}</span>
         <span>{formatNumber(block.extrinsic_count ?? 0)} ext</span>
         <span>{formatNumber(block.event_count ?? 0)} evt</span>
@@ -278,7 +278,7 @@ function BlocksTable() {
   };
 
   const numericInputCls =
-    "w-full rounded border border-border bg-paper px-2 py-1.5 font-mono text-sm text-ink-strong placeholder:text-ink-muted focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-ring transition-colors";
+    "w-full rounded border border-border bg-paper px-2 py-1.5 font-mono text-13 text-ink-strong placeholder:text-ink-muted focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-ring transition-colors";
 
   const filters = (
     <div className="flex w-full flex-col gap-0 min-w-0">
@@ -294,7 +294,7 @@ function BlocksTable() {
           <QueryBar.Divider />
           <QueryBar.Utility className="ml-auto">
             <span
-              className="hidden sm:inline mg-type-caption text-ink-muted"
+              className="hidden sm:inline text-13 text-ink-muted"
               title="Blocks are always listed newest first"
             >
               ↓ Newest
@@ -309,7 +309,7 @@ function BlocksTable() {
         <FilterSheet label="Filters" activeCount={secondaryFilterCount}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
-              <span className="mg-type-caption text-ink-muted">Spec version</span>
+              <span className="text-13 text-ink-muted">Spec version</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -323,7 +323,7 @@ function BlocksTable() {
             </label>
             <div className="hidden sm:block" aria-hidden />
             <label className="flex flex-col gap-1.5">
-              <span className="mg-type-caption text-ink-muted">Block from</span>
+              <span className="text-13 text-ink-muted">Block from</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -336,7 +336,7 @@ function BlocksTable() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="mg-type-caption text-ink-muted">Block to</span>
+              <span className="text-13 text-ink-muted">Block to</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -349,7 +349,7 @@ function BlocksTable() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="mg-type-caption text-ink-muted">Min extrinsics</span>
+              <span className="text-13 text-ink-muted">Min extrinsics</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -362,7 +362,7 @@ function BlocksTable() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="mg-type-caption text-ink-muted">Min events</span>
+              <span className="text-13 text-ink-muted">Min events</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -389,7 +389,7 @@ function BlocksTable() {
                     offset: 0,
                   })
                 }
-                className="rounded border border-border bg-card px-2.5 py-1 mg-type-label uppercase text-ink-muted hover:border-accent/40 hover:text-ink-strong transition-colors"
+                className="rounded border border-border bg-card px-2.5 py-1 text-11 text-ink-muted hover:border-accent/40 hover:text-ink-strong transition-colors"
               >
                 Clear numeric filters
               </button>
@@ -455,7 +455,7 @@ function BlocksTable() {
           <BlockCard key={b.block_hash || b.block_number} block={b} />
         ))}
         table={
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-13">
             <thead className="mg-table-head-pinned">
               <tr>
                 <th className="px-4 py-2.5">Block</th>
@@ -492,9 +492,9 @@ function BlocksTable() {
                 return (
                   <tr
                     key={b.block_hash || b.block_number}
-                    className="group mg-row-accent odd:bg-surface/30 hover:bg-surface/60"
+                    className="group mg-row-accent odd:bg-surface hover:bg-surface"
                   >
-                    <td className="px-4 py-2.5 font-mono mg-type-caption align-top">
+                    <td className="px-4 py-2.5 font-mono text-13 align-top">
                       <Link
                         to="/blocks/$ref"
                         params={{ ref: String(b.block_number) }}
@@ -504,14 +504,14 @@ function BlocksTable() {
                       </Link>
                       {gapSec != null ? (
                         <div
-                          className={classNames("mt-0.5 mg-type-data-sm", gapTone)}
+                          className={classNames("mt-0.5 text-10", gapTone)}
                           title="Seconds since previous block"
                         >
                           +{humaniseSeconds(gapSec)}
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-4 py-2.5 mg-type-data text-ink-muted align-top">
+                    <td className="px-4 py-2.5 text-11 text-ink-muted align-top">
                       <span className="inline-flex items-center gap-1 min-w-0">
                         <Link
                           to="/blocks/$ref"
@@ -529,7 +529,7 @@ function BlocksTable() {
                       </span>
                     </td>
                     <td
-                      className="px-4 py-2.5 mg-type-data text-ink-muted align-top"
+                      className="px-4 py-2.5 text-11 text-ink-muted align-top"
                       title={b.author ?? undefined}
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -546,8 +546,7 @@ function BlocksTable() {
                         />
                         {authorRepeat > 1 ? (
                           <span
-                            /* eslint-disable-next-line no-restricted-syntax -- micro-chip repeat badge (9px); the mg-type-* scale bottoms out at caption-lg (13px) with no nano tier, so there is no matching token (#9343 req 1 exception) */
-                            className="mg-chip h-4 px-1.5 text-[9px] text-accent-text border-accent/40"
+                            className="mg-chip h-4 px-1.5 text-10 text-accent-text border-accent/40"
                             title={`Produced ${authorRepeat} blocks on this page`}
                           >
                             ×{authorRepeat}
@@ -555,14 +554,14 @@ function BlocksTable() {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink align-top">
+                    <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink align-top">
                       <ActivityCell value={b.extrinsic_count ?? 0} max={maxExt} tone="accent" />
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink align-top">
+                    <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink align-top">
                       <ActivityCell value={b.event_count ?? 0} max={maxEvt} tone="ink" />
                     </td>
                     <td
-                      className="px-4 py-2.5 text-right mg-type-data text-ink-muted align-top"
+                      className="px-4 py-2.5 text-right text-11 text-ink-muted align-top"
                       title={b.observed_at ?? undefined}
                     >
                       <TimeAgo at={b.observed_at} />
@@ -598,9 +597,9 @@ function ActivityCell({
   return (
     <span className="inline-flex flex-col items-end gap-1 min-w-[3.5rem]">
       <span>{formatNumber(value)}</span>
-      <span aria-hidden className="block h-[3px] w-full rounded-full bg-border/50 overflow-hidden">
+      <span aria-hidden className="block h-[3px] w-full rounded bg-border/50 overflow-hidden">
         <span
-          className={classNames("block h-full rounded-full transition-[width]", barCls)}
+          className={classNames("block h-full rounded transition-[width]", barCls)}
           style={{ width: `${pct}%` }}
         />
       </span>

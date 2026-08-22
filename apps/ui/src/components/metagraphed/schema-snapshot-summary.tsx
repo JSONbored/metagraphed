@@ -59,11 +59,9 @@ function readSnapshot(schema: SchemaInfo): SnapshotFields {
 
 function MetaCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-border bg-paper px-3 py-2">
-      <div className="mg-type-caption text-ink-muted">{label}</div>
-      <div className="mt-0.5 font-mono mg-type-caption text-ink-strong tabular-nums truncate">
-        {value}
-      </div>
+    <div className="rounded border border-border bg-paper px-3 py-2">
+      <div className="text-13 text-ink-muted">{label}</div>
+      <div className="mt-0.5 font-mono text-13 text-ink-strong tabular-nums truncate">{value}</div>
     </div>
   );
 }
@@ -88,10 +86,10 @@ export function SchemaSnapshotSummary({ schema }: { schema: SchemaInfo }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 mg-type-data">
+      <div className="flex flex-wrap items-center gap-2 text-11">
         <span
           className={classNames(
-            "inline-flex items-center rounded-full border px-2 py-0.5 mg-type-micro",
+            "inline-flex items-center rounded border px-2 py-0.5 text-10",
             driftTone(driftStatus),
           )}
         >
@@ -104,18 +102,18 @@ export function SchemaSnapshotSummary({ schema }: { schema: SchemaInfo }) {
       </div>
 
       {/* Hash transition (the registry's canonical drift signal). */}
-      <div className="rounded-md border border-border bg-paper p-3 mg-type-data">
+      <div className="rounded border border-border bg-paper p-3 text-11">
         {hashChanged ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-ink-muted">{schema.previous_hash!.slice(0, 12)}</span>
             <span className="text-ink-muted">→</span>
             <span className="text-ink-strong">{schema.hash!.slice(0, 12)}</span>
-            <span className="ml-auto text-health-warn mg-type-caption">hash changed</span>
+            <span className="ml-auto text-health-warn text-13">hash changed</span>
           </div>
         ) : schema.hash ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-ink-strong">{schema.hash.slice(0, 12)}</span>
-            <span className="ml-auto text-ink-muted mg-type-caption">hash stable</span>
+            <span className="ml-auto text-ink-muted text-13">hash stable</span>
           </div>
         ) : (
           <span className="text-ink-muted">No hash recorded for this snapshot.</span>

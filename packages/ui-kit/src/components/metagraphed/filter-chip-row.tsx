@@ -50,8 +50,8 @@ export function FilterChipRow({
           onClick={() => onRemove(item.id)}
           aria-label={`Remove ${item.label} filter (${item.value})`}
           className={classNames(
-            "group inline-flex h-6 items-center gap-1.5 rounded-full border border-border bg-card px-2",
-            "text-[11px] transition-colors",
+            "group inline-flex h-6 items-center gap-1.5 rounded border border-border bg-card px-2",
+            "text-11 transition-colors",
             "hover:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           )}
@@ -59,7 +59,7 @@ export function FilterChipRow({
           {item.icon ? (
             <span className="text-ink-muted">{item.icon}</span>
           ) : null}
-          <span className="mg-type-micro text-ink-muted">{item.label}</span>
+          <span className="text-10 text-ink-muted">{item.label}</span>
           <span className="font-medium text-ink-strong">{item.value}</span>
           <X
             aria-hidden
@@ -71,7 +71,7 @@ export function FilterChipRow({
         <button
           type="button"
           onClick={onClearAll}
-          className="mg-focus-ring ml-1 rounded px-1.5 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong"
+          className="mg-focus-ring ml-1 rounded px-1.5 py-0.5 text-10 text-ink-muted hover:text-ink-strong"
         >
           Clear all
         </button>

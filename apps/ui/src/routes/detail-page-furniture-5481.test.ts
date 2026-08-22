@@ -64,7 +64,7 @@ describe("subnet-masthead ShareButton", () => {
     // One shared divide-x bar (SegmentedToggle/ViewModeToggle's look), not a
     // flex-wrap row of individually rounded-full-bordered pills.
     expect(linksRow).toContain("divide-x divide-border");
-    expect(linksRow).not.toContain("rounded-full border border-border bg-card");
+    expect(linksRow).not.toContain("rounded border border-border bg-card");
     // Icon-only -- no <span>{l.label}</span> text label alongside the icon.
     expect(linksRow).not.toContain("<span>{l.label}</span>");
     // Share lives in this same bar (a resource/link action, not a status
@@ -135,44 +135,5 @@ describe("providers.$slug.tsx ShareButton + ApiSourceFooter", () => {
     const footerCall = providerRouteSource.slice(providerRouteSource.indexOf("<ApiSourceFooter"));
     expect(footerCall).toContain("`/api/v1/providers/${slug}`");
     expect(footerCall).toContain("`/api/v1/providers/${slug}/endpoints`");
-  });
-
-  it("#7853: no longer renders its own standalone <Breadcrumbs> -- migrates the provider name into AppShell's crumbLabel prop instead", () => {
-    expect(providerRouteSource).not.toContain("<Breadcrumbs");
-    const componentBody = providerRouteSource.slice(
-      providerRouteSource.indexOf("function ProviderDetail"),
-      providerRouteSource.indexOf("function ProviderShell"),
-    );
-    expect(componentBody).toContain("<AppShell crumbLabel={loaderData?.name ?? undefined}>");
-  });
-});
-
-describe("#7853 breadcrumb de-duplication: AppShell crumbLabel wiring", () => {
-  const appShellSource = readFileSync(
-    fileURLToPath(new URL("../components/metagraphed/app-shell.tsx", import.meta.url)),
-    "utf8",
-  );
-  const blocksRouteSource = readFileSync(
-    fileURLToPath(new URL("./-blocks-ref-page.tsx", import.meta.url)),
-    "utf8",
-  );
-
-  it("app-shell.tsx accepts a crumbLabel prop and uses it to override only the trailing crumb", () => {
-    expect(appShellSource).toContain("crumbLabel?: string");
-    const memo = appShellSource.slice(
-      appShellSource.indexOf("const crumbs = useMemo"),
-      appShellSource.indexOf("const parent = useMemo"),
-    );
-    expect(memo).toContain("buildCrumbs(pathname)");
-    expect(memo).toContain("crumbLabel");
-  });
-
-  it("subnets.$netuid.tsx passes the zero-padded netuid as the shell's crumbLabel", () => {
-    expect(subnetRouteSource).toContain('crumbLabel={String(netuid).padStart(3, "0")}');
-  });
-
-  it("blocks.$ref.tsx passes the loader-resolved, comma-formatted block number as the shell's crumbLabel instead of a second custom breadcrumb trail", () => {
-    expect(blocksRouteSource).not.toContain("hideBreadcrumbs={false}");
-    expect(blocksRouteSource).toContain("<AppShell crumbLabel={crumbLabel}>");
   });
 });

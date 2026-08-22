@@ -53,12 +53,9 @@ export function FreshnessIndicator({
       title={title}
       suppressHydrationWarning
     >
-      <span className={classNames("size-1.5 rounded-full", cls)} />
+      <span className={classNames("size-1.5 rounded-full mg-dot", cls)} />
       {!dotOnly ? (
-        <span
-          className="mg-type-data-sm text-ink-muted"
-          suppressHydrationWarning
-        >
+        <span className="text-10 text-ink-muted" suppressHydrationWarning>
           {rel}
         </span>
       ) : null}

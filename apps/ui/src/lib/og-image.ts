@@ -693,7 +693,7 @@ export function fontSubsetText(markup: string): string {
  * existing (#11204). workers-og's own `loadGoogleFont` encodes `family` and
  * interpolates `text` raw:
  *
- *     `https://fonts.googleapis.com/css2?${keys.map(k => `${k}=${n[k]}`).join("&")}`
+ *     `https://fonts.googleapis.com/css2?${keys.map(k =>`${k}=${n[k]}`).join("&")}`
  *
  * So one `%` anywhere in the card's copy — an emission share of `0.61%` is
  * enough — leaves a bare `%` in the query value, Google stops decoding the

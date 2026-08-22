@@ -121,6 +121,14 @@ export default defineConfig({
       // needs ~10s to paint its table and failed only under 4 workers.
       fullyParallel: false,
     },
+    {
+      // #11605: the design-system contract as a gate. Independent page loads
+      // (one per route × theme), so it parallelizes like the overflow sweep;
+      // it runs after `interaction` only so the three phases never contend.
+      name: "token-inventory",
+      testMatch: /token-inventory\.spec\.ts$/,
+      dependencies: ["interaction"],
+    },
   ],
   // TWO servers, stub FIRST. The app's `useSuspenseQuery` runs during SSR and
   // fetches before any HTML is streamed, so the stub has to be answering

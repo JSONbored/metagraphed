@@ -54,9 +54,9 @@ export function MobileCollapse({
         )}
       >
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="mg-type-micro text-ink-strong">{label}</span>
+          <span className="text-10 text-ink-strong">{label}</span>
           {hint ? (
-            <span className="mt-0.5 truncate mg-type-data text-ink-muted">
+            <span className="mt-0.5 truncate text-11 text-ink-muted">
               {hint}
             </span>
           ) : null}

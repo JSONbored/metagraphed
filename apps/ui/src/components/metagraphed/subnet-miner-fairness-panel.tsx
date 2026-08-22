@@ -45,7 +45,7 @@ export function SubnetMinerFairnessPanel({ netuid }: { netuid: number }) {
   const uid = card.concentration?.uid ?? null;
 
   return (
-    <Panel as="section" dense>
+    <Panel as="section">
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure
           label="miner UIDs"
@@ -70,7 +70,7 @@ export function SubnetMinerFairnessPanel({ netuid }: { netuid: number }) {
       </div>
 
       <div className="mt-4 border-t border-border/60 pt-3">
-        <div className="mg-type-caption text-ink-muted">
+        <div className="text-13 text-ink-muted">
           Emission concentration · {card.days_covered} days covered
         </div>
         <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
@@ -104,9 +104,9 @@ export function giniLabel(value: number | null | undefined): string {
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div>
-      <div className="mg-type-caption text-ink-muted">{label}</div>
-      <div className="mg-type-body text-ink-strong">{value}</div>
-      <div className="mg-type-caption text-ink-muted">{hint}</div>
+      <div className="text-13 text-ink-muted">{label}</div>
+      <div className="text-13 text-ink-strong">{value}</div>
+      <div className="text-13 text-ink-muted">{hint}</div>
     </div>
   );
 }

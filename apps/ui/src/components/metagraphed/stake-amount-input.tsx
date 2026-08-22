@@ -135,7 +135,7 @@ export function StakeAmountInput({
               aria-selected={active}
               onClick={() => onActionChange(a)}
               className={classNames(
-                "min-h-8 rounded px-4 py-1.5 mg-type-label uppercase transition-colors",
+                "min-h-8 rounded px-4 py-1.5 text-11 transition-colors",
                 active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
               )}
             >
@@ -147,7 +147,7 @@ export function StakeAmountInput({
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <span aria-hidden="true" className="mg-type-caption text-ink-muted">
+          <span aria-hidden="true" className="text-13 text-ink-muted">
             Amount ({unitSymbol(unit)})
           </span>
           <SearchInput
@@ -161,7 +161,7 @@ export function StakeAmountInput({
 
         {showUnitToggle ? (
           <div className="flex flex-col gap-1">
-            <span className="mg-type-caption text-ink-muted">Unit</span>
+            <span className="text-13 text-ink-muted">Unit</span>
             <Panel
               as="div"
               role="tablist"
@@ -179,7 +179,7 @@ export function StakeAmountInput({
                     aria-selected={active}
                     onClick={() => onUnitChange(u)}
                     className={classNames(
-                      "min-h-8 rounded px-3 py-1.5 mg-type-label uppercase transition-colors",
+                      "min-h-8 rounded px-3 py-1.5 text-11 transition-colors",
                       active
                         ? "bg-surface text-ink-strong"
                         : "text-ink-muted hover:text-ink-strong",
@@ -198,7 +198,7 @@ export function StakeAmountInput({
             type="button"
             onClick={onApplyMaxStake}
             disabled={maxStakeRao == null}
-            className="min-h-8 rounded border border-border bg-card px-3 py-1.5 mg-type-label uppercase text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
+            className="min-h-8 rounded border border-border bg-card px-3 py-1.5 text-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
           >
             Max{maxStakeRao != null ? ` (${raoToTao(maxStakeRao)} τ)` : ""}
           </button>
@@ -207,7 +207,7 @@ export function StakeAmountInput({
             type="button"
             onClick={onApplyMaxUnstake}
             disabled={unstakeMax.disabled}
-            className="min-h-8 rounded border border-border bg-card px-3 py-1.5 mg-type-label uppercase text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
+            className="min-h-8 rounded border border-border bg-card px-3 py-1.5 text-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
           >
             Max
           </button>
@@ -215,34 +215,31 @@ export function StakeAmountInput({
       </div>
 
       {action === "unstake" ? (
-        <p className="mg-type-data-sm text-ink-muted">
+        <p className="text-10 text-ink-muted">
           {unstakeMax.note ?? (positionAge ? `Recorded position ${positionAge}.` : null)}
         </p>
       ) : null}
 
       {!hasValidAmount ? (
-        <p className="mg-type-data text-ink-muted">Enter an amount to see the expected outcome.</p>
+        <p className="text-11 text-ink-muted">Enter an amount to see the expected outcome.</p>
       ) : quoteError ? (
-        <p className="inline-flex items-center gap-1.5 mg-type-data text-health-down">
+        <p className="inline-flex items-center gap-1.5 text-11 text-health-down">
           <AlertCircle className="size-3.5 shrink-0" aria-hidden />
           {quoteError}
         </p>
       ) : quoteIsPending ? (
-        <p className="inline-flex items-center gap-1.5 mg-type-data text-ink-muted">
+        <p className="inline-flex items-center gap-1.5 text-11 text-ink-muted">
           <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
           Calculating…
         </p>
       ) : quote ? (
-        <p className="mg-type-data text-ink-strong">{formatQuoteHint(quote)}</p>
+        <p className="text-11 text-ink-strong">{formatQuoteHint(quote)}</p>
       ) : null}
 
       {validationMessages.length > 0 ? (
         <ul className="space-y-1">
           {validationMessages.map((message) => (
-            <li
-              key={message}
-              className="inline-flex items-center gap-1.5 mg-type-data text-health-down"
-            >
+            <li key={message} className="inline-flex items-center gap-1.5 text-11 text-health-down">
               <AlertCircle className="size-3.5 shrink-0" aria-hidden />
               {message}
             </li>

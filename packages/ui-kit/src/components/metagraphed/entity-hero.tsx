@@ -106,8 +106,8 @@ export function EntityHero({
             {eyebrow ? (
               <div
                 className={classNames(
-                  "mg-fade-in mg-type-data-sm uppercase text-ink-muted inline-flex items-center gap-2",
-                  display ? "tracking-[0.22em]" : "tracking-[0.2em] mb-2",
+                  "text-10 text-ink-muted inline-flex items-center gap-2",
+                  display ? "" : "mb-2",
                 )}
               >
                 {live ? <span className="mg-live-dot" /> : null}
@@ -117,16 +117,16 @@ export function EntityHero({
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <h1
                 className={classNames(
-                  "mg-fade-in mg-fade-in-delay-1 font-display font-semibold text-ink-strong",
+                  "font-display font-semibold text-ink-strong",
                   display
-                    ? "mt-4 text-[2.5rem] sm:text-5xl md:text-6xl leading-[1.02] tracking-[-0.025em]"
-                    : "text-3xl md:text-4xl tracking-[-0.01em]",
+                    ? "mt-4 text-40 sm:text-40 md:text-64 leading-[1.02]"
+                    : "text-28 md:text-40",
                 )}
               >
                 {title}
               </h1>
               {!display && subtitle ? (
-                <span className="font-mono text-xs md:text-sm text-ink-muted">
+                <span className="font-mono text-13 md:text-13 text-ink-muted">
                   {subtitle}
                 </span>
               ) : null}
@@ -134,10 +134,10 @@ export function EntityHero({
             {description ? (
               <p
                 className={classNames(
-                  "mg-fade-in mg-fade-in-delay-2 text-ink-muted leading-relaxed",
+                  "text-ink-muted leading-relaxed",
                   display
-                    ? "mt-4 max-w-xl text-base md:text-lg"
-                    : "mt-3 max-w-3xl text-sm md:text-base",
+                    ? "mt-4 max-w-xl text-16 md:text-16"
+                    : "mt-3 max-w-3xl text-13 md:text-16",
                 )}
               >
                 {description}
@@ -145,7 +145,7 @@ export function EntityHero({
             ) : null}
             {links ? <div className="mt-6">{links}</div> : null}
             {actions ? (
-              <div className="mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-wrap items-center gap-2">
+              <div className="mt-6 flex flex-wrap items-center gap-2">
                 {actions}
               </div>
             ) : null}
@@ -156,36 +156,30 @@ export function EntityHero({
             {chips}
           </div>
         ) : null}
-        {aside ? (
-          <div className="mg-fade-in mg-fade-in-delay-2 hidden md:block shrink-0">
-            {aside}
-          </div>
-        ) : null}
+        {aside ? <div className="hidden md:block shrink-0">{aside}</div> : null}
       </div>
 
       {visibleStats.length > 0 ? (
         <div
           className={classNames(
-            "mg-fade-in mg-fade-in-delay-3 mg-kpi-strip",
+            "mg-kpi-strip",
             display ? "mt-12 md:mt-16" : "mt-8 md:mt-10",
           )}
         >
           {visibleStats.map((s) => (
             <div key={s.label}>
-              <div className="mg-type-caption text-ink-muted">{s.label}</div>
+              <div className="text-13 text-ink-muted">{s.label}</div>
               <div className="mt-1.5 flex items-baseline gap-2">
                 <span
                   className={classNames(
                     "font-display font-semibold tabular-nums text-ink-strong leading-none",
-                    display
-                      ? "text-2xl md:text-[1.75rem] tracking-[-0.01em]"
-                      : "text-xl md:text-2xl",
+                    display ? "text-28 md:text-28" : "text-28 md:text-28",
                   )}
                 >
                   {s.value}
                 </span>
                 {s.hint ? (
-                  <span className="mg-type-data text-ink-muted">{s.hint}</span>
+                  <span className="text-11 text-ink-muted">{s.hint}</span>
                 ) : null}
               </div>
               {s.chart ? <div className="mt-2.5 -ml-0.5">{s.chart}</div> : null}

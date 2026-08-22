@@ -105,7 +105,7 @@ export function UptimeBadgeEmbed({
               aria-pressed={metric === m.id}
               title={m.hint}
               className={classNames(
-                "min-h-9 rounded-full border px-2.5 py-1 mg-type-caption transition-colors",
+                "min-h-9 rounded border px-2.5 py-1 text-13 transition-colors",
                 metric === m.id
                   ? "border-accent/40 bg-accent/10 text-accent-text"
                   : "border-border bg-card text-ink-muted hover:border-ink/30",
@@ -124,7 +124,7 @@ export function UptimeBadgeEmbed({
                 type="button"
                 onClick={() => setFormat(f.id)}
                 className={classNames(
-                  "min-h-9 rounded px-2 py-1 mg-type-caption transition-colors",
+                  "min-h-9 rounded px-2 py-1 text-13 transition-colors",
                   format === f.id
                     ? "bg-surface text-ink-strong"
                     : "text-ink-muted hover:text-ink-strong",

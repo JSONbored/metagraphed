@@ -69,13 +69,13 @@ function RetryNotice({
   onRetry: () => void;
 }) {
   return (
-    <div className="rounded border border-dashed border-ink-subtle bg-surface/30 p-6 text-center">
-      <div className="font-display text-sm font-medium text-ink-strong">{title}</div>
-      <p className="mx-auto mt-1 max-w-md text-xs text-ink-muted">{description}</p>
+    <div className="rounded border border-dashed border-ink-subtle bg-surface p-6 text-center">
+      <div className="font-display text-13 font-medium text-ink-strong">{title}</div>
+      <p className="mx-auto mt-1 max-w-md text-13 text-ink-muted">{description}</p>
       <button
         type="button"
         onClick={onRetry}
-        className="mt-3 rounded border border-border bg-card px-2.5 py-1 mg-type-label uppercase text-ink hover:border-ink/30"
+        className="mt-3 rounded border border-border bg-card px-2.5 py-1 text-11 text-ink hover:border-ink/30"
       >
         Retry
       </button>
@@ -126,16 +126,16 @@ function LeaseStatusCard({
   }
 
   return (
-    <Panel as="div" dense bodyClassName="space-y-3">
+    <Panel as="div" bodyClassName="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 mg-type-micro text-accent-text">
+          <span className="rounded border border-accent/40 bg-accent/10 px-2 py-0.5 text-10 text-accent-text">
             Leased
           </span>
-          <span className="mg-type-data text-ink-muted">lease #{lease.lease_id}</span>
+          <span className="text-11 text-ink-muted">lease #{lease.lease_id}</span>
         </div>
         {queriedAt ? (
-          <span className="mg-type-data text-ink-muted">
+          <span className="text-11 text-ink-muted">
             queried <TimeAgo at={queriedAt} />
           </span>
         ) : null}
@@ -175,7 +175,7 @@ function LeaseStatusCard({
 function KeySs58({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt className="mg-type-caption text-ink-muted">{label}</dt>
+      <dt className="text-13 text-ink-muted">{label}</dt>
       <dd className="mt-1">
         <CopyableCode value={value} className="max-w-full" />
       </dd>
@@ -210,7 +210,7 @@ function LeaseHistorySection({
 }) {
   return (
     <div>
-      <h3 className="mb-3 mg-type-label uppercase text-ink-muted">Lease history</h3>
+      <h3 className="mb-3 text-11 text-ink-muted">Lease history</h3>
       {isError ? (
         <ErrorState error={error} onRetry={onRetry} context="subnet lease history" />
       ) : isLoading ? (
@@ -225,15 +225,15 @@ function LeaseHistorySection({
           {events.map((ev, i) => (
             <li
               key={`${ev.block_number ?? i}-${ev.event_kind ?? i}-${ev.observed_at ?? i}`}
-              className="rounded-md border border-border bg-card p-3"
+              className="rounded border border-border bg-card p-3"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span
                     className={
                       ev.event_kind === "SubnetLeaseTerminated"
-                        ? "rounded-full border border-border px-2 py-0.5 mg-type-micro text-ink-muted"
-                        : "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 mg-type-micro text-accent-text"
+                        ? "rounded border border-border px-2 py-0.5 text-10 text-ink-muted"
+                        : "rounded border border-accent/40 bg-accent/10 px-2 py-0.5 text-10 text-accent-text"
                     }
                   >
                     {ev.event_kind === "SubnetLeaseTerminated"
@@ -245,10 +245,10 @@ function LeaseHistorySection({
                   {ev.beneficiary ? (
                     <CopyableCode value={ev.beneficiary} className="max-w-full" />
                   ) : (
-                    <span className="mg-type-data text-ink-muted">no beneficiary</span>
+                    <span className="text-11 text-ink-muted">no beneficiary</span>
                   )}
                 </div>
-                <span className="shrink-0 mg-type-data text-ink-muted">
+                <span className="shrink-0 text-11 text-ink-muted">
                   {ev.block_number != null ? `block #${formatNumber(ev.block_number)} · ` : ""}
                   {ev.observed_at ? <TimeAgo at={ev.observed_at} /> : "unknown time"}
                 </span>

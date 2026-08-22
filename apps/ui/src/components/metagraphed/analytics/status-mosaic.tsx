@@ -51,10 +51,8 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
       <div className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div>
-            <div className="mg-type-caption text-ink-muted">
-              Status mosaic · {RANGE_LABEL[range]}
-            </div>
-            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+            <div className="text-13 text-ink-muted">Status mosaic · {RANGE_LABEL[range]}</div>
+            <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
               {rows.length} endpoint{rows.length === 1 ? "" : "s"}
             </h3>
           </div>
@@ -68,7 +66,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
                   type="button"
                   onClick={() => setFilter(k)}
                   className={classNames(
-                    "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 mg-type-caption transition-colors",
+                    "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-13 transition-colors",
                     active
                       ? "border-accent/60 bg-accent/10 text-accent"
                       : "border-border text-ink-muted hover:text-ink-strong hover:border-ink-muted/50",
@@ -99,7 +97,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
               <span
                 className={classNames(
                   // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
-                  "block aspect-square rounded-[2px] transition-transform hover:scale-110 hover:ring-1 hover:ring-accent/60",
+                  "block aspect-square rounded transition-transform hover:scale-110 hover:ring-1 hover:ring-accent/60",
                   TONE[state] ?? TONE.unknown,
                 )}
                 title={`${e.kind ?? "endpoint"} · ${e.provider ?? e.provider_slug ?? "—"} · ${state}${
@@ -113,8 +111,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: e.netuid }}
-                    // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
-                    className="block focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-[2px]"
+                    className="block focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
                   >
                     {tile}
                   </Link>
@@ -125,7 +122,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
             );
           })}
           {rows.length === 0 ? (
-            <div className="col-span-full py-6 text-center mg-type-data-sm text-ink-muted">
+            <div className="col-span-full py-6 text-center text-10 text-ink-muted">
               No endpoints match this filter.
             </div>
           ) : null}

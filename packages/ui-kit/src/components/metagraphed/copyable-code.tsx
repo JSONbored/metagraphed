@@ -26,7 +26,7 @@ export function CopyableCode({
         title={value}
         aria-label={copied ? "Copied" : `Copy ${label ?? "value"}`}
         className={classNames(
-          "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left mg-type-data text-ink hover:border-ink/30 transition-colors",
+          "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left text-11 text-ink hover:border-ink/30 transition-colors",
           // `truncate={false}` means "wrap instead of truncate," which only
           // makes sense once the box is width-bound -- otherwise `inline-flex`
           // shrink-to-fit sizing lets it grow to its unwrapped content width
@@ -43,7 +43,7 @@ export function CopyableCode({
         )}
       >
         {label ? (
-          <span className="shrink-0 text-ink-muted mg-type-label">{label}</span>
+          <span className="shrink-0 text-ink-muted text-11">{label}</span>
         ) : null}
         <code
           className={classNames(

@@ -31,7 +31,7 @@ export function Ss58Inspector() {
   return (
     <div className="space-y-4">
       <div>
-        <label htmlFor="ss58-inspect" className="mg-label mb-2 block">
+        <label htmlFor="ss58-inspect" className="text-10 text-ink-muted mb-2 block">
           Address
         </label>
         <input
@@ -42,9 +42,9 @@ export function Ss58Inspector() {
           placeholder="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
           spellCheck={false}
           autoComplete="off"
-          className="w-full rounded-md border border-border bg-card px-4 py-3 font-mono text-sm text-ink-strong placeholder:text-ink-muted/50 focus:border-accent/50 focus:outline-none"
+          className="w-full rounded border border-border bg-card px-4 py-3 font-mono text-13 text-ink-strong placeholder:text-ink-muted/50 focus:border-accent/50 focus:outline-none"
         />
-        <p className="mt-2 mg-type-data text-ink-muted">
+        <p className="mt-2 text-11 text-ink-muted">
           Decodes the network prefix and public key and verifies the checksum — entirely in your
           browser, nothing is sent anywhere.
         </p>
@@ -92,23 +92,23 @@ export function Ss58Inspector() {
               : "Valid SS58 address — not Bittensor"
           }
         >
-          <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2.5 text-sm">
-            <dt className="mg-type-caption text-ink-muted">Network prefix</dt>
+          <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2.5 text-13">
+            <dt className="text-13 text-ink-muted">Network prefix</dt>
             <dd className="font-mono text-ink-strong">
               {decoded.format}
               {KNOWN_FORMATS[decoded.format] ? (
                 <span className="ml-2 text-ink-muted">({KNOWN_FORMATS[decoded.format]})</span>
               ) : null}
             </dd>
-            <dt className="mg-type-caption text-ink-muted">Public key</dt>
+            <dt className="text-13 text-ink-muted">Public key</dt>
             <dd className="min-w-0">
               <CopyableCode value={toHex(decoded.pubkey)} className="w-full" />
             </dd>
-            <dt className="mg-type-caption text-ink-muted">Checksum</dt>
+            <dt className="text-13 text-ink-muted">Checksum</dt>
             <dd className="text-health-ok">Valid</dd>
           </dl>
           {decoded.format !== DEFAULT_SS58_FORMAT ? (
-            <p className="mt-3 mg-type-caption-lg text-ink-muted">
+            <p className="mt-3 text-13 text-ink-muted">
               This is a well-formed SS58 address, but its network prefix ({decoded.format}) is not
               Bittensor&apos;s ({DEFAULT_SS58_FORMAT}) — it belongs to
               {KNOWN_FORMATS[decoded.format]
@@ -121,9 +121,9 @@ export function Ss58Inspector() {
         </ResultCard>
       ) : null}
 
-      <Panel as="section" flush bodyClassName="mg-type-caption-lg leading-relaxed text-ink-muted">
+      <Panel as="section" flush bodyClassName="text-13 leading-relaxed text-ink-muted">
         <div className="p-4">
-          <h3 className="mb-2 font-display text-sm font-semibold text-ink-strong">
+          <h3 className="mb-2 font-display text-13 font-semibold text-ink-strong">
             How this works
           </h3>
           <p>
@@ -161,7 +161,7 @@ function ResultCard({
   return (
     <div
       className={classNames(
-        "rounded-md border p-4",
+        "rounded border p-4",
         tone === "ok" && "border-health-ok/30 bg-health-ok/5",
         tone === "warn" && "border-health-warn/30 bg-health-warn/5",
         tone === "error" && "border-health-down/30 bg-health-down/5",
@@ -177,9 +177,9 @@ function ResultCard({
           )}
           aria-hidden
         />
-        <h3 className="font-display text-sm font-semibold text-ink-strong">{title}</h3>
+        <h3 className="font-display text-13 font-semibold text-ink-strong">{title}</h3>
       </div>
-      <div className="mt-2.5 mg-type-caption-lg leading-relaxed text-ink-muted">{children}</div>
+      <div className="mt-2.5 text-13 leading-relaxed text-ink-muted">{children}</div>
     </div>
   );
 }

@@ -13,7 +13,7 @@ export const YIELD_PERCENTILE_FOUR_COL_MIN_WIDTH = "28rem";
 
 /** Outer card — enables `@min-[28rem]:` container queries on descendants. */
 export const YIELD_PERCENTILE_STRIP_CONTAINER_CLASS =
-  "@container rounded-xl border border-border bg-card p-4";
+  "@container rounded border border-border bg-card p-4";
 
 /**
  * Inner stat grid. Below {@link YIELD_PERCENTILE_FOUR_COL_MIN_WIDTH} the strip
@@ -24,15 +24,14 @@ export const YIELD_PERCENTILE_STRIP_GRID_CLASS =
   "grid grid-cols-2 gap-3 @min-[28rem]:grid-cols-4";
 
 /** Label row — mirrors Concentration panel `Fact` labels. */
-export const YIELD_PERCENTILE_LABEL_CLASS =
-  "mg-type-data-sm uppercase tracking-[0.18em] text-ink-muted";
+export const YIELD_PERCENTILE_LABEL_CLASS = "text-10 text-ink-muted";
 
 /**
  * Value row — slightly smaller below the four-column threshold, then steps up
  * to the shared `Fact` display size used elsewhere on subnet profile cards.
  */
 export const YIELD_PERCENTILE_VALUE_CLASS =
-  "mt-1 min-w-0 truncate font-display text-sm font-semibold tabular-nums text-ink-strong leading-none @min-[20rem]:text-base @min-[28rem]:text-lg";
+  "mt-1 min-w-0 truncate font-display text-13 font-semibold tabular-nums text-ink-strong leading-none @min-[20rem]:text-16 @min-[28rem]:text-16";
 
 export type YieldPercentileKey = "p25" | "median" | "p75" | "p90";
 

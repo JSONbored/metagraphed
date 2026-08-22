@@ -19,9 +19,7 @@ export function TopActiveAccounts() {
 
   if (rows.length === 0) {
     return (
-      <p className="font-mono mg-type-caption text-ink-muted">
-        No account activity in this window yet.
-      </p>
+      <p className="font-mono text-13 text-ink-muted">No account activity in this window yet.</p>
     );
   }
 

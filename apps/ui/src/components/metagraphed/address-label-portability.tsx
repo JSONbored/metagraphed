@@ -71,7 +71,7 @@ export function AddressLabelPortability() {
           type="button"
           onClick={onExport}
           disabled={count === 0}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Download className="size-3.5" aria-hidden />
           Export JSON
@@ -79,7 +79,7 @@ export function AddressLabelPortability() {
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/40"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/40"
         >
           <Upload className="size-3.5" aria-hidden />
           Import JSON
@@ -97,7 +97,7 @@ export function AddressLabelPortability() {
         />
       </div>
       {status ? (
-        <p className="mt-2 mg-type-caption text-ink-muted" role="status">
+        <p className="mt-2 text-13 text-ink-muted" role="status">
           {status}
         </p>
       ) : null}

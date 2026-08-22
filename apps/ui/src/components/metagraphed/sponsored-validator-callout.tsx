@@ -43,10 +43,10 @@ export function SponsoredValidatorCallout({
   );
 
   return (
-    <div className="rounded-xl border border-ink-muted/30 bg-surface/40 p-4">
+    <div className="rounded border border-ink-muted/30 bg-surface p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <SponsoredBadge />
-        <span className="mg-type-data-sm text-ink-muted">
+        <span className="text-10 text-ink-muted">
           Paid placement — not ranked or endorsed by Metagraphed.
         </span>
       </div>
@@ -59,14 +59,14 @@ export function SponsoredValidatorCallout({
           <Link
             to="/validators/$hotkey"
             params={{ hotkey: validator.hotkey }}
-            className="truncate font-mono mg-type-caption-lg text-ink-strong hover:text-accent hover:underline"
+            className="truncate font-mono text-13 text-ink-strong hover:text-accent hover:underline"
             title={validator.hotkey}
           >
             {resolveAddress(validator.hotkey).display}
           </Link>
           <CopyButton value={validator.hotkey} label="hotkey" />
         </div>
-        <div className="flex flex-wrap items-center gap-4 mg-type-data text-ink-muted">
+        <div className="flex flex-wrap items-center gap-4 text-11 text-ink-muted">
           <span>
             Stake{" "}
             <span className="text-ink-strong tabular-nums">
@@ -89,7 +89,7 @@ export function SponsoredValidatorCallout({
             <button
               type="button"
               onClick={open}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+              className="inline-flex items-center gap-1 rounded border border-border bg-card px-3 py-1.5 text-13 font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
             >
               <Coins className="size-3 text-ink-muted" aria-hidden />
               Delegate

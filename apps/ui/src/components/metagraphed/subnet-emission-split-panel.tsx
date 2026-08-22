@@ -48,7 +48,7 @@ export function SubnetEmissionSplitPanel({ netuid }: { netuid: number }) {
   const latest = history.points[0];
 
   return (
-    <Panel as="section" dense>
+    <Panel as="section">
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Share
           label="owner"
@@ -71,7 +71,7 @@ export function SubnetEmissionSplitPanel({ netuid }: { netuid: number }) {
           hint="How many registered miner UIDs recorded emission above zero. Against the miner count, this is how much of the population actually earns."
         />
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="mt-3 text-13 text-muted-foreground">
         Measured validator/miner split of observed per-UID emission:{" "}
         <strong>{percent(latest.validator_share_of_uid)}</strong> /{" "}
         <strong>{percent(latest.miner_share_of_uid)}</strong> — exact, and the only figures here
@@ -111,8 +111,8 @@ function Share({
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div title={hint}>
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="font-mono text-lg tabular-nums">{value}</div>
+      <div className="text-13 text-muted-foreground">{label}</div>
+      <div className="font-mono text-16 tabular-nums">{value}</div>
     </div>
   );
 }

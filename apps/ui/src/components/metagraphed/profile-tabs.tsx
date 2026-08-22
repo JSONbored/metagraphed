@@ -71,7 +71,7 @@ export function ProfileTabs({
     <nav
       ref={navRef}
       aria-label="Profile sections"
-      className="sticky z-[var(--mg-z-sticky)] -mx-4 md:mx-0 mb-8 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80"
+      className="sticky z-[var(--mg-z-sticky)] -mx-4 md:mx-0 mb-8 border-b border-border bg-paper"
       style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
     >
       {/*
@@ -108,21 +108,21 @@ export function ProfileTabs({
                     onKeyDown={onKeyDown(i)}
                     onClick={() => selectAt(i)}
                     className={classNames(
-                      "relative inline-flex items-center gap-1.5 px-1 py-3 mg-type-caption-lg font-medium whitespace-nowrap transition-colors mg-focus-ring",
+                      "relative inline-flex items-center gap-1.5 px-1 py-3 text-13 font-medium whitespace-nowrap transition-colors mg-focus-ring",
                       isActive
-                        ? "text-ink-strong after:absolute after:left-1 after:right-1 after:-bottom-[1.5px] after:h-[1.5px] after:rounded-full after:bg-accent after:content-['']"
+                        ? "text-ink-strong after:absolute after:left-1 after:right-1 after:-bottom-[1.5px] after:h-[1.5px] after:rounded after:bg-accent after:content-['']"
                         : "text-ink-muted hover:text-ink-strong",
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
                     <span>{t.label}</span>
                     {t.count != null ? (
-                      <span className="mg-type-data-sm text-ink-muted tabular-nums">{t.count}</span>
+                      <span className="text-10 text-ink-muted tabular-nums">{t.count}</span>
                     ) : null}
                     {isActive ? (
                       <span
                         aria-hidden
-                        className="ml-0.5 inline-block size-1 rounded-full bg-accent"
+                        className="ml-0.5 inline-block size-1 rounded-full mg-dot bg-accent"
                       />
                     ) : null}
                     {t.badge ? <span className="ml-0.5">{t.badge}</span> : null}

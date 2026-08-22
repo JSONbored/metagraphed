@@ -105,14 +105,12 @@ export function Donut({
           }}
         >
           {centerLabel ? (
-            <span className="font-display text-base font-semibold tabular-nums text-ink-strong leading-none">
+            <span className="font-display text-16 font-semibold tabular-nums text-ink-strong leading-none">
               {centerLabel}
             </span>
           ) : null}
           {centerSub ? (
-            <span className="mg-type-caption text-ink-muted mt-0.5">
-              {centerSub}
-            </span>
+            <span className="text-13 text-ink-muted mt-0.5">{centerSub}</span>
           ) : null}
         </div>
       ) : null}
@@ -126,7 +124,7 @@ export function DonutLegend({ segments }: { segments: DonutSegment[] }) {
       {segments.map((s) => (
         <li
           key={s.label}
-          className="flex items-center gap-2 mg-type-micro text-ink-muted"
+          className="flex items-center gap-2 text-10 text-ink-muted"
         >
           <span
             aria-hidden

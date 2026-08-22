@@ -141,19 +141,17 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
 
   return (
     <Panel as="div" flush className={classNames("overflow-hidden", className)}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 border-b border-border bg-paper/40">
-        <div className="mg-type-caption text-ink-muted">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 border-b border-border bg-paper">
+        <div className="text-13 text-ink-muted">
           Uptime by surface · {RANGE_LABEL[range]}
           {usingFallbackWindow ? <span className="text-ink-muted/60"> (7d window)</span> : null}
         </div>
-        {freshLine ? (
-          <span className="mg-type-data-sm text-ink-muted/70">· {freshLine}</span>
-        ) : null}
+        {freshLine ? <span className="text-10 text-ink-muted/70">· {freshLine}</span> : null}
         {/* Aggregate window stats. */}
-        <div className="ml-auto flex items-center gap-3 mg-type-data-sm text-ink-muted">
+        <div className="ml-auto flex items-center gap-3 text-10 text-ink-muted">
           <span className="inline-flex items-center gap-1">
             <span
-              className="inline-block size-2 rounded-full"
+              className="inline-block size-2 rounded-full mg-dot"
               style={{ background: uptimeTint(window?.uptime_ratio) }}
               aria-hidden
             />
@@ -179,17 +177,17 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
           return (
             <li key={s.surface_id} className="px-4 py-2">
               <div className="flex items-baseline justify-between gap-3">
-                <span className="truncate mg-type-data text-ink-strong" title={s.surface_id}>
+                <span className="truncate text-11 text-ink-strong" title={s.surface_id}>
                   {shortSurfaceId(s.surface_id)}
                 </span>
-                <span className="shrink-0 mg-type-data-sm tabular-nums" style={{ color: tint }}>
+                <span className="shrink-0 text-10 tabular-nums" style={{ color: tint }}>
                   {pct(ratio)}
                 </span>
               </div>
               {/* Uptime bar with a 95% SLA guide. */}
-              <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-paper">
+              <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded bg-paper">
                 <div
-                  className="h-full rounded-full transition-[width]"
+                  className="h-full rounded transition-[width]"
                   style={{ width: `${fillPct}%`, background: tint }}
                 />
                 <span
@@ -198,7 +196,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                   aria-hidden
                 />
               </div>
-              <div className="mt-1 flex items-center gap-3 mg-type-data-sm text-ink-muted tabular-nums">
+              <div className="mt-1 flex items-center gap-3 text-10 text-ink-muted tabular-nums">
                 {typeof s.samples === "number" ? (
                   <span>{formatNumber(s.samples)} samples</span>
                 ) : null}
@@ -214,9 +212,9 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
           Previously this overlay was dead code because the component always hit
           the empty state (it read a `points[]` series the API never returns). */}
       {hasIncidents ? (
-        <div className="border-t border-border bg-paper/30 px-4 py-2">
+        <div className="border-t border-border bg-paper px-4 py-2">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <span className="mg-type-caption text-ink-muted">Downtime windows</span>
+            <span className="text-13 text-ink-muted">Downtime windows</span>
             <div
               className="ml-auto flex flex-wrap items-center gap-1.5"
               role="group"
@@ -233,15 +231,15 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                     aria-pressed={active}
                     aria-label={`${f.label} incidents (${count}). Click to ${active ? "hide" : "show"}.`}
                     className={classNames(
-                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 mg-type-micro transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                      "inline-flex items-center gap-1 rounded border px-2 py-0.5 text-10 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       active
                         ? "border-border bg-card text-ink-strong"
-                        : "border-border/60 bg-paper/40 text-ink-muted/60 opacity-60",
+                        : "border-border/60 bg-paper text-ink-muted/60 opacity-60",
                     )}
                   >
                     <span
                       aria-hidden
-                      className="inline-block size-1.5 rounded-full"
+                      className="inline-block size-1.5 rounded-full mg-dot"
                       style={{ background: f.tint }}
                     />
                     {f.label}
@@ -270,22 +268,22 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                     <button
                       type="button"
                       aria-label={aria}
-                      className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-1.5 py-0.5 mg-type-data-sm text-ink-muted transition-colors hover:text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-1.5 py-0.5 text-10 text-ink-muted transition-colors hover:text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       <span
                         aria-hidden
-                        className="inline-block size-1.5 rounded-full"
+                        className="inline-block size-1.5 rounded-full mg-dot"
                         style={{ background: tint }}
                       />
                       <span className="tabular-nums">{dur}</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs mg-type-caption">
-                    <div className="mg-type-caption text-primary-foreground/80">
+                  <TooltipContent side="top" className="max-w-xs text-13">
+                    <div className="text-13 text-primary-foreground/80">
                       {sev} · {dur}
                     </div>
                     <div className="mt-1 break-all">{i.surface_id}</div>
-                    <div className="mt-1 mg-type-data-sm text-primary-foreground/70">
+                    <div className="mt-1 text-10 text-primary-foreground/70">
                       started <TimeAgo at={i.started_at} />
                       <br />
                       {i.ended_at ? (

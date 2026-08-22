@@ -64,14 +64,14 @@ export function LeaderboardsModule() {
   return (
     <section className="mt-section-gap">
       <div className="mb-8 max-w-2xl">
-        <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
+        <div className="text-13 text-ink-muted inline-flex items-center gap-2">
           <span className="mg-live-dot" />
           Discover
         </div>
-        <h2 className="mt-2 font-display text-2xl md:text-3xl font-semibold tracking-tight text-ink-strong">
+        <h2 className="mt-2 font-display text-28 md:text-28 font-semibold text-ink-strong">
           Top subnets, ranked live.
         </h2>
-        <p className="mt-2 text-sm text-ink-muted leading-relaxed">
+        <p className="mt-2 text-13 text-ink-muted leading-relaxed">
           Five leaderboards computed from live registry data — by uptime, RPC latency, interface
           completeness, surface coverage, and recent growth.
         </p>
@@ -95,18 +95,18 @@ function BoardCard({
   metric: (row: LeaderboardRow) => string | null;
 }) {
   return (
-    <Panel as="div" dense>
-      <div className="mb-3 mg-type-caption text-ink-muted">{label}</div>
+    <Panel as="div">
+      <div className="mb-3 text-13 text-ink-muted">{label}</div>
       <ol className="space-y-0.5">
         {rows.map((row, i) => (
           <li key={row.netuid}>
             <Link
               to="/subnets/$netuid"
               params={{ netuid: row.netuid }}
-              className="mg-row-hover flex items-center justify-between gap-2 rounded-md px-2 py-1.5"
+              className="mg-row-hover flex items-center justify-between gap-2 rounded px-2 py-1.5"
             >
               <span className="flex min-w-0 items-center gap-2">
-                <span className="w-4 shrink-0 text-right mg-type-data-sm text-ink-muted tabular-nums">
+                <span className="w-4 shrink-0 text-right text-10 text-ink-muted tabular-nums">
                   {i + 1}
                 </span>
                 <BrandIcon
@@ -116,11 +116,11 @@ function BoardCard({
                   netuid={row.netuid}
                   subnetSlug={row.slug}
                 />
-                <span className="truncate text-sm text-ink-strong">
+                <span className="truncate text-13 text-ink-strong">
                   {row.name ?? `Subnet ${row.netuid}`}
                 </span>
               </span>
-              <span className="shrink-0 font-mono mg-type-caption tabular-nums text-ink-muted">
+              <span className="shrink-0 font-mono text-13 tabular-nums text-ink-muted">
                 {metric(row) ?? "—"}
               </span>
             </Link>

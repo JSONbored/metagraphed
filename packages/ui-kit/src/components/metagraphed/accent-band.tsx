@@ -39,7 +39,7 @@ export function AccentBand({
     >
       {pattern ? (
         <div
-          className="mg-dot-grid absolute inset-0 opacity-40 pointer-events-none"
+          className="absolute inset-0 opacity-40 pointer-events-none"
           aria-hidden
         />
       ) : null}

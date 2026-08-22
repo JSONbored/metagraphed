@@ -87,10 +87,10 @@ export function PanelShell({
         {showFreshnessPill ? (
           <span
             className={
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 mg-type-data-sm " +
+              "inline-flex items-center gap-1 rounded border px-2 py-0.5 text-10" +
               (stale
                 ? "border-health-warn/40 bg-health-warn/10 text-health-warn"
-                : "border-border bg-paper/60 text-ink-muted")
+                : "border-border bg-paper text-ink-muted")
             }
             title={meta?.generatedAt}
           >
@@ -104,7 +104,7 @@ export function PanelShell({
             onClick={onRefresh}
             disabled={refreshing}
             aria-label="Refresh panel"
-            className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 mg-type-data-sm text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:cursor-progress disabled:opacity-60"
+            className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 text-10 text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:cursor-progress disabled:opacity-60"
           >
             <RefreshCw className={classNames("size-3", refreshing && "animate-spin")} />
           </button>
@@ -129,7 +129,7 @@ export function PanelShell({
         context={typeof title === "string" ? title : id}
       >
         {effectiveLoading ? (
-          <Panel as="div" dense aria-busy="true" aria-live="polite">
+          <Panel as="div" aria-busy="true" aria-live="polite">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="mt-3 h-8 w-full" />
             <Skeleton className="mt-2 h-8 w-3/4" />

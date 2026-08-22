@@ -55,43 +55,39 @@ export function PageHero({
       <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
         <div className="min-w-0 max-w-3xl">
           {eyebrow ? (
-            <div className="mg-fade-in mg-type-caption text-ink-muted inline-flex items-center gap-2">
+            <div className="text-13 text-ink-muted inline-flex items-center gap-2">
               {live ? <span className="mg-live-dot" /> : null}
               {eyebrow}
             </div>
           ) : null}
-          <h1 className="mg-fade-in mg-fade-in-delay-1 mt-4 font-display text-[2.5rem] sm:text-5xl md:text-6xl font-semibold leading-[1.02] tracking-[-0.025em] text-ink-strong">
+          <h1 className="mt-4 font-display text-40 sm:text-40 md:text-64 font-semibold leading-[1.02] text-ink-strong">
             {title}
           </h1>
           {description ? (
-            <p className="mg-fade-in mg-fade-in-delay-2 mt-4 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed">
+            <p className="mt-4 max-w-xl text-16 md:text-16 text-ink-muted leading-relaxed">
               {description}
             </p>
           ) : null}
           {actions ? (
-            <div className="mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-wrap items-center gap-2">
+            <div className="mt-6 flex flex-wrap items-center gap-2">
               {actions}
             </div>
           ) : null}
         </div>
-        {aside ? (
-          <div className="mg-fade-in mg-fade-in-delay-2 hidden md:block shrink-0">
-            {aside}
-          </div>
-        ) : null}
+        {aside ? <div className="hidden md:block shrink-0">{aside}</div> : null}
       </div>
 
       {kpis && kpis.length > 0 ? (
-        <div className="mg-fade-in mg-fade-in-delay-3 mg-kpi-strip mt-12 md:mt-16">
+        <div className="mg-kpi-strip mt-12 md:mt-16">
           {kpis.map((k) => (
             <div key={k.label}>
-              <div className="mg-type-caption text-ink-muted">{k.label}</div>
+              <div className="text-13 text-ink-muted">{k.label}</div>
               <div className="mt-1.5 flex items-baseline gap-2">
-                <span className="font-display text-2xl md:text-[1.75rem] font-semibold tabular-nums text-ink-strong leading-none tracking-[-0.01em]">
+                <span className="font-display text-28 md:text-28 font-semibold tabular-nums text-ink-strong leading-none">
                   {k.value}
                 </span>
                 {k.hint ? (
-                  <span className="mg-type-data text-ink-muted">{k.hint}</span>
+                  <span className="text-11 text-ink-muted">{k.hint}</span>
                 ) : null}
               </div>
               {k.chart ? <div className="mt-2.5 -ml-0.5">{k.chart}</div> : null}

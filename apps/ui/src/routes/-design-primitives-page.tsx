@@ -49,7 +49,6 @@ import {
   CopyableCode,
   CurationChip,
   DailyRollupFreshness,
-  DensityToggle,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -106,7 +105,6 @@ import {
   ResponsiveTable,
   ReviewChip,
   RoutePending,
-  ScrollReveal,
   ScrollShadow,
   SectionAnchor,
   SectionHeading,
@@ -156,7 +154,6 @@ const COLUMNS: ColumnDef[] = [
 const SAMPLE_UPDATED_AT = "2026-07-24T18:44:00.000Z";
 
 export function PrimitivesPreview() {
-  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
   const cols = useColumnVisibility("primitives-preview", COLUMNS);
   const updated = SAMPLE_UPDATED_AT;
 
@@ -179,13 +176,13 @@ export function PrimitivesPreview() {
 
       <TabNav />
 
-      <TokensSection density={density} setDensity={setDensity} cols={cols} updated={updated} />
+      <TokensSection cols={cols} updated={updated} />
       <LayoutSection updated={updated} />
       <DataDisplaySection />
-      <InteractionSection density={density} setDensity={setDensity} />
+      <InteractionSection />
       <FeedbackSection updated={updated} />
 
-      <p className="mt-10 mg-type-caption text-ink-muted">
+      <p className="mt-10 text-13 text-ink-muted">
         Applied on: /subnets grid cards · /endpoints card list · every route in the app
       </p>
     </div>
@@ -206,13 +203,13 @@ function TabNav() {
   return (
     <nav
       aria-label="Design primitives sections"
-      className="sticky top-0 z-[var(--mg-z-sticky)] -mx-4 mb-2 flex gap-1 overflow-x-auto border-b border-border bg-paper/92 px-4 py-2 backdrop-blur md:mx-0 md:px-0"
+      className="sticky top-0 z-[var(--mg-z-sticky)] -mx-4 mb-2 flex gap-1 overflow-x-auto border-b border-border bg-paper px-4 py-2 md:mx-0 md:px-0"
     >
       {NAV_SECTIONS.map((s) => (
         <a
           key={s.id}
           href={`#${s.id}`}
-          className="shrink-0 rounded px-2.5 py-1 mg-type-label uppercase text-ink-muted hover:bg-surface hover:text-ink-strong"
+          className="shrink-0 rounded px-2.5 py-1 text-11 text-ink-muted hover:bg-surface hover:text-ink-strong"
         >
           {s.label}
         </a>
@@ -235,7 +232,7 @@ function Show({
 }) {
   return (
     <div className="min-w-0 space-y-2 rounded border border-border bg-card p-3">
-      <div className="mg-type-caption text-ink-muted">{name}</div>
+      <div className="text-13 text-ink-muted">{name}</div>
       <div>{children}</div>
       <CopyableCode value={`import { ${name} } from "${from}";`} truncate={false} />
     </div>
@@ -245,7 +242,7 @@ function Show({
 function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
   return (
     <section id={id} className="mt-10 scroll-mt-24">
-      <h2 className="mb-3 font-display text-lg font-semibold text-ink-strong">{title}</h2>
+      <h2 className="mb-3 font-display text-16 font-semibold text-ink-strong">{title}</h2>
       {children}
     </section>
   );
@@ -254,7 +251,7 @@ function Section({ title, children, id }: { title: string; children: ReactNode; 
 function SwatchRow({ label, sample }: { label: string; sample: ReactNode }) {
   return (
     <div className="flex items-center gap-3 rounded border border-border bg-card px-3 py-2">
-      <span className="w-28 shrink-0 font-mono mg-type-data-sm text-ink-muted">{label}</span>
+      <span className="w-28 shrink-0 font-mono text-10 text-ink-muted">{label}</span>
       {sample}
     </div>
   );
@@ -275,23 +272,15 @@ const SPACE_TOKENS = [
 ] as const;
 
 const TYPE_TOKENS = [
-  ["mg-type-caption", "10px micro label"],
-  ["mg-type-label", "11px uppercase label"],
-  ["mg-type-caption", "12px caption"],
-  ["mg-type-caption-lg", "13px caption"],
-  ["mg-type-data-sm", "12px tabular data"],
-  ["mg-type-data", "13px tabular data"],
+  ["text-13", "10px micro label"],
+  ["text-11", "11px label"],
+  ["text-13", "12px caption"],
+  ["text-13", "13px caption"],
+  ["text-10", "12px tabular data"],
+  ["text-11", "13px tabular data"],
 ] as const;
 
-const SHADOW_TOKENS = [
-  "--mg-shadow-hairline",
-  "--mg-shadow-hairline-inset",
-  "--mg-shadow-pop",
-  "--mg-shadow-drawer",
-  "--mg-shadow-pill",
-  "--mg-shadow-pill-active",
-  "--mg-shadow-ring-accent",
-] as const;
+const SHADOW_TOKENS = ["--mg-shadow-tooltip"] as const;
 
 const Z_TOKENS = [
   ["--mg-z-sticky", "10"],
@@ -304,21 +293,17 @@ const Z_TOKENS = [
 ] as const;
 
 const RADIUS_TOKENS = [
-  ["rounded-full", "pills, badges, avatars"],
+  ["rounded", "pills, badges, avatars"],
   ["rounded", "inputs, buttons, chips"],
-  ["rounded-md", "cards, popovers"],
-  ["rounded-xl", "drawers, modals, sheets"],
-  ["rounded-2xl", "hero tiles, mg-card-glow panels"],
+  ["rounded", "cards, popovers"],
+  ["rounded", "drawers, modals, sheets"],
+  ["rounded", "hero tiles, panels"],
 ] as const;
 
 function TokensSection({
-  density,
-  setDensity,
   cols,
   updated,
 }: {
-  density: "comfortable" | "compact";
-  setDensity: (d: "comfortable" | "compact") => void;
   cols: ReturnType<typeof useColumnVisibility>;
   updated: string;
 }) {
@@ -333,7 +318,7 @@ function TokensSection({
                 label={name}
                 sample={
                   <span
-                    className="block h-3 rounded-sm bg-accent/70"
+                    className="block h-3 rounded bg-accent/70"
                     style={{ width: `var(${name})` }}
                     title={px}
                   />
@@ -354,7 +339,7 @@ function TokensSection({
             {SHADOW_TOKENS.map((name) => (
               <div
                 key={name}
-                className="flex h-16 items-center justify-center rounded bg-card mg-type-caption text-ink-muted"
+                className="flex h-16 items-center justify-center rounded bg-card text-13 text-ink-muted"
                 style={{ boxShadow: `var(${name})` }}
               >
                 {name.replace("--mg-shadow-", "")}
@@ -378,20 +363,16 @@ function TokensSection({
             {RADIUS_TOKENS.map(([cls]) => (
               <div key={cls} className="flex flex-col items-center gap-1.5 p-2">
                 <span className={`size-10 border border-accent/60 bg-accent/10 ${cls}`} />
-                <span className="mg-type-caption text-ink-muted text-center">{cls}</span>
+                <span className="text-13 text-ink-muted text-center">{cls}</span>
               </div>
             ))}
           </div>
         </Panel>
-        <Panel title="Glass surfaces" caption=".mg-glass / .mg-glass-soft / .mg-glass-opaque">
+        <Panel title="Glass surfaces" caption="./ ./ .">
           <div className="space-y-2">
-            <div className="mg-glass rounded-md p-3 mg-type-caption text-ink">.mg-glass</div>
-            <div className="mg-glass-soft rounded-md p-3 mg-type-caption text-ink">
-              .mg-glass-soft
-            </div>
-            <div className="mg-glass-opaque rounded-md p-3 mg-type-caption text-ink">
-              .mg-glass-opaque
-            </div>
+            <div className="rounded p-3 text-13 text-ink">.</div>
+            <div className="rounded p-3 text-13 text-ink">. </div>
+            <div className="rounded p-3 text-13 text-ink">. </div>
           </div>
         </Panel>
       </div>
@@ -436,7 +417,6 @@ function TokensSection({
             trailing={
               <>
                 <FreshnessPill updatedAt={updated} windowLabel="24h" />
-                <DensityToggle value={density} onChange={setDensity} />
                 <ColumnCustomizer
                   columns={COLUMNS}
                   isVisible={cols.isVisible}
@@ -510,14 +490,12 @@ function LayoutSection({ updated }: { updated: string }) {
             title="PageSection sample"
             description="Canonical section header — hairline, eyebrow, oversized H2, optional description/actions/toolbar."
           >
-            <p className="mg-type-caption text-ink-muted">Section body content goes here.</p>
+            <p className="text-13 text-ink-muted">Section body content goes here.</p>
           </PageSection>
         </Show>
         <Show name="AccentBand">
           <AccentBand pattern>
-            <p className="mg-type-caption text-ink">
-              Mint-accent band, optional dot pattern overlay.
-            </p>
+            <p className="text-13 text-ink">Mint-accent band, optional dot pattern overlay.</p>
           </AccentBand>
         </Show>
         <Show name="SectionAnchor">
@@ -528,7 +506,7 @@ function LayoutSection({ updated }: { updated: string }) {
             info="Explains what this section shows."
             tone="accent"
           >
-            <p className="mg-type-caption text-ink-muted">
+            <p className="text-13 text-ink-muted">
               Section content, deep-linkable via #ds-section-anchor.
             </p>
           </SectionAnchor>
@@ -539,13 +517,6 @@ function LayoutSection({ updated }: { updated: string }) {
             intro="Lighter-weight heading than PageSection — no hairline, no toolbar row."
             right={<FreshnessPill updatedAt={updated} />}
           />
-        </Show>
-        <Show name="ScrollReveal">
-          <ScrollReveal>
-            <p className="mg-type-caption text-ink-muted">
-              Fades/slides in on scroll-into-view (honors prefers-reduced-motion).
-            </p>
-          </ScrollReveal>
         </Show>
       </div>
     </Section>
@@ -723,18 +694,18 @@ function DataDisplaySection() {
             aria-label="Healthy status summary"
           >
             <StatusBadge status="ok" live />
-            <p className="mt-2 mg-type-caption text-ink-muted">
+            <p className="mt-2 text-13 text-ink-muted">
               tone="ok" — tinted border + background. id/aria-label above land on the outer element
               via rest-prop forwarding.
             </p>
           </Panel>
           <Panel title="Border-only tint" tone="warn" tintBorderOnly>
-            <p className="mg-type-caption text-ink-muted">
+            <p className="text-13 text-ink-muted">
               tintBorderOnly keeps the warn border but skips the tinted fill — bg-card instead.
             </p>
           </Panel>
-          <Panel title="Glow" glow>
-            <p className="mg-type-caption text-ink-muted">
+          <Panel title="Glow">
+            <p className="text-13 text-ink-muted">
               glow appends the existing --mg-card-glow soft-elevation shadow (accent tone picks
               --mg-card-glow-accent automatically).
             </p>
@@ -757,13 +728,7 @@ function DataDisplaySection() {
 
 /* ---------- Interaction ---------- */
 
-function InteractionSection({
-  density,
-  setDensity,
-}: {
-  density: "comfortable" | "compact";
-  setDensity: (d: "comfortable" | "compact") => void;
-}) {
+function InteractionSection() {
   const [viewMode, setViewMode] = useState<"table" | "grid" | "matrix">("table");
   const [tab, setTab] = useState<"overview" | "activity">("overview");
   const [seg, setSeg] = useState<"7d" | "30d">("7d");
@@ -875,7 +840,7 @@ function InteractionSection({
         <Show name="FilterSheet">
           <FilterSheet label="Filters" activeCount={2}>
             <label className="grid gap-1">
-              <span className="mg-label">Sample field</span>
+              <span className="text-10 text-ink-muted">Sample field</span>
               <FilterInput placeholder="…" />
             </label>
           </FilterSheet>
@@ -893,12 +858,12 @@ function InteractionSection({
         </Show>
         <Show name="ScrollShadow, ResponsiveTable">
           <ResponsiveTable minWidth={480}>
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-13">
               <thead>
                 <tr>
-                  <th className="px-3 py-1.5 mg-type-micro text-ink-muted">Netuid</th>
-                  <th className="px-3 py-1.5 mg-type-micro text-ink-muted">Name</th>
-                  <th className="px-3 py-1.5 mg-type-micro text-ink-muted">Health</th>
+                  <th className="px-3 py-1.5 text-ink-muted">Netuid</th>
+                  <th className="px-3 py-1.5 text-ink-muted">Name</th>
+                  <th className="px-3 py-1.5 text-ink-muted">Health</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -920,7 +885,7 @@ function InteractionSection({
               {Array.from({ length: 24 }, (_, i) => (
                 <span
                   key={i}
-                  className="whitespace-nowrap rounded border border-border bg-surface px-2 py-1 mg-type-caption text-ink-muted"
+                  className="whitespace-nowrap rounded border border-border bg-surface px-2 py-1 text-13 text-ink-muted"
                 >
                   scrollable item {i + 1}
                 </span>
@@ -932,11 +897,11 @@ function InteractionSection({
           <ListShell
             filters={<FilterInput placeholder="Filter…" />}
             table={
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-left text-13">
                 <thead>
                   <tr>
-                    <th className="px-3 py-1.5 mg-type-micro text-ink-muted">Netuid</th>
-                    <th className="px-3 py-1.5 mg-type-micro text-ink-muted">Health</th>
+                    <th className="px-3 py-1.5 text-ink-muted">Netuid</th>
+                    <th className="px-3 py-1.5 text-ink-muted">Health</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -960,12 +925,12 @@ function InteractionSection({
         </Show>
         <Show name="Kbd, InfoTooltip, HoverPreview">
           <div className="flex flex-wrap items-center gap-4">
-            <span className="mg-type-caption text-ink-muted">
+            <span className="text-13 text-ink-muted">
               Press <Kbd>⌘</Kbd> <Kbd>K</Kbd>
             </span>
             <InfoTooltip label="Explains what this metric means." />
             <HoverPreview
-              content={<span className="mg-type-caption">Preview content on hover/focus.</span>}
+              content={<span className="text-13">Preview content on hover/focus.</span>}
             >
               <span tabIndex={0} className="cursor-default underline decoration-dotted">
                 Hover me
@@ -988,7 +953,7 @@ function InteractionSection({
             <PopoverTrigger asChild>
               <GhostButton size="sm">Open popover</GhostButton>
             </PopoverTrigger>
-            <PopoverContent className="w-56 p-3 mg-type-caption">Popover content.</PopoverContent>
+            <PopoverContent className="w-56 p-3 text-13">Popover content.</PopoverContent>
           </Popover>
         </Show>
         <Show name="HoverCard">
@@ -996,9 +961,7 @@ function InteractionSection({
             <HoverCardTrigger asChild>
               <GhostButton size="sm">Hover card</GhostButton>
             </HoverCardTrigger>
-            <HoverCardContent className="w-56 mg-type-caption">
-              Hover card content.
-            </HoverCardContent>
+            <HoverCardContent className="w-56 text-13">Hover card content.</HoverCardContent>
           </HoverCard>
         </Show>
         <Show name="Dialog">
@@ -1034,7 +997,7 @@ function InteractionSection({
           </Sheet>
         </Show>
         <Show name="Command">
-          <Command className="rounded-md border border-border">
+          <Command className="rounded border border-border">
             <CommandInput placeholder="Type a command…" />
             <CommandList>
               <CommandEmpty>No results.</CommandEmpty>
@@ -1091,9 +1054,6 @@ function InteractionSection({
                 { label: "Updated", value: "2m ago" },
               ]}
             />
-          </Panel>
-          <Panel title="Density toggle">
-            <DensityToggle value={density} onChange={setDensity} />
           </Panel>
           <Panel title="PrimaryLinksRail">
             <PrimaryLinksRail
@@ -1152,10 +1112,10 @@ function FeedbackSection({ updated }: { updated: string }) {
           </div>
         </Show>
         <Show name="AnimatedNumber">
-          <AnimatedNumber value={12_456} className="font-mono text-lg text-ink-strong" />
+          <AnimatedNumber value={12_456} className="font-mono text-16 text-ink-strong" />
         </Show>
         <Show name="BackToTop">
-          <p className="mg-type-caption text-ink-muted">
+          <p className="text-13 text-ink-muted">
             Renders a scroll-triggered "back to top" button — not shown inline since it needs page
             scroll to appear; used in every long-form detail page.
           </p>
@@ -1200,9 +1160,7 @@ function FeedbackSection({ updated }: { updated: string }) {
         </Show>
         <Show name="MobileCollapse">
           <MobileCollapse label="Sample section" hint="tap to expand">
-            <p className="mg-type-caption text-ink-muted">
-              Collapsed content, mobile-only trigger.
-            </p>
+            <p className="text-13 text-ink-muted">Collapsed content, mobile-only trigger.</p>
           </MobileCollapse>
         </Show>
         <Show name="BrandIcon">

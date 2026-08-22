@@ -19,7 +19,7 @@ const SUBSCRIPTION_TOKEN_HEADER = "x-metagraph-webhook-subscription-token";
 const SUBSCRIPTION_SECRET_HEADER = "x-metagraph-webhook-secret";
 
 const inputCls =
-  "w-full rounded border border-border bg-card px-2.5 py-1.5 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
+  "w-full rounded border border-border bg-card px-2.5 py-1.5 text-13 text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
 
 /** Comma-separated netuids -> integers, or an error describing the offending token. Empty input is valid (no filter). */
 export function parseNetuidsInput(
@@ -202,17 +202,12 @@ function CreateSubscriptionSection() {
             }}
             className={inputCls}
           />
-          {netuidsError ? (
-            <p className="mt-1 mg-type-caption text-health-down">{netuidsError}</p>
-          ) : null}
+          {netuidsError ? <p className="mt-1 text-13 text-health-down">{netuidsError}</p> : null}
         </Field>
         <Field label="Kinds filter" hint="Optional — leave unchecked to receive all change kinds.">
           <div className="flex gap-4">
             {CHANGE_KINDS.map((kind) => (
-              <label
-                key={kind}
-                className="inline-flex items-center gap-1.5 mg-type-caption text-ink"
-              >
+              <label key={kind} className="inline-flex items-center gap-1.5 text-13 text-ink">
                 <input
                   type="checkbox"
                   checked={kinds.has(kind)}
@@ -234,14 +229,12 @@ function CreateSubscriptionSection() {
             }}
             className={inputCls}
           />
-          {secretError ? (
-            <p className="mt-1 mg-type-caption text-health-down">{secretError}</p>
-          ) : null}
+          {secretError ? <p className="mt-1 text-13 text-health-down">{secretError}</p> : null}
         </Field>
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
         >
           {mutation.isPending ? "Creating…" : "Create subscription"}
         </button>
@@ -253,7 +246,7 @@ function CreateSubscriptionSection() {
 
       {result ? (
         <div className="mt-3 space-y-3 rounded border border-accent/40 bg-primary-soft/40 p-4">
-          <p className="mg-type-caption font-medium text-health-warn">
+          <p className="text-13 font-medium text-health-warn">
             The secret below is shown once and is never echoed back by GET — store it now.
           </p>
           <CopyableCode label="id" value={result.id} truncate={false} className="w-full" />
@@ -266,7 +259,7 @@ function CreateSubscriptionSection() {
             truncate={false}
             className="w-full ph-no-capture"
           />
-          <div className="space-y-1 mg-type-caption text-ink-muted">
+          <div className="space-y-1 text-13 text-ink-muted">
             <p>
               Deliveries are signed {result.delivery.signature_algorithm} over the raw request body,
               keyed by the secret above.
@@ -329,7 +322,7 @@ function LookupSubscriptionSection() {
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-13 font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:opacity-50"
         >
           {mutation.isPending ? "Looking up…" : "Look up"}
         </button>
@@ -347,19 +340,16 @@ function LookupSubscriptionSection() {
       ) : null}
 
       {result ? (
-        <Panel as="div" dense className="mt-3" bodyClassName="space-y-3">
+        <Panel as="div" className="mt-3" bodyClassName="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <DeliveryStatusPill status={result.delivery.status} />
             <span
-              className={classNames(
-                "mg-type-data",
-                result.active ? "text-health-ok" : "text-ink-muted",
-              )}
+              className={classNames("text-11", result.active ? "text-health-ok" : "text-ink-muted")}
             >
               {result.active ? "active" : "inactive"}
             </span>
           </div>
-          <dl className="grid gap-2 mg-type-caption">
+          <dl className="grid gap-2 text-13">
             <Row label="URL" value={result.url} />
             <Row label="Created" value={result.created_at ?? "—"} />
             <Row
@@ -374,7 +364,7 @@ function LookupSubscriptionSection() {
             <Row label="Dead-lettered" value={String(result.delivery.dead_letter)} />
           </dl>
           {result.delivery.last_failure ? (
-            <div className="rounded border border-health-warn/30 bg-health-warn/5 p-2 mg-type-caption text-ink-muted">
+            <div className="rounded border border-health-warn/30 bg-health-warn/5 p-2 text-13 text-ink-muted">
               Last failure: {result.delivery.last_failure.reason ?? "unknown"}
               {result.delivery.last_failure.status_code
                 ? ` (HTTP ${result.delivery.last_failure.status_code})`
@@ -448,7 +438,7 @@ function DeleteSubscriptionSection() {
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="inline-flex items-center gap-1.5 rounded border border-health-down/40 bg-health-down/5 px-3 py-1.5 mg-type-caption font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded border border-health-down/40 bg-health-down/5 px-3 py-1.5 text-13 font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
         >
           {mutation.isPending ? "Deleting…" : "Delete subscription"}
         </button>
@@ -461,7 +451,7 @@ function DeleteSubscriptionSection() {
       {mutation.data?.deleted ? (
         <div
           role="status"
-          className="mt-3 rounded border border-health-ok/30 bg-health-ok/5 p-3 mg-type-caption text-health-ok"
+          className="mt-3 rounded border border-health-ok/30 bg-health-ok/5 p-3 text-13 text-health-ok"
         >
           Subscription {mutation.data.id} deleted.
         </div>
@@ -486,7 +476,7 @@ function DeliveryStatusPill({ status }: { status: WebhookDeliveryStatus["status"
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-2 py-0.5 mg-type-caption",
+        "inline-flex items-center rounded border px-2 py-0.5 text-13",
         DELIVERY_TONE[status],
       )}
     >
@@ -499,7 +489,7 @@ function ErrorPanel({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="mt-3 rounded border border-health-down/30 bg-health-down/5 p-3 mg-type-caption text-health-down"
+      className="mt-3 rounded border border-health-down/30 bg-health-down/5 p-3 text-13 text-health-down"
     >
       {message}
     </div>
@@ -521,12 +511,12 @@ function Field({
 }) {
   return (
     <label className={classNames("block", className)}>
-      <span className="mb-1 block mg-type-caption text-ink-muted">
+      <span className="mb-1 block text-13 text-ink-muted">
         {label}
         {required ? <span className="text-health-down"> *</span> : null}
       </span>
       {children}
-      {hint ? <span className="mt-1 block mg-type-caption text-ink-muted">{hint}</span> : null}
+      {hint ? <span className="mt-1 block text-13 text-ink-muted">{hint}</span> : null}
     </label>
   );
 }
@@ -534,7 +524,7 @@ function Field({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[auto_1fr] gap-3">
-      <dt className="whitespace-nowrap mg-type-caption text-ink-muted">{label}</dt>
+      <dt className="whitespace-nowrap text-13 text-ink-muted">{label}</dt>
       <dd className="min-w-0 truncate text-ink">{value}</dd>
     </div>
   );

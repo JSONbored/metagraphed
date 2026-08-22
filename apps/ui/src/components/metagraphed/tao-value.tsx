@@ -35,7 +35,7 @@ export function TaoValue({
   const { unit } = useValueUnit();
 
   if (amount == null || Number.isNaN(amount)) {
-    return <span className="mg-type-data text-ink-muted">—</span>;
+    return <span className="text-11 text-ink-muted">—</span>;
   }
 
   const displayAmount = Math.abs(amount) >= 1 ? Number(amount.toFixed(precision)) : amount;
@@ -48,12 +48,10 @@ export function TaoValue({
 
   const taoClass =
     size === "md"
-      ? "font-display text-base sm:text-xl md:text-2xl font-semibold tabular-nums leading-none text-ink-strong"
-      : "mg-type-data tabular-nums text-ink-strong";
+      ? "font-display text-16 sm:text-28 md:text-28 font-semibold tabular-nums leading-none text-ink-strong"
+      : "text-11 tabular-nums text-ink-strong";
   const usdClass =
-    size === "md"
-      ? "mg-type-data-sm tabular-nums text-ink-muted"
-      : "mg-type-data-sm tabular-nums text-ink-muted";
+    size === "md" ? "text-10 tabular-nums text-ink-muted" : "text-10 tabular-nums text-ink-muted";
 
   const taoNode = showTao ? <span className={taoClass}>{tao}</span> : null;
   const usdNode = showUsd ? (

@@ -68,21 +68,19 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
         <SheetTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors mg-focus-ring"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors mg-focus-ring"
           >
             <GitCompare className="size-3 text-ink-muted" />
             Compare
             {peer != null ? (
-              <span className="mg-type-data-sm text-ink-muted">
-                · SN{String(peer).padStart(3, "0")}
-              </span>
+              <span className="text-10 text-ink-muted">· SN{String(peer).padStart(3, "0")}</span>
             ) : null}
           </button>
         </SheetTrigger>
 
         <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
           <SheetHeader>
-            <SheetTitle className="font-display text-lg">Compare with another subnet</SheetTitle>
+            <SheetTitle className="font-display text-16">Compare with another subnet</SheetTitle>
             <SheetDescription>
               Pick any active netuid (0–1024). The choice is saved to the URL so the comparison is
               shareable.
@@ -106,11 +104,11 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
               placeholder="e.g. 1"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              className="w-32 rounded border border-border bg-card px-2 py-1.5 font-mono text-sm tabular-nums text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="w-32 rounded border border-border bg-card px-2 py-1.5 font-mono text-13 tabular-nums text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
             <button
               type="submit"
-              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 mg-type-caption font-medium text-ink-strong hover:border-accent/50 hover:text-accent"
+              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 text-13 font-medium text-ink-strong hover:border-accent/50 hover:text-accent"
             >
               Compare <ArrowRight className="size-3" />
             </button>
@@ -121,7 +119,7 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
                   setPeer(null);
                   setDraft("");
                 }}
-                className="ml-auto inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-ink-strong"
+                className="ml-auto inline-flex items-center gap-1 text-13 text-ink-muted hover:text-ink-strong"
               >
                 <X className="size-3" /> clear
               </button>
@@ -130,7 +128,7 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
 
           <div className="mt-4">
             {peer == null ? (
-              <p className="rounded border border-dashed border-border bg-paper/40 px-3 py-6 text-center mg-type-caption text-ink-muted">
+              <p className="rounded border border-dashed border-border bg-paper px-3 py-6 text-center text-13 text-ink-muted">
                 Enter a netuid above to load a side-by-side comparison.
               </p>
             ) : (
@@ -146,7 +144,7 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
           onClick={() => setPeer(null)}
           title="Clear comparison"
           aria-label={`Clear comparison with SN${String(peer).padStart(3, "0")}`}
-          className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-primary-soft px-2 py-1 mg-type-micro text-accent hover:border-accent/60 mg-focus-ring"
+          className="inline-flex items-center gap-1 rounded border border-accent/40 bg-primary-soft px-2 py-1 text-10 text-accent hover:border-accent/60 mg-focus-ring"
         >
           <X className="size-3" /> clear
         </button>
@@ -203,7 +201,7 @@ function CompareBody({ base, peer }: { base: number; peer: number }) {
       </header>
 
       {loading ? (
-        <div className="rounded border border-dashed border-border bg-paper/40 px-3 py-6 text-center mg-type-caption text-ink-muted">
+        <div className="rounded border border-dashed border-border bg-paper px-3 py-6 text-center text-13 text-ink-muted">
           Loading…
         </div>
       ) : null}
@@ -246,9 +244,7 @@ function CompareBody({ base, peer }: { base: number; peer: number }) {
       />
 
       <Panel flush className="overflow-hidden">
-        <div className="border-b border-border px-3 py-2 mg-type-caption text-ink-muted">
-          Top providers
-        </div>
+        <div className="border-b border-border px-3 py-2 text-13 text-ink-muted">Top providers</div>
         <div className="grid grid-cols-2 divide-x divide-border">
           <ProviderColumn rows={baseProviders} other={peerProviders} />
           <ProviderColumn rows={peerProviders} other={baseProviders} />
@@ -262,13 +258,11 @@ function Header({ label, name, netuid }: { label: string; name?: string; netuid:
   return (
     <Panel as="div" flush>
       <div className="px-2.5 py-2">
-        <div className="mg-type-caption text-ink-muted">{label}</div>
-        <div className="mt-0.5 truncate font-display text-sm font-semibold text-ink-strong">
+        <div className="text-13 text-ink-muted">{label}</div>
+        <div className="mt-0.5 truncate font-display text-13 font-semibold text-ink-strong">
           {name ?? `Subnet ${netuid}`}
         </div>
-        <div className="mg-type-data-sm text-ink-muted">
-          netuid {String(netuid).padStart(3, "0")}
-        </div>
+        <div className="text-10 text-ink-muted">netuid {String(netuid).padStart(3, "0")}</div>
       </div>
     </Panel>
   );
@@ -295,13 +289,13 @@ function DiffRow({
       tone={highlight ? "accent" : "default"}
       bodyClassName="px-3 py-2.5"
     >
-      <div className="mg-type-caption text-ink-muted">{title}</div>
+      <div className="text-13 text-ink-muted">{title}</div>
       <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
-        <span className="font-display text-sm font-semibold tabular-nums text-ink-strong">
+        <span className="font-display text-13 font-semibold tabular-nums text-ink-strong">
           {baseValue}
         </span>
-        <span className="mg-type-data-sm text-ink-muted">{delta ?? "vs"}</span>
-        <span className="text-right font-display text-sm font-semibold tabular-nums text-ink-strong">
+        <span className="text-10 text-ink-muted">{delta ?? "vs"}</span>
+        <span className="text-right font-display text-13 font-semibold tabular-nums text-ink-strong">
           {peerValue}
         </span>
       </div>
@@ -318,7 +312,7 @@ function ProviderColumn({
 }) {
   const otherSet = new Set(other.map((r) => r.slug));
   if (rows.length === 0)
-    return <div className="px-3 py-3 mg-type-data-sm text-ink-muted">no providers</div>;
+    return <div className="px-3 py-3 text-10 text-ink-muted">no providers</div>;
   return (
     <ul className="divide-y divide-border">
       {rows.slice(0, 5).map((r) => {
@@ -327,15 +321,15 @@ function ProviderColumn({
           <li
             key={r.slug}
             className={classNames(
-              "flex items-center justify-between gap-2 px-3 py-1.5 mg-type-caption",
+              "flex items-center justify-between gap-2 px-3 py-1.5 text-13",
               unique && "bg-accent/5",
             )}
           >
             <span className="truncate text-ink-strong">{r.name}</span>
-            <span className="mg-type-data-sm tabular-nums text-ink-muted">
+            <span className="text-10 tabular-nums text-ink-muted">
               {r.count}
               {unique ? (
-                <span className="ml-1 rounded border border-accent/40 px-1 mg-type-caption text-accent">
+                <span className="ml-1 rounded border border-accent/40 px-1 text-13 text-accent">
                   only
                 </span>
               ) : null}

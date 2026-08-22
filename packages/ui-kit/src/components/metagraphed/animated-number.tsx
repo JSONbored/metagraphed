@@ -42,7 +42,7 @@ export function AnimatedNumber({
   const safe =
     typeof value === "number" && Number.isFinite(value) ? value : null;
   const [display, setDisplay] = useState<number | null>(safe);
-  const [flash, setFlash] = useState<"" | "mg-flash-up" | "mg-flash-down">("");
+  const [flash, setFlash] = useState<"" | "" | "">("");
   const fromRef = useRef<number | null>(safe);
   const rafRef = useRef<number | null>(null);
 
@@ -59,7 +59,7 @@ export function AnimatedNumber({
       return;
     }
     if (flashOnChange) {
-      setFlash(safe > from ? "mg-flash-up" : "mg-flash-down");
+      setFlash(safe > from ? "" : "");
       window.setTimeout(() => setFlash(""), 720);
     }
     const start = performance.now();

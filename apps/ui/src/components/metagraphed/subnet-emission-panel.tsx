@@ -68,12 +68,10 @@ export function SubnetEmissionPanelView({
           /subnets/{netuid} already titles this module, and repeating it here
           rendered "Emission pipeline" twice. Only the provenance line, which
           the section subtitle does not carry, belongs at the top. */}
-      <p className="mg-type-caption text-ink-muted">
-        Point sample at {blockLabel} — not a window average.
-      </p>
+      <p className="text-13 text-ink-muted">Point sample at {blockLabel} — not a window average.</p>
 
       {state === "ineligible" ? (
-        <p className="mt-3 text-sm text-ink">
+        <p className="mt-3 text-13 text-ink">
           This subnet is outside the emission pipeline
           {subnet.ineligible_reason
             ? ` (${ineligibleReasonLabel(subnet.ineligible_reason).toLowerCase()})`
@@ -84,11 +82,10 @@ export function SubnetEmissionPanelView({
       ) : null}
 
       {state === "disabled" ? (
-        <p className="mt-3 text-sm text-ink">
+        <p className="mt-3 text-13 text-ink">
           Emission is <strong>disabled</strong> for this subnet on chain (
-          <code className="mg-type-data">SubnetEmissionEnabled</code> is false). It receives no TAO
-          by configuration — which is a different fact from competing for a share and receiving
-          little.
+          <code className="text-11">SubnetEmissionEnabled</code> is false). It receives no TAO by
+          configuration — which is a different fact from competing for a share and receiving little.
         </p>
       ) : null}
 
@@ -134,7 +131,7 @@ export function SubnetEmissionPanelView({
       />
 
       <div className="mt-4">
-        <h3 className="mg-type-label text-ink-muted">Where the TAO arrives</h3>
+        <h3 className="text-11 text-ink-muted">Where the TAO arrives</h3>
         <DefinitionList
           className="mt-2"
           items={[
@@ -154,14 +151,14 @@ export function SubnetEmissionPanelView({
             channel with a positive excess is a subnet RECEIVING TAO, and must
             never read as receiving nothing. */}
         {mix === "chain-buys-only" ? (
-          <p className="mt-2 mg-type-caption text-ink-muted">
+          <p className="mt-2 text-13 text-ink-muted">
             No pool liquidity injection at this block — the TAO above is still being received, as
             chain buys.
           </p>
         ) : null}
       </div>
 
-      <p className="mt-4 mg-type-caption text-ink-muted">
+      <p className="mt-4 text-13 text-ink-muted">
         Every share here is reconstructed from chain storage rather than read directly; the chain
         publishes the pipeline&apos;s inputs, not its output.{" "}
         <Link to="/chain/emissions" className="text-accent hover:underline mg-focus-ring">

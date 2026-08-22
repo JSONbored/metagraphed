@@ -60,12 +60,12 @@ function Stat({ field, trailing }: { field: Field; trailing?: React.ReactNode })
         <TooltipTrigger asChild>
           <div
             tabIndex={0}
-            className="mg-type-caption text-ink-muted truncate cursor-help focus:outline-none"
+            className="text-13 text-ink-muted truncate cursor-help focus:outline-none"
           >
             {field.label}
           </div>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs mg-type-caption leading-relaxed">
+        <TooltipContent side="top" className="max-w-xs text-13 leading-relaxed">
           {field.hint}
         </TooltipContent>
       </Tooltip>
@@ -73,22 +73,21 @@ function Stat({ field, trailing }: { field: Field; trailing?: React.ReactNode })
         <Tooltip delayDuration={200}>
           <TooltipTrigger asChild>
             <span
-              className="min-w-0 truncate font-display font-semibold tabular-nums text-ink-strong"
-              style={{ fontSize: "var(--mg-type-body)" }}
+              className="min-w-0 truncate font-display font-semibold tabular-nums text-13 text-ink-strong"
               tabIndex={hasValue ? 0 : -1}
             >
               {short}
             </span>
           </TooltipTrigger>
           {hasValue ? (
-            <TooltipContent side="top" className="mg-type-data">
+            <TooltipContent side="top" className="text-11">
               {full}
               {field.unit ? ` ${field.unit}` : ""}
             </TooltipContent>
           ) : null}
         </Tooltip>
         {field.unit && hasValue ? (
-          <span className="shrink-0 mg-type-caption text-ink-muted">{field.unit}</span>
+          <span className="shrink-0 text-13 text-ink-muted">{field.unit}</span>
         ) : null}
         {trailing}
       </div>
@@ -226,16 +225,16 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
         {/* Lineage callout — the canonical #lineage anchor lives in the route's
             SubnetLineageSection; this is an inline summary, so it carries no id. */}
         {hydrated && lineagePeer ? (
-          <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-border bg-surface/20">
+          <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-border bg-surface">
             <GitMerge className="size-3.5 text-accent" />
-            <span className="mg-type-caption text-ink">
+            <span className="text-13 text-ink">
               Paired with its {lineagePeer.label.toLowerCase()} counterpart
             </span>
             <ArrowRight className="size-3 text-ink-muted" />
             <Link
               to="/subnets/$netuid"
               params={{ netuid: lineagePeer.netuid }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-2.5 py-0.5 mg-type-caption font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2.5 py-0.5 text-13 font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors"
             >
               <span className="font-mono tabular-nums text-ink-muted">
                 {String(lineagePeer.netuid).padStart(3, "0")}
@@ -262,11 +261,11 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                     centerSub="in"
                   />
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 mg-type-caption text-ink-muted">
+                    <div className="flex items-center gap-1.5 text-13 text-ink-muted">
                       Pool composition
                       <InfoTooltip label="Alpha In ÷ (Alpha In + Alpha Out) from the latest on-chain AMM reserves snapshot, taken from /api/v1/economics. Tile shows a `stale` chip when the snapshot is older than the refresh budget; numbers still render from the last known values." />
                     </div>
-                    <div className="mt-1 space-y-1 mg-type-data-sm text-ink-muted">
+                    <div className="mt-1 space-y-1 text-10 text-ink-muted">
                       <div className="flex items-center gap-1.5">
                         <span
                           aria-hidden
@@ -293,7 +292,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                   </div>
                 </>
               ) : (
-                <div className="mg-type-data-sm text-ink-muted">No pool data</div>
+                <div className="text-10 text-ink-muted">No pool data</div>
               )}
             </div>
             <div className="flex items-center gap-4 p-4">
@@ -307,7 +306,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                     centerSub="endpoints"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 mg-type-caption text-ink-muted">
+                    <div className="flex items-center gap-1.5 text-13 text-ink-muted">
                       Endpoint topology
                       <InfoTooltip label="Distribution of tracked public endpoints by kind. Only verified surfaces from /api/v1/subnets/{netuid}/endpoints are counted — candidate (unverified) leads are excluded. `unknown` slots indicate the last probe could not classify the endpoint; if the snapshot is stale, values still render from the last known probe." />
                     </div>
@@ -315,19 +314,19 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                   </div>
                 </>
               ) : (
-                <div className="mg-type-data-sm text-ink-muted">No endpoints tracked</div>
+                <div className="text-10 text-ink-muted">No endpoints tracked</div>
               )}
             </div>
             <div className="p-4">
-              <div className="flex items-center gap-1.5 mg-type-caption text-ink-muted">
+              <div className="flex items-center gap-1.5 text-13 text-ink-muted">
                 Top providers
                 <InfoTooltip label="Ranked by count of verified surfaces this provider operates for this subnet, joined from /api/v1/providers. Candidate (unverified) leads are excluded. If provider attribution is stale, ranking still renders from the last published snapshot." />
               </div>
               {providerLockup.length > 0 ? (
                 <ul className="mt-2 space-y-1.5">
                   {providerLockup.map((p) => (
-                    <li key={p.slug} className="flex items-center gap-2 mg-type-caption">
-                      <span className="inline-flex size-5 items-center justify-center rounded border border-border bg-paper mg-type-caption text-ink-muted">
+                    <li key={p.slug} className="flex items-center gap-2 text-13">
+                      <span className="inline-flex size-5 items-center justify-center rounded border border-border bg-paper text-13 text-ink-muted">
                         {p.name.slice(0, 2)}
                       </span>
                       <Link
@@ -337,16 +336,12 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                       >
                         {p.name}
                       </Link>
-                      <span className="ml-auto mg-type-data-sm tabular-nums text-ink-muted">
-                        {p.count}
-                      </span>
+                      <span className="ml-auto text-10 tabular-nums text-ink-muted">{p.count}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <div className="mt-2 mg-type-data-sm text-ink-muted">
-                  No provider attribution yet.
-                </div>
+                <div className="mt-2 text-10 text-ink-muted">No provider attribution yet.</div>
               )}
             </div>
           </div>
@@ -365,7 +360,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
         {/* Ownership + curation */}
         <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
           <div className="p-4 space-y-2">
-            <div className="mg-type-caption text-ink-muted">Ownership</div>
+            <div className="text-13 text-ink-muted">Ownership</div>
             {(() => {
               // econ is a plain (non-suspense) query — same hydration gate as
               // the other econ-derived conditionals in this component.
@@ -375,33 +370,33 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                 <>
                   {coldkey ? (
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-16 shrink-0 mg-type-caption text-ink-muted">Coldkey</span>
+                      <span className="w-16 shrink-0 text-13 text-ink-muted">Coldkey</span>
                       <KeyChip value={coldkey} label="coldkey" className="min-w-0" />
                     </div>
                   ) : null}
                   {hotkey ? (
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-16 shrink-0 mg-type-caption text-ink-muted">Hotkey</span>
+                      <span className="w-16 shrink-0 text-13 text-ink-muted">Hotkey</span>
                       <KeyChip value={hotkey} label="hotkey" className="min-w-0" />
                     </div>
                   ) : null}
                 </>
               ) : (
-                <div className="mg-type-caption text-ink-muted">No ownership keys recorded.</div>
+                <div className="text-13 text-ink-muted">No ownership keys recorded.</div>
               );
             })()}
           </div>
 
           <div className="p-4 space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="mg-type-caption text-ink-muted">Registry curation</span>
+              <span className="text-13 text-ink-muted">Registry curation</span>
               <CurationChip level={profile?.curation_level} />
             </div>
             {completenessPct != null ? (
               <div>
                 <div className="flex items-baseline justify-between mb-1">
-                  <span className="mg-type-data-sm text-ink-muted">Completeness</span>
-                  <span className="font-display text-sm font-semibold tabular-nums text-ink-strong">
+                  <span className="text-10 text-ink-muted">Completeness</span>
+                  <span className="font-display text-13 font-semibold tabular-nums text-ink-strong">
                     {completenessPct}%
                   </span>
                 </div>
@@ -419,19 +414,19 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                 </div>
               </div>
             ) : null}
-            <div className="flex flex-wrap items-center gap-1.5 mg-type-data-sm text-ink-muted">
+            <div className="flex flex-wrap items-center gap-1.5 text-10 text-ink-muted">
               {profile?.coverage_level ? (
-                <span className="rounded border border-border bg-surface/50 px-1.5 py-0.5 uppercase tracking-wider">
+                <span className="rounded border border-border bg-surface px-1.5 py-0.5">
                   {profile.coverage_level}
                 </span>
               ) : null}
               {profile?.review_state ? (
-                <span className="rounded border border-border bg-surface/50 px-1.5 py-0.5 uppercase tracking-wider">
+                <span className="rounded border border-border bg-surface px-1.5 py-0.5">
                   {profile.review_state}
                 </span>
               ) : null}
               {profile?.confidence ? (
-                <span className="rounded border border-border bg-surface/50 px-1.5 py-0.5 uppercase tracking-wider">
+                <span className="rounded border border-border bg-surface px-1.5 py-0.5">
                   conf · {profile.confidence}
                 </span>
               ) : null}
@@ -452,17 +447,14 @@ function Meta({ label, value, hint }: { label: string; value: string; hint: stri
   return (
     <Tooltip delayDuration={200}>
       <TooltipTrigger asChild>
-        <div
-          tabIndex={0}
-          className="px-3 py-2 min-w-0 focus:outline-none focus-visible:bg-surface/40"
-        >
-          <div className="mg-type-caption text-ink-muted truncate">{label}</div>
-          <div className="mt-1 font-display text-sm font-semibold tabular-nums text-ink-strong truncate">
+        <div tabIndex={0} className="px-3 py-2 min-w-0 focus:outline-none focus-visible:bg-surface">
+          <div className="text-13 text-ink-muted truncate">{label}</div>
+          <div className="mt-1 font-display text-13 font-semibold tabular-nums text-ink-strong truncate">
             {value}
           </div>
         </div>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs mg-type-caption leading-relaxed">
+      <TooltipContent side="top" className="max-w-xs text-13 leading-relaxed">
         {hint}
       </TooltipContent>
     </Tooltip>

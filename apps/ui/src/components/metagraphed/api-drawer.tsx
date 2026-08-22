@@ -46,12 +46,12 @@ export function ApiDrawerTrigger() {
           type="button"
           onClick={open}
           aria-label="View API source for this page"
-          className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+          className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center rounded size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
         >
           <Code2 className="size-4" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="mg-type-caption">
+      <TooltipContent side="bottom" className="text-13">
         View in API · <Kbd>⌘</Kbd>
         <Kbd>J</Kbd>
       </TooltipContent>
@@ -86,10 +86,10 @@ export function ApiDrawer() {
         }}
       >
         <SheetHeader className="px-4 py-4 border-b border-border space-y-1">
-          <SheetTitle className="font-display text-base font-semibold text-ink-strong inline-flex items-center gap-2">
+          <SheetTitle className="font-display text-16 font-semibold text-ink-strong inline-flex items-center gap-2">
             <Code2 className="size-4 text-accent" /> API source
           </SheetTitle>
-          <p className="mg-type-caption text-ink-muted">
+          <p className="text-13 text-ink-muted">
             Every screen in Metagraphed is powered by a documented JSON endpoint. Copy the URL, open
             it raw, or grab the curl snippet.
           </p>
@@ -103,7 +103,7 @@ export function ApiDrawer() {
                 type="button"
                 onClick={() => setActivePath(s.path)}
                 className={classNames(
-                  "rounded-full border px-2.5 py-1 mg-type-micro transition-colors",
+                  "rounded border px-2.5 py-1 text-10 transition-colors",
                   activePath === s.path
                     ? "border-accent/60 bg-accent/10 text-ink-strong"
                     : "border-border text-ink-muted hover:text-ink-strong",
@@ -119,7 +119,7 @@ export function ApiDrawer() {
           {activePath ? (
             <ApiSourceBody source={sources.find((s) => s.path === activePath)!} />
           ) : (
-            <div className="p-4 text-sm text-ink-muted">No source registered.</div>
+            <div className="p-4 text-13 text-ink-muted">No source registered.</div>
           )}
         </div>
       </SheetContent>
@@ -160,10 +160,10 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
   return (
     <div className="p-4 space-y-4">
       <section className="space-y-2">
-        <div className="mg-type-caption text-ink-muted">Request</div>
+        <div className="text-13 text-ink-muted">Request</div>
         <Panel as="div" flush>
-          <div className="p-3 font-mono mg-type-caption text-ink-strong break-all flex items-start gap-2">
-            <span className="shrink-0 rounded bg-curation-verified/15 text-curation-verified px-1.5 py-0.5 mg-type-caption">
+          <div className="p-3 font-mono text-13 text-ink-strong break-all flex items-start gap-2">
+            <span className="shrink-0 rounded bg-curation-verified/15 text-curation-verified px-1.5 py-0.5 text-13">
               GET
             </span>
             <span className="min-w-0 flex-1">{fullUrl}</span>
@@ -185,7 +185,7 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
 
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="mg-type-caption text-ink-muted">
+          <div className="text-13 text-ink-muted">
             Response
             {data?.meta?.cache ? ` · ${data.meta.cache}` : null}
           </div>
@@ -193,33 +193,29 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
             type="button"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="mg-type-caption text-ink-muted hover:text-ink-strong disabled:opacity-50 inline-flex items-center gap-1"
+            className="text-13 text-ink-muted hover:text-ink-strong disabled:opacity-50 inline-flex items-center gap-1"
           >
             {isFetching ? <Loader2 className="size-3 animate-spin" /> : null}
             refetch
           </button>
         </div>
         {isLoading ? (
-          <Panel
-            as="div"
-            dense
-            bodyClassName="mg-type-caption text-ink-muted inline-flex items-center gap-2"
-          >
+          <Panel as="div" bodyClassName="text-13 text-ink-muted inline-flex items-center gap-2">
             <Loader2 className="size-3.5 animate-spin" /> Loading…
           </Panel>
         ) : error ? (
-          <div className="rounded border border-health-down/40 bg-health-down/5 p-3 mg-type-caption text-health-down">
+          <div className="rounded border border-health-down/40 bg-health-down/5 p-3 text-13 text-health-down">
             <div className="font-medium">Request failed</div>
-            <div className="mt-1 mg-type-data opacity-80">{(error as Error).message}</div>
+            <div className="mt-1 text-11 opacity-80">{(error as Error).message}</div>
           </div>
         ) : (
-          <pre className="max-h-[60vh] overflow-auto rounded border border-border bg-card p-3 font-mono mg-type-data leading-relaxed text-ink-strong whitespace-pre">
+          <pre className="max-h-[60vh] overflow-auto rounded border border-border bg-card p-3 font-mono text-11 leading-relaxed text-ink-strong whitespace-pre">
             {json}
           </pre>
         )}
       </section>
 
-      <div className="mg-type-data-sm text-ink-muted">
+      <div className="text-10 text-ink-muted">
         Press <Kbd>Esc</Kbd> to close · <Kbd>⌘</Kbd>
         <Kbd>J</Kbd> to reopen
       </div>

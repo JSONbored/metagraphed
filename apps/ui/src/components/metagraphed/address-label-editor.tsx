@@ -10,7 +10,7 @@ import {
 import { classNames } from "@/lib/metagraphed/format";
 
 const inputCls =
-  "w-full rounded border border-border bg-card px-2.5 py-1.5 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
+  "w-full rounded border border-border bg-card px-2.5 py-1.5 text-13 text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
 
 /**
  * The private-label editor popover (#8484): both of the feature's entry
@@ -78,7 +78,7 @@ export function AddressLabelEditor({
             title={
               existing ? "Edit your private label" : "Label this address — visible only to you"
             }
-            className="ph-no-capture inline-flex size-6 shrink-0 items-center justify-center rounded text-ink-muted transition-colors hover:text-ink-strong hover:bg-surface/60"
+            className="ph-no-capture inline-flex size-6 shrink-0 items-center justify-center rounded text-ink-muted transition-colors hover:text-ink-strong hover:bg-surface"
           >
             {existing ? (
               <UserRound className="size-3.5" aria-hidden="true" />
@@ -89,7 +89,7 @@ export function AddressLabelEditor({
         ) : (
           <button
             type="button"
-            className="ph-no-capture w-full inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:border-ink/30 transition-colors"
+            className="ph-no-capture w-full inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-13 font-medium text-ink-strong hover:border-ink/30 transition-colors"
           >
             <Tag className="size-3.5" aria-hidden="true" />
             {existing ? "Edit your label" : "Label this as mine"}
@@ -99,14 +99,14 @@ export function AddressLabelEditor({
       <ClampedPopoverContent align="start" className="ph-no-capture w-72 p-3">
         <div className="space-y-3">
           <div>
-            <div className="mg-label mb-1">Private label</div>
-            <p className="mg-type-caption text-ink-muted">
+            <div className="text-10 text-ink-muted mb-1">Private label</div>
+            <p className="text-13 text-ink-muted">
               Visible only to you, in this browser. Never sent to us — see /settings for
               export/import.
             </p>
           </div>
           <label className="block">
-            <span className="mb-1 block mg-type-caption text-ink-muted">Name</span>
+            <span className="mb-1 block text-13 text-ink-muted">Name</span>
             <input
               type="text"
               autoFocus
@@ -118,7 +118,7 @@ export function AddressLabelEditor({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block mg-type-caption text-ink-muted">Note (optional)</span>
+            <span className="mb-1 block text-13 text-ink-muted">Note (optional)</span>
             <textarea
               value={note}
               maxLength={MAX_NOTE_LENGTH}
@@ -133,7 +133,7 @@ export function AddressLabelEditor({
               type="button"
               onClick={onSave}
               disabled={!name.trim()}
-              className="flex-1 inline-flex items-center justify-center rounded border border-ink-strong/40 bg-surface px-3 py-1.5 mg-type-caption font-medium text-ink-strong transition-colors hover:bg-surface/80 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex-1 inline-flex items-center justify-center rounded border border-ink-strong/40 bg-surface px-3 py-1.5 text-13 font-medium text-ink-strong transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
             >
               Save
             </button>

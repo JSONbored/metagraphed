@@ -338,8 +338,8 @@ function PoolsTable() {
         />
       ) : null}
       <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
-        <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface/50 text-ink-muted">
+        <table className="w-full text-13">
+          <thead className="text-10 bg-surface text-ink-muted">
             <tr>
               <th className="px-3 py-2 text-left">Pool</th>
               <th className="px-3 py-2 text-left">Region</th>
@@ -362,15 +362,15 @@ function PoolsTable() {
                   className="mg-row-hover scroll-mt-24 target:bg-accent/10"
                 >
                   <td className="px-3 py-2 font-medium text-ink-strong">{p.name ?? p.id}</td>
-                  <td className="px-3 py-2 mg-type-caption">{p.region ?? "—"}</td>
+                  <td className="px-3 py-2 text-13">{p.region ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{p.members_count ?? "—"}</td>
-                  <td className="px-3 py-2 text-center mg-type-caption text-ink-muted">
+                  <td className="px-3 py-2 text-center text-13 text-ink-muted">
                     {p.archive_capable ? "yes" : "—"}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <span
                       className={classNames(
-                        "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5",
+                        "text-13 inline-flex items-center rounded border px-1.5 py-0.5",
                         ELIGIBILITY_TONE[eligibility],
                       )}
                     >
@@ -383,7 +383,7 @@ function PoolsTable() {
           </tbody>
         </table>
       </ResponsiveTable>
-      <p className="px-1 mg-type-data-sm text-ink-muted">
+      <p className="px-1 text-10 text-ink-muted">
         Proxy-eligible members serve live traffic through the reverse proxy above; the proxy prefers
         in-sync, healthy nodes and fails over automatically.
       </p>
@@ -416,8 +416,8 @@ function EndpointPoolsTable() {
         />
       ) : null}
       <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
-        <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface/50 text-ink-muted">
+        <table className="w-full text-13">
+          <thead className="text-10 bg-surface text-ink-muted">
             <tr>
               <th className="px-3 py-2 text-left">Pool</th>
               <th className="px-3 py-2 text-left">Kind</th>
@@ -445,22 +445,22 @@ function EndpointPoolsTable() {
                   className="mg-row-hover scroll-mt-24 target:bg-accent/10"
                 >
                   <td className="px-3 py-2 font-medium text-ink-strong">{p.id}</td>
-                  <td className="px-3 py-2 mg-type-data">{String(p.kind ?? "—")}</td>
-                  <td className="px-3 py-2 text-right mg-type-data">
+                  <td className="px-3 py-2 text-11">{String(p.kind ?? "—")}</td>
+                  <td className="px-3 py-2 text-right text-11">
                     {eligible != null && total != null
                       ? `${eligible}/${total} eligible`
                       : total != null
                         ? String(total)
                         : "—"}
                   </td>
-                  <td className="px-3 py-2 mg-type-data text-ink-muted">{bestId ?? "—"}</td>
+                  <td className="px-3 py-2 text-11 text-ink-muted">{bestId ?? "—"}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </ResponsiveTable>
-      <p className="px-1 mg-type-data-sm text-ink-muted">
+      <p className="px-1 text-10 text-ink-muted">
         Covers all pool kinds (subtensor-rpc, subtensor-wss, archive) from the generalized
         endpoint-pools artifact — distinct from the Bittensor RPC proxy pools above.
       </p>
@@ -501,8 +501,8 @@ function RpcEndpointsTable() {
         />
       ) : null}
       <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
-        <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface/50 text-ink-muted">
+        <table className="w-full text-13">
+          <thead className="text-10 bg-surface text-ink-muted">
             <tr>
               <th className="px-3 py-2 text-left">Provider</th>
               <th className="px-3 py-2 text-left">Kind</th>
@@ -516,11 +516,11 @@ function RpcEndpointsTable() {
             {rows.map((e: RpcEndpoint) => (
               <tr key={e.id} className="mg-row-hover">
                 <td className="px-3 py-2 font-medium text-ink-strong">{e.provider ?? "—"}</td>
-                <td className="px-3 py-2 mg-type-data">{e.kind ?? "—"}</td>
+                <td className="px-3 py-2 text-11">{e.kind ?? "—"}</td>
                 <td className="px-3 py-2">
                   <span
                     className={classNames(
-                      "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5",
+                      "text-13 inline-flex items-center rounded border px-1.5 py-0.5",
                       CLASSIFICATION_TONE[e.classification ?? "unknown"] ??
                         CLASSIFICATION_TONE.unknown,
                     )}
@@ -531,10 +531,10 @@ function RpcEndpointsTable() {
                 <td className="px-3 py-2 text-center">
                   <HealthDot state={statusToHealth(e.status)} />
                 </td>
-                <td className="px-3 py-2 text-center mg-type-caption text-ink-muted">
+                <td className="px-3 py-2 text-center text-13 text-ink-muted">
                   {e.archive_support == null ? "—" : e.archive_support ? "yes" : "no"}
                 </td>
-                <td className="px-3 py-2 text-right mg-type-data">
+                <td className="px-3 py-2 text-right text-11">
                   {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
                 </td>
               </tr>
@@ -542,7 +542,7 @@ function RpcEndpointsTable() {
           </tbody>
         </table>
       </ResponsiveTable>
-      {summaryLine ? <p className="px-1 mg-type-data-sm text-ink-muted">{summaryLine}</p> : null}
+      {summaryLine ? <p className="px-1 text-10 text-ink-muted">{summaryLine}</p> : null}
     </div>
   );
 }
@@ -843,7 +843,7 @@ function EndpointsTable() {
       {/* One shared command surface replaces the previous stacked category,
           search, select, toggle, and view-control bars. */}
       <div
-        className="sticky z-[var(--mg-z-raised)] -mx-1 bg-paper/92 px-1 py-2 backdrop-blur"
+        className="sticky z-[var(--mg-z-raised)] -mx-1 bg-paper px-1 py-2"
         style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
       >
         <QueryBar ariaLabel="Filter endpoint directory">
@@ -932,7 +932,7 @@ function EndpointsTable() {
               className="xl:hidden"
             >
               <label className="grid gap-1">
-                <span className="mg-label">Subnet number</span>
+                <span className="text-10 text-ink-muted">Subnet number</span>
                 <input
                   value={search.netuid}
                   onChange={(event) =>
@@ -940,7 +940,7 @@ function EndpointsTable() {
                   }
                   inputMode="numeric"
                   placeholder="Any subnet"
-                  className="h-9 rounded border border-border bg-paper px-2 font-mono mg-type-caption text-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="h-9 rounded border border-border bg-paper px-2 font-mono text-13 text-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </label>
               <QueryBar.FilterTrigger
@@ -1001,13 +1001,13 @@ function EndpointsTable() {
                   : "Showing all endpoint records"
               }
               className={classNames(
-                "mg-focus-ring inline-flex h-8 items-center gap-1.5 rounded px-2 mg-type-caption",
+                "mg-focus-ring inline-flex h-8 items-center gap-1.5 rounded px-2 text-13",
                 search.callable ? "text-accent-text" : "text-ink-muted hover:text-ink-strong",
               )}
             >
               <span
                 className={classNames(
-                  "size-1.5 rounded-full",
+                  "size-1.5 rounded-full mg-dot",
                   search.callable ? "bg-accent" : "bg-ink-subtle",
                 )}
                 aria-hidden

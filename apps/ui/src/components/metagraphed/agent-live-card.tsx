@@ -31,11 +31,11 @@ export function AgentLiveCard() {
     <Panel flush>
       <div className="border-b border-border/70 px-4 pt-4 md:px-6 md:pt-6">
         <SectionLabel>Query the registry live</SectionLabel>
-        <p className="mt-1 mg-type-caption-lg leading-relaxed text-ink-muted">
+        <p className="mt-1 text-13 leading-relaxed text-ink-muted">
           Grounded answers and vector search over all 128 subnets — the same data the MCP's 204
           tools and 2,292 callable services are built on. Run a real query below.
         </p>
-        <p className="mt-1 mg-type-caption text-ink-subtle-text">
+        <p className="mt-1 text-13 text-ink-subtle-text">
           This calls the live HTTP API directly, over the network from your browser — it proves the
           registry is reachable and answering, not that a specific MCP client's handshake works. The
           response time shown is round-trip from here, not from an MCP session.
@@ -55,7 +55,7 @@ export function AgentLiveCard() {
       <div className="p-4 md:p-6">{mode === "ask" ? <AskBox /> : <SearchBox />}</div>
 
       <div className="border-t border-border/70 px-4 py-3 md:px-6">
-        <span className="mg-label">Same call as</span>
+        <span className="text-10 text-ink-muted">Same call as</span>
         <div className="mt-1.5">
           <CopyableCode
             value={CURL_BY_MODE[mode]}

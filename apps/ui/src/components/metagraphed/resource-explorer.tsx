@@ -83,12 +83,12 @@ export function ResourceExplorer({ netuid }: { netuid: number }) {
       ]}
     >
       {!filter.isAll ? (
-        <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-border bg-paper/40 px-2.5 py-1.5">
-          <span className="mg-type-caption text-ink-muted">Filter</span>
+        <div className="mb-2 flex flex-wrap items-center gap-2 rounded border border-border bg-paper px-2.5 py-1.5">
+          <span className="text-13 text-ink-muted">Filter</span>
           {ALL_SEVERITIES.filter((s) => filter.isActive(s)).map((s) => (
             <span
               key={s}
-              className="rounded-full border border-border bg-card px-2 py-0.5 mg-type-micro text-ink-strong"
+              className="rounded border border-border bg-card px-2 py-0.5 text-10 text-ink-strong"
             >
               {s}
             </span>
@@ -96,7 +96,7 @@ export function ResourceExplorer({ netuid }: { netuid: number }) {
           <button
             type="button"
             onClick={filter.reset}
-            className="ml-auto inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-ink-strong"
+            className="ml-auto inline-flex items-center gap-1 text-13 text-ink-muted hover:text-ink-strong"
           >
             <X className="size-3" /> clear
           </button>
@@ -132,19 +132,19 @@ function FiltersTrigger({ filter }: { filter: ReturnType<typeof useSubnetFilter>
       <SheetTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 mg-type-caption font-medium text-ink-strong hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-13 font-medium text-ink-strong hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Open resource filters"
         >
           <Filter className="size-3" />
           <span className="hidden sm:inline">Filters</span>
           {activeCount > 0 ? (
-            <span className="rounded-full bg-accent/15 px-1.5 mg-type-data-sm text-accent-text">
+            <span className="rounded bg-accent/15 px-1.5 text-10 text-accent-text">
               {activeCount}
             </span>
           ) : null}
         </button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="rounded-t-xl">
+      <SheetContent side="bottom" className="rounded">
         <SheetHeader>
           <SheetTitle>Filter resources by health</SheetTitle>
         </SheetHeader>
@@ -158,7 +158,7 @@ function FiltersTrigger({ filter }: { filter: ReturnType<typeof useSubnetFilter>
                 onClick={() => filter.toggle(s)}
                 aria-pressed={active}
                 className={classNames(
-                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 mg-type-caption font-medium transition-colors",
+                  "inline-flex items-center gap-2 rounded border px-3 py-1.5 text-13 font-medium transition-colors",
                   active
                     ? "border-accent bg-accent/10 text-ink-strong"
                     : "border-border bg-card text-ink-muted hover:text-ink-strong",
@@ -166,7 +166,7 @@ function FiltersTrigger({ filter }: { filter: ReturnType<typeof useSubnetFilter>
               >
                 <span
                   className={classNames(
-                    "size-2 rounded-full",
+                    "size-2 rounded-full mg-dot",
                     s === "ok" && "bg-health-ok",
                     s === "warn" && "bg-health-warn",
                     s === "down" && "bg-health-down",
@@ -182,7 +182,7 @@ function FiltersTrigger({ filter }: { filter: ReturnType<typeof useSubnetFilter>
           <button
             type="button"
             onClick={filter.reset}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-muted hover:text-ink-strong"
+            className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-muted hover:text-ink-strong"
           >
             <X className="size-3" /> Reset
           </button>
@@ -210,7 +210,7 @@ function SegmentBar({
     <div
       role="tablist"
       aria-label="Resource view"
-      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+      className="inline-flex rounded border border-border bg-surface p-0.5"
     >
       {segs.map((s) => {
         const active = s.id === value;
@@ -222,7 +222,7 @@ function SegmentBar({
             aria-selected={active}
             onClick={() => onChange(s.id)}
             className={classNames(
-              "px-2.5 py-1 mg-type-caption font-medium rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "px-2.5 py-1 text-13 font-medium rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               active ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
             )}
           >
@@ -346,8 +346,8 @@ function EndpointsView({
 
   return (
     <div>
-      <div className="flex items-center justify-between px-4 py-2 bg-paper/40 border-b border-border">
-        <span className="mg-type-caption text-ink-muted">
+      <div className="flex items-center justify-between px-4 py-2 bg-paper border-b border-border">
+        <span className="text-13 text-ink-muted">
           {rows.length} endpoint{rows.length === 1 ? "" : "s"} · {ordered.length} kind
           {ordered.length === 1 ? "" : "s"}
           {hidden > 0 ? ` · ${hidden} hidden` : ""}
@@ -356,7 +356,7 @@ function EndpointsView({
           to="/subnets/$netuid"
           params={{ netuid }}
           search={{ tab: "endpoints" }}
-          className="inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-accent"
+          className="inline-flex items-center gap-1 text-13 text-ink-muted hover:text-accent"
         >
           full table <ArrowRight className="size-3" />
         </Link>
@@ -364,18 +364,16 @@ function EndpointsView({
       <ul className="divide-y divide-border">
         {ordered.map((g) => (
           <li key={g.kind}>
-            <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/30">
-              <span className="mg-type-caption text-ink-strong">
-                {KIND_LABEL[g.kind] ?? g.kind}
-              </span>
-              <span className="mg-type-data-sm text-ink-muted tabular-nums">{g.items.length}</span>
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-surface">
+              <span className="text-13 text-ink-strong">{KIND_LABEL[g.kind] ?? g.kind}</span>
+              <span className="text-10 text-ink-muted tabular-nums">{g.items.length}</span>
             </div>
             <ul>
               {g.items.slice(0, 5).map((e) => (
                 <EndpointRow key={e.id} e={e} />
               ))}
               {g.items.length > 5 ? (
-                <li className="px-4 py-1.5 mg-type-data-sm text-ink-muted">
+                <li className="px-4 py-1.5 text-10 text-ink-muted">
                   + {g.items.length - 5} more — open the Endpoints tab
                 </li>
               ) : null}
@@ -397,22 +395,20 @@ function EndpointRow({ e }: { e: Endpoint }) {
         <Tooltip delayDuration={200}>
           <TooltipTrigger asChild>
             <div className="flex items-baseline gap-1 min-w-0 cursor-default">
-              <span className="font-mono mg-type-caption text-ink-strong truncate">
-                {host(e.url)}
-              </span>
+              <span className="font-mono text-13 text-ink-strong truncate">{host(e.url)}</span>
               {pathOf(e.url) ? (
-                <span className="mg-type-data text-ink-muted truncate">{pathOf(e.url)}</span>
+                <span className="text-11 text-ink-muted truncate">{pathOf(e.url)}</span>
               ) : null}
             </div>
           </TooltipTrigger>
           {e.url ? (
-            <TooltipContent side="top" className="max-w-md break-all mg-type-data">
+            <TooltipContent side="top" className="max-w-md break-all text-11">
               {e.url}
             </TooltipContent>
           ) : null}
         </Tooltip>
         {e.provider || e.region ? (
-          <div className="mt-0.5 flex items-center gap-2 mg-type-data-sm text-ink-muted">
+          <div className="mt-0.5 flex items-center gap-2 text-10 text-ink-muted">
             {e.provider ? (
               <Link
                 to="/providers/$slug"
@@ -426,10 +422,10 @@ function EndpointRow({ e }: { e: Endpoint }) {
           </div>
         ) : null}
       </div>
-      <span className="mg-type-data-sm text-ink-muted tabular-nums">
+      <span className="text-10 text-ink-muted tabular-nums">
         {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
       </span>
-      <span className="hidden sm:inline mg-type-data-sm text-ink-muted">
+      <span className="hidden sm:inline text-10 text-ink-muted">
         <TimeAgo at={e.last_probed_at} />
       </span>
       <div className="inline-flex items-center gap-0.5">
@@ -450,7 +446,7 @@ function EndpointRow({ e }: { e: Endpoint }) {
                   )}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top" className="mg-type-caption">
+              <TooltipContent side="top" className="text-13">
                 Copy URL
               </TooltipContent>
             </Tooltip>
@@ -487,7 +483,7 @@ function EndpointRow({ e }: { e: Endpoint }) {
                   </span>
                 )}
               </TooltipTrigger>
-              <TooltipContent side="top" className="mg-type-caption">
+              <TooltipContent side="top" className="text-13">
                 {safeUrl ? "Open in new tab" : "Blocked unsafe URL"}
               </TooltipContent>
             </Tooltip>
@@ -565,8 +561,8 @@ function SurfacesView({
 
   return (
     <div>
-      <div className="flex items-center justify-between px-4 py-2 bg-paper/40 border-b border-border">
-        <span className="mg-type-caption text-ink-muted">
+      <div className="flex items-center justify-between px-4 py-2 bg-paper border-b border-border">
+        <span className="text-13 text-ink-muted">
           {rows.length} surface{rows.length === 1 ? "" : "s"} · {ordered.length} kind
           {ordered.length === 1 ? "" : "s"}
           {hidden > 0 ? ` · ${hidden} hidden` : ""}
@@ -575,7 +571,7 @@ function SurfacesView({
           to="/subnets/$netuid"
           params={{ netuid }}
           search={{ tab: "surfaces" }}
-          className="inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-accent"
+          className="inline-flex items-center gap-1 text-13 text-ink-muted hover:text-accent"
         >
           full list <ArrowRight className="size-3" />
         </Link>
@@ -583,18 +579,16 @@ function SurfacesView({
       <ul className="divide-y divide-border">
         {ordered.map(([kind, items]) => (
           <li key={kind}>
-            <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/30">
-              <span className="mg-type-caption text-ink-strong">{kind}</span>
-              <span className="mg-type-data-sm text-ink-muted tabular-nums">{items.length}</span>
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-surface">
+              <span className="text-13 text-ink-strong">{kind}</span>
+              <span className="text-10 text-ink-muted tabular-nums">{items.length}</span>
             </div>
             <ul>
               {items.slice(0, 4).map((s) => (
                 <SurfaceRow key={s.id} s={s} />
               ))}
               {items.length > 4 ? (
-                <li className="px-4 py-1.5 mg-type-data-sm text-ink-muted">
-                  + {items.length - 4} more
-                </li>
+                <li className="px-4 py-1.5 text-10 text-ink-muted">+ {items.length - 4} more</li>
               ) : null}
             </ul>
           </li>
@@ -611,9 +605,7 @@ function SurfaceRow({ s }: { s: Surface }) {
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 mg-row-hover">
       <div className="min-w-0">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="truncate mg-type-caption font-medium text-ink-strong">
-            {s.name ?? s.url}
-          </span>
+          <span className="truncate text-13 font-medium text-ink-strong">{s.name ?? s.url}</span>
           <CurationChip level={s.curation_level} />
           <ReviewChip state={s.review?.state} />
         </div>
@@ -630,25 +622,25 @@ function SurfaceRow({ s }: { s: Surface }) {
                   // eslint-disable-next-line no-restricted-syntax -- see above
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-0.5 block truncate mg-type-data text-ink-muted hover:text-ink-strong"
+                  className="mt-0.5 block truncate text-11 text-ink-muted hover:text-ink-strong"
                 >
                   {host(s.url)}
                   {pathOf(s.url) ? <span className="opacity-70">{pathOf(s.url)}</span> : null}
                 </a>
               ) : (
-                <span className="mt-0.5 block cursor-not-allowed truncate mg-type-data text-ink-muted/50">
+                <span className="mt-0.5 block cursor-not-allowed truncate text-11 text-ink-muted/50">
                   {host(s.url)}
                   {pathOf(s.url) ? <span className="opacity-70">{pathOf(s.url)}</span> : null}
                 </span>
               )}
             </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-md break-all mg-type-data">
+            <TooltipContent side="top" className="max-w-md break-all text-11">
               {safeUrl ? s.url : "Blocked unsafe URL"}
             </TooltipContent>
           </Tooltip>
         ) : null}
       </div>
-      <span className="mg-type-data-sm text-ink-muted">
+      <span className="text-10 text-ink-muted">
         <TimeAgo at={s.updated_at} />
       </span>
     </li>

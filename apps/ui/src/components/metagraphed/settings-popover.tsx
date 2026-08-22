@@ -1,8 +1,9 @@
-import { Settings, Sun, Moon, Monitor, Rows3, Rows4 } from "lucide-react";
+import { Check, Globe2, Settings, Sun, Moon, Monitor } from "lucide-react";
 import { Popover, PopoverTrigger } from "@jsonbored/ui-kit";
 import { ClampedPopoverContent } from "./clamped-popover-content";
 import { useTheme, type ThemeChoice } from "@/lib/theme";
-import { useDensity, type Density } from "@/lib/density";
+import { useNetwork } from "@/hooks/use-api-base";
+import { CHAIN_NETWORKS } from "@/lib/metagraphed/config";
 import { useHealthPalette, HEALTH_PALETTES, type HealthPaletteId } from "@/lib/health-palette";
 import { classNames } from "@/lib/metagraphed/format";
 
@@ -12,14 +13,9 @@ const THEMES: Array<{ id: ThemeChoice; label: string; Icon: typeof Sun }> = [
   { id: "system", label: "System", Icon: Monitor },
 ];
 
-const DENSITIES: Array<{ id: Density; label: string; Icon: typeof Rows3; hint: string }> = [
-  { id: "comfortable", label: "Comfortable", Icon: Rows3, hint: "Default spacing" },
-  { id: "compact", label: "Compact", Icon: Rows4, hint: "More rows per screen" },
-];
-
 /**
- * Single header gear button. Opens a popover with theme + density + health
- * color preset. State persists to localStorage via the underlying hooks.
+ * Single header gear button. Opens a popover with theme, chain network and the
+ * health colour preset. State persists to localStorage via the underlying hooks.
  */
 export function SettingsPopover() {
   return (
@@ -29,7 +25,7 @@ export function SettingsPopover() {
           type="button"
           aria-label="Settings"
           title="Settings"
-          className="inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+          className="inline-flex items-center justify-center rounded border border-border min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-rule-strong transition-colors"
         >
           <Settings className="size-3.5" aria-hidden="true" />
         </button>
@@ -42,14 +38,12 @@ export function SettingsPopover() {
 }
 
 /**
- * The theme + density + health-color controls, without the popover chrome, so
- * they can be reused wherever settings need to be surfaced — the header gear
- * popover on wide viewports, and the consolidated overflow menu on the mid
- * desktop range where the standalone gear is folded away to fit the header.
+ * The theme + network + health-colour controls, without the popover chrome, so
+ * they can be reused in the mobile navigation sheet.
  */
 export function SettingsPanel() {
   const { choice, setChoice } = useTheme();
-  const { density, setDensity } = useDensity();
+  const { network, change: changeNetwork } = useNetwork();
   const { paletteId, setPalette } = useHealthPalette();
 
   return (
@@ -71,21 +65,33 @@ export function SettingsPanel() {
         </SegmentedRow>
       </Section>
 
-      <Section label="Density" sub="Affects health KPIs and list tables.">
-        <SegmentedRow>
-          {DENSITIES.map(({ id, label, Icon, hint }) => (
-            <SegmentBtn
-              key={id}
-              active={density === id}
-              onClick={() => setDensity(id)}
-              label={hint}
-              title={hint}
-            >
-              <Icon className="size-3.5" aria-hidden="true" />
-              <span>{label}</span>
-            </SegmentBtn>
-          ))}
-        </SegmentedRow>
+      <Section label="Network" sub="Which Bittensor network's data the app shows.">
+        <ul className="space-y-1">
+          {CHAIN_NETWORKS.map((n) => {
+            const active = n.id === network.id;
+            return (
+              <li key={n.id}>
+                <button
+                  type="button"
+                  onClick={() => changeNetwork(n.id)}
+                  aria-pressed={active}
+                  className={classNames(
+                    "w-full flex items-center gap-2 rounded border px-2 py-1.5 text-left transition-colors min-h-9",
+                    active
+                      ? "border-rule-strong bg-layer"
+                      : "border-border hover:border-rule-strong",
+                  )}
+                >
+                  <Globe2 className="size-3.5 text-ink-muted shrink-0" aria-hidden="true" />
+                  <span className="flex-1 min-w-0 text-13 font-medium text-ink-strong">
+                    {n.label}
+                  </span>
+                  {active ? <Check className="size-3 text-health-ok" aria-hidden="true" /> : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </Section>
 
       <Section label="Health colors" sub="Preset for ok / warn / down / unknown dots.">
@@ -102,9 +108,6 @@ export function SettingsPanel() {
             />
           ))}
         </ul>
-        <p className="mt-2 mg-type-caption text-ink-muted">
-          All presets verified for perceptible contrast in light and dark.
-        </p>
       </Section>
     </div>
   );
@@ -121,16 +124,16 @@ function Section({
 }) {
   return (
     <div>
-      <div className="mg-type-caption text-ink-muted mb-1.5">{label}</div>
+      <div className="text-13 text-ink-muted mb-1.5">{label}</div>
       {children}
-      {sub ? <p className="mt-1 mg-type-caption text-ink-muted">{sub}</p> : null}
+      {sub ? <p className="mt-1 text-11 text-ink-muted">{sub}</p> : null}
     </div>
   );
 }
 
 function SegmentedRow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="inline-flex w-full items-center rounded border border-border bg-surface/40 p-0.5">
+    <div className="inline-flex w-full items-center rounded border border-border bg-layer p-0.5">
       {children}
     </div>
   );
@@ -157,8 +160,8 @@ function SegmentBtn({
       aria-label={label}
       title={title ?? label}
       className={classNames(
-        "flex-1 inline-flex items-center justify-center gap-1.5 rounded px-2 py-1.5 mg-type-caption font-medium transition-colors min-h-8",
-        active ? "bg-card text-ink-strong shadow-sm" : "text-ink-muted hover:text-ink-strong",
+        "flex-1 inline-flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-13 font-medium transition-colors min-h-8",
+        active ? "bg-raised text-ink-strong" : "text-ink-muted hover:text-ink-strong",
       )}
     >
       {children}
@@ -189,23 +192,17 @@ function PaletteRow({
         aria-pressed={active}
         className={classNames(
           "w-full flex items-center gap-2 rounded border px-2 py-1.5 text-left transition-colors min-h-9",
-          active
-            ? "border-ink-strong/40 bg-surface/60"
-            : "border-border bg-card hover:border-ink/30",
+          active ? "border-rule-strong bg-layer" : "border-border hover:border-rule-strong",
         )}
       >
         <span className="flex shrink-0 items-center gap-1" aria-hidden>
           {swatches.map((c, i) => (
-            <span
-              key={`${id}-${i}`}
-              className="block size-2.5 rounded-full"
-              style={{ backgroundColor: c }}
-            />
+            <span key={`${id}-${i}`} className="mg-dot" style={{ backgroundColor: c }} />
           ))}
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block mg-type-caption font-medium text-ink-strong">{label}</span>
-          <span className="block mg-type-caption text-ink-muted truncate">{description}</span>
+          <span className="block text-13 font-medium text-ink-strong">{label}</span>
+          <span className="block text-11 text-ink-muted truncate">{description}</span>
         </span>
       </button>
     </li>

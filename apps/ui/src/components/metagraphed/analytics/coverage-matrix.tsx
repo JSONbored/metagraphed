@@ -92,10 +92,10 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
 
   return (
     <Panel flush className="overflow-hidden">
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-paper/30">
+      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-paper">
         <div className="min-w-0">
-          <div className="mg-type-caption text-ink-muted">Coverage matrix</div>
-          <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+          <div className="text-13 text-ink-muted">Coverage matrix</div>
+          <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
             What each subnet is missing
           </h3>
         </div>
@@ -112,7 +112,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
               type="button"
               onClick={() => setSort(o.v)}
               className={classNames(
-                "inline-flex items-center rounded border px-2 py-0.5 mg-type-caption transition-colors",
+                "inline-flex items-center rounded border px-2 py-0.5 text-13 transition-colors",
                 sort === o.v
                   ? "border-accent/60 bg-accent/10 text-accent"
                   : "border-border text-ink-muted hover:text-ink-strong",
@@ -134,30 +134,28 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
           right-edge fade signals there's more to scroll. */}
       <div className="relative">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse mg-type-data">
+          <table className="w-full border-collapse text-11">
             <thead>
-              <tr className="bg-paper/30">
-                <th className="sticky left-0 z-[var(--mg-z-sticky)] bg-paper/30 text-left px-3 py-2 mg-type-micro text-ink-muted border-b border-border">
+              <tr className="bg-paper">
+                <th className="sticky left-0 z-[var(--mg-z-sticky)] bg-paper text-left px-3 py-2 text-ink-muted border-b border-border">
                   Subnet
                 </th>
                 {KINDS.map((k) => (
                   <th
                     key={k}
-                    className="px-2 py-2 text-center mg-type-micro text-ink-muted border-b border-border"
+                    className="px-2 py-2 text-center text-ink-muted border-b border-border"
                   >
                     {k}
                   </th>
                 ))}
-                <th className="px-2 py-2 text-right mg-type-micro text-ink-muted border-b border-border">
-                  Comp
-                </th>
+                <th className="px-2 py-2 text-right text-ink-muted border-b border-border">Comp</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr
                   key={r.netuid}
-                  className="border-b border-border last:border-b-0 hover:bg-paper/30"
+                  className="border-b border-border last:border-b-0 hover:bg-paper"
                 >
                   <td className="sticky left-0 z-[var(--mg-z-sticky)] bg-card px-3 py-1.5 border-r border-border text-ink-strong">
                     <div className="flex items-center gap-2">
@@ -166,7 +164,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
                         params={{ netuid: r.netuid }}
                         className="inline-flex min-w-0 items-center gap-1.5 hover:text-accent"
                       >
-                        <span className="mg-type-data-sm text-ink-muted">SN{r.netuid}</span>
+                        <span className="text-10 text-ink-muted">SN{r.netuid}</span>
                         <span className="truncate max-w-[110px] sm:max-w-[160px]">{r.name}</span>
                       </Link>
                       <CompletenessChip value={r.completeness} netuid={r.netuid} />
@@ -205,12 +203,12 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
           aria-hidden
           className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card to-transparent md:hidden"
         />
-        <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-ink-strong/70 px-1.5 py-0.5 mg-type-caption text-paper md:hidden">
+        <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-ink-strong/70 px-1.5 py-0.5 text-13 text-paper md:hidden">
           scroll →
         </div>
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-paper/30 px-4 py-2 mg-type-data-sm text-ink-muted">
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-paper px-4 py-2 text-10 text-ink-muted">
         <div className="flex items-center gap-3">
           <Legend cell="present" count={totals.present} />
           <Legend cell="candidate" count={totals.candidate} />
@@ -242,7 +240,7 @@ function CompletenessChip({ value, netuid }: { value: number; netuid: number }) 
     <span
       title={`SN${netuid}: ${pct}% of required public-interface kinds present`}
       className={classNames(
-        "ml-auto inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 mg-type-data-sm font-semibold tabular-nums md:hidden",
+        "ml-auto inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-10 font-semibold tabular-nums md:hidden",
         tone,
       )}
     >
@@ -300,16 +298,16 @@ export function CompletenessHistogram() {
   const colW = innerW / buckets.length;
 
   return (
-    <Panel dense>
+    <Panel>
       <header className="flex items-center justify-between mb-2">
         <div>
-          <div className="mg-type-caption text-ink-muted">Distribution</div>
-          <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+          <div className="text-13 text-ink-muted">Distribution</div>
+          <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
             Completeness across the registry
           </h3>
         </div>
         {stats ? (
-          <div className="flex items-center gap-3 mg-type-data-sm text-ink-muted">
+          <div className="flex items-center gap-3 text-10 text-ink-muted">
             <Stat label="p25" value={`${Math.round(stats.p25 * 100)}%`} />
             <Stat label="p50" value={`${Math.round(stats.p50 * 100)}%`} />
             <Stat label="p75" value={`${Math.round(stats.p75 * 100)}%`} />
@@ -381,7 +379,7 @@ export function CompletenessHistogram() {
             })
           : null}
       </svg>
-      <p className="mt-1 mg-type-data-sm text-ink-muted">
+      <p className="mt-1 text-10 text-ink-muted">
         {rows.length} subnets bucketed in 10% bins. Median (p50) marks the middle of the registry;
         long tail to the right is the goal.
       </p>
@@ -392,7 +390,7 @@ export function CompletenessHistogram() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <span className="inline-flex items-baseline gap-1">
-      <span className="uppercase tracking-[0.12em]">{label}</span>
+      <span className="">{label}</span>
       <span className="text-ink-strong tabular-nums">{value}</span>
     </span>
   );

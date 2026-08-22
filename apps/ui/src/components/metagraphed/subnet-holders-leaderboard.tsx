@@ -72,8 +72,8 @@ function DeclineNotice({ reason }: { reason: string }) {
       <div className="flex items-start gap-3">
         <Database className="size-4 shrink-0 text-ink-muted" />
         <div className="min-w-0 flex-1">
-          <div className="mb-1 font-display text-sm font-medium text-ink-strong">{copy.title}</div>
-          <p className="text-xs leading-relaxed text-ink-muted">{copy.body}</p>
+          <div className="mb-1 font-display text-13 font-medium text-ink-strong">{copy.title}</div>
+          <p className="text-13 leading-relaxed text-ink-muted">{copy.body}</p>
         </div>
       </div>
     </div>
@@ -196,13 +196,13 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
           {holders.map((entry, i) => (
             <li key={entry.coldkey} className="space-y-1.5 px-4 py-3">
               <div className="flex items-baseline gap-2">
-                <span className="w-6 shrink-0 font-mono mg-type-caption tabular-nums text-ink-muted">
+                <span className="w-6 shrink-0 font-mono text-13 tabular-nums text-ink-muted">
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1">
                   <AddressDisplay ss58={entry.coldkey} fallback="—" compact />
                 </div>
-                <span className="shrink-0 font-mono text-sm tabular-nums whitespace-nowrap text-ink-strong">
+                <span className="shrink-0 font-mono text-13 tabular-nums whitespace-nowrap text-ink-strong">
                   {fmtAlpha(entry.alpha)}
                 </span>
               </div>
@@ -212,20 +212,20 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
                     the bar is redundant encoding, not the only one. */}
                 <div
                   aria-hidden
-                  className="h-[3px] min-w-0 flex-1 overflow-hidden rounded-full bg-border/60"
+                  className="h-[3px] min-w-0 flex-1 overflow-hidden rounded bg-border/60"
                 >
                   <div
-                    className="h-full rounded-full bg-accent/70"
+                    className="h-full rounded bg-accent/70"
                     style={{ width: `${Math.min(100, (entry.share_of_total ?? 0) * 100)}%` }}
                   />
                 </div>
-                <span className="shrink-0 font-mono mg-type-caption tabular-nums whitespace-nowrap text-ink-muted">
+                <span className="shrink-0 font-mono text-13 tabular-nums whitespace-nowrap text-ink-muted">
                   {pctStr(entry.share_of_total)}
                 </span>
                 {/* Only when it says something. One hotkey is the default case
                     and a "1" on every row is noise; null means unread, not one. */}
                 {entry.hotkey_count != null && entry.hotkey_count > 1 ? (
-                  <span className="shrink-0 mg-type-caption whitespace-nowrap text-ink-muted">
+                  <span className="shrink-0 text-13 whitespace-nowrap text-ink-muted">
                     {formatNumber(entry.hotkey_count)} hotkeys
                   </span>
                 ) : null}
@@ -234,22 +234,22 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
           ))}
         </ul>
         <div className="hidden overflow-x-auto md:block">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface/40">
+          <table className="w-full text-left text-13">
+            <thead className="bg-surface">
               <tr>
-                <th className="px-4 py-2.5 mg-type-micro text-ink-muted">#</th>
-                <th className="px-4 py-2.5 mg-type-micro text-ink-muted">Coldkey</th>
-                <th className="px-4 py-2.5 text-right mg-type-micro text-ink-muted">Alpha</th>
-                <th className="px-4 py-2.5 text-right mg-type-micro text-ink-muted">Share</th>
-                <th className="px-4 py-2.5 text-right mg-type-micro text-ink-muted">Hotkeys</th>
+                <th className="px-4 py-2.5 text-ink-muted">#</th>
+                <th className="px-4 py-2.5 text-ink-muted">Coldkey</th>
+                <th className="px-4 py-2.5 text-right text-ink-muted">Alpha</th>
+                <th className="px-4 py-2.5 text-right text-ink-muted">Share</th>
+                <th className="px-4 py-2.5 text-right text-ink-muted">Hotkeys</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {holders.map((entry, i) => (
-                <tr key={entry.coldkey} className="mg-row-accent hover:bg-surface/40">
+                <tr key={entry.coldkey} className="mg-row-accent hover:bg-surface">
                   {/* Rank, because this is a leaderboard -- the order carries
                       meaning and a reader should not have to count rows. */}
-                  <td className="px-4 py-2.5 align-top font-mono mg-type-caption tabular-nums text-ink-muted">
+                  <td className="px-4 py-2.5 align-top font-mono text-13 tabular-nums text-ink-muted">
                     {i + 1}
                   </td>
                   {/* min-w-0 so a long resolved identity truncates instead of
@@ -259,11 +259,11 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
                       <AddressDisplay ss58={entry.coldkey} fallback="—" compact />
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 align-top text-right font-mono mg-type-caption tabular-nums whitespace-nowrap text-ink-strong">
+                  <td className="px-4 py-2.5 align-top text-right font-mono text-13 tabular-nums whitespace-nowrap text-ink-strong">
                     {fmtAlpha(entry.alpha)}
                   </td>
                   <td className="px-4 py-2.5 align-top text-right">
-                    <div className="font-mono mg-type-caption tabular-nums whitespace-nowrap text-ink">
+                    <div className="font-mono text-13 tabular-nums whitespace-nowrap text-ink">
                       {pctStr(entry.share_of_total)}
                     </div>
                     {/* The same bar the mobile list uses, so the concentration
@@ -272,15 +272,15 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
                         aria-hidden: the percentage above it is the value. */}
                     <div
                       aria-hidden
-                      className="ml-auto mt-1 h-[3px] w-16 overflow-hidden rounded-full bg-border/60"
+                      className="ml-auto mt-1 h-[3px] w-16 overflow-hidden rounded bg-border/60"
                     >
                       <div
-                        className="h-full rounded-full bg-accent/70"
+                        className="h-full rounded bg-accent/70"
                         style={{ width: `${Math.min(100, (entry.share_of_total ?? 0) * 100)}%` }}
                       />
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 align-top text-right font-mono mg-type-caption tabular-nums whitespace-nowrap text-ink-muted">
+                  <td className="px-4 py-2.5 align-top text-right font-mono text-13 tabular-nums whitespace-nowrap text-ink-muted">
                     {entry.hotkey_count == null ? "—" : formatNumber(entry.hotkey_count)}
                   </td>
                 </tr>
@@ -291,7 +291,7 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
       </Panel>
       {/* About the LIST, not about the subnet -- which is why it sits with the
           list rather than in the tiles above. */}
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mg-type-caption text-ink-muted">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-13 text-ink-muted">
         <span>
           {data?.holder_count != null && shown < data.holder_count
             ? `Showing the top ${formatNumber(shown)} of ${formatNumber(data.holder_count)}`

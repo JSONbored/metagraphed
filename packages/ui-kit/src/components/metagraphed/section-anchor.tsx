@@ -58,10 +58,10 @@ export function SectionAnchor({
       id={id}
       data-section-anchor
       className={classNames(
-        "mg-section scroll-mt-32",
+        "mg-section",
         tone &&
           classNames(
-            "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:opacity-70",
+            "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded before:opacity-70",
             TONE_CLASS[tone],
           ),
       )}
@@ -76,7 +76,7 @@ export function SectionAnchor({
               the full value on `title` when it's a string. */}
           <div className="flex min-w-0 max-w-full items-center gap-1.5">
             <h2
-              className="min-w-0 truncate font-display text-sm font-semibold uppercase tracking-wider text-ink-strong"
+              className="min-w-0 truncate font-display text-13 font-semibold text-ink-strong"
               title={typeof title === "string" ? title : undefined}
             >
               {title}
@@ -96,7 +96,7 @@ export function SectionAnchor({
             </button>
           </div>
           {subtitle ? (
-            <p className="mt-0.5 mg-type-caption text-ink-muted">{subtitle}</p>
+            <p className="mt-0.5 text-13 text-ink-muted">{subtitle}</p>
           ) : null}
         </div>
         {right ? <div className="shrink-0">{right}</div> : null}

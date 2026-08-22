@@ -14,7 +14,7 @@
 export const EXPLORER_LEADERBOARD_SCROLL_CLASS = "overflow-x-auto";
 
 /** Default table width inside the scroll shell. */
-export const EXPLORER_LEADERBOARD_TABLE_CLASS = "w-full text-left text-sm";
+export const EXPLORER_LEADERBOARD_TABLE_CLASS = "w-full text-left text-13";
 
 /**
  * Stake-transfer leaderboard uses stacked mobile cards below `md`; the table

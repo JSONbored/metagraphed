@@ -43,19 +43,19 @@ export function EndpointComparePanel({
   return (
     <section
       aria-label="Endpoint comparison"
-      className="rounded border border-accent/40 bg-surface/60"
+      className="rounded border border-accent/40 bg-surface"
     >
       <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className="font-display mg-type-caption font-medium text-ink-strong">
+          <span className="font-display text-13 font-medium text-ink-strong">
             Compare — {endpoints.length} endpoint{endpoints.length === 1 ? "" : "s"}
           </span>
-          <span className="mg-type-caption text-ink-muted">side-by-side</span>
+          <span className="text-13 text-ink-muted">side-by-side</span>
         </div>
         <button
           type="button"
           onClick={onClear}
-          className="mg-focus-ring rounded px-1.5 py-0.5 mg-type-caption text-ink-muted hover:text-ink-strong"
+          className="mg-focus-ring rounded px-1.5 py-0.5 text-13 text-ink-muted hover:text-ink-strong"
         >
           Clear all
         </button>
@@ -121,21 +121,21 @@ function CompareColumn({
     <div className="min-w-0 space-y-3 px-3 py-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="mg-label mb-1">
+          <div className="text-10 text-ink-muted mb-1">
             {endpoint.netuid === 0
               ? "Root"
               : endpoint.netuid != null
                 ? `SN${endpoint.netuid}${subnet?.name ? ` · ${subnet.name}` : ""}`
                 : "Unassigned"}
           </div>
-          <div className="truncate font-mono mg-type-caption font-medium text-ink-strong">
+          <div className="truncate font-mono text-13 font-medium text-ink-strong">
             {endpoint.url ?? endpoint.id}
           </div>
           {endpoint.provider_slug ? (
             <Link
               to="/providers/$slug"
               params={{ slug: endpoint.provider_slug }}
-              className="mg-focus-ring mt-1 inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-ink-strong"
+              className="mg-focus-ring mt-1 inline-flex items-center gap-1 text-13 text-ink-muted hover:text-ink-strong"
             >
               <BrandIcon
                 url={provider?.website ?? provider?.homepage}
@@ -165,7 +165,7 @@ function CompareColumn({
         <Field label="Health">
           <span
             className={classNames(
-              "inline-flex items-center gap-1 mg-type-data uppercase",
+              "inline-flex items-center gap-1 text-11",
               endpoint.health === "ok"
                 ? "text-health-ok"
                 : endpoint.health === "warn"
@@ -176,7 +176,7 @@ function CompareColumn({
             )}
           >
             <span
-              className="size-1.5 rounded-full"
+              className="size-1.5 rounded-full mg-dot"
               style={{ background: healthColor(endpoint.health) }}
               aria-hidden
             />
@@ -184,17 +184,17 @@ function CompareColumn({
           </span>
         </Field>
         <Field label="Latency">
-          <span className="mg-type-data tabular-nums text-ink-strong">
+          <span className="text-11 tabular-nums text-ink-strong">
             {endpoint.latency_ms != null ? `${Math.round(endpoint.latency_ms)}ms` : "—"}
           </span>
         </Field>
         <Field label="Access">
-          <span className="mg-type-caption text-ink-muted">{ELIGIBILITY_LABEL[eligibility]}</span>
+          <span className="text-13 text-ink-muted">{ELIGIBILITY_LABEL[eligibility]}</span>
         </Field>
         <Field label="Incidents (retained)">
           <span
             className={classNames(
-              "mg-type-data tabular-nums",
+              "text-11 tabular-nums",
               incidentCount > 0 ? "text-health-warn-text" : "text-ink-strong",
             )}
           >
@@ -202,19 +202,19 @@ function CompareColumn({
           </span>
         </Field>
         <Field label="Freshness">
-          <span className="mg-type-data-sm text-ink-muted">
+          <span className="text-10 text-ink-muted">
             probed <TimeAgo at={endpoint.last_probed_at} />
           </span>
         </Field>
         <Field label="Region · Kind">
-          <span className="mg-type-caption text-ink-muted">
+          <span className="text-13 text-ink-muted">
             {endpoint.region ?? "global"} · {endpoint.kind ?? "endpoint"}
           </span>
         </Field>
       </dl>
 
       <div>
-        <div className="mg-label mb-1">Latency trend (observed)</div>
+        <div className="text-10 text-ink-muted mb-1">Latency trend (observed)</div>
         <div className="h-[36px] border-y border-border">
           {values.length > 1 ? (
             <Sparkline
@@ -228,7 +228,7 @@ function CompareColumn({
               formatValue={(v) => `${Math.round(v)}ms`}
             />
           ) : (
-            <div className="flex h-full items-center justify-center mg-type-caption text-ink-muted">
+            <div className="flex h-full items-center justify-center text-13 text-ink-muted">
               Collecting samples…
             </div>
           )}
@@ -241,7 +241,7 @@ function CompareColumn({
       </div>
 
       <div>
-        <div className="mg-label mb-1">7d uptime</div>
+        <div className="text-10 text-ink-muted mb-1">7d uptime</div>
         <EndpointUptimeBar endpointId={endpoint.id} incidents={incidents} />
       </div>
     </div>
@@ -251,7 +251,7 @@ function CompareColumn({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="mg-label">{label}</dt>
+      <dt className="text-10 text-ink-muted">{label}</dt>
       <dd className="mt-0.5 min-w-0 truncate">{children}</dd>
     </div>
   );

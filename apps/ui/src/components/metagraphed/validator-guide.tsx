@@ -65,7 +65,7 @@ export function ValidatorGuide() {
   const [open, setOpen] = useState(false);
 
   return (
-    <aside aria-label={HEADING} className="mb-6 rounded-md border border-border mg-glass-soft">
+    <aside aria-label={HEADING} className="mb-6 rounded border border-border">
       {/* Desktop / tablet: collapsible callout with the full grid. */}
       <div className="hidden sm:block">
         {/*
@@ -87,8 +87,8 @@ export function ValidatorGuide() {
           >
             <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
             <span className="min-w-0 flex-1">
-              <span className="block mg-type-caption text-ink-muted">{HEADING}</span>
-              <span className="mt-0.5 block mg-type-data-sm text-ink-muted/80">{SUBHEADING}</span>
+              <span className="block text-13 text-ink-muted">{HEADING}</span>
+              <span className="mt-0.5 block text-10 text-ink-muted/80">{SUBHEADING}</span>
             </span>
             <ChevronDown
               className={classNames(
@@ -100,7 +100,7 @@ export function ValidatorGuide() {
         </h2>
         {open ? (
           <div className="border-t border-border px-3 py-3">
-            <dl className="grid gap-3 mg-type-caption leading-relaxed text-ink-muted md:grid-cols-2">
+            <dl className="grid gap-3 text-13 leading-relaxed text-ink-muted md:grid-cols-2">
               {METRICS.map((m) => (
                 <div key={m.term}>
                   <dt className="font-medium text-ink-strong">{m.term}</dt>
@@ -108,7 +108,7 @@ export function ValidatorGuide() {
                 </div>
               ))}
             </dl>
-            <p className="mt-3 border-t border-border pt-3 mg-type-caption leading-relaxed text-ink-muted">
+            <p className="mt-3 border-t border-border pt-3 text-13 leading-relaxed text-ink-muted">
               {GUIDANCE}
             </p>
           </div>
@@ -125,22 +125,22 @@ export function ValidatorGuide() {
         <h2 className="flex items-start gap-2 px-3 py-2">
           <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
           <span className="min-w-0 flex-1">
-            <span className="block mg-type-caption text-ink-muted">{HEADING}</span>
-            <span className="mt-0.5 block mg-type-data-sm text-ink-muted/80">{SUBHEADING}</span>
+            <span className="block text-13 text-ink-muted">{HEADING}</span>
+            <span className="mt-0.5 block text-10 text-ink-muted/80">{SUBHEADING}</span>
           </span>
         </h2>
         <div className="divide-y divide-border border-t border-border">
           {METRICS.map((m) => (
             <details key={m.term} className="group px-3">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2.5 mg-type-caption font-medium text-ink-strong focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2.5 text-13 font-medium text-ink-strong focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
                 <span>{m.term}</span>
                 <ChevronDown className="size-3.5 shrink-0 text-ink-muted transition-transform group-open:rotate-180" />
               </summary>
-              <p className="pb-2.5 mg-type-caption leading-relaxed text-ink-muted">{m.def}</p>
+              <p className="pb-2.5 text-13 leading-relaxed text-ink-muted">{m.def}</p>
             </details>
           ))}
         </div>
-        <p className="border-t border-border px-3 py-3 mg-type-caption leading-relaxed text-ink-muted">
+        <p className="border-t border-border px-3 py-3 text-13 leading-relaxed text-ink-muted">
           {GUIDANCE}
         </p>
       </div>

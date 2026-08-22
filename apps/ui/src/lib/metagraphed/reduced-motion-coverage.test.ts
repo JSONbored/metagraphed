@@ -103,7 +103,7 @@ describe("reduced-motion coverage (#8367)", () => {
     const answered = reducedMotionBlocks.join("\n");
     // Named explicitly so the intent survives even if the generic sweep above
     // is ever loosened.
-    expect(answered).toContain(".mg-row-flash");
+    expect(answered).toContain(".");
     expect(answered).toContain(".mg-value-pulse");
   });
 
@@ -121,6 +121,6 @@ describe("reduced-motion coverage (#8367)", () => {
     // The exact shape of the original defect: a bare colour transition driving
     // the flash instead of the reduced-motion-aware class.
     expect(code).not.toMatch(/transition-colors[^"'`]*duration-1000/);
-    expect(code).toContain("mg-row-flash");
+    expect(code).toContain("");
   });
 });

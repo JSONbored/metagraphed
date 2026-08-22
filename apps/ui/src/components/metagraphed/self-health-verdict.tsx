@@ -84,7 +84,7 @@ export function SelfHealthVerdict() {
         <div className="min-w-0 flex-1">
           <h2
             className={classNames(
-              "font-display text-lg font-semibold",
+              "font-display text-16 font-semibold",
               verdict ? TONE_TEXT[verdict.tone] : "text-ink-muted",
             )}
           >
@@ -93,14 +93,14 @@ export function SelfHealthVerdict() {
           {/* The third-party line. Deliberately plain text, never a tone
               colour: 3 subnet APIs being down is not our outage, and colouring
               it like one is exactly the bug this rebuild fixes. */}
-          <p className="mt-1 mg-type-caption text-ink-muted">
+          <p className="mt-1 text-13 text-ink-muted">
             Tracking {total.toLocaleString("en-US")} subnet surfaces: {ok.toLocaleString("en-US")}{" "}
             up · {warn.toLocaleString("en-US")} slow · {down.toLocaleString("en-US")} down
             {unknown > 0 ? ` · ${unknown.toLocaleString("en-US")} unknown` : ""}. Those are other
             teams&rsquo; endpoints, not ours.
           </p>
           {!selfData ? (
-            <p className="mt-1 mg-type-caption text-ink-muted">
+            <p className="mt-1 text-13 text-ink-muted">
               Our own component checks aren&rsquo;t reporting yet — this page will show them once
               the self-health probe is live.
             </p>
@@ -127,15 +127,15 @@ function ComponentStrip({ component }: { component: SelfHealthComponentView }) {
   return (
     <Panel as="div" flush className="p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate mg-type-caption text-ink-strong">
+        <span className="truncate text-13 text-ink-strong">
           {COMPONENT_LABEL[component.component] ?? component.component}
         </span>
-        <span className={classNames("mg-type-data-sm tabular-nums", TONE_TEXT[tone])}>
+        <span className={classNames("text-10 tabular-nums", TONE_TEXT[tone])}>
           {component.current_ok == null ? "no data" : component.current_ok ? "up" : "down"}
         </span>
       </div>
-      <div className="mt-2 mg-type-data-lg text-ink-strong tabular-nums">{pct}</div>
-      <div className="mg-type-caption text-ink-muted">
+      <div className="mt-2 text-13 text-ink-strong tabular-nums">{pct}</div>
+      <div className="text-13 text-ink-muted">
         {component.days.length > 0
           ? `${component.days.length} day${component.days.length === 1 ? "" : "s"} measured`
           : "not yet measured"}
@@ -144,7 +144,7 @@ function ComponentStrip({ component }: { component: SelfHealthComponentView }) {
           the bare "down" above already says that much; this line says WHY, so
           a reader doesn't read it as the same failure class as api/site. */}
       {component.note ? (
-        <div className="mt-1 mg-type-caption text-health-warn">{component.note}</div>
+        <div className="mt-1 text-13 text-health-warn">{component.note}</div>
       ) : null}
       <UptimeStrip days={component.days} />
     </Panel>
@@ -177,7 +177,7 @@ function UptimeStrip({ days }: { days: SelfHealthComponentView["days"] }) {
           <span
             key={d.day}
             title={`${d.day}: ${(d.uptime_ratio * 100).toFixed(2)}% (${d.ok_count}/${d.checks})`}
-            className={classNames("min-w-px flex-1 rounded-t", tone)}
+            className={classNames("min-w-px flex-1 rounded", tone)}
             // Floor at 15% so a genuinely-zero day is still a visible mark
             // rather than an invisible one indistinguishable from a gap.
             style={{ height: `${Math.max(15, d.uptime_ratio * 100)}%` }}

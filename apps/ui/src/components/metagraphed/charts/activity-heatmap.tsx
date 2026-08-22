@@ -107,12 +107,12 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
 
   return (
     <Panel as="div" flush className="overflow-hidden">
-      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border bg-paper/30">
+      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border bg-paper">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="mg-type-caption text-ink-muted">Registry activity</span>
+          <span className="text-13 text-ink-muted">Registry activity</span>
           <InfoTooltip label="Daily probe samples and recorded incidents — not GitHub commits. Drives the registry's freshness signal." />
         </div>
-        <span className="mg-type-data-sm text-ink-muted">
+        <span className="text-10 text-ink-muted">
           {activeDays}/{cells.length} active · streak {streak}d
         </span>
       </div>
@@ -131,14 +131,13 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
                     <div
                       role="button"
                       tabIndex={0}
-                      // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
-                      className="mg-focus-ring aspect-square rounded-[2px] border border-border/40"
+                      className="mg-focus-ring aspect-square rounded border border-border/40"
                       style={{ background: tone(c.score, maxScore) }}
                       aria-label={`${c.key}: ${c.probes} probes, ${c.incidents} incidents`}
                     />
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="mg-type-data-sm">
-                    <div className="mg-type-caption text-ink-strong">{c.key}</div>
+                  <TooltipContent side="top" className="text-10">
+                    <div className="text-13 text-ink-strong">{c.key}</div>
                     <div>
                       {c.probes} probe{c.probes === 1 ? "" : "s"}
                     </div>
@@ -154,13 +153,12 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
             </div>
           ))}
         </div>
-        <div className="mt-3 flex items-center justify-end gap-1.5 mg-type-data-sm text-ink-muted">
+        <div className="mt-3 flex items-center justify-end gap-1.5 text-10 text-ink-muted">
           <span>less</span>
           {[0, 0.25, 0.5, 0.75, 1].map((t) => (
             <span
               key={t}
-              // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
-              className="size-2.5 rounded-[2px] border border-border/40"
+              className="size-2.5 rounded border border-border/40"
               style={{ background: tone(t * maxScore, maxScore) }}
             />
           ))}

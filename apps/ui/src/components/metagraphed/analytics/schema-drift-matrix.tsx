@@ -145,10 +145,10 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
 
   return (
     <Panel flush className="overflow-hidden">
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-paper/30">
+      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-paper">
         <div className="min-w-0">
-          <div className="mg-type-caption text-ink-muted">Drift matrix</div>
-          <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+          <div className="text-13 text-ink-muted">Drift matrix</div>
+          <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
             Every tracked schema, classified by change type
           </h3>
         </div>
@@ -171,7 +171,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
                 type="button"
                 onClick={() => setFilter(k)}
                 className={classNames(
-                  "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 mg-type-caption transition-colors",
+                  "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-13 transition-colors",
                   active
                     ? `${tone} bg-paper`
                     : "border-border text-ink-muted hover:text-ink-strong",
@@ -188,14 +188,12 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
       </header>
 
       {grouped.length === 0 ? (
-        <div className="p-8 text-center mg-type-data text-ink-muted">
-          No schemas match this filter.
-        </div>
+        <div className="p-8 text-center text-11 text-ink-muted">No schemas match this filter.</div>
       ) : (
         <div className="divide-y divide-border">
           {grouped.map((g) => (
             <div key={g.label} className="grid grid-cols-[88px_1fr] gap-3 px-4 py-3 items-start">
-              <div className="mg-type-data text-ink-muted pt-1">
+              <div className="text-11 text-ink-muted pt-1">
                 {g.netuid != null ? (
                   <Link
                     to="/subnets/$netuid"
@@ -229,7 +227,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
         </div>
       )}
 
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-paper/30 px-4 py-2 mg-type-data-sm text-ink-muted">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-paper px-4 py-2 text-10 text-ink-muted">
         <div className="flex items-center gap-3">
           <KindLegend kind="breaking" />
           <KindLegend kind="additive" />
@@ -291,9 +289,9 @@ function DriftTile({
           )}
           aria-hidden
         />
-        <span className="mg-type-data text-ink-strong truncate max-w-[180px]">{label}</span>
+        <span className="text-11 text-ink-strong truncate max-w-[180px]">{label}</span>
         {schema.updated_at ? (
-          <span className="mg-type-data-sm text-ink-muted shrink-0">
+          <span className="text-10 text-ink-muted shrink-0">
             <TimeAgo at={schema.updated_at} />
           </span>
         ) : null}
@@ -306,7 +304,7 @@ function DriftTile({
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           className={classNames(
-            "inline-flex items-center gap-1 rounded-r border-y border-r px-1.5 -ml-px mg-type-caption text-ink-muted hover:text-accent transition-colors",
+            "inline-flex items-center gap-1 rounded border-y border-r px-1.5 -ml-px text-13 text-ink-muted hover:text-accent transition-colors",
             tone.fill,
           )}
           title={`Source evidence${evidence?.source ? ` · ${evidence.source}` : ""}${evidence?.recorded_at ? ` · recorded ${new Date(evidence.recorded_at).toISOString().slice(0, 10)}` : ""}`}

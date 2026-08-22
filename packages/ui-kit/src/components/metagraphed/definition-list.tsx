@@ -38,10 +38,10 @@ export function DefinitionList({
       >
         {items.map((it, i) => (
           <div key={i} className="min-w-0">
-            <dt title={it.title} className="mg-type-micro text-ink-muted">
+            <dt title={it.title} className="text-10 text-ink-muted">
               {it.term}
             </dt>
-            <dd className="mt-1 truncate text-sm text-ink-strong">
+            <dd className="mt-1 truncate text-13 text-ink-strong">
               {it.detail}
             </dd>
           </div>
@@ -54,10 +54,10 @@ export function DefinitionList({
       <dl className={cn("space-y-3", className)}>
         {items.map((it, i) => (
           <div key={i} className="min-w-0">
-            <dt title={it.title} className="mg-type-micro text-ink-muted">
+            <dt title={it.title} className="text-10 text-ink-muted">
               {it.term}
             </dt>
-            <dd className="mt-1 text-sm text-ink-strong">{it.detail}</dd>
+            <dd className="mt-1 text-13 text-ink-strong">{it.detail}</dd>
           </div>
         ))}
       </dl>
@@ -70,13 +70,10 @@ export function DefinitionList({
           key={i}
           className="flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0"
         >
-          <dt
-            title={it.title}
-            className="mg-type-label shrink-0 text-ink-muted"
-          >
+          <dt title={it.title} className="text-11 shrink-0 text-ink-muted">
             {it.term}
           </dt>
-          <dd className="min-w-0 truncate text-right text-sm text-ink-strong">
+          <dd className="min-w-0 truncate text-right text-13 text-ink-strong">
             {it.detail}
           </dd>
         </div>

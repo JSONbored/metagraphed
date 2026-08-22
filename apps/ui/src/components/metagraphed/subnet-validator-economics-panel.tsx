@@ -56,7 +56,7 @@ export function SubnetValidatorEconomicsPanel({ netuid }: { netuid: number }) {
   const tao = (v: number | null) => (v == null ? "—" : `${formatNumber(v)} τ`);
 
   return (
-    <Panel as="section" dense>
+    <Panel as="section">
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure
           label="permit floor"
@@ -121,7 +121,7 @@ export function SubnetValidatorEconomicsPanel({ netuid }: { netuid: number }) {
           single day is not a direction, and rendering it as one would invent
           movement that has not been observed. */}
       {points.length > 1 ? (
-        <p className="mt-4 mg-type-data-sm text-ink-muted">
+        <p className="mt-4 text-10 text-ink-muted">
           {points.length} days of history · earning floor{" "}
           {trendWord(
             points[points.length - 1]?.earning_floor_alpha,
@@ -137,8 +137,8 @@ export function SubnetValidatorEconomicsPanel({ netuid }: { netuid: number }) {
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div title={hint}>
-      <div className="mg-type-label text-ink-muted">{label}</div>
-      <div className="mg-type-data tabular-nums text-ink">{value}</div>
+      <div className="text-11 text-ink-muted">{label}</div>
+      <div className="text-11 tabular-nums text-ink">{value}</div>
     </div>
   );
 }

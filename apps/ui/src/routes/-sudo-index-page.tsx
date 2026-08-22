@@ -38,10 +38,10 @@ export function SudoKeyCard() {
   const queriedAt = keyResult.data?.data.queried_at;
 
   return (
-    <Panel as="div" dense className="mb-6">
-      <div className="mg-label">Current Sudo key</div>
+    <Panel as="div" className="mb-6">
+      <div className="text-10 text-ink-muted">Current Sudo key</div>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="font-mono mg-type-data text-ink-strong">
+        <span className="font-mono text-11 text-ink-strong">
           {phase === "pending" ? (
             <span className="text-ink-muted">…</span>
           ) : phase === "error" ? (
@@ -53,11 +53,11 @@ export function SudoKeyCard() {
           )}
         </span>
         {phase === "ready" && queriedAt ? (
-          <span className="mg-type-caption text-ink-muted">
+          <span className="text-13 text-ink-muted">
             queried <TimeAgo at={queriedAt} />
           </span>
         ) : phase === "ready" && !hotkey ? (
-          <span className="mg-type-caption text-ink-muted">root key renounced</span>
+          <span className="text-13 text-ink-muted">root key renounced</span>
         ) : null}
       </div>
     </Panel>

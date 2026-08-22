@@ -19,7 +19,6 @@ import {
   ClaudeIcon,
   OpenAIIcon,
   ExternalLink,
-  ScrollReveal,
   Sparkline,
 } from "@jsonbored/ui-kit";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
@@ -71,7 +70,7 @@ export function OverviewPage() {
   // until opened.
   const [showMore, setShowMore] = useState(false);
   return (
-    <AppShell flushTop>
+    <AppShell>
       <HomeHero />
 
       {/* #8249: the two new always-visible modules the redesign asked for --
@@ -143,7 +142,7 @@ export function OverviewPage() {
             type="button"
             onClick={() => setShowMore(true)}
             aria-expanded={false}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
+            className="inline-flex items-center gap-2 rounded border border-border bg-card px-4 py-2.5 text-13 font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
           >
             Show more of the registry
             <ChevronDown className="size-4" />
@@ -157,94 +156,90 @@ export function OverviewPage() {
           {/* #1124: live registry signal band — curation funnel + network pulse +
           what-changed feed, scoped to a shared time range. Wired to real coverage/
           health/changelog/incident data. */}
-          <ScrollReveal>
-            <section className="mt-section-gap">
-              <TimeRangeProvider>
-                <div className="mb-3 flex items-end justify-between gap-3">
-                  <SectionHeader
-                    inline
-                    eyebrow="Signal"
-                    live
-                    title="Live registry signal."
-                    description="Curation depth, network pulse, and the latest changes."
-                  />
-                  <TimeRangeScrub />
-                </div>
-                <div className="grid gap-4 lg:grid-cols-12">
-                  <AsyncPanel
-                    context="coverage funnel"
-                    fallback={<Skeleton className="h-72 lg:col-span-5" />}
-                    retryQueryKeys={[coverageQuery().queryKey]}
-                  >
-                    <div className="min-w-0 lg:col-span-5">
-                      <CoverageFunnel />
-                    </div>
-                  </AsyncPanel>
-                  <AsyncPanel
-                    context="network pulse"
-                    fallback={<Skeleton className="h-72 lg:col-span-7" />}
-                  >
-                    <div className="min-w-0 lg:col-span-7">
-                      <NetworkPulseBand />
-                    </div>
-                  </AsyncPanel>
-                  <AsyncPanel
-                    context="what changed"
-                    fallback={<Skeleton className="h-64 lg:col-span-12" />}
-                    retryQueryKeys={[changelogQuery().queryKey, endpointIncidentsQuery().queryKey]}
-                  >
-                    <div className="min-w-0 lg:col-span-12">
-                      <WhatChangedFeed />
-                    </div>
-                  </AsyncPanel>
-                </div>
-              </TimeRangeProvider>
-            </section>
-          </ScrollReveal>
+          <section className="mt-section-gap">
+            <TimeRangeProvider>
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <SectionHeader
+                  inline
+                  eyebrow="Signal"
+                  live
+                  title="Live registry signal."
+                  description="Curation depth, network pulse, and the latest changes."
+                />
+                <TimeRangeScrub />
+              </div>
+              <div className="grid gap-4 lg:grid-cols-12">
+                <AsyncPanel
+                  context="coverage funnel"
+                  fallback={<Skeleton className="h-72 lg:col-span-5" />}
+                  retryQueryKeys={[coverageQuery().queryKey]}
+                >
+                  <div className="min-w-0 lg:col-span-5">
+                    <CoverageFunnel />
+                  </div>
+                </AsyncPanel>
+                <AsyncPanel
+                  context="network pulse"
+                  fallback={<Skeleton className="h-72 lg:col-span-7" />}
+                >
+                  <div className="min-w-0 lg:col-span-7">
+                    <NetworkPulseBand />
+                  </div>
+                </AsyncPanel>
+                <AsyncPanel
+                  context="what changed"
+                  fallback={<Skeleton className="h-64 lg:col-span-12" />}
+                  retryQueryKeys={[changelogQuery().queryKey, endpointIncidentsQuery().queryKey]}
+                >
+                  <div className="min-w-0 lg:col-span-12">
+                    <WhatChangedFeed />
+                  </div>
+                </AsyncPanel>
+              </div>
+            </TimeRangeProvider>
+          </section>
 
           {/* #5: registry depth — completeness score distribution, surface-dimension
           coverage, and the ranked enrichment queue. Wired to /api/v1/registry/summary
           + /api/v1/coverage-depth. Each module renders inside its own error boundary
           so a single artifact gap never blanks the whole section. */}
-          <ScrollReveal>
-            <section className="mt-section-gap">
-              <SectionHeader
-                eyebrow="Registry depth"
-                title="How complete is the registry?"
-                description="Completeness scores, surface-dimension coverage, and the highest-priority subnets to enrich next."
-              />
-              <div className="grid gap-4 lg:grid-cols-12">
-                <AsyncPanel
-                  context="registry score histogram"
-                  fallback={<Skeleton className="h-64 lg:col-span-7" />}
-                  retryQueryKeys={[registrySummaryQuery().queryKey]}
-                >
-                  <div className="min-w-0 lg:col-span-7">
-                    <RegistryScoreHistogram className="h-full" />
-                  </div>
-                </AsyncPanel>
-                <AsyncPanel
-                  context="dimension coverage heatmap"
-                  fallback={<Skeleton className="h-64 lg:col-span-5" />}
-                  retryQueryKeys={[registrySummaryQuery().queryKey]}
-                >
-                  <div className="min-w-0 lg:col-span-5">
-                    <DimensionCoverageHeatmap className="h-full" />
-                  </div>
-                </AsyncPanel>
-                <div className="min-w-0 lg:col-span-12">
-                  <div className="mb-3 mg-type-caption text-ink-muted">Enrichment queue</div>
-                  <AsyncPanel
-                    context="enrichment queue"
-                    fallback={<Skeleton className="h-64 w-full" />}
-                    retryQueryKeys={[coverageDepthQuery().queryKey]}
-                  >
-                    <EnrichmentQueueTable />
-                  </AsyncPanel>
+          <section className="mt-section-gap">
+            <SectionHeader
+              eyebrow="Registry depth"
+              title="How complete is the registry?"
+              description="Completeness scores, surface-dimension coverage, and the highest-priority subnets to enrich next."
+            />
+            <div className="grid gap-4 lg:grid-cols-12">
+              <AsyncPanel
+                context="registry score histogram"
+                fallback={<Skeleton className="h-64 lg:col-span-7" />}
+                retryQueryKeys={[registrySummaryQuery().queryKey]}
+              >
+                <div className="min-w-0 lg:col-span-7">
+                  <RegistryScoreHistogram className="h-full" />
                 </div>
+              </AsyncPanel>
+              <AsyncPanel
+                context="dimension coverage heatmap"
+                fallback={<Skeleton className="h-64 lg:col-span-5" />}
+                retryQueryKeys={[registrySummaryQuery().queryKey]}
+              >
+                <div className="min-w-0 lg:col-span-5">
+                  <DimensionCoverageHeatmap className="h-full" />
+                </div>
+              </AsyncPanel>
+              <div className="min-w-0 lg:col-span-12">
+                <div className="mb-3 text-13 text-ink-muted">Enrichment queue</div>
+                <AsyncPanel
+                  context="enrichment queue"
+                  fallback={<Skeleton className="h-64 w-full" />}
+                  retryQueryKeys={[coverageDepthQuery().queryKey]}
+                >
+                  <EnrichmentQueueTable />
+                </AsyncPanel>
               </div>
-            </section>
-          </ScrollReveal>
+            </div>
+          </section>
 
           <LeaderboardsModule />
           <QueryErrorBoundary fallback={() => null}>
@@ -260,10 +255,10 @@ export function OverviewPage() {
               <SectionHeader inline eyebrow="Active subnets" live title="The live registry." />
               <Link
                 to="/subnets"
-                className="inline-flex items-center gap-1 text-xs font-mono uppercase tracking-[0.18em] text-ink-muted hover:text-accent transition-colors group"
+                className="inline-flex items-center gap-1 text-13 font-mono text-ink-muted hover:text-accent transition-colors group"
               >
                 View all
-                <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                <ArrowUpRight className="size-3" />
               </Link>
             </div>
             <AsyncPanel
@@ -294,13 +289,13 @@ export function OverviewPage() {
               description="Every list and detail view in this app is also a documented API route. Same data, same envelope."
             />
             <Panel as="div" className="max-w-2xl">
-              <div className="mg-type-caption text-ink-muted mb-2">Try it</div>
+              <div className="text-13 text-ink-muted mb-2">Try it</div>
               <CopyableCode
                 value={`curl ${API_BASE}/api/v1/subnets`}
-                className="w-full mg-type-caption"
+                className="w-full text-13"
                 truncate={false}
               />
-              <div className="mt-3 flex gap-4 text-xs">
+              <div className="mt-3 flex gap-4 text-13">
                 <Link to="/apis/schemas" className="text-accent-text hover:underline">
                   API reference →
                 </Link>
@@ -319,7 +314,7 @@ export function OverviewPage() {
               type="button"
               onClick={() => setShowMore(false)}
               aria-expanded
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-accent"
+              className="inline-flex items-center gap-2 rounded border border-border bg-card px-4 py-2.5 text-13 font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-accent"
             >
               Show less
               <ChevronDown className="size-4 rotate-180" />
@@ -331,16 +326,14 @@ export function OverviewPage() {
       <AccentBand pattern className="mt-20">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div className="max-w-xl">
-            <div className="mg-type-caption text-ink-strong/70 mb-2">
-              All registry data is public
-            </div>
-            <h2 className="font-display text-2xl md:text-3xl font-semibold text-ink-strong tracking-tight">
+            <div className="text-13 text-ink-strong/70 mb-2">All registry data is public</div>
+            <h2 className="font-display text-28 md:text-28 font-semibold text-ink-strong">
               Browse the full Bittensor registry.
             </h2>
           </div>
           <Link
             to="/subnets"
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-4 py-2.5 text-sm font-medium text-paper hover:opacity-90 transition-opacity self-start md:self-auto"
+            className="inline-flex items-center gap-1.5 rounded bg-ink-strong px-4 py-2.5 text-13 font-medium text-paper hover:opacity-90 transition-opacity self-start md:self-auto"
           >
             Open subnets
             <ArrowUpRight className="size-3.5" />
@@ -382,7 +375,7 @@ export function ChainHeadTip() {
     <Link
       to="/blocks/$ref"
       params={{ ref: String(head.block_number) }}
-      className="mg-fade-in mg-fade-in-delay-3 mt-4 inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-accent transition-colors"
+      className="mt-4 inline-flex items-center gap-1.5 text-11 text-ink-muted hover:text-accent transition-colors"
     >
       <span className="mg-live-dot" />
       head #{formatNumber(head.block_number)} · <TimeAgo at={head.observed_at} />
@@ -421,25 +414,23 @@ function HomeHero() {
   return (
     <section className="mg-hero-slab relative overflow-hidden px-4 py-12 sm:px-6 md:py-20">
       <div className="relative z-[var(--mg-z-sticky)] mx-auto flex max-w-4xl flex-col items-center text-center">
-        {/* eslint-disable-next-line no-restricted-syntax -- display-size hero heading (30/40/48px responsive); the mg-type-* scale tops out at caption-lg (13px) with no display tier, so there is no matching token (#8717 req 2 exception) */}
-        <h1 className="mg-fade-in mt-2 font-display text-[30px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.08] text-ink-strong">
+        <h1 className="mt-2 font-display text-28 sm:text-40 md:text-40 font-semibold leading-[1.08] text-ink-strong">
           <span className="block">Bittensor,</span>
           <span className="block text-accent">de-mystified.</span>
         </h1>
-        <p className="mg-fade-in mg-fade-in-delay-1 mt-4 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed">
+        <p className="mt-4 max-w-xl text-16 md:text-16 text-ink-muted leading-relaxed">
           One search bar for every subnet, endpoint, and account — and yes, it&rsquo;s all a live
           API.
         </p>
 
         {/* Unified search field: query trigger on the left, mint Search button flush right. */}
-        <div className="mg-fade-in mg-fade-in-delay-2 mt-8 w-full max-w-2xl">
-          {/* eslint-disable-next-line no-restricted-syntax -- not a card shell: this is the search field's flush query-trigger + Search-button row (items-stretch, overflow-hidden, rounded-2xl, focus-within/hover border states); <Panel> hardcodes `rounded border` and can't express this composite input geometry (#8717 req 2 exception) */}
-          <div className="mg-focus-ring flex items-stretch overflow-hidden rounded-2xl border border-border bg-card transition-colors focus-within:border-accent/60 hover:border-accent/40">
+        <div className="mt-8 w-full max-w-2xl">
+          <div className="mg-focus-ring flex items-stretch overflow-hidden rounded border border-border bg-card transition-colors focus-within:border-accent/60 hover:border-accent/40">
             <button
               type="button"
               onClick={openCommandPalette}
               aria-label="Search subnets, validators, endpoints, accounts. Opens command palette (⌘K)"
-              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left text-sm text-ink-muted transition-colors hover:text-ink"
+              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left text-13 text-ink-muted transition-colors hover:text-ink"
             >
               <svg
                 aria-hidden="true"
@@ -455,7 +446,7 @@ function HomeHero() {
               <span className="min-w-0 flex-1 truncate">
                 Search subnets, validators, endpoints, accounts…
               </span>
-              <kbd className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted">
+              <kbd className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded border border-border bg-paper px-1.5 py-0.5 text-13 text-ink-muted">
                 ⌘K
               </kbd>
             </button>
@@ -476,22 +467,22 @@ function HomeHero() {
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" strokeLinecap="round" />
               </svg>
-              <span className="hidden text-sm font-medium sm:inline">Search</span>
+              <span className="hidden text-13 font-medium sm:inline">Search</span>
             </button>
           </div>
         </div>
 
-        <div className="mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-col items-center gap-3 sm:flex-row sm:gap-4 mg-type-caption-lg">
+        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:gap-4 text-13">
           <Link
             to="/subnets"
-            className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 font-medium text-accent-foreground transition-opacity hover:opacity-90"
+            className="mg-focus-ring inline-flex items-center gap-1.5 rounded bg-accent px-4 py-2 font-medium text-accent-foreground transition-opacity hover:opacity-90"
           >
             Explore all {subnetCount} subnets
             <ArrowUpRight className="size-3.5" />
           </Link>
           <Link
             to="/apis/schemas"
-            className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
+            className="mg-focus-ring inline-flex items-center gap-1.5 rounded border border-border bg-card px-4 py-2 font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
           >
             Read the API
           </Link>
@@ -499,9 +490,9 @@ function HomeHero() {
         {/* inline-flex, not flex: this is a control shell (a copyable command
             row), not a content panel — same distinction the card-shell lint
             rule draws for segmented controls. */}
-        <div className="mg-fade-in mg-fade-in-delay-3 mt-6 inline-flex w-full max-w-xl items-center gap-2 rounded-md border border-border bg-card px-3 py-2">
+        <div className="mt-6 inline-flex w-full max-w-xl items-center gap-2 rounded border border-border bg-card px-3 py-2">
           <Terminal className="size-3.5 shrink-0 text-accent" aria-hidden />
-          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-left font-mono mg-type-caption-lg text-ink-muted">
+          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-left font-mono text-13 text-ink-muted">
             {MCP_CORE_INSTALL}
           </code>
           <CopyButton value={MCP_CORE_INSTALL} label="MCP install command" />
@@ -528,36 +519,36 @@ function HomeForAgentsModule() {
   const mcp = data.data.mcp;
   return (
     <Panel as="div" className="max-w-2xl">
-      <div className="flex items-center gap-3 rounded-md border border-accent/30 bg-accent-surface px-4 py-3.5">
+      <div className="flex items-center gap-3 rounded border border-accent/30 bg-accent-surface px-4 py-3.5">
         <Terminal className="size-4 shrink-0 text-accent" aria-hidden />
-        <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono mg-type-caption-lg text-ink-strong">
+        <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-13 text-ink-strong">
           {mcp.install}
         </code>
         <CopyButton value={mcp.install} label="MCP install command" />
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <span className="mg-type-data text-ink-muted">
+        <span className="text-11 text-ink-muted">
           {mcp.tools.length} tools · {mcp.transport} · no key
         </span>
         <div className="flex flex-wrap gap-2">
           <ExternalLink
             href={CLAUDE_URL}
             bare
-            className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 mg-type-data font-medium text-accent hover:bg-accent/15"
+            className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-accent/10 px-3 py-1.5 text-11 font-medium text-accent hover:bg-accent/15"
           >
             <ClaudeIcon className="size-3.5" aria-hidden /> Open in Claude
           </ExternalLink>
           <ExternalLink
             href={CHATGPT_URL}
             bare
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 mg-type-data font-medium text-ink-strong hover:border-ink/30"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-11 font-medium text-ink-strong hover:border-ink/30"
           >
             <OpenAIIcon className="size-3.5" aria-hidden /> Open in ChatGPT
           </ExternalLink>
         </div>
       </div>
       <div className="mt-3">
-        <Link to="/agents" className="mg-type-data-sm text-ink-muted hover:text-accent">
+        <Link to="/agents" className="text-10 text-ink-muted hover:text-accent">
           Every agent surface →
         </Link>
       </div>
@@ -585,11 +576,11 @@ function SectionHeader({
   if (inline) {
     return (
       <div>
-        <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
+        <div className="text-13 text-ink-muted inline-flex items-center gap-2">
           {live ? <span className="mg-live-dot" /> : null}
           {eyebrow}
         </div>
-        <h2 className="mt-1 font-display text-2xl md:text-3xl font-semibold tracking-tight text-ink-strong">
+        <h2 className="mt-1 font-display text-28 md:text-28 font-semibold text-ink-strong">
           {title}
         </h2>
       </div>
@@ -597,23 +588,23 @@ function SectionHeader({
   }
   return (
     <div className="mb-8 max-w-2xl">
-      <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
+      <div className="text-13 text-ink-muted inline-flex items-center gap-2">
         {live ? <span className="mg-live-dot" /> : null}
         {eyebrow}
       </div>
-      <h2 className="mt-2 font-display text-2xl md:text-3xl font-semibold tracking-tight text-ink-strong">
+      <h2 className="mt-2 font-display text-28 md:text-28 font-semibold text-ink-strong">
         {title}
       </h2>
       {description ? (
-        <p className="mt-2 text-sm text-ink-muted leading-relaxed">{description}</p>
+        <p className="mt-2 text-13 text-ink-muted leading-relaxed">{description}</p>
       ) : null}
       {link ? (
         <Link
           to={link.to}
-          className="mt-3 inline-flex items-center gap-1 text-xs font-mono uppercase tracking-[0.18em] text-accent hover:underline group"
+          className="mt-3 inline-flex items-center gap-1 text-13 font-mono text-accent hover:underline group"
         >
           {link.label}
-          <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          <ArrowUpRight className="size-3" />
         </Link>
       ) : null}
     </div>
@@ -652,13 +643,13 @@ function TrackedGrid() {
         <Link
           key={item.label}
           to={item.to}
-          className="mg-hover-lift group rounded-xl border border-border bg-card p-6 flex flex-col"
+          className="mg-hover-lift group rounded border border-border bg-card p-6 flex flex-col"
         >
-          <div className="mg-type-caption text-ink-muted">{item.label}</div>
-          <p className="mt-3 text-sm text-ink-strong leading-relaxed flex-1">{item.desc}</p>
-          <span className="mt-4 inline-flex items-center gap-1 mg-type-caption text-ink-muted group-hover:text-accent transition-colors">
+          <div className="text-13 text-ink-muted">{item.label}</div>
+          <p className="mt-3 text-13 text-ink-strong leading-relaxed flex-1">{item.desc}</p>
+          <span className="mt-4 inline-flex items-center gap-1 text-13 text-ink-muted group-hover:text-accent transition-colors">
             Explore
-            <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <ArrowUpRight className="size-3" />
           </span>
         </Link>
       ))}
@@ -686,18 +677,15 @@ function LivePerformance() {
     <AccentBand className="mt-20">
       <div className="mb-8 flex items-end justify-between">
         <div>
-          <div className="mg-type-caption text-ink-strong/70 inline-flex items-center gap-2">
+          <div className="text-13 text-ink-strong/70 inline-flex items-center gap-2">
             <span className="mg-live-dot" />
             Live performance
           </div>
-          <h2 className="mt-2 font-display text-2xl md:text-3xl font-semibold tracking-tight text-ink-strong">
+          <h2 className="mt-2 font-display text-28 md:text-28 font-semibold text-ink-strong">
             Probed every 30 seconds.
           </h2>
         </div>
-        <Link
-          to="/health"
-          className="text-xs font-mono uppercase tracking-[0.18em] text-ink-strong/70 hover:text-ink-strong"
-        >
+        <Link to="/health" className="text-13 font-mono text-ink-strong/70 hover:text-ink-strong">
           View health →
         </Link>
       </div>
@@ -745,11 +733,11 @@ function PerfCard({
     <Panel as="div" flush>
       <div className="p-4">
         <div className="flex items-baseline justify-between mb-3">
-          <div className="mg-type-caption text-ink-muted">{label}</div>
-          <div className="mg-type-data-sm text-ink-muted">{hint}</div>
+          <div className="text-13 text-ink-muted">{label}</div>
+          <div className="text-10 text-ink-muted">{hint}</div>
         </div>
         <div
-          className={`font-display text-3xl md:text-4xl font-semibold leading-none tabular-nums ${accent ? "text-accent" : "text-ink-strong"}`}
+          className={`font-display text-28 md:text-40 font-semibold leading-none tabular-nums ${accent ? "text-accent" : "text-ink-strong"}`}
         >
           {phase === "pending" ? (
             <Skeleton className="h-9 w-24" />
@@ -822,23 +810,23 @@ function SubnetPreviewTable() {
   return (
     <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/40 mg-type-micro text-ink-muted">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface text-10 text-ink-muted">
             <tr>
-              <th className="px-4 py-3 font-medium">UID</th>
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Symbol</th>
-              <th className="px-4 py-3 font-medium text-right">Participants</th>
-              <th className="px-4 py-3 font-medium">Curation</th>
-              <th className="px-4 py-3 font-medium text-right">Surfaces</th>
-              <th className="px-4 py-3 font-medium">Health</th>
-              <th className="px-4 py-3 font-medium text-right">Updated</th>
+              <th className="px-4 py-3">UID</th>
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">Symbol</th>
+              <th className="px-4 py-3 text-right">Participants</th>
+              <th className="px-4 py-3">Curation</th>
+              <th className="px-4 py-3 text-right">Surfaces</th>
+              <th className="px-4 py-3">Health</th>
+              <th className="px-4 py-3 text-right">Updated</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {subnets.slice(0, 12).map((s) => (
               <tr key={s.netuid} className="mg-row-hover">
-                <td className="px-4 py-3 font-mono mg-type-caption text-ink-muted">
+                <td className="px-4 py-3 font-mono text-13 text-ink-muted">
                   <EntityHoverCard kind="subnet" netuid={s.netuid}>
                     <Link
                       to="/subnets/$netuid"
@@ -867,20 +855,20 @@ function SubnetPreviewTable() {
                     </Link>
                   </EntityHoverCard>
                 </td>
-                <td className="px-4 py-3 mg-type-data text-ink-muted">{s.symbol ?? "—"}</td>
-                <td className="px-4 py-3 text-right font-mono mg-type-caption text-ink">
+                <td className="px-4 py-3 text-11 text-ink-muted">{s.symbol ?? "—"}</td>
+                <td className="px-4 py-3 text-right font-mono text-13 text-ink">
                   {formatNumber(s.participants)}
                 </td>
                 <td className="px-4 py-3">
                   <CurationChip level={s.curation_level} />
                 </td>
-                <td className="px-4 py-3 text-right font-mono mg-type-caption">
+                <td className="px-4 py-3 text-right font-mono text-13">
                   {s.surfaces_count ?? "—"}
                 </td>
                 <td className="px-4 py-3">
                   <HealthPill state={healthBySubnet.get(s.netuid) ?? s.health ?? "unknown"} />
                 </td>
-                <td className="px-4 py-3 text-right mg-type-data text-ink-muted">
+                <td className="px-4 py-3 text-right text-11 text-ink-muted">
                   <TimeAgo at={s.updated_at ?? s.freshness} />
                 </td>
               </tr>
@@ -888,7 +876,7 @@ function SubnetPreviewTable() {
           </tbody>
         </table>
       </div>
-      <div className="border-t border-border bg-surface/30 px-4 py-2.5 flex justify-between mg-type-data text-ink-muted">
+      <div className="border-t border-border bg-surface px-4 py-2.5 flex justify-between text-11 text-ink-muted">
         <span>
           Showing {Math.min(12, subnets.length)}
           {total ? ` of ${formatNumber(total)}` : ""} ·{" "}

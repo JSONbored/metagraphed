@@ -100,14 +100,14 @@ export function PushDevicesManager({ token }: { token: string }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="mg-type-caption text-ink-muted">
+        <span className="text-13 text-ink-muted">
           Push devices · {devices.length}/{max}
         </span>
         <button
           type="button"
           onClick={() => subscribeMutation.mutate()}
           disabled={unsupported || atLimit || subscribeMutation.isPending || !VAPID_PUBLIC_KEY}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {subscribeMutation.isPending ? (
             <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -121,23 +121,23 @@ export function PushDevicesManager({ token }: { token: string }) {
       {/* Say WHY the control is unavailable rather than hiding it silently —
           each of these has a different, actionable remedy. */}
       {unsupported ? (
-        <p className="mg-type-caption text-ink-muted">
+        <p className="text-13 text-ink-muted">
           This browser doesn&apos;t support web push. On iPhone or iPad, add Metagraphed to your
           home screen first — iOS only delivers push to an installed app.
         </p>
       ) : !VAPID_PUBLIC_KEY ? (
-        <p className="mg-type-caption text-ink-muted">
+        <p className="text-13 text-ink-muted">
           Push alerts aren&apos;t configured on this deployment yet.
         </p>
       ) : permission === "denied" ? (
-        <p className="mg-type-caption text-ink-muted">
+        <p className="text-13 text-ink-muted">
           Notifications are blocked for this site. Re-enable them in your browser&apos;s site
           settings, then try again.
         </p>
       ) : null}
 
       {error ? (
-        <p role="alert" className="mg-type-caption text-health-down">
+        <p role="alert" className="text-13 text-health-down">
           {error}
         </p>
       ) : null}
@@ -150,10 +150,10 @@ export function PushDevicesManager({ token }: { token: string }) {
               className="flex items-center justify-between gap-2 rounded border border-border bg-card px-2.5 py-2"
             >
               <span className="min-w-0">
-                <span className="block mg-type-caption font-medium text-ink-strong">
+                <span className="block text-13 font-medium text-ink-strong">
                   {describeDevice(device.user_agent)}
                 </span>
-                <span className="block mg-type-caption text-ink-muted">
+                <span className="block text-13 text-ink-muted">
                   {/* TimeAgo takes an ISO string; these columns are epoch ms. */}
                   added <TimeAgo at={toIso(device.created_at)} />
                   {device.last_used_at ? (
@@ -177,7 +177,7 @@ export function PushDevicesManager({ token }: { token: string }) {
           ))}
         </ul>
       ) : (
-        <p className="mg-type-caption text-ink-muted">
+        <p className="text-13 text-ink-muted">
           No devices yet. Enable push to get alerts without a page open.
         </p>
       )}

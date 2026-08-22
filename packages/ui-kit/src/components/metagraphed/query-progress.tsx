@@ -38,7 +38,7 @@ export function QueryProgress({
     >
       <div
         className={classNames(
-          "h-full w-1/3 rounded-full",
+          "h-full w-1/3 rounded",
           active && "mg-query-progress-track",
         )}
         style={{

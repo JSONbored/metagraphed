@@ -200,8 +200,8 @@ export function YourPositionsPanel({ address }: { address: string }) {
 
       {/* Desktop table */}
       <Panel as="div" flush className="hidden overflow-x-auto md:block">
-        <table className="w-full text-sm">
-          <thead className="bg-surface/50 mg-type-micro text-ink-muted">
+        <table className="w-full text-13">
+          <thead className="bg-surface text-10 text-ink-muted">
             <tr>
               <th className="px-3 py-2.5 text-left">Subnet</th>
               <th className="px-3 py-2.5 text-left">Source</th>
@@ -215,7 +215,7 @@ export function YourPositionsPanel({ address }: { address: string }) {
           <tbody>
             {positions.map((p, i) => (
               <tr key={p.key} className="mg-row-hover border-t border-border/60">
-                <td className="px-3 py-2.5 font-mono mg-type-caption">
+                <td className="px-3 py-2.5 font-mono text-13">
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: p.netuid }}
@@ -227,16 +227,16 @@ export function YourPositionsPanel({ address }: { address: string }) {
                 <td className="px-3 py-2.5">
                   <SourceBadge source={p.source} />
                 </td>
-                <td className="px-3 py-2.5 mg-type-data text-ink-muted">
+                <td className="px-3 py-2.5 text-11 text-ink-muted">
                   {p.hotkey ? <HotkeyCell hotkey={p.hotkey} /> : "—"}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
+                <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-strong">
                   {taoCompact(p.spotTao)}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
+                <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
                   {taoCompact(exitTaoFor(i, p))}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+                <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
                   {pct(p.yield)}
                 </td>
                 <td className="px-3 py-2.5 text-right">
@@ -259,23 +259,23 @@ export function YourPositionsPanel({ address }: { address: string }) {
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {positions.map((p, i) => (
-          <Panel as="div" dense bodyClassName="space-y-2" key={p.key}>
+          <Panel as="div" bodyClassName="space-y-2" key={p.key}>
             <div className="flex items-center justify-between gap-2">
               <Link
                 to="/subnets/$netuid"
                 params={{ netuid: p.netuid }}
-                className="font-mono mg-type-caption text-ink-strong hover:text-accent hover:underline"
+                className="font-mono text-13 text-ink-strong hover:text-accent hover:underline"
               >
                 {p.isRoot ? "Root" : `SN${p.netuid}`}
               </Link>
               <SourceBadge source={p.source} />
             </div>
             {p.hotkey ? (
-              <div className="mg-type-data text-ink-muted">
+              <div className="text-11 text-ink-muted">
                 <HotkeyCell hotkey={p.hotkey} />
               </div>
             ) : null}
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 mg-type-caption">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-13">
               <Stat label="Spot τ" value={taoCompact(p.spotTao)} />
               <Stat label="Exit τ" value={taoCompact(exitTaoFor(i, p))} />
               <Stat label="Yield" value={pct(p.yield)} />
@@ -300,10 +300,10 @@ function SourceBadge({ source }: { source: "owned" | "delegated" }) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption",
+        "inline-flex items-center rounded border px-1.5 py-0.5 text-13",
         source === "owned"
           ? "border-accent/40 bg-accent-surface text-accent-text"
-          : "border-border bg-surface/40 text-ink-muted",
+          : "border-border bg-surface text-ink-muted",
       )}
     >
       {source === "owned" ? "Owned" : "Delegated"}
@@ -328,7 +328,7 @@ function HotkeyCell({ hotkey }: { hotkey: string }) {
 }
 
 function ManageButton({ hotkey, netuid }: { hotkey: string | null; netuid: number }) {
-  if (!hotkey) return <span className="mg-type-data-sm text-ink-subtle-text">—</span>;
+  if (!hotkey) return <span className="text-10 text-ink-subtle-text">—</span>;
   return (
     <StakeUnstakeModal
       hotkey={hotkey}
@@ -337,7 +337,7 @@ function ManageButton({ hotkey, netuid }: { hotkey: string | null; netuid: numbe
         <button
           type="button"
           onClick={open}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+          className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
         >
           <Coins className="size-3 text-ink-muted" aria-hidden />
           Manage
@@ -370,7 +370,7 @@ function MoveButton({
         <button
           type="button"
           onClick={open}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+          className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
         >
           <ArrowRightLeft className="size-3 text-ink-muted" aria-hidden />
           Move

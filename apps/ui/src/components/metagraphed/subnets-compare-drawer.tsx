@@ -23,15 +23,10 @@ export function SubnetsCompareDrawer() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-[var(--mg-z-overlay)] pointer-events-none">
       <div className="max-w-shell-max mx-auto px-4 md:px-10 pb-3">
-        <div
-          className={classNames(
-            "pointer-events-auto rounded-xl border border-border mg-glass shadow-[var(--mg-shadow-drawer)]",
-            "mg-fade-in",
-          )}
-        >
+        <div className={classNames("pointer-events-auto rounded border border-border", "")}>
           {/* Dock */}
           <div className="flex flex-wrap items-center gap-2 px-3 py-2">
-            <span className="inline-flex items-center gap-1.5 mg-type-caption text-ink-muted">
+            <span className="inline-flex items-center gap-1.5 text-13 text-ink-muted">
               <BarChart3 className="size-3 text-accent" />
               Compare
               <span className="text-ink-strong tabular-nums">
@@ -43,14 +38,14 @@ export function SubnetsCompareDrawer() {
               {selected.map((netuid) => (
                 <span
                   key={netuid}
-                  className="inline-flex h-6 items-center gap-1 rounded-full border border-border bg-paper pl-2.5 pr-1 mg-type-data-sm text-ink-strong"
+                  className="inline-flex h-6 items-center gap-1 rounded border border-border bg-paper pl-2.5 pr-1 text-10 text-ink-strong"
                 >
                   SN{netuid}
                   <button
                     type="button"
                     onClick={() => remove(netuid)}
                     aria-label={`Remove SN${netuid}`}
-                    className="ml-0.5 inline-flex size-4 items-center justify-center rounded-full text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+                    className="ml-0.5 inline-flex size-4 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
                   >
                     <X className="size-2.5" />
                   </button>
@@ -71,7 +66,7 @@ export function SubnetsCompareDrawer() {
                 }
                 disabled={selected.length < 2}
                 className={classNames(
-                  "inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-paper px-3 mg-type-micro transition-colors",
+                  "inline-flex h-7 items-center gap-1.5 rounded border border-border bg-paper px-3 text-10 transition-colors",
                   selected.length < 2
                     ? "opacity-50 cursor-not-allowed"
                     : "hover:border-accent/60 hover:text-accent text-ink-strong",
@@ -82,7 +77,7 @@ export function SubnetsCompareDrawer() {
               <button
                 type="button"
                 onClick={clear}
-                className="inline-flex h-7 items-center gap-1 rounded-full border border-border bg-paper px-2.5 mg-type-micro text-ink-muted hover:text-ink-strong transition-colors"
+                className="inline-flex h-7 items-center gap-1 rounded border border-border bg-paper px-2.5 text-10 text-ink-muted hover:text-ink-strong transition-colors"
               >
                 Clear
               </button>
@@ -209,7 +204,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
         const ok = h.ok_count ?? 0;
         const down = Math.max(0, h.surface_count - ok);
         return (
-          <span className="mg-type-data tabular-nums">
+          <span className="text-11 tabular-nums">
             <span className="text-health-ok">{ok}</span>
             {" · "}
             <span className="text-health-down">{down}</span>
@@ -222,11 +217,11 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
   if (isError) {
     return (
       <div className="border-t border-border px-3 py-6 text-center">
-        <p className="mg-type-data text-ink-muted">Could not load comparison.</p>
+        <p className="text-11 text-ink-muted">Could not load comparison.</p>
         <button
           type="button"
           onClick={() => refetch()}
-          className="mt-2 inline-flex h-7 items-center rounded-full border border-border bg-paper px-3 mg-type-micro text-ink-strong hover:border-accent/60 hover:text-accent transition-colors"
+          className="mt-2 inline-flex h-7 items-center rounded border border-border bg-paper px-3 text-10 text-ink-strong hover:border-accent/60 hover:text-accent transition-colors"
         >
           Retry
         </button>
@@ -236,18 +231,16 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
 
   return (
     <div className="border-t border-border max-h-[55vh] overflow-auto">
-      <table className="min-w-full mg-type-caption">
+      <table className="min-w-full text-13">
         {/* eslint-disable-next-line no-restricted-syntax -- deliberate raw z-index: this is a local stacking context (sticky corner cell layered over the sticky row/column headers inside one scroll container), not a global layer, so none of the --mg-z-* layer tokens applies (#7841) */}
-        <thead className="sticky top-0 mg-glass z-[1]">
+        <thead className="sticky top-0 z-[1]">
           <tr>
             {/* eslint-disable-next-line no-restricted-syntax -- deliberate raw z-index: this is a local stacking context (sticky corner cell layered over the sticky row/column headers inside one scroll container), not a global layer, so none of the --mg-z-* layer tokens applies (#7841) */}
-            <th className="sticky left-0 z-[2] w-40 mg-glass px-3 py-2 text-left mg-type-micro text-ink-muted">
-              Metric
-            </th>
+            <th className="sticky left-0 z-[2] w-40 px-3 py-2 text-left text-ink-muted">Metric</th>
             {netuids.map((n) => (
               <th
                 key={n}
-                className="min-w-[6rem] whitespace-nowrap px-3 py-2 text-left mg-type-micro text-ink-strong"
+                className="min-w-[6rem] whitespace-nowrap px-3 py-2 text-left text-ink-strong"
               >
                 SN{n}
               </th>
@@ -258,7 +251,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
           {rows.map((row) => (
             <tr key={row.label}>
               {/* eslint-disable-next-line no-restricted-syntax -- deliberate raw z-index: this is a local stacking context (sticky corner cell layered over the sticky row/column headers inside one scroll container), not a global layer, so none of the --mg-z-* layer tokens applies (#7841) */}
-              <td className="sticky left-0 z-[1] bg-card px-3 py-2 mg-type-micro text-ink-muted">
+              <td className="sticky left-0 z-[1] bg-card px-3 py-2 text-10 text-ink-muted">
                 {row.label}
               </td>
               {netuids.map((n) => (

@@ -87,7 +87,7 @@ export function ApiKeysManager() {
         title="API keys"
         intro="Real fullnode RPC access, plus a higher rate-limit tier on the general API (currently: the chain-events/deep-history routes, more to follow). The keyless API keeps working exactly as-is -- a key buys headroom, it never gates the base. Requires a wallet-signed login; no invite code."
       />
-      <Panel as="div" dense>
+      <Panel as="div">
         {walletStatus !== "connected" || !wallet ? (
           <EmptyState
             title="Connect your wallet"
@@ -122,14 +122,14 @@ function SignInPrompt({
 }) {
   return (
     <div className="space-y-3">
-      <p className="mg-type-caption text-ink-muted">
+      <p className="text-13 text-ink-muted">
         Sign a one-time message with your connected wallet to manage your API keys. This never
         constructs or broadcasts a transaction -- it only proves you control this address.
       </p>
       {error ? (
         <div
           role="alert"
-          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 mg-type-caption text-health-down"
+          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 text-13 text-health-down"
         >
           {error}
         </div>
@@ -138,7 +138,7 @@ function SignInPrompt({
         type="button"
         onClick={onSignIn}
         disabled={signingIn}
-        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
       >
         {signingIn ? "Signing in…" : "Sign in with wallet"}
       </button>
@@ -223,11 +223,9 @@ function ApiKeysPanel({
           role="alert"
           className="rounded border border-health-down/30 bg-health-down/5 p-3 space-y-1"
         >
-          <p className="mg-type-caption font-medium text-health-down">
-            API access is currently blocked
-          </p>
-          <p className="mg-type-caption text-ink-muted">{blockStatus.message}</p>
-          <p className="mg-type-caption text-ink-subtle">
+          <p className="text-13 font-medium text-health-down">API access is currently blocked</p>
+          <p className="text-13 text-ink-muted">{blockStatus.message}</p>
+          <p className="text-13 text-ink-subtle">
             Reason code <span className="font-mono text-ink-muted">{blockStatus.reason_code}</span>.
             Existing keys stay listed below but will be refused until the block is lifted.
           </p>
@@ -235,13 +233,13 @@ function ApiKeysPanel({
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="mg-type-caption text-ink-muted">
+        <span className="text-13 text-ink-muted">
           Tier: <span className="font-mono text-ink-strong">{tier ?? "free"}</span>
         </span>
         <button
           type="button"
           onClick={onSignOut}
-          className="rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30"
+          className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
         >
           Sign out
         </button>
@@ -251,7 +249,7 @@ function ApiKeysPanel({
         type="button"
         onClick={() => createMutation.mutate()}
         disabled={createMutation.isPending}
-        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
       >
         {createMutation.isPending ? "Generating…" : "Generate new key"}
       </button>
@@ -259,7 +257,7 @@ function ApiKeysPanel({
       {createMutation.isError ? (
         <div
           role="alert"
-          className="rounded border border-health-down/30 bg-health-down/5 p-3 mg-type-caption text-health-down"
+          className="rounded border border-health-down/30 bg-health-down/5 p-3 text-13 text-health-down"
         >
           {describeApiError(createMutation.error)}
         </div>
@@ -267,7 +265,7 @@ function ApiKeysPanel({
 
       {createMutation.data ? (
         <div className="space-y-2 rounded border border-accent/40 bg-primary-soft/40 p-4">
-          <p className="mg-type-caption font-medium text-health-warn">
+          <p className="text-13 font-medium text-health-warn">
             This key is shown once and is never echoed back -- store it now.
           </p>
           {/* ph-no-capture: excludes this one-time secret reveal from
@@ -287,7 +285,7 @@ function ApiKeysPanel({
         {listQuery.isError ? (
           <div
             role="alert"
-            className="rounded border border-health-down/30 bg-health-down/5 p-3 mg-type-caption text-health-down"
+            className="rounded border border-health-down/30 bg-health-down/5 p-3 text-13 text-health-down"
           >
             {describeApiError(listQuery.error)}
           </div>
@@ -298,11 +296,11 @@ function ApiKeysPanel({
         {activeKeys.map((key) => (
           <div
             key={key.key_id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-surface/40 px-3 py-2"
+            className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-surface px-3 py-2"
           >
             <div className="min-w-0">
-              <div className="font-mono mg-type-caption text-ink-strong truncate">{key.key_id}</div>
-              <div className="mg-type-caption text-ink-muted">
+              <div className="font-mono text-13 text-ink-strong truncate">{key.key_id}</div>
+              <div className="text-13 text-ink-muted">
                 Created {formatTimestamp(key.created_at)} · Last used{" "}
                 {formatTimestamp(key.last_used_at)}
               </div>
@@ -311,7 +309,7 @@ function ApiKeysPanel({
               type="button"
               onClick={() => revokeMutation.mutate(key.key_id)}
               disabled={revokeMutation.isPending && revokeMutation.variables === key.key_id}
-              className="shrink-0 rounded border border-health-down/40 bg-health-down/5 px-2 py-1 mg-type-caption font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
+              className="shrink-0 rounded border border-health-down/40 bg-health-down/5 px-2 py-1 text-13 font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
             >
               {revokeMutation.isPending && revokeMutation.variables === key.key_id
                 ? "Revoking…"
@@ -374,13 +372,11 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
   return (
     <div className="space-y-3 border-t border-border pt-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="mg-type-caption font-medium text-ink-strong">
-          Usage, last {usage.window_days}d
-        </p>
+        <p className="text-13 font-medium text-ink-strong">Usage, last {usage.window_days}d</p>
         <button
           type="button"
           onClick={() => void exportUsageCsv(token)}
-          className="mg-type-caption text-ink-muted underline hover:text-ink-strong"
+          className="text-13 text-ink-muted underline hover:text-ink-strong"
         >
           Export CSV
         </button>
@@ -388,7 +384,7 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
 
       {quota ? (
         <div className="space-y-1">
-          <div className="flex items-baseline justify-between gap-2 mg-type-caption">
+          <div className="flex items-baseline justify-between gap-2 text-13">
             <span className="text-ink-muted">Daily quota</span>
             <span className="font-mono text-ink-strong">
               {quota.units_spent.toLocaleString("en-US")} /{" "}
@@ -414,7 +410,7 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
               style={{ width: `${usedPct}%` }}
             />
           </div>
-          <p className="mg-type-caption text-ink-subtle">
+          <p className="text-13 text-ink-subtle">
             {quota.remaining.toLocaleString("en-US")} units left · resets{" "}
             {new Date(quota.resets_at).toLocaleTimeString("en-US", {
               hour: "numeric",
@@ -429,14 +425,14 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
           </p>
         </div>
       ) : (
-        <p className="mg-type-caption text-ink-subtle">
+        <p className="text-13 text-ink-subtle">
           No daily quota on the <span className="font-mono">{usage.tier ?? "free"}</span> tier —
           only the per-minute limit applies.
         </p>
       )}
 
       {usage.rejected_total > 0 ? (
-        <p className="mg-type-caption text-health-warn">
+        <p className="text-13 text-health-warn">
           {usage.rejected_total.toLocaleString("en-US")} request
           {usage.rejected_total === 1 ? " was" : "s were"} rate-limited in this window. Rate-limited
           requests are not counted against your quota.
@@ -452,12 +448,12 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
       />
       {usage.top_routes.length > 0 ? (
         <div>
-          <p className="mg-type-caption text-ink-muted">Top routes</p>
+          <p className="text-13 text-ink-muted">Top routes</p>
           <ul className="mt-1 space-y-1">
             {usage.top_routes.map((r) => (
               <li
                 key={r.route}
-                className="flex items-center justify-between gap-2 mg-type-caption text-ink-muted"
+                className="flex items-center justify-between gap-2 text-13 text-ink-muted"
               >
                 <span className="font-mono text-ink-strong">{r.route}</span>
                 <span>{r.count.toLocaleString("en-US")}</span>

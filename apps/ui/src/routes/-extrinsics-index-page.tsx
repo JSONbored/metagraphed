@@ -96,10 +96,10 @@ function FeesTrendCard() {
       <div className="p-4 sm:p-6">
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <div className="flex items-baseline gap-2">
-            <h2 className="mg-type-caption text-ink-muted">Fees, last 7d</h2>
-            <span className="mg-type-data text-ink-muted">{fees.day_count} days</span>
+            <h2 className="text-13 text-ink-muted">Fees, last 7d</h2>
+            <span className="text-11 text-ink-muted">{fees.day_count} days</span>
           </div>
-          <span className="mg-type-data tabular-nums text-ink-strong">
+          <span className="text-11 tabular-nums text-ink-strong">
             {latest == null ? "—" : formatTao(latest)}
           </span>
         </div>
@@ -169,7 +169,7 @@ function ExtrinsicsTable() {
         onClick={() => setFiltersOpen((open) => !open)}
         aria-expanded={filtersOpen}
         aria-controls="extrinsics-filter-fields"
-        className="md:hidden inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-2.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors"
+        className="md:hidden inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-2.5 text-11 text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors"
       >
         <SlidersHorizontal className="size-3" aria-hidden="true" />
         {filterToggleLabel(activeCount)}
@@ -265,7 +265,7 @@ function ExtrinsicsTable() {
         <HashCardOrLink key={rowKey(x)} x={x} />
       ))}
       table={
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-13">
           <thead className="mg-table-head-pinned">
             <tr>
               <th className="px-4 py-2.5">Hash</th>
@@ -278,8 +278,8 @@ function ExtrinsicsTable() {
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map((x) => (
-              <tr key={rowKey(x)} className="mg-row-accent hover:bg-surface/40">
-                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+              <tr key={rowKey(x)} className="mg-row-accent hover:bg-surface">
+                <td className="px-4 py-2.5 text-11 text-ink-muted">
                   {x.extrinsic_hash ? (
                     <span className="inline-flex items-center gap-1 min-w-0">
                       <Link
@@ -296,7 +296,7 @@ function ExtrinsicsTable() {
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 font-mono mg-type-caption">
+                <td className="px-4 py-2.5 font-mono text-13">
                   {x.block_number != null ? (
                     <Link
                       to="/blocks/$ref"
@@ -312,10 +312,10 @@ function ExtrinsicsTable() {
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 mg-type-data text-ink">
+                <td className="px-4 py-2.5 text-11 text-ink">
                   {extrinsicCall(x.call_module, x.call_function)}
                 </td>
-                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                <td className="px-4 py-2.5 text-11 text-ink-muted">
                   <AddressDisplay
                     ss58={x.signer}
                     compact
@@ -324,10 +324,10 @@ function ExtrinsicsTable() {
                     }
                   />
                 </td>
-                <td className="px-4 py-2.5 mg-type-data">
+                <td className="px-4 py-2.5 text-11">
                   <SuccessBadge success={x.success} />
                 </td>
-                <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
+                <td className="px-4 py-2.5 text-right text-11 text-ink-muted">
                   <TimeAgo at={x.observed_at} />
                 </td>
               </tr>
@@ -348,7 +348,7 @@ function HashCardOrLink({ x }: { x: Extrinsic }) {
         <div className="flex items-center gap-1 min-w-0 flex-1">
           {x.extrinsic_hash ? (
             <>
-              <span className="font-mono mg-type-caption font-medium text-ink-strong truncate">
+              <span className="font-mono text-13 font-medium text-ink-strong truncate">
                 {shortHash(x.extrinsic_hash)}
               </span>
               <span
@@ -362,17 +362,17 @@ function HashCardOrLink({ x }: { x: Extrinsic }) {
               </span>
             </>
           ) : (
-            <span className="font-mono mg-type-caption font-medium text-ink-strong">(no hash)</span>
+            <span className="font-mono text-13 font-medium text-ink-strong">(no hash)</span>
           )}
         </div>
-        <span className="mg-type-data text-ink-muted shrink-0">
+        <span className="text-11 text-ink-muted shrink-0">
           <TimeAgo at={x.observed_at} />
         </span>
       </div>
-      <div className="mt-1 mg-type-data text-ink truncate">
+      <div className="mt-1 text-11 text-ink truncate">
         {extrinsicCall(x.call_module, x.call_function)}
       </div>
-      <div className="mt-2 flex items-center justify-between gap-2 mg-type-data text-ink-muted">
+      <div className="mt-2 flex items-center justify-between gap-2 text-11 text-ink-muted">
         <span className="shrink-0">
           {x.block_number != null ? `#${formatNumber(x.block_number)}` : "—"}
         </span>

@@ -63,7 +63,7 @@ export function AccountsPage() {
       />
       <EvmAddressRedirect />
       <form onSubmit={submit} className="mx-auto w-full max-w-2xl">
-        <label htmlFor="ss58" className="mb-2 block mg-type-caption text-ink-muted">
+        <label htmlFor="ss58" className="mb-2 block text-13 text-ink-muted">
           Account address (ss58 or EVM)
         </label>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -79,18 +79,18 @@ export function AccountsPage() {
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
-              className="w-full rounded border border-border bg-card py-2.5 pl-10 pr-3 font-mono text-sm text-ink-strong placeholder:text-ink-muted/60 focus:border-ink/30 focus:outline-none min-h-11"
+              className="w-full rounded border border-border bg-card py-2.5 pl-10 pr-3 font-mono text-13 text-ink-strong placeholder:text-ink-muted/60 focus:border-ink/30 focus:outline-none min-h-11"
             />
           </div>
           <button
             type="submit"
             disabled={!valid}
-            className="inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-4 py-2.5 text-sm font-medium hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-40 min-h-11"
+            className="inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-4 py-2.5 text-13 font-medium hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-40 min-h-11"
           >
             Look up
           </button>
         </div>
-        <p className="mt-2 mg-type-data text-ink-muted">
+        <p className="mt-2 text-11 text-ink-muted">
           {touched && !valid
             ? "That doesn't look like a valid ss58 or EVM address."
             : "Paste a hotkey or coldkey ss58 address — or an EVM (0x) address — to view its activity."}
@@ -136,13 +136,9 @@ export function AccountsPage() {
         </AsyncPanel>
       </div>
 
-      <Panel
-        dense
-        className="mx-auto mt-10 w-full max-w-2xl"
-        data-testid="top-active-accounts-section"
-      >
-        <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Most active accounts</h2>
-        <p className="mb-4 mg-type-data text-ink-muted">
+      <Panel className="mx-auto mt-10 w-full max-w-2xl" data-testid="top-active-accounts-section">
+        <h2 className="mb-1 text-11 text-ink-muted">Most active accounts</h2>
+        <p className="mb-4 text-11 text-ink-muted">
           Ranked by extrinsics signed on-chain in the last {TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS} days —
           jump straight to an account below.
         </p>
@@ -156,9 +152,9 @@ export function AccountsPage() {
       </Panel>
 
       {/* #8252: /tools/ss58 folded in as an "Inspect address" utility. */}
-      <Panel dense className="mx-auto mt-10 w-full max-w-2xl">
-        <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Inspect an address</h2>
-        <p className="mb-4 mg-type-data text-ink-muted">
+      <Panel className="mx-auto mt-10 w-full max-w-2xl">
+        <h2 className="mb-1 text-11 text-ink-muted">Inspect an address</h2>
+        <p className="mb-4 text-11 text-ink-muted">
           Decode any SS58 address&apos;s network prefix and public key, and verify its checksum —
           useful for catching a mistyped or wrong-network address before sending to it.
         </p>
@@ -191,9 +187,9 @@ function YourWalletPanel() {
     // exactly that reason (see REPLAY_BLOCKED_ROUTES in lib/analytics.ts);
     // /accounts is a public any-address lookup page, so the protection moves
     // to this element rather than blocking the whole route.
-    <Panel dense className="ph-no-capture mx-auto mt-10 w-full max-w-4xl">
-      <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Your wallet</h2>
-      <p className="mb-4 mg-type-data text-ink-muted">
+    <Panel className="ph-no-capture mx-auto mt-10 w-full max-w-4xl">
+      <h2 className="mb-1 text-11 text-ink-muted">Your wallet</h2>
+      <p className="mb-4 text-11 text-ink-muted">
         Your staking positions across every subnet for the connected wallet — hotkey-owned and
         delegated. Read-only: this app never constructs or signs a transaction.
       </p>
@@ -202,9 +198,9 @@ function YourWalletPanel() {
           <YourPositionsPanel address={wallet.address} />
         </AsyncPanel>
       ) : (
-        <div className="rounded border border-dashed border-ink-subtle bg-surface/30 p-6 text-center">
+        <div className="rounded border border-dashed border-ink-subtle bg-surface p-6 text-center">
           <Wallet className="mx-auto mb-3 size-5 text-ink-muted" aria-hidden />
-          <p className="mx-auto mb-4 max-w-md mg-type-caption-lg text-ink-muted">
+          <p className="mx-auto mb-4 max-w-md text-13 text-ink-muted">
             Connecting only reads your public on-chain positions from a browser wallet extension.
           </p>
           <div className="flex justify-center">
@@ -231,12 +227,12 @@ function AccountsLeaderboard({
   const rows = data.data.accounts;
   if (rows.length === 0) return null;
   return (
-    <Panel dense>
-      <h2 className="mb-1 mg-type-label uppercase text-ink-muted">{title}</h2>
-      <p className="mb-3 mg-type-data text-ink-muted">{blurb}</p>
+    <Panel>
+      <h2 className="mb-1 text-11 text-ink-muted">{title}</h2>
+      <p className="mb-3 text-11 text-ink-muted">{blurb}</p>
       <ol className="divide-y divide-border">
         {rows.map((a, i) => (
-          <li key={a.hotkey} className="flex items-center gap-3 py-2 mg-type-data">
+          <li key={a.hotkey} className="flex items-center gap-3 py-2 text-11">
             <span className="w-4 shrink-0 text-right tabular-nums text-ink-muted">{i + 1}</span>
             <span className="min-w-0 flex-1">
               <AddressDisplay ss58={a.hotkey} compact fallback="—" />
@@ -249,7 +245,7 @@ function AccountsLeaderboard({
         ))}
       </ol>
       <div className="mt-2 border-t border-border pt-2">
-        <Link to="/validators" className="mg-type-data-sm text-ink-muted hover:text-accent">
+        <Link to="/validators" className="text-10 text-ink-muted hover:text-accent">
           Validator directory →
         </Link>
       </div>
@@ -292,9 +288,9 @@ function EvmAddressRedirect() {
   if (!h160) return null;
   return (
     <Panel className="mx-auto mb-6 w-full max-w-2xl">
-      <p className="mg-type-caption text-ink-muted">EVM address</p>
-      <p className="mt-1 break-all font-mono text-sm text-ink-strong">{h160}</p>
-      <p className="mt-2 mg-type-data text-ink-muted">
+      <p className="text-13 text-ink-muted">EVM address</p>
+      <p className="mt-1 break-all font-mono text-13 text-ink-strong">{h160}</p>
+      <p className="mt-2 text-11 text-ink-muted">
         {!address
           ? "That is not a well-formed EVM address (expected 0x followed by 40 hex characters)."
           : mapping.isPending

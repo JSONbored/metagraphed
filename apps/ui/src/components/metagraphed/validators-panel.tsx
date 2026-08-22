@@ -77,13 +77,11 @@ export function ValidatorsTableLoader({
     <div className="space-y-4">
       {sponsored ? <SponsoredValidatorCallout netuid={netuid} validator={sponsored} /> : null}
       {stakeBars.length > 0 ? (
-        <Panel as="div" dense>
+        <Panel as="div">
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="mg-type-caption text-ink-muted">
-              Validator stake · top {stakeBars.length}
-            </span>
+            <span className="text-13 text-ink-muted">Validator stake · top {stakeBars.length}</span>
             <span className="ml-auto flex items-center gap-2">
-              <span className="mg-type-data-sm text-ink-muted">
+              <span className="text-10 text-ink-muted">
                 peak {taoCompact(stakeBars[0]?.value)} τ
               </span>
               {freshness}
@@ -92,7 +90,7 @@ export function ValidatorsTableLoader({
           <BarMini data={stakeBars} />
           {stakeTiles.length > 1 ? (
             <div className="mt-4 border-t border-border pt-3">
-              <div className="mb-2 mg-type-caption text-ink-muted">
+              <div className="mb-2 text-13 text-ink-muted">
                 Stake dominance
                 <TopShareCaption n={stakeTiles.length} />
               </div>

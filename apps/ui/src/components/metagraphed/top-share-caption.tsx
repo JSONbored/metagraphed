@@ -5,9 +5,5 @@
 // meant for exactly this small body text. Extracting the caption to one place
 // fixes the contrast at both sites and stops the copies drifting again.
 export function TopShareCaption({ n }: { n: number }) {
-  return (
-    <span className="ml-2 normal-case tracking-normal text-ink-subtle-text">
-      share within the top {n}
-    </span>
-  );
+  return <span className="ml-2 normal-case text-ink-subtle-text">share within the top {n}</span>;
 }

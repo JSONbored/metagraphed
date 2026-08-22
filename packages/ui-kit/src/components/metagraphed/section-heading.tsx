@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { classNames } from "@/lib/format";
 
 /**
- * Canonical section header — the uppercase display label that opens a page
+ * Canonical section header — the display label that opens a page
  * section, with an optional one-line prose intro and an optional right-aligned
  * slot (meta, window toggles). Use this instead of hand-writing the <h2> classes
  * so every section reads identically across the app. Spacing below the heading
@@ -39,7 +39,7 @@ export function SectionHeading({
       <div className="max-w-2xl">
         <h2
           id={id}
-          className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong"
+          className="font-display text-13 font-semibold text-ink-strong"
         >
           {step != null ? (
             <span className="mr-2 tabular-nums text-accent-text">
@@ -49,7 +49,7 @@ export function SectionHeading({
           {title}
         </h2>
         {intro ? (
-          <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+          <p className="mt-1.5 text-13 leading-relaxed text-ink-muted">
             {intro}
           </p>
         ) : null}

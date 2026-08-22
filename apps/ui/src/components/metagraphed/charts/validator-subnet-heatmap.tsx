@@ -44,7 +44,7 @@ export function ValidatorSubnetHeatmap() {
 
   if (rows.length === 0 || netuids.length === 0) {
     return (
-      <Panel as="div" dense bodyClassName="text-xs text-ink-muted">
+      <Panel as="div" bodyClassName="text-13 text-ink-muted">
         No validator participation data yet.
       </Panel>
     );
@@ -53,8 +53,8 @@ export function ValidatorSubnetHeatmap() {
   return (
     <Panel as="div" flush className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <div className="mg-type-caption text-ink-muted">Validator × subnet · stake intensity</div>
-        <div className="flex flex-wrap items-center gap-2.5 mg-type-data-sm text-ink-muted">
+        <div className="text-13 text-ink-muted">Validator × subnet · stake intensity</div>
+        <div className="flex flex-wrap items-center gap-2.5 text-10 text-ink-muted">
           <span>top {rows.length} validators · top 10 subnets each (server-capped)</span>
           <span className="inline-flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded bg-accent/20" />
@@ -66,16 +66,16 @@ export function ValidatorSubnetHeatmap() {
       </div>
       <div className="w-full overflow-x-auto [scrollbar-gutter:stable]">
         <TooltipProvider delayDuration={150}>
-          <table className="w-full min-w-[640px] mg-type-data">
+          <table className="w-full min-w-[640px] text-11">
             <thead>
               <tr>
-                <th className="sticky left-0 z-[var(--mg-z-sticky)] border-b border-border bg-card px-3 py-2 text-left mg-type-micro text-ink-muted">
+                <th className="sticky left-0 z-[var(--mg-z-sticky)] border-b border-border bg-card px-3 py-2 text-left text-ink-muted">
                   Validator
                 </th>
                 {netuids.map((n) => (
                   <th
                     key={n}
-                    className="border-b border-border px-1.5 py-2 mg-type-caption tabular-nums text-ink-muted"
+                    className="border-b border-border px-1.5 py-2 tabular-nums text-ink-muted"
                   >
                     {n}
                   </th>
@@ -115,7 +115,7 @@ export function ValidatorSubnetHeatmap() {
                                 )}
                               />
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="mg-type-caption">
+                            <TooltipContent side="top" className="text-13">
                               {summary}
                             </TooltipContent>
                           </Tooltip>

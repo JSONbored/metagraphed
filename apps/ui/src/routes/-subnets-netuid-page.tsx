@@ -217,7 +217,7 @@ const SECTION_TO_TAB: Record<string, string> = {
 export function SubnetDetailPage() {
   const { netuid } = useParams({ from: "/subnets/$netuid" });
   return (
-    <AppShell flushTop crumbLabel={String(netuid).padStart(3, "0")}>
+    <AppShell>
       <AsyncPanel
         context="subnet profile"
         fallback={<DetailSkeleton />}
@@ -359,7 +359,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
           <div className="mt-6">
             <Link
               to="/subnets"
-              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
             >
               ← All subnets
             </Link>
@@ -468,14 +468,14 @@ function SubnetStartIntegratingCard({
   const score = profile?.integration_readiness;
   const snippet = apiSnippet("curl", `/api/v1/subnets/${netuid}/profile`);
   return (
-    <Panel dense bodyClassName="flex flex-wrap items-center gap-4" className="border-accent/30">
+    <Panel bodyClassName="flex flex-wrap items-center gap-4" className="border-accent/30">
       <div className="min-w-0 shrink-0">
-        <div className="mg-label">Start integrating</div>
+        <div className="text-10 text-ink-muted">Start integrating</div>
         <div className="mt-0.5 flex items-baseline gap-1.5">
-          <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
+          <span className="font-display text-28 font-semibold tabular-nums text-ink-strong">
             {score != null ? score : "—"}
           </span>
-          <span className="mg-type-data-sm text-ink-muted">/ 100 readiness</span>
+          <span className="text-10 text-ink-muted">/ 100 readiness</span>
         </div>
       </div>
       {/* #8247/CI: a second, `hidden`-gated copy of this same CopyableCode
@@ -495,7 +495,7 @@ function SubnetStartIntegratingCard({
             replace: true,
           })
         }
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/40 bg-accent-surface px-3 py-1.5 mg-type-data font-medium text-accent-text hover:border-accent/70"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded border border-accent/40 bg-accent-surface px-3 py-1.5 text-11 font-medium text-accent-text hover:border-accent/70"
       >
         Start here →
       </button>
@@ -524,10 +524,10 @@ function SubnetUptime90dStrip({ netuid }: { netuid: number }) {
   const mean = series.length ? series.reduce((a, b) => a + b, 0) / series.length : null;
   if (series.length === 0) return null;
   return (
-    <Panel dense bodyClassName="flex items-center gap-4">
+    <Panel bodyClassName="flex items-center gap-4">
       <div className="shrink-0">
-        <div className="mg-label">Uptime · {window}</div>
-        <div className="mt-0.5 font-display text-lg font-semibold tabular-nums text-ink-strong">
+        <div className="text-10 text-ink-muted">Uptime · {window}</div>
+        <div className="mt-0.5 font-display text-16 font-semibold tabular-nums text-ink-strong">
           {mean != null ? `${mean.toFixed(2)}%` : "—"}
         </div>
       </div>
@@ -552,13 +552,13 @@ function SubnetRecentActivityFeed({ netuid }: { netuid: number }) {
   const events = ((data?.data.events ?? []) as AccountEvent[]).slice(0, 5);
   if (events.length === 0) return null;
   return (
-    <Panel dense bodyClassName="space-y-2">
-      <div className="mg-label">Recent activity</div>
+    <Panel bodyClassName="space-y-2">
+      <div className="text-10 text-ink-muted">Recent activity</div>
       <ul className="space-y-1.5">
         {events.map((ev, i) => (
           <li
             key={`${ev.block_number}-${ev.event_index}-${i}`}
-            className="flex min-w-0 items-center justify-between gap-3 mg-type-data"
+            className="flex min-w-0 items-center justify-between gap-3 text-11"
           >
             {/* min-w-0 on both the row and the kind cell: the cell is
                 whitespace-nowrap and the timestamp is shrink-0, so without a
@@ -879,7 +879,7 @@ function OverviewSummaryStrip({ netuid }: { netuid: number }) {
           not subnet-page furniture; that same gap already renders on
           /contribute (#8363). */}
       {overview.status ? (
-        <span className="mg-type-caption inline-flex items-center rounded border border-border bg-card px-2 py-0.5 text-ink-muted">
+        <span className="text-13 inline-flex items-center rounded border border-border bg-card px-2 py-0.5 text-ink-muted">
           {overview.status}
         </span>
       ) : null}
@@ -933,16 +933,16 @@ function SubnetLineageSection({ netuid }: { netuid: number }) {
       subtitle={`Paired across networks — ${selfNetwork} ↔ ${counterpartNetwork}.`}
       info="Cross-network lineage links the testnet and mainnet deployments of the same subnet, matched by chain name or source repo."
     >
-      <Panel dense bodyClassName="flex flex-wrap items-center justify-between gap-3">
+      <Panel bodyClassName="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="mg-label">{counterpartNetwork} counterpart</span>
-          <span className="font-display text-sm font-semibold text-ink-strong">
+          <span className="text-10 text-ink-muted">{counterpartNetwork} counterpart</span>
+          <span className="font-display text-13 font-semibold text-ink-strong">
             {counterpartName ?? `Subnet ${counterpartNetuid}`}
           </span>
-          <span className="font-mono text-xs text-ink-muted">#{counterpartNetuid}</span>
+          <span className="font-mono text-13 text-ink-muted">#{counterpartNetuid}</span>
         </div>
         {matchedBy ? (
-          <span className="rounded-full border border-border px-2 py-0.5 mg-type-data text-ink-muted">
+          <span className="rounded border border-border px-2 py-0.5 text-11 text-ink-muted">
             matched by {matchedBy}
           </span>
         ) : null}
@@ -986,25 +986,25 @@ function IdentityHistoryList({ netuid }: { netuid: number }) {
       {entries.map((entry, i) => (
         <li
           key={`${entry.identity_hash}-${i}`}
-          className="rounded-md border border-border bg-card p-3"
+          className="rounded border border-border bg-card p-3"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="font-display text-sm font-semibold text-ink-strong">
+            <span className="font-display text-13 font-semibold text-ink-strong">
               {entry.subnet_name ?? "Unnamed"}
               {entry.symbol ? (
-                <span className="ml-1.5 font-mono text-xs text-ink-muted">{entry.symbol}</span>
+                <span className="ml-1.5 font-mono text-13 text-ink-muted">{entry.symbol}</span>
               ) : null}
             </span>
-            <span className="mg-type-data text-ink-muted">
+            <span className="text-11 text-ink-muted">
               {entry.observed_at ? <TimeAgo at={entry.observed_at} /> : "unknown time"}
               {entry.block_number != null ? ` · block #${formatNumber(entry.block_number)}` : ""}
             </span>
           </div>
           {entry.description ? (
-            <p className="mt-1 text-xs text-ink-muted">{entry.description}</p>
+            <p className="mt-1 text-13 text-ink-muted">{entry.description}</p>
           ) : null}
           {entry.subnet_url || entry.github_repo || entry.discord ? (
-            <div className="mt-1.5 flex flex-wrap gap-3 mg-type-caption">
+            <div className="mt-1.5 flex flex-wrap gap-3 text-13">
               {entry.subnet_url ? (
                 <ExternalLink href={entry.subnet_url} className="text-accent-text hover:underline">
                   website
@@ -1112,7 +1112,7 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
           {/* SearchInput sets its own aria-label from `placeholder` -- this is a
               visual label only, not `<label htmlFor>`, since SearchInput has no
               `id` prop to associate with. */}
-          <span aria-hidden="true" className="mg-type-caption text-ink-muted">
+          <span aria-hidden="true" className="text-13 text-ink-muted">
             Amount ({inputUnit})
           </span>
           <SearchInput
@@ -1124,11 +1124,11 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <span className="mg-type-caption text-ink-muted">Direction</span>
+          <span className="text-13 text-ink-muted">Direction</span>
           <div
             role="tablist"
             aria-label="Stake or unstake"
-            className="inline-flex items-center rounded-md border border-border bg-card p-0.5"
+            className="inline-flex items-center rounded border border-border bg-card p-0.5"
           >
             {STAKE_QUOTE_DIRECTIONS.map((d, i) => {
               const active = d === direction;
@@ -1143,7 +1143,7 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
                   onClick={() => setDirection(d)}
                   onKeyDown={directionKeyDown(i)}
                   className={classNames(
-                    "min-h-8 rounded px-3 py-1.5 mg-type-label uppercase transition-colors",
+                    "min-h-8 rounded px-3 py-1.5 text-11 transition-colors",
                     active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
                   )}
                 >
@@ -1156,16 +1156,16 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
       </div>
 
       {!hasValidAmount ? (
-        <p className="mg-type-data text-ink-muted">
+        <p className="text-11 text-ink-muted">
           Enter an amount to estimate slippage against the subnet's live pool reserves.
         </p>
       ) : result.isError ? (
-        <p className="inline-flex items-center gap-1.5 mg-type-data text-health-down">
+        <p className="inline-flex items-center gap-1.5 text-11 text-health-down">
           <AlertCircle className="size-3.5 shrink-0" aria-hidden />
           {result.error instanceof Error ? result.error.message : "Could not compute a quote."}
         </p>
       ) : result.isPending ? (
-        <p className="mg-type-data text-ink-muted">Calculating…</p>
+        <p className="text-11 text-ink-muted">Calculating…</p>
       ) : quote ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
@@ -1391,13 +1391,13 @@ function EventKindFilterChip({
   onChange: (v: string) => void;
 }) {
   return (
-    <label className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-ink-muted hover:border-ink/30 transition-colors">
+    <label className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-ink-muted hover:border-ink/30 transition-colors">
       <Filter className="size-3 shrink-0" aria-hidden />
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label="Filter by event kind"
-        className="min-w-0 max-w-[85px] truncate bg-transparent mg-type-label uppercase text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        className="min-w-0 max-w-[85px] truncate bg-transparent text-11 text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
       >
         <option value="">All</option>
         {EVENT_KIND_OPTIONS.map((o) => (
@@ -1448,17 +1448,17 @@ function EventKindCell({
       <span
         role="img"
         aria-label={`Category: ${categoryLabel}`}
-        className="inline-block size-2 shrink-0 rounded-full"
+        className="inline-block size-2 shrink-0 rounded-full mg-dot"
         style={{ background: EVENT_KIND_CATEGORY_DOT[category] }}
       />
-      <span className="truncate mg-type-caption text-ink-strong">{label}</span>
+      <span className="truncate text-13 text-ink-strong">{label}</span>
       {grouped ? (
-        <span className="mg-type-caption-lg text-ink-muted">
+        <span className="text-13 text-ink-muted">
           × {count}
           {spanMinutes != null ? ` · last ${spanMinutes}m` : ""}
         </span>
       ) : null}
-      <span className="inline-flex items-center rounded border border-border bg-surface/40 px-1.5 py-0.5 mg-type-caption font-medium text-ink-muted">
+      <span className="inline-flex items-center rounded border border-border bg-surface px-1.5 py-0.5 text-13 font-medium text-ink-muted">
         {categoryLabel}
       </span>
     </span>
@@ -1488,14 +1488,14 @@ function ActivityEventRow({
     <tr
       id={id}
       className={classNames(
-        "hover:bg-surface/40",
-        nested && "bg-surface/20",
+        "hover:bg-surface",
+        nested && "bg-surface",
         // #8528: only top-level new rows fade in; nested (expanded-group child)
         // rows never animate -- they only appear on user toggle, not stream arrival.
-        isNew && !nested && "mg-fade-in",
+        isNew && !nested && "",
       )}
     >
-      <td className="px-4 py-2.5 font-mono mg-type-caption whitespace-nowrap">
+      <td className="px-4 py-2.5 font-mono text-13 whitespace-nowrap">
         {ev.block_number != null ? (
           <Link
             to="/blocks/$ref"
@@ -1511,7 +1511,7 @@ function ActivityEventRow({
       <td className={classNames("px-4 py-2.5 whitespace-nowrap", nested && "pl-8")}>
         <EventKindCell kind={ev.event_kind} />
       </td>
-      <td className="px-4 py-2.5 mg-type-data whitespace-nowrap">
+      <td className="px-4 py-2.5 text-11 whitespace-nowrap">
         <AddressDisplay
           ss58={ev.hotkey}
           fallback="—"
@@ -1519,10 +1519,10 @@ function ActivityEventRow({
           valueClassName="text-ink-muted hover:text-ink"
         />
       </td>
-      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink whitespace-nowrap">
+      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink whitespace-nowrap">
         {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
       </td>
-      <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted whitespace-nowrap">
+      <td className="px-4 py-2.5 text-right text-11 text-ink-muted whitespace-nowrap">
         <TimeAgo at={ev.observed_at} />
       </td>
     </tr>
@@ -1565,11 +1565,8 @@ function ActivityGroupRow({
 
   return (
     <>
-      <tr
-        className={classNames("cursor-pointer hover:bg-surface/40", isNew && "mg-fade-in")}
-        onClick={onToggle}
-      >
-        <td className="px-4 py-2.5 font-mono mg-type-caption whitespace-nowrap">
+      <tr className={classNames("cursor-pointer hover:bg-surface", isNew && "")} onClick={onToggle}>
+        <td className="px-4 py-2.5 font-mono text-13 whitespace-nowrap">
           {latest.block_number != null ? (
             <Link
               to="/blocks/$ref"
@@ -1617,7 +1614,7 @@ function ActivityGroupRow({
             <EventKindCell kind={group.kind} count={group.events.length} spanMinutes={span} />
           </span>
         </td>
-        <td className="px-4 py-2.5 mg-type-data whitespace-nowrap">
+        <td className="px-4 py-2.5 text-11 whitespace-nowrap">
           {sameHotkey && latest.hotkey ? (
             // The row itself toggles expand/collapse; the address link/copy
             // button must navigate/copy instead, not also fire onToggle.
@@ -1633,10 +1630,10 @@ function ActivityGroupRow({
             <span className="text-ink-muted">multiple</span>
           )}
         </td>
-        <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-muted whitespace-nowrap">
+        <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-muted whitespace-nowrap">
           —
         </td>
-        <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted whitespace-nowrap">
+        <td className="px-4 py-2.5 text-right text-11 text-ink-muted whitespace-nowrap">
           <TimeAgo at={latest.observed_at} />
         </td>
       </tr>
@@ -1668,7 +1665,7 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
   const groups = aggregateActivityEvents(events);
   // #8528: fade-in only genuinely-new rows as the live stream delivers them --
   // never on re-render/refetch/re-sort, and never the initial populated paint.
-  // Pure CSS (mg-fade-in, which already suppresses under prefers-reduced-motion)
+  // Pure CSS (, which already suppresses under prefers-reduced-motion)
   // driven by mount; no per-row timers (#8365). The seen-set persists across
   // renders in a ref; a group's stable identity is activityGroupKey (#8817).
   const seenRowsRef = useRef<Set<string>>(new Set());
@@ -1717,7 +1714,7 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
                   replace: true,
                 })
               }
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3.5 py-1.5 text-11 text-ink-muted hover:border-ink/30 hover:text-ink-strong"
             >
               Clear filter
             </button>
@@ -1733,7 +1730,7 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
     <LiveTickerProvider>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
-          <span className="mg-type-caption text-ink-muted">
+          <span className="text-13 text-ink-muted">
             {events.length} event{events.length === 1 ? "" : "s"}
           </span>
           <div className="flex items-center gap-2">
@@ -1742,8 +1739,8 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
           </div>
         </div>
         <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface/40">
+          <table className="w-full text-left text-13">
+            <thead className="bg-surface">
               <tr>
                 <th className="px-4 py-2.5 whitespace-nowrap">Block</th>
                 <th className="px-4 py-2.5 whitespace-nowrap">Kind</th>
@@ -1870,35 +1867,35 @@ function AgentReadinessCard({
 }) {
   const tone = SERVICE_READINESS_TONE[tier ?? ""] ?? "text-ink-muted border-border";
   return (
-    <Panel dense>
+    <Panel>
       <div className="flex flex-wrap items-center gap-3">
         <div>
-          <div className="mg-label">Integration readiness</div>
+          <div className="text-10 text-ink-muted">Integration readiness</div>
           <div className="mt-0.5 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-semibold tabular-nums text-ink-strong">
+            <span className="font-display text-28 font-semibold tabular-nums text-ink-strong">
               {score != null ? score : "—"}
             </span>
-            <span className="mg-type-data-sm text-ink-muted">/ 100</span>
+            <span className="text-10 text-ink-muted">/ 100</span>
           </div>
         </div>
         {tier ? (
           <span
             className={classNames(
-              "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5",
+              "text-13 inline-flex items-center rounded border px-1.5 py-0.5",
               tone,
             )}
           >
             {tier}
           </span>
         ) : null}
-        {status ? <span className="mg-type-caption text-ink-muted">{status}</span> : null}
+        {status ? <span className="text-13 text-ink-muted">{status}</span> : null}
       </div>
       {blockers.length > 0 ? (
         <div className="mt-3 border-t border-border pt-3">
-          <div className="mg-label mb-1.5">What's blocking buildability</div>
+          <div className="text-10 text-ink-muted mb-1.5">What's blocking buildability</div>
           <ul className="space-y-1.5">
             {blockers.map((b, i) => (
-              <li key={b.code ?? i} className="mg-type-caption leading-relaxed text-ink">
+              <li key={b.code ?? i} className="text-13 leading-relaxed text-ink">
                 <span className="font-medium text-ink-strong">{b.message ?? b.code}</span>
                 {b.next_action ? <span className="text-ink-muted"> — {b.next_action}</span> : null}
               </li>
@@ -1913,21 +1910,21 @@ function AgentReadinessCard({
 function ServiceCard({ service }: { service: AgentCatalogService }) {
   const callable = service.eligibility?.callable;
   return (
-    <li className="rounded-md border border-border bg-card p-4">
+    <li className="rounded border border-border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mg-type-caption inline-flex items-center rounded border border-accent/40 bg-primary-soft px-1.5 py-0.5 text-accent-text">
+        <span className="text-13 inline-flex items-center rounded border border-accent/40 bg-primary-soft px-1.5 py-0.5 text-accent-text">
           {service.kind ?? "service"}
         </span>
         <span className="font-medium text-ink-strong truncate">
           {service.capability ?? service.surface_id ?? "Service"}
         </span>
         {service.provider ? (
-          <span className="mg-type-data-sm text-ink-muted">{service.provider}</span>
+          <span className="text-10 text-ink-muted">{service.provider}</span>
         ) : null}
         <span className="ml-auto inline-flex items-center gap-2">
           <span
             className={classNames(
-              "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption",
+              "inline-flex items-center rounded border px-1.5 py-0.5 text-13",
               service.auth_required
                 ? "border-health-warn/40 text-health-warn"
                 : "border-border text-ink-muted",
@@ -1944,7 +1941,7 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
         </span>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-3 mg-type-data text-ink-muted">
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-11 text-ink-muted">
         {service.base_url ? (
           <CopyableCode label="url" value={service.base_url} className="max-w-full" />
         ) : null}
@@ -1962,7 +1959,7 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
 
       {service.base_url ? (
         <div className="mt-3 space-y-1.5 border-t border-border pt-3">
-          <div className="mg-label mb-1">Call it</div>
+          <div className="text-10 text-ink-muted mb-1">Call it</div>
           <CopyableCode
             label="curl"
             value={apiSnippet("curl", service.base_url)}
@@ -2150,8 +2147,8 @@ function WeightsSummaryLoader({ netuid }: { netuid: number }) {
     >
       {cells.map((c) => (
         <div key={c.label} className="px-4 py-3">
-          <div className="mg-type-caption text-ink-muted">{c.label}</div>
-          <div className="mt-0.5 font-mono text-lg tabular-nums text-ink-strong">{c.value}</div>
+          <div className="text-13 text-ink-muted">{c.label}</div>
+          <div className="mt-0.5 font-mono text-16 tabular-nums text-ink-strong">{c.value}</div>
         </div>
       ))}
     </Panel>
@@ -2167,7 +2164,7 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
   const d = res.data;
   if (!d || d.setter_count === 0) {
     return (
-      <p className="mt-6 text-sm text-ink-muted">
+      <p className="mt-6 text-13 text-ink-muted">
         No weight-setting activity recorded for this subnet in the last 30 days.
       </p>
     );
@@ -2178,39 +2175,39 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
     <div className="mt-6 min-w-0" data-weight-setters-leaderboard>
       <Panel flush className="overflow-hidden">
         <div className="flex flex-nowrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <span className="shrink-0 mg-type-caption text-ink-muted sm:hidden">Weight-setters</span>
-          <span className="hidden shrink-0 mg-type-caption text-ink-muted sm:inline">
+          <span className="shrink-0 text-13 text-ink-muted sm:hidden">Weight-setters</span>
+          <span className="hidden shrink-0 text-13 text-ink-muted sm:inline">
             Weight-setters · per-validator breakdown
           </span>
-          <span className="shrink-0 mg-type-data-sm text-ink-muted whitespace-nowrap">
+          <span className="shrink-0 text-10 text-ink-muted whitespace-nowrap">
             {formatNumber(d.setter_count)} validators · {windowLabel}
           </span>
         </div>
         {/* ResponsiveTable: horizontal scroll + edge-fade shadows on narrow
             viewports (#3942), same treatment as list-page tables. */}
         <ResponsiveTable minWidth={280}>
-          <table className="w-full text-sm">
-            <thead className="bg-surface/50 text-ink-muted">
+          <table className="w-full text-13">
+            <thead className="bg-surface text-ink-muted">
               <tr>
-                <th className="mg-type-micro px-3 py-2.5 text-left">#</th>
-                <th className="mg-type-micro px-3 py-2.5 text-left">Validator</th>
-                <th className="mg-type-micro px-3 py-2.5 text-right">Weight sets</th>
-                <th className="mg-type-micro px-3 py-2.5 text-right">Share</th>
+                <th className="px-3 py-2.5 text-left">#</th>
+                <th className="px-3 py-2.5 text-left">Validator</th>
+                <th className="px-3 py-2.5 text-right">Weight sets</th>
+                <th className="px-3 py-2.5 text-right">Share</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((setter, i) => (
                 <tr key={setter.uid ?? setter.hotkey ?? i} className="border-t border-border">
-                  <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums text-ink-muted">
+                  <td className="px-3 py-2.5 font-mono text-13 tabular-nums text-ink-muted">
                     {i + 1}
                   </td>
-                  <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 font-mono text-13 tabular-nums text-ink-strong">
                     {setter.uid != null ? `UID ${setter.uid}` : "validator"}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-strong">
                     {formatNumber(setter.weight_sets)}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
                     {setter.share != null ? `${(setter.share * 100).toFixed(1)}%` : "0%"}
                   </td>
                 </tr>
@@ -2231,7 +2228,7 @@ function CandidatesPanel({ netuid }: { netuid: number }) {
       subtitle="Unverified leads from public sources. Always labeled."
       info="Discovered automatically and not yet reviewed by a maintainer. Submit corrections via GitHub."
     >
-      <div className="mb-2 rounded border border-dashed border-ink-subtle bg-paper px-3 py-2 mg-type-caption text-ink-muted flex items-start gap-2">
+      <div className="mb-2 rounded border border-dashed border-ink-subtle bg-paper px-3 py-2 text-13 text-ink-muted flex items-start gap-2">
         <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
         <span>
           Candidates are discovered automatically and have not been verified by a maintainer. Submit
@@ -2281,15 +2278,15 @@ function GapsList({ netuid }: { netuid: number }) {
     );
   }
   return (
-    <Panel dense bodyClassName="space-y-3">
+    <Panel bodyClassName="space-y-3">
       {missing.length > 0 ? (
         <div>
-          <div className="mg-label mb-1">Missing kinds</div>
+          <div className="text-10 text-ink-muted mb-1">Missing kinds</div>
           <div className="flex flex-wrap gap-1">
             {missing.map((k) => (
               <span
                 key={k}
-                className="rounded border border-dashed border-ink-subtle bg-paper px-1.5 py-0.5 mg-type-data-sm text-ink-muted"
+                className="rounded border border-dashed border-ink-subtle bg-paper px-1.5 py-0.5 text-10 text-ink-muted"
               >
                 {k}
               </span>
@@ -2298,13 +2295,13 @@ function GapsList({ netuid }: { netuid: number }) {
         </div>
       ) : null}
       {notes.length > 0 ? (
-        <ul className="space-y-1 mg-type-caption text-ink leading-relaxed">
+        <ul className="space-y-1 text-13 text-ink leading-relaxed">
           {notes.map((n, i) => (
             <li key={i}>· {n}</li>
           ))}
         </ul>
       ) : null}
-      <div className="border-t border-border pt-2 mg-type-caption text-ink-muted">
+      <div className="border-t border-border pt-2 text-13 text-ink-muted">
         Help close these gaps by opening a PR against the public registry repo.
       </div>
     </Panel>
@@ -2361,7 +2358,7 @@ function boolBadge(v: boolean) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption",
+        "inline-flex items-center rounded border px-1.5 py-0.5 text-13",
         v ? "border-accent/40 bg-accent-surface text-accent-text" : "border-border text-ink-muted",
       )}
     >
@@ -2563,7 +2560,7 @@ function HyperparametersTable({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-6">
       {res.data.captured_at ? (
-        <p className="mg-type-data text-ink-muted">
+        <p className="text-11 text-ink-muted">
           Captured <TimeAgo at={res.data.captured_at} />
           {res.data.block_number != null ? ` · block #${formatNumber(res.data.block_number)}` : ""}
         </p>
@@ -2582,15 +2579,13 @@ function HyperparamGroupsTable({ h }: { h: SubnetHyperparameters }) {
       {HYPERPARAM_GROUPS.map((group) => (
         <Panel as="div" flush key={group.title}>
           <div className="border-b border-border px-4 py-2.5">
-            <h3 className="font-display text-sm font-semibold text-ink-strong">{group.title}</h3>
+            <h3 className="font-display text-13 font-semibold text-ink-strong">{group.title}</h3>
           </div>
           <div className="grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3">
             {group.fields.map((field) => (
               <div key={field.key} className="px-4 py-2.5">
-                <div className="mg-type-caption text-ink-muted">{field.label}</div>
-                <div className="mt-1 font-mono mg-type-caption-lg text-ink-strong">
-                  {field.format(h)}
-                </div>
+                <div className="text-13 text-ink-muted">{field.label}</div>
+                <div className="mt-1 font-mono text-13 text-ink-strong">{field.format(h)}</div>
               </div>
             ))}
           </div>
@@ -2636,14 +2631,14 @@ function HyperparamsHistoryList({ netuid }: { netuid: number }) {
       {entries.map((entry) => {
         const expanded = expandedHash === entry.hyperparams_hash;
         return (
-          <li key={entry.hyperparams_hash} className="rounded-md border border-border bg-card p-3">
+          <li key={entry.hyperparams_hash} className="rounded border border-border bg-card p-3">
             <button
               type="button"
               onClick={() => setExpandedHash(expanded ? null : entry.hyperparams_hash)}
               aria-expanded={expanded}
               className="flex w-full flex-wrap items-baseline justify-between gap-2 text-left"
             >
-              <span className="inline-flex items-center gap-1.5 font-display text-sm font-semibold text-ink-strong">
+              <span className="inline-flex items-center gap-1.5 font-display text-13 font-semibold text-ink-strong">
                 <ChevronDown
                   aria-hidden
                   className={classNames(
@@ -2653,7 +2648,7 @@ function HyperparamsHistoryList({ netuid }: { netuid: number }) {
                 />
                 {entry.observed_at ? <TimeAgo at={entry.observed_at} /> : "unknown time"}
               </span>
-              <span className="mg-type-data text-ink-muted">
+              <span className="text-11 text-ink-muted">
                 {entry.block_number != null ? `block #${formatNumber(entry.block_number)} · ` : ""}
                 {entry.hyperparams_hash.slice(0, 10)}
               </span>
@@ -2687,28 +2682,28 @@ function CandidatesList({ netuid }: { netuid: number }) {
   return (
     <ul className="space-y-2">
       {rows.map((c) => (
-        <li key={c.id} className="rounded-md border border-dashed border-ink-subtle bg-paper p-3">
+        <li key={c.id} className="rounded border border-dashed border-ink-subtle bg-paper p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <CandidateChip />
-                <span className="mg-type-data-sm uppercase text-ink-muted">{c.kind ?? "lead"}</span>
+                <span className="text-10 text-ink-muted">{c.kind ?? "lead"}</span>
                 {(c as Record<string, unknown>).provider ? (
-                  <span className="mg-type-data-sm text-ink-muted">
+                  <span className="text-10 text-ink-muted">
                     via {(c as Record<string, unknown>).provider as string}
                   </span>
                 ) : null}
               </div>
               {c.url ? (
-                <ExternalLink href={c.url} className="mt-1 text-xs">
+                <ExternalLink href={c.url} className="mt-1 text-13">
                   {c.url}
                 </ExternalLink>
               ) : null}
               {c.notes ? (
-                <p className="mt-1 text-xs text-ink-muted leading-relaxed">{c.notes}</p>
+                <p className="mt-1 text-13 text-ink-muted leading-relaxed">{c.notes}</p>
               ) : null}
             </div>
-            <span className="mg-type-data-sm text-ink-muted shrink-0">
+            <span className="text-10 text-ink-muted shrink-0">
               <TimeAgo at={c.discovered_at} />
             </span>
           </div>

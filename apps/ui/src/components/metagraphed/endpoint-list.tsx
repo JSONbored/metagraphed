@@ -70,8 +70,8 @@ export function EndpointList({
       {/* Desktop */}
       <Panel as="div" flush className="hidden md:block overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-surface/50 mg-type-micro text-ink-muted">
+          <table className="w-full text-13">
+            <thead className="bg-surface text-10 text-ink-muted">
               <tr>
                 {showNetuid ? <th className="px-4 py-2.5 text-left w-16">SN</th> : null}
                 <th className="px-4 py-2.5 text-left">Resource</th>
@@ -114,7 +114,7 @@ export function EndpointList({
       <div className="md:hidden space-y-4">
         {groups.map((g) => (
           <div key={g.category}>
-            <div className="px-1 mb-1.5 mg-type-caption text-ink-muted flex items-center justify-between">
+            <div className="px-1 mb-1.5 text-13 text-ink-muted flex items-center justify-between">
               <span>{CATEGORY_LABEL[g.category]}</span>
               <span className="tabular-nums">{g.items.length}</span>
             </div>
@@ -154,8 +154,8 @@ function GroupBlock({
   const colSpan = 4 + (showNetuid ? 1 : 0) + (showProvider ? 1 : 0) + 2;
   return (
     <>
-      <tr className={classNames("bg-surface/30", !isFirst && "border-t border-border")}>
-        <td colSpan={colSpan} className="px-4 py-1.5 mg-type-micro text-ink-muted">
+      <tr className={classNames("bg-surface", !isFirst && "border-t border-border")}>
+        <td colSpan={colSpan} className="px-4 py-1.5 text-10 text-ink-muted">
           <span className="text-ink-strong">{CATEGORY_LABEL[category]}</span>
           <span className="ml-2 tabular-nums">· {items.length}</span>
         </td>
@@ -190,7 +190,7 @@ function Row({
   return (
     <tr className="mg-row-hover border-t border-border/60">
       {showNetuid ? (
-        <td className="px-4 py-2.5 mg-type-data text-ink-muted tabular-nums">
+        <td className="px-4 py-2.5 text-11 text-ink-muted tabular-nums">
           {e.netuid != null ? (
             <Link
               to="/subnets/$netuid"
@@ -205,11 +205,11 @@ function Row({
         </td>
       ) : null}
       <td className="px-4 py-2.5">
-        <div className="mg-type-data text-ink truncate max-w-[42ch]">{e.url ?? "—"}</div>
-        {e.region ? <div className="mg-type-data-sm text-ink-muted mt-0.5">{e.region}</div> : null}
+        <div className="text-11 text-ink truncate max-w-[42ch]">{e.url ?? "—"}</div>
+        {e.region ? <div className="text-10 text-ink-muted mt-0.5">{e.region}</div> : null}
       </td>
       {showProvider ? (
-        <td className="px-4 py-2.5 mg-type-caption">
+        <td className="px-4 py-2.5 text-13">
           {e.provider ? (
             <Link
               to="/providers/$slug"
@@ -247,14 +247,14 @@ function Row({
               ariaLabel="Recent probe trend"
             />
           ) : (
-            <span className="mg-type-data-sm text-ink-muted">—</span>
+            <span className="text-10 text-ink-muted">—</span>
           )}
         </div>
       </td>
-      <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted tabular-nums">
+      <td className="px-4 py-2.5 text-right text-11 text-ink-muted tabular-nums">
         {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
       </td>
-      <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
+      <td className="px-4 py-2.5 text-right text-11 text-ink-muted">
         <TimeAgo at={e.last_probed_at} />
       </td>
       <td className="px-4 py-2.5 text-right">
@@ -267,7 +267,7 @@ function Row({
                     type="button"
                     onClick={() => copy(e.url!)}
                     aria-label="Copy URL"
-                    className="inline-flex size-7 items-center justify-center rounded-md text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+                    className="inline-flex size-7 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
                   >
                     <CopyIconToggle copied={copied} size={3.5} />
                   </button>
@@ -283,7 +283,7 @@ function Row({
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label="Open URL"
-                      className="inline-flex size-7 items-center justify-center rounded-md text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+                      className="inline-flex size-7 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
                     >
                       <ExternalLinkIcon className="size-3.5" />
                     </a>
@@ -313,30 +313,30 @@ function MobileCard({
   const { copied, copy } = useCopy({ label: "endpoint url" });
   const safeUrl = safeExternalUrl(e.url ?? undefined);
   return (
-    <li className="rounded-md border border-border bg-card p-3">
+    <li className="rounded border border-border bg-card p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="mg-type-caption text-ink-muted">{e.kind ?? "endpoint"}</span>
+            <span className="text-13 text-ink-muted">{e.kind ?? "endpoint"}</span>
             {showNetuid && e.netuid != null ? (
               <Link
                 to="/subnets/$netuid"
                 params={{ netuid: e.netuid }}
-                className="mg-type-data-sm text-ink-muted hover:text-ink-strong"
+                className="text-10 text-ink-muted hover:text-ink-strong"
               >
                 sn{String(e.netuid).padStart(3, "0")}
               </Link>
             ) : null}
             <EligibilityChip eligibility={endpointEligibility(e, poolsById)} size="xs" />
           </div>
-          <div className="mg-type-data text-ink break-all">{e.url ?? "—"}</div>
+          <div className="text-11 text-ink break-all">{e.url ?? "—"}</div>
         </div>
         <HealthDot state={e.health} />
       </div>
-      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 mg-type-caption">
+      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-13">
         {showProvider ? (
           <>
-            <dt className="mg-type-caption text-ink-muted">Provider</dt>
+            <dt className="text-13 text-ink-muted">Provider</dt>
             <dd className="text-right">
               {e.provider ? (
                 <Link
@@ -359,11 +359,11 @@ function MobileCard({
             </dd>
           </>
         ) : null}
-        <dt className="mg-type-caption text-ink-muted">Latency</dt>
+        <dt className="text-13 text-ink-muted">Latency</dt>
         <dd className="text-right font-mono text-ink tabular-nums">
           {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
         </dd>
-        <dt className="mg-type-caption text-ink-muted">Probed</dt>
+        <dt className="text-13 text-ink-muted">Probed</dt>
         <dd className="text-right font-mono text-ink-muted">
           <TimeAgo at={e.last_probed_at} />
         </dd>
@@ -373,7 +373,7 @@ function MobileCard({
           <button
             type="button"
             onClick={() => copy(e.url!)}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-accent/40"
+            className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-accent/40"
           >
             <CopyIconToggle copied={copied} /> copy
           </button>
@@ -381,7 +381,7 @@ function MobileCard({
             <ExternalLink
               href={safeUrl}
               bare
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-accent/40"
+              className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-accent/40"
             >
               open <ExternalLinkIcon className="size-3" />
             </ExternalLink>
@@ -407,7 +407,7 @@ function HeaderHint({ label, hint }: { label: string; hint: string }) {
           {label}
         </span>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs mg-type-caption">
+      <TooltipContent side="top" className="max-w-xs text-13">
         {hint}
       </TooltipContent>
     </Tooltip>

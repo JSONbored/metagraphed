@@ -40,16 +40,16 @@ function ResultRow({ result }: { result: SemanticSearchResult }) {
   const content = (
     <div className="flex items-center justify-between gap-3 px-3 py-2.5">
       <div className="min-w-0">
-        <p className="truncate mg-type-caption-lg text-ink-strong">{resultLabel(result)}</p>
+        <p className="truncate text-13 text-ink-strong">{resultLabel(result)}</p>
         {result.subtitle ? (
-          <p className="truncate mg-type-caption text-ink-muted">{result.subtitle}</p>
+          <p className="truncate text-13 text-ink-muted">{result.subtitle}</p>
         ) : null}
         {tags.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded border border-border px-1.5 py-0.5 mg-type-data-sm text-ink-muted"
+                className="rounded border border-border px-1.5 py-0.5 text-10 text-ink-muted"
               >
                 {tag}
               </span>
@@ -57,7 +57,7 @@ function ResultRow({ result }: { result: SemanticSearchResult }) {
           </div>
         ) : null}
       </div>
-      <span className="shrink-0 mg-type-data-sm text-ink-muted">{resultMeta(result)}</span>
+      <span className="shrink-0 text-10 text-ink-muted">{resultMeta(result)}</span>
     </div>
   );
 
@@ -106,10 +106,10 @@ function IdentifierRow({ match }: { match: ResolvedIdentifier }) {
     <li>
       <a href={match.ui_path} className="block px-3 py-2 hover:bg-card">
         <div className="flex items-center gap-2">
-          <span className="shrink-0 rounded border border-border px-1.5 py-0.5 mg-type-data-sm text-ink-muted">
+          <span className="shrink-0 rounded border border-border px-1.5 py-0.5 text-10 text-ink-muted">
             {identifierKindLabel(match.kind)}
           </span>
-          <span className="truncate font-mono mg-type-caption text-ink">
+          <span className="truncate font-mono text-13 text-ink">
             {shortenIdentifier(match.value)}
           </span>
         </div>
@@ -132,10 +132,8 @@ function IdentifierMatches({ matches }: { matches: ResolvedIdentifier[] }) {
   if (matches.length === 0) return null;
   return (
     <section className="mt-4">
-      <h3 className="mg-type-caption text-ink-muted">
-        {matches.length > 1 ? "Could be" : "Go to"}
-      </h3>
-      <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-card">
+      <h3 className="text-13 text-ink-muted">{matches.length > 1 ? "Could be" : "Go to"}</h3>
+      <ul className="mt-2 divide-y divide-border rounded border border-border bg-card">
         {matches.map((m) => (
           <IdentifierRow key={`${m.kind}:${m.value}`} match={m} />
         ))}
@@ -146,12 +144,10 @@ function IdentifierMatches({ matches }: { matches: ResolvedIdentifier[] }) {
 
 function SearchResults({ results }: { results: SemanticSearchResult[] }) {
   if (results.length === 0) {
-    return (
-      <p className="mt-3 mg-type-caption text-ink-muted">No matches — try a different phrase.</p>
-    );
+    return <p className="mt-3 text-13 text-ink-muted">No matches — try a different phrase.</p>;
   }
   return (
-    <ul className="mt-4 divide-y divide-border rounded-md border border-border bg-card">
+    <ul className="mt-4 divide-y divide-border rounded border border-border bg-card">
       {results.map((r, i) => (
         // Results have no stable id in the schema; index is safe since this list
         // is fully replaced (not reordered/filtered in place) on every new query.
@@ -205,14 +201,14 @@ export function SearchBox() {
             placeholder="video generation"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-md border border-border bg-card px-3 py-2 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
+            className="w-full rounded border border-border bg-card px-3 py-2 text-13 text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
           />
         </label>
         <button
           type="submit"
           disabled={isFetching || !query.trim()}
           className={classNames(
-            "shrink-0 rounded-md border border-accent/40 bg-accent/10 px-4 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15",
+            "shrink-0 rounded border border-accent/40 bg-accent/10 px-4 py-2 text-13 font-medium text-accent hover:bg-accent/15",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}
         >
@@ -225,7 +221,7 @@ export function SearchBox() {
       {submitted ? <IdentifierMatches matches={matches} /> : null}
 
       {isError ? (
-        <p role="alert" className="mt-3 font-mono mg-type-caption text-health-warn">
+        <p role="alert" className="mt-3 font-mono text-13 text-health-warn">
           {describeSearchError(error)}
         </p>
       ) : null}
@@ -233,9 +229,7 @@ export function SearchBox() {
       {!isError && submitted && data ? (
         <>
           <SearchResults results={data.data.results} />
-          {latencyMs != null ? (
-            <p className="mt-2 mg-type-data-sm text-ink-muted">{latencyMs}ms</p>
-          ) : null}
+          {latencyMs != null ? <p className="mt-2 text-10 text-ink-muted">{latencyMs}ms</p> : null}
         </>
       ) : null}
     </div>

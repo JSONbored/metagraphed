@@ -66,7 +66,7 @@ describe("sticky table header anchoring", () => {
       expect(body).not.toContain("--mg-sticky-offset");
       // And the second one: a translucent header lets the row passing
       // underneath read through the column labels.
-      expect(body).toContain("background: var(--card)");
+      expect(body).toMatch(/background: var\(--(?:card|canvas)\)/);
     }
   });
 

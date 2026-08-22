@@ -5,14 +5,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useMemo, useRef, useState } from "react";
 import { ChevronDown, Star } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import {
-  ShareButton,
-  DownloadCsvButton,
-  ActionBar,
-  DensityToggle,
-  MiniStack,
-  type Density,
-} from "@jsonbored/ui-kit";
+import { ShareButton, DownloadCsvButton, ActionBar, MiniStack } from "@jsonbored/ui-kit";
 import {
   AsyncPanel,
   PageMasthead,
@@ -56,9 +49,6 @@ export const ALL_VALIDATORS_LIMIT = 2000;
 const CONCENTRATION_TOP_N = 10;
 
 export function ValidatorsPage() {
-  const search = useSearch({ from: "/validators/" }) as ValidatorsSearch;
-  const navigate = useNavigate({ from: "/validators/" });
-  const density = search.density ?? "comfortable";
   // Mirror the sibling ranked-list pages (subnets/blocks/surfaces): export the
   // current view as CSV. DownloadCsvButton appends `format=csv`; the backend's
   // handleGlobalValidators already serves it (#5482).
@@ -66,11 +56,6 @@ export function ValidatorsPage() {
     sort: "total_stake",
     limit: ALL_VALIDATORS_LIMIT,
   });
-  const onDensityChange = (d: Density) =>
-    navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, density: d }),
-      replace: true,
-    });
   return (
     <AppShell>
       <PageMasthead
@@ -98,7 +83,7 @@ export function ValidatorsPage() {
             .queryKey,
         ]}
       >
-        <ValidatorsDirectory density={density} onDensityChange={onDensityChange} />
+        <ValidatorsDirectory />
       </AsyncPanel>
       {/* #10300: the cross-subnet "where is it cheapest to start validating"
           ranking was published and rendered nowhere. */}
@@ -113,13 +98,7 @@ export function ValidatorsPage() {
   );
 }
 
-function ValidatorsDirectory({
-  density,
-  onDensityChange,
-}: {
-  density: Density;
-  onDensityChange: (d: Density) => void;
-}) {
+function ValidatorsDirectory() {
   const search = useSearch({ from: "/validators/" }) as ValidatorsSearch;
   const navigate = useNavigate({ from: "/validators/" });
   const sort = search.sort || "total_stake_tao";
@@ -133,7 +112,6 @@ function ValidatorsDirectory({
   ).data;
   const all = res.data.validators;
   const generatedAt = res.meta?.generated_at ?? null;
-  const compact = density === "compact";
   const watchlist = useWatchlist("validator");
   // Every column is opt-in/out, with a core set on by default -- the API
   // returns far more per validator than the table used to show (emission,
@@ -192,7 +170,7 @@ function ValidatorsDirectory({
   // in-flow `<tr>`s, with two spacer rows standing in for off-screen space,
   // so the sticky header and column alignment keep working.
   const tableScrollRef = useRef<HTMLDivElement>(null);
-  const rowHeight = useMeasuredRowHeight(tableScrollRef, compact ? 33 : 41);
+  const rowHeight = useMeasuredRowHeight(tableScrollRef, 41);
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableScrollRef.current,
@@ -236,7 +214,7 @@ function ValidatorsDirectory({
           aria-pressed={grouped}
           title="Cluster an operator's validator keys under one entry"
           className={classNames(
-            "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1 mg-type-caption font-medium transition-colors",
+            "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1 text-13 font-medium transition-colors",
             grouped
               ? "border-accent/40 bg-accent/10 text-accent-text"
               : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
@@ -250,7 +228,7 @@ function ValidatorsDirectory({
             onClick={() => setSearch({ watched: !search.watched })}
             aria-pressed={search.watched}
             className={classNames(
-              "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1 mg-type-caption font-medium transition-colors",
+              "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1 text-13 font-medium transition-colors",
               search.watched
                 ? "border-accent/40 bg-accent/10 text-accent-text"
                 : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
@@ -263,7 +241,7 @@ function ValidatorsDirectory({
             Watched · {watchlist.count}
           </button>
         ) : null}
-        <span className="mg-type-data text-ink-muted">
+        <span className="text-11 text-ink-muted">
           {formatNumber(rows.length)} of {formatNumber(all.length)} validators
         </span>
         <div className="ml-auto flex items-center gap-2">
@@ -273,12 +251,11 @@ function ValidatorsDirectory({
             onToggle={columns.toggle}
             onReset={columns.reset}
           />
-          <DensityToggle value={density} onChange={onDensityChange} />
         </div>
       </div>
 
       {rows.length > 0 ? (
-        <div className="hidden md:block rounded-md border border-border">
+        <div className="hidden md:block rounded border border-border">
           {/* ONE scroll container carrying BOTH sets of styling.
               This was split into single-axis wrappers (#8314) because a
               combined overflow-auto div left the extra columns
@@ -296,12 +273,7 @@ function ValidatorsDirectory({
               Putting .mg-table-scroll ON the scroller is what actually
               delivers the affordance the original comment wanted. */}
           <div ref={tableScrollRef} className="mg-table-scroll mg-list-viewport">
-            <table
-              className={classNames(
-                "w-full min-w-[1100px] table-fixed text-left text-sm",
-                compact && "[&_td]:!py-1 [&_th]:!py-1",
-              )}
-            >
+            <table className="w-full min-w-[1100px] table-fixed text-left text-13">
               {/* Pins the column tracks so they cannot be re-derived from
                   whichever virtualized rows happen to be mounted. */}
               <TableColGroup widths={[46, 40, ...visibleColumns.map((c) => c.width)]} />
@@ -347,7 +319,7 @@ function ValidatorsDirectory({
                       key={v.hotkey}
                       data-index={vRow.index}
                       ref={rowVirtualizer.measureElement}
-                      className="hover:bg-surface/40"
+                      className="hover:bg-surface"
                     >
                       <td className="px-3 py-2 align-middle">
                         <button
@@ -459,19 +431,19 @@ function ConcentrationSection({ validators }: { validators: GlobalValidator[] })
 
   return (
     <div id="validator-dominance" className="space-y-3 pt-3">
-      <Panel as="div" dense>
+      <Panel as="div">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <span className="mg-type-caption text-ink-muted">
+          <span className="text-13 text-ink-muted">
             Stake concentration · top {top.length} operators
           </span>
-          <span className="mg-type-data-sm text-ink-muted">
+          <span className="text-10 text-ink-muted">
             {(topShare * 100).toFixed(1)}% of network stake
           </span>
         </div>
         <MiniStack segments={segments} height={14} />
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
           {top.slice(0, 5).map((v) => (
-            <span key={v.hotkey} className="mg-type-data-sm text-ink-muted">
+            <span key={v.hotkey} className="text-10 text-ink-muted">
               {label(v)} · {((v.stake_dominance ?? 0) * 100).toFixed(1)}%
             </span>
           ))}
@@ -482,7 +454,7 @@ function ConcentrationSection({ validators }: { validators: GlobalValidator[] })
         type="button"
         onClick={() => setShowDetail((v) => !v)}
         aria-expanded={showDetail}
-        className="inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-ink-strong"
+        className="inline-flex items-center gap-1.5 text-11 text-ink-muted hover:text-ink-strong"
       >
         <ChevronDown
           className={classNames("size-3.5 transition-transform", showDetail && "rotate-180")}

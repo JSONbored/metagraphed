@@ -72,23 +72,23 @@ function WithApiTable() {
         }
       />
       <Panel>
-        <table className="w-full text-left mg-type-data-sm">
+        <table className="w-full text-left text-10">
           <caption className="sr-only">
             Bittensor subnets publishing a machine-readable API specification, ranked by integration
             readiness
           </caption>
           <thead>
             <tr className="border-b border-border text-ink-muted">
-              <th scope="col" className="px-3 py-2 font-medium">
+              <th scope="col" className="px-3 py-2">
                 Subnet
               </th>
-              <th scope="col" className="px-3 py-2 font-medium">
+              <th scope="col" className="px-3 py-2">
                 Readiness
               </th>
-              <th scope="col" className="px-3 py-2 font-medium">
+              <th scope="col" className="px-3 py-2">
                 Services
               </th>
-              <th scope="col" className="px-3 py-2 font-medium">
+              <th scope="col" className="px-3 py-2">
                 Last probe
               </th>
             </tr>
@@ -96,7 +96,7 @@ function WithApiTable() {
           <tbody>
             {rows.map((row) => (
               <tr key={row.netuid} className="border-b border-border/60">
-                <th scope="row" className="px-3 py-2 font-normal">
+                <th scope="row" className="px-3 py-2">
                   {/* A real anchor per row: this page's second job is linking
                       the subnet pages, and #11231 is what happens without it. */}
                   <Link

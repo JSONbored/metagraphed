@@ -26,7 +26,7 @@ export function Divider({
       aria-hidden
     >
       {pip ? (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 size-1.5 rounded-[1px] bg-accent" />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 size-1.5 rounded bg-accent" />
       ) : null}
     </div>
   );

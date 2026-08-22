@@ -76,24 +76,24 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       <div className="min-h-dvh bg-paper px-4 py-10 text-ink-strong">
         <div className="mx-auto max-w-3xl">
           <main aria-labelledby="ge-title">
-            <div className="mg-label flex items-center gap-2">
+            <div className="text-10 text-ink-muted flex items-center gap-2">
               <AlertTriangle className="size-3.5 text-health-warn" />
               Metagraphed / runtime error
             </div>
             <h1
               id="ge-title"
-              className="mt-3 font-display text-3xl font-semibold leading-tight text-ink-strong md:text-4xl"
+              className="mt-3 font-display text-28 font-semibold leading-tight text-ink-strong md:text-40"
             >
               Something broke while rendering this page.
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-muted md:text-base">
+            <p className="mt-3 max-w-2xl text-13 leading-relaxed text-ink-muted md:text-16">
               The rest of the registry is unaffected — you can retry this view, go back to the
               overview, or copy the error details for a bug report.
             </p>
 
-            <Panel as="div" dense className="mt-6">
-              <div className="mg-label">Error message</div>
-              <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-paper p-2 font-mono mg-type-caption text-ink">
+            <Panel as="div" className="mt-6">
+              <div className="text-10 text-ink-muted">Error message</div>
+              <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-paper p-2 font-mono text-13 text-ink">
                 {message || "Unknown error"}
               </pre>
             </Panel>
@@ -102,21 +102,21 @@ export class GlobalErrorBoundary extends Component<Props, State> {
               <button
                 type="button"
                 onClick={this.reset}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-accent/60 bg-primary-soft px-4 text-sm font-medium text-ink-strong transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded border border-accent/60 bg-primary-soft px-4 text-13 font-medium text-ink-strong transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <RefreshCw className="size-4" /> Try again
               </button>
               <button
                 type="button"
                 onClick={this.reload}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded border border-border bg-card px-4 text-13 text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong"
               >
                 Hard reload
               </button>
               <button
                 type="button"
                 onClick={this.goHome}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded border border-border bg-card px-4 text-13 text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong"
               >
                 <Home className="size-4" /> Overview
               </button>
@@ -124,7 +124,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
                 type="button"
                 onClick={this.copyDetails}
                 aria-live="polite"
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded border border-border bg-card px-4 text-13 text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong"
               >
                 <Copy className="size-4" />
                 {this.state.copied ? "Copied" : "Copy error details"}

@@ -80,7 +80,7 @@ export function PriceAtTx({
   if (price == null || !Number.isFinite(price)) return null;
   const showUsd = usd != null && Number.isFinite(usd);
   return (
-    <span className="block mg-type-data-sm tabular-nums text-ink-muted">
+    <span className="block text-10 tabular-nums text-ink-muted">
       <span title={priceAtTxTooltip(price, basis, blockNumber)}>@ {price} τ/α</span>
       {showUsd ? (
         <span title={usdAtTxTooltip(usd, usdObservedAt, usdPoolCount)}> (≈ ${usd})</span>

@@ -54,9 +54,9 @@ function SubnetValidatorsPreviewLoader({ netuid }: { netuid: number }) {
   return (
     <div className="mt-6 space-y-3">
       {sponsored ? <SponsoredValidatorCallout netuid={netuid} validator={sponsored} /> : null}
-      <Panel as="div" dense>
+      <Panel as="div">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <span className="mg-type-caption text-ink-muted">Top validators · by stake</span>
+          <span className="text-13 text-ink-muted">Top validators · by stake</span>
           <button
             type="button"
             onClick={() =>
@@ -66,7 +66,7 @@ function SubnetValidatorsPreviewLoader({ netuid }: { netuid: number }) {
                 replace: true,
               })
             }
-            className="inline-flex items-center gap-1 mg-type-caption text-ink-muted transition-colors hover:text-accent"
+            className="inline-flex items-center gap-1 text-13 text-ink-muted transition-colors hover:text-accent"
           >
             View all validators
             <ArrowRight className="size-3" aria-hidden />
@@ -108,14 +108,14 @@ function ValidatorPreviewRow({
         <Link
           to="/validators/$hotkey"
           params={{ hotkey: validator.hotkey }}
-          className="truncate font-mono mg-type-caption text-ink-strong hover:text-accent hover:underline"
+          className="truncate font-mono text-13 text-ink-strong hover:text-accent hover:underline"
           title={validator.hotkey}
         >
           {resolveAddress(validator.hotkey).display}
         </Link>
         <CopyButton value={validator.hotkey} label="hotkey" compact />
       </div>
-      <div className="flex flex-wrap items-center gap-3 mg-type-data text-ink-muted">
+      <div className="flex flex-wrap items-center gap-3 text-11 text-ink-muted">
         <span>
           <span className="text-ink-strong tabular-nums">{taoCompact(validator.stake_tao)}</span> τ
         </span>
@@ -129,7 +129,7 @@ function ValidatorPreviewRow({
             <button
               type="button"
               onClick={open}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+              className="inline-flex items-center gap-1 rounded border border-border bg-surface px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
             >
               <Coins className="size-3 text-ink-muted" aria-hidden />
               Delegate

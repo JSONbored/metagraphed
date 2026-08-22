@@ -27,7 +27,6 @@ export const validatorsSearchSchema = z.object({
   // (Subnets) — a sort DIRECTION toggled by clicking a column header, and a row
   // density control — instead of a bare, single-direction <select>.
   order: z.enum(["asc", "desc"]).catch("desc").default("desc"),
-  density: z.enum(["compact", "comfortable"]).catch("comfortable").default("comfortable"),
 });
 
 export const Route = createFileRoute("/validators/")({

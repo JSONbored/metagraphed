@@ -97,7 +97,7 @@ export function ListShell({
           // at >=1024px only, which is why tablet still showed the overlap).
           // That override is deleted; this is the general rule.
           "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
-          "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
+          "bg-paper",
           "border-b border-border md:border md:rounded md:bg-card",
           "px-3 py-2 md:p-2.5",
         )}
@@ -176,7 +176,7 @@ export function LoadMore({
   if (isLoading) {
     return (
       <div
-        className="border-t border-border bg-surface/30 p-3 space-y-1.5"
+        className="border-t border-border bg-surface p-3 space-y-1.5"
         aria-live="polite"
         aria-busy="true"
       >
@@ -190,7 +190,7 @@ export function LoadMore({
 
   if (error) {
     return (
-      <div className="flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 mg-type-caption">
+      <div className="flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 text-13">
         <span className="inline-flex items-center gap-1.5 text-health-down">
           <AlertCircle className="size-3" />
           Couldn&rsquo;t load more — {error.message || "network error"}.
@@ -208,7 +208,7 @@ export function LoadMore({
 
   if (cursorInvalid) {
     return (
-      <div className="flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 mg-type-caption text-health-warn">
+      <div className="flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 text-13 text-health-warn">
         <span className="inline-flex items-center gap-1.5">
           <AlertCircle className="size-3" />
           Pagination stopped — the server returned an invalid next cursor.
@@ -222,7 +222,7 @@ export function LoadMore({
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 mg-type-data text-ink-muted">
+    <div className="flex items-center justify-between gap-3 border-t border-border bg-surface px-4 py-2 text-11 text-ink-muted">
       <span>
         {shown}
         {total != null ? ` of ${total}` : ""}
@@ -231,7 +231,7 @@ export function LoadMore({
         <button
           type="button"
           onClick={onLoadMore}
-          className="inline-flex items-center rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium hover:border-ink/30 min-h-9"
+          className="inline-flex items-center rounded border border-border bg-card px-3 py-1.5 text-13 font-medium hover:border-ink/30 min-h-9"
         >
           Load more
         </button>

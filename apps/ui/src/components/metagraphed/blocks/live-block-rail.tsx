@@ -70,7 +70,6 @@ export function LiveBlockRail() {
   return (
     <Panel
       as="div"
-      dense
       className="mb-3"
       bodyClassName="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)]"
       role="status"
@@ -92,16 +91,15 @@ export function LiveBlockRail() {
         >
           {streamStatus === "open" ? (
             <>
-              <span className="absolute inline-flex size-2 animate-ping rounded-full bg-health-ok/60" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-health-ok" />
+              <span className="relative inline-flex size-1.5 rounded-full mg-dot bg-health-ok" />
             </>
           ) : (
-            <span className="relative inline-flex size-1.5 rounded-full bg-ink-muted/50" />
+            <span className="relative inline-flex size-1.5 rounded-full mg-dot bg-ink-muted/50" />
           )}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="mg-type-caption text-ink-muted">Latest</span>
+            <span className="text-13 text-ink-muted">Latest</span>
             {/* #8365: always rendered (never conditionally unmounted) so a
                 status transition doesn't shift the block-number link and
                 everything after it on this row -- `invisible` reserves the
@@ -113,7 +111,7 @@ export function LiveBlockRail() {
                 treatment. */}
             <span
               className={classNames(
-                "mg-type-caption text-ink-muted",
+                "text-13 text-ink-muted",
                 streamStatus !== "connecting" && streamStatus !== "error" && "invisible",
               )}
               data-testid="live-block-rail-stream-status"
@@ -124,16 +122,15 @@ export function LiveBlockRail() {
             <Link
               to="/blocks/$ref"
               params={{ ref: String(latest.block_number) }}
-              // eslint-disable-next-line no-restricted-syntax -- block-number display at 14px: no mg-type-body utility exists (--mg-type-body is a reserved CSS var per styles.css, not exposed as a class); nearest utility would resize
-              className="mg-focus-ring rounded font-mono text-[14px] font-semibold tabular-nums text-ink-strong hover:text-accent"
+              className="mg-focus-ring rounded font-mono text-13 font-semibold tabular-nums text-ink-strong hover:text-accent"
             >
               #{formatNumber(latest.block_number)}
             </Link>
-            <span className="mg-type-data-sm text-ink-muted">
+            <span className="text-10 text-ink-muted">
               <TimeAgo at={latest.observed_at} />
             </span>
           </div>
-          <div className="mt-0.5 flex items-center gap-2 mg-type-data text-ink-muted">
+          <div className="mt-0.5 flex items-center gap-2 text-11 text-ink-muted">
             <span className="truncate" title={latest.block_hash}>
               {shortHash(latest.block_hash) ?? "—"}
             </span>
@@ -142,7 +139,7 @@ export function LiveBlockRail() {
               <AddressDisplay ss58={latest.author} compact fallback="no author" />
             </span>
           </div>
-          <div className="mt-0.5 mg-type-data-sm text-ink-muted">
+          <div className="mt-0.5 text-10 text-ink-muted">
             {/* An unknown count renders as "—", never as 0: the newest blocks
                 sit ahead of the decode sync, so `?? 0` claimed "0 evt" for
                 exactly the blocks this live rail exists to show. */}
@@ -154,7 +151,7 @@ export function LiveBlockRail() {
 
       {/* MINI CADENCE STRIP */}
       <div className="flex flex-col justify-center gap-1.5 px-1">
-        <div className="mg-type-caption text-ink-muted">Recent blocks · extrinsic density</div>
+        <div className="text-13 text-ink-muted">Recent blocks · extrinsic density</div>
         <ol className="flex h-8 items-end gap-[2px]" aria-label="Recent block extrinsic density">
           {strip.map((b) => {
             const ext = b.extrinsic_count ?? 0;
@@ -181,9 +178,8 @@ export function LiveBlockRail() {
       {/* 7D THROUGHPUT */}
       <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-2 md:border-l md:border-t-0 md:pl-3 md:pt-0">
         <div>
-          <div className="mg-type-caption text-ink-muted">Blocks · last 7d</div>
-          {/* eslint-disable-next-line no-restricted-syntax -- block-number display at 14px: no mg-type-body utility exists (--mg-type-body is a reserved CSS var per styles.css, not exposed as a class); nearest utility would resize */}
-          <div className="mt-0.5 font-mono text-[14px] font-semibold tabular-nums text-ink-strong">
+          <div className="text-13 text-ink-muted">Blocks · last 7d</div>
+          <div className="mt-0.5 font-mono text-13 font-semibold tabular-nums text-ink-strong">
             {formatNumber(daily.reduce((s, n) => s + n, 0))}
           </div>
         </div>

@@ -106,10 +106,8 @@ export function NetworkPulseBand({ className }: { className?: string }) {
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="mg-type-caption text-ink-muted">
-              Network pulse · {RANGE_LABEL[range]}
-            </div>
-            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+            <div className="text-13 text-ink-muted">Network pulse · {RANGE_LABEL[range]}</div>
+            <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
               ok / warn / down
             </h3>
           </div>
@@ -190,7 +188,7 @@ export function NetworkPulseBand({ className }: { className?: string }) {
             );
           })}
         </svg>
-        <div className="mt-2 flex items-center justify-between mg-type-data-sm text-ink-muted">
+        <div className="mt-2 flex items-center justify-between text-10 text-ink-muted">
           <span>-{RANGE_LABEL[range]}</span>
           <span>
             {usingTrend ? "daily uptime · incident markers" : "current snapshot · incident markers"}
@@ -204,7 +202,7 @@ export function NetworkPulseBand({ className }: { className?: string }) {
 
 function Legend({ swatch, label }: { swatch: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 mg-type-data-sm text-ink-muted">
+    <span className="inline-flex items-center gap-1 text-10 text-ink-muted">
       <span className={classNames("inline-block size-2 rounded", swatch)} aria-hidden />
       {label}
     </span>

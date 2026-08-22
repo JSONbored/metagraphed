@@ -70,7 +70,7 @@ export function HealthPage() {
   const activeSectionId =
     VIEW_SECTION_ID[search.view] ?? (search.status !== "all" ? "incidents" : null);
   const sectionRing = (id: string) =>
-    activeSectionId === id ? "ring-1 ring-accent/40 rounded-xl" : undefined;
+    activeSectionId === id ? "ring-1 ring-accent/40 rounded" : undefined;
 
   useEffect(() => {
     if (!activeSectionId) return;
@@ -96,7 +96,7 @@ export function HealthPage() {
               <ActionBar>
                 <Link
                   to="/status"
-                  className="inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+                  className="inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
                 >
                   Public status
                   <ArrowUpRight className="size-3" aria-hidden="true" />
@@ -336,7 +336,7 @@ function AutoRefreshControl({
   const pauseLabel = !enabled ? "Paused" : !visible ? "Tab hidden" : null;
 
   return (
-    <div className="inline-flex items-center rounded-full border border-border bg-card overflow-hidden mg-type-caption">
+    <div className="inline-flex items-center rounded border border-border bg-card overflow-hidden text-13">
       <label className="sr-only" htmlFor="health-interval">
         Auto-refresh interval
       </label>
@@ -356,13 +356,13 @@ function AutoRefreshControl({
 
       <button
         onClick={onToggle}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-ink hover:bg-surface/60 transition-colors border-r border-border"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-ink hover:bg-surface transition-colors border-r border-border"
         title={enabled ? "Pause auto-refresh" : "Resume auto-refresh"}
         aria-pressed={enabled}
       >
         {enabled ? <Pause className="size-3" /> : <Play className="size-3" />}
         {pauseLabel ? (
-          <span className="mg-type-caption text-ink-muted">{pauseLabel}</span>
+          <span className="text-13 text-ink-muted">{pauseLabel}</span>
         ) : (
           <span aria-hidden="true" className="font-mono text-ink-muted">
             in <AnimatedNumber value={secondsLeft} flashOnChange={false} duration={250} />s
@@ -373,7 +373,7 @@ function AutoRefreshControl({
       <button
         type="button"
         onClick={() => qc.invalidateQueries({ queryKey: ["metagraphed"] })}
-        className="mg-type-caption inline-flex items-center gap-1.5 px-3 py-1.5 text-ink-muted hover:text-ink-strong hover:bg-surface/60 transition-colors"
+        className="text-13 inline-flex items-center gap-1.5 px-3 py-1.5 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
         title={fetching ? "Refreshing…" : "Refresh now"}
         aria-label="Refresh now"
       >
@@ -473,7 +473,7 @@ function StatusBoard({ interval }: { interval: number | false }) {
           </div>
         </BoardCard>
       </div>
-      <div className="mg-type-data text-ink-muted">
+      <div className="text-11 text-ink-muted">
         snapshot <TimeAgo at={hRes.meta?.generated_at} />
       </div>
     </div>
@@ -484,7 +484,7 @@ function BoardCard({ title, children }: { title: string; children: React.ReactNo
   return (
     <Panel as="div" flush>
       <div className="p-4">
-        <div className="mg-type-caption text-ink-muted mb-3">{title}</div>
+        <div className="text-13 text-ink-muted mb-3">{title}</div>
         {children}
       </div>
     </Panel>
@@ -503,10 +503,10 @@ function Cell({
   format?: (n: number) => string;
 }) {
   return (
-    <div className="rounded-md border border-border/60 bg-paper/40 px-3 py-2.5">
-      <div className="mg-type-caption text-ink-muted">{label}</div>
+    <div className="rounded border border-border/60 bg-paper px-3 py-2.5">
+      <div className="text-13 text-ink-muted">{label}</div>
       <div
-        className={`mt-1 font-display text-lg font-semibold tabular-nums leading-none ${accent ?? "text-ink-strong"}`}
+        className={`mt-1 font-display text-16 font-semibold tabular-nums leading-none ${accent ?? "text-ink-strong"}`}
       >
         <AnimatedNumber value={num} format={format} />
       </div>
@@ -530,8 +530,8 @@ function SourceHealth({ interval }: { interval: number | false }) {
   }
   return (
     <Panel as="div" flush className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="mg-type-micro bg-surface-2/60 text-ink-muted">
+      <table className="w-full text-13">
+        <thead className="text-10 bg-surface-2/60 text-ink-muted">
           <tr>
             <th className="px-4 py-3 text-left">Source</th>
             <th className="px-4 py-3">Status</th>
@@ -545,7 +545,7 @@ function SourceHealth({ interval }: { interval: number | false }) {
               <td className="px-4 py-3">
                 <HealthPill state={s.ok === false ? "down" : s.ok ? "ok" : "unknown"} />
               </td>
-              <td className="px-4 py-3 text-right mg-type-data text-ink-muted">
+              <td className="px-4 py-3 text-right text-11 text-ink-muted">
                 <TimeAgo at={s.last_seen} />
               </td>
             </tr>
@@ -683,10 +683,10 @@ function Incidents({ interval }: { interval: number | false }) {
 
   return (
     <div className="space-y-4">
-      <Panel as="div" dense bodyClassName="flex items-center gap-4">
+      <Panel as="div" bodyClassName="flex items-center gap-4">
         <div>
-          <div className="mg-type-caption text-ink-muted">Incidents · 14d</div>
-          <div className="font-display text-2xl font-semibold text-ink-strong tabular-nums leading-none mt-1">
+          <div className="text-13 text-ink-muted">Incidents · 14d</div>
+          <div className="font-display text-28 font-semibold text-ink-strong tabular-nums leading-none mt-1">
             {rows.length}
           </div>
         </div>
@@ -700,7 +700,7 @@ function Incidents({ interval }: { interval: number | false }) {
         />
       </Panel>
 
-      <div className="flex flex-wrap items-center gap-1.5 mg-type-label">
+      <div className="flex flex-wrap items-center gap-1.5 text-11">
         {FILTER_OPTIONS.map((opt) => (
           <button
             key={opt.value}
@@ -711,17 +711,17 @@ function Incidents({ interval }: { interval: number | false }) {
             }}
             aria-pressed={filter === opt.value}
             className={classNames(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono uppercase tracking-widest transition-all duration-150",
+              "inline-flex items-center gap-1.5 rounded border px-3 py-1 font-mono transition-all duration-150",
               filter === opt.value
                 ? "border-ink/40 bg-ink-strong text-paper"
                 : "border-border bg-card text-ink-muted hover:text-ink-strong hover:border-accent/40",
             )}
           >
             {opt.label}
-            <span className="mg-type-data-sm tabular-nums opacity-80">{opt.count}</span>
+            <span className="text-10 tabular-nums opacity-80">{opt.count}</span>
           </button>
         ))}
-        <span className="ml-auto mg-type-data-sm text-ink-muted">
+        <span className="ml-auto text-10 text-ink-muted">
           {groups.length} {groups.length === 1 ? "host" : "hosts"} · {filtered.length} incidents
         </span>
       </div>
@@ -736,14 +736,11 @@ function Incidents({ interval }: { interval: number | false }) {
               const singleton = g.items.length === 1;
               if (singleton) return <IncidentCard key={g.host} incident={g.items[0]!} />;
               return (
-                <li
-                  key={g.host}
-                  className="rounded-xl border border-border bg-card overflow-hidden"
-                >
+                <li key={g.host} className="rounded border border-border bg-card overflow-hidden">
                   <button
                     type="button"
                     onClick={() => setOpenGroups((s) => ({ ...s, [g.host]: !open }))}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface/40 transition-colors min-h-11"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface transition-colors min-h-11"
                     aria-expanded={open}
                   >
                     {open ? (
@@ -752,10 +749,8 @@ function Incidents({ interval }: { interval: number | false }) {
                       <ChevronRight className="size-3.5 text-ink-muted shrink-0" />
                     )}
                     <HealthPill state={g.dominantState} />
-                    <span className="font-mono mg-type-caption text-ink-strong truncate">
-                      {g.host}
-                    </span>
-                    <span className="mg-type-caption ml-auto inline-flex items-center gap-2 text-ink-muted shrink-0">
+                    <span className="font-mono text-13 text-ink-strong truncate">{g.host}</span>
+                    <span className="text-13 ml-auto inline-flex items-center gap-2 text-ink-muted shrink-0">
                       {g.ongoing > 0 ? (
                         <span className="text-health-down">{g.ongoing} ongoing</span>
                       ) : null}
@@ -763,7 +758,7 @@ function Incidents({ interval }: { interval: number | false }) {
                     </span>
                   </button>
                   {open ? (
-                    <ul className="grid gap-2 p-3 md:grid-cols-2 border-t border-border bg-paper/40">
+                    <ul className="grid gap-2 p-3 md:grid-cols-2 border-t border-border bg-paper">
                       {g.items.map((i) => (
                         <IncidentCard key={i.id} incident={i} />
                       ))}
@@ -778,7 +773,7 @@ function Incidents({ interval }: { interval: number | false }) {
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}
-              className="block w-full rounded-xl border border-border bg-card px-3 py-2.5 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors min-h-9"
+              className="block w-full rounded border border-border bg-card px-3 py-2.5 text-13 font-medium text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors min-h-9"
             >
               {showAll ? "Show fewer" : `Show all ${groups.length} grouped incidents`}
             </button>

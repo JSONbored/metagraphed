@@ -57,19 +57,19 @@ export function AgentHarnessPicker({ mcp }: { mcp: AgentResources["mcp"] }) {
         })}
       />
 
-      <p className="mt-3 mg-type-caption text-ink-muted">{active?.blurb}</p>
+      <p className="mt-3 text-13 text-ink-muted">{active?.blurb}</p>
 
       <div className="mt-3">
         {config.kind === "steps" ? (
-          <ol className="list-inside list-decimal space-y-1.5 mg-type-caption text-ink-muted">
+          <ol className="list-inside list-decimal space-y-1.5 text-13 text-ink-muted">
             {config.steps?.map((step, i) => (
               <li key={i}>{step}</li>
             ))}
           </ol>
         ) : (
-          <div className="rounded-md border border-accent/30 bg-accent-surface p-3">
+          <div className="rounded border border-accent/30 bg-accent-surface p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="mg-type-caption text-ink-muted">{config.label}</span>
+              <span className="text-13 text-ink-muted">{config.label}</span>
               <div
                 onClick={() => captureEvent("agent_harness_config_copied", { harness })}
                 className="shrink-0"
@@ -79,7 +79,7 @@ export function AgentHarnessPicker({ mcp }: { mcp: AgentResources["mcp"] }) {
             </div>
             <pre
               className={classNames(
-                "mt-1 overflow-x-auto whitespace-pre font-mono mg-type-caption text-ink-strong",
+                "mt-1 overflow-x-auto whitespace-pre font-mono text-13 text-ink-strong",
                 config.kind === "json" && "whitespace-pre-wrap break-all",
               )}
             >

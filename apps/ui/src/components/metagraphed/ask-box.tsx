@@ -36,10 +36,10 @@ export function citationMeta(citation: AskCitation): string {
 function CitationRow({ citation }: { citation: AskCitation }) {
   return (
     <li className="flex items-center justify-between gap-3 px-3 py-2">
-      <ExternalLink href={citation.url ?? ""} className="min-w-0 mg-type-caption">
+      <ExternalLink href={citation.url ?? ""} className="min-w-0 text-13">
         {citationLabel(citation)}
       </ExternalLink>
-      <span className="shrink-0 mg-type-data-sm text-ink-muted">{citationMeta(citation)}</span>
+      <span className="shrink-0 text-10 text-ink-muted">{citationMeta(citation)}</span>
     </li>
   );
 }
@@ -51,8 +51,8 @@ export function sourceCountLabel(contextCount: number, model: string): string {
 
 function AskResult({ result, latencyMs }: { result: AskAnswerData; latencyMs: number | null }) {
   return (
-    <div className="mt-4 space-y-3 rounded-md border border-accent/30 bg-accent-surface p-4">
-      <p className="mg-type-caption-lg leading-relaxed text-ink-strong">{result.answer}</p>
+    <div className="mt-4 space-y-3 rounded border border-accent/30 bg-accent-surface p-4">
+      <p className="text-13 leading-relaxed text-ink-strong">{result.answer}</p>
       {result.citations.length > 0 ? (
         <ul className="divide-y divide-border rounded border border-border bg-card">
           {result.citations.map((c: AskCitation) => (
@@ -60,7 +60,7 @@ function AskResult({ result, latencyMs }: { result: AskAnswerData; latencyMs: nu
           ))}
         </ul>
       ) : null}
-      <p className="mg-type-data-sm text-ink-muted">
+      <p className="text-10 text-ink-muted">
         {sourceCountLabel(result.context_count, result.model)}
         {latencyMs != null ? ` · ${latencyMs}ms` : ""}
       </p>
@@ -96,14 +96,14 @@ export function AskBox() {
             placeholder="Which subnet does image generation?"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            className="w-full resize-none rounded-md border border-border bg-card px-3 py-2 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
+            className="w-full resize-none rounded border border-border bg-card px-3 py-2 text-13 text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
           />
         </label>
         <button
           type="submit"
           disabled={mutation.isPending || !question.trim()}
           className={classNames(
-            "shrink-0 rounded-md border border-accent/40 bg-accent/10 px-4 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15",
+            "shrink-0 rounded border border-accent/40 bg-accent/10 px-4 py-2 text-13 font-medium text-accent hover:bg-accent/15",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}
         >
@@ -112,7 +112,7 @@ export function AskBox() {
       </form>
 
       {mutation.isError ? (
-        <p role="alert" className="mt-3 font-mono mg-type-caption text-health-warn">
+        <p role="alert" className="mt-3 font-mono text-13 text-health-warn">
           {describeAskError(mutation.error)}
         </p>
       ) : null}

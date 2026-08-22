@@ -107,11 +107,11 @@ function ChainThroughputCard() {
       : undefined;
 
   return (
-    <div className="mg-card-glow relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="relative flex flex-col overflow-hidden rounded border border-border bg-card">
       <div className="flex items-start justify-between gap-3 px-4 pt-4">
         <div className="min-w-0">
-          <div className="mg-type-caption text-ink-muted">Blocks today</div>
-          <div className="mt-2 font-display text-3xl md:text-4xl font-semibold tabular-nums text-ink-strong leading-none">
+          <div className="text-13 text-ink-muted">Blocks today</div>
+          <div className="mt-2 font-display text-28 md:text-40 font-semibold tabular-nums text-ink-strong leading-none">
             {activity ? formatNumber(blocksToday) : "—"}
           </div>
           {/* #8354: "today" is a live, still-accumulating count -- explicit
@@ -119,14 +119,14 @@ function ChainThroughputCard() {
               total) and carries the same freshness signal every other
               live-tier surface in this app already shows. */}
           {activity ? (
-            <div className="mg-type-caption text-ink-muted">
+            <div className="text-13 text-ink-muted">
               so far · <TimeAgo at={activity.observed_at} className="tabular-nums" />
             </div>
           ) : null}
         </div>
         <div className="min-w-0 text-right">
-          <div className="mg-type-caption text-ink-muted">Endpoints up</div>
-          <div className="mt-2 font-display text-3xl md:text-4xl font-semibold tabular-nums text-ink-strong leading-none">
+          <div className="text-13 text-ink-muted">Endpoints up</div>
+          <div className="mt-2 font-display text-28 md:text-40 font-semibold tabular-nums text-ink-strong leading-none">
             {endpointsTotal ? `${formatNumber(endpointsOk)}/${formatNumber(endpointsTotal)}` : "—"}
           </div>
         </div>
@@ -147,15 +147,15 @@ function ChainThroughputCard() {
             className="w-full"
           />
         ) : (
-          <div className="h-[180px] w-full animate-pulse rounded-md bg-surface-2" />
+          <div className="h-[180px] w-full animate-pulse rounded bg-surface-2" />
         )}
       </div>
 
       <div className="mt-1 flex flex-col items-start gap-1.5 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <span className="mg-type-caption text-ink-muted">/api/v1/chain/activity</span>
+        <span className="text-13 text-ink-muted">/api/v1/chain/activity</span>
         <Link
           to="/chain/blocks"
-          className="inline-flex items-center gap-1.5 mg-type-label uppercase text-ink-strong transition-colors hover:text-accent"
+          className="inline-flex items-center gap-1.5 text-11 text-ink-strong transition-colors hover:text-accent"
         >
           Open the block explorer
           <ArrowUpRight className="size-3" />
@@ -178,12 +178,12 @@ function LiveSubnetsCard() {
   const featured = useMemo(() => pickFeatured(subnets, 6), [subnets]);
 
   return (
-    <div className="mg-card-glow flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="flex flex-col overflow-hidden rounded border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="mg-type-caption text-ink-muted">Live subnets · 7d</div>
+        <div className="text-13 text-ink-muted">Live subnets · 7d</div>
         <Link
           to="/subnets"
-          className="inline-flex items-center gap-1 mg-type-caption text-ink-muted transition-colors hover:text-accent"
+          className="inline-flex items-center gap-1 text-13 text-ink-muted transition-colors hover:text-accent"
         >
           View all
           <ArrowUpRight className="size-3" />
@@ -193,7 +193,7 @@ function LiveSubnetsCard() {
         {featured.length === 0 &&
           Array.from({ length: 6 }).map((_, i) => (
             <li key={i} className="flex items-center gap-3 px-4 py-3">
-              <div className="size-7 shrink-0 animate-pulse rounded-md bg-surface-2" />
+              <div className="size-7 shrink-0 animate-pulse rounded bg-surface-2" />
               <div className="h-3 w-24 animate-pulse rounded bg-surface-2" />
               <div className="ml-auto h-4 w-20 animate-pulse rounded bg-surface-2" />
             </li>
@@ -232,7 +232,7 @@ function LiveSubnetRow({ sn }: { sn: Subnet }) {
       <Link
         to="/subnets/$netuid"
         params={{ netuid: sn.netuid }}
-        className="mg-hover-lift flex items-center gap-3 px-4 py-3 text-sm"
+        className="mg-hover-lift flex items-center gap-3 px-4 py-3 text-13"
       >
         <BrandIcon
           name={sn.name}
@@ -243,7 +243,7 @@ function LiveSubnetRow({ sn }: { sn: Subnet }) {
         />
         <div className="min-w-0 flex-1">
           <div className="truncate text-ink-strong">{sn.name ?? `Subnet ${sn.netuid}`}</div>
-          <div className="mg-type-caption text-ink-muted">SN{sn.netuid}</div>
+          <div className="text-13 text-ink-muted">SN{sn.netuid}</div>
         </div>
         <div className="hidden shrink-0 sm:block">
           {closes.length >= 2 ? (
@@ -260,14 +260,11 @@ function LiveSubnetRow({ sn }: { sn: Subnet }) {
           )}
         </div>
         <div className="shrink-0 flex flex-col items-end gap-0.5">
-          <span
-            className="mg-type-data tabular-nums text-ink-strong"
-            title="Latest alpha price in TAO"
-          >
+          <span className="text-11 tabular-nums text-ink-strong" title="Latest alpha price in TAO">
             {closes.length ? `${formatAlpha(closes.at(-1)!)} τ` : "—"}
           </span>
           <span
-            className={`mg-type-data-sm tabular-nums ${deltaTone}`}
+            className={`text-10 tabular-nums ${deltaTone}`}
             title="Alpha price change over the last 7 days"
           >
             {deltaPct == null ? "—" : `${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(1)}%`}

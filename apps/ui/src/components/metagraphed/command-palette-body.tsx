@@ -812,7 +812,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
               type="button"
               onClick={() => onScopeChange(s.key)}
               className={classNames(
-                "shrink-0 rounded-full border px-2.5 py-1 mg-type-micro transition-colors",
+                "shrink-0 rounded border px-2.5 py-1 text-10 transition-colors",
                 active
                   ? "border-accent/60 bg-accent/10 text-accent"
                   : "border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-ink/30",
@@ -823,7 +823,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
           );
         })}
         {(isFetching || isSemanticFetching) && debounced ? (
-          <span className="ml-auto mg-type-data-sm text-ink-muted">searching…</span>
+          <span className="ml-auto text-10 text-ink-muted">searching…</span>
         ) : null}
       </div>
 
@@ -861,18 +861,18 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
 
             {showNoMatches ? (
               <div className="px-3 py-3 space-y-3 border-b border-border">
-                <p className="mg-type-data text-ink-muted">
+                <p className="text-11 text-ink-muted">
                   Try a suggested query or filter a list by your search.
                 </p>
                 <div>
-                  <div className="mg-label mb-1.5">Try</div>
+                  <div className="text-10 text-ink-muted mb-1.5">Try</div>
                   <ul className="flex flex-wrap gap-1">
                     {SUGGESTED_QUERIES.map((s) => (
                       <li key={s}>
                         <button
                           type="button"
                           onClick={() => setQ(s)}
-                          className="rounded-full border border-dashed border-ink-subtle bg-paper px-2.5 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                          className="rounded border border-dashed border-ink-subtle bg-paper px-2.5 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
                         >
                           {s}
                         </button>
@@ -881,13 +881,13 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                   </ul>
                 </div>
                 <div>
-                  <div className="mg-label mb-1.5">Filter</div>
+                  <div className="text-10 text-ink-muted mb-1.5">Filter</div>
                   <ul className="flex flex-col gap-1.5">
                     <li>
                       <button
                         type="button"
                         onClick={filterSubnetsByQuery}
-                        className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm text-ink-strong hover:border-accent/40 hover:bg-surface transition-colors"
+                        className="flex w-full items-center gap-2 rounded border border-border bg-card px-3 py-2 text-left text-13 text-ink-strong hover:border-accent/40 hover:bg-surface transition-colors"
                       >
                         <Search className="size-4 shrink-0 text-ink-muted" />
                         <span>Filter /subnets by "{debounced}"</span>
@@ -897,7 +897,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                       <button
                         type="button"
                         onClick={filterEndpointsByQuery}
-                        className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm text-ink-strong hover:border-accent/40 hover:bg-surface transition-colors"
+                        className="flex w-full items-center gap-2 rounded border border-border bg-card px-3 py-2 text-left text-13 text-ink-strong hover:border-accent/40 hover:bg-surface transition-colors"
                       >
                         <Wifi className="size-4 shrink-0 text-ink-muted" />
                         <span>Filter /endpoints by "{debounced}"</span>
@@ -913,14 +913,14 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                 {recent.length > 0 ? (
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <div className="mg-label">Recent</div>
+                      <div className="text-10 text-ink-muted">Recent</div>
                       <button
                         type="button"
                         onClick={() => {
                           clearRecent();
                           setRecent([]);
                         }}
-                        className="mg-label hover:text-ink-strong transition-colors"
+                        className="text-10 text-ink-muted hover:text-ink-strong transition-colors"
                       >
                         Clear
                       </button>
@@ -931,7 +931,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                           <button
                             type="button"
                             onClick={() => setQ(r)}
-                            className="rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption text-ink hover:border-accent/40 hover:text-accent transition-colors"
+                            className="rounded border border-border bg-card px-2.5 py-1 text-13 text-ink hover:border-accent/40 hover:text-accent transition-colors"
                           >
                             {r}
                           </button>
@@ -941,14 +941,14 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                   </div>
                 ) : null}
                 <div>
-                  <div className="mg-label mb-1.5">Try</div>
+                  <div className="text-10 text-ink-muted mb-1.5">Try</div>
                   <ul className="flex flex-wrap gap-1">
                     {SUGGESTED_QUERIES.map((s) => (
                       <li key={s}>
                         <button
                           type="button"
                           onClick={() => setQ(s)}
-                          className="rounded-full border border-dashed border-ink-subtle bg-paper px-2.5 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                          className="rounded border border-dashed border-ink-subtle bg-paper px-2.5 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
                         >
                           {s}
                         </button>
@@ -972,14 +972,14 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     >
                       <Icon className="size-4 text-ink-muted shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-ink-strong truncate">{n.label}</div>
-                        <div className="mg-type-data-sm text-ink-muted truncate">{n.hint}</div>
+                        <div className="text-13 text-ink-strong truncate">{n.label}</div>
+                        <div className="text-10 text-ink-muted truncate">{n.hint}</div>
                       </div>
                       <ItemActions
                         onCopy={() => copyLink(n.target, n.label)}
                         onNewTab={() => openInNewTab(n.target, n.kind)}
                       />
-                      <CommandShortcut className="mg-type-caption">{n.kind}</CommandShortcut>
+                      <CommandShortcut className="text-13">{n.kind}</CommandShortcut>
                     </CommandItem>
                   );
                 })}
@@ -1000,16 +1000,16 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     >
                       <Icon className="size-4 text-ink-muted shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-ink-strong truncate">{r.label}</div>
+                        <div className="text-13 text-ink-strong truncate">{r.label}</div>
                         {r.hint ? (
-                          <div className="mg-type-data-sm text-ink-muted truncate">{r.hint}</div>
+                          <div className="text-10 text-ink-muted truncate">{r.hint}</div>
                         ) : null}
                       </div>
                       <ItemActions
                         onCopy={() => copyLink(target, r.label)}
                         onNewTab={() => openInNewTab(target, "route")}
                       />
-                      <CommandShortcut className="mg-type-data-sm">page</CommandShortcut>
+                      <CommandShortcut className="text-10">page</CommandShortcut>
                     </CommandItem>
                   );
                 })}
@@ -1045,18 +1045,16 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                       >
                         <Icon className={classNames("size-4 shrink-0", meta.cls)} />
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm text-ink-strong truncate">{title}</div>
+                          <div className="text-13 text-ink-strong truncate">{title}</div>
                           {subtitle ? (
-                            <div className="mg-type-data-sm text-ink-muted truncate">
-                              {subtitle}
-                            </div>
+                            <div className="text-10 text-ink-muted truncate">{subtitle}</div>
                           ) : null}
                         </div>
                         <ItemActions
                           onCopy={() => copyLink(target, String(title))}
                           onNewTab={() => openInNewTab(target, kind)}
                         />
-                        <CommandShortcut className="mg-type-caption">{meta.label}</CommandShortcut>
+                        <CommandShortcut className="text-13">{meta.label}</CommandShortcut>
                       </CommandItem>
                     );
                   })}
@@ -1098,16 +1096,16 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     >
                       <Icon className={classNames("size-4 shrink-0", meta.cls)} />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-ink-strong truncate">{title}</div>
+                        <div className="text-13 text-ink-strong truncate">{title}</div>
                         {subtitle ? (
-                          <div className="mg-type-data-sm text-ink-muted truncate">{subtitle}</div>
+                          <div className="text-10 text-ink-muted truncate">{subtitle}</div>
                         ) : null}
                       </div>
                       <ItemActions
                         onCopy={() => copyLink(target, String(title))}
                         onNewTab={() => openInNewTab(target, kind || "semantic")}
                       />
-                      <CommandShortcut className="mg-type-caption text-accent">
+                      <CommandShortcut className="text-13 text-accent">
                         AI {Math.round(r.score * 100)}%
                       </CommandShortcut>
                     </CommandItem>
@@ -1129,12 +1127,12 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                 >
                   <Sparkles className="size-4 shrink-0 text-accent" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-ink-strong truncate">Ask: "{debounced}"</div>
-                    <div className="mg-type-data-sm text-ink-muted truncate">
+                    <div className="text-13 text-ink-strong truncate">Ask: "{debounced}"</div>
+                    <div className="text-10 text-ink-muted truncate">
                       Grounded answer with citations, over the whole registry
                     </div>
                   </div>
-                  <CommandShortcut className="mg-type-caption text-accent">AI</CommandShortcut>
+                  <CommandShortcut className="text-13 text-accent">AI</CommandShortcut>
                 </CommandItem>
               </CommandGroup>
             ) : null}
@@ -1149,7 +1147,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     className="flex items-center gap-3"
                   >
                     <Search className="size-4 text-ink-muted" />
-                    <span className="text-sm text-ink-strong">
+                    <span className="text-13 text-ink-strong">
                       Filter /subnets by "{debounced}"
                     </span>
                   </CommandItem>
@@ -1159,7 +1157,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     className="flex items-center gap-3"
                   >
                     <Wifi className="size-4 text-ink-muted" />
-                    <span className="text-sm text-ink-strong">
+                    <span className="text-13 text-ink-strong">
                       Filter /endpoints by "{debounced}"
                     </span>
                   </CommandItem>
@@ -1169,7 +1167,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
           </>
         )}
       </CommandList>
-      <div className="border-t border-border px-3 py-2 flex items-center justify-between mg-type-data-sm text-ink-muted">
+      <div className="border-t border-border px-3 py-2 flex items-center justify-between text-10 text-ink-muted">
         {view === "ask" ? (
           <span className="inline-flex items-center gap-2 flex-wrap">
             <Kbd>Esc</Kbd> back to results
@@ -1217,7 +1215,7 @@ function AskAnswerPanel({
 }) {
   return (
     <div className="space-y-3">
-      <div className="mg-type-caption text-ink-muted">
+      <div className="text-13 text-ink-muted">
         Ask: <span className="text-ink-strong">"{question}"</span>
       </div>
 
@@ -1225,7 +1223,7 @@ function AskAnswerPanel({
         <Panel
           as="div"
           flush
-          className="px-3 py-3 mg-type-caption text-ink-muted"
+          className="px-3 py-3 text-13 text-ink-muted"
           bodyClassName="flex items-center gap-2"
         >
           <Loader2 className="size-4 shrink-0 animate-spin text-accent" aria-hidden />
@@ -1241,11 +1239,11 @@ function AskAnswerPanel({
           role="alert"
           className="space-y-2 rounded border border-health-down/30 bg-health-down/5 px-3 py-3"
         >
-          <p className="mg-type-caption text-health-down">{describeAskError(mutation.error)}</p>
+          <p className="text-13 text-health-down">{describeAskError(mutation.error)}</p>
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
           >
             <RotateCcw className="size-3.5" aria-hidden /> Retry
           </button>
@@ -1254,9 +1252,7 @@ function AskAnswerPanel({
 
       {mutation.data ? (
         <div className="space-y-3 rounded border border-accent/30 bg-accent-surface p-3">
-          <p className="mg-type-caption-lg leading-relaxed text-ink-strong">
-            {mutation.data.answer}
-          </p>
+          <p className="text-13 leading-relaxed text-ink-strong">{mutation.data.answer}</p>
           {mutation.data.citations.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {mutation.data.citations.map((c) => (
@@ -1265,7 +1261,7 @@ function AskAnswerPanel({
                   type="button"
                   onClick={() => onCitationSelect(c)}
                   title={citationMeta(c)}
-                  className="inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 mg-type-micro text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
+                  className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-0.5 text-10 text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
                 >
                   [{c.ref}] {citationLabel(c)}
                 </button>
@@ -1273,13 +1269,13 @@ function AskAnswerPanel({
             </div>
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="mg-type-data-sm text-ink-muted">
+            <span className="text-10 text-ink-muted">
               {sourceCountLabel(mutation.data.context_count, mutation.data.model)}
             </span>
             <button
               type="button"
               onClick={onToggleApiCall}
-              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
             >
               <Code2 className="size-3.5" aria-hidden />
               {showApiCall ? "Hide API call" : "Run as API call"}

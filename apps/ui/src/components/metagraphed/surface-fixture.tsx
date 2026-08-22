@@ -46,21 +46,19 @@ export function SurfaceFixture({
             open && "rotate-90",
           )}
         />
-        <span className="mg-label">sample response</span>
+        <span className="text-10 text-ink-muted">sample response</span>
         {entry.response_status != null ? (
-          <span className="mg-type-data-sm text-health-ok">{entry.response_status}</span>
+          <span className="text-10 text-health-ok">{entry.response_status}</span>
         ) : null}
-        <span className="ml-auto mg-type-data-sm text-ink-muted">
+        <span className="ml-auto text-10 text-ink-muted">
           <TimeAgo at={entry.captured_at ?? undefined} />
         </span>
       </button>
       {open ? (
         <div className="space-y-2 border-t border-border px-2 py-2">
-          {isLoading ? (
-            <span className="mg-type-caption text-ink-muted">Loading sample…</span>
-          ) : null}
+          {isLoading ? <span className="text-13 text-ink-muted">Loading sample…</span> : null}
           {isError ? (
-            <span className="mg-type-caption text-ink-muted">Sample unavailable right now.</span>
+            <span className="text-13 text-ink-muted">Sample unavailable right now.</span>
           ) : null}
           {fixture ? (
             <>
@@ -73,27 +71,23 @@ export function SurfaceFixture({
               ) : null}
               <div>
                 <div className="mb-1 flex items-center gap-2">
-                  <span className="mg-label">response</span>
+                  <span className="text-10 text-ink-muted">response</span>
                   {fixture.response?.status != null ? (
-                    <span className="mg-type-data-sm text-health-ok">
-                      {fixture.response.status}
-                    </span>
+                    <span className="text-10 text-health-ok">{fixture.response.status}</span>
                   ) : null}
                   {fixture.response?.content_type ? (
-                    <span className="mg-type-data-sm text-ink-muted">
-                      {fixture.response.content_type}
-                    </span>
+                    <span className="text-10 text-ink-muted">{fixture.response.content_type}</span>
                   ) : null}
                   {bodyText ? (
                     <CopyButton value={bodyText} label="response body" className="ml-auto" />
                   ) : null}
                 </div>
                 {bodyText ? (
-                  <pre className="max-h-64 overflow-auto rounded bg-card p-2 mg-type-data leading-relaxed text-ink-strong">
+                  <pre className="max-h-64 overflow-auto rounded bg-card p-2 text-11 leading-relaxed text-ink-strong">
                     {bodyText}
                   </pre>
                 ) : (
-                  <span className="mg-type-caption text-ink-muted">Empty response body.</span>
+                  <span className="text-13 text-ink-muted">Empty response body.</span>
                 )}
               </div>
             </>

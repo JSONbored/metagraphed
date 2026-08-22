@@ -45,11 +45,11 @@ export function ProvidersPulseRail({ providers }: { providers: Provider[] }) {
 function Tile({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
     <div>
-      <div className="mg-label">{label}</div>
-      <div className="mt-1 font-display text-xl tabular-nums text-ink-strong">
+      <div className="text-10 text-ink-muted">{label}</div>
+      <div className="mt-1 font-display text-28 tabular-nums text-ink-strong">
         {formatNumber(value)}
       </div>
-      {hint ? <div className="mt-0.5 mg-type-data-sm text-ink-muted">{hint}</div> : null}
+      {hint ? <div className="mt-0.5 text-10 text-ink-muted">{hint}</div> : null}
     </div>
   );
 }

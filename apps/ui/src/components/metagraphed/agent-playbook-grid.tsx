@@ -52,11 +52,11 @@ export function AgentPlaybookGrid() {
               <Link
                 to="/docs/$"
                 params={{ _splat: `playbooks/${p.slug}` }}
-                className="mg-type-caption-lg font-medium text-ink-strong before:absolute before:inset-0"
+                className="text-13 font-medium text-ink-strong before:absolute before:inset-0"
               >
                 {p.title}
               </Link>
-              <p className="mt-0.5 mg-type-caption text-ink-muted">{p.hint}</p>
+              <p className="mt-0.5 text-13 text-ink-muted">{p.hint}</p>
             </div>
             <ArrowRight aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
           </div>

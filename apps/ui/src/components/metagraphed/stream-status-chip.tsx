@@ -38,7 +38,7 @@ export function StreamStatusChip({
   return (
     <span
       className={classNames(
-        "inline-flex min-w-[6.5rem] items-center gap-1.5 rounded border px-2 py-1 mg-type-caption transition-colors",
+        "inline-flex min-w-[6.5rem] items-center gap-1.5 rounded border px-2 py-1 text-13 transition-colors",
         status === "open"
           ? "border-accent/40 bg-accent/10 text-accent-text"
           : "border-border bg-surface text-ink-muted",

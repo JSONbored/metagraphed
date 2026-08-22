@@ -34,7 +34,7 @@ const clientLoader = browserCollections.docs.createClientLoader<{ markdownUrl: s
               own caching/token and could rate-limit. Baked in at compile
               time instead, same as frontmatter/toc already are. */}
           {lastModified ? (
-            <p className="mg-type-caption text-ink-muted">
+            <p className="text-13 text-ink-muted">
               Last updated <TimeAgo at={lastModified.toISOString()} />
             </p>
           ) : (

@@ -60,19 +60,19 @@ export function HealthHistoryDrilldown() {
 
   return (
     <div className="space-y-3">
-      <Panel dense bodyClassName="flex flex-wrap items-center gap-3">
+      <Panel bodyClassName="flex flex-wrap items-center gap-3">
         <div>
-          <div className="mg-label">Probe date</div>
-          <div className="font-display text-sm font-semibold text-ink-strong">{date}</div>
+          <div className="text-10 text-ink-muted">Probe date</div>
+          <div className="font-display text-13 font-semibold text-ink-strong">{date}</div>
         </div>
-        <label className="ml-auto inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
-          <span className="mg-type-caption text-ink-muted">date</span>
+        <label className="ml-auto inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-13">
+          <span className="text-13 text-ink-muted">date</span>
           <input
             type="date"
             value={date}
             max={defaultDate}
             onChange={(e) => setDate(e.target.value || defaultDate)}
-            className="bg-transparent text-ink-strong text-xs focus:outline-none"
+            className="bg-transparent text-ink-strong text-13 focus:outline-none"
             aria-label="Probe history date"
           />
         </label>
@@ -169,17 +169,17 @@ function HealthHistoryBody({ date }: { date: string }) {
   return (
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
-        <Panel as="div" dense>
-          <div className="mg-label mb-1">Status counts</div>
-          <div className="flex items-center gap-4 font-mono mg-type-caption tabular-nums">
+        <Panel as="div">
+          <div className="text-10 text-ink-muted mb-1">Status counts</div>
+          <div className="flex items-center gap-4 font-mono text-13 tabular-nums">
             <span className="text-health-ok">{okCount} ok</span>
             <span className="text-health-warn">{degraded} degraded</span>
             <span className="text-health-down">{failed} failed</span>
             <span className="text-ink-muted">{summary.surface_count ?? rows.length} probed</span>
           </div>
         </Panel>
-        <Panel as="div" dense>
-          <div className="mg-label mb-1.5">Classification mix</div>
+        <Panel as="div">
+          <div className="text-10 text-ink-muted mb-1.5">Classification mix</div>
           <BarMini data={classData} showValue />
         </Panel>
       </div>
@@ -205,14 +205,14 @@ function HealthHistoryBody({ date }: { date: string }) {
           active={Boolean(kind || status)}
           onReset={() => navigate({ search: (prev) => ({ ...prev, kind: "", status: "" }) })}
         />
-        <span className="ml-auto mg-type-data-sm text-ink-muted">
+        <span className="ml-auto text-10 text-ink-muted">
           {rows.length} of {res.data.surfaces.length} surfaces
         </span>
       </div>
 
       <Panel flush className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50 mg-type-micro text-ink-muted">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface text-10 text-ink-muted">
             <tr>
               <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "netuid", order)}>
                 <SortHeader
@@ -281,7 +281,7 @@ function HealthHistoryBody({ date }: { date: string }) {
 function SurfaceHistoryRow({ surface }: { surface: HealthHistorySurface }) {
   return (
     <tr className="mg-row-hover">
-      <td className="px-3 py-2.5 mg-type-data text-ink-muted">
+      <td className="px-3 py-2.5 text-11 text-ink-muted">
         {surface.netuid != null ? (
           <Link
             to="/subnets/$netuid"
@@ -294,25 +294,25 @@ function SurfaceHistoryRow({ surface }: { surface: HealthHistorySurface }) {
           "—"
         )}
       </td>
-      <td className="px-3 py-2.5 mg-type-data text-ink-strong">
+      <td className="px-3 py-2.5 text-11 text-ink-strong">
         <span className="truncate" title={surface.surface_id}>
           {surface.surface_id ?? "—"}
         </span>
       </td>
-      <td className="px-3 py-2.5 mg-type-data text-ink-muted">{surface.provider ?? "—"}</td>
-      <td className="px-3 py-2.5 mg-type-data text-ink-muted">{surface.kind ?? "—"}</td>
+      <td className="px-3 py-2.5 text-11 text-ink-muted">{surface.provider ?? "—"}</td>
+      <td className="px-3 py-2.5 text-11 text-ink-muted">{surface.kind ?? "—"}</td>
       <td className="px-3 py-2.5">
         <span className="inline-flex items-center gap-1.5">
           <HealthPill state={statusState(surface.status)} />
           {surface.classification ? (
-            <span className="mg-type-data-sm text-ink-muted">{surface.classification}</span>
+            <span className="text-10 text-ink-muted">{surface.classification}</span>
           ) : null}
         </span>
       </td>
-      <td className="px-3 py-2.5 text-right mg-type-data tabular-nums text-ink">
+      <td className="px-3 py-2.5 text-right text-11 tabular-nums text-ink">
         {surface.latency_ms != null ? `${surface.latency_ms} ms` : "—"}
       </td>
-      <td className="px-3 py-2.5 text-right mg-type-data text-ink-muted">
+      <td className="px-3 py-2.5 text-right text-11 text-ink-muted">
         {surface.last_ok ? <TimeAgo at={surface.last_ok} /> : "—"}
       </td>
     </tr>
@@ -369,10 +369,7 @@ export function SourceHealthTable() {
 
   return (
     <div className="space-y-3">
-      <Panel
-        dense
-        bodyClassName="flex flex-wrap items-center gap-4 font-mono mg-type-caption tabular-nums"
-      >
+      <Panel bodyClassName="flex flex-wrap items-center gap-4 font-mono text-13 tabular-nums">
         <span className="text-health-ok">{summary.status_counts.ok ?? 0} ok</span>
         <span className="text-health-warn">{summary.status_counts.degraded ?? 0} degraded</span>
         <span className="text-health-down">{summary.status_counts.failed ?? 0} failed</span>
@@ -395,14 +392,14 @@ export function SourceHealthTable() {
             { value: "unknown", label: "unknown" },
           ]}
         />
-        <span className="ml-auto mg-type-data-sm text-ink-muted">
+        <span className="ml-auto text-10 text-ink-muted">
           {rows.length} of {res.data.providers.length} providers
         </span>
       </div>
 
       <Panel flush className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50 mg-type-micro text-ink-muted">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface text-10 text-ink-muted">
             <tr>
               <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "name", order)}>
                 <SortHeader
@@ -487,17 +484,17 @@ function ProviderRow({ provider }: { provider: SourceHealthProvider }) {
       <td className="px-3 py-2.5">
         <span className="font-medium text-ink-strong">{provider.name ?? provider.id}</span>
         {provider.authority ? (
-          <span className="ml-1.5 mg-type-data-sm text-ink-muted">{provider.authority}</span>
+          <span className="ml-1.5 text-10 text-ink-muted">{provider.authority}</span>
         ) : null}
       </td>
-      <td className="px-3 py-2.5 mg-type-data text-ink-muted">{provider.kind ?? "—"}</td>
+      <td className="px-3 py-2.5 text-11 text-ink-muted">{provider.kind ?? "—"}</td>
       <td className="px-3 py-2.5">
         <HealthPill state={statusState(provider.status)} />
       </td>
-      <td className="px-3 py-2.5 text-right mg-type-data tabular-nums text-ink">
+      <td className="px-3 py-2.5 text-right text-11 tabular-nums text-ink">
         {provider.endpoint_count ?? 0}
       </td>
-      <td className="px-3 py-2.5 text-right mg-type-data tabular-nums text-ink-muted">
+      <td className="px-3 py-2.5 text-right text-11 tabular-nums text-ink-muted">
         {provider.candidate_count ?? 0}
       </td>
       <td className="px-3 py-2.5">
@@ -507,7 +504,7 @@ function ProviderRow({ provider }: { provider: SourceHealthProvider }) {
               <span
                 key={label}
                 className={classNames(
-                  "inline-flex items-center gap-1 rounded border px-1 py-0.5 mg-type-data-sm",
+                  "inline-flex items-center gap-1 rounded border px-1 py-0.5 text-10",
                   label === "dead"
                     ? "border-health-down/40 text-health-down"
                     : label === "live"
@@ -520,7 +517,7 @@ function ProviderRow({ provider }: { provider: SourceHealthProvider }) {
             ))}
           </div>
         ) : (
-          <span className="mg-type-data-sm text-ink-muted">—</span>
+          <span className="text-10 text-ink-muted">—</span>
         )}
       </td>
     </tr>

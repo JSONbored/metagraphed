@@ -79,7 +79,6 @@ export function AsyncPanel({
       evidenceLabel={empty?.evidenceLabel}
       icon={empty?.icon}
       className={empty?.className}
-      dense={empty?.dense}
     />
   ) : (
     children

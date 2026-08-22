@@ -28,7 +28,7 @@ export interface SectionLabelProps {
 
 /**
  * Batch B primitive. Replaces the hundreds of hand-rolled
- * `font-mono text-[9.5px] uppercase tracking-widest text-ink-muted`
+ * `font-mono text-10 text-ink-muted`
  * micro-labels across panels, cards, and headers. Enforced via the
  * ESLint guardrail that blocks bare `text-[…px]` sizes outside vendor.
  */
@@ -47,7 +47,7 @@ export function SectionLabel({
     <Cmp
       title={title}
       className={classNames(
-        size === "micro" ? "mg-type-micro" : "mg-type-label",
+        size === "micro" ? "text-10" : "text-11",
         "inline-flex items-center gap-1.5",
         TONE_CLASSES[tone],
         className,
@@ -63,9 +63,7 @@ export function SectionLabel({
       ) : null}
       <span className="truncate">{children}</span>
       {hint != null ? (
-        <span className="text-ink-subtle-text normal-case tracking-normal">
-          {hint}
-        </span>
+        <span className="text-ink-subtle-text normal-case">{hint}</span>
       ) : null}
     </Cmp>
   );

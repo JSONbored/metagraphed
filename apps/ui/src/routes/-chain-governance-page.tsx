@@ -73,7 +73,7 @@ export function ChainGovernancePage() {
         <div
           role="tablist"
           aria-label="Governance source"
-          className="mr-auto inline-flex items-center gap-1 rounded-md border border-border bg-surface p-0.5"
+          className="mr-auto inline-flex items-center gap-1 rounded border border-border bg-surface p-0.5"
         >
           {VIEWS.map((v) => (
             <button
@@ -83,7 +83,7 @@ export function ChainGovernancePage() {
               aria-selected={v.id === view}
               onClick={() => setView(v.id)}
               className={classNames(
-                "rounded px-2.5 py-1 mg-type-caption font-medium transition-colors mg-focus-ring",
+                "rounded px-2.5 py-1 text-13 font-medium transition-colors mg-focus-ring",
                 v.id === view ? "bg-card text-ink-strong" : "text-ink-muted hover:text-ink-strong",
               )}
             >
@@ -97,7 +97,7 @@ export function ChainGovernancePage() {
         </ActionBar>
       </ChainTabActions>
 
-      <p className="mb-6 max-w-3xl mg-type-caption-lg text-ink-muted">{active.blurb}</p>
+      <p className="mb-6 max-w-3xl text-13 text-ink-muted">{active.blurb}</p>
 
       {view === "admin" ? (
         <>

@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { ExternalLink } from "./external-link";
 import {
   Inbox,
   AlertCircle,
@@ -88,29 +89,29 @@ export function TableState({
     <div
       role={variant === "error" ? "alert" : undefined}
       className={classNames(
-        "rounded-xl border bg-card px-8 py-16 text-center",
+        "rounded border bg-card px-8 py-16 text-center",
         tone,
         className,
       )}
     >
-      <div className="mx-auto inline-flex size-10 items-center justify-center rounded-full border border-border bg-paper">
+      <div className="mx-auto inline-flex size-10 items-center justify-center rounded border border-border bg-paper">
         <Icon className={classNames("size-4", iconCls)} />
       </div>
-      <h3 className="mt-4 font-display text-base font-semibold text-ink-strong tracking-tight">
+      <h3 className="mt-4 font-display text-16 font-semibold text-ink-strong">
         {title}
       </h3>
       {description ? (
-        <p className="mx-auto mt-1.5 max-w-md text-sm text-ink-muted leading-relaxed">
+        <p className="mx-auto mt-1.5 max-w-md text-13 text-ink-muted leading-relaxed">
           {description}
         </p>
       ) : null}
       {variant === "stale" && generatedAt ? (
-        <p className="mt-3 mg-type-data text-ink-muted">
+        <p className="mt-3 text-11 text-ink-muted">
           Last verified <TimeAgo at={generatedAt} />
         </p>
       ) : null}
       {message ? (
-        <p className="mx-auto mt-3 max-w-md mg-type-data text-ink-muted">
+        <p className="mx-auto mt-3 max-w-md text-11 text-ink-muted">
           {status ? (
             <span className="text-health-down">HTTP {status} · </span>
           ) : null}
@@ -118,12 +119,12 @@ export function TableState({
         </p>
       ) : null}
       {cta || onRetry || url ? (
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           {onRetry ? (
             <button
               type="button"
               onClick={onRetry}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3.5 py-1.5 mg-type-caption font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-3.5 py-1.5 text-13 font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
             >
               <RefreshCw className="size-3" /> Retry
             </button>
@@ -134,21 +135,20 @@ export function TableState({
               {...(cta.external
                 ? { target: "_blank", rel: "noopener noreferrer" }
                 : {})}
-              className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-3.5 py-1.5 mg-type-caption font-medium text-paper hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 rounded bg-ink-strong px-3.5 py-1.5 text-13 font-medium text-paper hover:opacity-90 transition-opacity"
             >
               {cta.label}
               {cta.external ? <ExternalLinkIcon className="size-3" /> : null}
             </a>
           ) : null}
           {url ? (
-            <a
+            <ExternalLink
+              bare
               href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-ink-strong"
+              className="inline-flex items-center gap-1.5 text-11 text-ink-muted hover:text-ink-strong"
             >
               View API URL <ExternalLinkIcon className="size-3" />
-            </a>
+            </ExternalLink>
           ) : null}
         </div>
       ) : null}

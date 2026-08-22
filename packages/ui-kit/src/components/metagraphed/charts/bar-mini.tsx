@@ -48,12 +48,10 @@ export function BarMini({
             key={d.label}
             className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-2"
           >
-            <span className="mg-type-caption text-ink-muted truncate">
-              {d.label}
-            </span>
-            <span className="relative h-1.5 rounded-full bg-surface overflow-hidden">
+            <span className="text-13 text-ink-muted truncate">{d.label}</span>
+            <span className="relative h-1.5 rounded bg-surface overflow-hidden">
               <span
-                className="absolute inset-y-0 left-0 rounded-full"
+                className="absolute inset-y-0 left-0 rounded"
                 style={{
                   width: `${pct}%`,
                   background: d.color ?? "var(--accent)",
@@ -61,7 +59,7 @@ export function BarMini({
               />
             </span>
             {showValue ? (
-              <span className="mg-type-data-sm tabular-nums text-ink-strong">
+              <span className="text-10 tabular-nums text-ink-strong">
                 {formatValue ? formatValue(d.value) : d.value}
               </span>
             ) : null}

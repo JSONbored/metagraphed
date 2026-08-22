@@ -43,20 +43,20 @@ export function NeuronDetailCard({
   }
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-surface/30 p-4">
+    <div className="space-y-4 rounded border border-border bg-surface p-4">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex items-baseline gap-2">
-          <span className="mg-type-caption text-ink-muted">Neuron</span>
-          <span className="font-display text-lg font-semibold tabular-nums text-ink-strong leading-none">
+          <span className="text-13 text-ink-muted">Neuron</span>
+          <span className="font-display text-16 font-semibold tabular-nums text-ink-strong leading-none">
             UID {n.uid}
           </span>
           {n.validator_permit ? (
-            <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
+            <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-13 text-accent-text">
               Validator
             </span>
           ) : null}
           {n.active === false ? (
-            <span className="inline-flex items-center rounded border border-border px-1.5 py-0.5 mg-type-caption text-ink-muted">
+            <span className="inline-flex items-center rounded border border-border px-1.5 py-0.5 text-13 text-ink-muted">
               Inactive
             </span>
           ) : null}
@@ -68,7 +68,7 @@ export function NeuronDetailCard({
               type="button"
               onClick={onClose}
               aria-label="Close neuron detail"
-              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong"
+              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong"
             >
               <X className="size-3" aria-hidden /> Close
             </button>
@@ -102,16 +102,16 @@ export function NeuronDetailCard({
         <Fact label="Dividends" value={scoreStr(n.dividends)} />
       </div>
 
-      <Panel as="div" dense bodyClassName="space-y-2.5">
+      <Panel as="div" bodyClassName="space-y-2.5">
         <KeyRow label="Hotkey" value={n.hotkey} />
         <KeyRow label="Coldkey" value={n.coldkey} />
         {n.registered_at_block != null ? (
           <div className="flex items-center justify-between gap-3">
-            <span className="mg-type-caption text-ink-muted">Registered</span>
+            <span className="text-13 text-ink-muted">Registered</span>
             <Link
               to="/blocks/$ref"
               params={{ ref: String(n.registered_at_block) }}
-              className="font-mono mg-type-caption text-ink hover:text-accent hover:underline"
+              className="font-mono text-13 text-ink hover:text-accent hover:underline"
             >
               #{formatNumber(n.registered_at_block)}
             </Link>
@@ -124,9 +124,9 @@ export function NeuronDetailCard({
 
 function Fact({ label, value }: { label: string; value: string | number }) {
   return (
-    <Panel as="div" dense>
-      <div className="mg-type-caption text-ink-muted">{label}</div>
-      <div className="mt-1 font-display text-base font-semibold tabular-nums text-ink-strong leading-none">
+    <Panel as="div">
+      <div className="text-13 text-ink-muted">{label}</div>
+      <div className="mt-1 font-display text-16 font-semibold tabular-nums text-ink-strong leading-none">
         {value}
       </div>
     </Panel>
@@ -136,9 +136,9 @@ function Fact({ label, value }: { label: string; value: string | number }) {
 function KeyRow({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="mg-type-caption text-ink-muted">{label}</span>
+      <span className="text-13 text-ink-muted">{label}</span>
       {value ? (
-        <span className="font-mono mg-type-caption text-ink">
+        <span className="font-mono text-13 text-ink">
           <AddressDisplay
             ss58={value}
             compact
@@ -146,7 +146,7 @@ function KeyRow({ label, value }: { label: string; value?: string }) {
           />
         </span>
       ) : (
-        <span className="font-mono mg-type-caption text-ink-muted">—</span>
+        <span className="font-mono text-13 text-ink-muted">—</span>
       )}
     </div>
   );

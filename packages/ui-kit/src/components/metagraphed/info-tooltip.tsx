@@ -25,14 +25,14 @@ export function InfoTooltip({
             type="button"
             aria-label={label}
             className={
-              "inline-flex items-center text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded " +
+              "inline-flex items-center text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded" +
               (className ?? "")
             }
           >
             <Info className="size-3.5" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs mg-type-caption">
+        <TooltipContent side="top" className="max-w-xs text-13">
           {label}
         </TooltipContent>
       </Tooltip>

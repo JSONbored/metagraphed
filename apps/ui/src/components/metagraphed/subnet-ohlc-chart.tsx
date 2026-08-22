@@ -96,7 +96,7 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
     <div
       role="tablist"
       aria-label="Price history window"
-      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+      className="inline-flex rounded border border-border bg-surface p-0.5"
     >
       {WINDOWS.map((w) => (
         <button
@@ -106,7 +106,7 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
           aria-selected={w.key === windowKey}
           onClick={() => setWindowKey(w.key)}
           className={classNames(
-            "px-2.5 py-1 mg-type-label uppercase rounded transition-colors",
+            "px-2.5 py-1 text-11 rounded transition-colors",
             w.key === windowKey
               ? "bg-ink-strong text-paper"
               : "text-ink-muted hover:text-ink-strong",
@@ -159,7 +159,7 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
           description="OHLC candles are built from executed stake/unstake trades -- once this subnet has trading activity in the selected window, candles will appear here."
         />
       ) : (
-        <Panel as="div" dense>
+        <Panel as="div">
           <CandlestickMini
             data={candles}
             width={640}
@@ -172,7 +172,7 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
             formatVolume={formatTao}
             ariaLabel={`Subnet ${netuid} alpha price and volume, ${candles.length} ${interval} candles over ${windowKey}`}
           />
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mg-type-data-sm text-ink-muted">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-10 text-ink-muted">
             <span>
               {candles.length} {interval} candles
               {coverageStart ? ` · price history begins ${coverageStart}` : ""}
@@ -187,9 +187,7 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
           {/* The USD boundary, rendered only when it differs from the TAO
               window. A caption on a fully-covered chart is noise, and noise is
               what stops captions being read on the charts that need them. */}
-          {usd.caption ? (
-            <div className="mt-1 mg-type-data-sm text-ink-muted">{usd.caption}</div>
-          ) : null}
+          {usd.caption ? <div className="mt-1 text-10 text-ink-muted">{usd.caption}</div> : null}
         </Panel>
       )}
     </div>

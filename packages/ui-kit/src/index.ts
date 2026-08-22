@@ -96,10 +96,6 @@ export { CopyButton } from "@/components/metagraphed/copy-button";
 export { CopyIconToggle } from "@/components/metagraphed/copy-icon-toggle";
 export { CopyableCode } from "@/components/metagraphed/copyable-code";
 export {
-  type Density,
-  DensityToggle,
-} from "@/components/metagraphed/density-toggle";
-export {
   DownloadCsvButton,
   buildCsvDownloadUrl,
 } from "@/components/metagraphed/download-csv-button";
@@ -130,7 +126,6 @@ export {
   EntityHero,
 } from "@/components/metagraphed/entity-hero";
 export { PageSection } from "@/components/metagraphed/page-section";
-export { ScrollReveal } from "@/components/metagraphed/scroll-reveal";
 export {
   type SectionTone,
   SectionAnchor,

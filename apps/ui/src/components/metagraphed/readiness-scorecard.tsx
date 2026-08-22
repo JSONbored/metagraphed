@@ -43,22 +43,22 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
   const tone = typeof score === "number" ? scoreTone(score) : null;
 
   return (
-    <Panel dense aria-label="Integration readiness">
+    <Panel aria-label="Integration readiness">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="mg-label text-ink-subtle-text">Integration readiness</div>
+          <div className="text-10 text-ink-muted text-ink-subtle-text">Integration readiness</div>
           <div className="mt-1 flex items-baseline gap-2">
             <span
               className={classNames(
-                "font-display text-3xl font-semibold tabular-nums",
+                "font-display text-28 font-semibold tabular-nums",
                 typeof score === "number" ? "text-ink-strong" : "text-ink-subtle-text",
               )}
             >
               {typeof score === "number" ? score : "—"}
             </span>
-            <span className="text-xs text-ink-subtle-text">/ 100</span>
+            <span className="text-13 text-ink-subtle-text">/ 100</span>
             {tone ? (
-              <span className={classNames("text-sm font-medium", tone.cls)}>{tone.label}</span>
+              <span className={classNames("text-13 font-medium", tone.cls)}>{tone.label}</span>
             ) : null}
           </div>
         </div>
@@ -70,7 +70,7 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
           // ExternalLink's root is inline-flex; wrap icon+label in a real flex
           // row with min-w-0 so the inner truncate span can shrink against it
           // (#8537). w-full keeps the anchor bounded to the card (#6903).
-          className="mt-3 w-full min-w-0 items-center gap-2 rounded-md border border-accent/30 bg-accent-surface px-3 py-2 text-sm no-underline hover:decoration-transparent"
+          className="mt-3 w-full min-w-0 items-center gap-2 rounded border border-accent/30 bg-accent-surface px-3 py-2 text-13 no-underline hover:decoration-transparent"
         >
           <span className="flex min-w-0 items-center gap-1.5">
             <ArrowRight className="size-4 shrink-0 text-accent" />
@@ -88,7 +88,7 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
           {COMPONENT_ORDER.filter(([key]) => key in components).map(([key, label]) => {
             const met = components[key];
             return (
-              <span key={key} className="inline-flex items-center gap-1 text-xs">
+              <span key={key} className="inline-flex items-center gap-1 text-13">
                 {met ? (
                   <Check className="size-3.5 text-health-ok" />
                 ) : (
@@ -102,7 +102,7 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
       ) : null}
 
       {operational.length > 0 || missing.length > 0 ? (
-        <div className="mt-3 border-t border-border pt-2 text-xs text-ink-muted">
+        <div className="mt-3 border-t border-border pt-2 text-13 text-ink-muted">
           <span className="font-medium text-ink-strong tabular-nums">{operational.length}</span>{" "}
           operational interface{operational.length === 1 ? "" : "s"}
           {missing.length > 0 ? (

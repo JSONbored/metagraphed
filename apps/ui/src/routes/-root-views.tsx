@@ -23,7 +23,6 @@ import { Toaster } from "@jsonbored/ui-kit";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { initAnalytics, capturePageview, syncReplayPolicy } from "../lib/analytics";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
-import { DENSITY_BOOTSTRAP_SCRIPT } from "@/lib/density";
 import { HEALTH_PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/health-palette";
 import { GlobalErrorBoundary } from "@/components/metagraphed/global-error-boundary";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -77,25 +76,25 @@ export function NotFoundComponent() {
     <div className="min-h-dvh bg-paper px-4 py-10 text-ink-strong">
       <div className="mx-auto max-w-5xl">
         <main aria-labelledby="nf-title">
-          <div className="mg-label">Metagraphed / missing route · 404</div>
+          <div className="text-10 text-ink-muted">Metagraphed / missing route · 404</div>
           <h1
             id="nf-title"
-            className="mt-3 font-display text-4xl font-semibold leading-tight text-ink-strong md:text-5xl"
+            className="mt-3 font-display text-40 font-semibold leading-tight text-ink-strong md:text-40"
           >
             No registry resource at this URL.
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-muted md:text-base">
+          <p className="mt-3 max-w-2xl text-13 leading-relaxed text-ink-muted md:text-16">
             The path you followed isn&rsquo;t a curated registry view. Search a subnet by netuid,
             copy the attempted URL for a bug report, or jump into one of the primary indexes below.
           </p>
 
           {/* Attempted URL + copy */}
-          <Panel as="div" dense className="mt-6">
-            <div className="flex items-center gap-2 mg-label">
+          <Panel as="div" className="mt-6">
+            <div className="flex items-center gap-2 text-10 text-ink-muted">
               <AlertTriangle className="size-3.5 text-health-warn" /> Attempted URL
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded border border-border bg-paper px-2 py-1.5 font-mono mg-type-caption text-ink">
+              <code className="min-w-0 flex-1 truncate rounded border border-border bg-paper px-2 py-1.5 font-mono text-13 text-ink">
                 {attempted}
               </code>
               <button
@@ -103,7 +102,7 @@ export function NotFoundComponent() {
                 onClick={onCopy}
                 aria-label="Copy attempted URL"
                 aria-live="polite"
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-paper px-3 text-xs text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-paper px-3 text-13 text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {copied ? (
                   <Check className="size-3.5 text-health-ok" />
@@ -117,7 +116,7 @@ export function NotFoundComponent() {
 
           {/* Search */}
           <form onSubmit={onSubmit} className="mt-4" role="search" aria-label="Find a subnet">
-            <label htmlFor="nf-search" className="mg-label">
+            <label htmlFor="nf-search" className="text-10 text-ink-muted">
               Jump to subnet
             </label>
             <div className="mt-1 flex flex-wrap items-stretch gap-2">
@@ -135,17 +134,17 @@ export function NotFoundComponent() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   // eslint-disable-next-line no-restricted-syntax -- pl-9 (36px) clears the absolutely-positioned search icon at left-3+size; 36px is off the 4pt subset and has no --mg-space-* token (scale jumps 32→48), so snapping to either would misalign the icon (#8717 req 2 exception)
-                  className="min-h-10 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm text-ink-strong placeholder:text-ink-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="min-h-10 w-full rounded border border-border bg-card pl-9 pr-3 text-13 text-ink-strong placeholder:text-ink-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
               <button
                 type="submit"
-                className="inline-flex min-h-10 items-center gap-2 rounded-md border border-accent/60 bg-primary-soft px-4 text-sm font-medium text-ink-strong hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex min-h-10 items-center gap-2 rounded border border-accent/60 bg-primary-soft px-4 text-13 font-medium text-ink-strong hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Go <ArrowRight className="size-4" />
               </button>
             </div>
-            <p className="mt-1 mg-type-caption text-ink-muted">
+            <p className="mt-1 text-13 text-ink-muted">
               Enter a netuid (0–1024) to deep-link to its profile, or any keyword to search the
               registry.
             </p>
@@ -153,7 +152,7 @@ export function NotFoundComponent() {
 
           {/* Example deep links */}
           <section aria-labelledby="nf-examples" className="mt-6">
-            <h2 id="nf-examples" className="mg-label">
+            <h2 id="nf-examples" className="text-10 text-ink-muted">
               Example deep links
             </h2>
             <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -161,15 +160,13 @@ export function NotFoundComponent() {
                 <li key={ex.href}>
                   <Link
                     to={ex.href}
-                    className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 hover:border-accent/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex items-center justify-between gap-3 rounded border border-border bg-card px-3 py-2 hover:border-accent/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate font-mono mg-type-caption text-ink-strong">
+                      <span className="block truncate font-mono text-13 text-ink-strong">
                         {ex.label}
                       </span>
-                      <span className="block truncate mg-type-caption text-ink-muted">
-                        {ex.note}
-                      </span>
+                      <span className="block truncate text-13 text-ink-muted">{ex.note}</span>
                     </span>
                     <ArrowRight aria-hidden className="size-3.5 text-ink-muted" />
                   </Link>
@@ -181,25 +178,25 @@ export function NotFoundComponent() {
           <nav aria-label="Primary registry indexes" className="mt-6 flex flex-wrap gap-2">
             <Link
               to="/"
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink-strong hover:border-accent/60"
+              className="inline-flex min-h-10 items-center gap-2 rounded border border-border bg-card px-3 text-13 font-medium text-ink-strong hover:border-accent/60"
             >
               <Home className="size-4" /> Overview
             </Link>
             <Link
               to="/subnets"
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
+              className="inline-flex min-h-10 items-center gap-2 rounded border border-border bg-card px-3 text-13 font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
             >
               Subnets
             </Link>
             <Link
               to="/apis/providers"
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
+              className="inline-flex min-h-10 items-center gap-2 rounded border border-border bg-card px-3 text-13 font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
             >
               Providers
             </Link>
             <Link
               to="/health"
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
+              className="inline-flex min-h-10 items-center gap-2 rounded border border-border bg-card px-3 text-13 font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
             >
               Health
             </Link>
@@ -221,25 +218,25 @@ export function ErrorComponent({ error, reset }: { error: Error; reset: () => vo
   return (
     <div className="min-h-screen bg-paper px-4 py-8 text-ink-strong">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl items-center">
-        <main className="w-full rounded-xl border border-health-down/30 bg-card p-4 md:p-8">
-          <div className="flex flex-wrap items-center gap-2 mg-type-caption text-health-down">
+        <main className="w-full rounded border border-health-down/30 bg-card p-4 md:p-8">
+          <div className="flex flex-wrap items-center gap-2 text-13 text-health-down">
             <ServerCrash className="size-4" /> Route error
             <span className="rounded border border-border bg-paper px-1.5 py-0.5 text-ink-muted">
               {pathname}
             </span>
           </div>
-          <h1 className="mt-4 font-display text-3xl font-semibold leading-tight text-ink-strong md:text-5xl">
+          <h1 className="mt-4 font-display text-28 font-semibold leading-tight text-ink-strong md:text-40">
             This page hit a registry UI error.
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-muted md:text-base">
+          <p className="mt-3 max-w-2xl text-13 leading-relaxed text-ink-muted md:text-16">
             Retry reloads only the current route data. If it keeps failing, the links below let you
             continue browsing the public registry while the error report is captured.
           </p>
-          <div className="mt-4 rounded-md border border-border bg-paper p-3 text-xs text-ink-muted">
-            <div className="flex items-center gap-2 mg-label">
+          <div className="mt-4 rounded border border-border bg-paper p-3 text-13 text-ink-muted">
+            <div className="flex items-center gap-2 text-10 text-ink-muted">
               <AlertTriangle className="size-3.5 text-health-warn" /> Diagnostic
             </div>
-            <code className="mt-2 block break-words mg-type-data">{error.message}</code>
+            <code className="mt-2 block break-words text-11">{error.message}</code>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
             <button
@@ -247,19 +244,19 @@ export function ErrorComponent({ error, reset }: { error: Error; reset: () => vo
                 router.invalidate();
                 reset();
               }}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-accent/60 bg-primary-soft px-4 text-sm font-medium text-ink-strong transition-colors hover:border-accent"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded border border-accent/60 bg-primary-soft px-4 text-13 font-medium text-ink-strong transition-colors hover:border-accent"
             >
               <RefreshCw className="size-4" /> Retry route
             </button>
             <Link
               to="/subnets"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded border border-border bg-card px-4 text-13 font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
             >
               Browse subnets
             </Link>
             <Link
               to="/"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded border border-border bg-card px-4 text-13 font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
             >
               <Home className="size-4" /> Overview
             </Link>
@@ -277,7 +274,6 @@ export function RootShell({ children }: { children: ReactNode }) {
         {/* Pre-hydration: theme, density, and health palette set before
             first paint to avoid flash / layout shift. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
-        <script dangerouslySetInnerHTML={{ __html: DENSITY_BOOTSTRAP_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: HEALTH_PALETTE_BOOTSTRAP_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: PRE_HYDRATION_RECOVERY_SCRIPT }} />
         <HeadContent />

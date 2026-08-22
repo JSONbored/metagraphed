@@ -41,7 +41,7 @@ import { formatTao } from "@/lib/metagraphed/format";
 function WalletRow({ row }: { row: WalletRowModel }) {
   const note = evidenceNote(row);
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-xl border border-border/80 px-3 py-2">
+    <li className="flex flex-wrap items-center gap-2 rounded border border-border/80 px-3 py-2">
       {/* Chain-derived vs declared, distinguishable without reading the label:
           the chain read is an accent chip, a human attribution is muted. */}
       <Chip tone={row.chainDerived ? "accent" : "muted"}>{row.role}</Chip>
@@ -52,18 +52,16 @@ function WalletRow({ row }: { row: WalletRowModel }) {
         preload="intent"
       />
       {row.unspendableProofBasis ? (
-        <span className="mg-type-caption text-ink-muted">
-          unspendable: {row.unspendableProofBasis}
-        </span>
+        <span className="text-13 text-ink-muted">unspendable: {row.unspendableProofBasis}</span>
       ) : null}
       {/* ExternalLink, not a bare anchor: it applies safeExternalUrl filtering
           to a URL that came from a registry file somebody else wrote. */}
       {row.sourceUrls.map((url) => (
-        <ExternalLink key={url} href={url} className="mg-type-caption text-accent">
+        <ExternalLink key={url} href={url} className="text-13 text-accent">
           evidence
         </ExternalLink>
       ))}
-      {note ? <span className="mg-type-caption text-ink-muted">{note}</span> : null}
+      {note ? <span className="text-13 text-ink-muted">{note}</span> : null}
     </li>
   );
 }
@@ -126,26 +124,26 @@ export function SubnetMoneyMapPanel({ netuid }: { netuid: number }) {
       </div>
 
       <div className="space-y-2">
-        <div className="mg-type-caption text-ink-muted">Where the owner cut went</div>
+        <div className="text-13 text-ink-muted">Where the owner cut went</div>
         <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-5">
           {DISPOSITION_BUCKETS.map((bucket) => (
-            <div key={bucket} className="rounded-xl border border-border/80 px-3 py-2">
-              <div className="mg-type-caption text-ink-muted">
+            <div key={bucket} className="rounded border border-border/80 px-3 py-2">
+              <div className="text-13 text-ink-muted">
                 <Chip tone={bucketTone()}>{bucketLabel(bucket)}</Chip>
               </div>
-              <div className="mt-1 font-display text-sm font-semibold tabular-nums text-ink-strong">
+              <div className="mt-1 font-display text-13 font-semibold tabular-nums text-ink-strong">
                 {bucketLabelValue(buckets[bucket])}
               </div>
             </div>
           ))}
         </div>
-        <Panel as="div" dense bodyClassName="mg-type-caption text-ink-muted">
+        <Panel as="div" bodyClassName="text-13 text-ink-muted">
           {summary.note}
         </Panel>
         {/* Reported, never balanced away. A negative residual means the parts
             exceed the whole and is shown as such. */}
         {finite(disposition.residual_alpha) != null ? (
-          <div className="mg-type-caption text-ink-muted">
+          <div className="text-13 text-ink-muted">
             Residual: {alphaLabel(disposition.residual_alpha)} · reconciles:{" "}
             {disposition.reconciles === true ? "yes" : "no"}
           </div>
@@ -153,9 +151,9 @@ export function SubnetMoneyMapPanel({ netuid }: { netuid: number }) {
       </div>
 
       <div className="space-y-2">
-        <div className="mg-type-caption text-ink-muted">Declared wallets ({wallets.length})</div>
+        <div className="text-13 text-ink-muted">Declared wallets ({wallets.length})</div>
         {wallets.length === 0 ? (
-          <Panel as="div" dense bodyClassName="mg-type-caption text-ink-muted">
+          <Panel as="div" bodyClassName="text-13 text-ink-muted">
             Nothing has been attributed for this subnet. That is a statement about what has been
             disclosed and evidenced, not about what exists.
           </Panel>

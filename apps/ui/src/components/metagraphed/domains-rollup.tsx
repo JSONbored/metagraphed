@@ -43,7 +43,7 @@ export function DomainsRollup() {
 
   return (
     <section id="domains-rollup" className="scroll-mt-24">
-      <div className="hidden grid-cols-[1.4fr_0.7fr_1fr_0.9fr_1fr] gap-2 border-b border-border px-4 pb-2 mg-type-caption text-ink-muted md:grid">
+      <div className="hidden grid-cols-[1.4fr_0.7fr_1fr_0.9fr_1fr] gap-2 border-b border-border px-4 pb-2 text-13 text-ink-muted md:grid">
         <span>Domain</span>
         <span className="text-right">Subnets</span>
         <span className="text-right">Total stake</span>
@@ -112,19 +112,19 @@ function DomainRow({
           />
           <span className="truncate font-medium capitalize text-ink-strong">{domain.domain}</span>
         </span>
-        <span className="font-mono text-xs tabular-nums text-ink-muted md:hidden">
+        <span className="font-mono text-13 tabular-nums text-ink-muted md:hidden">
           {domain.subnet_count} · {pct(domain.total_emission_share)}
         </span>
-        <span className="hidden text-right font-mono text-sm tabular-nums text-ink-strong md:block">
+        <span className="hidden text-right font-mono text-13 tabular-nums text-ink-strong md:block">
           {domain.subnet_count}
         </span>
-        <span className="hidden text-right font-mono text-sm tabular-nums text-ink-strong md:block">
+        <span className="hidden text-right font-mono text-13 tabular-nums text-ink-strong md:block">
           {formatTao(domain.total_stake_tao)}
         </span>
-        <span className="hidden text-right font-mono text-sm tabular-nums text-ink-strong md:block">
+        <span className="hidden text-right font-mono text-13 tabular-nums text-ink-strong md:block">
           {pct(domain.total_emission_share)}
         </span>
-        <span className="hidden text-right font-mono text-sm tabular-nums text-ink-muted md:block">
+        <span className="hidden text-right font-mono text-13 tabular-nums text-ink-muted md:block">
           {formatNumber(c?.nakamoto_coefficient)} · {ratio(c?.gini)}
         </span>
       </button>
@@ -142,7 +142,7 @@ function DomainRow({
             <Metric label="Entropy (normalized)" value={ratio(c?.entropy_normalized)} />
           </dl>
           <div>
-            <div className="mb-2 mg-type-caption text-ink-muted">
+            <div className="mb-2 text-13 text-ink-muted">
               {domain.subnet_count} member subnet{domain.subnet_count === 1 ? "" : "s"}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -163,7 +163,7 @@ function DomainRow({
                       netuid={netuid}
                       subnetSlug={sn?.slug}
                     />
-                    <span className="truncate text-xs text-ink-strong">{name}</span>
+                    <span className="truncate text-13 text-ink-strong">{name}</span>
                   </Link>
                 );
               })}
@@ -178,8 +178,8 @@ function DomainRow({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="mg-type-caption text-ink-muted">{label}</div>
-      <div className="mt-0.5 font-mono text-sm tabular-nums text-ink-strong">{value}</div>
+      <div className="text-13 text-ink-muted">{label}</div>
+      <div className="mt-0.5 font-mono text-13 tabular-nums text-ink-strong">{value}</div>
     </div>
   );
 }

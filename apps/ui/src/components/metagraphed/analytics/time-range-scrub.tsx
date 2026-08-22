@@ -27,7 +27,7 @@ export function TimeRangeScrub({
   return (
     <div
       className={classNames(
-        "inline-flex items-center rounded border border-border mg-glass-soft p-0.5",
+        "inline-flex items-center rounded border border-border p-0.5",
         className,
       )}
       role="radiogroup"
@@ -43,7 +43,7 @@ export function TimeRangeScrub({
             aria-checked={on}
             onClick={() => set(o.value)}
             className={classNames(
-              "px-2 py-0.5 mg-type-caption rounded transition-colors",
+              "px-2 py-0.5 text-13 rounded transition-colors",
               on ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink-strong",
             )}
           >

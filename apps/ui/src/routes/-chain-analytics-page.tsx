@@ -99,7 +99,7 @@ export function ChainAnalyticsPage() {
         <div
           role="tablist"
           aria-label="Window"
-          className="mr-auto inline-flex items-center gap-1 rounded-md border border-border bg-surface p-0.5"
+          className="mr-auto inline-flex items-center gap-1 rounded border border-border bg-surface p-0.5"
         >
           {WINDOWS.map((w) => (
             <button
@@ -114,7 +114,7 @@ export function ChainAnalyticsPage() {
                 })
               }
               className={classNames(
-                "rounded px-2.5 py-1 mg-type-caption font-medium transition-colors mg-focus-ring",
+                "rounded px-2.5 py-1 text-13 font-medium transition-colors mg-focus-ring",
                 w === search.window
                   ? "bg-card text-ink-strong"
                   : "text-ink-muted hover:text-ink-strong",
@@ -126,7 +126,7 @@ export function ChainAnalyticsPage() {
         </div>
       </ChainTabActions>
 
-      <p className="mb-6 max-w-3xl mg-type-caption-lg text-ink-muted">
+      <p className="mb-6 max-w-3xl text-13 text-ink-muted">
         Stake flow, concentration, idle stake, and registration economics — the questions analysts
         currently script against the API, in one view.
       </p>
@@ -142,7 +142,7 @@ export function ChainAnalyticsPage() {
           hold the sankey back. */}
       <section className="mt-8">
         <SectionLabel>Network concentration & entry cost</SectionLabel>
-        <p className="mb-4 mt-1 max-w-3xl mg-type-caption-lg text-ink-muted">
+        <p className="mb-4 mt-1 max-w-3xl text-13 text-ink-muted">
           What it costs to register, who holds the alpha, and how evenly — each computed over the
           subnets that were actually read, which these panels state rather than assume.
         </p>

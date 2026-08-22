@@ -146,14 +146,12 @@ export function WhatChangedFeed({
       <div className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <div className="mg-type-caption text-ink-muted">
-              What changed · {RANGE_LABEL[range]}
-            </div>
-            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+            <div className="text-13 text-ink-muted">What changed · {RANGE_LABEL[range]}</div>
+            <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
               Recent registry signal
             </h3>
           </div>
-          <span className="inline-flex items-center gap-1 mg-type-data-sm text-ink-muted">
+          <span className="inline-flex items-center gap-1 text-10 text-ink-muted">
             <Sparkles className="size-3" aria-hidden />
             live
           </span>
@@ -170,7 +168,7 @@ export function WhatChangedFeed({
                   onClick={() => toggleKind(kind)}
                   aria-pressed={on}
                   className={classNames(
-                    "min-h-9 rounded-full border px-2.5 py-1 mg-type-caption transition-colors",
+                    "min-h-9 rounded border px-2.5 py-1 text-13 transition-colors",
                     on
                       ? "border-accent/40 bg-accent/10 text-accent-text"
                       : "border-border bg-card text-ink-muted hover:border-ink/30",
@@ -185,7 +183,7 @@ export function WhatChangedFeed({
         ) : null}
 
         {days.length === 0 ? (
-          <div className="flex items-center gap-2 py-6 text-xs text-ink-muted">
+          <div className="flex items-center gap-2 py-6 text-13 text-ink-muted">
             <Radio className="size-3.5" aria-hidden />
             {hidden.size > 0 && all.length > 0
               ? "Every event in this range is filtered out — turn a chip back on."
@@ -195,7 +193,7 @@ export function WhatChangedFeed({
           <div className="space-y-4">
             {days.map((d) => (
               <section key={d.day}>
-                <h4 className="mb-1.5 mg-type-caption text-ink-muted">{dayLabel(d.day)}</h4>
+                <h4 className="mb-1.5 text-13 text-ink-muted">{dayLabel(d.day)}</h4>
                 <ol className="space-y-2.5">
                   {d.items.map((it) => (
                     <DigestRow key={it.id} item={it} />
@@ -227,14 +225,14 @@ function DigestRow({ item }: { item: DigestItem }) {
         <Icon className="size-3" />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-xs font-medium text-ink-strong transition-colors group-hover:text-accent">
+        <div className="truncate text-13 font-medium text-ink-strong transition-colors group-hover:text-accent">
           {item.title}
         </div>
         <div className="mt-0.5 flex items-baseline gap-2">
           {item.detail ? (
-            <span className="truncate mg-type-caption text-ink-muted">{item.detail}</span>
+            <span className="truncate text-13 text-ink-muted">{item.detail}</span>
           ) : null}
-          <span className="mg-type-data-sm text-ink-muted">
+          <span className="text-10 text-ink-muted">
             <TimeAgo at={item.at} />
           </span>
         </div>

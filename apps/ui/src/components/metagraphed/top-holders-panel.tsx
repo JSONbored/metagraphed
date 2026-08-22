@@ -41,30 +41,30 @@ export function TopHoldersPanel() {
   }
 
   return (
-    <Panel as="section" dense>
-      <p className="mb-3 mg-type-data-sm text-ink-muted">
+    <Panel as="section">
+      <p className="mb-3 text-10 text-ink-muted">
         Largest {formatNumber(Math.min(SHOWN, h.accounts.length))} TAO holders network-wide
         {h.account_count == null ? "" : ` of ${formatNumber(h.account_count)} ranked`}
         {h.captured_at ? ` · captured ${formatRelative(h.captured_at)}` : ""}
       </p>
 
       <div className="overflow-x-auto">
-        <table className="w-full mg-type-data-sm">
+        <table className="w-full text-10">
           <thead>
-            <tr className="mg-type-label text-ink-muted">
-              <th className="py-1 text-left font-normal">account</th>
-              <th className="py-1 text-right font-normal" title="Not committed to a validator.">
+            <tr className="text-11 text-ink-muted">
+              <th className="py-1 text-left">account</th>
+              <th className="py-1 text-right" title="Not committed to a validator.">
                 free
               </th>
               <th
-                className="py-1 text-right font-normal"
+                className="py-1 text-right"
                 title="Committed to a validator and earning — a different position from free TAO, not a subtotal of it."
               >
                 delegated
               </th>
-              <th className="py-1 text-right font-normal">total</th>
+              <th className="py-1 text-right">total</th>
               <th
-                className="py-1 text-right font-normal"
+                className="py-1 text-right"
                 title="Net flow over 30 days. The 7d and 90d windows can point the other way — hover a value to see all three."
               >
                 30d flow
@@ -96,7 +96,7 @@ export function TopHoldersPanel() {
         </table>
       </div>
 
-      <p className="mt-3 mg-type-label text-ink-muted">
+      <p className="mt-3 text-11 text-ink-muted">
         * the 7d, 30d and 90d flows do not all point the same way — a move in one window is not a
         trend in the others.
       </p>

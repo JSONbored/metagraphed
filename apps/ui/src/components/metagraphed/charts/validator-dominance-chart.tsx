@@ -51,12 +51,10 @@ export function ValidatorDominanceChart() {
   const coveredPct = rows.reduce((sum, r) => sum + r.share, 0) * 100;
 
   return (
-    <Panel as="div" dense>
+    <Panel as="div">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className="mg-type-caption text-ink-muted">Stake dominance · top {rows.length}</span>
-        <span className="mg-type-data-sm text-ink-muted">
-          {coveredPct.toFixed(1)}% of network stake
-        </span>
+        <span className="text-13 text-ink-muted">Stake dominance · top {rows.length}</span>
+        <span className="text-10 text-ink-muted">{coveredPct.toFixed(1)}% of network stake</span>
       </div>
       <BarMini
         data={barData}
@@ -65,7 +63,7 @@ export function ValidatorDominanceChart() {
       />
       {tiles.length > 1 ? (
         <div className="mt-4 border-t border-border pt-3">
-          <div className="mb-2 mg-type-caption text-ink-muted">
+          <div className="mb-2 text-13 text-ink-muted">
             Concentration
             <TopShareCaption n={tiles.length} />
           </div>

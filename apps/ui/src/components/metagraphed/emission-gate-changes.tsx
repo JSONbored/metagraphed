@@ -38,9 +38,9 @@ function ChangeLog() {
   }
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Emission gate changes</h3>
-      <p className="mb-3 mg-type-data-sm text-ink-muted">
+    <Panel as="section">
+      <h3 className="mb-3 text-11 text-ink-muted">Emission gate changes</h3>
+      <p className="mb-3 text-10 text-ink-muted">
         {formatNumber(c.change_count)} recorded change{c.change_count === 1 ? "" : "s"}
         {c.latest_change_at ? ` · latest ${formatRelative(c.latest_change_at)}` : ""}
       </p>
@@ -49,7 +49,7 @@ function ChangeLog() {
         {c.changes.slice(0, MAX_SHOWN).map((ch, i) => (
           <li
             key={`${ch.kind}-${ch.observed_at ?? i}-${ch.param ?? ""}`}
-            className="flex gap-3 mg-type-data-sm"
+            className="flex gap-3 text-10"
           >
             <span className="w-40 shrink-0 truncate text-ink-muted" title={ch.param ?? ch.kind}>
               {ch.param ?? ch.kind}
@@ -60,7 +60,7 @@ function ChangeLog() {
             </span>
             {/* A change older than capture has NO block. Rendering it as block 0
                 would date it to genesis, so it is labelled instead. */}
-            <span className="shrink-0 mg-type-label text-ink-muted">
+            <span className="shrink-0 text-11 text-ink-muted">
               {ch.predates_capture
                 ? "pre-capture"
                 : ch.block_number != null
@@ -72,7 +72,7 @@ function ChangeLog() {
       </ul>
 
       {c.predates_capture_count != null && c.predates_capture_count > 0 ? (
-        <p className="mt-3 mg-type-label text-ink-muted">
+        <p className="mt-3 text-11 text-ink-muted">
           {formatNumber(c.predates_capture_count)} of these predate our capture and carry no block —
           they happened before we were watching, which is not the same as happening at genesis.
         </p>
@@ -89,8 +89,8 @@ function RandomnessCard() {
   if (!r) return <EmptyState title="No randomness reading" description="Round storage not read." />;
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Stored randomness rounds</h3>
+    <Panel as="section">
+      <h3 className="mb-3 text-11 text-ink-muted">Stored randomness rounds</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
         {/* THE SPAN LEADS, not the newest round. Commit-reveal verifies a
             reveal against the round it was timelocked to, so how far BACK
@@ -113,7 +113,7 @@ function RandomnessCard() {
         />
       </div>
       {r.queried_at ? (
-        <p className="mt-3 mg-type-label text-ink-muted">Read {formatRelative(r.queried_at)}.</p>
+        <p className="mt-3 text-11 text-ink-muted">Read {formatRelative(r.queried_at)}.</p>
       ) : null}
     </Panel>
   );
@@ -122,8 +122,8 @@ function RandomnessCard() {
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div title={hint}>
-      <div className="mg-type-label text-ink-muted">{label}</div>
-      <div className="mg-type-data tabular-nums text-ink">{value}</div>
+      <div className="text-11 text-ink-muted">{label}</div>
+      <div className="text-11 tabular-nums text-ink">{value}</div>
     </div>
   );
 }

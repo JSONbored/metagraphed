@@ -62,7 +62,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
   const next = current.next_block_number;
 
   return (
-    <Panel as="div" dense>
+    <Panel as="div">
       <div className="flex items-stretch gap-2">
         {/* Prev arrow */}
         <ArrowBtn
@@ -88,8 +88,8 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                     aria-current="true"
                     className="flex h-full flex-col items-center gap-1 rounded border border-accent/60 bg-accent/10 px-2 py-2"
                   >
-                    <span className="mg-type-caption text-accent-text">This</span>
-                    <span className="font-mono mg-type-caption font-semibold tabular-nums text-ink-strong truncate w-full text-center">
+                    <span className="text-13 text-accent-text">This</span>
+                    <span className="font-mono text-13 font-semibold tabular-nums text-ink-strong truncate w-full text-center">
                       #{formatNumber(slot.n)}
                     </span>
                     <DensityBar level={density} accent />
@@ -105,10 +105,10 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                     )}
                     title={`Block #${formatNumber(slot.n)}`}
                   >
-                    <span className="mg-type-caption text-ink-muted">
+                    <span className="text-13 text-ink-muted">
                       {slot.n < current.block_number ? "prev" : "next"}
                     </span>
-                    <span className="font-mono mg-type-caption tabular-nums text-ink-strong truncate w-full text-center">
+                    <span className="font-mono text-13 tabular-nums text-ink-strong truncate w-full text-center">
                       #{formatNumber(slot.n)}
                     </span>
                     <DensityBar level={density} />
@@ -118,8 +118,8 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                     aria-disabled
                     className="flex h-full flex-col items-center gap-1 rounded border border-dashed border-border/60 px-2 py-2 opacity-40"
                   >
-                    <span className="mg-type-caption text-ink-muted">—</span>
-                    <span className="font-mono mg-type-caption tabular-nums text-ink-muted truncate w-full text-center">
+                    <span className="text-13 text-ink-muted">—</span>
+                    <span className="font-mono text-13 tabular-nums text-ink-muted truncate w-full text-center">
                       #{formatNumber(slot.n)}
                     </span>
                     <DensityBar level={0} />
@@ -141,7 +141,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
           Hidden on mobile (radius=0) — no neighbors → no cadence trend. */}
       {effectiveRadius > 0 ? (
         <div className="mt-3 flex items-center gap-3 border-t border-border/60 pt-2.5">
-          <span className="mg-type-caption text-ink-muted shrink-0 inline-flex items-center gap-1">
+          <span className="text-13 text-ink-muted shrink-0 inline-flex items-center gap-1">
             Cadence
             <InfoTooltip label={BLOCK_TERM_HINTS.cadence} />
           </span>
@@ -158,10 +158,10 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                 formatValue={(v) => humaniseSeconds(v / 1000)}
               />
             ) : (
-              <span className="mg-type-data text-ink-muted">—</span>
+              <span className="text-11 text-ink-muted">—</span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 mg-type-caption text-ink-muted shrink-0">
+          <div className="flex items-center gap-1.5 text-13 text-ink-muted shrink-0">
             <Kbd>←</Kbd>
             <Kbd>→</Kbd>
             <span className="hidden sm:inline">to walk</span>
@@ -212,13 +212,10 @@ function DensityBar({ level, accent }: { level: number; accent?: boolean }) {
   return (
     <span
       aria-hidden
-      className="block h-[3px] w-full max-w-[52px] overflow-hidden rounded-full bg-border/60"
+      className="block h-[3px] w-full max-w-[52px] overflow-hidden rounded bg-border/60"
     >
       <span
-        className={classNames(
-          "block h-full rounded-full",
-          accent ? "bg-accent" : "bg-ink-strong/40",
-        )}
+        className={classNames("block h-full rounded", accent ? "bg-accent" : "bg-ink-strong/40")}
         style={{ width: `${pct}%` }}
       />
     </span>

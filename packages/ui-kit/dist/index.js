@@ -3,7 +3,7 @@ import { twMerge } from 'tailwind-merge';
 import * as React3 from 'react';
 import { createContext, forwardRef, useId, useState, useMemo, useCallback, useRef, useEffect, useContext } from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import { ChevronDown, X, Search, Check, ArrowUp, Copy, Rows3, Rows2, Download, Info, AlertCircle, RefreshCw, Link, Link2, Share2, ChevronLeft, ChevronRight, Clock, Inbox, ExternalLink as ExternalLink$1, List, LayoutGrid, Grid3x3, ChevronUp, Globe, BookOpen, Github, LayoutDashboard, Columns3, RotateCcw, AlertTriangle, Filter, Loader2, MoreHorizontal, Lock } from 'lucide-react';
+import { ChevronDown, X, Search, Check, ArrowUp, Copy, Download, Info, AlertCircle, RefreshCw, Link, Link2, Share2, ChevronLeft, ChevronRight, Clock, Inbox, ExternalLink as ExternalLink$1, List, LayoutGrid, Grid3x3, ChevronUp, Globe, BookOpen, Github, LayoutDashboard, Columns3, RotateCcw, AlertTriangle, Filter, Loader2, MoreHorizontal, Lock } from 'lucide-react';
 import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
 import { Command as Command$1 } from 'cmdk';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -96,7 +96,7 @@ var AccordionTrigger = React3.forwardRef(({ className, children, ...props }, ref
   {
     ref,
     className: cn(
-      "flex flex-1 items-center justify-between py-4 text-sm font-medium cursor-pointer transition-all hover:underline text-left [&[data-state=open]>svg]:rotate-180",
+      "flex flex-1 items-center justify-between py-4 text-13 font-medium cursor-pointer transition-all hover:underline text-left [&[data-state=open]>svg]:rotate-180",
       className
     ),
     ...props,
@@ -111,7 +111,7 @@ var AccordionContent = React3.forwardRef(({ className, children, ...props }, ref
   AccordionPrimitive.Content,
   {
     ref,
-    className: "overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
+    className: "overflow-hidden text-13 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
     ...props,
     children: /* @__PURE__ */ jsx("div", { className: cn("pb-4 pt-0", className), children })
   }
@@ -126,7 +126,7 @@ var DialogOverlay = React3.forwardRef(({ className, ...props }, ref) => /* @__PU
   {
     ref,
     className: cn(
-      "fixed inset-0 z-[var(--mg-z-modal)] bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-[var(--mg-z-modal)] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     ),
     ...props
@@ -140,7 +140,7 @@ var DialogContent = React3.forwardRef(({ className, children, ...props }, ref) =
     {
       ref,
       className: cn(
-        "fixed left-[50%] top-[50%] z-[var(--mg-z-modal)] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-md",
+        "fixed left-[50%] top-[50%] z-[var(--mg-z-modal)] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded",
         className
       ),
       ...props,
@@ -187,10 +187,7 @@ var DialogTitle = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE
   DialogPrimitive.Title,
   {
     ref,
-    className: cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    ),
+    className: cn("text-16 font-semibold leading-none", className),
     ...props
   }
 ));
@@ -199,7 +196,7 @@ var DialogDescription = React3.forwardRef(({ className, ...props }, ref) => /* @
   DialogPrimitive.Description,
   {
     ref,
-    className: cn("text-sm text-muted-foreground", className),
+    className: cn("text-13 text-muted-foreground", className),
     ...props
   }
 ));
@@ -209,7 +206,7 @@ var Command = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ *
   {
     ref,
     className: cn(
-      "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
+      "flex h-full w-full flex-col overflow-hidden rounded bg-popover text-popover-foreground",
       className
     ),
     ...props
@@ -226,7 +223,7 @@ var CommandInput = React3.forwardRef(({ className, ...props }, ref) => /* @__PUR
     {
       ref,
       className: cn(
-        "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-10 w-full rounded bg-transparent py-3 text-13 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
         className
       ),
       ...props
@@ -247,7 +244,7 @@ var CommandEmpty = React3.forwardRef((props, ref) => /* @__PURE__ */ jsx(
   Command$1.Empty,
   {
     ref,
-    className: "py-6 text-center text-sm",
+    className: "py-6 text-center text-13",
     ...props
   }
 ));
@@ -257,7 +254,7 @@ var CommandGroup = React3.forwardRef(({ className, ...props }, ref) => /* @__PUR
   {
     ref,
     className: cn(
-      "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+      "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-13 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
       className
     ),
     ...props
@@ -278,7 +275,7 @@ var CommandItem = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE
   {
     ref,
     className: cn(
-      "relative flex cursor-default gap-2 select-none items-center rounded px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+      "relative flex cursor-default gap-2 select-none items-center rounded px-2 py-1.5 text-13 outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
       className
     ),
     ...props
@@ -292,10 +289,7 @@ var CommandShortcut = ({
   return /* @__PURE__ */ jsx(
     "span",
     {
-      className: cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground",
-        className
-      ),
+      className: cn("ml-auto text-13 text-muted-foreground", className),
       ...props
     }
   );
@@ -310,7 +304,7 @@ var HoverCardContent = React3.forwardRef(({ className, align = "center", sideOff
     align,
     sideOffset,
     className: cn(
-      "z-[var(--mg-z-modal)] w-64 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-hover-card-content-transform-origin)",
+      "z-[var(--mg-z-modal)] w-64 rounded border bg-popover p-4 text-popover-foreground outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-hover-card-content-transform-origin)",
       className
     ),
     ...props
@@ -327,7 +321,7 @@ var PopoverContent = React3.forwardRef(({ className, align = "center", sideOffse
     align,
     sideOffset,
     className: cn(
-      "z-[var(--mg-z-modal)] w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-popover-content-transform-origin)",
+      "z-[var(--mg-z-modal)] w-72 rounded border bg-popover p-4 text-popover-foreground outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-popover-content-transform-origin)",
       className
     ),
     ...props
@@ -342,7 +336,7 @@ var SheetOverlay = React3.forwardRef(({ className, ...props }, ref) => /* @__PUR
   DialogPrimitive.Overlay,
   {
     className: cn(
-      "fixed inset-0 z-[var(--mg-z-modal)] bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-[var(--mg-z-modal)] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     ),
     ...props,
@@ -351,7 +345,7 @@ var SheetOverlay = React3.forwardRef(({ className, ...props }, ref) => /* @__PUR
 ));
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 var sheetVariants = cva(
-  "fixed z-[var(--mg-z-modal)] gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
+  "fixed z-[var(--mg-z-modal)] gap-4 bg-background p-6 transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
   {
     variants: {
       side: {
@@ -417,7 +411,7 @@ var SheetTitle = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE_
   DialogPrimitive.Title,
   {
     ref,
-    className: cn("text-lg font-semibold text-foreground", className),
+    className: cn("text-16 font-semibold text-foreground", className),
     ...props
   }
 ));
@@ -426,7 +420,7 @@ var SheetDescription = React3.forwardRef(({ className, ...props }, ref) => /* @_
   DialogPrimitive.Description,
   {
     ref,
-    className: cn("text-sm text-muted-foreground", className),
+    className: cn("text-13 text-muted-foreground", className),
     ...props
   }
 ));
@@ -454,7 +448,7 @@ function SectionLabel({
     {
       title,
       className: classNames(
-        size === "micro" ? "mg-type-micro" : "mg-type-label",
+        size === "micro" ? "text-10" : "text-11",
         "inline-flex items-center gap-1.5",
         TONE_CLASSES[tone],
         className
@@ -469,7 +463,7 @@ function SectionLabel({
           }
         ) : null,
         /* @__PURE__ */ jsx("span", { className: "truncate", children }),
-        hint != null ? /* @__PURE__ */ jsx("span", { className: "text-ink-subtle-text normal-case tracking-normal", children: hint }) : null
+        hint != null ? /* @__PURE__ */ jsx("span", { className: "text-ink-subtle-text normal-case", children: hint }) : null
       ]
     }
   );
@@ -486,12 +480,10 @@ function Panel({
   title,
   action,
   caption,
-  dense,
   flush,
   interactive,
   tone = "default",
   tintBorderOnly,
-  glow,
   as,
   className,
   bodyClassName,
@@ -500,7 +492,7 @@ function Panel({
 }) {
   const Cmp = as ?? "section";
   const hasHeader = title != null || action != null || caption != null;
-  const padClass = flush ? "mg-panel-pad-flush" : dense ? "mg-panel-pad-dense" : "mg-panel-pad";
+  const padClass = flush ? "mg-panel-pad-flush" : "mg-panel-pad";
   const toneStyle = TONE_STYLES[tone];
   return /* @__PURE__ */ jsxs(
     Cmp,
@@ -511,17 +503,13 @@ function Panel({
         toneStyle.border,
         tintBorderOnly ? "bg-card" : toneStyle.bg,
         interactive ? "mg-hover-lift" : null,
-        glow ? tone === "accent" ? "mg-card-glow-accent" : "mg-card-glow" : null,
         className
       ),
       children: [
         hasHeader ? /* @__PURE__ */ jsxs(
           "header",
           {
-            className: classNames(
-              "flex items-start justify-between gap-3 border-b border-border/70",
-              dense ? "mg-panel-pad-dense" : "mg-panel-pad"
-            ),
+            className: "flex items-start justify-between gap-3 border-b border-border mg-panel-pad",
             style: {
               paddingTop: "var(--mg-space-sm)",
               paddingBottom: "var(--mg-space-sm)"
@@ -529,7 +517,7 @@ function Panel({
             children: [
               /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
                 title != null ? /* @__PURE__ */ jsx(SectionLabel, { children: title }) : null,
-                caption != null ? /* @__PURE__ */ jsx("p", { className: "mt-1 mg-type-caption-lg text-ink-muted", children: caption }) : null
+                caption != null ? /* @__PURE__ */ jsx("p", { className: "mt-1 text-13 text-ink-muted", children: caption }) : null
               ] }),
               action != null ? /* @__PURE__ */ jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
             ]
@@ -569,7 +557,7 @@ function SegmentedToggle({
               title: title ?? label,
               onClick: () => onChange(v),
               className: classNames(
-                "inline-flex items-center gap-1.5 rounded px-2 py-1 mg-type-caption font-medium transition-colors min-h-8",
+                "inline-flex items-center gap-1.5 rounded px-2 py-1 text-13 font-medium transition-colors min-h-8",
                 active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
               ),
               children: [
@@ -591,7 +579,7 @@ var Toaster = ({ ...props }) => {
       className: "toaster group",
       toastOptions: {
         classNames: {
-          toast: "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
+          toast: "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border",
           description: "group-[.toast]:text-muted-foreground",
           actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground"
@@ -610,7 +598,7 @@ var TooltipContent = React3.forwardRef(({ className, sideOffset = 4, ...props },
     ref,
     sideOffset,
     className: cn(
-      "z-[var(--mg-z-modal)] overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-tooltip-content-transform-origin)",
+      "z-[var(--mg-z-modal)] overflow-hidden rounded bg-primary px-3 py-1.5 text-13 text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-tooltip-content-transform-origin)",
       className
     ),
     ...props
@@ -640,7 +628,7 @@ function AccentBand({
         pattern ? /* @__PURE__ */ jsx(
           "div",
           {
-            className: "mg-dot-grid absolute inset-0 opacity-40 pointer-events-none",
+            className: "absolute inset-0 opacity-40 pointer-events-none",
             "aria-hidden": true
           }
         ) : null,
@@ -689,7 +677,7 @@ function AnimatedNumber({
       return;
     }
     if (flashOnChange) {
-      setFlash(safe > from ? "mg-flash-up" : "mg-flash-down");
+      setFlash(safe > from ? "" : "");
       window.setTimeout(() => setFlash(""), 720);
     }
     const start = performance.now();
@@ -763,9 +751,9 @@ function BackToTop({ threshold = 600 }) {
       tabIndex: visible ? 0 : -1,
       className: classNames(
         "fixed z-[var(--mg-z-overlay)] bottom-5 right-5 md:bottom-7 md:right-7",
-        "inline-flex items-center gap-1.5 rounded-full border border-border mg-glass",
-        "px-3 py-2 mg-type-label uppercase text-ink-strong",
-        "shadow-[var(--mg-shadow-pop)] hover:border-accent/60 hover:text-accent",
+        "inline-flex items-center gap-1.5 rounded border border-border",
+        "px-3 py-2 text-11 text-ink-strong",
+        "hover:border-accent/60 hover:text-accent",
         "transition-[opacity,transform,border-color,color] duration-200",
         visible ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-2 pointer-events-none"
       ),
@@ -946,6 +934,12 @@ function resolveBrandOverride(lookup, theme = "light") {
     return pickIconSource(PROVIDER_ICONS[subnetKey], theme);
   }
   return null;
+}
+function initialsSize(size) {
+  if (size < 26) return 10;
+  if (size < 32) return 11;
+  if (size < 44) return 13;
+  return 16;
 }
 function isProxiedIcon(candidate) {
   return Boolean(
@@ -1182,7 +1176,7 @@ function BrandIcon({
   );
   const baseClasses = classNames(
     "relative inline-flex items-center justify-center shrink-0 overflow-hidden",
-    "rounded-md border border-border",
+    "rounded border border-border",
     needsContrastTile ? "bg-white/95" : "bg-surface",
     className
   );
@@ -1204,7 +1198,7 @@ function BrandIcon({
           "span",
           {
             className: "font-display font-semibold tabular-nums leading-none",
-            style: { fontSize: Math.max(10, Math.round(size * 0.42)) },
+            style: { fontSize: initialsSize(size) },
             "aria-hidden": "true",
             children: monogramFor(name, fallback)
           }
@@ -1231,7 +1225,7 @@ function BrandIcon({
               "span",
               {
                 className: "font-display font-semibold tabular-nums leading-none",
-                style: { fontSize: Math.max(10, Math.round(size * 0.42)) },
+                style: { fontSize: initialsSize(size) },
                 children: monogramFor(name, fallback)
               }
             )
@@ -1303,9 +1297,9 @@ function HealthDot({
       "aria-label": `Health: ${label.toLowerCase()}`,
       title: label,
       className: classNames(
-        "relative inline-block size-2 rounded-full shrink-0",
+        "relative inline-block size-2 rounded-full mg-dot shrink-0",
         color,
-        shouldPulse && "mg-pulse",
+        shouldPulse && "",
         className
       )
     }
@@ -1313,7 +1307,7 @@ function HealthDot({
   if (variant === "dot") return dot;
   return /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
     dot,
-    /* @__PURE__ */ jsx("span", { className: "mg-type-caption font-medium text-ink", children: label })
+    /* @__PURE__ */ jsx("span", { className: "text-13 font-medium text-ink", children: label })
   ] });
 }
 function HealthPill({
@@ -1323,7 +1317,7 @@ function HealthPill({
   if (label) {
     return /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
       /* @__PURE__ */ jsx(HealthDot, { state }),
-      /* @__PURE__ */ jsx("span", { className: "mg-type-caption font-medium text-ink", children: label })
+      /* @__PURE__ */ jsx("span", { className: "text-13 font-medium text-ink", children: label })
     ] });
   }
   return /* @__PURE__ */ jsx(HealthDot, { state, variant: "label" });
@@ -1366,7 +1360,7 @@ function CurationChip({ level }) {
     "span",
     {
       className: classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider",
+        "inline-flex items-center rounded border px-1.5 py-0.5 text-13 font-medium",
         cls
       ),
       children: label
@@ -1388,7 +1382,7 @@ function ReviewChip({ state }) {
     "span",
     {
       className: classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider",
+        "inline-flex items-center rounded border px-1.5 py-0.5 text-13 font-medium",
         reviewCls[key]
       ),
       title: `Maintainer review: ${key}`,
@@ -1397,7 +1391,7 @@ function ReviewChip({ state }) {
   );
 }
 function CandidateChip() {
-  return /* @__PURE__ */ jsx("span", { className: "inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider text-ink-muted", children: "Unverified" });
+  return /* @__PURE__ */ jsx("span", { className: "inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 text-13 font-medium text-ink-muted", children: "Unverified" });
 }
 function truncateCopyPreview(value, max = 64) {
   return value.length > max ? value.slice(0, max) + "\u2026" : value;
@@ -1548,7 +1542,7 @@ function CopyableCode({
         title: value,
         "aria-label": copied ? "Copied" : `Copy ${label ?? "value"}`,
         className: classNames(
-          "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left mg-type-data text-ink hover:border-ink/30 transition-colors",
+          "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left text-11 text-ink hover:border-ink/30 transition-colors",
           // `truncate={false}` means "wrap instead of truncate," which only
           // makes sense once the box is width-bound -- otherwise `inline-flex`
           // shrink-to-fit sizing lets it grow to its unwrapped content width
@@ -1564,7 +1558,7 @@ function CopyableCode({
           className
         ),
         children: [
-          label ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted mg-type-label", children: label }) : null,
+          label ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted text-11", children: label }) : null,
           /* @__PURE__ */ jsx(
             "code",
             {
@@ -1608,38 +1602,6 @@ function CopyableCode({
     /* @__PURE__ */ jsx(CopyStatusRegion, { children: copied ? `${label ?? "Value"} copied to clipboard` : "" })
   ] });
 }
-function DensityToggle({
-  value,
-  onChange,
-  className
-}) {
-  const options = [
-    {
-      value: "comfortable",
-      label: "Comfortable",
-      Icon: Rows3,
-      ariaLabel: "Comfortable row density",
-      title: "Comfortable rows"
-    },
-    {
-      value: "compact",
-      label: "Compact",
-      Icon: Rows2,
-      ariaLabel: "Compact row density",
-      title: "Compact rows"
-    }
-  ];
-  return /* @__PURE__ */ jsx(
-    SegmentedToggle,
-    {
-      options,
-      value,
-      onChange,
-      ariaLabel: "Row density",
-      className
-    }
-  );
-}
 function buildCsvDownloadUrl(url) {
   const parsed = new URL(url);
   parsed.searchParams.set("format", "csv");
@@ -1663,11 +1625,11 @@ function DownloadCsvButton({
       "aria-label": label,
       title: label,
       className: classNames(
-        bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : (
+        bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : (
           // rounded-full matches the pill idiom shared by SectionBadge/FilterChip/
           // other compact header controls it commonly sits next to — a plain
           // `rounded` rectangle reads as a mismatched shape beside a pill.
-          "inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1.5 mg-type-caption font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5 sm:py-1"
+          "inline-flex items-center gap-1.5 rounded border border-border bg-card p-1.5 text-13 font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5 sm:py-1"
         ),
         className
       ),
@@ -1706,17 +1668,17 @@ function EligibilityChip({
       {
         tabIndex: 0,
         className: classNames(
-          "inline-flex items-center gap-1.5 rounded-full border bg-transparent whitespace-nowrap cursor-help transition-colors",
-          "before:content-[''] before:size-1.5 before:rounded-full",
-          "hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          size === "xs" ? "px-2 py-0 h-5 mg-type-label" : "px-2.5 py-0 h-6 mg-type-label",
+          "inline-flex items-center gap-1.5 rounded border bg-transparent whitespace-nowrap cursor-help transition-colors",
+          "mg-dot-before",
+          "hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          size === "xs" ? "px-2 py-0 h-5 text-11" : "px-2.5 py-0 h-6 text-11",
           TONE[eligibility]
         ),
         children: ELIGIBILITY_LABEL[eligibility]
       }
     ) }),
-    /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "max-w-[240px] mg-type-caption", children: [
-      /* @__PURE__ */ jsx("div", { className: "mg-type-caption opacity-70 mb-1", children: ELIGIBILITY_LABEL[eligibility] }),
+    /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "max-w-[240px] text-13", children: [
+      /* @__PURE__ */ jsx("div", { className: "text-13 opacity-70 mb-1", children: ELIGIBILITY_LABEL[eligibility] }),
       RULE[eligibility]
     ] })
   ] }) });
@@ -1799,7 +1761,7 @@ function ExternalLink({
       "span",
       {
         title: "Authentication required",
-        className: "inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 mg-type-micro text-ink-muted",
+        className: "inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 text-10 text-ink-muted",
         children: [
           /* @__PURE__ */ jsx(Lock, { className: "size-2.5" }),
           " auth"
@@ -1810,7 +1772,7 @@ function ExternalLink({
       "span",
       {
         title: "Not public-safe \u2014 handle with care",
-        className: "inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 mg-type-micro text-health-warn",
+        className: "inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 text-10 text-health-warn",
         children: [
           /* @__PURE__ */ jsx(AlertTriangle, { className: "size-2.5" }),
           " private"
@@ -1819,7 +1781,7 @@ function ExternalLink({
     ) : null
   ] });
   const classes = classNames(
-    "inline-flex items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong",
+    "inline-flex max-w-full items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong",
     safeHref ? "hover:decoration-ink" : "cursor-default decoration-transparent",
     className
   );
@@ -1847,11 +1809,11 @@ function InfoTooltip({
       {
         type: "button",
         "aria-label": label,
-        className: "inline-flex items-center text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded " + (className ?? ""),
+        className: "inline-flex items-center text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded" + (className ?? ""),
         children: /* @__PURE__ */ jsx(Info, { className: "size-3.5" })
       }
     ) }),
-    /* @__PURE__ */ jsx(TooltipContent, { side: "top", className: "max-w-xs mg-type-caption", children: label })
+    /* @__PURE__ */ jsx(TooltipContent, { side: "top", className: "max-w-xs text-13", children: label })
   ] }) });
 }
 function FreshnessIndicator({
@@ -1874,15 +1836,8 @@ function FreshnessIndicator({
       title,
       suppressHydrationWarning: true,
       children: [
-        /* @__PURE__ */ jsx("span", { className: classNames("size-1.5 rounded-full", cls) }),
-        !dotOnly ? /* @__PURE__ */ jsx(
-          "span",
-          {
-            className: "mg-type-data-sm text-ink-muted",
-            suppressHydrationWarning: true,
-            children: rel
-          }
-        ) : null
+        /* @__PURE__ */ jsx("span", { className: classNames("size-1.5 rounded-full mg-dot", cls) }),
+        !dotOnly ? /* @__PURE__ */ jsx("span", { className: "text-10 text-ink-muted", suppressHydrationWarning: true, children: rel }) : null
       ]
     }
   );
@@ -1932,7 +1887,7 @@ function HoverPreview({
           "span",
           {
             role: "tooltip",
-            className: "absolute left-0 top-full z-[var(--mg-z-overlay)] mt-1.5 w-72 max-w-[80vw] rounded border border-border bg-card p-3 shadow-lg mg-type-caption text-ink",
+            className: "absolute left-0 top-full z-[var(--mg-z-overlay)] mt-1.5 w-72 max-w-[80vw] rounded border border-border bg-card p-3 text-13 text-ink",
             children: content
           }
         ) : null
@@ -1948,7 +1903,7 @@ function Kbd({
     "kbd",
     {
       className: classNames(
-        "inline-flex items-center justify-center rounded border border-border bg-paper px-1.5 min-w-[1.25rem] h-5 mg-type-data-sm text-ink-muted shadow-[var(--mg-shadow-hairline-inset)]",
+        "inline-flex items-center justify-center rounded border border-border bg-paper px-1.5 min-w-[1.25rem] h-5 text-10 text-ink-muted",
         className
       ),
       children
@@ -1975,7 +1930,7 @@ function KeyChip({
             onClick: () => copy(value),
             "aria-label": copied ? `${label} copied` : `Copy ${label}: ${value}`,
             className: classNames(
-              "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left mg-type-data text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
+              "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left text-11 text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
               className
             ),
             children: [
@@ -1990,17 +1945,10 @@ function KeyChip({
             ]
           }
         ) }),
-        /* @__PURE__ */ jsxs(
-          TooltipContent,
-          {
-            side: "top",
-            className: "max-w-[90vw] break-all mg-type-data",
-            children: [
-              /* @__PURE__ */ jsx("span", { className: "mr-1 mg-type-label opacity-70", children: label }),
-              value
-            ]
-          }
-        )
+        /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "max-w-[90vw] break-all text-11", children: [
+          /* @__PURE__ */ jsx("span", { className: "mr-1 text-11 opacity-70", children: label }),
+          value
+        ] })
       ] }),
       /* @__PURE__ */ jsx(CopyStatusRegion, { children: copied ? `${label} copied to clipboard` : "" })
     ] })
@@ -2044,7 +1992,7 @@ function ListShell({
           // at >=1024px only, which is why tablet still showed the overlap).
           // That override is deleted; this is the general rule.
           "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
-          "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
+          "bg-paper",
           "border-b border-border md:border md:rounded md:bg-card",
           "px-3 py-2 md:p-2.5"
         ),
@@ -2085,7 +2033,7 @@ function LoadMore({
     return /* @__PURE__ */ jsxs(
       "div",
       {
-        className: "border-t border-border bg-surface/30 p-3 space-y-1.5",
+        className: "border-t border-border bg-surface p-3 space-y-1.5",
         "aria-live": "polite",
         "aria-busy": "true",
         children: [
@@ -2098,7 +2046,7 @@ function LoadMore({
     );
   }
   if (error) {
-    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 mg-type-caption", children: [
+    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 text-13", children: [
       /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5 text-health-down", children: [
         /* @__PURE__ */ jsx(AlertCircle, { className: "size-3" }),
         "Couldn\u2019t load more \u2014 ",
@@ -2120,7 +2068,7 @@ function LoadMore({
     ] });
   }
   if (cursorInvalid) {
-    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 mg-type-caption text-health-warn", children: [
+    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 text-13 text-health-warn", children: [
       /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
         /* @__PURE__ */ jsx(AlertCircle, { className: "size-3" }),
         "Pagination stopped \u2014 the server returned an invalid next cursor."
@@ -2131,7 +2079,7 @@ function LoadMore({
       ] })
     ] });
   }
-  return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 mg-type-data text-ink-muted", children: [
+  return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-border bg-surface px-4 py-2 text-11 text-ink-muted", children: [
     /* @__PURE__ */ jsxs("span", { children: [
       shown,
       total != null ? ` of ${total}` : ""
@@ -2141,7 +2089,7 @@ function LoadMore({
       {
         type: "button",
         onClick: onLoadMore,
-        className: "inline-flex items-center rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium hover:border-ink/30 min-h-9",
+        className: "inline-flex items-center rounded border border-border bg-card px-3 py-1.5 text-13 font-medium hover:border-ink/30 min-h-9",
         children: "Load more"
       }
     ) : /* @__PURE__ */ jsx("span", { className: "opacity-60", children: "end of list" })
@@ -2169,21 +2117,21 @@ function PageHero({
         caption ? /* @__PURE__ */ jsx("div", { className: "absolute right-0 top-4 hidden md:block", children: /* @__PURE__ */ jsx("span", { className: "mg-hero-caption", children: caption }) }) : null,
         /* @__PURE__ */ jsxs("div", { className: "grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end", children: [
           /* @__PURE__ */ jsxs("div", { className: "min-w-0 max-w-3xl", children: [
-            eyebrow ? /* @__PURE__ */ jsxs("div", { className: "mg-fade-in mg-type-caption text-ink-muted inline-flex items-center gap-2", children: [
+            eyebrow ? /* @__PURE__ */ jsxs("div", { className: "text-13 text-ink-muted inline-flex items-center gap-2", children: [
               live ? /* @__PURE__ */ jsx("span", { className: "mg-live-dot" }) : null,
               eyebrow
             ] }) : null,
-            /* @__PURE__ */ jsx("h1", { className: "mg-fade-in mg-fade-in-delay-1 mt-4 font-display text-[2.5rem] sm:text-5xl md:text-6xl font-semibold leading-[1.02] tracking-[-0.025em] text-ink-strong", children: title }),
-            description ? /* @__PURE__ */ jsx("p", { className: "mg-fade-in mg-fade-in-delay-2 mt-4 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed", children: description }) : null,
-            actions ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-wrap items-center gap-2", children: actions }) : null
+            /* @__PURE__ */ jsx("h1", { className: "mt-4 font-display text-40 sm:text-40 md:text-64 font-semibold leading-[1.02] text-ink-strong", children: title }),
+            description ? /* @__PURE__ */ jsx("p", { className: "mt-4 max-w-xl text-16 md:text-16 text-ink-muted leading-relaxed", children: description }) : null,
+            actions ? /* @__PURE__ */ jsx("div", { className: "mt-6 flex flex-wrap items-center gap-2", children: actions }) : null
           ] }),
-          aside ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-2 hidden md:block shrink-0", children: aside }) : null
+          aside ? /* @__PURE__ */ jsx("div", { className: "hidden md:block shrink-0", children: aside }) : null
         ] }),
-        kpis && kpis.length > 0 ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-3 mg-kpi-strip mt-12 md:mt-16", children: kpis.map((k) => /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-muted", children: k.label }),
+        kpis && kpis.length > 0 ? /* @__PURE__ */ jsx("div", { className: "mg-kpi-strip mt-12 md:mt-16", children: kpis.map((k) => /* @__PURE__ */ jsxs("div", { children: [
+          /* @__PURE__ */ jsx("div", { className: "text-13 text-ink-muted", children: k.label }),
           /* @__PURE__ */ jsxs("div", { className: "mt-1.5 flex items-baseline gap-2", children: [
-            /* @__PURE__ */ jsx("span", { className: "font-display text-2xl md:text-[1.75rem] font-semibold tabular-nums text-ink-strong leading-none tracking-[-0.01em]", children: k.value }),
-            k.hint ? /* @__PURE__ */ jsx("span", { className: "mg-type-data text-ink-muted", children: k.hint }) : null
+            /* @__PURE__ */ jsx("span", { className: "font-display text-28 md:text-28 font-semibold tabular-nums text-ink-strong leading-none", children: k.value }),
+            k.hint ? /* @__PURE__ */ jsx("span", { className: "text-11 text-ink-muted", children: k.hint }) : null
           ] }),
           k.chart ? /* @__PURE__ */ jsx("div", { className: "mt-2.5 -ml-0.5", children: k.chart }) : null
         ] }, k.label)) }) : null
@@ -2238,8 +2186,8 @@ function EntityHero({
                     "div",
                     {
                       className: classNames(
-                        "mg-fade-in mg-type-data-sm uppercase text-ink-muted inline-flex items-center gap-2",
-                        display ? "tracking-[0.22em]" : "tracking-[0.2em] mb-2"
+                        "text-10 text-ink-muted inline-flex items-center gap-2",
+                        display ? "" : "mb-2"
                       ),
                       children: [
                         live ? /* @__PURE__ */ jsx("span", { className: "mg-live-dot" }) : null,
@@ -2252,30 +2200,30 @@ function EntityHero({
                       "h1",
                       {
                         className: classNames(
-                          "mg-fade-in mg-fade-in-delay-1 font-display font-semibold text-ink-strong",
-                          display ? "mt-4 text-[2.5rem] sm:text-5xl md:text-6xl leading-[1.02] tracking-[-0.025em]" : "text-3xl md:text-4xl tracking-[-0.01em]"
+                          "font-display font-semibold text-ink-strong",
+                          display ? "mt-4 text-40 sm:text-40 md:text-64 leading-[1.02]" : "text-28 md:text-40"
                         ),
                         children: title
                       }
                     ),
-                    !display && subtitle ? /* @__PURE__ */ jsx("span", { className: "font-mono text-xs md:text-sm text-ink-muted", children: subtitle }) : null
+                    !display && subtitle ? /* @__PURE__ */ jsx("span", { className: "font-mono text-13 md:text-13 text-ink-muted", children: subtitle }) : null
                   ] }),
                   description ? /* @__PURE__ */ jsx(
                     "p",
                     {
                       className: classNames(
-                        "mg-fade-in mg-fade-in-delay-2 text-ink-muted leading-relaxed",
-                        display ? "mt-4 max-w-xl text-base md:text-lg" : "mt-3 max-w-3xl text-sm md:text-base"
+                        "text-ink-muted leading-relaxed",
+                        display ? "mt-4 max-w-xl text-16 md:text-16" : "mt-3 max-w-3xl text-13 md:text-16"
                       ),
                       children: description
                     }
                   ) : null,
                   links ? /* @__PURE__ */ jsx("div", { className: "mt-6", children: links }) : null,
-                  actions ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-wrap items-center gap-2", children: actions }) : null
+                  actions ? /* @__PURE__ */ jsx("div", { className: "mt-6 flex flex-wrap items-center gap-2", children: actions }) : null
                 ] })
               ] }),
               chips ? /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-1.5 md:justify-end shrink-0 max-w-md", children: chips }) : null,
-              aside ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-2 hidden md:block shrink-0", children: aside }) : null
+              aside ? /* @__PURE__ */ jsx("div", { className: "hidden md:block shrink-0", children: aside }) : null
             ]
           }
         ),
@@ -2283,23 +2231,23 @@ function EntityHero({
           "div",
           {
             className: classNames(
-              "mg-fade-in mg-fade-in-delay-3 mg-kpi-strip",
+              "mg-kpi-strip",
               display ? "mt-12 md:mt-16" : "mt-8 md:mt-10"
             ),
             children: visibleStats.map((s) => /* @__PURE__ */ jsxs("div", { children: [
-              /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-muted", children: s.label }),
+              /* @__PURE__ */ jsx("div", { className: "text-13 text-ink-muted", children: s.label }),
               /* @__PURE__ */ jsxs("div", { className: "mt-1.5 flex items-baseline gap-2", children: [
                 /* @__PURE__ */ jsx(
                   "span",
                   {
                     className: classNames(
                       "font-display font-semibold tabular-nums text-ink-strong leading-none",
-                      display ? "text-2xl md:text-[1.75rem] tracking-[-0.01em]" : "text-xl md:text-2xl"
+                      display ? "text-28 md:text-28" : "text-28 md:text-28"
                     ),
                     children: s.value
                   }
                 ),
-                s.hint ? /* @__PURE__ */ jsx("span", { className: "mg-type-data text-ink-muted", children: s.hint }) : null
+                s.hint ? /* @__PURE__ */ jsx("span", { className: "text-11 text-ink-muted", children: s.hint }) : null
               ] }),
               s.chart ? /* @__PURE__ */ jsx("div", { className: "mt-2.5 -ml-0.5", children: s.chart }) : null
             ] }, s.label))
@@ -2329,7 +2277,7 @@ function PageSection({
       "data-section-anchor": id ? "" : void 0,
       className: classNames(
         "mg-section",
-        tone === "muted" && "rounded-xl bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
+        tone === "muted" && "rounded bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
         className
       ),
       children: [
@@ -2338,13 +2286,13 @@ function PageSection({
           {
             className: classNames(
               "grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end",
-              divider === "hairline" && tone !== "muted" && "mg-section-rule pt-8",
+              divider === "hairline" && tone !== "muted" && "pt-8",
               "pb-6"
             ),
             children: [
               /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-                eyebrow ? /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-muted inline-flex items-center gap-2", children: eyebrow }) : null,
-                title ? /* @__PURE__ */ jsxs("h2", { className: "group/anchor mt-2 flex items-baseline gap-2 font-display text-2xl md:text-3xl font-semibold tracking-[-0.02em] text-ink-strong", children: [
+                eyebrow ? /* @__PURE__ */ jsx("div", { className: "text-13 text-ink-muted inline-flex items-center gap-2", children: eyebrow }) : null,
+                title ? /* @__PURE__ */ jsxs("h2", { className: "group/anchor mt-2 flex items-baseline gap-2 font-display text-28 md:text-28 font-semibold text-ink-strong", children: [
                   /* @__PURE__ */ jsx("span", { children: title }),
                   id ? /* @__PURE__ */ jsx(
                     "a",
@@ -2356,7 +2304,7 @@ function PageSection({
                     }
                   ) : null
                 ] }) : null,
-                description ? /* @__PURE__ */ jsx("p", { className: "mt-2 max-w-2xl text-sm text-ink-muted leading-relaxed", children: description }) : null
+                description ? /* @__PURE__ */ jsx("p", { className: "mt-2 max-w-2xl text-13 text-ink-muted leading-relaxed", children: description }) : null
               ] }),
               actions ? /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-2 md:justify-end", children: actions }) : null
             ]
@@ -2367,38 +2315,6 @@ function PageSection({
       ]
     }
   );
-}
-function ScrollReveal({
-  children,
-  className = "",
-  delay = 0
-}) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      el.setAttribute("data-revealed", "true");
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            window.setTimeout(
-              () => el.setAttribute("data-revealed", "true"),
-              delay
-            );
-            io.disconnect();
-          }
-        }
-      },
-      { rootMargin: "0px 0px -10% 0px", threshold: 0.05 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [delay]);
-  return /* @__PURE__ */ jsx("div", { ref, className: `mg-reveal ${className}`, children });
 }
 var TONE_CLASS = {
   accent: "before:bg-accent",
@@ -2436,9 +2352,9 @@ function SectionAnchor({
       id,
       "data-section-anchor": true,
       className: classNames(
-        "mg-section scroll-mt-32",
+        "mg-section",
         tone && classNames(
-          "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:opacity-70",
+          "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded before:opacity-70",
           TONE_CLASS[tone]
         )
       ),
@@ -2449,7 +2365,7 @@ function SectionAnchor({
               /* @__PURE__ */ jsx(
                 "h2",
                 {
-                  className: "min-w-0 truncate font-display text-sm font-semibold uppercase tracking-wider text-ink-strong",
+                  className: "min-w-0 truncate font-display text-13 font-semibold text-ink-strong",
                   title: typeof title === "string" ? title : void 0,
                   children: title
                 }
@@ -2466,7 +2382,7 @@ function SectionAnchor({
                 }
               )
             ] }),
-            subtitle ? /* @__PURE__ */ jsx("p", { className: "mt-0.5 mg-type-caption text-ink-muted", children: subtitle }) : null
+            subtitle ? /* @__PURE__ */ jsx("p", { className: "mt-0.5 text-13 text-ink-muted", children: subtitle }) : null
           ] }),
           right ? /* @__PURE__ */ jsx("div", { className: "shrink-0", children: right }) : null
         ] }),
@@ -2496,14 +2412,14 @@ function SectionHeading({
             "h2",
             {
               id,
-              className: "font-display text-sm font-semibold uppercase tracking-wider text-ink-strong",
+              className: "font-display text-13 font-semibold text-ink-strong",
               children: [
                 step != null ? /* @__PURE__ */ jsx("span", { className: "mr-2 tabular-nums text-accent-text", children: String(step).padStart(2, "0") }) : null,
                 title
               ]
             }
           ),
-          intro ? /* @__PURE__ */ jsx("p", { className: "mt-1.5 text-sm leading-relaxed text-ink-muted", children: intro }) : null
+          intro ? /* @__PURE__ */ jsx("p", { className: "mt-1.5 text-13 leading-relaxed text-ink-muted", children: intro }) : null
         ] }),
         right ? /* @__PURE__ */ jsx("div", { className: "flex shrink-0 items-center gap-2", children: right }) : null
       ]
@@ -2554,8 +2470,8 @@ function ShareButton({
             // #8467: px-1 sm:px-2 (not a flat px-2) so the button doesn't
             // carry text-sized padding once the label itself disappears
             // below sm -- see the label span's hidden/sm:inline pairing.
-            "inline-flex items-center gap-1.5 rounded px-1 sm:px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          ) : iconOnly ? "inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-1.5 sm:px-2.5 py-1 mg-type-caption font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "inline-flex items-center gap-1.5 rounded px-1 sm:px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          ) : iconOnly ? "inline-flex size-8 items-center justify-center rounded border border-border bg-card text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-1.5 sm:px-2.5 py-1 text-13 font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           className
         ),
         children: [
@@ -2722,19 +2638,19 @@ function TableState({
     {
       role: variant === "error" ? "alert" : void 0,
       className: classNames(
-        "rounded-xl border bg-card px-8 py-16 text-center",
+        "rounded border bg-card px-8 py-16 text-center",
         tone,
         className
       ),
       children: [
-        /* @__PURE__ */ jsx("div", { className: "mx-auto inline-flex size-10 items-center justify-center rounded-full border border-border bg-paper", children: /* @__PURE__ */ jsx(Icon, { className: classNames("size-4", iconCls) }) }),
-        /* @__PURE__ */ jsx("h3", { className: "mt-4 font-display text-base font-semibold text-ink-strong tracking-tight", children: title }),
-        description ? /* @__PURE__ */ jsx("p", { className: "mx-auto mt-1.5 max-w-md text-sm text-ink-muted leading-relaxed", children: description }) : null,
-        variant === "stale" && generatedAt ? /* @__PURE__ */ jsxs("p", { className: "mt-3 mg-type-data text-ink-muted", children: [
+        /* @__PURE__ */ jsx("div", { className: "mx-auto inline-flex size-10 items-center justify-center rounded border border-border bg-paper", children: /* @__PURE__ */ jsx(Icon, { className: classNames("size-4", iconCls) }) }),
+        /* @__PURE__ */ jsx("h3", { className: "mt-4 font-display text-16 font-semibold text-ink-strong", children: title }),
+        description ? /* @__PURE__ */ jsx("p", { className: "mx-auto mt-1.5 max-w-md text-13 text-ink-muted leading-relaxed", children: description }) : null,
+        variant === "stale" && generatedAt ? /* @__PURE__ */ jsxs("p", { className: "mt-3 text-11 text-ink-muted", children: [
           "Last verified ",
           /* @__PURE__ */ jsx(TimeAgo, { at: generatedAt })
         ] }) : null,
-        message ? /* @__PURE__ */ jsxs("p", { className: "mx-auto mt-3 max-w-md mg-type-data text-ink-muted", children: [
+        message ? /* @__PURE__ */ jsxs("p", { className: "mx-auto mt-3 max-w-md text-11 text-ink-muted", children: [
           status ? /* @__PURE__ */ jsxs("span", { className: "text-health-down", children: [
             "HTTP ",
             status,
@@ -2742,13 +2658,13 @@ function TableState({
           ] }) : null,
           message
         ] }) : null,
-        cta || onRetry || url ? /* @__PURE__ */ jsxs("div", { className: "mt-5 flex flex-wrap items-center justify-center gap-2", children: [
+        cta || onRetry || url ? /* @__PURE__ */ jsxs("div", { className: "mt-4 flex flex-wrap items-center justify-center gap-2", children: [
           onRetry ? /* @__PURE__ */ jsxs(
             "button",
             {
               type: "button",
               onClick: onRetry,
-              className: "inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3.5 py-1.5 mg-type-caption font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors",
+              className: "inline-flex items-center gap-1.5 rounded border border-border bg-paper px-3.5 py-1.5 text-13 font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors",
               children: [
                 /* @__PURE__ */ jsx(RefreshCw, { className: "size-3" }),
                 " Retry"
@@ -2760,7 +2676,7 @@ function TableState({
             {
               href: cta.href,
               ...cta.external ? { target: "_blank", rel: "noopener noreferrer" } : {},
-              className: "inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-3.5 py-1.5 mg-type-caption font-medium text-paper hover:opacity-90 transition-opacity",
+              className: "inline-flex items-center gap-1.5 rounded bg-ink-strong px-3.5 py-1.5 text-13 font-medium text-paper hover:opacity-90 transition-opacity",
               children: [
                 cta.label,
                 cta.external ? /* @__PURE__ */ jsx(ExternalLink$1, { className: "size-3" }) : null
@@ -2768,12 +2684,11 @@ function TableState({
             }
           ) : null,
           url ? /* @__PURE__ */ jsxs(
-            "a",
+            ExternalLink,
             {
+              bare: true,
               href: url,
-              target: "_blank",
-              rel: "noopener noreferrer",
-              className: "inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-ink-strong",
+              className: "inline-flex items-center gap-1.5 text-11 text-ink-muted hover:text-ink-strong",
               children: [
                 "View API URL ",
                 /* @__PURE__ */ jsx(ExternalLink$1, { className: "size-3" })
@@ -2988,7 +2903,7 @@ function McpToolsList({
       "span",
       {
         title: t.title,
-        className: "inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 mg-type-data-sm text-ink-muted",
+        className: "inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 text-10 text-ink-muted",
         children: t.name
       },
       t.name
@@ -3000,7 +2915,7 @@ function McpToolsList({
         onClick: () => setOpen((v) => !v),
         "aria-expanded": open,
         className: classNames(
-          "mt-2 inline-flex items-center gap-1 mg-type-data-sm text-ink-muted",
+          "mt-2 inline-flex items-center gap-1 text-10 text-ink-muted",
           "hover:text-accent transition-colors"
         ),
         children: open ? /* @__PURE__ */ jsxs(Fragment, { children: [
@@ -3028,10 +2943,10 @@ function fmtYield(v) {
 }
 
 // src/components/metagraphed/yield-percentile-layout.ts
-var YIELD_PERCENTILE_STRIP_CONTAINER_CLASS = "@container rounded-xl border border-border bg-card p-4";
+var YIELD_PERCENTILE_STRIP_CONTAINER_CLASS = "@container rounded border border-border bg-card p-4";
 var YIELD_PERCENTILE_STRIP_GRID_CLASS = "grid grid-cols-2 gap-3 @min-[28rem]:grid-cols-4";
-var YIELD_PERCENTILE_LABEL_CLASS = "mg-type-data-sm uppercase tracking-[0.18em] text-ink-muted";
-var YIELD_PERCENTILE_VALUE_CLASS = "mt-1 min-w-0 truncate font-display text-sm font-semibold tabular-nums text-ink-strong leading-none @min-[20rem]:text-base @min-[28rem]:text-lg";
+var YIELD_PERCENTILE_LABEL_CLASS = "text-10 text-ink-muted";
+var YIELD_PERCENTILE_VALUE_CLASS = "mt-1 min-w-0 truncate font-display text-13 font-semibold tabular-nums text-ink-strong leading-none @min-[20rem]:text-16 @min-[28rem]:text-16";
 var PERCENTILE_LABELS = {
   p25: "p25",
   median: "Median",
@@ -3143,7 +3058,7 @@ function MethodologyCallout({
     "aside",
     {
       "aria-label": "Data freshness and methodology",
-      className: "mb-6 rounded-md border border-border mg-glass-soft",
+      className: "mb-6 rounded border border-border",
       children: [
         /* @__PURE__ */ jsxs(
           "button",
@@ -3155,11 +3070,11 @@ function MethodologyCallout({
             children: [
               /* @__PURE__ */ jsx(Info, { className: "mt-0.5 size-3.5 shrink-0 text-accent" }),
               /* @__PURE__ */ jsxs("span", { className: "min-w-0 flex-1", children: [
-                /* @__PURE__ */ jsx("span", { className: "block mg-type-caption text-ink-muted", children: "Data freshness & methodology" }),
+                /* @__PURE__ */ jsx("span", { className: "block text-13 text-ink-muted", children: "Data freshness & methodology" }),
                 freshLine ? /* @__PURE__ */ jsx(
                   "span",
                   {
-                    className: "mt-0.5 block mg-type-data-sm text-ink-muted/80",
+                    className: "mt-0.5 block text-10 text-ink-muted/80",
                     title: freshAbs ?? void 0,
                     children: freshLine
                   }
@@ -3177,17 +3092,17 @@ function MethodologyCallout({
             ]
           }
         ),
-        open ? /* @__PURE__ */ jsxs("div", { className: "grid gap-3 border-t border-border px-3 py-3 mg-type-caption text-ink-muted md:grid-cols-2", children: [
+        open ? /* @__PURE__ */ jsxs("div", { className: "grid gap-3 border-t border-border px-3 py-3 text-13 text-ink-muted md:grid-cols-2", children: [
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-strong", children: "Sparklines" }),
+            /* @__PURE__ */ jsx("div", { className: "text-13 text-ink-strong", children: "Sparklines" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Uptime & latency sparklines plot the active health window (7d default, switchable to 30d). Each point is the mean across every tracked endpoint in that bucket \u2014 gaps mean no probe landed in the window, not zero." })
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-strong", children: "Donuts & mosaics" }),
+            /* @__PURE__ */ jsx("div", { className: "text-13 text-ink-strong", children: "Donuts & mosaics" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Pool ratio comes from on-chain AMM reserves; endpoint topology counts tracked public surfaces by kind. The mosaic in Operational status colors one cell per endpoint by its last probe result." })
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-strong", children: "Staleness" }),
+            /* @__PURE__ */ jsx("div", { className: "text-13 text-ink-strong", children: "Staleness" }),
             /* @__PURE__ */ jsxs("p", { className: "mt-1", children: [
               "Tiles show a ",
               /* @__PURE__ */ jsx("span", { className: "text-health-warn-text", children: "stale" }),
@@ -3199,11 +3114,11 @@ function MethodologyCallout({
             ] })
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-strong", children: "Verified vs. candidate" }),
+            /* @__PURE__ */ jsx("div", { className: "text-13 text-ink-strong", children: "Verified vs. candidate" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Only curated surfaces feed donuts and the topology breakdown. Unverified leads live in the Candidates tab and never count toward health, completeness, or pool ratios." })
           ] }),
           stakeRisk ? /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-strong", children: "Root vs. alpha risk" }),
+            /* @__PURE__ */ jsx("div", { className: "text-13 text-ink-strong", children: "Root vs. alpha risk" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Root stake (netuid 0) is TAO-denominated with no principal risk \u2014 what you stake is what you can unstake. Alpha stake is price-exposed: it's held in the subnet's own token, so a positive nominal APY can still net-lose TAO if the alpha price falls faster than the yield accrues." })
           ] }) : null
         ] }) : null
@@ -3252,18 +3167,18 @@ function BarMini({
           {
             className: "grid grid-cols-[5.5rem_1fr_auto] items-center gap-2",
             children: [
-              /* @__PURE__ */ jsx("span", { className: "mg-type-caption text-ink-muted truncate", children: d.label }),
-              /* @__PURE__ */ jsx("span", { className: "relative h-1.5 rounded-full bg-surface overflow-hidden", children: /* @__PURE__ */ jsx(
+              /* @__PURE__ */ jsx("span", { className: "text-13 text-ink-muted truncate", children: d.label }),
+              /* @__PURE__ */ jsx("span", { className: "relative h-1.5 rounded bg-surface overflow-hidden", children: /* @__PURE__ */ jsx(
                 "span",
                 {
-                  className: "absolute inset-y-0 left-0 rounded-full",
+                  className: "absolute inset-y-0 left-0 rounded",
                   style: {
                     width: `${pct}%`,
                     background: d.color ?? "var(--accent)"
                   }
                 }
               ) }),
-              showValue ? /* @__PURE__ */ jsx("span", { className: "mg-type-data-sm tabular-nums text-ink-strong", children: formatValue ? formatValue(d.value) : d.value }) : null
+              showValue ? /* @__PURE__ */ jsx("span", { className: "text-10 tabular-nums text-ink-strong", children: formatValue ? formatValue(d.value) : d.value }) : null
             ]
           },
           d.label
@@ -3495,7 +3410,7 @@ function CandlestickMini({
         hoverBar && tooltipText ? /* @__PURE__ */ jsx(
           "div",
           {
-            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap",
+            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 text-10 leading-tight text-ink-strong whitespace-nowrap",
             style: {
               // `cx` is a viewBox coordinate, but `left` is CSS pixels -- the two
               // only coincided while the rendered width happened to equal
@@ -3604,8 +3519,8 @@ function Donut({
               pointerEvents: "none"
             },
             children: [
-              centerLabel ? /* @__PURE__ */ jsx("span", { className: "font-display text-base font-semibold tabular-nums text-ink-strong leading-none", children: centerLabel }) : null,
-              centerSub ? /* @__PURE__ */ jsx("span", { className: "mg-type-caption text-ink-muted mt-0.5", children: centerSub }) : null
+              centerLabel ? /* @__PURE__ */ jsx("span", { className: "font-display text-16 font-semibold tabular-nums text-ink-strong leading-none", children: centerLabel }) : null,
+              centerSub ? /* @__PURE__ */ jsx("span", { className: "text-13 text-ink-muted mt-0.5", children: centerSub }) : null
             ]
           }
         ) : null
@@ -3617,7 +3532,7 @@ function DonutLegend({ segments }) {
   return /* @__PURE__ */ jsx("ul", { className: "space-y-1", children: segments.map((s) => /* @__PURE__ */ jsxs(
     "li",
     {
-      className: "flex items-center gap-2 mg-type-micro text-ink-muted",
+      className: "flex items-center gap-2 text-10 text-ink-muted",
       children: [
         /* @__PURE__ */ jsx(
           "span",
@@ -3663,21 +3578,21 @@ function SparkLegend({
           sideOffset: 6,
           collisionPadding: 8,
           avoidCollisions: true,
-          className: "max-w-xs mg-type-caption",
+          className: "max-w-xs text-13",
           children: [
-            /* @__PURE__ */ jsxs("div", { className: "mg-type-caption mb-1", children: [
+            /* @__PURE__ */ jsxs("div", { className: "text-13 mb-1", children: [
               metric,
               windowLabel ? ` \xB7 ${windowLabel}` : ""
             ] }),
             /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
-              /* @__PURE__ */ jsx("span", { className: "mg-type-label opacity-70", children: "source \xB7 " }),
+              /* @__PURE__ */ jsx("span", { className: "text-11 opacity-70", children: "source \xB7 " }),
               source
             ] }),
             staleness ? /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
-              /* @__PURE__ */ jsx("span", { className: "mg-type-label opacity-70", children: "staleness \xB7 " }),
+              /* @__PURE__ */ jsx("span", { className: "text-11 opacity-70", children: "staleness \xB7 " }),
               staleness
             ] }) : null,
-            fresh || freshAbs ? /* @__PURE__ */ jsxs("div", { className: "mt-1 mg-type-data-sm opacity-80", children: [
+            fresh || freshAbs ? /* @__PURE__ */ jsxs("div", { className: "mt-1 text-10 opacity-80", children: [
               fresh ?? "",
               freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""
             ] }) : null
@@ -3836,7 +3751,7 @@ function Sparkline({
         hoverPoint && tooltipText ? /* @__PURE__ */ jsx(
           "div",
           {
-            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap",
+            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 text-10 leading-tight text-ink-strong whitespace-nowrap",
             style: {
               left: Math.max(24, Math.min(width - 24, hoverPoint[0])),
               top: hoverPoint[1] - 4
@@ -3865,7 +3780,6 @@ function StatTile({
     Panel,
     {
       as: "div",
-      dense: true,
       tintBorderOnly: true,
       tone,
       className,
@@ -3882,15 +3796,15 @@ function StatTile({
           }
         ) : null,
         /* @__PURE__ */ jsxs("div", { className: "min-w-[6rem] flex-1", children: [
-          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 mg-type-caption text-ink-muted", children: [
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 text-13 text-ink-muted", children: [
             /* @__PURE__ */ jsx("span", { className: "line-clamp-3 leading-tight", children: eyebrow }),
             tooltip ? /* @__PURE__ */ jsx(InfoTooltip, { label: tooltip, className: "shrink-0" }) : null
           ] }),
           /* @__PURE__ */ jsxs("div", { className: "mt-1 flex min-w-0 items-baseline gap-1.5", children: [
-            /* @__PURE__ */ jsx("span", { className: "shrink-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl", children: value }),
-            hint && truncate ? /* @__PURE__ */ jsx("span", { className: "min-w-0 truncate mg-type-data-sm text-ink-muted", children: hint }) : null
+            /* @__PURE__ */ jsx("span", { className: "shrink-0 font-display text-16 font-semibold tabular-nums leading-none text-ink-strong sm:text-28 md:text-28", children: value }),
+            hint && truncate ? /* @__PURE__ */ jsx("span", { className: "min-w-0 truncate text-10 text-ink-muted", children: hint }) : null
           ] }),
-          hint && !truncate ? /* @__PURE__ */ jsx("div", { className: "mt-0.5 mg-type-data-sm leading-tight text-ink-muted", children: hint }) : null
+          hint && !truncate ? /* @__PURE__ */ jsx("div", { className: "mt-0.5 text-10 leading-tight text-ink-muted", children: hint }) : null
         ] }),
         chart ? /* @__PURE__ */ jsx("div", { className: "shrink-0 opacity-80", children: chart }) : null
       ]
@@ -3920,17 +3834,17 @@ function StatWithSpark({
         {
           tabIndex: 0,
           className: classNames(
-            "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface/40 transition-colors",
+            "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface transition-colors",
             className
           ),
           children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-muted truncate", children: label }),
+            /* @__PURE__ */ jsx("div", { className: "text-13 text-ink-muted truncate", children: label }),
             /* @__PURE__ */ jsxs("div", { className: "flex items-baseline gap-1.5 min-w-0", children: [
               /* @__PURE__ */ jsx(
                 "span",
                 {
                   className: classNames(
-                    "font-display text-lg font-semibold tabular-nums leading-none truncate",
+                    "font-display text-16 font-semibold tabular-nums leading-none truncate",
                     tone === "ok" && "text-health-ok",
                     tone === "warn" && "text-health-warn",
                     tone === "down" && "text-health-down",
@@ -3939,18 +3853,18 @@ function StatWithSpark({
                   children: value
                 }
               ),
-              unit ? /* @__PURE__ */ jsx("span", { className: "shrink-0 mg-type-data text-ink-muted", children: unit }) : null,
+              unit ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-11 text-ink-muted", children: unit }) : null,
               delta
             ] }),
             viz ? /* @__PURE__ */ jsx("div", { className: "mt-0.5 min-h-[18px]", children: viz }) : null,
-            hint ? /* @__PURE__ */ jsx("div", { className: "mg-type-data-sm text-ink-muted/80 truncate", children: hint }) : null,
-            freshLine ? /* @__PURE__ */ jsx("div", { className: "mg-type-data-sm tracking-wide text-ink-muted/70 truncate", children: freshLine }) : null
+            hint ? /* @__PURE__ */ jsx("div", { className: "text-10 text-ink-muted/80 truncate", children: hint }) : null,
+            freshLine ? /* @__PURE__ */ jsx("div", { className: "text-10 text-ink-muted/70 truncate", children: freshLine }) : null
           ]
         }
       ) }),
-      /* @__PURE__ */ jsxs(TooltipContent, { side: "bottom", className: "max-w-xs mg-type-caption", children: [
+      /* @__PURE__ */ jsxs(TooltipContent, { side: "bottom", className: "max-w-xs text-13", children: [
         /* @__PURE__ */ jsx("div", { children: full ?? hint ?? label }),
-        freshAbs || windowLabel ? /* @__PURE__ */ jsxs("div", { className: "mt-1 mg-type-data-sm text-primary-foreground/70", children: [
+        freshAbs || windowLabel ? /* @__PURE__ */ jsxs("div", { className: "mt-1 text-10 text-primary-foreground/70", children: [
           freshAbs ? `Last checked ${freshAbs}` : null,
           freshAbs && windowLabel ? " \xB7 " : "",
           windowLabel ? `${windowLabel} window` : null
@@ -3968,7 +3882,7 @@ function MiniStack({
     return /* @__PURE__ */ jsx(
       "div",
       {
-        className: "w-full rounded-full bg-border/40",
+        className: "w-full rounded bg-border/40",
         style: { height },
         "aria-hidden": true
       }
@@ -3977,7 +3891,7 @@ function MiniStack({
   return /* @__PURE__ */ jsx(
     "div",
     {
-      className: "flex w-full overflow-hidden rounded-full bg-border/40",
+      className: "flex w-full overflow-hidden rounded bg-border/40",
       style: { height },
       role: "img",
       "aria-label": segments.map((s) => `${s.label} ${s.value}`).join(", "),
@@ -4062,12 +3976,12 @@ function DotRow({
             "span",
             {
               className: classNames(
-                "size-1.5 rounded-full",
+                "size-1.5 rounded-full mg-dot",
                 d.on ? "bg-accent" : "bg-border"
               )
             }
           ) }),
-          /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "mg-type-data-sm", children: [
+          /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "text-10", children: [
             d.label,
             " ",
             d.on ? "\u2713" : "\u2014"
@@ -4094,21 +4008,21 @@ function NoDataSpark({
           tabIndex: 0,
           role: "img",
           "aria-label": `${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`,
-          className: "flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          className: "flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
           style: { height },
           children: [
             /* @__PURE__ */ jsx(
               "span",
               {
                 "aria-hidden": true,
-                className: "inline-block size-1 rounded-full bg-ink-muted/60"
+                className: "inline-block size-1 rounded-full mg-dot bg-ink-muted/60"
               }
             ),
-            /* @__PURE__ */ jsx("span", { className: "truncate mg-type-caption text-ink-muted/80", children: freshLine ?? reason })
+            /* @__PURE__ */ jsx("span", { className: "truncate text-13 text-ink-muted/80", children: freshLine ?? reason })
           ]
         }
       ) }),
-      /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "max-w-xs mg-type-caption", children: [
+      /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "max-w-xs text-13", children: [
         reason,
         ".",
         " ",
@@ -4188,14 +4102,14 @@ function TreemapMini({
 }) {
   const tiles = squarify(data);
   if (tiles.length === 0) return null;
-  const label = ariaLabel ?? `Treemap of ${tiles.length} items sized by share: ` + tiles.map((t) => `${t.label} ${(t.share * 100).toFixed(1)}%`).join(", ");
+  const label = ariaLabel ?? `Treemap of ${tiles.length} items sized by share:` + tiles.map((t) => `${t.label} ${(t.share * 100).toFixed(1)}%`).join(", ");
   return /* @__PURE__ */ jsx(
     "div",
     {
       role: "img",
       "aria-label": label,
       className: classNames(
-        "relative aspect-[16/9] w-full overflow-hidden rounded-md",
+        "relative aspect-[16/9] w-full overflow-hidden rounded",
         className
       ),
       children: tiles.map((t) => /* @__PURE__ */ jsx(
@@ -4215,8 +4129,8 @@ function TreemapMini({
               className: "flex h-full w-full flex-col justify-between rounded border border-background/40 p-1.5",
               style: { background: t.color ?? "var(--surface-2)" },
               children: t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? /* @__PURE__ */ jsxs(Fragment, { children: [
-                /* @__PURE__ */ jsx("span", { className: "truncate mg-type-data-sm font-medium leading-none text-ink-strong", children: t.label }),
-                t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? /* @__PURE__ */ jsx("span", { className: "truncate mg-type-data-sm leading-none text-ink-muted", children: formatValue(t.value) }) : null
+                /* @__PURE__ */ jsx("span", { className: "truncate text-10 font-medium leading-none text-ink-strong", children: t.label }),
+                t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? /* @__PURE__ */ jsx("span", { className: "truncate text-10 leading-none text-ink-muted", children: formatValue(t.value) }) : null
               ] }) : null
             }
           )
@@ -4394,7 +4308,7 @@ function SankeyMini({
                     textAnchor: vertical ? "middle" : node.column === lastColumn ? "end" : "start",
                     dominantBaseline: vertical ? "auto" : "middle",
                     fill: "var(--ink-strong)",
-                    className: "mg-type-data-sm",
+                    className: "text-10",
                     children: node.label
                   }
                 ) : null
@@ -4559,7 +4473,7 @@ function StackedAreaMini({
         hoverX != null && hoverLines.length > 0 ? /* @__PURE__ */ jsx(
           "div",
           {
-            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-1 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap",
+            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-1 text-10 leading-tight text-ink-strong whitespace-nowrap",
             style: {
               left: `${Math.max(8, Math.min(92, hoverX / width * 100))}%`,
               top: height * 0.35
@@ -4599,8 +4513,8 @@ function Chip({
       title,
       onClick,
       className: classNames(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5",
-        "mg-type-data-sm leading-none whitespace-nowrap transition-colors",
+        "inline-flex items-center gap-1.5 rounded border px-2 py-0.5",
+        "text-10 leading-none whitespace-nowrap transition-colors",
         onClick ? "mg-focus-ring hover:border-ink/30 cursor-pointer" : null,
         TONE_CLASSES2[tone],
         className
@@ -4621,8 +4535,8 @@ function Chip({
             children: icon
           }
         ) : null,
-        label ? /* @__PURE__ */ jsx("span", { className: "uppercase tracking-widest opacity-70", children: label }) : null,
-        children != null ? /* @__PURE__ */ jsx("span", { className: "text-ink-strong normal-case tracking-normal", children }) : null
+        label ? /* @__PURE__ */ jsx("span", { className: "opacity-70", children: label }) : null,
+        children != null ? /* @__PURE__ */ jsx("span", { className: "text-ink-strong normal-case", children }) : null
       ]
     }
   );
@@ -4681,7 +4595,7 @@ function Indicator({
           "span",
           {
             className: classNames(
-              "inline-flex items-center gap-1 mg-type-micro text-ink-muted",
+              "inline-flex items-center gap-1 text-10 text-ink-muted",
               isRow ? "self-center" : null
             ),
             children: [
@@ -4690,7 +4604,7 @@ function Indicator({
             ]
           }
         ),
-        /* @__PURE__ */ jsxs("span", { className: "mg-type-data tabular-nums text-ink-strong truncate", children: [
+        /* @__PURE__ */ jsxs("span", { className: "text-11 tabular-nums text-ink-strong truncate", children: [
           value,
           hint ? /* @__PURE__ */ jsx("span", { className: "ml-1 text-ink-muted normal-case", children: hint }) : null
         ] })
@@ -4716,7 +4630,7 @@ function FilterField({
         className
       ),
       children: [
-        /* @__PURE__ */ jsxs("span", { className: "mg-type-micro text-ink-muted inline-flex items-center gap-1.5", children: [
+        /* @__PURE__ */ jsxs("span", { className: "text-10 text-ink-muted inline-flex items-center gap-1.5", children: [
           label,
           hint ? /* @__PURE__ */ jsx("span", { className: "opacity-70", children: hint }) : null
         ] }),
@@ -4725,7 +4639,7 @@ function FilterField({
     }
   );
 }
-var CONTROL_CLASSES = "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 mg-type-caption text-ink-strong placeholder:text-ink-subtle-text mg-focus-ring hover:border-ink/25 transition-colors";
+var CONTROL_CLASSES = "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 text-13text-ink-strong placeholder:text-ink-subtle-text mg-focus-ringhover:border-ink/25 transition-colors";
 function FilterInput({
   className,
   leadingIcon = true,
@@ -4802,11 +4716,11 @@ function ColumnCustomizer({
         "aria-haspopup": "menu",
         "aria-expanded": open,
         title: "Customize visible columns",
-        className: "mg-focus-ring inline-flex items-center gap-1.5 h-9 rounded border border-border bg-card px-2.5 mg-type-micro text-ink-muted hover:text-ink-strong hover:border-ink/25 transition-colors",
+        className: "mg-focus-ring inline-flex items-center gap-1.5 h-9 rounded border border-border bg-card px-2.5 text-10 text-ink-muted hover:text-ink-strong hover:border-ink/25 transition-colors",
         children: [
           /* @__PURE__ */ jsx(Columns3, { className: "size-3", "aria-hidden": true }),
           /* @__PURE__ */ jsx("span", { className: "hidden sm:inline", children: "Columns" }),
-          /* @__PURE__ */ jsxs("span", { className: "text-ink-strong tabular-nums normal-case tracking-normal", children: [
+          /* @__PURE__ */ jsxs("span", { className: "text-ink-strong tabular-nums normal-case", children: [
             visibleCount,
             "/",
             columns.length
@@ -4828,16 +4742,16 @@ function ColumnCustomizer({
         "div",
         {
           role: "menu",
-          className: "absolute right-0 z-[var(--mg-z-overlay)] mt-1.5 w-64 rounded border border-border bg-card p-1 mg-card-glow",
+          className: "absolute right-0 z-[var(--mg-z-overlay)] mt-1.5 w-64 rounded border border-border bg-card p-1",
           children: [
             /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-2 py-1.5", children: [
-              /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-muted", children: "Columns" }),
+              /* @__PURE__ */ jsx("span", { className: "text-10 text-ink-muted", children: "Columns" }),
               /* @__PURE__ */ jsxs(
                 "button",
                 {
                   type: "button",
                   onClick: onReset,
-                  className: "mg-focus-ring inline-flex items-center gap-1 mg-type-data-sm text-ink-muted hover:text-ink-strong",
+                  className: "mg-focus-ring inline-flex items-center gap-1 text-10 text-ink-muted hover:text-ink-strong",
                   title: "Reset to defaults",
                   children: [
                     /* @__PURE__ */ jsx(RotateCcw, { className: "size-3", "aria-hidden": true }),
@@ -4852,7 +4766,7 @@ function ColumnCustomizer({
                 "label",
                 {
                   className: classNames(
-                    "flex items-center gap-2 rounded px-2 py-1.5 mg-type-caption text-ink hover:bg-surface-2 cursor-pointer",
+                    "flex items-center gap-2 rounded px-2 py-1.5 text-13 text-ink hover:bg-surface-2 cursor-pointer",
                     c.required ? "opacity-60 cursor-not-allowed" : null
                   ),
                   children: [
@@ -4867,7 +4781,7 @@ function ColumnCustomizer({
                       }
                     ),
                     /* @__PURE__ */ jsx("span", { className: "flex-1 truncate", children: c.label }),
-                    c.required ? /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-subtle-text", children: "Locked" }) : null
+                    c.required ? /* @__PURE__ */ jsx("span", { className: "text-10 text-ink-subtle-text", children: "Locked" }) : null
                   ]
                 },
                 c.id
@@ -4994,25 +4908,24 @@ function EmptyState({
           {
             "aria-hidden": true,
             className: classNames(
-              "inline-flex size-10 items-center justify-center rounded-full border border-border bg-surface-2",
+              "inline-flex size-10 items-center justify-center rounded border border-border bg-surface-2",
               VARIANT_TONE[variant]
             ),
             children: /* @__PURE__ */ jsx(Icon, { className: "size-4" })
           }
         ),
         /* @__PURE__ */ jsxs("div", { className: "max-w-sm space-y-1", children: [
-          /* @__PURE__ */ jsx("p", { className: "font-display text-[15px] font-medium text-ink-strong", children: title }),
-          hint != null ? /* @__PURE__ */ jsx("p", { className: "mg-type-caption-lg leading-relaxed text-ink-muted", children: hint }) : null
+          /* @__PURE__ */ jsx("p", { className: "font-display text-13 font-medium text-ink-strong", children: title }),
+          hint != null ? /* @__PURE__ */ jsx("p", { className: "text-13 leading-relaxed text-ink-muted", children: hint }) : null
         ] }),
         action != null || evidenceHref ? /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap items-center justify-center gap-2 pt-1", children: [
           action,
           evidenceHref ? /* @__PURE__ */ jsxs(
-            "a",
+            ExternalLink,
             {
+              bare: true,
               href: evidenceHref,
-              target: "_blank",
-              rel: "noreferrer",
-              className: "mg-focus-ring inline-flex items-center gap-1 mg-type-label uppercase text-ink-muted hover:text-ink-strong",
+              className: "mg-focus-ring inline-flex items-center gap-1 text-11 text-ink-muted hover:text-ink-strong",
               children: [
                 evidenceLabel,
                 /* @__PURE__ */ jsx(ExternalLink$1, { className: "size-3", "aria-hidden": true })
@@ -5146,8 +5059,8 @@ function PanelHeader({
       ),
       children: [
         /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-          variant === "micro" ? /* @__PURE__ */ jsx(SectionLabel, { children: title }) : /* @__PURE__ */ jsx("h2", { className: "font-display text-base font-medium leading-tight text-ink-strong", children: title }),
-          description ? /* @__PURE__ */ jsx("p", { className: "mt-1 text-xs leading-relaxed text-ink-muted", children: description }) : null
+          variant === "micro" ? /* @__PURE__ */ jsx(SectionLabel, { children: title }) : /* @__PURE__ */ jsx("h2", { className: "font-display text-16 font-medium leading-tight text-ink-strong", children: title }),
+          description ? /* @__PURE__ */ jsx("p", { className: "mt-1 text-13 leading-relaxed text-ink-muted", children: description }) : null
         ] }),
         actions ? /* @__PURE__ */ jsx("div", { className: "flex shrink-0 flex-wrap items-center gap-2", children: actions }) : null
       ]
@@ -5166,7 +5079,7 @@ function Divider({
       className: cn("relative h-px w-full", bar, className),
       role: "separator",
       "aria-hidden": true,
-      children: pip ? /* @__PURE__ */ jsx("span", { className: "absolute left-0 top-1/2 -translate-y-1/2 size-1.5 rounded-[1px] bg-accent" }) : null
+      children: pip ? /* @__PURE__ */ jsx("span", { className: "absolute left-0 top-1/2 -translate-y-1/2 size-1.5 rounded bg-accent" }) : null
     }
   );
 }
@@ -5227,7 +5140,7 @@ function TabStrip({
     if (it && !it.disabled) onChange(it.id);
   });
   const pad = size === "sm" ? "px-2 py-1.5" : "px-3 py-2";
-  const text = size === "sm" ? "mg-type-caption" : "mg-type-caption-lg";
+  const text = size === "sm" ? "text-13" : "text-13";
   return /* @__PURE__ */ jsx(
     "div",
     {
@@ -5297,7 +5210,7 @@ function StickyToolbar({
     {
       style: top,
       className: cn(
-        "sticky z-[var(--mg-z-raised)] -mx-4 border-b bg-paper/95 px-4 py-2 backdrop-blur transition-[border-color,box-shadow] sm:mx-0 sm:px-0",
+        "sticky z-[var(--mg-z-raised)] -mx-4 border-b bg-paper px-4 py-2 transition-[border-color,box-shadow] sm:mx-0 sm:px-0",
         hairline && scrolled ? "border-border" : "border-transparent",
         className
       ),
@@ -5319,16 +5232,16 @@ function DefinitionList({
           className
         ),
         children: items.map((it, i) => /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-          /* @__PURE__ */ jsx("dt", { title: it.title, className: "mg-type-micro text-ink-muted", children: it.term }),
-          /* @__PURE__ */ jsx("dd", { className: "mt-1 truncate text-sm text-ink-strong", children: it.detail })
+          /* @__PURE__ */ jsx("dt", { title: it.title, className: "text-10 text-ink-muted", children: it.term }),
+          /* @__PURE__ */ jsx("dd", { className: "mt-1 truncate text-13 text-ink-strong", children: it.detail })
         ] }, i))
       }
     );
   }
   if (layout === "stacked") {
     return /* @__PURE__ */ jsx("dl", { className: cn("space-y-3", className), children: items.map((it, i) => /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-      /* @__PURE__ */ jsx("dt", { title: it.title, className: "mg-type-micro text-ink-muted", children: it.term }),
-      /* @__PURE__ */ jsx("dd", { className: "mt-1 text-sm text-ink-strong", children: it.detail })
+      /* @__PURE__ */ jsx("dt", { title: it.title, className: "text-10 text-ink-muted", children: it.term }),
+      /* @__PURE__ */ jsx("dd", { className: "mt-1 text-13 text-ink-strong", children: it.detail })
     ] }, i)) });
   }
   return /* @__PURE__ */ jsx("dl", { className: cn("divide-y divide-border/70", className), children: items.map((it, i) => /* @__PURE__ */ jsxs(
@@ -5336,15 +5249,8 @@ function DefinitionList({
     {
       className: "flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0",
       children: [
-        /* @__PURE__ */ jsx(
-          "dt",
-          {
-            title: it.title,
-            className: "mg-type-label shrink-0 text-ink-muted",
-            children: it.term
-          }
-        ),
-        /* @__PURE__ */ jsx("dd", { className: "min-w-0 truncate text-right text-sm text-ink-strong", children: it.detail })
+        /* @__PURE__ */ jsx("dt", { title: it.title, className: "text-11 shrink-0 text-ink-muted", children: it.term }),
+        /* @__PURE__ */ jsx("dd", { className: "min-w-0 truncate text-right text-13 text-ink-strong", children: it.detail })
       ]
     },
     i
@@ -5366,9 +5272,9 @@ function LoadingPill({
   );
 }
 var SIZE = {
-  sm: "min-h-8 px-2.5 text-xs",
-  md: "min-h-10 px-4 text-sm",
-  lg: "min-h-11 px-5 text-sm"
+  sm: "min-h-8 px-2.5 text-13",
+  md: "min-h-10 px-4 text-13",
+  lg: "min-h-11 px-4 text-13"
 };
 var TONE2 = {
   default: "border-border text-ink-muted hover:border-accent/60 hover:text-ink-strong",
@@ -5393,7 +5299,7 @@ var GhostButton = forwardRef(
         ref,
         type: type ?? "button",
         className: cn(
-          "inline-flex items-center justify-center gap-1.5 rounded-md border bg-card transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          "inline-flex items-center justify-center gap-1.5 rounded border bg-card transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
           SIZE[size],
           TONE2[tone],
           className
@@ -5421,7 +5327,7 @@ function PagerFooter({
     "div",
     {
       className: cn(
-        "flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 mg-type-caption text-ink-muted",
+        "flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 text-13 text-ink-muted",
         className
       ),
       children: [
@@ -5462,7 +5368,7 @@ function MetaStrip({
     "div",
     {
       className: cn(
-        "flex flex-wrap items-center gap-x-2 gap-y-1 mg-type-caption text-ink-muted",
+        "flex flex-wrap items-center gap-x-2 gap-y-1 text-13 text-ink-muted",
         className
       ),
       children: items.map((it, i) => /* @__PURE__ */ jsxs(
@@ -5472,7 +5378,7 @@ function MetaStrip({
           className: "inline-flex items-center gap-1.5",
           children: [
             i > 0 ? /* @__PURE__ */ jsx("span", { "aria-hidden": true, className: "text-ink-subtle-text", children: sep }) : null,
-            /* @__PURE__ */ jsx("span", { className: "mg-type-micro", children: it.label }),
+            /* @__PURE__ */ jsx("span", { className: "text-10", children: it.label }),
             /* @__PURE__ */ jsx("span", { className: "text-ink-strong", children: it.value })
           ]
         },
@@ -5607,13 +5513,13 @@ function FilterSheet({
         "aria-haspopup": "dialog",
         className: classNames(
           "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1",
-          "mg-type-label uppercase transition-colors",
+          "text-11 transition-colors",
           activeCount > 0 ? "border-accent/40 bg-accent/10 text-accent" : "border-border bg-card text-ink-strong hover:border-accent/40"
         ),
         children: [
           /* @__PURE__ */ jsx(Filter, { className: "size-3.5", "aria-hidden": true }),
           label,
-          activeCount > 0 ? /* @__PURE__ */ jsx("span", { className: "ml-0.5 inline-flex size-4 items-center justify-center rounded-full bg-accent text-[9px] text-accent-foreground", children: activeCount }) : null
+          activeCount > 0 ? /* @__PURE__ */ jsx("span", { className: "ml-0.5 inline-flex size-4 items-center justify-center rounded bg-accent text-10 text-accent-foreground", children: activeCount }) : null
         ]
       }
     ),
@@ -5628,7 +5534,7 @@ function FilterSheet({
           /* @__PURE__ */ jsx(
             "div",
             {
-              className: "absolute inset-0 bg-ink-strong/30 backdrop-blur-sm",
+              className: "absolute inset-0 bg-ink-strong/30",
               onClick: () => setOpen(false),
               "aria-hidden": true
             }
@@ -5638,13 +5544,13 @@ function FilterSheet({
             {
               className: classNames(
                 "relative z-[var(--mg-z-sticky)] w-full max-h-[85vh] overflow-y-auto",
-                "rounded-t-xl border-t border-border bg-card p-4",
-                "sm:max-w-md sm:rounded-xl sm:border sm:mx-4",
+                "rounded border-t border-border bg-card p-4",
+                "sm:max-w-md sm:rounded sm:border sm:mx-4",
                 "mg-scroll"
               ),
               children: [
                 /* @__PURE__ */ jsxs("div", { className: "mb-4 flex items-center justify-between border-b border-border pb-3", children: [
-                  /* @__PURE__ */ jsxs("span", { className: "mg-type-label uppercase text-ink-strong", children: [
+                  /* @__PURE__ */ jsxs("span", { className: "text-11 text-ink-strong", children: [
                     label,
                     activeCount > 0 ? /* @__PURE__ */ jsxs("span", { className: "ml-2 text-ink-muted", children: [
                       "\xB7 ",
@@ -5747,7 +5653,7 @@ function PageActions({
               "div",
               {
                 role: "menu",
-                className: "absolute right-0 top-full z-[var(--mg-z-overlay)] mt-2 min-w-[180px] rounded border border-border bg-card p-2 shadow-lg",
+                className: "absolute right-0 top-full z-[var(--mg-z-overlay)] mt-2 min-w-[180px] rounded border border-border bg-card p-2",
                 children: /* @__PURE__ */ jsx("div", { className: "flex flex-col items-stretch gap-1 [&>*]:w-full [&>*]:justify-start", children: secondary })
               }
             ) : null
@@ -5808,8 +5714,8 @@ function MobileCollapse({
         ),
         children: [
           /* @__PURE__ */ jsxs("span", { className: "flex min-w-0 flex-1 flex-col", children: [
-            /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-strong", children: label }),
-            hint ? /* @__PURE__ */ jsx("span", { className: "mt-0.5 truncate mg-type-data text-ink-muted", children: hint }) : null
+            /* @__PURE__ */ jsx("span", { className: "text-10 text-ink-strong", children: label }),
+            hint ? /* @__PURE__ */ jsx("span", { className: "mt-0.5 truncate text-11 text-ink-muted", children: hint }) : null
           ] }),
           /* @__PURE__ */ jsxs("span", { className: "flex shrink-0 items-center gap-2", children: [
             trailing,
@@ -5853,7 +5759,7 @@ function ReadinessGauge({
   className
 }) {
   if (score == null && !tier) {
-    return /* @__PURE__ */ jsx("span", { className: "mg-type-data text-ink-muted", children: "\u2014" });
+    return /* @__PURE__ */ jsx("span", { className: "text-11 text-ink-muted", children: "\u2014" });
   }
   const value = Math.max(0, Math.min(100, score ?? 0));
   const label = tierLabels[tier ?? ""] ?? tier ?? "Not classified";
@@ -5875,18 +5781,18 @@ function ReadinessGauge({
         /* @__PURE__ */ jsx(
           "span",
           {
-            className: "relative h-1.5 overflow-hidden rounded-full bg-surface-2",
+            className: "relative h-1.5 overflow-hidden rounded bg-surface-2",
             "aria-hidden": true,
             children: /* @__PURE__ */ jsx(
               "span",
               {
-                className: classNames("absolute inset-y-0 left-0 rounded-full", fill),
+                className: classNames("absolute inset-y-0 left-0 rounded", fill),
                 style: { width: `${value}%` }
               }
             )
           }
         ),
-        /* @__PURE__ */ jsx("span", { className: "text-right mg-type-data tabular-nums text-ink-strong", children: value })
+        /* @__PURE__ */ jsx("span", { className: "text-right text-11 tabular-nums text-ink-strong", children: value })
       ]
     }
   );
@@ -5939,7 +5845,7 @@ function ProvenanceChip({
       title: item.description,
       "aria-label": `${item.label}: ${item.description}`,
       className: classNames(
-        "mg-focus-ring inline-flex items-center rounded border bg-transparent px-1.5 py-0.5 mg-type-micro",
+        "mg-focus-ring inline-flex items-center rounded border bg-transparent px-1.5 py-0.5 text-10",
         item.className,
         className
       ),
@@ -5959,8 +5865,8 @@ function QueryBarRoot({
       "aria-label": ariaLabel,
       className: classNames(
         "mg-query-shell",
-        "flex w-full items-center gap-1 min-w-0",
-        "h-10 rounded-md border border-border mg-glass-soft",
+        "flex w-full flex-wrap items-center gap-1 min-w-0",
+        "h-10 rounded border border-border",
         "px-1 transition-colors",
         "focus-within:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
         "focus-within:ring-2 focus-within:ring-ring/60",
@@ -6033,7 +5939,7 @@ function QueryBarSearch({
         "aria-label": placeholder,
         className: classNames(
           "peer flex-1 min-w-0 bg-transparent border-0 outline-none",
-          "py-1.5 mg-type-caption-lg text-ink-strong placeholder:text-ink-subtle-text",
+          "py-1.5 text-13 text-ink-strong placeholder:text-ink-subtle-text",
           "focus:outline-none focus:ring-0",
           className
         )
@@ -6056,7 +5962,7 @@ function QueryBarSearch({
       "kbd",
       {
         "aria-hidden": true,
-        className: "pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 mg-type-data-sm text-ink-muted",
+        className: "pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 text-10 text-ink-muted",
         children: "/"
       }
     ) : null
@@ -6134,8 +6040,8 @@ function QueryBarFilterTrigger(props) {
         type: "button",
         "aria-label": `${label} filter${active ? `, ${selected.length} selected` : ""}`,
         className: classNames(
-          "mg-ghost-trigger group inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2",
-          "mg-type-caption transition-colors",
+          "mg-ghost-trigger group inline-flex h-8 shrink-0 items-center gap-1.5 rounded px-2",
+          "text-13 transition-colors",
           "hover:bg-surface-2",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           active ? "text-ink-strong" : "text-ink-muted",
@@ -6143,7 +6049,7 @@ function QueryBarFilterTrigger(props) {
         ),
         children: [
           icon ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted", children: icon }) : null,
-          /* @__PURE__ */ jsx("span", { className: "mg-type-micro opacity-80", children: label }),
+          /* @__PURE__ */ jsx("span", { className: "text-10 opacity-80", children: label }),
           /* @__PURE__ */ jsx(
             "span",
             {
@@ -6212,7 +6118,7 @@ function QueryBarFilterTrigger(props) {
             }) })
           ] }),
           active ? /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between border-t border-border px-2 py-1.5", children: [
-            /* @__PURE__ */ jsxs("span", { className: "mg-type-micro text-ink-muted", children: [
+            /* @__PURE__ */ jsxs("span", { className: "text-10 text-ink-muted", children: [
               selected.length,
               " selected"
             ] }),
@@ -6224,7 +6130,7 @@ function QueryBarFilterTrigger(props) {
                   clear();
                   if (!props.multi) setOpen(false);
                 },
-                className: "mg-focus-ring rounded px-2 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong",
+                className: "mg-focus-ring rounded px-2 py-0.5 text-10 text-ink-muted hover:text-ink-strong",
                 children: "Clear"
               }
             )
@@ -6249,7 +6155,7 @@ function QueryBarMetaRow({
     {
       className: classNames(
         "flex w-full items-center gap-2 pt-1.5",
-        "mg-type-micro text-ink-muted",
+        "text-10 text-ink-muted",
         className
       ),
       children: [
@@ -6307,7 +6213,7 @@ function ChartSkeleton({
       role: "img",
       "aria-label": label,
       className: classNames(
-        "mg-chart-skeleton relative w-full overflow-hidden rounded-md",
+        "mg-chart-skeleton relative w-full overflow-hidden rounded",
         "border border-border/60 bg-surface-2/40",
         className
       ),
@@ -6369,16 +6275,16 @@ function PanelError({
     {
       role: "alert",
       className: classNames(
-        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded-xl",
+        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded",
         "border border-border/70 bg-card p-6 text-center",
         HEIGHTS[height],
         className
       ),
       children: [
-        /* @__PURE__ */ jsx("div", { className: "grid size-9 place-items-center rounded-full bg-surface-2 text-health-warn", children: /* @__PURE__ */ jsx(AlertTriangle, { className: "size-4", "aria-hidden": true }) }),
+        /* @__PURE__ */ jsx("div", { className: "grid size-9 place-items-center rounded bg-surface-2 text-health-warn", children: /* @__PURE__ */ jsx(AlertTriangle, { className: "size-4", "aria-hidden": true }) }),
         /* @__PURE__ */ jsxs("div", { className: "max-w-sm space-y-1", children: [
-          /* @__PURE__ */ jsx("div", { className: "font-display mg-type-caption-lg font-semibold text-ink-strong", children: title }),
-          /* @__PURE__ */ jsx("p", { className: "mg-type-caption leading-relaxed text-ink-muted", children: message })
+          /* @__PURE__ */ jsx("div", { className: "font-display text-13 font-semibold text-ink-strong", children: title }),
+          /* @__PURE__ */ jsx("p", { className: "text-13 leading-relaxed text-ink-muted", children: message })
         ] }),
         /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap items-center justify-center gap-2 pt-1", children: [
           onRetry ? /* @__PURE__ */ jsx(
@@ -6400,11 +6306,11 @@ function PanelError({
                   window.setTimeout(() => setCopied(false), 1400);
                 });
               },
-              className: "mg-focus-ring inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-ink-strong",
+              className: "mg-focus-ring inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-10 text-ink-muted hover:text-ink-strong",
               "aria-label": `Copy error id ${errorId}`,
               children: [
                 copied ? /* @__PURE__ */ jsx(Check, { className: "size-3", "aria-hidden": true }) : /* @__PURE__ */ jsx(Copy, { className: "size-3", "aria-hidden": true }),
-                /* @__PURE__ */ jsxs("span", { className: "tracking-normal normal-case", children: [
+                /* @__PURE__ */ jsxs("span", { className: "normal-case", children: [
                   "id \xB7 ",
                   errorId.slice(0, 8)
                 ] })
@@ -6442,7 +6348,7 @@ function QueryProgress({
         "div",
         {
           className: classNames(
-            "h-full w-1/3 rounded-full",
+            "h-full w-1/3 rounded",
             active && "mg-query-progress-track"
           ),
           style: {
@@ -6478,14 +6384,14 @@ function FilterChipRow({
             onClick: () => onRemove(item.id),
             "aria-label": `Remove ${item.label} filter (${item.value})`,
             className: classNames(
-              "group inline-flex h-6 items-center gap-1.5 rounded-full border border-border bg-card px-2",
-              "text-[11px] transition-colors",
+              "group inline-flex h-6 items-center gap-1.5 rounded border border-border bg-card px-2",
+              "text-11 transition-colors",
               "hover:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             ),
             children: [
               item.icon ? /* @__PURE__ */ jsx("span", { className: "text-ink-muted", children: item.icon }) : null,
-              /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-muted", children: item.label }),
+              /* @__PURE__ */ jsx("span", { className: "text-10 text-ink-muted", children: item.label }),
               /* @__PURE__ */ jsx("span", { className: "font-medium text-ink-strong", children: item.value }),
               /* @__PURE__ */ jsx(
                 X,
@@ -6503,7 +6409,7 @@ function FilterChipRow({
           {
             type: "button",
             onClick: onClearAll,
-            className: "mg-focus-ring ml-1 rounded px-1.5 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong",
+            className: "mg-focus-ring ml-1 rounded px-1.5 py-0.5 text-10 text-ink-muted hover:text-ink-strong",
             children: "Clear all"
           }
         ) : null
@@ -6563,4 +6469,4 @@ function RoutePending({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, Indicator, InfoTooltip, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, defaultVisible, fmtYield, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, rovingTabIndex, safeExternalUrl, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DefinitionList, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, Indicator, InfoTooltip, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, defaultVisible, fmtYield, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, rovingTabIndex, safeExternalUrl, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };

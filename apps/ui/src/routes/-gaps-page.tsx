@@ -58,7 +58,7 @@ export function GapsPage() {
         title="Contribute"
         description="The contributor work queue — which subnets are missing which public interfaces, and where a correction or addition helps most. Submit through the GitHub repo."
         actions={
-          <ExternalLink href={GITHUB_REPO} className="text-xs">
+          <ExternalLink href={GITHUB_REPO} className="text-13">
             github
           </ExternalLink>
         }
@@ -291,7 +291,7 @@ function GapsKpiStrip() {
         viz={
           <div className="flex items-center gap-2">
             <MiniRadial value={avgComp != null ? avgComp / 100 : 0} size={20} stroke={3} />
-            <span className="mg-type-data-sm text-ink-muted truncate">
+            <span className="text-10 text-ink-muted truncate">
               {above75} ≥75% · {below50} &lt;50%
             </span>
           </div>
@@ -360,7 +360,7 @@ function MissingKindsAtAGlance() {
       title="Missing kinds across the registry"
       description="Click a row to filter the open-gaps section by that resource kind and jump straight to it."
     >
-      <ul className="rounded-xl border border-border bg-card divide-y divide-border">
+      <ul className="rounded border border-border bg-card divide-y divide-border">
         {counts.map(([k, n]) => {
           const isActive = activeMissing.has(k);
           const pct = Math.max(2, Math.round((n / max) * 100));
@@ -393,40 +393,37 @@ function MissingKindsAtAGlance() {
                   "grid w-full grid-cols-[80px_1fr_auto] items-center gap-3 px-4 py-2.5 text-left transition-colors focus:outline-none",
                   isActive
                     ? "ring-1 ring-inset ring-accent/60"
-                    : "hover:bg-surface/40 focus-visible:bg-surface/60",
+                    : "hover:bg-surface focus-visible:bg-surface",
                 )}
                 aria-pressed={isActive}
                 aria-label={`Filter open gaps by ${k}, ${n} subnets missing this kind`}
               >
                 <span
-                  className={classNames(
-                    "mg-type-caption",
-                    isActive ? "text-accent" : "text-ink-strong",
-                  )}
+                  className={classNames("text-13", isActive ? "text-accent" : "text-ink-strong")}
                 >
                   {k}
                 </span>
                 <span
                   className={classNames(
-                    "h-2 rounded-full transition-colors",
+                    "h-2 rounded transition-colors",
                     isActive ? "bg-accent" : "bg-health-warn/70",
                   )}
                   style={{ width: `${pct}%` }}
                   aria-hidden
                 />
-                <span className="mg-type-data tabular-nums text-ink-muted">{n} subnets</span>
+                <span className="text-11 tabular-nums text-ink-muted">{n} subnets</span>
               </button>
             </li>
           );
         })}
       </ul>
       {activeMissing.size > 0 ? (
-        <div className="mg-type-caption mt-2 flex flex-wrap items-center gap-2 text-ink-muted">
+        <div className="text-13 mt-2 flex flex-wrap items-center gap-2 text-ink-muted">
           <span>filtered by:</span>
           {Array.from(activeMissing).map((k) => (
             <span
               key={k}
-              className="inline-flex h-5 items-center rounded-full border border-accent/40 bg-primary-soft px-2 text-accent"
+              className="inline-flex h-5 items-center rounded border border-accent/40 bg-primary-soft px-2 text-accent"
             >
               {k}
             </span>
@@ -439,7 +436,7 @@ function MissingKindsAtAGlance() {
                 replace: true,
               })
             }
-            className="ml-1 inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-ink-muted hover:text-ink-strong"
+            className="ml-1 inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-0.5 text-ink-muted hover:text-ink-strong"
           >
             <X className="size-3" /> clear
           </button>
@@ -542,7 +539,7 @@ function OpenGapsSection() {
           value={search.q}
           onChange={(e) => setSearch({ q: e.target.value })}
           placeholder="Search title, description, netuid…"
-          className="w-full rounded-full border border-border bg-card pl-8 pr-3 py-1.5 mg-type-caption focus:outline-none focus:border-accent/50"
+          className="w-full rounded border border-border bg-card pl-8 pr-3 py-1.5 text-13 focus:outline-none focus:border-accent/50"
           aria-label="Search gaps"
         />
       </div>
@@ -568,7 +565,7 @@ function OpenGapsSection() {
         active={hasFilters}
         onReset={() => navigate({ search: {}, replace: true })}
       />
-      <span className="ml-auto mg-type-data-sm text-ink-muted">
+      <span className="ml-auto text-10 text-ink-muted">
         {sorted.length} of {rows.length}
       </span>
     </>
@@ -596,7 +593,7 @@ function OpenGapsSection() {
                 setSearch({ missing: Array.from(next).join(",") });
               }}
               className={classNames(
-                "mg-type-micro inline-flex h-6 items-center rounded-full border px-2.5 transition-colors",
+                "text-10 inline-flex h-6 items-center rounded border px-2.5 transition-colors",
                 active
                   ? "border-accent bg-primary-soft text-ink-strong"
                   : "border-border bg-paper text-ink-muted hover:border-accent/50 hover:text-ink",
@@ -610,12 +607,12 @@ function OpenGapsSection() {
       </div>
 
       {missingSet.size > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-accent/30 bg-primary-soft/40 px-3 py-2 mg-type-data text-ink-strong">
-          <span className="mg-type-caption text-ink-muted">filtered by missing kind:</span>
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded border border-accent/30 bg-primary-soft/40 px-3 py-2 text-11 text-ink-strong">
+          <span className="text-13 text-ink-muted">filtered by missing kind:</span>
           {Array.from(missingSet).map((k) => (
             <span
               key={k}
-              className="inline-flex h-5 items-center rounded-full border border-accent/40 bg-paper px-2 text-accent"
+              className="inline-flex h-5 items-center rounded border border-accent/40 bg-paper px-2 text-accent"
             >
               {k}
             </span>
@@ -626,7 +623,7 @@ function OpenGapsSection() {
           <button
             type="button"
             onClick={() => setSearch({ missing: "" })}
-            className="ml-auto inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong"
+            className="ml-auto inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-0.5 text-10 text-ink-muted hover:text-ink-strong"
           >
             <X className="size-3" /> clear
           </button>
@@ -688,7 +685,7 @@ function OpenGapsSection() {
           <button
             type="button"
             onClick={() => setGapLimit((n) => n + GAP_PAGE)}
-            className="mg-focus-ring rounded-full border border-border bg-card px-4 py-2 mg-type-caption font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong"
+            className="mg-focus-ring rounded border border-border bg-card px-4 py-2 text-13 font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong"
           >
             Show more gaps ({sorted.length - visibleGaps.length} remaining)
           </button>
@@ -756,22 +753,22 @@ function GapRow({
 
   const trailing = (
     <span className="flex items-center gap-1.5">
-      <span aria-hidden className={classNames("size-1.5 shrink-0 rounded-full", sevTint)} />
+      <span aria-hidden className={classNames("size-1.5 shrink-0 rounded-full mg-dot", sevTint)} />
       {gapKinds.length > 0 ? (
-        <span className="mg-type-data-sm text-ink-muted">{gapKinds.length}</span>
+        <span className="text-10 text-ink-muted">{gapKinds.length}</span>
       ) : null}
       {visibleKinds.length > 0 ? (
         <span className="flex items-center gap-1">
           {visibleKinds.map((k) => (
             <span
               key={k}
-              className="mg-type-micro inline-flex h-4 items-center rounded-full border border-border bg-paper px-1.5 text-ink-muted"
+              className="text-10 inline-flex h-4 items-center rounded border border-border bg-paper px-1.5 text-ink-muted"
             >
               {k}
             </span>
           ))}
           {overflowKindCount > 0 ? (
-            <span className="mg-type-micro inline-flex h-4 items-center rounded-full border border-border bg-paper px-1.5 text-ink-muted">
+            <span className="text-10 inline-flex h-4 items-center rounded border border-border bg-paper px-1.5 text-ink-muted">
               +{overflowKindCount}
             </span>
           ) : null}
@@ -787,7 +784,7 @@ function GapRow({
         hint={hintText}
         trailing={trailing}
         className={classNames(
-          "md:rounded-xl md:border md:bg-card md:p-4 md:transition-colors",
+          "md:rounded md:border md:bg-card md:p-4 md:transition-colors",
           matchedKind
             ? "rounded ring-1 ring-inset ring-accent/30 md:border-accent/50"
             : "md:border-border md:hover:border-accent/40",
@@ -805,14 +802,14 @@ function GapRow({
           )}
         >
           <div className="grid grid-cols-[6px_1fr_auto] gap-3 p-4">
-            <span aria-hidden className={classNames("rounded-full", sevTint)} />
+            <span aria-hidden className={classNames("rounded", sevTint)} />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <SeverityChip severity={gap.severity} />
                 {gap.category ? (
                   <span
                     className={classNames(
-                      "mg-type-micro inline-flex h-5 items-center rounded-full border px-2",
+                      "text-10 inline-flex h-5 items-center rounded border px-2",
                       matchedKind
                         ? "border-accent/50 bg-primary-soft text-accent"
                         : "border-transparent text-ink-muted",
@@ -825,7 +822,7 @@ function GapRow({
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: gap.netuid }}
-                    className="inline-flex items-center gap-1.5 mg-type-data-sm text-accent hover:underline"
+                    className="inline-flex items-center gap-1.5 text-10 text-accent hover:underline"
                   >
                     <BrandIcon
                       url={subnet?.website}
@@ -837,7 +834,7 @@ function GapRow({
                     />
                     <span>SN{gap.netuid}</span>
                     {subnet?.name ? (
-                      <span className="font-display mg-type-caption text-ink normal-case tracking-normal">
+                      <span className="font-display text-13 text-ink normal-case">
                         · {subnet.name}
                       </span>
                     ) : null}
@@ -846,22 +843,18 @@ function GapRow({
               </div>
               <div className="font-medium text-ink-strong">{gap.title ?? gap.id}</div>
               {gap.description ? (
-                <p className="mt-1 mg-type-caption-lg text-ink-muted leading-relaxed line-clamp-2">
+                <p className="mt-1 text-13 text-ink-muted leading-relaxed line-clamp-2">
                   {gap.description}
                 </p>
               ) : null}
               {gap.suggested_action ? (
-                <p className="mt-1.5 mg-type-caption text-ink">↳ {gap.suggested_action}</p>
+                <p className="mt-1.5 text-13 text-ink">↳ {gap.suggested_action}</p>
               ) : null}
               {matchedKind && (rawSources.length > 0 || gap.netuid != null) ? (
-                <div className="mg-type-caption mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-ink-muted">
+                <div className="text-13 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-ink-muted">
                   <span>relevant sources:</span>
                   {rawSources.map((s) => (
-                    <ExternalLink
-                      key={s.href}
-                      href={s.href}
-                      className="mg-type-caption normal-case tracking-normal"
-                    >
+                    <ExternalLink key={s.href} href={s.href} className="text-13 normal-case">
                       {s.label}
                     </ExternalLink>
                   ))}
@@ -870,7 +863,7 @@ function GapRow({
                       to="/subnets/$netuid"
                       params={{ netuid: gap.netuid }}
                       hash="evidence"
-                      className="text-accent hover:underline normal-case tracking-normal"
+                      className="text-accent hover:underline normal-case"
                     >
                       evidence on SN{gap.netuid}
                     </Link>
@@ -883,14 +876,14 @@ function GapRow({
                 <Link
                   to="/subnets/$netuid"
                   params={{ netuid: gap.netuid }}
-                  className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/40"
+                  className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-accent hover:border-accent/40"
                 >
                   open
                 </Link>
               ) : null}
               <ExternalLink
                 href={`${GITHUB_REPO}/issues/new?title=${encodeURIComponent(`gap: ${gap.title ?? gap.id}`)}`}
-                className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/40"
+                className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-accent hover:border-accent/40"
               >
                 file
               </ExternalLink>
@@ -912,8 +905,8 @@ function SeverityChip({ severity }: { severity?: string }) {
   return (
     <span
       className={classNames(
-        "mg-type-micro inline-flex h-5 items-center rounded-full border bg-transparent px-2",
-        "before:content-[''] before:size-1.5 before:rounded-full before:mr-1.5",
+        "text-10 inline-flex h-5 items-center rounded border bg-transparent px-2",
+        "mg-dot-before before:mr-1.5",
         tone,
       )}
     >
@@ -934,12 +927,12 @@ function FilterSelect({
   options: readonly string[];
 }) {
   return (
-    <label className="inline-flex items-center gap-1.5 mg-type-caption text-ink-muted">
-      <span className="mg-type-caption">{label}</span>
+    <label className="inline-flex items-center gap-1.5 text-13 text-ink-muted">
+      <span className="text-13">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption text-ink focus:outline-none focus:border-accent/50"
+        className="rounded border border-border bg-card px-2.5 py-1 text-13 text-ink focus:outline-none focus:border-accent/50"
       >
         {options.map((o) => (
           <option key={o} value={o}>
@@ -972,22 +965,22 @@ function CompletenessList() {
       {rows.slice(0, 24).map((r) => (
         <li
           key={r.netuid}
-          className="flex items-center gap-4 rounded-md border border-border bg-card px-4 py-2.5"
+          className="flex items-center gap-4 rounded border border-border bg-card px-4 py-2.5"
         >
           <Link
             to="/subnets/$netuid"
             params={{ netuid: r.netuid }}
-            className="mg-type-data text-ink-muted hover:text-accent w-12"
+            className="text-11 text-ink-muted hover:text-accent w-12"
           >
             SN{r.netuid}
           </Link>
-          <div className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden">
+          <div className="flex-1 h-1.5 rounded bg-surface-2 overflow-hidden">
             <div
               className="h-full bg-accent"
               style={{ width: `${Math.round((r.completeness ?? 0) * 100)}%` }}
             />
           </div>
-          <span className="mg-type-data text-ink-strong w-10 text-right tabular-nums">
+          <span className="text-11 text-ink-strong w-10 text-right tabular-nums">
             {Math.round((r.completeness ?? 0) * 100)}%
           </span>
         </li>
@@ -1015,24 +1008,24 @@ function AdapterCandidates() {
       {rows.map((r, i) => (
         <li
           key={`${r.netuid}-${i}`}
-          className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-2.5"
+          className="flex items-center gap-3 rounded border border-border bg-card px-4 py-2.5"
         >
           {r.netuid != null ? (
             <Link
               to="/subnets/$netuid"
               params={{ netuid: r.netuid }}
-              className="mg-type-data text-ink-muted hover:text-accent w-12"
+              className="text-11 text-ink-muted hover:text-accent w-12"
             >
               SN{r.netuid}
             </Link>
           ) : (
-            <span className="mg-type-data text-ink-muted w-12">—</span>
+            <span className="text-11 text-ink-muted w-12">—</span>
           )}
-          <span className="flex-1 mg-type-caption-lg text-ink">
+          <span className="flex-1 text-13 text-ink">
             {r.reason ?? <span className="text-ink-muted">No recommendation recorded</span>}
           </span>
           {r.score != null ? (
-            <span className="mg-type-data text-ink-strong tabular-nums" title="Priority score">
+            <span className="text-11 text-ink-strong tabular-nums" title="Priority score">
               {Math.round(r.score)}
             </span>
           ) : null}
@@ -1059,8 +1052,8 @@ function EnrichmentQueue() {
   return (
     <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface-2/60 text-ink-muted">
+        <table className="w-full text-13">
+          <thead className="text-10 bg-surface-2/60 text-ink-muted">
             <tr>
               <th className="px-4 py-2.5 text-left">ID</th>
               <th className="px-4 py-2.5 text-left">Netuid</th>
@@ -1071,8 +1064,8 @@ function EnrichmentQueue() {
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
               <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 mg-type-data text-ink-muted">{r.id}</td>
-                <td className="px-4 py-2.5 mg-type-data">
+                <td className="px-4 py-2.5 text-11 text-ink-muted">{r.id}</td>
+                <td className="px-4 py-2.5 text-11">
                   {r.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"
@@ -1085,8 +1078,8 @@ function EnrichmentQueue() {
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 mg-type-data">{r.priority ?? "—"}</td>
-                <td className="px-4 py-2.5 mg-type-caption text-ink-muted">{r.note ?? "—"}</td>
+                <td className="px-4 py-2.5 text-11">{r.priority ?? "—"}</td>
+                <td className="px-4 py-2.5 text-13 text-ink-muted">{r.note ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -1115,8 +1108,8 @@ function EnrichmentTargets() {
   return (
     <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface-2/60 text-ink-muted">
+        <table className="w-full text-13">
+          <thead className="text-10 bg-surface-2/60 text-ink-muted">
             <tr>
               <th className="px-4 py-2.5 text-left">Netuid</th>
               <th className="px-4 py-2.5 text-left">Subnet</th>
@@ -1129,7 +1122,7 @@ function EnrichmentTargets() {
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
               <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 mg-type-data">
+                <td className="px-4 py-2.5 text-11">
                   {r.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"
@@ -1142,11 +1135,11 @@ function EnrichmentTargets() {
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 mg-type-caption text-ink-strong">{r.name ?? "—"}</td>
-                <td className="px-4 py-2.5 mg-type-data text-ink-muted">{r.targetType ?? "—"}</td>
-                <td className="px-4 py-2.5 mg-type-data text-ink-muted">{r.targetAction ?? "—"}</td>
-                <td className="px-4 py-2.5 mg-type-data">{r.priority ?? "—"}</td>
-                <td className="px-4 py-2.5 mg-type-caption text-ink-muted">{r.note ?? "—"}</td>
+                <td className="px-4 py-2.5 text-13 text-ink-strong">{r.name ?? "—"}</td>
+                <td className="px-4 py-2.5 text-11 text-ink-muted">{r.targetType ?? "—"}</td>
+                <td className="px-4 py-2.5 text-11 text-ink-muted">{r.targetAction ?? "—"}</td>
+                <td className="px-4 py-2.5 text-11">{r.priority ?? "—"}</td>
+                <td className="px-4 py-2.5 text-13 text-ink-muted">{r.note ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -1176,8 +1169,8 @@ function EnrichmentEvidence() {
   return (
     <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface-2/60 text-ink-muted">
+        <table className="w-full text-13">
+          <thead className="text-10 bg-surface-2/60 text-ink-muted">
             <tr>
               <th className="px-4 py-2.5 text-left">Netuid</th>
               <th className="px-4 py-2.5 text-left">Lane</th>
@@ -1190,7 +1183,7 @@ function EnrichmentEvidence() {
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
               <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 mg-type-data">
+                <td className="px-4 py-2.5 text-11">
                   {r.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"
@@ -1203,17 +1196,15 @@ function EnrichmentEvidence() {
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 mg-type-data text-ink-muted">{r.lane ?? "—"}</td>
-                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
-                  {r.evidenceAction ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 mg-type-caption text-ink-muted">
+                <td className="px-4 py-2.5 text-11 text-ink-muted">{r.lane ?? "—"}</td>
+                <td className="px-4 py-2.5 text-11 text-ink-muted">{r.evidenceAction ?? "—"}</td>
+                <td className="px-4 py-2.5 text-13 text-ink-muted">
                   {r.missingKinds.length > 0 ? r.missingKinds.join(", ") : "—"}
                 </td>
-                <td className="px-4 py-2.5 mg-type-caption text-ink-muted">
+                <td className="px-4 py-2.5 text-13 text-ink-muted">
                   {r.directSubmissionKinds.length > 0 ? r.directSubmissionKinds.join(", ") : "—"}
                 </td>
-                <td className="px-4 py-2.5 mg-type-data">{r.priority ?? "—"}</td>
+                <td className="px-4 py-2.5 text-11">{r.priority ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -1256,8 +1247,8 @@ function AttributionCandidates() {
   return (
     <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface-2/60 text-ink-muted">
+        <table className="w-full text-13">
+          <thead className="text-10 bg-surface-2/60 text-ink-muted">
             <tr>
               <th className="px-4 py-2.5 text-left">Netuid</th>
               <th className="px-4 py-2.5 text-left">Address (unverified)</th>
@@ -1269,7 +1260,7 @@ function AttributionCandidates() {
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
               <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 mg-type-data">
+                <td className="px-4 py-2.5 text-11">
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: r.netuid }}
@@ -1280,21 +1271,21 @@ function AttributionCandidates() {
                 </td>
                 {/* WHOLE, not truncated: a reviewer compares it against the
                     page, and a shortened address cannot be compared. */}
-                <td className="px-4 py-2.5 mg-type-data break-all text-ink-muted">{r.ss58}</td>
+                <td className="px-4 py-2.5 text-11 break-all text-ink-muted">{r.ss58}</td>
                 {/* ExternalLink, not a bare anchor: these URLs are UNTRUSTED
                     third-party strings scraped off pages the registry does not
                     control, and it is the component that runs safeExternalUrl
                     over them. A raw href here would render whatever the sweep
                     found. */}
-                <td className="px-4 py-2.5 mg-type-caption break-all">
+                <td className="px-4 py-2.5 text-13 break-all">
                   <ExternalLink href={r.sourceUrl} className="text-ink-muted">
                     {r.sourceUrl}
                   </ExternalLink>
                 </td>
-                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                <td className="px-4 py-2.5 text-11 text-ink-muted">
                   {r.sourceAddressCount ?? "—"}
                 </td>
-                <td className="px-4 py-2.5 mg-type-caption text-ink-muted">
+                <td className="px-4 py-2.5 text-13 text-ink-muted">
                   {r.lastSeen ? r.lastSeen.slice(0, 10) : "—"}
                 </td>
               </tr>
@@ -1302,7 +1293,7 @@ function AttributionCandidates() {
           </tbody>
         </table>
       </div>
-      <p className="border-t border-border px-4 py-2.5 mg-type-caption text-ink-muted">
+      <p className="border-t border-border px-4 py-2.5 text-13 text-ink-muted">
         Showing {rows.length}
         {data.reviewableCount != null ? ` of ${data.reviewableCount} awaiting review` : ""}.
         {data.suppressedCount != null && data.suppressedSourceCount != null
@@ -1336,29 +1327,26 @@ function GapPriorityList() {
       {rows.map((r, i) => (
         <li
           key={`${r.netuid}-${i}`}
-          className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-2.5"
+          className="flex items-center gap-3 rounded border border-border bg-card px-4 py-2.5"
         >
           {r.netuid != null ? (
             <Link
               to="/subnets/$netuid"
               params={{ netuid: r.netuid }}
-              className="mg-type-data text-ink-muted hover:text-accent w-12 shrink-0"
+              className="text-11 text-ink-muted hover:text-accent w-12 shrink-0"
             >
               SN{r.netuid}
             </Link>
           ) : (
-            <span className="mg-type-data text-ink-muted w-12 shrink-0">—</span>
+            <span className="text-11 text-ink-muted w-12 shrink-0">—</span>
           )}
-          <span className="flex-1 mg-type-caption-lg text-ink truncate">{r.name ?? "—"}</span>
+          <span className="flex-1 text-13 text-ink truncate">{r.name ?? "—"}</span>
           <CurationChip level={r.curation_level} />
-          <span className="hidden sm:block max-w-[240px] truncate mg-type-caption text-ink-muted">
+          <span className="hidden sm:block max-w-[240px] truncate text-13 text-ink-muted">
             {r.missing_kinds && r.missing_kinds.length > 0 ? r.missing_kinds.join(", ") : "—"}
           </span>
           {r.priority_score != null ? (
-            <span
-              className="mg-type-data text-ink-strong tabular-nums shrink-0"
-              title="Priority score"
-            >
+            <span className="text-11 text-ink-strong tabular-nums shrink-0" title="Priority score">
               {Math.round(r.priority_score)}
             </span>
           ) : null}

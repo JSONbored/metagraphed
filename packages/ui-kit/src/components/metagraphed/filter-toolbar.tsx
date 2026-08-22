@@ -37,7 +37,7 @@ export function FilterField({
         className,
       )}
     >
-      <span className="mg-type-micro text-ink-muted inline-flex items-center gap-1.5">
+      <span className="text-10 text-ink-muted inline-flex items-center gap-1.5">
         {label}
         {hint ? <span className="opacity-70">{hint}</span> : null}
       </span>
@@ -47,8 +47,8 @@ export function FilterField({
 }
 
 const CONTROL_CLASSES =
-  "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 mg-type-caption " +
-  "text-ink-strong placeholder:text-ink-subtle-text mg-focus-ring " +
+  "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 text-13" +
+  "text-ink-strong placeholder:text-ink-subtle-text mg-focus-ring" +
   "hover:border-ink/25 transition-colors";
 
 export function FilterInput({

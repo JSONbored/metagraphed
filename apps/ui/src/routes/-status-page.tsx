@@ -53,7 +53,7 @@ export function StatusPage() {
         right={
           <Link
             to="/health"
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 mg-type-caption font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
+            className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 text-13 font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
           >
             Ops console
             <ArrowUpRight className="size-3" aria-hidden="true" />
@@ -112,14 +112,14 @@ export function StatusPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               to="/health"
-              className="inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:border-accent/40"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-13 font-medium text-ink-strong hover:border-accent/40"
             >
               Ops console
               <ArrowUpRight className="size-3" aria-hidden="true" />
             </Link>
             <Link
               to="/apis/endpoints"
-              className="inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:border-accent/40"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-13 font-medium text-ink-strong hover:border-accent/40"
             >
               Browse all surfaces
               <ArrowUpRight className="size-3" aria-hidden="true" />
@@ -188,26 +188,26 @@ function RecentIncidents() {
 
   return (
     <div className="space-y-3">
-      <Panel as="div" dense bodyClassName="flex flex-wrap items-center gap-3">
+      <Panel as="div" bodyClassName="flex flex-wrap items-center gap-3">
         <div>
-          <div className="mg-label">
+          <div className="text-10 text-ink-muted">
             {ongoingCount > 0 ? "Active now" : "Downtime events · " + window}
           </div>
           <div
             className={classNames(
-              "font-display text-lg font-semibold tabular-nums",
+              "font-display text-16 font-semibold tabular-nums",
               ongoingCount > 0 ? "text-health-down" : "text-health-ok",
             )}
           >
             {ongoingCount > 0 ? <>{ongoingCount} ongoing</> : "All clear"}
           </div>
         </div>
-        <div className="mg-type-data text-ink-muted">
+        <div className="text-11 text-ink-muted">
           <AnimatedNumber value={summary?.incident_count} /> sustained event
           {summary?.incident_count === 1 ? "" : "s"} · {window} · across {affected}{" "}
           {affected === 1 ? "surface" : "surfaces"}
         </div>
-        <div className="ml-auto inline-flex items-center overflow-hidden rounded-md border border-border bg-card mg-type-label">
+        <div className="ml-auto inline-flex items-center overflow-hidden rounded border border-border bg-card text-11">
           {WINDOWS.map((w) => (
             <button
               key={w}
@@ -217,7 +217,7 @@ function RecentIncidents() {
                 setShowAll(false);
               }}
               className={classNames(
-                "px-2.5 py-1 font-mono uppercase tracking-widest transition-colors",
+                "px-2.5 py-1 font-mono transition-colors",
                 window === w ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink",
               )}
               aria-pressed={window === w}
@@ -251,7 +251,7 @@ function RecentIncidents() {
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}
-              className="block w-full rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-11"
+              className="block w-full rounded border border-border bg-card px-3 py-2 text-13 font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-11"
             >
               {showAll
                 ? "Show fewer"
@@ -276,16 +276,16 @@ function IncidentsFeedSubscribe() {
 
   return (
     <div className="space-y-3">
-      <Panel dense className="space-y-3">
-        {feed?.description ? <p className="text-sm text-ink-muted">{feed.description}</p> : null}
+      <Panel className="space-y-3">
+        {feed?.description ? <p className="text-13 text-ink-muted">{feed.description}</p> : null}
         <div className="space-y-2">
           {INCIDENTS_FEED_FORMATS.map(({ label, suffix }) => {
             const path = `${INCIDENTS_FEED_BASE}${suffix}`;
             const url = `${API_BASE}${path}`;
             return (
               <div key={suffix} className="flex flex-wrap items-center gap-2">
-                <span className="mg-label w-12 shrink-0">{label}</span>
-                <ExternalLink href={url} className="mg-type-data hover:text-ink-strong">
+                <span className="text-10 text-ink-muted w-12 shrink-0">{label}</span>
+                <ExternalLink href={url} className="text-11 hover:text-ink-strong">
                   {path}
                 </ExternalLink>
                 <CopyableCode value={url} label="copy" className="px-1.5 py-0.5" />
@@ -324,7 +324,7 @@ function SubnetIncidentGroup({
       >
         <span
           className={classNames(
-            "inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 mg-type-caption",
+            "inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-13",
             ongoing > 0
               ? "border-health-down/40 bg-health-down/5 text-health-down"
               : "border-border bg-paper text-ink-muted",
@@ -336,11 +336,11 @@ function SubnetIncidentGroup({
           to="/subnets/$netuid"
           params={{ netuid }}
           onClick={(e) => e.stopPropagation()}
-          className="shrink-0 mg-type-data text-ink-strong hover:text-accent-text"
+          className="shrink-0 text-11 text-ink-strong hover:text-accent-text"
         >
           SN{netuid}
         </Link>
-        <span className="mg-type-caption text-ink-muted">
+        <span className="text-13 text-ink-muted">
           {surfaces.length} {surfaces.length === 1 ? "surface" : "surfaces"} · {events}{" "}
           {events === 1 ? "event" : "events"} · {downtime} down
         </span>
@@ -374,7 +374,7 @@ function SurfaceRow({ surface, ongoing }: { surface: GlobalIncidentSurface; ongo
     <li className="flex flex-wrap items-center gap-3 rounded border border-border bg-card px-3 py-2.5">
       <span
         className={classNames(
-          "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption shrink-0",
+          "inline-flex items-center rounded border px-1.5 py-0.5 text-13 shrink-0",
           ongoing
             ? "border-health-down/40 bg-health-down/5 text-health-down"
             : "border-border bg-paper text-ink-muted",
@@ -383,11 +383,11 @@ function SurfaceRow({ surface, ongoing }: { surface: GlobalIncidentSurface; ongo
       >
         {ongoing ? "Ongoing" : "Resolved"}
       </span>
-      <span className="mg-label shrink-0">SN{surface.netuid}</span>
-      <span className="min-w-0 font-mono mg-type-caption text-ink-strong truncate">
+      <span className="text-10 text-ink-muted shrink-0">SN{surface.netuid}</span>
+      <span className="min-w-0 font-mono text-13 text-ink-strong truncate">
         {surface.surface_id}
       </span>
-      <span className="ml-auto flex min-w-0 max-w-full flex-wrap items-center gap-3 mg-label">
+      <span className="ml-auto flex min-w-0 max-w-full flex-wrap items-center gap-3 text-10 text-ink-muted">
         <span className="text-ink-muted tabular-nums">
           {surface.incident_count} {surface.incident_count === 1 ? "event" : "events"}
         </span>

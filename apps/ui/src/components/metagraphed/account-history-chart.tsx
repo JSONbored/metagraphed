@@ -167,20 +167,19 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
     <div className="space-y-4">
       {availableNetuids.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="mg-type-caption text-ink-muted">scope</span>
+          <span className="text-13 text-ink-muted">scope</span>
           {/* #7842: documented exception -- 80% doesn't cleanly snap to either
-              glass tier (mg-glass would add unwanted blur; mg-glass-soft's 60%
+              glass tier (would add unwanted blur; 's 60%
               visibly lightens this segmented-toggle track). Kept as a bare
               fraction rather than a wrong tier. */}
-          {/* eslint-disable-next-line no-restricted-syntax -- #7842: bg-card/80 toggle track has no clean glass tier (mg-glass adds blur, mg-glass-soft lightens it -- see comment above); a pill toggle, not a card shell */}
-          <div className="inline-flex flex-wrap rounded-full border border-border/80 bg-card/80 p-1 shadow-[var(--mg-shadow-pill)]">
+          <div className="inline-flex flex-wrap rounded border border-border/80 bg-card p-1">
             <button
               type="button"
               onClick={() => setScope("all")}
               className={classNames(
-                "rounded-full px-3 py-1.5 mg-type-label uppercase transition-colors",
+                "rounded px-3 py-1.5 text-11 transition-colors",
                 scope === "all"
-                  ? "bg-ink-strong text-paper shadow-[var(--mg-shadow-pill-active)]"
+                  ? "bg-ink-strong text-paper"
                   : "text-ink-muted hover:text-ink-strong",
               )}
             >
@@ -192,9 +191,9 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
                 type="button"
                 onClick={() => setScope(netuid)}
                 className={classNames(
-                  "rounded-full px-3 py-1.5 mg-type-label uppercase transition-colors",
+                  "rounded px-3 py-1.5 text-11 transition-colors",
                   scope === netuid
-                    ? "bg-ink-strong text-paper shadow-[var(--mg-shadow-pill-active)]"
+                    ? "bg-ink-strong text-paper"
                     : "text-ink-muted hover:text-ink-strong",
                 )}
               >
@@ -205,7 +204,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-border/80 mg-glass mg-card-glow">
+      <div className="overflow-hidden rounded border border-border/80">
         <div className="grid gap-4 border-b border-border/70 px-4 py-4 md:grid-cols-3">
           <MetricBlock
             label="Total activity"
@@ -227,7 +226,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
         </div>
 
         <div className="bg-accent-surface px-4 py-4 md:px-6 md:py-6">
-          <div className="rounded-2xl border border-border/70 bg-paper/70 px-4 py-4 md:px-6 md:py-6">
+          <div className="rounded border border-border/70 bg-paper px-4 py-4 md:px-6 md:py-6">
             <Sparkline
               values={values}
               points={points}
@@ -236,7 +235,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
               ariaLabel="Daily account activity history"
               formatValue={eventCountLabel}
             />
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 mg-type-data text-ink-muted">
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-11 text-ink-muted">
               <span>
                 {scope === "all" ? "aggregated across subnets" : `filtered to SN${scope}`}
               </span>
@@ -253,11 +252,9 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
 function MetricBlock({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="min-w-0">
-      <div className="mg-type-caption text-ink-muted">{label}</div>
-      <div className="mt-2 font-display text-xl font-semibold tracking-[-0.02em] text-ink-strong">
-        {value}
-      </div>
-      <div className="mt-1 mg-type-caption text-ink-muted">{hint}</div>
+      <div className="text-13 text-ink-muted">{label}</div>
+      <div className="mt-2 font-display text-28 font-semibold text-ink-strong">{value}</div>
+      <div className="mt-1 text-13 text-ink-muted">{hint}</div>
     </div>
   );
 }

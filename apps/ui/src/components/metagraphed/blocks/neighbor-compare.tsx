@@ -38,13 +38,13 @@ function NeighborCard({
 
   if (!ref) {
     return (
-      <Panel dense tone="muted">
+      <Panel tone="muted">
         <div className="flex items-center justify-between gap-2 text-ink-muted">
           <span className="inline-flex items-center gap-1.5">
             <Icon className="size-3.5" />
-            <span className="mg-type-caption">{label}</span>
+            <span className="text-13">{label}</span>
           </span>
-          <span className="mg-type-data">{direction === "prev" ? "genesis" : "chain tip"}</span>
+          <span className="text-11">{direction === "prev" ? "genesis" : "chain tip"}</span>
         </div>
       </Panel>
     );
@@ -56,23 +56,23 @@ function NeighborCard({
   const evtDelta = evt != null ? evt - (current.event_count ?? 0) : null;
 
   return (
-    <Panel dense interactive>
+    <Panel interactive>
       <Link
         to="/blocks/$ref"
         params={{ ref }}
         className="mg-focus-ring block -m-[var(--mg-panel-pad-dense)] p-[var(--mg-panel-pad-dense)]"
       >
         <div className="flex items-center justify-between gap-2">
-          <span className="mg-type-caption inline-flex items-center gap-1.5 text-ink-muted">
+          <span className="text-13 inline-flex items-center gap-1.5 text-ink-muted">
             {direction === "prev" ? <Icon className="size-3.5" /> : null}
             {label}
             {direction === "next" ? <Icon className="size-3.5" /> : null}
           </span>
-          <span className="font-mono mg-type-caption font-semibold tabular-nums text-ink-strong">
+          <span className="font-mono text-13 font-semibold tabular-nums text-ink-strong">
             #{formatNumber(Number(ref))}
           </span>
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 mg-type-data tabular-nums">
+        <div className="mt-2 grid grid-cols-2 gap-2 text-11 tabular-nums">
           <DeltaChip label="ext" value={ext} delta={extDelta} loading={q.isPending} />
           <DeltaChip label="evt" value={evt} delta={evtDelta} loading={q.isPending} />
         </div>
@@ -100,13 +100,13 @@ function DeltaChip({
         : "text-health-down";
   return (
     <div className="rounded border border-border/60 bg-paper px-2 py-1.5">
-      <div className="mg-type-caption text-ink-subtle">{label}</div>
+      <div className="text-13 text-ink-subtle">{label}</div>
       <div className="mt-0.5 flex items-baseline justify-between gap-2">
         <span className="text-ink-strong">
           {loading ? "…" : value != null ? formatNumber(value) : "—"}
         </span>
         {delta != null && !loading ? (
-          <span className={classNames("mg-type-caption", tone)}>
+          <span className={classNames("text-13", tone)}>
             {delta > 0 ? "+" : ""}
             {formatNumber(delta)}
           </span>

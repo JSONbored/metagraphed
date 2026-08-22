@@ -30,10 +30,8 @@ export function SubnetCategoryLinks() {
 
   return (
     <nav aria-label="Subnet categories" className="mt-8">
-      <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
-        Browse by what they do
-      </h2>
-      <p className="mt-1.5 mg-type-caption leading-relaxed text-ink-muted">
+      <h2 className="font-display text-13 font-semibold text-ink-strong">Browse by what they do</h2>
+      <p className="mt-1.5 text-13 leading-relaxed text-ink-muted">
         Categories are derived from what each subnet publishes about itself, not from a
         hand-maintained list.
       </p>
@@ -43,7 +41,7 @@ export function SubnetCategoryLinks() {
             <Link
               to="/subnets/category/$slug"
               params={{ slug }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 mg-type-caption text-ink-muted hover:border-accent hover:text-accent-text"
+              className="inline-flex items-center gap-1.5 rounded border border-border px-2.5 py-1 text-13 text-ink-muted hover:border-accent hover:text-accent-text"
             >
               {categoryCopy(slug).label}
               <span className="tabular-nums text-ink-muted/70">{count}</span>
