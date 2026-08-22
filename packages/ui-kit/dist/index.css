@@ -4265,7 +4265,7 @@ html[data-density=compact] .bg-card > table td {
   border-collapse: collapse;
 }
 .mg-data-table thead th {
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 1rem;
   border-bottom: 0;
   color: var(--ink-subtle, var(--ink-muted));
   font-family: var(--font-mono);
@@ -4277,9 +4277,11 @@ html[data-density=compact] .bg-card > table td {
   white-space: nowrap;
 }
 .mg-data-table tbody td {
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1rem;
+  overflow: hidden;
   font-size: var(--mg-type-caption-lg);
   line-height: 1.55;
+  text-overflow: ellipsis;
 }
 .mg-data-table tbody tr {
   border-bottom: 1px solid var(--border);
@@ -4390,7 +4392,7 @@ html[data-density=compact] .bg-card > table td {
   position: relative;
   display: block;
   overflow: hidden;
-  width: 5.5rem;
+  width: 3.5rem;
   height: 0.3rem;
   flex: 0 0 auto;
   background: color-mix(in oklab, var(--ink-strong) 10%, transparent);
@@ -4651,4 +4653,9 @@ button:focus-visible > .mg-sort-idle {
 }
 .mg-table-frame .mg-data-table tbody tr:last-child {
   border-bottom: 0;
+}
+.mg-data-table thead th.mg-data-table-controls,
+.mg-data-table tbody td.mg-data-table-controls {
+  padding-left: 0.5rem;
+  padding-right: 0;
 }

@@ -21,7 +21,10 @@ import type { GlobalValidator } from "@/lib/metagraphed/types";
 // stays here is what is genuinely per-column: alignment and numeral style.
 const TH_BASE = "";
 const TD_BASE = "";
-const TD_NUM = "text-right tabular-nums";
+// LEFT, like the reference. Every column there starts at the same edge —
+// mixing right-aligned measures with left-aligned identity is what made our
+// rows read as several tables side by side. Tabular figures still line up.
+const TD_NUM = "tabular-nums";
 
 /**
  * One column of the global-validators table. Both the `<thead>` and every
@@ -85,7 +88,7 @@ const numeric = (
   id,
   label: header,
   header,
-  thClassName: `${TH_BASE} text-right`,
+  thClassName: TH_BASE,
   tdClassName: `${TD_NUM} text-ink`,
   width,
   defaultVisible,
@@ -151,7 +154,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     required: true,
     defaultVisible: true,
     header: "Operator",
-    width: 280,
+    width: 156,
     thClassName: TH_BASE,
     tdClassName: TD_BASE,
     cell: (v, ctx) => {
@@ -160,8 +163,15 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
       // above, so the name is not repeated — the icon + hotkey identify the
       // key, and the indent reads as "still the same operator".
       const continuation = group != null && group.size > 1 && group.index > 0;
+      // WHO, and nothing else. This cell used to hold seven things — a
+      // sponsor badge, an avatar, the name, a bordered ×N pill, the truncated
+      // hotkey and its copy button, plus an indent — which is most of why the
+      // table read as chaotic while every other column held one value. The
+      // hotkey is a column of its own now, the way the reference splits
+      // HOTKEY from NODE ID, and the key count is plain muted text rather than
+      // a pill.
       return (
-        <div className={classNames("flex items-center gap-1.5 min-w-0", continuation && "pl-6")}>
+        <div className={classNames("flex items-center gap-2 min-w-0", continuation && "pl-6")}>
           {v.featured ? <SponsoredBadge /> : null}
           <Link
             to="/validators/$hotkey"
@@ -178,33 +188,45 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
           </Link>
           {group != null && group.size > 1 && group.index === 0 ? (
             <span
-              className="shrink-0 rounded-full border border-border bg-surface px-1.5 mg-type-caption tabular-nums text-ink-muted"
+              className="shrink-0 mg-type-data-sm tabular-nums text-ink-subtle"
               title={`This operator runs ${group.size} validator keys — grouped under its best-ranked one`}
             >
               ×{group.size}
             </span>
           ) : null}
-          {/* Own AddressDisplay outside the operator Link (not inside it) --
-              AddressDisplay's CopyButton doesn't stop click propagation, so
-              nesting it inside the /validators/$hotkey Link above would make a
-              copy click also navigate away. */}
-          <AddressDisplay
-            ss58={v.hotkey}
-            fallback={<>{v.hotkey}</>}
-            compact
-            linkToAccount={false}
-            valueClassName="shrink-0 font-mono mg-type-data-sm text-ink-muted"
-          />
         </div>
       );
     },
+  },
+  {
+    // Its own column, the way the reference gives NODE ID one. AddressDisplay
+    // stays OUTSIDE any row link: its copy button does not stop propagation,
+    // so nesting it in a navigating link made a copy click navigate away.
+    id: "hotkey",
+    label: "Hotkey",
+    defaultVisible: true,
+    header: "Hotkey",
+    width: 196,
+    thClassName: TH_BASE,
+    // nowrap: an ss58 is already middle-elided, so letting it wrap produced a
+    // two-line cell and a ragged 65px row among 47px ones.
+    tdClassName: `${TD_BASE} whitespace-nowrap`,
+    cell: (v) => (
+      <AddressDisplay
+        ss58={v.hotkey}
+        fallback={<>{v.hotkey}</>}
+        compact
+        linkToAccount={false}
+        valueClassName="font-mono text-ink-muted"
+      />
+    ),
   },
   {
     // The sorted measure sits BESIDE the name. The table sorts by total stake
     // by default, and it used to be the sixth column — so the ranking key was
     // four columns away from the thing being ranked, and the eye had to cross
     // take, APY, subnets and nominators to read the order it was already in.
-    ...numeric("totalStake", "Total stake", 116),
+    ...numeric("totalStake", "Total stake", 132),
     help: "The TAO backing the validator: its own stake plus TAO delegated by nominators. Stake sets how much weight the validator’s votes carry.",
     sortKey: "total_stake_tao",
     cell: (v) => taoCompact(v.total_stake_tao),
@@ -220,7 +242,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     // next column's own right-aligned figure — two unrelated percentages
     // touching. The rail starts at the column's left edge, the way the
     // reference draws it, and the gap falls where it belongs.
-    ...numeric("dominance", "Share", 150),
+    ...numeric("dominance", "Share", 148),
     help: "The validator’s share of total network stake. Higher share means more influence over consensus and emission — and more of that influence concentrated in one operator.",
     sortKey: "stake_dominance",
     tdClassName: TD_BASE,
@@ -228,14 +250,14 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     cell: (v) => <ShareCell share={v.stake_dominance} />,
   },
   {
-    ...numeric("take", "Take", 68),
+    ...numeric("take", "Take", 78),
     help: "The validator’s commission: the fraction of delegator rewards it keeps. Lower take means nominators keep more of the emission flow.",
     sortKey: "take",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => formatTakePct(v.take),
   },
   {
-    ...numeric("apy", "Est. APY", 84),
+    ...numeric("apy", "Est. APY", 108),
     help: "Annualised delegator yield estimated from emission ÷ stake, net of take — the latest captured rate scaled to a year, not a forecast. Root stake is TAO-denominated; alpha stake is price-exposed, so a positive nominal APY can still net-lose TAO if alpha falls faster than the yield accrues.",
     sortKey: "apy_estimate",
     // apy_estimate (#2551) is a 0..1 fraction; formatApyPct takes a percentage.
@@ -252,19 +274,21 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
   },
   {
     ...numeric("subnets", "Subnets", 88),
-    help: "How many subnets this hotkey is registered and validating on. A validator may operate broadly across many subnets or concentrate on a few.",
     sortKey: "subnet_count",
     cell: (v) => formatNumber(v.subnet_count),
   },
   {
-    ...numeric("nominators", "Nominators", 104),
-    help: "How many distinct coldkeys currently have stake delegated to this hotkey. Sourced from a lower-frequency chain scan than the other columns, so it can lag briefly — a dash means no count has been captured yet, not zero nominators.",
+    // Opt-in. Ten columns do not fit a 1,088px measure without clipping their
+    // own labels, and this is the one the payload itself describes as coming
+    // from "a lower-frequency chain scan than the other columns, so it can lag
+    // them" — a lagging count is the fairest thing to move one click away.
+    ...numeric("nominators", "Nominators", 116, false),
     sortKey: "nominator_count",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => (v.nominator_count != null ? formatNumber(v.nominator_count) : "—"),
   },
   {
-    ...numeric("delta30d", "30d Δ", 78),
+    ...numeric("delta30d", "30d Δ", 92),
     help: "Change in total stake over the last 30 days, from the validator’s own stake history.",
     tdClassName: `${TD_NUM}`,
     cell: (v) => <Stake30dDeltaCell hotkey={v.hotkey} />,

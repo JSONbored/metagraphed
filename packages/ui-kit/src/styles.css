@@ -5276,7 +5276,10 @@ html[data-density="compact"] .bg-card > table td {
   /* Measured: 10px / 600 / uppercase / +0.5px tracking / 15px line-height, and
      NO rule beneath the header — the reference separates rows only, so a
      header underline plus a first-row hairline read as a double line. */
-  padding: 0.75rem 1.5rem;
+  /* 20px, matching the body. 24px was a stopgap for `?` icons colliding with
+     the next label; the real cause was eight help icons in one header row, and
+     with those thinned the extra gutter only stole width the labels needed. */
+  padding: 0.75rem 1rem;
   border-bottom: 0;
   color: var(--ink-subtle, var(--ink-muted));
   font-family: var(--font-mono);
@@ -5292,9 +5295,14 @@ html[data-density="compact"] .bg-card > table td {
      a sans, ours a mono, which runs wider at the same nominal size. Ours was
      12px on a default line and that is most of why the rows read as cramped
      text rather than as a data table. */
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1rem;
+  /* Clipped. `table-layout: fixed` does not stop content escaping a cell, and
+     the hotkey column's copy button was drawing on top of the next column's
+     figure. A data cell owns its track. */
+  overflow: hidden;
   font-size: var(--mg-type-caption-lg);
   line-height: 1.55;
+  text-overflow: ellipsis;
 }
 .mg-data-table tbody tr {
   border-bottom: 1px solid var(--border);
@@ -5442,7 +5450,11 @@ html[data-density="compact"] .bg-card > table td {
   position: relative;
   display: block;
   overflow: hidden;
-  width: 5.5rem;
+  /* 3.5rem. At 5.5 the rail plus its percentage exceeded the column and the
+     number clipped to "19.0%…" — a share cell whose share you cannot read. The
+     rail is still fixed-width, which is the property that makes rows
+     comparable; it is just sized to leave its own value room. */
+  width: 3.5rem;
   height: 0.3rem;
   flex: 0 0 auto;
   background: color-mix(in oklab, var(--ink-strong) 10%, transparent);
@@ -5765,4 +5777,13 @@ button:focus-visible > .mg-sort-idle {
 /* Inside a frame the table's own edges are redundant — the frame owns them. */
 .mg-table-frame .mg-data-table tbody tr:last-child {
   border-bottom: 0;
+}
+
+/* The leading control cell holds icon buttons, not text. The body's 16px text
+   gutter on both sides left the two controls without room and clipped them;
+   they carry their own tap padding already. */
+.mg-data-table thead th.mg-data-table-controls,
+.mg-data-table tbody td.mg-data-table-controls {
+  padding-left: 0.5rem;
+  padding-right: 0;
 }

@@ -442,13 +442,13 @@ function ValidatorsDirectory({
                 // a constant, not by its contents. The floor still exists: it
                 // is what makes the table scroll on a narrow screen instead of
                 // crushing nine columns into 375px.
-                "mg-data-table w-full min-w-[960px] table-fixed text-left",
+                "mg-data-table w-full min-w-[1040px] table-fixed text-left",
                 compact && "[&_td]:!py-1 [&_th]:!py-1",
               )}
             >
               {/* Pins the column tracks so they cannot be re-derived from
                   whichever virtualized rows happen to be mounted. */}
-              <TableColGroup widths={[64, ...visibleColumns.map((c) => c.width)]} />
+              <TableColGroup widths={[68, ...visibleColumns.map((c) => c.width)]} />
               <thead className="mg-table-head-pinned">
                 <tr>
                   {/* ONE leading control cell, not two. Watch and compare each
@@ -456,7 +456,7 @@ function ValidatorsDirectory({
                       near-empty icon cells before the first piece of data —
                       the reference leads with a single control and gets to the
                       name immediately. */}
-                  <th className="px-3 py-2" aria-label="Row actions" />
+                  <th className="mg-data-table-controls" aria-label="Row actions" />
                   {visibleColumns.map((col) => (
                     <th
                       key={col.header}
@@ -498,7 +498,7 @@ function ValidatorsDirectory({
                       ref={rowVirtualizer.measureElement}
                       className="hover:bg-surface/40"
                     >
-                      <td className="px-3 py-2 align-middle">
+                      <td className="mg-data-table-controls align-middle">
                         <span className="flex items-center gap-0.5">
                           <button
                             type="button"

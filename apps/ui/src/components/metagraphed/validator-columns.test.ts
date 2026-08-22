@@ -74,6 +74,10 @@ describe("VALIDATOR_COLUMNS", () => {
     const headers = VALIDATOR_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.header);
     expect(headers).toEqual([
       "Operator",
+      // The hotkey is its own column now. It used to sit inside the operator
+      // cell alongside an avatar, a name, a ×N pill and a copy button — seven
+      // things in the one cell where every other column held a single value.
+      "Hotkey",
       // The sorted measure sits beside the name it ranks, rather than four
       // columns away from it.
       "Total stake",
@@ -84,7 +88,6 @@ describe("VALIDATOR_COLUMNS", () => {
       "Take",
       "Est. APY",
       "Subnets",
-      "Nominators",
       "30d Δ",
     ]);
   });
@@ -93,7 +96,18 @@ describe("VALIDATOR_COLUMNS", () => {
     // Each of these is a field GET /api/v1/validators has always returned.
     // Off by default, so the directory reads the same until asked otherwise.
     const optIn = VALIDATOR_COLUMNS.filter((c) => !c.defaultVisible).map((c) => c.header);
-    expect(optIn).toEqual(["Emission", "Avg trust", "Realized 7d", "Root stake", "Alpha stake"]);
+    expect(optIn).toEqual([
+      // Nominators joined these when the hotkey became its own column: ten
+      // columns clipped their own labels at a 1,088px measure, and this is the
+      // one the payload itself describes as coming from "a lower-frequency
+      // chain scan than the other columns, so it can lag them".
+      "Nominators",
+      "Emission",
+      "Avg trust",
+      "Realized 7d",
+      "Root stake",
+      "Alpha stake",
+    ]);
   });
 
   it("gives every column a stable id and a width for the colgroup", () => {
