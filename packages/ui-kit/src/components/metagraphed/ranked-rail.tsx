@@ -76,11 +76,12 @@ export function RankedRailList({
               {String(index + 1).padStart(2, "0")}
             </span>
             <span className="mg-ranked-rail-value">{item.valueLabel}</span>
-            {item.media ? (
-              <span className="mg-ranked-rail-media" aria-hidden="true">
-                {item.media}
-              </span>
-            ) : null}
+            {/* ALWAYS rendered, even when empty. The row is a fixed grid, so
+                a conditionally-omitted cell slid every following column left
+                and broke the shared left edge the rails depend on. */}
+            <span className="mg-ranked-rail-media" aria-hidden="true">
+              {item.media}
+            </span>
             <span className="mg-ranked-rail-body">
               <span className="mg-ranked-rail-label">{item.label}</span>
               {item.meta ? (

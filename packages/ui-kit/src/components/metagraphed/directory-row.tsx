@@ -55,25 +55,28 @@ export function DirectoryRow({
         </div>
       ) : null}
 
+      {/* Two lines, not three. The facts share the title's line rather than
+          claiming one of their own: at 129 rows a third line cost ~2,700px of
+          page for information that reads perfectly well beside the name. */}
       <div className="mg-directory-row-body">
         <div className="mg-directory-row-head">
           <span className="mg-directory-row-title">{title}</span>
           {identifier ? (
             <span className="mg-directory-row-id">{identifier}</span>
           ) : null}
+
+          {shownFacts.length > 0 ? (
+            <ul className="mg-directory-row-facts">
+              {shownFacts.map((fact, index) => (
+                // Facts are caller-ordered and often not otherwise keyable
+                // (a health verdict, a count, a date); position is their identity.
+                <li key={index}>{fact}</li>
+              ))}
+            </ul>
+          ) : null}
         </div>
 
         {purpose ? <p className="mg-directory-row-purpose">{purpose}</p> : null}
-
-        {shownFacts.length > 0 ? (
-          <ul className="mg-directory-row-facts">
-            {shownFacts.map((fact, index) => (
-              // Facts are caller-ordered and often not otherwise keyable
-              // (a health verdict, a count, a date); position is their identity.
-              <li key={index}>{fact}</li>
-            ))}
-          </ul>
-        ) : null}
       </div>
 
       {value !== undefined && value !== null ? (

@@ -3159,7 +3159,7 @@ function RankedRailList({
         const body = /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
           /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-rank", "aria-hidden": "true", children: String(index + 1).padStart(2, "0") }),
           /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-value", children: item.valueLabel }),
-          item.media ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-media", "aria-hidden": "true", children: item.media }) : null,
+          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-media", "aria-hidden": "true", children: item.media }),
           /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-ranked-rail-body", children: [
             /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-label", children: item.label }),
             item.meta ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-meta", children: item.meta }) : null
@@ -3209,14 +3209,14 @@ function DirectoryRow({
     /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-directory-row-body", children: [
       /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-directory-row-head", children: [
         /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-directory-row-title", children: title }),
-        identifier ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-directory-row-id", children: identifier }) : null
+        identifier ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-directory-row-id", children: identifier }) : null,
+        shownFacts.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("ul", { className: "mg-directory-row-facts", children: shownFacts.map((fact, index) => (
+          // Facts are caller-ordered and often not otherwise keyable
+          // (a health verdict, a count, a date); position is their identity.
+          /* @__PURE__ */ jsxRuntime.jsx("li", { children: fact }, index)
+        )) }) : null
       ] }),
-      purpose ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-directory-row-purpose", children: purpose }) : null,
-      shownFacts.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("ul", { className: "mg-directory-row-facts", children: shownFacts.map((fact, index) => (
-        // Facts are caller-ordered and often not otherwise keyable
-        // (a health verdict, a count, a date); position is their identity.
-        /* @__PURE__ */ jsxRuntime.jsx("li", { children: fact }, index)
-      )) }) : null
+      purpose ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-directory-row-purpose", children: purpose }) : null
     ] }),
     value !== void 0 && value !== null ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-directory-row-value", children: [
       /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-directory-row-measure", children: value }),

@@ -3702,10 +3702,17 @@ html[data-density="compact"] .bg-card > table td {
   width: 100%;
   align-items: center;
   gap: var(--mg-space-sm);
-  grid-template-columns: 1.75rem auto auto minmax(0, 1fr) minmax(0, 1.1fr) auto;
+  /* FIXED tracks, not `auto`. With auto columns the value, logo and name each
+     sized to their own content, so every row started its rail at a different
+     x — and a ranked bar chart whose bars do not share a left edge cannot be
+     compared by length, which is the only thing it is for. Pinning them also
+     lines the names up. */
+  grid-template-columns:
+    1.75rem 5.25rem 1.5rem minmax(0, 30rem)
+    minmax(0, 1fr) 0.9rem;
   border: 0;
   background: transparent;
-  padding: 0.7rem var(--mg-space-xs);
+  padding: 0.5rem var(--mg-space-xs);
   color: inherit;
   cursor: pointer;
   text-align: left;
@@ -3721,6 +3728,7 @@ html[data-density="compact"] .bg-card > table td {
   font-variant-numeric: tabular-nums;
 }
 .mg-ranked-rail-value {
+  text-align: right;
   color: var(--ink-strong);
   font-family: var(--font-mono);
   font-size: var(--mg-type-caption-lg);
@@ -3729,16 +3737,37 @@ html[data-density="compact"] .bg-card > table td {
 }
 .mg-ranked-rail-media {
   display: flex;
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 1.5rem;
+  height: 1.5rem;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
+/* Name and supporting facts share a line rather than stacking. At 149 rows a
+   second line cost ~2,400px of page for a phrase that reads perfectly well
+   beside the name. */
 .mg-ranked-rail-body {
-  display: grid;
+  display: flex;
   min-width: 0;
-  gap: 0.1rem;
+  /* One line. The facts truncate rather than wrapping, because a wrapped
+     second line reintroduces the row height this layout exists to remove. */
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0 var(--mg-space-sm);
+  overflow: hidden;
+}
+.mg-ranked-rail-body > .mg-ranked-rail-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Shrinks only when it must. `flex: 0 0 auto` kept the name intact and let
+   the facts truncate — right on desktop, but at 375px a long operator name
+   ("Chutes / SN64 Primary Validator") then pushed straight out of the
+   viewport. It keeps priority over the facts, and yields before the edge. */
+.mg-ranked-rail-body > .mg-ranked-rail-label {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .mg-ranked-rail-label {
   overflow: hidden;
@@ -3819,7 +3848,7 @@ html[data-density="compact"] .bg-card > table td {
    compares nothing, and the value is already there in full. */
 @media (max-width: 47.99rem) {
   .mg-ranked-rail-row {
-    grid-template-columns: 1.5rem auto minmax(0, 1fr) auto;
+    grid-template-columns: 1.5rem 4.5rem minmax(0, 1fr) 0.9rem;
   }
   .mg-ranked-rail-media,
   .mg-ranked-rail-track {
@@ -3894,19 +3923,22 @@ html[data-density="compact"] .bg-card > table td {
  * so the eye lands in the same place on every entry, and one quiet fact line
  * beneath instead of five columns each inventing their own unit.
  * ============================================================ */
+/* Measured, then tightened: 129 rows at 105px each made /subnets a 15,887px
+   page — 86% of it this list. A directory row is a listing, not a card, and
+   the three-line version spent most of its height on leading. */
 .mg-directory-row {
   display: grid;
   align-items: start;
   gap: 0 var(--mg-space-lg);
   grid-template-columns: auto minmax(0, 1fr) auto;
-  padding: var(--mg-space-md) var(--mg-space-xs);
+  padding: var(--mg-space-sm) var(--mg-space-xs);
   border-bottom: 1px solid var(--border);
   transition: background-color 140ms ease-out;
 }
 .mg-directory-row-media {
   display: flex;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 1.85rem;
+  height: 1.85rem;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -3919,6 +3951,12 @@ html[data-density="compact"] .bg-card > table td {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 var(--mg-space-xs);
+}
+/* The facts sit at the far end of the title line, so the eye reads
+   name → state without a line break between them. */
+.mg-directory-row-head > .mg-directory-row-facts {
+  margin: 0 0 0 auto;
+  padding-left: var(--mg-space-md);
 }
 .mg-directory-row-title {
   color: var(--ink-strong);
@@ -3934,13 +3972,16 @@ html[data-density="compact"] .bg-card > table td {
   letter-spacing: var(--mg-tracking-label);
   text-transform: uppercase;
 }
+/* One line, not two. The sentence is the row's job; a second wrapped line
+   doubles the page for the tail of a sentence the reader has already got the
+   gist of, and the full text stays on the subnet's own page. */
 .mg-directory-row-purpose {
   display: -webkit-box;
   overflow: hidden;
-  max-width: 52ch;
-  margin: 0.25rem 0 0;
+  max-width: 62ch;
+  margin: 0.15rem 0 0;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   color: var(--ink-muted);
   font-size: var(--mg-type-caption);
   line-height: 1.45;
@@ -3950,7 +3991,7 @@ html[data-density="compact"] .bg-card > table td {
 .mg-directory-row-facts {
   display: flex;
   flex-wrap: wrap;
-  margin: 0.4rem 0 0;
+  margin: 0.25rem 0 0;
   padding: 0;
   gap: 0 var(--mg-space-sm);
   list-style: none;

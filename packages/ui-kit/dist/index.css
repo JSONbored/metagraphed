@@ -2957,10 +2957,10 @@ html[data-density=compact] .bg-card > table td {
   width: 100%;
   align-items: center;
   gap: var(--mg-space-sm);
-  grid-template-columns: 1.75rem auto auto minmax(0, 1fr) minmax(0, 1.1fr) auto;
+  grid-template-columns: 1.75rem 5.25rem 1.5rem minmax(0, 30rem) minmax(0, 1fr) 0.9rem;
   border: 0;
   background: transparent;
-  padding: 0.7rem var(--mg-space-xs);
+  padding: 0.5rem var(--mg-space-xs);
   color: inherit;
   cursor: pointer;
   text-align: left;
@@ -2976,6 +2976,7 @@ html[data-density=compact] .bg-card > table td {
   font-variant-numeric: tabular-nums;
 }
 .mg-ranked-rail-value {
+  text-align: right;
   color: var(--ink-strong);
   font-family: var(--font-mono);
   font-size: var(--mg-type-caption-lg);
@@ -2984,16 +2985,28 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-ranked-rail-media {
   display: flex;
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 1.5rem;
+  height: 1.5rem;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
 .mg-ranked-rail-body {
-  display: grid;
+  display: flex;
   min-width: 0;
-  gap: 0.1rem;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0 var(--mg-space-sm);
+  overflow: hidden;
+}
+.mg-ranked-rail-body > .mg-ranked-rail-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-ranked-rail-body > .mg-ranked-rail-label {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .mg-ranked-rail-label {
   overflow: hidden;
@@ -3070,7 +3083,7 @@ html[data-density=compact] .bg-card > table td {
 }
 @media (max-width: 47.99rem) {
   .mg-ranked-rail-row {
-    grid-template-columns: 1.5rem auto minmax(0, 1fr) auto;
+    grid-template-columns: 1.5rem 4.5rem minmax(0, 1fr) 0.9rem;
   }
   .mg-ranked-rail-media,
   .mg-ranked-rail-track {
@@ -3131,14 +3144,14 @@ html[data-density=compact] .bg-card > table td {
   align-items: start;
   gap: 0 var(--mg-space-lg);
   grid-template-columns: auto minmax(0, 1fr) auto;
-  padding: var(--mg-space-md) var(--mg-space-xs);
+  padding: var(--mg-space-sm) var(--mg-space-xs);
   border-bottom: 1px solid var(--border);
   transition: background-color 140ms ease-out;
 }
 .mg-directory-row-media {
   display: flex;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 1.85rem;
+  height: 1.85rem;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -3151,6 +3164,10 @@ html[data-density=compact] .bg-card > table td {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 var(--mg-space-xs);
+}
+.mg-directory-row-head > .mg-directory-row-facts {
+  margin: 0 0 0 auto;
+  padding-left: var(--mg-space-md);
 }
 .mg-directory-row-title {
   color: var(--ink-strong);
@@ -3169,10 +3186,10 @@ html[data-density=compact] .bg-card > table td {
 .mg-directory-row-purpose {
   display: -webkit-box;
   overflow: hidden;
-  max-width: 52ch;
-  margin: 0.25rem 0 0;
+  max-width: 62ch;
+  margin: 0.15rem 0 0;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   color: var(--ink-muted);
   font-size: var(--mg-type-caption);
   line-height: 1.45;
@@ -3180,7 +3197,7 @@ html[data-density=compact] .bg-card > table td {
 .mg-directory-row-facts {
   display: flex;
   flex-wrap: wrap;
-  margin: 0.4rem 0 0;
+  margin: 0.25rem 0 0;
   padding: 0;
   gap: 0 var(--mg-space-sm);
   list-style: none;
