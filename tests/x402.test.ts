@@ -16,11 +16,13 @@ import { describe, test } from "vitest";
 import {
   X402_ATOMIC_UNITS_PER_COST_WEIGHT,
   X402_DEFAULT_NETWORK,
+  X402_DEFAULT_SOLANA_NETWORK,
   X402_NETWORKS,
   X402_PAID_FAMILIES,
   X402_SIGNATURE_HEADER,
   X402_VERSION,
   isEvmAddress,
+  isSolanaAddress,
   paymentRequiredResponse,
   paymentRequirements,
   resolveX402Config,
@@ -31,8 +33,17 @@ import {
 import type { Row } from "./row-type.ts";
 
 const PAY_TO = "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f";
+const PAY_TO_SOL = "EQvVxQ9WShSUjSUj8rod2PFRcQfZ4Ymejx6hJLFMsx87";
+/** EVM only, which is what most of these assertions are about. */
 const env = (over: Row = {}) =>
   ({ X402_PAY_TO: PAY_TO, ...over }) as unknown as Env;
+/** Both legs, as production is configured. */
+const bothEnv = (over: Row = {}) =>
+  ({
+    X402_PAY_TO: PAY_TO,
+    X402_PAY_TO_SOLANA: PAY_TO_SOL,
+    ...over,
+  }) as unknown as Env;
 
 const req = (url = "https://api.metagraph.sh/api/v1/ask", headers: Row = {}) =>
   new Request(url, { headers: headers as Record<string, string> });
@@ -77,9 +88,10 @@ describe("isEvmAddress", () => {
 describe("resolveX402Config", () => {
   test("defaults to Base Sepolia, so a first settlement bug costs test funds", () => {
     const config = resolveX402Config(env())!;
-    assert.equal(config.network, X402_DEFAULT_NETWORK);
-    assert.equal(config.network, "eip155:84532");
-    assert.equal(config.asset, X402_NETWORKS["eip155:84532"]!.asset);
+    assert.equal(config.legs.length, 1);
+    assert.equal(config.legs[0]!.network, X402_DEFAULT_NETWORK);
+    assert.equal(config.legs[0]!.network, "eip155:84532");
+    assert.equal(config.legs[0]!.asset, X402_NETWORKS["eip155:84532"]!.asset);
   });
 
   test("is null on ANY incomplete or unrecognised input", () => {
@@ -103,6 +115,107 @@ describe("resolveX402Config", () => {
     for (const network of ["constructor", "toString", "__proto__"]) {
       assert.equal(resolveX402Config(env({ X402_NETWORK: network })), null);
     }
+  });
+});
+
+describe("isSolanaAddress", () => {
+  test("accepts a base58 address", () => {
+    assert.equal(isSolanaAddress(PAY_TO_SOL), true);
+  });
+
+  test("rejects the base58 lookalike characters", () => {
+    // 0, O, I and l are excluded from the alphabet precisely because they are
+    // the transcription errors people actually make.
+    for (const bad of ["0" + PAY_TO_SOL.slice(1), PAY_TO_SOL.slice(1) + "O"]) {
+      assert.equal(isSolanaAddress(bad), false, bad);
+    }
+  });
+
+  test("rejects anything that is not one", () => {
+    for (const value of [undefined, null, 42, "", "short", PAY_TO]) {
+      assert.equal(isSolanaAddress(value), false, String(value));
+    }
+  });
+});
+
+describe("the two legs do not contaminate each other", () => {
+  test("an EVM address on a Solana network yields NO leg", () => {
+    // Both halves well-formed, the pair meaningless: a 0x address cannot
+    // receive on Solana. Without the kind check this would quote a recipient
+    // that cannot exist on the chain being quoted.
+    const config = resolveX402Config(env({ X402_PAY_TO_SOLANA: PAY_TO }));
+    assert.equal(config!.legs.length, 1);
+    assert.equal(config!.legs[0]!.network, X402_DEFAULT_NETWORK);
+  });
+
+  test("a Solana address on an EVM network yields NO leg", () => {
+    assert.equal(
+      resolveX402Config({ X402_PAY_TO: PAY_TO_SOL } as unknown as Env),
+      null,
+    );
+  });
+
+  test("a broken EVM leg does not take the Solana leg down", () => {
+    const config = resolveX402Config(
+      bothEnv({ X402_PAY_TO: "not-an-address" }),
+    )!;
+    assert.equal(config.legs.length, 1);
+    assert.equal(config.legs[0]!.payTo, PAY_TO_SOL);
+  });
+
+  test("null only when NO leg resolves", () => {
+    assert.equal(resolveX402Config({} as unknown as Env), null);
+  });
+
+  test("a leg pointed at the OTHER chain's network yields no leg", () => {
+    // The kind check, distinct from the address check above: here the address
+    // is right for its leg and the NETWORK is wrong. Naming an EVM network as
+    // the Solana one would otherwise quote a base58 recipient on Base.
+    assert.equal(
+      resolveX402Config(bothEnv({ X402_NETWORK_SOLANA: "eip155:84532" }))!.legs
+        .length,
+      1,
+    );
+    assert.equal(
+      resolveX402Config({
+        X402_PAY_TO: PAY_TO,
+        X402_NETWORK: X402_DEFAULT_SOLANA_NETWORK,
+      } as unknown as Env),
+      null,
+    );
+  });
+});
+
+describe("the Solana leg's quote", () => {
+  const config = resolveX402Config(bothEnv())!;
+
+  test("carries the sponsoring feePayer, which SVM exact requires", () => {
+    // Without it the payer cannot build the transaction: SVM exact is
+    // fee-sponsored so the payer needs no SOL, and the sponsor's address is
+    // part of the quote.
+    const svm = paymentRequirements(config, "10000").find((r) =>
+      r.network.startsWith("solana:"),
+    )!;
+    assert.ok(svm.extra.feePayer, "feePayer must be quoted");
+    assert.equal(svm.asset, X402_NETWORKS[X402_DEFAULT_SOLANA_NETWORK]!.asset);
+  });
+
+  test("quotes the SAME price as the EVM leg", () => {
+    // USDC is six decimals on both chains -- the mint was checked, not
+    // assumed -- so one atomic amount is one price. Two legs quoting
+    // different money for the same call would be a bug nobody notices.
+    const amounts = new Set(
+      paymentRequirements(config, "10000").map((r) => r.amount),
+    );
+    assert.deepEqual([...amounts], ["10000"]);
+  });
+
+  test("the EVM leg keeps its EIP-712 domain, not the SVM extra", () => {
+    const evm = paymentRequirements(config, "10000").find((r) =>
+      r.network.startsWith("eip155:"),
+    )!;
+    assert.equal(evm.extra.name, "USDC");
+    assert.equal(evm.extra.feePayer, undefined);
   });
 });
 
@@ -356,8 +469,114 @@ describe("the DEPLOYED configuration", () => {
     // produce a config that can quote a price.
     const config = resolveX402Config(vars as unknown as Env);
     assert.ok(config, "wrangler.jsonc must produce a usable x402 config");
-    assert.equal(config!.payTo, vars.X402_PAY_TO);
-    assert.equal(config!.network, vars.X402_NETWORK);
+    const byNetwork = new Map(config!.legs.map((l) => [l.network, l]));
+    assert.equal(
+      byNetwork.get(String(vars.X402_NETWORK))?.payTo,
+      vars.X402_PAY_TO,
+    );
+    assert.equal(
+      byNetwork.get(X402_DEFAULT_SOLANA_NETWORK)?.payTo,
+      vars.X402_PAY_TO_SOLANA,
+      "the Solana leg is the one that takes real money -- it must resolve",
+    );
+  });
+});
+
+describe("verifyAndSettle picks the leg the payer chose", () => {
+  const both = resolveX402Config(bothEnv())!;
+  const offered = paymentRequirements(both, "10000");
+
+  /** Captures what the facilitator was asked to verify. */
+  function capturing(seen: Row[]) {
+    return (async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith("/verify")) {
+        seen.push(JSON.parse(String(init?.body)) as Row);
+        return new Response(JSON.stringify({ isValid: true }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }) as unknown as typeof fetch;
+  }
+
+  test("verifies a Solana payment against the SOLANA requirements", async () => {
+    // The bug this exists for: verifying a Solana payment against Base
+    // requirements compares an amount to the wrong asset on the wrong chain,
+    // and the facilitator would be answering a question nobody asked.
+    const seen: Row[] = [];
+    const verdict = await verifyAndSettle(
+      both,
+      signed({ network: X402_DEFAULT_SOLANA_NETWORK }),
+      offered,
+      capturing(seen),
+    );
+    assert.equal(verdict.outcome, "settled");
+    const asked = seen[0]!.paymentRequirements as Row;
+    assert.equal(asked.network, X402_DEFAULT_SOLANA_NETWORK);
+    assert.equal(asked.payTo, PAY_TO_SOL);
+  });
+
+  test("verifies an EVM payment against the EVM requirements", async () => {
+    const seen: Row[] = [];
+    await verifyAndSettle(
+      both,
+      signed({ network: X402_DEFAULT_NETWORK }),
+      offered,
+      capturing(seen),
+    );
+    assert.equal((seen[0]!.paymentRequirements as Row).payTo, PAY_TO);
+  });
+
+  test("a network we do not accept is rejected, not verified", async () => {
+    const seen: Row[] = [];
+    const verdict = await verifyAndSettle(
+      both,
+      signed({ network: "eip155:1" }),
+      offered,
+      capturing(seen),
+    );
+    assert.equal(verdict.outcome, "rejected");
+    assert.equal(seen.length, 0, "the facilitator must not be asked");
+  });
+
+  test("a payload that is not an object at all is rejected", async () => {
+    // `btoa("\"hello\"")` decodes to a valid JSON string, so it clears the
+    // malformed check and still has no network to match.
+    for (const payload of ["a string", 42, null]) {
+      const verdict = await verifyAndSettle(
+        both,
+        signed(payload),
+        offered,
+        capturing([]),
+      );
+      assert.equal(verdict.outcome, "rejected", JSON.stringify(payload));
+    }
+  });
+
+  test("a payload naming no network is rejected when several are offered", async () => {
+    // There is no safe guess here. Picking one would verify a signature
+    // against requirements the payer never agreed to.
+    const verdict = await verifyAndSettle(
+      both,
+      signed({}),
+      offered,
+      capturing([]),
+    );
+    assert.equal(verdict.outcome, "rejected");
+  });
+
+  test("but a SINGLE offered leg is used as-is, with no network field", async () => {
+    // Backward compatibility, and stated: before there were two legs a client
+    // never had to send `network`. Matching strictly would turn a
+    // previously-working client into a rejection for a field it never sent.
+    const seen: Row[] = [];
+    const one = resolveX402Config(env())!;
+    const verdict = await verifyAndSettle(
+      one,
+      signed({}),
+      paymentRequirements(one, "10000"),
+      capturing(seen),
+    );
+    assert.equal(verdict.outcome, "settled");
+    assert.equal((seen[0]!.paymentRequirements as Row).network, "eip155:84532");
   });
 });
 
@@ -366,13 +585,19 @@ describe("x402Manifest", () => {
     assert.equal(x402Manifest(null, "https://api.metagraph.sh"), null);
   });
 
-  test("names the address, network and what a payment buys", () => {
+  test("names every network's own address, and what a payment buys", () => {
+    // One entry per leg. A reader deciding whether they can pay us needs the
+    // address in THEIR chain's format; a single payTo answers that for one
+    // audience and misleads the other.
     const manifest = x402Manifest(
-      resolveX402Config(env()),
+      resolveX402Config(bothEnv()),
       "https://api.metagraph.sh",
     )!;
-    assert.equal(manifest.payTo, PAY_TO);
-    assert.equal(manifest.network, X402_DEFAULT_NETWORK);
+    const accepts = manifest.accepts as Row[];
+    const byNetwork = new Map(accepts.map((a) => [String(a.network), a]));
+    assert.equal(byNetwork.get(X402_DEFAULT_NETWORK)?.payTo, PAY_TO);
+    assert.equal(byNetwork.get(X402_DEFAULT_SOLANA_NETWORK)?.payTo, PAY_TO_SOL);
+    assert.equal(accepts.length, 2);
     assert.equal(
       (manifest.resources as Row[]).length,
       X402_PAID_FAMILIES.length,
