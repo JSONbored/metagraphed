@@ -77,11 +77,7 @@ export function TimeAgo({
   }, [mounted, at, hasSharedTicker]);
   const text = !at ? fallback : mounted ? formatRelative(at) : "";
   return (
-    <span
-      className={className}
-      title={timeAgoAbsoluteTitle(at)}
-      suppressHydrationWarning
-    >
+    <span className={className} suppressHydrationWarning>
       {text}
     </span>
   );

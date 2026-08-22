@@ -3,8 +3,8 @@ import { COARSE_POINTER_MEDIA_QUERY } from "@/lib/metagraphed/coarse-pointer";
 
 /**
  * The hook itself needs a React environment; these tests pin the contract the
- * hook and EntityHoverCard share so the mega-menu can't silently diverge from
- * the touch-safe media query (#5337).
+ * hook and its consumers share so nothing silently diverges from the
+ * touch-safe media query (#5337).
  */
 describe("useCoarsePointer contract (#5337)", () => {
   it("shares the coarse-pointer media query constant", () => {

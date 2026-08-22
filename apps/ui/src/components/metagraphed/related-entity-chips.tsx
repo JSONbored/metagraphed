@@ -93,7 +93,6 @@ export function BlockNeighborNav({
         <span
           className="inline-flex items-center gap-0.5 rounded border border-border/60 bg-surface-2 px-2 py-1 text-ink-muted"
           aria-disabled="true"
-          title="Genesis — no previous block"
         >
           <span aria-hidden>←</span>
           <span>—</span>
@@ -117,7 +116,6 @@ export function BlockNeighborNav({
         <span
           className="inline-flex items-center gap-0.5 rounded border border-border/60 bg-surface-2 px-2 py-1 text-ink-muted"
           aria-disabled="true"
-          title="At chain tip"
         >
           <span>—</span>
           <span aria-hidden>→</span>

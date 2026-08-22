@@ -10,7 +10,7 @@ import { classNames, durationLabel, formatNumber, formatRelative } from "@/lib/m
 import { formatFreshness } from "@/lib/metagraphed/freshness";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { Tooltip, TooltipContent, TooltipTrigger, InfoTooltip, TimeAgo } from "@jsonbored/ui-kit";
+import { Definition } from "@jsonbored/ui-kit";
 import { useTimeRange, RANGE_LABEL } from "./time-range-context";
 import type { FlatSurfaceIncident, HealthTrendSurface } from "@/lib/metagraphed/types";
 
@@ -161,7 +161,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
             <span className="tabular-nums">{formatNumber(window.samples)} samples</span>
           ) : null}
           <span className="tabular-nums">{surfaces.length} surfaces</span>
-          <InfoTooltip label="Per-surface uptime ratio over the selected window, worst first. The bar fills to the uptime %; the dashed mark is the 95% SLA line. p50/p95 are latency percentiles for that surface. Reconstructed downtime windows (if any) are listed below as incident markers." />
+          <Definition term="Uptime timeline" />
         </div>
       </div>
 
@@ -263,39 +263,20 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
               const dur = durationLabel(i.started_at ?? undefined, i.ended_at ?? undefined);
               const aria = `${sev} incident, started ${startLabel}, ${i.ended_at ? `ended ${endLabel}` : "ongoing"}, duration ${dur}${i.surface_id ? `, ${i.surface_id}` : ""}`;
               return (
-                <Tooltip key={`${i.surface_id}-${i.started_at ?? idx}`} delayDuration={150}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={aria}
-                      className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-1.5 py-0.5 text-10 text-ink-muted transition-colors hover:text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    >
-                      <span
-                        aria-hidden
-                        className="inline-block size-1.5 rounded-full mg-dot"
-                        style={{ background: tint }}
-                      />
-                      <span className="tabular-nums">{dur}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-13">
-                    <div className="text-13 text-primary-foreground/80">
-                      {sev} · {dur}
-                    </div>
-                    <div className="mt-1 break-all">{i.surface_id}</div>
-                    <div className="mt-1 text-10 text-primary-foreground/70">
-                      started <TimeAgo at={i.started_at} />
-                      <br />
-                      {i.ended_at ? (
-                        <>
-                          ended <TimeAgo at={i.ended_at} />
-                        </>
-                      ) : (
-                        "still open"
-                      )}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <button
+                  key={`${i.surface_id}-${i.started_at ?? idx}`}
+                  title={i.surface_id}
+                  type="button"
+                  aria-label={aria}
+                  className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-1.5 py-0.5 text-10 text-ink-muted transition-colors hover:text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <span
+                    aria-hidden
+                    className="inline-block size-1.5 rounded-full mg-dot"
+                    style={{ background: tint }}
+                  />
+                  <span className="tabular-nums">{dur}</span>
+                </button>
               );
             })}
           </div>

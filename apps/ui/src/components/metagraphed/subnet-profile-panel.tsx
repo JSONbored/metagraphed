@@ -11,16 +11,13 @@ import {
 } from "@/lib/metagraphed/queries";
 import { formatNumber, subnetAgeDays, formatSubnetAge } from "@/lib/metagraphed/format";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   SectionAnchor,
   KeyChip,
   CurationChip,
   TimeAgo,
-  InfoTooltip,
   Donut,
   DonutLegend,
+  Definition,
 } from "@jsonbored/ui-kit";
 import type { Endpoint } from "@/lib/metagraphed/types";
 
@@ -56,36 +53,17 @@ function Stat({ field, trailing }: { field: Field; trailing?: React.ReactNode })
   const hasValue = field.value != null && Number.isFinite(field.value);
   return (
     <div className="min-w-0 px-3 py-2">
-      <Tooltip delayDuration={200}>
-        <TooltipTrigger asChild>
-          <div
-            tabIndex={0}
-            className="text-13 text-ink-muted truncate cursor-help focus:outline-none"
-          >
-            {field.label}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs text-13 leading-relaxed">
-          {field.hint}
-        </TooltipContent>
-      </Tooltip>
+      <Definition term={field.label} sentence={field.hint}>
+        <div className="text-13 text-ink-muted truncate focus:outline-none">{field.label}</div>
+      </Definition>
       <div className="mt-1 flex items-baseline gap-1 min-w-0">
-        <Tooltip delayDuration={200}>
-          <TooltipTrigger asChild>
-            <span
-              className="min-w-0 truncate font-display font-semibold tabular-nums text-13 text-ink-strong"
-              tabIndex={hasValue ? 0 : -1}
-            >
-              {short}
-            </span>
-          </TooltipTrigger>
-          {hasValue ? (
-            <TooltipContent side="top" className="text-11">
-              {full}
-              {field.unit ? ` ${field.unit}` : ""}
-            </TooltipContent>
-          ) : null}
-        </Tooltip>
+        <span
+          title={`${full}${field.unit ? ` ${field.unit}` : ""}`}
+          className="min-w-0 truncate font-display font-semibold tabular-nums text-13 text-ink-strong"
+          tabIndex={hasValue ? 0 : -1}
+        >
+          {short}
+        </span>
         {field.unit && hasValue ? (
           <span className="shrink-0 text-13 text-ink-muted">{field.unit}</span>
         ) : null}
@@ -263,7 +241,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 text-13 text-ink-muted">
                       Pool composition
-                      <InfoTooltip label="Alpha In ÷ (Alpha In + Alpha Out) from the latest on-chain AMM reserves snapshot, taken from /api/v1/economics. Tile shows a `stale` chip when the snapshot is older than the refresh budget; numbers still render from the last known values." />
+                      <Definition term="Alpha reserve ratio" />
                     </div>
                     <div className="mt-1 space-y-1 text-10 text-ink-muted">
                       <div className="flex items-center gap-1.5">
@@ -308,7 +286,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 text-13 text-ink-muted">
                       Endpoint topology
-                      <InfoTooltip label="Distribution of tracked public endpoints by kind. Only verified surfaces from /api/v1/subnets/{netuid}/endpoints are counted — candidate (unverified) leads are excluded. `unknown` slots indicate the last probe could not classify the endpoint; if the snapshot is stale, values still render from the last known probe." />
+                      <Definition term="Endpoint kinds" />
                     </div>
                     <DonutLegend segments={topology} />
                   </div>
@@ -320,7 +298,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
             <div className="p-4">
               <div className="flex items-center gap-1.5 text-13 text-ink-muted">
                 Top providers
-                <InfoTooltip label="Ranked by count of verified surfaces this provider operates for this subnet, joined from /api/v1/providers. Candidate (unverified) leads are excluded. If provider attribution is stale, ranking still renders from the last published snapshot." />
+                <Definition term="Provider ranking" />
               </div>
               {providerLockup.length > 0 ? (
                 <ul className="mt-2 space-y-1.5">
@@ -445,19 +423,14 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
 
 function Meta({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <Tooltip delayDuration={200}>
-      <TooltipTrigger asChild>
-        <div tabIndex={0} className="px-3 py-2 min-w-0 focus:outline-none focus-visible:bg-surface">
-          <div className="text-13 text-ink-muted truncate">{label}</div>
-          <div className="mt-1 font-display text-13 font-semibold tabular-nums text-ink-strong truncate">
-            {value}
-          </div>
+    <Definition term={label} sentence={hint}>
+      <div className="px-3 py-2 min-w-0 focus:outline-none focus-visible:bg-surface">
+        <div className="text-13 text-ink-muted truncate">{label}</div>
+        <div className="mt-1 font-display text-13 font-semibold tabular-nums text-ink-strong truncate">
+          {value}
         </div>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs text-13 leading-relaxed">
-        {hint}
-      </TooltipContent>
-    </Tooltip>
+      </div>
+    </Definition>
   );
 }
 

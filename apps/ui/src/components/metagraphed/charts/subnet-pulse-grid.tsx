@@ -1,7 +1,7 @@
+import { ChartTooltip, useEntityMark } from "@jsonbored/ui-kit";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { subnetsQuery, subnetHealthMapQuery } from "@/lib/metagraphed/queries";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 
 const HEALTH_TONE: Record<string, string> = {
@@ -47,36 +47,51 @@ export function SubnetPulseGrid({ columns = 16 }: { columns?: number }) {
 
   return (
     <div
-      className="grid gap-1"
+      className="relative grid gap-1"
       style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
       role="list"
       aria-label={`${subs.length} active subnets, tinted by health`}
+      data-marks
     >
+      <ChartTooltip top={0} />
       {subs.map((s, i) => {
         const health = (healthMap[s.netuid]?.health ?? s.health ?? "unknown") as string;
-        const tone = HEALTH_TONE[health] ?? HEALTH_TONE.unknown;
-        return (
-          <Tooltip key={s.netuid} delayDuration={120}>
-            <TooltipTrigger asChild>
-              <Link
-                to="/subnets/$netuid"
-                params={{ netuid: s.netuid }}
-                className={classNames("mg-pulse-cell", tone)}
-                style={{ animationDelay: `${Math.min(i * 8, 600)}ms` }}
-                aria-label={`Subnet ${s.netuid}${s.name ? ` · ${s.name}` : ""} · ${health}`}
-                role="listitem"
-              />
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-13">
-              <div className="text-13 text-ink-muted">netuid {s.netuid}</div>
-              <div className="font-display text-13 font-semibold text-ink-strong">
-                {s.name ?? `Subnet ${s.netuid}`}
-              </div>
-              <div className="mt-0.5 text-13 text-ink-muted">health · {health}</div>
-            </TooltipContent>
-          </Tooltip>
-        );
+        return <PulseCell key={s.netuid} subnet={s} health={health} index={i} />;
       })}
     </div>
+  );
+}
+
+function PulseCell({
+  subnet: s,
+  health,
+  index,
+}: {
+  subnet: { netuid: number; name?: string | null };
+  health: string;
+  index: number;
+}) {
+  const tone = HEALTH_TONE[health] ?? HEALTH_TONE.unknown;
+  const mark = useEntityMark(`subnet:${s.netuid}`, {
+    source: "subnet-pulse",
+    label: `Subnet ${s.netuid}${s.name ? ` · ${s.name}` : ""} · ${health}`,
+    data: {
+      title: s.name ?? `Subnet ${s.netuid}`,
+      total: `SN${s.netuid}`,
+      rows: [{ key: "health", label: "health", value: health }],
+    },
+  });
+  return (
+    <Link
+      to="/subnets/$netuid"
+      params={{ netuid: s.netuid }}
+      {...mark}
+      role="listitem"
+      className={classNames(
+        "mg-pulse-cell data-[active=true]:ring-2 data-[active=true]:ring-accent",
+        tone,
+      )}
+      style={{ animationDelay: `${Math.min(index * 8, 600)}ms` }}
+    />
   );
 }

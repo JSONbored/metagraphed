@@ -1,3 +1,4 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useQuery } from "@tanstack/react-query";
 import { subnetDeregistrationHistoryQuery } from "@/lib/metagraphed/queries";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -114,8 +115,11 @@ export function SubnetDeregistrationHistoryPanel({ netuid }: { netuid: number })
 
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div title={hint}>
-      <div className="text-11 text-ink-muted">{label}</div>
+    <div>
+      <div className="flex items-center gap-1 text-11 text-ink-muted">
+        {label}
+        <Definition term={label} sentence={hint} />
+      </div>
       <div className="text-11 tabular-nums text-ink">{value}</div>
     </div>
   );

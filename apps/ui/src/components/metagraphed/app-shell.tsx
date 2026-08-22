@@ -12,7 +12,8 @@ import {
   GITHUB_REPO,
 } from "@/lib/metagraphed/config";
 import {
-  TooltipProvider,
+  DefinitionsProvider,
+  ActiveEntityProvider,
   ExternalLink,
   safeExternalUrl,
   DiscordIcon,
@@ -29,6 +30,7 @@ import { freshnessQuery } from "@/lib/metagraphed/queries";
 import { CommandPalette } from "./command-palette";
 import { NavOmnibox } from "./nav-omnibox";
 import { ApiSourceProvider } from "@/lib/metagraphed/api-source-context";
+import { DEFINITIONS } from "@/lib/metagraphed/definitions";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
 import { useHydrated } from "@/hooks/use-hydrated";
 
@@ -165,141 +167,145 @@ export function AppShell({
   }, []);
 
   return (
-    <TooltipProvider delayDuration={150}>
-      <ApiSourceProvider>
-        <div className="min-h-dvh text-ink flex flex-col">
-          {/* Skip link: first focusable element, visible only on keyboard focus. */}
-          <a
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[var(--mg-z-skip-link)] focus:rounded focus:bg-ink-strong focus:px-4 focus:py-2 focus:text-paper"
-          >
-            Skip to main content
-          </a>
+    <DefinitionsProvider definitions={DEFINITIONS}>
+      <ActiveEntityProvider>
+        <ApiSourceProvider>
+          <div className="min-h-dvh text-ink flex flex-col">
+            {/* Skip link: first focusable element, visible only on keyboard focus. */}
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[var(--mg-z-skip-link)] focus:rounded focus:bg-ink-strong focus:px-4 focus:py-2 focus:text-paper"
+            >
+              Skip to main content
+            </a>
 
-          <header className="mg-header sticky top-0 z-[var(--mg-z-nav)]">
-            <div className="max-w-shell-max mx-auto px-4 md:px-8 flex h-nav items-center gap-4">
-              <button
-                ref={hamburgerRef}
-                type="button"
-                className="lg:hidden rounded text-ink hover:bg-layer min-h-11 min-w-11 inline-flex items-center justify-center"
-                onClick={() => setMobileOpen(true)}
-                aria-label="Open menu"
-              >
-                <Menu className="size-4" aria-hidden="true" />
-              </button>
-              <Brand />
-              <nav aria-label="Primary" className="hidden lg:flex items-center gap-1">
-                {PRIMARY_NAV.map((item) => {
-                  const active = isActive(pathname, item.to);
-                  return (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      aria-current={active ? "page" : undefined}
-                      className={classNames(
-                        "inline-flex items-center rounded px-3 h-8 text-13 transition-colors",
-                        active
-                          ? "text-ink-strong bg-layer"
-                          : "text-ink-muted hover:text-ink-strong hover:bg-layer",
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-              <div className="flex-1 min-w-0 flex justify-end items-center gap-2">
-                <NavOmnibox
-                  onOpenPalette={() =>
-                    openPaletteFrom(
-                      document.activeElement instanceof HTMLElement ? document.activeElement : null,
-                    )
-                  }
-                />
-                {/* Below md the omnibox is hidden, which would leave the palette
+            <header className="mg-header sticky top-0 z-[var(--mg-z-nav)]">
+              <div className="max-w-shell-max mx-auto px-4 md:px-8 flex h-nav items-center gap-4">
+                <button
+                  ref={hamburgerRef}
+                  type="button"
+                  className="lg:hidden rounded text-ink hover:bg-layer min-h-11 min-w-11 inline-flex items-center justify-center"
+                  onClick={() => setMobileOpen(true)}
+                  aria-label="Open menu"
+                >
+                  <Menu className="size-4" aria-hidden="true" />
+                </button>
+                <Brand />
+                <nav aria-label="Primary" className="hidden lg:flex items-center gap-1">
+                  {PRIMARY_NAV.map((item) => {
+                    const active = isActive(pathname, item.to);
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        aria-current={active ? "page" : undefined}
+                        className={classNames(
+                          "inline-flex items-center rounded px-3 h-8 text-13 transition-colors",
+                          active
+                            ? "text-ink-strong bg-layer"
+                            : "text-ink-muted hover:text-ink-strong hover:bg-layer",
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+                <div className="flex-1 min-w-0 flex justify-end items-center gap-2">
+                  <NavOmnibox
+                    onOpenPalette={() =>
+                      openPaletteFrom(
+                        document.activeElement instanceof HTMLElement
+                          ? document.activeElement
+                          : null,
+                      )
+                    }
+                  />
+                  {/* Below md the omnibox is hidden, which would leave the palette
                     reachable only via keyboard shortcuts -- none of which exist
                     on a touch device. */}
-                <button
-                  type="button"
-                  onClick={(e) => openPaletteFrom(e.currentTarget)}
-                  aria-label="Open search"
-                  title="Search"
-                  className="md:hidden inline-flex items-center justify-center rounded border border-border min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-rule-strong transition-colors"
-                >
-                  <Search className="size-4" aria-hidden="true" />
-                </button>
-                <div className="hidden md:inline-flex">
-                  <SettingsPopover />
+                  <button
+                    type="button"
+                    onClick={(e) => openPaletteFrom(e.currentTarget)}
+                    aria-label="Open search"
+                    title="Search"
+                    className="md:hidden inline-flex items-center justify-center rounded border border-border min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-rule-strong transition-colors"
+                  >
+                    <Search className="size-4" aria-hidden="true" />
+                  </button>
+                  <div className="hidden md:inline-flex">
+                    <SettingsPopover />
+                  </div>
                 </div>
               </div>
-            </div>
-          </header>
+            </header>
 
-          {/* Mobile navigation sheet: the shared Sheet (Radix Dialog) primitive
+            {/* Mobile navigation sheet: the shared Sheet (Radix Dialog) primitive
               gives it a focus trap, Escape-to-close and role="dialog". */}
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetContent
-              side="left"
-              className="flex w-72 max-w-[82vw] flex-col gap-6 border-r border-border bg-canvas p-4"
-              onCloseAutoFocus={(event) => {
-                const el = hamburgerRef.current;
-                if (el && el.isConnected) {
-                  event.preventDefault();
-                  el.focus();
-                }
-              }}
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetContent
+                side="left"
+                className="flex w-72 max-w-[82vw] flex-col gap-6 border-r border-border bg-canvas p-4"
+                onCloseAutoFocus={(event) => {
+                  const el = hamburgerRef.current;
+                  if (el && el.isConnected) {
+                    event.preventDefault();
+                    el.focus();
+                  }
+                }}
+              >
+                <SheetTitle className="sr-only">Site navigation</SheetTitle>
+                <Brand onNavigate={() => setMobileOpen(false)} />
+                <nav aria-label="Primary" className="flex flex-col">
+                  {PRIMARY_NAV.map((item) => {
+                    const active = isActive(pathname, item.to);
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMobileOpen(false)}
+                        aria-current={active ? "page" : undefined}
+                        className={classNames(
+                          "flex items-center min-h-11 px-2 rounded text-16 transition-colors",
+                          active ? "text-ink-strong bg-layer" : "text-ink hover:bg-layer",
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                  <Link
+                    to="/settings"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center min-h-11 px-2 rounded text-16 text-ink hover:bg-layer transition-colors"
+                  >
+                    Settings
+                  </Link>
+                </nav>
+                <div className="mt-auto border-t border-border pt-4">
+                  <SettingsPanel />
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <main
+              id="main-content"
+              key={pathname}
+              className={classNames(
+                "flex-1 w-full",
+                fullBleedMain ? "" : "px-4 md:px-10 max-w-shell-max mx-auto pb-12 pt-10 md:pt-12",
+              )}
             >
-              <SheetTitle className="sr-only">Site navigation</SheetTitle>
-              <Brand onNavigate={() => setMobileOpen(false)} />
-              <nav aria-label="Primary" className="flex flex-col">
-                {PRIMARY_NAV.map((item) => {
-                  const active = isActive(pathname, item.to);
-                  return (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      onClick={() => setMobileOpen(false)}
-                      aria-current={active ? "page" : undefined}
-                      className={classNames(
-                        "flex items-center min-h-11 px-2 rounded text-16 transition-colors",
-                        active ? "text-ink-strong bg-layer" : "text-ink hover:bg-layer",
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-                <Link
-                  to="/settings"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center min-h-11 px-2 rounded text-16 text-ink hover:bg-layer transition-colors"
-                >
-                  Settings
-                </Link>
-              </nav>
-              <div className="mt-auto border-t border-border pt-4">
-                <SettingsPanel />
-              </div>
-            </SheetContent>
-          </Sheet>
+              {children}
+            </main>
 
-          <main
-            id="main-content"
-            key={pathname}
-            className={classNames(
-              "flex-1 w-full",
-              fullBleedMain ? "" : "px-4 md:px-10 max-w-shell-max mx-auto pb-12 pt-10 md:pt-12",
-            )}
-          >
-            {children}
-          </main>
-
-          <SiteFooter />
-          <CommandPalette open={paletteOpen} onOpenChange={handlePaletteOpenChange} />
-          <BackToTop />
-        </div>
-      </ApiSourceProvider>
-    </TooltipProvider>
+            <SiteFooter />
+            <CommandPalette open={paletteOpen} onOpenChange={handlePaletteOpenChange} />
+            <BackToTop />
+          </div>
+        </ApiSourceProvider>
+      </ActiveEntityProvider>
+    </DefinitionsProvider>
   );
 }
 

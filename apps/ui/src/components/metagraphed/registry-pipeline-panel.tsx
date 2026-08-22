@@ -1,3 +1,4 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { registryPipelineQuery, fixtureQuery } from "@/lib/metagraphed/queries";
@@ -190,8 +191,11 @@ function Stage({
   hint: string;
 }) {
   return (
-    <div title={reachable ? hint : `${hint} (This stage could not be read — unknown, not zero.)`}>
-      <div className="text-11 text-ink-muted">{label}</div>
+    <div>
+      <div className="flex items-center gap-1 text-11 text-ink-muted">
+        {label}
+        <Definition term={label} sentence={hint} />
+      </div>
       <div className="text-11 tabular-nums text-ink">{reachable ? value : "—"}</div>
       {!reachable ? <div className="text-11 text-ink-muted">unreadable</div> : null}
     </div>

@@ -75,9 +75,6 @@ export function AddressLabelEditor({
           <button
             type="button"
             aria-label={existing ? "Edit your private label" : "Label this address as yours"}
-            title={
-              existing ? "Edit your private label" : "Label this address — visible only to you"
-            }
             className="ph-no-capture inline-flex size-6 shrink-0 items-center justify-center rounded text-ink-muted transition-colors hover:text-ink-strong hover:bg-surface"
           >
             {existing ? (
@@ -141,7 +138,6 @@ export function AddressLabelEditor({
               <button
                 type="button"
                 aria-label="Remove private label"
-                title="Remove private label"
                 onClick={onRemove}
                 className="inline-flex items-center justify-center rounded border border-border bg-card p-1.5 text-ink-muted transition-colors hover:text-health-down hover:border-health-down/40"
               >

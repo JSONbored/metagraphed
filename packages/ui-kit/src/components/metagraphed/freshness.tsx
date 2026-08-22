@@ -1,6 +1,6 @@
+import { Definition } from "./interaction/definition";
 import { useEffect, useState } from "react";
 import { classNames, formatRelative, isStaleFreshness } from "@/lib/format";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 /**
  * Which cadence a freshness stamp came from: a live chain read vs the daily
  * rollup snapshot. Re-homed here from the deleted freshness-badge.tsx (#6377) --
@@ -50,7 +50,6 @@ export function FreshnessIndicator({
   return (
     <span
       className={classNames("inline-flex items-center gap-1.5", className)}
-      title={title}
       suppressHydrationWarning
     >
       <span className={classNames("size-1.5 rounded-full mg-dot", cls)} />
@@ -90,7 +89,10 @@ export function DailyRollupFreshness({
   return (
     <span className={classNames("inline-flex items-center gap-1", className)}>
       <FreshnessIndicator at={at} dotOnly />
-      <InfoTooltip label={tierFreshnessLabel("daily", at)} />
+      <Definition
+        term="Daily tier"
+        sentence={tierFreshnessLabel("daily", at)}
+      />
     </span>
   );
 }
@@ -113,7 +115,10 @@ export function RealtimeFreshness({
   return (
     <span className={classNames("inline-flex items-center gap-1", className)}>
       <FreshnessIndicator at={at} dotOnly />
-      <InfoTooltip label={tierFreshnessLabel("realtime", at)} />
+      <Definition
+        term="Live chain read"
+        sentence={tierFreshnessLabel("realtime", at)}
+      />
     </span>
   );
 }

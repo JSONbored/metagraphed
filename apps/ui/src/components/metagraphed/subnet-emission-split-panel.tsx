@@ -1,3 +1,4 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useQuery } from "@tanstack/react-query";
 import { subnetEmissionSplitHistoryQuery } from "@/lib/metagraphed/queries";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -110,8 +111,11 @@ function Share({
 
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div title={hint}>
-      <div className="text-13 text-muted-foreground">{label}</div>
+    <div>
+      <div className="flex items-center gap-1 text-13 text-muted-foreground">
+        {label}
+        <Definition term={label} sentence={hint} />
+      </div>
       <div className="font-mono text-16 tabular-nums">{value}</div>
     </div>
   );

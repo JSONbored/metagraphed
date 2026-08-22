@@ -42,11 +42,6 @@ export {
   DialogDescription,
 } from "@/components/ui/dialog";
 export {
-  HoverCard,
-  HoverCardTrigger,
-  HoverCardContent,
-} from "@/components/ui/hover-card";
-export {
   Popover,
   PopoverTrigger,
   PopoverContent,
@@ -69,12 +64,6 @@ export {
   type SegmentedToggleOption,
 } from "@/components/ui/segmented-toggle";
 export { Toaster } from "@/components/ui/sonner";
-export {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "@/components/ui/tooltip";
 
 export { Skeleton } from "@/components/metagraphed/skeleton";
 export { AccentBand } from "@/components/metagraphed/accent-band";
@@ -114,8 +103,8 @@ export {
   RealtimeFreshness,
   tierFreshnessLabel,
 } from "@/components/metagraphed/freshness";
-export { HoverPreview } from "@/components/metagraphed/hover-preview";
-export { InfoTooltip } from "@/components/metagraphed/info-tooltip";
+export * from "./components/metagraphed/interaction";
+export { markAriaLabel } from "./components/metagraphed/charts/chart-aria";
 export { Kbd } from "@/components/metagraphed/kbd";
 export { KeyChip } from "@/components/metagraphed/key-chip";
 export { ListShell, LoadMore } from "@/components/metagraphed/list-shell";

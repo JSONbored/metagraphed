@@ -3,7 +3,6 @@ import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { UserRound } from "lucide-react";
 import { CopyButton, Chip } from "@jsonbored/ui-kit";
-import { EntityHoverCard } from "./entity-hover-card";
 import { AddressLabelEditor } from "./address-label-editor";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { nametagIndexQuery } from "@/lib/metagraphed/queries";
@@ -127,31 +126,26 @@ export function AddressDisplay({
 
   return (
     <span className="inline-flex items-center gap-1 min-w-0">
-      <EntityHoverCard kind="account" ss58={ss58}>
-        {linkToAccount ? (
-          <Link
-            to="/accounts/$ss58"
-            params={{ ss58 }}
-            title={ss58}
-            preload={preload}
-            className={textClassName}
-          >
-            {text}
-          </Link>
-        ) : (
-          <span className={textClassName} title={ss58}>
-            {text}
-          </span>
-        )}
-      </EntityHoverCard>
+      {linkToAccount ? (
+        <Link
+          to="/accounts/$ss58"
+          params={{ ss58 }}
+          title={ss58}
+          preload={preload}
+          className={textClassName}
+        >
+          {text}
+        </Link>
+      ) : (
+        <span className={textClassName} title={ss58}>
+          {text}
+        </span>
+      )}
       {isPrivate ? (
         // #8484 requirement 4: visibly distinct from the curated-nametag
         // category chip below, so a private note is never mistaken for a
         // globally-verified claim.
-        <span
-          className="inline-flex shrink-0 items-center text-accent"
-          title="Your private label — visible only to you"
-        >
+        <span className="inline-flex shrink-0 items-center text-accent">
           <UserRound className="size-3" aria-hidden="true" />
         </span>
       ) : null}

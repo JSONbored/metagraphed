@@ -50,7 +50,8 @@ describe("colour-only status indicators expose their label", () => {
   }
 
   it("matches ui-kit HealthDot, the established pattern for this visual", () => {
-    // HealthDot is the reference the issue cites: role + label + title together.
+    // HealthDot is the reference the issue cites: role + aria-label (the prose
+    // `title` went with #11606 -- identifiers are the only titles now).
     const healthDot = read("../../../../../packages/ui-kit/src/components/metagraphed/chips.tsx");
     expect(healthDot).toContain('role="img"');
 
@@ -58,15 +59,15 @@ describe("colour-only status indicators expose their label", () => {
       read("../../routes/-providers-index-page.tsx"),
       'aria-label="Official provider"',
     );
-    expect(el).toContain("title=");
+    expect(el).toContain('role="img"');
   });
 
   it("the blocked-URL state has no other AT-reachable carrier, so the role matters", () => {
-    // Both other "Blocked unsafe URL" strings are TooltipContent (hover/focus
-    // only) and this span is deliberately not focusable, unlike its safeUrl <a>
-    // sibling — so the aria-label is the only thing a screen reader can reach.
+    // The span is deliberately not focusable, unlike its safeUrl ExternalLink
+    // sibling — so the aria-label is the only thing a screen reader can reach
+    // (there is no tooltip any more, #11606).
     const source = read("./resource-explorer.tsx");
-    expect(source).toContain('{safeUrl ? "Open in new tab" : "Blocked unsafe URL"}');
+    expect(source).toContain('ariaLabel="Open endpoint"');
     const el = elementCarrying(source, 'aria-label="Blocked unsafe endpoint URL"');
     expect(el).not.toContain("tabIndex");
     expect(el).toContain('role="img"');

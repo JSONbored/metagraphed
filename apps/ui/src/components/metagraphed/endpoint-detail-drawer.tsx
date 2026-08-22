@@ -118,7 +118,6 @@ export function EndpointDetailDrawer({
                 <CopyButton value={endpoint.url} label="URL" />
                 <CopyLinkButton
                   hash={`endpoint-${endpoint.id}`}
-                  tooltip="Copy deep link to this endpoint"
                   label="Copy deep link to endpoint"
                 />
               </>
@@ -281,7 +280,6 @@ export function EndpointDetailDrawer({
                           </span>
                           <CopyLinkButton
                             hash={`incident-${inc.id}`}
-                            tooltip="Copy link to this incident"
                             label="Copy link to incident"
                           />
                         </span>

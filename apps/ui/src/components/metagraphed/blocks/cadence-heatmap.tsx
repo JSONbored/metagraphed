@@ -1,7 +1,7 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Panel } from "@/components/metagraphed/primitives";
-import { InfoTooltip } from "@jsonbored/ui-kit";
 import { classNames, formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import type { Block } from "@/lib/metagraphed/types";
 
@@ -44,7 +44,7 @@ export function CadenceHeatmap({ rows }: { rows: Block[] }) {
       title={
         <span className="inline-flex items-center gap-1.5">
           Cadence heatmap
-          <InfoTooltip label="Seconds between consecutive blocks on this page. Subtensor targets ~12s; deeper mint = faster, amber = slow, red = stalled slot." />
+          <Definition term="Cadence heatmap" />
         </span>
       }
       action={

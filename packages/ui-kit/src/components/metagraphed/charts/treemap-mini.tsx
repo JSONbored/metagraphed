@@ -158,7 +158,6 @@ export function TreemapMini({
       {tiles.map((t) => (
         <div
           key={t.label}
-          title={`${t.label} · ${formatValue(t.value)} · ${(t.share * 100).toFixed(1)}%`}
           className="absolute overflow-hidden p-1"
           style={{
             left: `${t.x}%`,

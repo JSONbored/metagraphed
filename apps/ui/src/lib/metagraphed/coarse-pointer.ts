@@ -1,10 +1,10 @@
 /**
- * Touch-primary (coarse-pointer) media query for hover-card gating (#5337).
+ * Touch-primary (coarse-pointer) media query for hover-only affordances (#5337).
  *
- * Devices that match this query cannot reliably "hover" — Radix HoverCard
- * would stick open on first tap and require a second tap to navigate. The app
- * convention is to skip the hover chrome entirely and let the underlying link
- * remain the single-tap target (see EntityHoverCard).
+ * Devices that match this query cannot reliably "hover": a hover-revealed
+ * detail would stick open on first tap and require a second tap to navigate.
+ * The app convention is to skip the hover chrome entirely and let the
+ * underlying link remain the single-tap target (the stake-flow sankey does).
  *
  * @see https://github.com/JSONbored/metagraphed/issues/5337
  */

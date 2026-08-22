@@ -433,7 +433,6 @@ export function BrandIcon({
         role={decorative ? undefined : "img"}
         aria-hidden={ariaHidden}
         aria-label={ariaLabel}
-        title={decorative ? undefined : labelText || undefined}
       >
         <span
           className="font-display font-semibold tabular-nums leading-none"
@@ -453,7 +452,6 @@ export function BrandIcon({
       role={decorative ? undefined : "img"}
       aria-hidden={ariaHidden}
       aria-label={ariaLabel}
-      title={decorative ? undefined : labelText || undefined}
     >
       {!loaded ? (
         <span

@@ -6,7 +6,7 @@ import {
 } from "./coarse-pointer";
 
 describe("coarse-pointer media helpers (#5337)", () => {
-  it("exports the touch-primary media query EntityHoverCard relies on", () => {
+  it("exports the touch-primary media query hover-only consumers rely on", () => {
     expect(COARSE_POINTER_MEDIA_QUERY).toBe("(hover: none), (pointer: coarse)");
   });
 

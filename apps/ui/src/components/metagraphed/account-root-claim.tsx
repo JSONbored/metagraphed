@@ -40,9 +40,7 @@ export function AccountRootClaim({ ss58 }: { ss58: string }) {
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         <div>
           <div className="text-11 text-ink-muted">claim type</div>
-          <div className="text-11 text-ink" title="Read from SubtensorModule.RootClaimType.">
-            {c.claim_kind}
-          </div>
+          <div className="text-11 text-ink">{c.claim_kind}</div>
         </div>
         <div>
           <div className="text-11 text-ink-muted">hotkeys reached</div>

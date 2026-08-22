@@ -145,10 +145,7 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.surfaceId} className="border-b border-border last:border-b-0">
-                  <td
-                    className="max-w-[260px] truncate px-3 py-1.5 text-ink-strong"
-                    title={r.surfaceId}
-                  >
+                  <td className="max-w-[260px] truncate px-3 py-1.5 text-ink-strong">
                     {shortSurfaceId(r.surfaceId, netuid)}
                   </td>
                   <td

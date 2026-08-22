@@ -48,7 +48,6 @@ export function SegmentedToggle<T extends string>({
               role="tab"
               aria-selected={active}
               aria-label={optionAriaLabel ?? label}
-              title={title ?? label}
               onClick={() => onChange(v)}
               className={classNames(
                 "inline-flex items-center gap-1.5 rounded px-2 py-1 text-13 font-medium transition-colors min-h-8",

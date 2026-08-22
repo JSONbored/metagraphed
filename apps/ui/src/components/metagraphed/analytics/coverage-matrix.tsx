@@ -1,9 +1,9 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { reviewProfileCompletenessQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { InfoTooltip } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { Subnet } from "@/lib/metagraphed/types";
 
@@ -122,7 +122,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
               {o.label}
             </button>
           ))}
-          <InfoTooltip label="Joins /review/profile-completeness with /subnets. Each cell is colored by whether the required public-interface kind is present, missing, or only a candidate." />
+          <Definition term="Coverage matrix" />
         </div>
       </header>
 
@@ -238,11 +238,12 @@ function CompletenessChip({ value, netuid }: { value: number; netuid: number }) 
         : "border-health-down/40 bg-health-down/10 text-health-down";
   return (
     <span
-      title={`SN${netuid}: ${pct}% of required public-interface kinds present`}
       className={classNames(
         "ml-auto inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-10 font-semibold tabular-nums md:hidden",
         tone,
       )}
+
+      aria-label={`SN${netuid} completeness ${pct}%`}
     >
       {pct}%
     </span>

@@ -98,7 +98,6 @@ export function ShareButton({
         type="button"
         onClick={onClick}
         aria-label="Copy link with current filters, sort, and page"
-        title="Copy link with current filters, sort, and page"
         className={classNames(
           connected
             ? "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"

@@ -122,10 +122,7 @@ export function PageMasthead({
             // from the client and throwing a hydration mismatch). A <div>
             // renders identically for the plain-text case this line-clamp
             // styling targets, while staying valid for the richer one.
-            <div
-              className="mt-1 max-w-3xl text-13 text-ink-muted leading-snug line-clamp-2"
-              title={typeof description === "string" ? description : undefined}
-            >
+            <div className="mt-1 max-w-3xl text-13 text-ink-muted leading-snug line-clamp-2">
               {description}
             </div>
           ) : null}

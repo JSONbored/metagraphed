@@ -116,21 +116,13 @@ export function ExternalLink({
 
   if (bare) {
     if (!safeHref) {
-      return (
-        <span
-          className={className}
-          title={title ?? "Blocked unsafe external URL"}
-        >
-          {children}
-        </span>
-      );
+      return <span className={className}>{children}</span>;
     }
     return (
       <a
         href={safeHref}
         target="_blank"
         rel="noopener noreferrer"
-        title={title}
         aria-label={ariaLabel}
         className={className}
       >
@@ -146,18 +138,12 @@ export function ExternalLink({
         <ExternalIcon className="size-3 shrink-0 text-ink-muted" />
       ) : null}
       {authRequired ? (
-        <span
-          title="Authentication required"
-          className="inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 text-10 text-ink-muted"
-        >
+        <span className="inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 text-10 text-ink-muted">
           <Lock className="size-2.5" /> auth
         </span>
       ) : null}
       {!publicSafe ? (
-        <span
-          title="Not public-safe — handle with care"
-          className="inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 text-10 text-health-warn"
-        >
+        <span className="inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 text-10 text-health-warn">
           <AlertTriangle className="size-2.5" /> private
         </span>
       ) : null}
@@ -175,11 +161,7 @@ export function ExternalLink({
   );
 
   if (!safeHref) {
-    return (
-      <span className={classes} title="Blocked unsafe external URL">
-        {content}
-      </span>
-    );
+    return <span className={classes}>{content}</span>;
   }
 
   return (

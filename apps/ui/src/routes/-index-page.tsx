@@ -21,7 +21,6 @@ import {
   ExternalLink,
   Sparkline,
 } from "@jsonbored/ui-kit";
-import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";
 import { MoversBand } from "@/components/metagraphed/movers-band";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
@@ -827,33 +826,29 @@ function SubnetPreviewTable() {
             {subnets.slice(0, 12).map((s) => (
               <tr key={s.netuid} className="mg-row-hover">
                 <td className="px-4 py-3 font-mono text-13 text-ink-muted">
-                  <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="hover:text-accent transition-colors"
-                    >
-                      {String(s.netuid).padStart(3, "0")}
-                    </Link>
-                  </EntityHoverCard>
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: s.netuid }}
+                    className="hover:text-accent transition-colors"
+                  >
+                    {String(s.netuid).padStart(3, "0")}
+                  </Link>
                 </td>
                 <td className="px-4 py-3">
-                  <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="inline-flex items-center gap-2 font-medium text-ink-strong hover:text-accent transition-colors"
-                    >
-                      <BrandIcon
-                        size={20}
-                        name={s.name ?? `Subnet ${s.netuid}`}
-                        fallback={s.netuid}
-                        url={s.website}
-                        netuid={s.netuid}
-                      />
-                      <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
-                    </Link>
-                  </EntityHoverCard>
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: s.netuid }}
+                    className="inline-flex items-center gap-2 font-medium text-ink-strong hover:text-accent transition-colors"
+                  >
+                    <BrandIcon
+                      size={20}
+                      name={s.name ?? `Subnet ${s.netuid}`}
+                      fallback={s.netuid}
+                      url={s.website}
+                      netuid={s.netuid}
+                    />
+                    <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-11 text-ink-muted">{s.symbol ?? "—"}</td>
                 <td className="px-4 py-3 text-right font-mono text-13 text-ink">

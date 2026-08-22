@@ -37,7 +37,6 @@ export function DownloadOpenApiButton({ url, className }: DownloadOpenApiButtonP
       onClick={handleClick}
       disabled={pending}
       aria-label="Download OpenAPI spec"
-      title="Download openapi.json"
       className={classNames(
         "inline-flex items-center gap-1.5 rounded border border-border bg-card px-4 py-2 text-11 text-ink transition-colors hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-60",
         className,

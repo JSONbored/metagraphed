@@ -199,10 +199,7 @@ function DriftRow({ schema, onClick }: { schema: SchemaInfo; onClick: () => void
               </span>
             ) : null}
             {schema.drift_status ? (
-              <span
-                className="min-w-0 max-w-full truncate rounded border border-health-warn/30 bg-health-warn/10 px-1.5 py-0.5 text-10 text-health-warn"
-                title={schema.drift_status}
-              >
+              <span className="min-w-0 max-w-full truncate rounded border border-health-warn/30 bg-health-warn/10 px-1.5 py-0.5 text-10 text-health-warn">
                 {schema.drift_status}
               </span>
             ) : null}

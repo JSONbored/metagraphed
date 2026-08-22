@@ -1,9 +1,4 @@
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Definition } from "./interaction/definition";
 import { classNames } from "@/lib/format";
 
 // Duplicated from apps/ui/src/lib/metagraphed/endpoint-pool.ts -- both are
@@ -41,7 +36,7 @@ const RULE: Record<PoolEligibility, string> = {
 };
 
 /**
- * Pool-eligibility chip with shadcn tooltip explaining the rule.
+ * Pool-eligibility chip; the chip is the `Definition` trigger for its rule.
  * Outline + leading dot. Active hover state surfaces the accent border.
  */
 export function EligibilityChip({
@@ -52,39 +47,21 @@ export function EligibilityChip({
   size?: "sm" | "xs";
 }) {
   return (
-    <TooltipProvider delayDuration={120}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {/* #3433: tabIndex is what makes this trigger keyboard-operable at
-              all -- Radix only opens the Tooltip on a focus event, and a
-              plain span never receives one without it. Verified via a
-              scripted focus/Escape check: focus opens the tooltip
-              (data-state instant-open) and Escape closes it while keeping
-              focus on the trigger, with no extra wiring needed beyond
-              this attribute. This is the reference HeaderHint
-              (endpoint-list.tsx) now matches -- don't drop it. */}
-          <span
-            tabIndex={0}
-            className={classNames(
-              "inline-flex items-center gap-1.5 rounded border bg-transparent whitespace-nowrap cursor-help transition-colors",
-              "mg-dot-before",
-              "hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              size === "xs"
-                ? "px-2 py-0 h-5 text-11"
-                : "px-2.5 py-0 h-6 text-11",
-              TONE[eligibility],
-            )}
-          >
-            {ELIGIBILITY_LABEL[eligibility]}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-[240px] text-13">
-          <div className="text-13 opacity-70 mb-1">
-            {ELIGIBILITY_LABEL[eligibility]}
-          </div>
-          {RULE[eligibility]}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Definition
+      term={ELIGIBILITY_LABEL[eligibility]}
+      sentence={RULE[eligibility]}
+    >
+      <span
+        className={classNames(
+          "inline-flex items-center gap-1.5 rounded border bg-transparent whitespace-nowrap transition-colors",
+          "mg-dot-before",
+          "hover:bg-surface",
+          size === "xs" ? "px-2 py-0 h-5 text-11" : "px-2.5 py-0 h-6 text-11",
+          TONE[eligibility],
+        )}
+      >
+        {ELIGIBILITY_LABEL[eligibility]}
+      </span>
+    </Definition>
   );
 }

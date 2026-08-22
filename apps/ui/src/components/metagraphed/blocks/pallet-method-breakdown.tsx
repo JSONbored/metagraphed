@@ -1,6 +1,6 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useMemo } from "react";
 import { Panel } from "@/components/metagraphed/primitives";
-import { InfoTooltip } from "@jsonbored/ui-kit";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { ChainEvent } from "@/lib/metagraphed/types";
 
@@ -33,7 +33,7 @@ export function PalletMethodBreakdown({ events }: { events: ChainEvent[] }) {
       title={
         <span className="inline-flex items-center gap-1.5">
           Pallet · method breakdown
-          <InfoTooltip label="Top 10 pallet.method combinations from the block's raw event stream. Longer bars mean that runtime call dominated the block." />
+          <Definition term="Pallet breakdown" />
         </span>
       }
       caption={`${formatNumber(rows.length)} of ${formatNumber(uniqueMethods(events))} distinct methods · ${formatNumber(total)} events total`}
@@ -51,7 +51,7 @@ export function PalletMethodBreakdown({ events }: { events: ChainEvent[] }) {
               <div className="min-w-0">
                 <div className="flex items-baseline gap-1.5 min-w-0">
                   <span className="text-13 shrink-0 text-ink-subtle tabular-nums">#{i + 1}</span>
-                  <span className="font-mono text-13 text-ink-strong truncate" title={r.label}>
+                  <span className="font-mono text-13 text-ink-strong truncate">
                     <span className="text-ink-muted">{pallet}.</span>
                     {method}
                   </span>

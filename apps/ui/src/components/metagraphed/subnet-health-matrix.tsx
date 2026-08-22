@@ -1,8 +1,8 @@
+import { ChartTooltip, useEntityMark } from "@jsonbored/ui-kit";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { subnetsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
 import { ErrorState } from "@/components/metagraphed/states";
 import type { HealthState, Subnet } from "@/lib/metagraphed/types";
 
@@ -49,43 +49,45 @@ export function SubnetHealthMatrix() {
   }
 
   return (
-    <TooltipProvider delayDuration={80}>
-      <div className="space-y-3">
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(28px,1fr))] gap-1.5">
-          {rows.map((s) => {
-            const tone = TONE[s.health ?? "unknown"];
-            return (
-              <Tooltip key={s.netuid}>
-                <TooltipTrigger asChild>
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: s.netuid }}
-                    className={classNames(
-                      "group flex aspect-square items-center justify-center rounded transition-colors ring-0 hover:ring-2 hover:ring-accent/40",
-                      tone,
-                      TONE_TEXT[s.health ?? "unknown"],
-                    )}
-                    aria-label={`SN${s.netuid}${s.name ? ` — ${s.name}` : ""} — ${s.health ?? "unknown"}`}
-                  >
-                    <span className="text-10 font-semibold leading-none tabular-nums">
-                      {s.netuid}
-                    </span>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-13">
-                  <div className="font-display font-semibold text-ink-strong">
-                    SN{s.netuid}{" "}
-                    {s.name ? <span className="text-ink-muted">· {s.name}</span> : null}
-                  </div>
-                  <div className="text-13 text-ink-muted mt-0.5">{s.health ?? "unknown"}</div>
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
-        <Legend />
+    <div className="space-y-3">
+      <div
+        className="relative grid grid-cols-[repeat(auto-fill,minmax(28px,1fr))] gap-1.5"
+        data-marks
+      >
+        <ChartTooltip top={0} />
+        {rows.map((s) => (
+          <MatrixCell key={s.netuid} subnet={s} />
+        ))}
       </div>
-    </TooltipProvider>
+      <Legend />
+    </div>
+  );
+}
+
+function MatrixCell({ subnet: s }: { subnet: Subnet }) {
+  const health = s.health ?? "unknown";
+  const mark = useEntityMark(`subnet:${s.netuid}`, {
+    source: "subnet-health-matrix",
+    label: `SN${s.netuid}${s.name ? ` — ${s.name}` : ""} — ${health}`,
+    data: {
+      title: `SN${s.netuid}${s.name ? ` · ${s.name}` : ""}`,
+      rows: [{ key: "health", label: "health", value: health }],
+    },
+  });
+  return (
+    <Link
+      to="/subnets/$netuid"
+      params={{ netuid: s.netuid }}
+      {...mark}
+      role="link"
+      className={classNames(
+        "group flex aspect-square items-center justify-center rounded transition-colors ring-0 data-[active=true]:ring-2 data-[active=true]:ring-accent",
+        TONE[health],
+        TONE_TEXT[health],
+      )}
+    >
+      <span className="text-10 font-semibold leading-none tabular-nums">{s.netuid}</span>
+    </Link>
   );
 }
 
