@@ -127,6 +127,20 @@ describe("OPERATION_SUMMARIES", () => {
     assert.deepEqual(long, []);
   });
 
+  test("opens with an action verb", () => {
+    // A label a reader scans should say what the call DOES.
+    // `pay catalog check` warns on a noun-phrase opener, naming `Search`,
+    // `Create`, `Fetch` and `Generate` as examples; `List` is accepted too.
+    // `Ask` is NOT recognised by it, which is why /api/v1/ask leads with
+    // `Generate` and says what it generates rather than arguing the point.
+    const VERBS =
+      /^(List|Fetch|Search|Create|Generate|Update|Delete|Read|Run|Query)\b/;
+    const nounPhrases = Object.entries(OPERATION_SUMMARIES)
+      .filter(([, summary]) => !VERBS.test(summary))
+      .map(([id, summary]) => `${id}: "${summary}"`);
+    assert.deepEqual(nounPhrases, []);
+  });
+
   test("actually reaches the document", () => {
     // The table and the emitter are separate; this proves they are connected,
     // rather than that the table is well-formed in isolation.

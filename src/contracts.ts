@@ -6233,20 +6233,27 @@ function rangeFilterDescription(name: string): string | null {
  * tracked in #11593 and should be added as prose is revisited, not in bulk.
  */
 export const OPERATION_SUMMARIES: Record<string, string> = {
-  ask: "Ask a question, get a grounded answer with citations",
+  // VERB FIRST, every one. `pay catalog check` -- the Solana Foundation's
+  // catalogue validator, which reads this spec the way an agent would --
+  // warns on a summary that opens with a noun phrase, because a label a
+  // reader scans should say what the call DOES. It named `Search`, `Create`,
+  // `Fetch` and `Generate` as examples and accepts `List` too; `Ask` it does
+  // not recognise, so /api/v1/ask leads with `Generate` and says what it
+  // generates.
+  ask: "Generate a grounded answer with citations",
   subnets: "List active Finney subnets",
   "subnet-detail": "Fetch one subnet's full profile",
-  "subnet-health": "Probe-derived health for one subnet",
-  "subnet-surfaces": "The API surfaces one subnet publishes",
-  "subnet-endpoints": "Live endpoints for one subnet, with probe results",
+  "subnet-health": "Fetch probe-derived health for one subnet",
+  "subnet-surfaces": "List the API surfaces one subnet publishes",
+  "subnet-endpoints": "List live endpoints for one subnet, with probe results",
   search: "Search the registry by keyword",
   "search-semantic": "Search the registry by meaning, not keyword",
-  surfaces: "Every published surface across the registry",
-  coverage: "Registry coverage and completeness summary",
-  economics: "Per-subnet validator and economic metrics",
-  "global-validators": "Network-wide validator leaderboard",
-  "account-summary": "Cross-subnet activity summary for one account",
-  health: "Aggregate health across all probed surfaces",
+  surfaces: "List every published surface across the registry",
+  coverage: "Fetch the registry coverage and completeness summary",
+  economics: "List per-subnet validator and economic metrics",
+  "global-validators": "Fetch the network-wide validator leaderboard",
+  "account-summary": "Fetch a cross-subnet activity summary for one account",
+  health: "Fetch aggregate health across all probed surfaces",
 };
 
 export function buildOpenApiArtifact(

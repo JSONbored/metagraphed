@@ -69739,7 +69739,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Registry coverage and completeness summary",
+        "summary": "Fetch the registry coverage and completeness summary",
         "tags": [
           "registry"
         ],
@@ -70230,7 +70230,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Per-subnet validator and economic metrics",
+        "summary": "List per-subnet validator and economic metrics",
         "tags": [
           "subnets"
         ],
@@ -72580,7 +72580,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Cross-subnet activity summary for one account",
+        "summary": "Fetch a cross-subnet activity summary for one account",
         "tags": [
           "accounts",
           "analytics"
@@ -76649,7 +76649,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Ask a question, get a grounded answer with citations",
+        "summary": "Generate a grounded answer with citations",
         "tags": [
           "search"
         ],
@@ -83391,7 +83391,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Registry coverage and completeness summary",
+        "summary": "Fetch the registry coverage and completeness summary",
         "tags": [
           "registry"
         ],
@@ -84509,7 +84509,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Per-subnet validator and economic metrics",
+        "summary": "List per-subnet validator and economic metrics",
         "tags": [
           "subnets"
         ],
@@ -90047,7 +90047,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Aggregate health across all probed surfaces",
+        "summary": "Fetch aggregate health across all probed surfaces",
         "tags": [
           "health"
         ],
@@ -98863,7 +98863,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Live endpoints for one subnet, with probe results",
+        "summary": "List live endpoints for one subnet, with probe results",
         "tags": [
           "endpoints",
           "subnets"
@@ -99870,7 +99870,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Probe-derived health for one subnet",
+        "summary": "Fetch probe-derived health for one subnet",
         "tags": [
           "health",
           "subnets"
@@ -104454,7 +104454,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "The API surfaces one subnet publishes",
+        "summary": "List the API surfaces one subnet publishes",
         "tags": [
           "surfaces",
           "subnets"
@@ -106946,7 +106946,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Every published surface across the registry",
+        "summary": "List every published surface across the registry",
         "tags": [
           "surfaces"
         ],
@@ -107208,7 +107208,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Network-wide validator leaderboard",
+        "summary": "Fetch the network-wide validator leaderboard",
         "tags": [
           "validators",
           "analytics"
