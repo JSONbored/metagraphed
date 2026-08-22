@@ -61,7 +61,18 @@ export type AskArtifact = z.infer<typeof AskArtifactSchema>;
  */
 export const AskRequestSchema = z
   .object({
-    question: z.string().min(1),
+    // Described, because this is the ONLY input the route takes and a
+    // published schema that does not say what to send is not a contract
+    // (#11592). `.describe()` is what carries prose into the OpenAPI
+    // component, so it belongs on the Zod rather than beside it.
+    question: z
+      .string()
+      .min(1)
+      .describe(
+        "The question to answer, in plain language. Exploratory questions " +
+          'work best ("which subnets expose a public inference API?"); for ' +
+          "ranked matches rather than prose, use GET /api/v1/search/semantic.",
+      ),
   })
   .strict();
 export type AskRequest = z.infer<typeof AskRequestSchema>;

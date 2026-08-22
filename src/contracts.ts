@@ -5941,6 +5941,66 @@ function openApiOperationId(routeId: string) {
  * An inline `description` always wins: a route that needs to say something
  * specific keeps saying it, and none of the existing 385 change.
  */
+/**
+ * What each PATH parameter means, applied at emit time (#11592).
+ *
+ * The same argument as SHARED_QUERY_PARAMETER_DESCRIPTIONS below, for the
+ * other half of the parameter surface. Path parameters are declared as inline
+ * literals at each `route(...)` call -- `{ name: "netuid", schema: { type:
+ * "integer", minimum: 0 } }` appears 73 times -- and NONE of them carried a
+ * description. Ten strings here document 123 parameter instances, and a
+ * route added next year gets them without its author doing anything.
+ *
+ * Measured with `pay catalog check` (the Solana Foundation's catalog
+ * validator, which reads our published spec the way an agent would): it
+ * refuses a parameter with no description, no enum, no format and no pattern,
+ * on the grounds that an agent cannot know what value to send. It is right.
+ *
+ * An inline `description` still wins, exactly as it does for query parameters.
+ */
+export const SHARED_PATH_PARAMETER_DESCRIPTIONS: Record<string, string> = {
+  netuid:
+    "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+  // "hotkey or coldkey", not "a hotkey or a coldkey": scan-public-safety's
+  // key-terminology rule allows the bare field-pair phrase in either order,
+  // and the articles fall outside that allowance. The phrasing is equivalent,
+  // so the sentence moves rather than the security rule.
+  ss58: "An SS58-encoded account address -- a hotkey or coldkey.",
+  hotkey: "An SS58-encoded hotkey address identifying one validator identity.",
+  ref: "A block reference: either a decimal block number or a 0x-prefixed block hash.",
+  hash:
+    "An extrinsic reference: either a 0x-prefixed extrinsic hash or the composite " +
+    "`<block_number>-<extrinsic_index>` id, which is the identifier guaranteed to be present.",
+  uid: "A neuron's UID within its subnet's metagraph.",
+  h160: "A 0x-prefixed, 20-byte EVM (H160) address.",
+  crowdloan_id:
+    "A crowdloan's numeric id in the Crowdloan pallet's storage map.",
+  surface_id: "The id of a captured request/response fixture.",
+  id: "The alert trigger's id, as returned when it was created.",
+  slug: "A provider's URL-safe slug, as published in the provider list.",
+  date: "A calendar day in `YYYY-MM-DD`, addressing that day's history row.",
+  tag: "One of the fixed domain/capability tags, as validated by `?domain=` on /api/v1/subnets.",
+};
+
+/**
+ * Apply the shared path-parameter prose, without overriding an inline one.
+ *
+ * Exported for its own test: the "name not in the table" arm is unreachable
+ * from the contract as it stands (every declared path parameter is covered,
+ * and a test holds that), but it is the arm that decides what happens to the
+ * NEXT parameter name somebody adds -- leaving it alone rather than
+ * describing it wrongly. An arm no route can reach is still worth pinning
+ * when it encodes that choice.
+ */
+export function withSharedPathParameterDescription<T extends object>(
+  parameter: T,
+): T {
+  const spec = parameter as { name?: unknown; description?: unknown };
+  if (typeof spec.name !== "string" || spec.description) return parameter;
+  const shared = SHARED_PATH_PARAMETER_DESCRIPTIONS[spec.name];
+  return shared ? { ...parameter, description: shared } : parameter;
+}
+
 export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
   string,
   (parameter: {
@@ -6055,6 +6115,51 @@ export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
     "shape. An unrecognised field is a 400 `invalid_query` naming both the " +
     "field and the collection it was resolved against, rather than being " +
     "ignored.",
+
+  // ── The 32 that a derived sentence cannot honestly cover (#11592) ─────────
+  //
+  // rangeFilterDescription handles `min_*`/`max_*` because the name states
+  // the whole contract. These do not: each names a column, a pallet concept
+  // or a toggle whose meaning is not recoverable from the string.
+  author: () =>
+    "Filter to blocks authored by this validator, as an SS58 address.",
+  spec_version: () =>
+    "Filter to blocks produced under this runtime spec version.",
+  pallet: () =>
+    "Filter to events emitted by this pallet, e.g. `SubtensorModule` or `Balances`.",
+  method: () =>
+    "Filter to events with this method name within the pallet, e.g. `StakeAdded`.",
+  extrinsic: () =>
+    "Filter to events emitted by the extrinsic at this index within its block.",
+  blocks: (parameter) =>
+    "How many of the most recent blocks to aggregate over" +
+    (typeof parameter.schema?.maximum === "number"
+      ? ` (1-${parameter.schema.maximum}).`
+      : "."),
+  call_module: () =>
+    "Filter to calls dispatched into this pallet, e.g. `SubtensorModule`.",
+  call_function: () =>
+    "Filter to calls of this extrinsic within the pallet, e.g. `add_stake`.",
+  signer: () => "Filter to extrinsics signed by this SS58 account.",
+  dimensions: () =>
+    "Comma-separated list of the comparison dimensions to return; omit for all of them.",
+  include_points: () =>
+    "Include the underlying time-series points alongside the summary, rather than the summary alone.",
+  days: (parameter) =>
+    "How many days of history to return" +
+    (typeof parameter.schema?.default === "number"
+      ? `; defaults to ${parameter.schema.default}.`
+      : "."),
+  amount: () => "The stake amount to quote, in TAO. Must be greater than zero.",
+  min_samples: () =>
+    // NOT a bound on a `samples` column, which is why it is here rather than
+    // left to rangeFilterDescription: it drops whole day rows whose probe
+    // count fell below the threshold, including zero-sample 'unknown' days.
+    "Drop day rows whose daily probe count is below this, including zero-sample days.",
+  emission_gate_open: () =>
+    "Filter to subnets whose emission gate is currently open (true) or closed (false).",
+  cap_binding: () =>
+    "Filter to subnets where the alpha injection cap is currently binding (true) or not (false).",
 };
 
 /**
@@ -6075,10 +6180,74 @@ function withSharedParameterDescription<T extends object>(parameter: T): T {
   };
   if (typeof spec.name !== "string" || spec.description) return parameter;
   const shared = SHARED_QUERY_PARAMETER_DESCRIPTIONS[spec.name];
-  return shared
-    ? { ...parameter, description: shared({ schema: spec.schema }) }
-    : parameter;
+  if (shared) {
+    return { ...parameter, description: shared({ schema: spec.schema }) };
+  }
+  const derived = rangeFilterDescription(spec.name);
+  return derived ? { ...parameter, description: derived } : parameter;
 }
+
+/**
+ * `min_*` / `max_*`, described from the NAME rather than listed one by one.
+ *
+ * 61 of the 93 undescribed query parameters were one of these pairs
+ * (#11592), and they mean the same thing every time: an inclusive bound. 61
+ * hand-written strings would be 61 chances to call a bound exclusive when it
+ * is not, and every future filter pair would start undocumented again -- the
+ * exact failure the header above describes for `limit` and `cursor`.
+ *
+ * DOES NOT NAME THE COLUMN IT BOUNDS, deliberately. The obvious version of
+ * this function reads the field out of the parameter name and says "rows
+ * whose `extrinsics` is at least this value" -- and on /api/v1/blocks that is
+ * false: `min_extrinsics` bounds `extrinsic_count`, and `extrinsics` is a
+ * different field that exists and is an array. A derived sentence may only
+ * assert what the derivation actually knows, which is the direction of the
+ * bound and that it is inclusive.
+ *
+ * A parameter needing more than that says so in
+ * SHARED_QUERY_PARAMETER_DESCRIPTIONS, which is consulted first --
+ * `min_samples` is not a bound on a `samples` column but a minimum daily
+ * probe count, and it has its own entry for that reason.
+ */
+function rangeFilterDescription(name: string): string | null {
+  const match = /^(min|max)_[a-z0-9_]+$/.exec(name);
+  if (!match) return null;
+  return match[0].startsWith("min_")
+    ? "Inclusive lower bound: only rows at or above this value are returned."
+    : "Inclusive upper bound: only rows at or below this value are returned.";
+}
+
+/**
+ * The one-line label for an operation, keyed by route id (#11592).
+ *
+ * OpenAPI's `summary` is what a client renders in a collapsed list; the full
+ * prose belongs in `description`, and now goes there. A route with no entry
+ * here publishes no `summary`, which is valid and is the honest state -- an
+ * absent label beats a 3,000-character one.
+ *
+ * NOT BACKFILLED FOR ALL 296, deliberately. A good one-liner is written, not
+ * derived: only 60 of the 296 have a first sentence that fits in 63
+ * characters, so a mechanical split would produce 236 truncations and call
+ * them summaries. The routes below are the ones published to external
+ * catalogues, where the label is what an agent reads first. The rest are
+ * tracked in #11593 and should be added as prose is revisited, not in bulk.
+ */
+export const OPERATION_SUMMARIES: Record<string, string> = {
+  ask: "Ask a question, get a grounded answer with citations",
+  subnets: "List active Finney subnets",
+  "subnet-detail": "Fetch one subnet's full profile",
+  "subnet-health": "Probe-derived health for one subnet",
+  "subnet-surfaces": "The API surfaces one subnet publishes",
+  "subnet-endpoints": "Live endpoints for one subnet, with probe results",
+  search: "Search the registry by keyword",
+  "search-semantic": "Search the registry by meaning, not keyword",
+  surfaces: "Every published surface across the registry",
+  coverage: "Registry coverage and completeness summary",
+  economics: "Per-subnet validator and economic metrics",
+  "global-validators": "Network-wide validator leaderboard",
+  "account-summary": "Cross-subnet activity summary for one account",
+  health: "Aggregate health across all probed surfaces",
+};
 
 export function buildOpenApiArtifact(
   generatedAt: string,
@@ -6133,11 +6302,27 @@ export function buildOpenApiArtifact(
       [entry.method.toLowerCase()]: {
         ...networkExtension,
         operationId: openApiOperationId(entry.id),
-        summary: entry.description,
+        // PROSE GOES IN `description`, NOT `summary` (#11592).
+        //
+        // These were emitted as `summary` since the contract was written, and
+        // OpenAPI defines that field as "a short summary" -- tooling treats it
+        // as a one-line label. 254 of 296 operations exceeded 63 characters,
+        // median 382 and longest 3,122, so Swagger UI rendered whole
+        // paragraphs in its collapsed operation list and `description` -- the
+        // field defined as "a verbose explanation" -- was empty on 217 of
+        // them. The prose was always right; it was in the wrong field.
+        //
+        // `summary` is now emitted only where a short one is written, which
+        // is what OPERATION_SUMMARIES is for. Omitting it is valid OpenAPI and
+        // strictly better than a 3,000-character label.
+        ...(OPERATION_SUMMARIES[entry.id]
+          ? { summary: OPERATION_SUMMARIES[entry.id] }
+          : {}),
+        description: entry.description,
         tags: entry.tags,
         parameters: [
           ...entry.path_parameters.map((parameter) => ({
-            ...parameter,
+            ...withSharedPathParameterDescription(parameter),
             in: "path",
             required: true,
           })),
@@ -6232,7 +6417,11 @@ export function buildOpenApiArtifact(
         [entry.method.toLowerCase()]: {
           ...base,
           operationId: `${base.operationId}ByNetwork`,
-          summary: `${entry.description}`,
+          // `summary` is INHERITED from `base` via the spread above, so the
+          // variant gets the same short label as the route it varies -- or
+          // none, when the base has none. It used to re-insert the full prose
+          // here, which is how 44 of the 76 over-long summaries survived the
+          // move to `description` (#11592).
           // Names the route it varies rather than saying "the route above".
           // "Above" is only true in a rendered spec read top to bottom: this
           // text is also the description of a generated docs page, a search
@@ -6283,7 +6472,7 @@ export function buildOpenApiArtifact(
   for (const feed of FEED_ROUTES) {
     const parameters = [
       ...feed.path_parameters.map((parameter) => ({
-        ...parameter,
+        ...withSharedPathParameterDescription(parameter),
         in: "path",
         required: true,
       })),
@@ -6334,9 +6523,11 @@ export function buildOpenApiArtifact(
       ...(paths[feed.path] || {}),
       get: {
         operationId: operationId(""),
-        summary: feed.description,
-        description:
-          "Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.",
+        // Same split as the routes above: the feed's own prose is a
+        // description, and the transport note joins it rather than displacing
+        // it. Before, the prose sat in `summary` (167 chars for the shortest)
+        // and this one sentence was the whole `description`.
+        description: `${feed.description}\n\nContent-negotiated: send \`Accept: application/rss+xml\`, \`application/atom+xml\`, or \`application/feed+json\`. JSON Feed is the default when nothing matches.`,
         tags: feed.tags,
         parameters,
         responses: feedResponses(allContentTypes),
@@ -6353,8 +6544,7 @@ export function buildOpenApiArtifact(
         ...(paths[suffixPath] || {}),
         get: {
           operationId: operationId(`-${format}`),
-          summary: `${feed.description}`,
-          description: `Always returns \`${contentType}\`, regardless of \`Accept\`.`,
+          description: `${feed.description}\n\nAlways returns \`${contentType}\`, regardless of \`Accept\`.`,
           tags: feed.tags,
           parameters,
           responses: feedResponses([contentType]),
