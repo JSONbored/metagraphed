@@ -1,5 +1,5 @@
 import { Panel } from "@/components/metagraphed/primitives";
-import { CopyButton, InfoTooltip } from "@jsonbored/ui-kit";
+import { CopyButton, Definition } from "@jsonbored/ui-kit";
 import type { Block } from "@/lib/metagraphed/types";
 import { formatNumber } from "@/lib/metagraphed/format";
 
@@ -17,7 +17,7 @@ export function BlockMetadataPanel({ block }: { block: Block }) {
       title={
         <span className="inline-flex items-center gap-1.5">
           Block metadata
-          <InfoTooltip label="Raw header fields returned by the block API — runtime version, storage roots, and any additional annotations the backend attaches." />
+          <Definition term="Block header" />
         </span>
       }
       caption="Extended header data as returned by /api/v1/blocks/{ref}"
@@ -31,7 +31,7 @@ export function BlockMetadataPanel({ block }: { block: Block }) {
           >
             <dt className="text-13 text-ink-muted inline-flex items-center gap-1.5">
               {r.label}
-              {r.hint ? <InfoTooltip label={r.hint} /> : null}
+              {r.hint ? <Definition term={r.label} sentence={r.hint} /> : null}
             </dt>
             <dd className="min-w-0 flex items-center gap-1.5">
               {r.mono ? (

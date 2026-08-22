@@ -1,3 +1,4 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { crowdloansQuery, crowdloanQuery } from "@/lib/metagraphed/queries";
@@ -59,9 +60,7 @@ export function CrowdloansPanel() {
                 {l.percent_raised == null ? "—" : `${formatNumber(l.percent_raised)}%`}
               </span>
               {/* Two states, two badges. Raised is not settled. */}
-              <span className="w-24 shrink-0 text-11 text-ink-muted" title={statusHint(l)}>
-                {settlementLabel(l)}
-              </span>
+              <span className="w-24 shrink-0 text-11 text-ink-muted">{settlementLabel(l)}</span>
             </button>
             {openId === l.crowdloan_id ? <CrowdloanDetail id={l.crowdloan_id} /> : null}
           </li>
@@ -105,8 +104,11 @@ function CrowdloanDetail({ id }: { id: number }) {
 
 function Detail({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div title={hint}>
-      <dt className="text-11 text-ink-muted">{label}</dt>
+    <div>
+      <dt className="flex items-center gap-1 text-11 text-ink-muted">
+        {label}
+        {hint ? <Definition term={label} sentence={hint} /> : null}
+      </dt>
       <dd className="text-10 tabular-nums text-ink">{value}</dd>
     </div>
   );

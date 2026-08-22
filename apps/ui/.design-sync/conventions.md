@@ -1,14 +1,20 @@
 ## Wrapping and setup
 
-Most components need no wrapper. The one exception: `Tooltip`, `SparkLegend`, and
-`StatWithSpark` render a Radix `Tooltip`/`TooltipTrigger`/`TooltipContent` chain
-internally — wrap anything that uses them in `<TooltipProvider>` (also exported
-here), or they throw. One provider covers the whole tree:
+Most components need no wrapper. Nothing renders a Radix tooltip any more
+(#11606): `KeyChip` puts its full value on `title`, `EligibilityChip`,
+`SparkLegend` and `StatWithSpark` use `Definition`, and chart cells use
+`useEntityMark` + `ChartTooltip`. Two optional providers exist: mount
+`DefinitionsProvider` once with the app's glossary so `<Definition term>` can
+look sentences up (a `sentence` prop works without it), and mount
+`ActiveEntityProvider` once per route for page-wide cross-highlighting (marks
+render inertly without it):
 
 ```tsx
-<TooltipProvider>
-  <YourApp />
-</TooltipProvider>
+<DefinitionsProvider definitions={DEFINITIONS}>
+  <ActiveEntityProvider>
+    <YourRoute />
+  </ActiveEntityProvider>
+</DefinitionsProvider>
 ```
 
 No router, query client, or other app context is required — every component here
@@ -63,17 +69,18 @@ than defaulting to `text-base`.
 A stat tile with a trend line, in this system's real idiom:
 
 ```tsx
-<TooltipProvider>
-  <StatWithSpark
-    label="Emission share"
-    value="4.2"
-    unit="%"
-    hint="of total network emission"
-    tone="ok"
-    viz={<Sparkline values={[3.8, 3.9, 4.0, 4.1, 4.2]} width={100} height={18} />}
-  />
-</TooltipProvider>
+<StatWithSpark
+  label="Emission share"
+  value="4.2"
+  unit="%"
+  hint="of total network emission"
+  full="The fraction of each block's TAO emission the chain directs to this subnet."
+  tone="ok"
+  viz={<Sparkline values={[3.8, 3.9, 4.0, 4.1, 4.2]} width={100} height={18} />}
+/>
 ```
+
+`full` renders as a `Definition` beside the label; no provider is needed.
 
 `tone` drives color across this system's stat/status components consistently:
 `"ok"` → `text-health-ok`, `"warn"` → `text-health-warn`, `"down"` →

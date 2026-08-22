@@ -1,4 +1,4 @@
-import { TimeAgo, InfoTooltip } from "@jsonbored/ui-kit";
+import { TimeAgo, Definition } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 
@@ -98,7 +98,7 @@ export function SchemaSnapshotSummary({ schema }: { schema: SchemaInfo }) {
         <span className="text-ink-muted">
           captured <TimeAgo at={snap.observed_at ?? schema.updated_at} />
         </span>
-        <InfoTooltip label="Snapshot summary derived from the published schema record. Full line-level diffs require snapshot history, which the registry does not currently expose." />
+        <Definition term="Snapshot summary" />
       </div>
 
       {/* Hash transition (the registry's canonical drift signal). */}

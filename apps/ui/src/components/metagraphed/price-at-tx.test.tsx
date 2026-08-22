@@ -16,7 +16,10 @@ describe("the TAO price line", () => {
   it("renders the price with its basis in the tooltip", () => {
     const html = markup(<PriceAtTx price={0.0284} basis="trade_exact" blockNumber={8454388} />);
     expect(html).toContain("0.0284");
-    expect(html).toContain("execution price");
+    // The basis sentence lives in a Definition (#11606): the figure is its
+    // trigger and the sentence opens on hover/focus, so at rest the markup
+    // carries the trigger; priceAtTxTooltip itself is asserted on below.
+    expect(html).toContain("mg-definition-trigger");
   });
 
   it("renders NOTHING when there is no derivable price", () => {

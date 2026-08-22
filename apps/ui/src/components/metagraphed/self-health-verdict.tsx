@@ -176,7 +176,6 @@ function UptimeStrip({ days }: { days: SelfHealthComponentView["days"] }) {
         return (
           <span
             key={d.day}
-            title={`${d.day}: ${(d.uptime_ratio * 100).toFixed(2)}% (${d.ok_count}/${d.checks})`}
             className={classNames("min-w-px flex-1 rounded", tone)}
             // Floor at 15% so a genuinely-zero day is still a visible mark
             // rather than an invisible one indistinguishable from a gap.

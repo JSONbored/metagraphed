@@ -55,6 +55,7 @@ import {
   DownloadCsvButton,
   ExternalLink,
   BackToTop,
+  Definition,
 } from "@jsonbored/ui-kit";
 import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
@@ -634,10 +635,12 @@ function AccountKpiBand({
       </button>
     </span>
   ) : balanceImplausible ? (
-    <span className="inline-flex items-center gap-1.5" title={IMPLAUSIBLE_TAO_NOTE}>
-      <span>—</span>
-      <AlertCircle aria-hidden className="size-3.5 text-health-warn" />
-    </span>
+    <Definition term="Balance" sentence={IMPLAUSIBLE_TAO_NOTE}>
+      <span className="inline-flex items-center gap-1.5">
+        <span>—</span>
+        <AlertCircle aria-hidden className="size-3.5 text-health-warn" />
+      </span>
+    </Definition>
   ) : balance?.balance_tao != null ? (
     formatTao(balance.balance_tao)
   ) : (
@@ -827,7 +830,7 @@ function AccountRecentActivityPreview({ events }: { events: AccountEvent[] }) {
             className="flex items-center justify-between gap-3 rounded border border-border/80 px-4 py-3"
           >
             <div className="min-w-0 flex-1">
-              <div className="truncate text-11 text-ink-strong" title={ev.event_kind ?? undefined}>
+              <div className="truncate text-11 text-ink-strong">
                 {eventKindLabel(ev.event_kind)}
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-10 text-ink-muted">
@@ -1023,7 +1026,7 @@ function AccountExtrinsicsSection({
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-4 text-11 text-ink" title={sentence ?? undefined}>
+                  <td className="px-4 py-4 text-11 text-ink">
                     {x.extrinsic_hash ? (
                       <Link
                         to="/extrinsics/$hash"
@@ -3203,10 +3206,7 @@ function AccountEventsSection({
                       "—"
                     )}
                   </td>
-                  <td
-                    className="px-4 py-4 text-11 text-ink-strong"
-                    title={ev.event_kind ?? undefined}
-                  >
+                  <td className="px-4 py-4 text-11 text-ink-strong">
                     {eventKindLabel(ev.event_kind)}
                   </td>
                   <td className="px-4 py-4 text-11 text-ink-muted">

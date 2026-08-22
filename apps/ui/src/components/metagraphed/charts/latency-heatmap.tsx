@@ -5,10 +5,9 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+  Definition,
+  ChartTooltip,
+  useEntityMark,
 } from "@jsonbored/ui-kit";
 import type { Endpoint } from "@/lib/metagraphed/types";
 import { classNames } from "@/lib/metagraphed/format";
@@ -136,98 +135,75 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
   }
 
   return (
-    <TooltipProvider delayDuration={150}>
-      <Panel as="div" flush className="overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justify-between gap-2">
-          <div className="text-13 text-ink-muted">Latency heatmap · provider × kind</div>
-          <div
-            className="flex flex-wrap items-center gap-2.5 text-10 text-ink-muted"
-            role="list"
-            aria-label="Latency legend"
-          >
-            <LegendBucket cls="bg-health-ok/80" label="<150ms" hint="Fast — p50 under 150ms" />
-            <LegendBucket cls="bg-health-ok/45" label="<400ms" hint="Healthy — p50 under 400ms" />
-            <LegendBucket
-              cls="bg-health-warn/70"
-              label="<1s"
-              hint="Degraded — p50 under 1 second"
-            />
-            <LegendBucket
-              cls="bg-health-down/70"
-              label="slow/down"
-              hint="Slow (>1s) or one or more endpoints down"
-            />
-          </div>
+    <Panel as="div" flush className="overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justify-between gap-2">
+        <div className="text-13 text-ink-muted">Latency heatmap · provider × kind</div>
+        <div
+          className="flex flex-wrap items-center gap-2.5 text-10 text-ink-muted"
+          role="list"
+          aria-label="Latency legend"
+        >
+          <LegendBucket cls="bg-health-ok/80" label="<150ms" hint="Fast — p50 under 150ms" />
+          <LegendBucket cls="bg-health-ok/45" label="<400ms" hint="Healthy — p50 under 400ms" />
+          <LegendBucket cls="bg-health-warn/70" label="<1s" hint="Degraded — p50 under 1 second" />
+          <LegendBucket
+            cls="bg-health-down/70"
+            label="slow/down"
+            hint="Slow (>1s) or one or more endpoints down"
+          />
         </div>
-        {/* mg-table-scroll (ui-kit) adds the edge-fade/thin-scrollbar
+      </div>
+      {/* mg-table-scroll (ui-kit) adds the edge-fade/thin-scrollbar
             affordance so the horizontal scroll below 1024px is discoverable
             rather than silent, matching /validators (#8433) and /subnets
             (#8314). */}
-        <div className="mg-table-scroll w-full overflow-x-auto [scrollbar-gutter:stable]">
-          <table
-            className="w-full min-w-[480px] text-11"
-            role="table"
-            aria-label="Endpoint latency by provider and kind"
-          >
-            <thead>
-              <tr>
-                <th className="sticky left-0 z-[var(--mg-z-sticky)] bg-card text-left px-3 py-2 text-ink-muted border-b border-border">
-                  Provider
+      <div
+        className="mg-table-scroll relative w-full overflow-x-auto [scrollbar-gutter:stable]"
+        data-marks
+      >
+        <ChartTooltip top={0} />
+        <table
+          className="w-full min-w-[480px] text-11"
+          role="table"
+          aria-label="Endpoint latency by provider and kind"
+        >
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-[var(--mg-z-sticky)] bg-card text-left px-3 py-2 text-ink-muted border-b border-border">
+                Provider
+              </th>
+              {kinds.map((k) => (
+                <th key={k} className="px-2 py-2 text-ink-muted border-b border-border">
+                  <Definition term={k} sentence={KIND_HINT[k] ?? k}>
+                    <span className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded px-0.5">
+                      {k}
+                    </span>
+                  </Definition>
                 </th>
-                {kinds.map((k) => (
-                  <th key={k} className="px-2 py-2 text-ink-muted border-b border-border">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span
-                          tabIndex={0}
-                          className="cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded px-0.5"
-                        >
-                          {k}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-13">
-                        {KIND_HINT[k] ?? k}
-                      </TooltipContent>
-                    </Tooltip>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, idx) => {
-                const p = providers[idx]!;
-                const total = row.reduce((a, c) => a + c.count, 0);
-                return (
-                  <tr key={p} className="border-b border-border last:border-b-0">
-                    <td className="sticky left-0 z-[var(--mg-z-sticky)] bg-card px-3 py-1.5 text-ink-strong border-r border-border">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Link
-                            to="/providers/$slug"
-                            params={{ slug: p }}
-                            className="block max-w-[12ch] truncate hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded"
-                          >
-                            {p}
-                          </Link>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="text-13">
-                          {p} · {total} endpoint{total === 1 ? "" : "s"}
-                        </TooltipContent>
-                      </Tooltip>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => {
+              const p = providers[idx]!;
+              const total = row.reduce((a, c) => a + c.count, 0);
+              return (
+                <tr key={p} className="border-b border-border last:border-b-0">
+                  <td className="sticky left-0 z-[var(--mg-z-sticky)] bg-card px-3 py-1.5 text-ink-strong border-r border-border">
+                    <ProviderMark slug={p} total={total} />
+                  </td>
+                  {row.map((cell) => (
+                    <td key={cell.kind} className="p-1 align-middle">
+                      <Cell cell={cell} />
                     </td>
-                    {row.map((cell) => (
-                      <td key={cell.kind} className="p-1 align-middle">
-                        <Cell cell={cell} />
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
-    </TooltipProvider>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
   );
 }
 
@@ -246,12 +222,6 @@ function Cell({ cell }: { cell: Cell }) {
     return <div className="h-7 rounded bg-ink-subtle/10" aria-hidden />;
   }
   const tone = latencyTone(cell.avgLatency, cell.downCount > 0);
-  const title =
-    `${cell.provider} · ${cell.kind} · ${cell.count} endpoint${cell.count > 1 ? "s" : ""}` +
-    (cell.avgLatency != null ? ` · avg ${Math.round(cell.avgLatency)}ms` : "") +
-    (cell.downCount ? ` · ${cell.downCount} down` : "") +
-    (cell.warnCount ? ` · ${cell.warnCount} warn` : "");
-
   // Affected pools / subnets (deduped) for direct linking. netuid is a number.
   const subnets = Array.from(
     new Set(cell.endpoints.map((e) => e.netuid).filter((v): v is number => typeof v === "number")),
@@ -275,7 +245,6 @@ function Cell({ cell }: { cell: Cell }) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          title={title}
           aria-label={ariaSummary}
           className={classNames(
             "relative h-7 w-full rounded flex items-center justify-center text-13 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-1 focus-visible:ring-offset-card",
@@ -349,45 +318,34 @@ function Cell({ cell }: { cell: Cell }) {
             {subnets.length > 0 ? (
               <ChipGroup label="Affected subnets" id={`chips-sn-${cell.provider}-${cell.kind}`}>
                 {subnets.map((n) => (
-                  <Tooltip key={n}>
-                    <TooltipTrigger asChild>
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: n }}
-                        search={{ tab: "endpoints" }}
-                        hash="endpoints"
-                        className="inline-flex h-6 items-center rounded border border-border bg-paper px-2 text-10 text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
-                        aria-label={`Jump to subnet ${n} endpoints`}
-                      >
-                        SN{n}
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-13">
-                      Jump to SN{n} · {cell.kind} endpoints
-                    </TooltipContent>
-                  </Tooltip>
+                  <Link
+                    key={n}
+                    to="/subnets/$netuid"
+                    params={{ netuid: n }}
+                    search={{ tab: "endpoints" }}
+                    hash="endpoints"
+                    className="inline-flex h-6 items-center rounded border border-border bg-paper px-2 text-10 text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
+                    aria-label={`Jump to subnet ${n} endpoints`}
+                  >
+                    SN{n}
+                  </Link>
                 ))}
               </ChipGroup>
             ) : null}
             {pools.length > 0 ? (
               <ChipGroup label="Affected pools" id={`chips-pool-${cell.provider}-${cell.kind}`}>
                 {pools.map((p) => (
-                  <Tooltip key={p}>
-                    <TooltipTrigger asChild>
-                      <Link
-                        to="/apis/endpoints"
-                        search={{ q: p }}
-                        hash={`pool-${p}`}
-                        className="inline-flex h-6 max-w-[16ch] items-center truncate rounded border border-border bg-paper px-2 text-10 text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
-                        aria-label={`Scroll to pool ${p} in endpoints`}
-                      >
-                        {p}
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-11 break-all max-w-[90vw]">
-                      {p}
-                    </TooltipContent>
-                  </Tooltip>
+                  <Link
+                    key={p}
+                    title={p}
+                    to="/apis/endpoints"
+                    search={{ q: p }}
+                    hash={`pool-${p}`}
+                    className="inline-flex h-6 max-w-[16ch] items-center truncate rounded border border-border bg-paper px-2 text-10 text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
+                    aria-label={`Scroll to pool ${p} in endpoints`}
+                  >
+                    {p}
+                  </Link>
                 ))}
               </ChipGroup>
             ) : null}
@@ -422,20 +380,33 @@ function CellStat({ label, value, color }: { label: string; value: number; color
 
 function LegendBucket({ cls, label, hint }: { cls: string; label: string; hint: string }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          className="inline-flex items-center gap-1 cursor-help rounded px-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-          tabIndex={0}
-          role="listitem"
-        >
-          <span className={`size-2 rounded ${cls}`} aria-hidden />
-          {label}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="text-13">
-        {hint}
-      </TooltipContent>
-    </Tooltip>
+    <Definition term={label} sentence={hint}>
+      <span
+        className="inline-flex items-center gap-1 rounded px-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        role="listitem"
+      >
+        <span className={`size-2 rounded ${cls}`} aria-hidden />
+        {label}
+      </span>
+    </Definition>
+  );
+}
+
+function ProviderMark({ slug, total }: { slug: string; total: number }) {
+  const mark = useEntityMark(`provider:${slug}`, {
+    source: "latency-heatmap",
+    label: `${slug} · ${total} endpoint${total === 1 ? "" : "s"}`,
+    data: { title: slug, total: `${total} endpoint${total === 1 ? "" : "s"}` },
+  });
+  return (
+    <Link
+      to="/providers/$slug"
+      params={{ slug }}
+      {...mark}
+      role="link"
+      className="block max-w-[12ch] truncate hover:text-accent rounded data-[active=true]:text-accent"
+    >
+      {slug}
+    </Link>
   );
 }

@@ -4,8 +4,6 @@ import { cn } from "@/lib/utils";
 export type DefinitionItem = {
   term: ReactNode;
   detail: ReactNode;
-  /** Optional tooltip attached to the term. */
-  title?: string;
 };
 
 export type DefinitionListProps = {
@@ -38,9 +36,7 @@ export function DefinitionList({
       >
         {items.map((it, i) => (
           <div key={i} className="min-w-0">
-            <dt title={it.title} className="text-10 text-ink-muted">
-              {it.term}
-            </dt>
+            <dt className="text-10 text-ink-muted">{it.term}</dt>
             <dd className="mt-1 truncate text-13 text-ink-strong">
               {it.detail}
             </dd>
@@ -54,9 +50,7 @@ export function DefinitionList({
       <dl className={cn("space-y-3", className)}>
         {items.map((it, i) => (
           <div key={i} className="min-w-0">
-            <dt title={it.title} className="text-10 text-ink-muted">
-              {it.term}
-            </dt>
+            <dt className="text-10 text-ink-muted">{it.term}</dt>
             <dd className="mt-1 text-13 text-ink-strong">{it.detail}</dd>
           </div>
         ))}
@@ -70,9 +64,7 @@ export function DefinitionList({
           key={i}
           className="flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0"
         >
-          <dt title={it.title} className="text-11 shrink-0 text-ink-muted">
-            {it.term}
-          </dt>
+          <dt className="text-11 shrink-0 text-ink-muted">{it.term}</dt>
           <dd className="min-w-0 truncate text-right text-13 text-ink-strong">
             {it.detail}
           </dd>

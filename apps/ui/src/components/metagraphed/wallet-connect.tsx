@@ -50,7 +50,6 @@ export function WalletConnectButton() {
         <button
           type="button"
           aria-label={connected ? `Wallet connected: ${wallet.address}` : "Connect wallet"}
-          title={connected ? `Connected · ${wallet.source} · ${wallet.address}` : "Connect wallet"}
           className={classNames(
             "inline-flex items-center gap-1.5 rounded border px-2 py-1.5 min-h-11 text-11 transition-colors",
             connected

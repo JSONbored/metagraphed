@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { CopyButton } from "@/components/metagraphed/copy-button";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { KeyChip } from "@/components/metagraphed/key-chip";
@@ -16,8 +15,7 @@ import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button"
 //
 // Rendered via react-dom/server: this package's suite is node-environment with
 // no jsdom, and class lists + the live region are both present in static markup.
-const html = (element: React.ReactElement) =>
-  renderToStaticMarkup(React.createElement(TooltipProvider, null, element));
+const html = (element: React.ReactElement) => renderToStaticMarkup(element);
 
 const VALUE = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 

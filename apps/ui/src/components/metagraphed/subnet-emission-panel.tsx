@@ -1,3 +1,4 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DefinitionList, Panel } from "@/components/metagraphed/primitives";
@@ -93,9 +94,16 @@ export function SubnetEmissionPanelView({
         className="mt-3"
         items={[
           {
-            term: "Price share (stage 1)",
+            term: (
+              <span className="inline-flex items-center gap-1">
+                Price share (stage 1)
+                <Definition
+                  term="Price share"
+                  sentence="The published emission_share, before any gate — a price signal, not a payout."
+                />
+              </span>
+            ),
             detail: share(subnet.emission_share),
-            title: "The published emission_share, before any gate — a price signal, not a payout.",
           },
           {
             term: "Miner burn",
@@ -114,14 +122,17 @@ export function SubnetEmissionPanelView({
             detail: share(subnet.final_share),
           },
           {
-            term:
-              direction === "gained"
-                ? "Share gained by the pipeline"
-                : direction === "lost"
-                  ? "Share lost to the pipeline"
-                  : "Share moved by the pipeline",
+            term: (
+              <span className="inline-flex items-center gap-1">
+                {direction === "gained"
+                  ? "Share gained by the pipeline"
+                  : direction === "lost"
+                    ? "Share lost to the pipeline"
+                    : "Share moved by the pipeline"}
+                <Definition term="Pipeline delta" sentence="Final share minus price share." />
+              </span>
+            ),
             detail: signedShare(subnet.gate_delta),
-            title: "Final share minus price share.",
           },
           {
             term: "Distance to the gate bar",

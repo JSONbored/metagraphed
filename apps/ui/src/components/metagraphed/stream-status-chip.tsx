@@ -44,13 +44,6 @@ export function StreamStatusChip({
           : "border-border bg-surface text-ink-muted",
         quiet && "invisible",
       )}
-      title={
-        status === "open"
-          ? "Connected to /api/v1/chain/stream — new matching events refresh this feed"
-          : status === "error"
-            ? "Chain stream unavailable — refresh manually or wait for reconnect"
-            : "Opening /api/v1/chain/stream"
-      }
       data-testid={testId}
       data-stream-status={status}
     >

@@ -55,9 +55,7 @@ export function TaoValue({
 
   const taoNode = showTao ? <span className={taoClass}>{tao}</span> : null;
   const usdNode = showUsd ? (
-    <span className={usdClass} title="at current price">
-      {unit === "both" ? `≈ ${usd}` : usd}
-    </span>
+    <span className={usdClass}>{unit === "both" ? `≈ ${usd}` : usd}</span>
   ) : null;
 
   if (layout === "stacked") {

@@ -11,9 +11,6 @@ import {
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -24,6 +21,7 @@ import {
   ReviewChip,
   TimeAgo,
   safeExternalUrl,
+  ExternalLink,
 } from "@jsonbored/ui-kit";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -392,21 +390,12 @@ function EndpointRow({ e }: { e: Endpoint }) {
     <li className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-4 py-2 mg-row-hover">
       <HealthDot state={e.health} />
       <div className="min-w-0">
-        <Tooltip delayDuration={200}>
-          <TooltipTrigger asChild>
-            <div className="flex items-baseline gap-1 min-w-0 cursor-default">
-              <span className="font-mono text-13 text-ink-strong truncate">{host(e.url)}</span>
-              {pathOf(e.url) ? (
-                <span className="text-11 text-ink-muted truncate">{pathOf(e.url)}</span>
-              ) : null}
-            </div>
-          </TooltipTrigger>
-          {e.url ? (
-            <TooltipContent side="top" className="max-w-md break-all text-11">
-              {e.url}
-            </TooltipContent>
+        <div title={e.url} className="flex items-baseline gap-1 min-w-0 cursor-default">
+          <span className="font-mono text-13 text-ink-strong truncate">{host(e.url)}</span>
+          {pathOf(e.url) ? (
+            <span className="text-11 text-ink-muted truncate">{pathOf(e.url)}</span>
           ) : null}
-        </Tooltip>
+        </div>
         {e.provider || e.region ? (
           <div className="mt-0.5 flex items-center gap-2 text-10 text-ink-muted">
             {e.provider ? (
@@ -431,62 +420,35 @@ function EndpointRow({ e }: { e: Endpoint }) {
       <div className="inline-flex items-center gap-0.5">
         {e.url ? (
           <>
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => copy(e.url!)}
-                  aria-label="Copy endpoint URL"
-                  className="rounded p-1 text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {copied ? (
-                    <Check className="size-3 text-health-ok" />
-                  ) : (
-                    <Copy className="size-3" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-13">
-                Copy URL
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                {safeUrl ? (
-                  <a
-                    href={safeUrl}
-                    // Already routed through safeExternalUrl above (with a custom
-                    // blocked-state fallback below); ui-kit's <ExternalLink>
-                    // can't sit under TooltipTrigger asChild because it doesn't
-                    // forward the ref/hover handlers Radix's Slot injects.
-                    // eslint-disable-next-line no-restricted-syntax -- see above
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Open endpoint"
-                    className="rounded p-1 text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <ExternalLinkIcon className="size-3" />
-                  </a>
-                ) : (
-                  // #6423: role="img" carries the label here. This span is the
-                  // only AT-reachable carrier of the blocked state: the two
-                  // "Blocked unsafe URL" strings nearby are both TooltipContent,
-                  // which needs hover/focus, and this element is deliberately
-                  // not focusable (unlike the safeUrl <a> sibling) -- so without
-                  // a role the state is announced nowhere.
-                  <span
-                    role="img"
-                    aria-label="Blocked unsafe endpoint URL"
-                    className="cursor-not-allowed rounded p-1 text-ink-muted/50"
-                  >
-                    <ExternalLinkIcon className="size-3" />
-                  </span>
-                )}
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-13">
-                {safeUrl ? "Open in new tab" : "Blocked unsafe URL"}
-              </TooltipContent>
-            </Tooltip>
+            <button
+              type="button"
+              onClick={() => copy(e.url!)}
+              aria-label="Copy endpoint URL"
+              className="rounded p-1 text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {copied ? <Check className="size-3 text-health-ok" /> : <Copy className="size-3" />}
+            </button>
+            {safeUrl ? (
+              <ExternalLink
+                bare
+                href={safeUrl}
+                ariaLabel="Open endpoint"
+                className="rounded p-1 text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ExternalLinkIcon className="size-3" />
+              </ExternalLink>
+            ) : (
+              // #6423: role="img" carries the label here -- this span is the
+              // only AT-reachable carrier of the blocked state and is
+              // deliberately not focusable (unlike the safeUrl link sibling).
+              <span
+                role="img"
+                aria-label="Blocked unsafe endpoint URL"
+                className="cursor-not-allowed rounded p-1 text-ink-muted/50"
+              >
+                <ExternalLinkIcon className="size-3" />
+              </span>
+            )}
           </>
         ) : null}
       </div>
@@ -599,8 +561,6 @@ function SurfacesView({
 }
 
 function SurfaceRow({ s }: { s: Surface }) {
-  const safeUrl = safeExternalUrl(s.url);
-
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 mg-row-hover">
       <div className="min-w-0">
@@ -610,34 +570,14 @@ function SurfaceRow({ s }: { s: Surface }) {
           <ReviewChip state={s.review?.state} />
         </div>
         {s.url ? (
-          <Tooltip delayDuration={200}>
-            <TooltipTrigger asChild>
-              {safeUrl ? (
-                <a
-                  href={safeUrl}
-                  // Already routed through safeExternalUrl above (with a custom
-                  // blocked-state fallback below); ui-kit's <ExternalLink>
-                  // can't sit under TooltipTrigger asChild because it doesn't
-                  // forward the ref/hover handlers Radix's Slot injects.
-                  // eslint-disable-next-line no-restricted-syntax -- see above
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-0.5 block truncate text-11 text-ink-muted hover:text-ink-strong"
-                >
-                  {host(s.url)}
-                  {pathOf(s.url) ? <span className="opacity-70">{pathOf(s.url)}</span> : null}
-                </a>
-              ) : (
-                <span className="mt-0.5 block cursor-not-allowed truncate text-11 text-ink-muted/50">
-                  {host(s.url)}
-                  {pathOf(s.url) ? <span className="opacity-70">{pathOf(s.url)}</span> : null}
-                </span>
-              )}
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-md break-all text-11">
-              {safeUrl ? s.url : "Blocked unsafe URL"}
-            </TooltipContent>
-          </Tooltip>
+          <ExternalLink
+            bare
+            href={s.url}
+            className="mt-0.5 block truncate text-11 text-ink-muted hover:text-ink-strong"
+          >
+            {host(s.url)}
+            {pathOf(s.url) ? <span className="opacity-70">{pathOf(s.url)}</span> : null}
+          </ExternalLink>
         ) : null}
       </div>
       <span className="text-10 text-ink-muted">

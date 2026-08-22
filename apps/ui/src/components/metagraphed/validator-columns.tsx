@@ -1,3 +1,4 @@
+import { Definition } from "@jsonbored/ui-kit";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -109,7 +110,7 @@ function Stake30dDeltaCell({ hotkey }: { hotkey: string }) {
         ? "text-health-ok"
         : "text-health-down";
   return (
-    <span ref={ref} className={classNames("tabular-nums", tone)} title="30d total-stake change">
+    <span ref={ref} className={classNames("tabular-nums", tone)}>
       {delta == null ? "—" : `${delta > 0 ? "+" : ""}${(delta * 100).toFixed(1)}%`}
     </span>
   );
@@ -154,10 +155,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
             />
           </Link>
           {group != null && group.size > 1 && group.index === 0 ? (
-            <span
-              className="shrink-0 rounded border border-border bg-surface px-1.5 text-13 tabular-nums text-ink-muted"
-              title={`This operator runs ${group.size} validator keys — grouped under its best-ranked one`}
-            >
+            <span className="shrink-0 rounded border border-border bg-surface px-1.5 text-13 tabular-nums text-ink-muted">
               ×{group.size}
             </span>
           ) : null}
@@ -189,12 +187,16 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     cell: (v) => {
       const pct = v.apy_estimate != null ? v.apy_estimate * 100 : null;
       // Tiny-stake estimates annualize into nonsense (#8242) — formatApyPct
-      // buckets them as ">100%"; explain why on hover rather than in-cell.
-      return (
-        <span title={isImplausibleApyPct(pct) ? IMPLAUSIBLE_APY_NOTE : undefined}>
-          {formatApyPct(pct)}
-        </span>
-      );
+      // buckets them as ">100%"; the figure is a Definition trigger that
+      // explains why, rather than saying it in-cell.
+      if (isImplausibleApyPct(pct)) {
+        return (
+          <Definition term="APY estimate" sentence={IMPLAUSIBLE_APY_NOTE}>
+            <span>{formatApyPct(pct)}</span>
+          </Definition>
+        );
+      }
+      return <span>{formatApyPct(pct)}</span>;
     },
   },
   {

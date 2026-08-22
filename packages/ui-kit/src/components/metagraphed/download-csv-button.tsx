@@ -36,7 +36,6 @@ export function DownloadCsvButton({
       type="button"
       onClick={onClick}
       aria-label={label}
-      title={label}
       className={classNames(
         bare
           ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"

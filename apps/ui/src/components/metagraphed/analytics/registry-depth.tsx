@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { registrySummaryQuery, coverageDepthQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { InfoTooltip, TableState, BarMini, type BarMiniDatum } from "@jsonbored/ui-kit";
+import { TableState, BarMini, type BarMiniDatum, Definition } from "@jsonbored/ui-kit";
 import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { CoverageDepthQueueRow } from "@/lib/metagraphed/types";
@@ -52,7 +52,7 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
           <div className="flex items-center gap-3 text-10 text-ink-muted">
             {cov.median_score != null ? <Stat label="p50" value={`${cov.median_score}`} /> : null}
             {cov.average_score != null ? <Stat label="μ" value={`${cov.average_score}`} /> : null}
-            <InfoTooltip label="Per-subnet completeness_score (0–100) bucketed by /api/v1/registry/summary. The rightmost bin (100) is the fully-complete set." />
+            <Definition term="Completeness histogram" />
           </div>
         </header>
         <svg
@@ -174,7 +174,7 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
               Surface dimensions
             </h3>
           </div>
-          <InfoTooltip label="Share of subnets with at least one surface of each kind, registry-wide (/api/v1/registry/summary). Green ≥75%, amber/red are the enrichment frontier." />
+          <Definition term="Kind coverage" />
         </header>
         <BarMini data={data} max={100} showValue />
         <div className="mt-3 flex items-center justify-between text-10 text-ink-muted">
@@ -336,9 +336,7 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
         {row.score ?? "—"}
       </td>
       <td className="px-3 py-2.5 text-13 text-ink">
-        <span className="line-clamp-1" title={row.recommended_next_action}>
-          {row.recommended_next_action ?? "—"}
-        </span>
+        <span className="line-clamp-1">{row.recommended_next_action ?? "—"}</span>
         {row.top_gap_codes && row.top_gap_codes.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
             {row.top_gap_codes.slice(0, 4).map((g) => (

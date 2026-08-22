@@ -118,7 +118,6 @@ export function SubnetsSavedViews() {
               <button
                 key={p.id}
                 type="button"
-                title={p.hint}
                 aria-pressed={active}
                 onClick={() => apply(p.patch)}
                 className={classNames(

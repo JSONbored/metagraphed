@@ -59,12 +59,7 @@ export function SubnetSurfaceHistoryPanel({ netuid }: { netuid: number }) {
               {/* The commit is what makes this auditable rather than anecdotal:
                   a claim about a surface traces to the change that made it. */}
               {c.source_commit ? (
-                <span
-                  className="ml-2 text-11 text-ink-muted"
-                  title={`Recorded by commit ${c.source_commit}`}
-                >
-                  {c.source_commit.slice(0, 7)}
-                </span>
+                <span className="ml-2 text-11 text-ink-muted">{c.source_commit.slice(0, 7)}</span>
               ) : null}
             </span>
             <span className="text-11 shrink-0 text-ink-muted">

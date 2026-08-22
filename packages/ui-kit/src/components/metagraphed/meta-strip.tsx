@@ -35,11 +35,7 @@ export function MetaStrip({
       )}
     >
       {items.map((it, i) => (
-        <span
-          key={i}
-          title={it.title}
-          className="inline-flex items-center gap-1.5"
-        >
+        <span key={i} className="inline-flex items-center gap-1.5">
           {i > 0 ? (
             <span aria-hidden className="text-ink-subtle-text">
               {sep}

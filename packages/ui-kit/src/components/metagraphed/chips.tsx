@@ -74,7 +74,6 @@ export function HealthDot({
     <span
       role="img"
       aria-label={`Health: ${label.toLowerCase()}`}
-      title={label}
       className={classNames(
         "relative inline-block size-2 rounded-full mg-dot shrink-0",
         color,

@@ -56,7 +56,6 @@ export function EndpointUptimeBar({
       className={classNames("inline-flex items-center gap-[2px]", className)}
       role="img"
       aria-label={`${days}-day uptime signal`}
-      title={`${days}-day uptime — hover a pip for the day`}
     >
       {pips.map((p, i) => (
         <span
@@ -68,7 +67,6 @@ export function EndpointUptimeBar({
             p === "down" && "bg-health-down/80",
             p === "unknown" && "bg-ink-subtle/40",
           )}
-          title={`day -${pips.length - i}: ${p}`}
         />
       ))}
     </div>

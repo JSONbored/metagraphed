@@ -53,22 +53,10 @@ export function TopHoldersPanel() {
           <thead>
             <tr className="text-11 text-ink-muted">
               <th className="py-1 text-left">account</th>
-              <th className="py-1 text-right" title="Not committed to a validator.">
-                free
-              </th>
-              <th
-                className="py-1 text-right"
-                title="Committed to a validator and earning — a different position from free TAO, not a subtotal of it."
-              >
-                delegated
-              </th>
+              <th className="py-1 text-right">free</th>
+              <th className="py-1 text-right">delegated</th>
               <th className="py-1 text-right">total</th>
-              <th
-                className="py-1 text-right"
-                title="Net flow over 30 days. The 7d and 90d windows can point the other way — hover a value to see all three."
-              >
-                30d flow
-              </th>
+              <th className="py-1 text-right">30d flow</th>
             </tr>
           </thead>
           <tbody>
@@ -82,7 +70,7 @@ export function TopHoldersPanel() {
                   {formatTao(a.delegated_tao)}
                 </td>
                 <td className="py-1 text-right tabular-nums text-ink">{formatTao(a.total_tao)}</td>
-                <td className="py-1 text-right tabular-nums text-ink" title={flowTooltip(a)}>
+                <td className="py-1 text-right tabular-nums text-ink">
                   {formatTao(a.net_flow_30d)}
                   {flowsDisagree(a) ? (
                     <span className="ml-1 text-ink-muted" aria-label="flow windows disagree">

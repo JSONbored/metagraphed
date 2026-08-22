@@ -140,42 +140,14 @@ export function EmissionPipelineTable({
           <thead className="mg-table-head-pinned">
             <tr>
               <th className="px-4 py-2.5">Subnet</th>
-              <th className="px-4 py-2.5 text-right" title="Stage 1: the published price share">
-                Price share
-              </th>
-              <th
-                className="px-4 py-2.5 text-right"
-                title="Share of the subnet's emission burned by miners"
-              >
-                Miner burn
-              </th>
-              <th className="px-4 py-2.5 text-right" title="Price share reweighted by miner burn">
-                Weighted
-              </th>
-              <th className="px-4 py-2.5 text-right" title="After the Hill gate">
-                Post-gate
-              </th>
-              <th
-                className="px-4 py-2.5 text-right"
-                title="Share of block emission actually received"
-              >
-                Final share
-              </th>
-              <th
-                className="px-4 py-2.5 text-right"
-                title="Final share minus price share — what the pipeline gave or took"
-              >
-                Moved
-              </th>
-              <th className="px-4 py-2.5 text-right" title="TAO per block, both channels">
-                TAO/block
-              </th>
-              <th
-                className="px-4 py-2.5 text-right"
-                title="Share of this subnet's TAO arriving as pool liquidity rather than chain buys"
-              >
-                Pool
-              </th>
+              <th className="px-4 py-2.5 text-right">Price share</th>
+              <th className="px-4 py-2.5 text-right">Miner burn</th>
+              <th className="px-4 py-2.5 text-right">Weighted</th>
+              <th className="px-4 py-2.5 text-right">Post-gate</th>
+              <th className="px-4 py-2.5 text-right">Final share</th>
+              <th className="px-4 py-2.5 text-right">Moved</th>
+              <th className="px-4 py-2.5 text-right">TAO/block</th>
+              <th className="px-4 py-2.5 text-right">Pool</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

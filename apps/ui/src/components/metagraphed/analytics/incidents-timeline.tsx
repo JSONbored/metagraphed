@@ -3,8 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ChevronRight, ExternalLink as ExtIcon } from "lucide-react";
 import { endpointIncidentsQuery, endpointsQuery, rpcPoolsQuery } from "@/lib/metagraphed/queries";
-import { classNames, durationLabel } from "@/lib/metagraphed/format";
-import { TimeAgo, InfoTooltip } from "@jsonbored/ui-kit";
+import { classNames } from "@/lib/metagraphed/format";
+import { TimeAgo, Definition } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { useTimeRange, RANGE_HOURS, RANGE_LABEL } from "./time-range-context";
@@ -149,7 +149,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
           <div className="text-13 text-ink-muted">Incidents · {RANGE_LABEL[range]}</div>
-          <InfoTooltip label="Bars are positioned by incident start within the selected range and sized by duration. Color reflects severity. Click a row to open the host subnet or pool." />
+          <Definition term="Incidents timeline" />
         </div>
         <div className="flex flex-wrap items-center gap-1">
           {(["all", "ongoing", "down", "warn", "resolved"] as const).map((k) => {
@@ -293,7 +293,6 @@ function TimelineTrack({
               ongoing && "ring-1 ring-paper/40",
             )}
             style={{ left: `${left}%`, width: `${width}%` }}
-            title={`${i.state ?? "unknown"} · ${durationLabel(i.started_at, i.ended_at)}${ongoing ? " · ongoing" : ""}${i.message ? ` · ${i.message}` : ""}`}
           >
             <span className="sr-only">
               {i.state} started <TimeAgo at={i.started_at} />

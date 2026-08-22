@@ -1,10 +1,5 @@
 import type { ReactNode } from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Definition } from "../interaction/definition";
 import {
   classNames,
   formatFreshness,
@@ -49,58 +44,43 @@ export function StatWithSpark({
   const freshLine = formatFreshness(updatedAt, windowLabel);
   const freshAbs = formatFreshnessAbsolute(updatedAt);
   return (
-    // Self-wrapped so StatWithSpark works outside AppShell's global provider.
-    <TooltipProvider>
-      <Tooltip delayDuration={200}>
-        <TooltipTrigger asChild>
-          <div
-            tabIndex={0}
-            className={classNames(
-              "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface transition-colors",
-              className,
-            )}
-          >
-            <div className="text-13 text-ink-muted truncate">{label}</div>
-            <div className="flex items-baseline gap-1.5 min-w-0">
-              <span
-                className={classNames(
-                  "font-display text-16 font-semibold tabular-nums leading-none truncate",
-                  tone === "ok" && "text-health-ok",
-                  tone === "warn" && "text-health-warn",
-                  tone === "down" && "text-health-down",
-                  tone === "default" && "text-ink-strong",
-                )}
-              >
-                {value}
-              </span>
-              {unit ? (
-                <span className="shrink-0 text-11 text-ink-muted">{unit}</span>
-              ) : null}
-              {delta}
-            </div>
-            {viz ? <div className="mt-0.5 min-h-[18px]">{viz}</div> : null}
-            {hint ? (
-              <div className="text-10 text-ink-muted/80 truncate">{hint}</div>
-            ) : null}
-            {freshLine ? (
-              <div className="text-10 text-ink-muted/70 truncate">
-                {freshLine}
-              </div>
-            ) : null}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs text-13">
-          <div>{full ?? hint ?? label}</div>
-          {freshAbs || windowLabel ? (
-            <div className="mt-1 text-10 text-primary-foreground/70">
-              {freshAbs ? `Last checked ${freshAbs}` : null}
-              {freshAbs && windowLabel ? " · " : ""}
-              {windowLabel ? `${windowLabel} window` : null}
-            </div>
-          ) : null}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div
+      className={classNames(
+        "group flex flex-col gap-1 px-3 py-2.5 min-w-0 transition-colors",
+        className,
+      )}
+    >
+      <div className="flex items-center gap-1 min-w-0">
+        <span className="text-13 text-ink-muted truncate">{label}</span>
+        {full ? <Definition term={label} sentence={full} /> : null}
+      </div>
+      <div className="flex items-baseline gap-1.5 min-w-0">
+        <span
+          className={classNames(
+            "font-display text-16 font-semibold tabular-nums leading-none truncate",
+            tone === "ok" && "text-health-ok",
+            tone === "warn" && "text-health-warn",
+            tone === "down" && "text-health-down",
+            tone === "default" && "text-ink-strong",
+          )}
+        >
+          {value}
+        </span>
+        {unit ? (
+          <span className="shrink-0 text-11 text-ink-muted">{unit}</span>
+        ) : null}
+        {delta}
+      </div>
+      {viz ? <div className="mt-0.5 min-h-[18px]">{viz}</div> : null}
+      {hint ? (
+        <div className="text-10 text-ink-muted/80 truncate">{hint}</div>
+      ) : null}
+      {freshLine || freshAbs ? (
+        <div className="text-10 text-ink-muted/70 truncate">
+          {freshLine ?? `Last checked ${freshAbs}`}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -137,7 +117,6 @@ export function MiniStack({
               width: `${(s.value / total) * 100}%`,
               background: s.color,
             }}
-            title={`${s.label} · ${s.value}`}
           />
         ) : null,
       )}
@@ -199,31 +178,21 @@ export function DotRow({
   dots: Array<{ label: string; on: boolean }>;
 }) {
   return (
-    // One provider for the row rather than one per dot -- self-wrapped so DotRow
-    // works outside AppShell's global provider.
-    <TooltipProvider>
-      <div
-        className="flex items-center gap-1"
-        role="img"
-        aria-label="Source coverage"
-      >
-        {dots.map((d) => (
-          <Tooltip key={d.label} delayDuration={150}>
-            <TooltipTrigger asChild>
-              <span
-                className={classNames(
-                  "size-1.5 rounded-full mg-dot",
-                  d.on ? "bg-accent" : "bg-border",
-                )}
-              />
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-10">
-              {d.label} {d.on ? "✓" : "—"}
-            </TooltipContent>
-          </Tooltip>
-        ))}
-      </div>
-    </TooltipProvider>
+    <div
+      className="flex items-center gap-1"
+      role="img"
+      aria-label={`Source coverage: ${dots.map((d) => `${d.label} ${d.on ? "present" : "missing"}`).join(", ")}`}
+    >
+      {dots.map((d) => (
+        <span
+          key={d.label}
+          className={classNames(
+            "size-1.5 rounded-full mg-dot",
+            d.on ? "bg-accent" : "bg-border",
+          )}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -246,33 +215,19 @@ export function NoDataSpark({
   const freshAbs = formatFreshnessAbsolute(updatedAt);
   const freshLine = formatFreshness(updatedAt, windowLabel);
   return (
-    // Self-wrapped so NoDataSpark works outside AppShell's global provider.
-    <TooltipProvider>
-      <Tooltip delayDuration={150}>
-        <TooltipTrigger asChild>
-          <div
-            tabIndex={0}
-            role="img"
-            aria-label={`${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`}
-            className="flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            style={{ height }}
-          >
-            <span
-              aria-hidden
-              className="inline-block size-1 rounded-full mg-dot bg-ink-muted/60"
-            />
-            <span className="truncate text-13 text-ink-muted/80">
-              {freshLine ?? reason}
-            </span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs text-13">
-          {reason}.{" "}
-          {freshAbs
-            ? `Last checked ${freshAbs}${windowLabel ? ` · ${windowLabel} window` : ""}.`
-            : "No probe samples recorded yet."}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div
+      role="img"
+      aria-label={`${reason}${freshAbs ? `, last checked ${freshAbs}` : ", no probe samples recorded yet"}`}
+      className="flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper px-1.5"
+      style={{ height }}
+    >
+      <span
+        aria-hidden
+        className="inline-block size-1 rounded-full mg-dot bg-ink-muted/60"
+      />
+      <span className="truncate text-13 text-ink-muted/80">
+        {freshLine ?? reason}
+      </span>
+    </div>
   );
 }

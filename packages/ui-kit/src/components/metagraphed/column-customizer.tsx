@@ -60,7 +60,6 @@ export function ColumnCustomizer({
                 type="button"
                 onClick={onReset}
                 className="mg-focus-ring inline-flex items-center gap-1 text-10 text-ink-muted hover:text-ink-strong"
-                title="Reset to defaults"
               >
                 <RotateCcw className="size-3" aria-hidden /> Reset
               </button>

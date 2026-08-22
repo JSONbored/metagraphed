@@ -1441,10 +1441,7 @@ function EventKindCell({
   const grouped = count != null && count > 1;
 
   return (
-    <span
-      className={classNames("inline-flex items-center gap-1.5", className)}
-      title={`${label} · ${categoryLabel}`}
-    >
+    <span className={classNames("inline-flex items-center gap-1.5", className)}>
       <span
         role="img"
         aria-label={`Category: ${categoryLabel}`}
@@ -1929,11 +1926,6 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
                 ? "border-health-warn/40 text-health-warn"
                 : "border-border text-ink-muted",
             )}
-            title={
-              service.auth_schemes && service.auth_schemes.length
-                ? `Auth: ${service.auth_schemes.join(", ")}`
-                : undefined
-            }
           >
             {service.auth_required ? "auth" : "no auth"}
           </span>

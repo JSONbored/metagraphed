@@ -44,7 +44,6 @@ export function ReadinessGauge({
     <span
       tabIndex={0}
       aria-label={description}
-      title={description}
       className={classNames(
         "mg-focus-ring inline-grid items-center gap-2",
         compact

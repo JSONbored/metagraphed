@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/metagraphed/client";
 import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
-import { ExternalLink, HoverPreview, TimeAgo } from "@jsonbored/ui-kit";
+import { ExternalLink, TimeAgo, Definition } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "./states";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { ApiMeta, EvidenceItem } from "@/lib/metagraphed/types";
@@ -161,36 +161,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
           <ul className="flex flex-wrap gap-1.5">
             {items.slice(0, 24).map((item) => (
               <li key={item.id}>
-                <HoverPreview
-                  focusable={!item.url}
-                  content={
-                    <div className="space-y-1.5">
-                      <div className="text-10 text-ink-muted">
-                        {sourceLabel(item)}
-                        {item.netuid != null ? <> · SN{item.netuid}</> : null}
-                      </div>
-                      {item.note ? (
-                        <div className="text-13 text-ink-strong">{item.note}</div>
-                      ) : null}
-                      {item.url ? (
-                        <div className="text-10 text-ink break-all">{item.url}</div>
-                      ) : null}
-                      <div className="text-10 text-ink-muted">
-                        recorded <TimeAgo at={item.recorded_at} />
-                      </div>
-                    </div>
-                  }
-                >
-                  {item.url ? (
-                    <ExternalLink href={item.url} className="text-13">
-                      {shortLabel(item)}
-                    </ExternalLink>
-                  ) : (
-                    <span className="inline-flex items-center rounded border border-border bg-paper px-1.5 py-0.5 text-13 text-ink-muted">
-                      {shortLabel(item)}
-                    </span>
-                  )}
-                </HoverPreview>
+                <EvidenceChip item={item} />
               </li>
             ))}
             {items.length > 24 ? (
@@ -247,4 +218,23 @@ function shortLabel(item: EvidenceItem): string {
     }
   }
   return item.id;
+}
+
+function EvidenceChip({ item }: { item: EvidenceItem }) {
+  const chip = item.url ? (
+    <ExternalLink href={item.url} title={item.url} className="text-13">
+      {shortLabel(item)}
+    </ExternalLink>
+  ) : (
+    <span className="inline-flex items-center rounded border border-border bg-paper px-1.5 py-0.5 text-13 text-ink-muted">
+      {shortLabel(item)}
+    </span>
+  );
+  if (!item.note) return chip;
+  const term = `${sourceLabel(item)}${item.netuid != null ? ` · SN${item.netuid}` : ""}`;
+  return (
+    <Definition term={term} sentence={item.note}>
+      {chip}
+    </Definition>
+  );
 }

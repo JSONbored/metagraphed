@@ -1,8 +1,8 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Panel } from "@/components/metagraphed/primitives";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
-import { InfoTooltip } from "@jsonbored/ui-kit";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { Block } from "@/lib/metagraphed/types";
 
@@ -37,7 +37,7 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
       title={
         <span className="inline-flex items-center gap-1.5">
           Top authors this page
-          <InfoTooltip label="Validators that produced the most blocks in this page window. Click a row to filter the feed to only their blocks." />
+          <Definition term="Block authors" />
         </span>
       }
       caption={`${distinct} distinct authors across ${formatNumber(total)} blocks`}
@@ -71,7 +71,6 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
                   type="button"
                   onClick={filterByAuthor}
                   className="mg-focus-ring shrink-0 text-right text-11 tabular-nums text-ink-strong"
-                  title="Filter by this author"
                 >
                   <div>{formatNumber(count)}</div>
                   <div
@@ -88,7 +87,6 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
                 type="button"
                 onClick={filterByAuthor}
                 className="mg-focus-ring group -mt-1 block w-full text-left"
-                title="Filter by this author"
               >
                 <div
                   aria-hidden

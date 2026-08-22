@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { Check, Link2 } from "lucide-react";
 import { useLocation } from "@tanstack/react-router";
 import { cn } from "@/lib/cn";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
 
 export interface CopyLinkButtonProps {
   /** Fragment identifier to append (without the leading #). Optional. */
@@ -13,8 +12,6 @@ export interface CopyLinkButtonProps {
   preserveSearch?: boolean;
   /** Optional accessible label. Defaults to "Copy link to this row". */
   label?: string;
-  /** Optional tooltip text override. */
-  tooltip?: string;
   className?: string;
   size?: "xs" | "sm";
 }
@@ -30,7 +27,6 @@ export function CopyLinkButton({
   pathname,
   preserveSearch = true,
   label = "Copy link to this row",
-  tooltip,
   className,
   size = "xs",
 }: CopyLinkButtonProps) {
@@ -68,26 +64,19 @@ export function CopyLinkButton({
   const icon = size === "sm" ? "size-4" : "size-3.5";
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={onCopy}
-          aria-label={copied ? `${label} — copied` : label}
-          aria-live="polite"
-          className={cn(
-            "inline-flex items-center justify-center rounded text-ink-muted transition-colors",
-            "hover:text-ink-strong hover:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            dim,
-            className,
-          )}
-        >
-          {copied ? <Check className={cn(icon, "text-health-ok")} /> : <Link2 className={icon} />}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top">
-        {copied ? "Copied" : (tooltip ?? "Copy share link")}
-      </TooltipContent>
-    </Tooltip>
+    <button
+      type="button"
+      onClick={onCopy}
+      aria-label={copied ? `${label} — copied` : label}
+      aria-live="polite"
+      className={cn(
+        "inline-flex items-center justify-center rounded text-ink-muted transition-colors",
+        "hover:text-ink-strong hover:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        dim,
+        className,
+      )}
+    >
+      {copied ? <Check className={cn(icon, "text-health-ok")} /> : <Link2 className={icon} />}
+    </button>
   );
 }

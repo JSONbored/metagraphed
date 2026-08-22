@@ -8,11 +8,9 @@ var lucideReact = require('lucide-react');
 var jsxRuntime = require('react/jsx-runtime');
 var cmdk = require('cmdk');
 var DialogPrimitive = require('@radix-ui/react-dialog');
-var HoverCardPrimitive = require('@radix-ui/react-hover-card');
 var PopoverPrimitive = require('@radix-ui/react-popover');
 var classVarianceAuthority = require('class-variance-authority');
 var sonner = require('sonner');
-var TooltipPrimitive = require('@radix-ui/react-tooltip');
 
 function _interopDefault (e) { return e && e.__esModule ? e : { default: e }; }
 
@@ -38,9 +36,7 @@ var clsx__default = /*#__PURE__*/_interopDefault(clsx);
 var React3__namespace = /*#__PURE__*/_interopNamespace(React3);
 var AccordionPrimitive__namespace = /*#__PURE__*/_interopNamespace(AccordionPrimitive);
 var DialogPrimitive__namespace = /*#__PURE__*/_interopNamespace(DialogPrimitive);
-var HoverCardPrimitive__namespace = /*#__PURE__*/_interopNamespace(HoverCardPrimitive);
 var PopoverPrimitive__namespace = /*#__PURE__*/_interopNamespace(PopoverPrimitive);
-var TooltipPrimitive__namespace = /*#__PURE__*/_interopNamespace(TooltipPrimitive);
 
 // src/lib/format.ts
 function classNames(...parts) {
@@ -324,22 +320,6 @@ var CommandShortcut = ({
   );
 };
 CommandShortcut.displayName = "CommandShortcut";
-var HoverCard = HoverCardPrimitive__namespace.Root;
-var HoverCardTrigger = HoverCardPrimitive__namespace.Trigger;
-var HoverCardContent = React3__namespace.forwardRef(({ className, align = "center", sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
-  HoverCardPrimitive__namespace.Content,
-  {
-    ref,
-    align,
-    sideOffset,
-    className: cn(
-      "z-[var(--mg-z-modal)] w-64 rounded border bg-popover p-4 text-popover-foreground outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-hover-card-content-transform-origin)",
-      className
-    ),
-    ...props
-  }
-));
-HoverCardContent.displayName = HoverCardPrimitive__namespace.Content.displayName;
 var Popover = PopoverPrimitive__namespace.Root;
 var PopoverTrigger = PopoverPrimitive__namespace.Trigger;
 var PopoverAnchor = PopoverPrimitive__namespace.Anchor;
@@ -583,7 +563,6 @@ function SegmentedToggle({
               role: "tab",
               "aria-selected": active,
               "aria-label": optionAriaLabel ?? label,
-              title: title ?? label,
               onClick: () => onChange(v),
               className: classNames(
                 "inline-flex items-center gap-1.5 rounded px-2 py-1 text-13 font-medium transition-colors min-h-8",
@@ -618,22 +597,6 @@ var Toaster = ({ ...props }) => {
     }
   );
 };
-var TooltipProvider = TooltipPrimitive__namespace.Provider;
-var Tooltip = TooltipPrimitive__namespace.Root;
-var TooltipTrigger = TooltipPrimitive__namespace.Trigger;
-var TooltipContent = React3__namespace.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(TooltipPrimitive__namespace.Portal, { children: /* @__PURE__ */ jsxRuntime.jsx(
-  TooltipPrimitive__namespace.Content,
-  {
-    ref,
-    sideOffset,
-    className: cn(
-      "z-[var(--mg-z-modal)] overflow-hidden rounded bg-primary px-3 py-1.5 text-13 text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-tooltip-content-transform-origin)",
-      className
-    ),
-    ...props
-  }
-) }));
-TooltipContent.displayName = TooltipPrimitive__namespace.Content.displayName;
 function Skeleton({ className = "h-4 w-full" }) {
   return /* @__PURE__ */ jsxRuntime.jsx("div", { className: `animate-pulse rounded bg-surface-2 ${className}` });
 }
@@ -1222,7 +1185,6 @@ function BrandIcon({
         role: decorative ? void 0 : "img",
         "aria-hidden": ariaHidden,
         "aria-label": ariaLabel,
-        title: decorative ? void 0 : labelText || void 0,
         children: /* @__PURE__ */ jsxRuntime.jsx(
           "span",
           {
@@ -1243,7 +1205,6 @@ function BrandIcon({
       role: decorative ? void 0 : "img",
       "aria-hidden": ariaHidden,
       "aria-label": ariaLabel,
-      title: decorative ? void 0 : labelText || void 0,
       children: [
         !loaded ? /* @__PURE__ */ jsxRuntime.jsx(
           "span",
@@ -1324,7 +1285,6 @@ function HealthDot({
     {
       role: "img",
       "aria-label": `Health: ${label.toLowerCase()}`,
-      title: label,
       className: classNames(
         "relative inline-block size-2 rounded-full mg-dot shrink-0",
         color,
@@ -1652,7 +1612,6 @@ function DownloadCsvButton({
       type: "button",
       onClick,
       "aria-label": label,
-      title: label,
       className: classNames(
         bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : (
           // rounded-full matches the pill idiom shared by SectionBadge/FilterChip/
@@ -1665,6 +1624,97 @@ function DownloadCsvButton({
       children: [
         /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Download, { className: "size-3 text-ink-muted", "aria-hidden": true }),
         /* @__PURE__ */ jsxRuntime.jsx("span", { className: "hidden sm:inline", children: label })
+      ]
+    }
+  );
+}
+var DefinitionsContext = React3.createContext({});
+function DefinitionsProvider({
+  definitions,
+  children
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(DefinitionsContext.Provider, { value: definitions, children });
+}
+function useDefinition(term) {
+  return React3.useContext(DefinitionsContext)[term];
+}
+function Definition({
+  term,
+  sentence,
+  align = "start",
+  className,
+  children
+}) {
+  const fromGlossary = useDefinition(term);
+  const text = sentence ?? fromGlossary;
+  const id = React3.useId();
+  const [open, setOpen] = React3.useState(false);
+  const rootRef = React3.useRef(null);
+  const pointerType = React3.useRef("mouse");
+  const close = React3.useCallback(() => setOpen(false), []);
+  React3.useEffect(() => {
+    if (!open) return;
+    const onKey = (event) => {
+      if (event.key === "Escape") close();
+    };
+    const onPointerDown = (event) => {
+      const root = rootRef.current;
+      if (root && event.target instanceof Node && !root.contains(event.target))
+        close();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [open, close]);
+  if (!text) return children ? /* @__PURE__ */ jsxRuntime.jsx(jsxRuntime.Fragment, { children }) : null;
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "span",
+    {
+      ref: rootRef,
+      className: ["mg-definition", className].filter(Boolean).join(" "),
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsx(
+          "button",
+          {
+            type: "button",
+            className: children ? "mg-definition-trigger" : "mg-definition-button",
+            "aria-label": children ? void 0 : `What is ${term}`,
+            "aria-describedby": open ? id : void 0,
+            "aria-expanded": open,
+            onPointerDown: (event) => {
+              pointerType.current = event.pointerType || "mouse";
+            },
+            onPointerEnter: (event) => {
+              if (event.pointerType !== "touch") setOpen(true);
+            },
+            onPointerLeave: (event) => {
+              if (event.pointerType !== "touch") setOpen(false);
+            },
+            onFocus: () => setOpen(true),
+            onBlur: () => setOpen(false),
+            onClick: () => {
+              if (pointerType.current === "touch") setOpen((v) => !v);
+            },
+            children: children ?? "?"
+          }
+        ),
+        open ? /* @__PURE__ */ jsxRuntime.jsxs(
+          "span",
+          {
+            id,
+            role: "tooltip",
+            className: "mg-definition-tip",
+            "data-align": align,
+            "data-mg-tooltip": "",
+            children: [
+              /* @__PURE__ */ jsxRuntime.jsx("strong", { children: term }),
+              text
+            ]
+          }
+        ) : null
       ]
     }
   );
@@ -1691,26 +1741,26 @@ function EligibilityChip({
   eligibility,
   size = "sm"
 }) {
-  return /* @__PURE__ */ jsxRuntime.jsx(TooltipProvider, { delayDuration: 120, children: /* @__PURE__ */ jsxRuntime.jsxs(Tooltip, { children: [
-    /* @__PURE__ */ jsxRuntime.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntime.jsx(
-      "span",
-      {
-        tabIndex: 0,
-        className: classNames(
-          "inline-flex items-center gap-1.5 rounded border bg-transparent whitespace-nowrap cursor-help transition-colors",
-          "mg-dot-before",
-          "hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          size === "xs" ? "px-2 py-0 h-5 text-11" : "px-2.5 py-0 h-6 text-11",
-          TONE[eligibility]
-        ),
-        children: ELIGIBILITY_LABEL[eligibility]
-      }
-    ) }),
-    /* @__PURE__ */ jsxRuntime.jsxs(TooltipContent, { side: "top", className: "max-w-[240px] text-13", children: [
-      /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-13 opacity-70 mb-1", children: ELIGIBILITY_LABEL[eligibility] }),
-      RULE[eligibility]
-    ] })
-  ] }) });
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    Definition,
+    {
+      term: ELIGIBILITY_LABEL[eligibility],
+      sentence: RULE[eligibility],
+      children: /* @__PURE__ */ jsxRuntime.jsx(
+        "span",
+        {
+          className: classNames(
+            "inline-flex items-center gap-1.5 rounded border bg-transparent whitespace-nowrap transition-colors",
+            "mg-dot-before",
+            "hover:bg-surface",
+            size === "xs" ? "px-2 py-0 h-5 text-11" : "px-2.5 py-0 h-6 text-11",
+            TONE[eligibility]
+          ),
+          children: ELIGIBILITY_LABEL[eligibility]
+        }
+      )
+    }
+  );
 }
 var SAFE_EXTERNAL_PROTOCOLS = /* @__PURE__ */ new Set(["http:", "https:"]);
 function isBlockedIpv42(hostname) {
@@ -1761,14 +1811,7 @@ function ExternalLink({
   const safeHref = safeExternalUrl(href);
   if (bare) {
     if (!safeHref) {
-      return /* @__PURE__ */ jsxRuntime.jsx(
-        "span",
-        {
-          className,
-          title: title ?? "Blocked unsafe external URL",
-          children
-        }
-      );
+      return /* @__PURE__ */ jsxRuntime.jsx("span", { className, children });
     }
     return /* @__PURE__ */ jsxRuntime.jsx(
       "a",
@@ -1776,7 +1819,6 @@ function ExternalLink({
         href: safeHref,
         target: "_blank",
         rel: "noopener noreferrer",
-        title,
         "aria-label": ariaLabel,
         className,
         children
@@ -1786,28 +1828,14 @@ function ExternalLink({
   const content = /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
     /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 truncate", children }),
     safeHref ? /* @__PURE__ */ jsxRuntime.jsx(lucideReact.ExternalLink, { className: "size-3 shrink-0 text-ink-muted" }) : null,
-    authRequired ? /* @__PURE__ */ jsxRuntime.jsxs(
-      "span",
-      {
-        title: "Authentication required",
-        className: "inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 text-10 text-ink-muted",
-        children: [
-          /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Lock, { className: "size-2.5" }),
-          " auth"
-        ]
-      }
-    ) : null,
-    !publicSafe ? /* @__PURE__ */ jsxRuntime.jsxs(
-      "span",
-      {
-        title: "Not public-safe \u2014 handle with care",
-        className: "inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 text-10 text-health-warn",
-        children: [
-          /* @__PURE__ */ jsxRuntime.jsx(lucideReact.AlertTriangle, { className: "size-2.5" }),
-          " private"
-        ]
-      }
-    ) : null
+    authRequired ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 text-10 text-ink-muted", children: [
+      /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Lock, { className: "size-2.5" }),
+      " auth"
+    ] }) : null,
+    !publicSafe ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 text-10 text-health-warn", children: [
+      /* @__PURE__ */ jsxRuntime.jsx(lucideReact.AlertTriangle, { className: "size-2.5" }),
+      " private"
+    ] }) : null
   ] });
   const classes = classNames(
     "inline-flex max-w-full items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong",
@@ -1815,7 +1843,7 @@ function ExternalLink({
     className
   );
   if (!safeHref) {
-    return /* @__PURE__ */ jsxRuntime.jsx("span", { className: classes, title: "Blocked unsafe external URL", children: content });
+    return /* @__PURE__ */ jsxRuntime.jsx("span", { className: classes, children: content });
   }
   return /* @__PURE__ */ jsxRuntime.jsx(
     "a",
@@ -1827,23 +1855,6 @@ function ExternalLink({
       children: content
     }
   );
-}
-function InfoTooltip({
-  label,
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(TooltipProvider, { delayDuration: 150, children: /* @__PURE__ */ jsxRuntime.jsxs(Tooltip, { children: [
-    /* @__PURE__ */ jsxRuntime.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntime.jsx(
-      "button",
-      {
-        type: "button",
-        "aria-label": label,
-        className: "inline-flex items-center text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded" + (className ?? ""),
-        children: /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Info, { className: "size-3.5" })
-      }
-    ) }),
-    /* @__PURE__ */ jsxRuntime.jsx(TooltipContent, { side: "top", className: "max-w-xs text-13", children: label })
-  ] }) });
 }
 function FreshnessIndicator({
   at,
@@ -1857,12 +1868,10 @@ function FreshnessIndicator({
   const stale = !missing && isStaleFreshness(at, thresholdMs);
   const cls = missing ? "bg-health-unknown" : stale ? "bg-health-warn" : "bg-health-ok";
   const rel = mounted ? formatRelative(at) : "";
-  const title = missing ? "No freshness data" : !mounted ? void 0 : stale ? `Stale \u2014 last updated ${rel}` : `Fresh \u2014 updated ${rel}`;
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "span",
     {
       className: classNames("inline-flex items-center gap-1.5", className),
-      title,
       suppressHydrationWarning: true,
       children: [
         /* @__PURE__ */ jsxRuntime.jsx("span", { className: classNames("size-1.5 rounded-full mg-dot", cls) }),
@@ -1882,7 +1891,13 @@ function DailyRollupFreshness({
 }) {
   return /* @__PURE__ */ jsxRuntime.jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
     /* @__PURE__ */ jsxRuntime.jsx(FreshnessIndicator, { at, dotOnly: true }),
-    /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: tierFreshnessLabel("daily", at) })
+    /* @__PURE__ */ jsxRuntime.jsx(
+      Definition,
+      {
+        term: "Daily tier",
+        sentence: tierFreshnessLabel("daily", at)
+      }
+    )
   ] });
 }
 function RealtimeFreshness({
@@ -1891,38 +1906,396 @@ function RealtimeFreshness({
 }) {
   return /* @__PURE__ */ jsxRuntime.jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
     /* @__PURE__ */ jsxRuntime.jsx(FreshnessIndicator, { at, dotOnly: true }),
-    /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: tierFreshnessLabel("realtime", at) })
+    /* @__PURE__ */ jsxRuntime.jsx(
+      Definition,
+      {
+        term: "Live chain read",
+        sentence: tierFreshnessLabel("realtime", at)
+      }
+    )
   ] });
 }
-function HoverPreview({
-  children,
-  content,
-  className,
-  focusable
+
+// src/components/metagraphed/interaction/active-entity-logic.ts
+function reduceActiveEntity(state, action) {
+  switch (action.type) {
+    case "set":
+      return state.pinned ? state : { active: action.entity, pinned: false };
+    case "pin":
+      return state.pinned && state.active?.key === action.entity.key ? state : { active: action.entity, pinned: true };
+    case "clear":
+      if (state.pinned && !action.force) return state;
+      return state.active === null && !state.pinned ? state : { active: null, pinned: false };
+  }
+}
+function isRovingKey(key) {
+  return key === "ArrowRight" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowUp" || key === "Home" || key === "End";
+}
+function rovingTarget(key, index, length) {
+  if (length < 2 || index < 0 || index >= length) return null;
+  switch (key) {
+    case "ArrowRight":
+    case "ArrowDown":
+      return (index + 1) % length;
+    case "ArrowLeft":
+    case "ArrowUp":
+      return (index - 1 + length) % length;
+    case "Home":
+      return 0;
+    case "End":
+      return length - 1;
+  }
+}
+function tapIntent(pointerType, pinnedHere) {
+  if (pointerType !== "touch") return "activate";
+  return pinnedHere ? "activate" : "pin";
+}
+function markTabIndex(options) {
+  if (options.disabled) return -1;
+  return options.active || options.first ? 0 : -1;
+}
+var ActiveEntityContext = React3.createContext(
+  null
+);
+function ActiveEntityProvider({ children }) {
+  const [state, dispatch] = React3.useReducer(reduceActiveEntity, {
+    active: null,
+    pinned: false
+  });
+  const set = React3.useCallback(
+    (entity) => dispatch({ type: "set", entity }),
+    []
+  );
+  const pin = React3.useCallback(
+    (entity) => dispatch({ type: "pin", entity }),
+    []
+  );
+  const clear = React3.useCallback(
+    (options) => dispatch({ type: "clear", force: options?.force }),
+    []
+  );
+  React3.useEffect(() => {
+    if (!state.pinned || !state.active) return;
+    const key = state.active.key;
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const mark = target.closest("[data-entity]");
+      if (mark && mark.getAttribute("data-entity") === key) return;
+      dispatch({ type: "clear", force: true });
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [state.pinned, state.active]);
+  const value = React3.useMemo(
+    () => ({ active: state.active, pinned: state.pinned, set, pin, clear }),
+    [state.active, state.pinned, set, pin, clear]
+  );
+  return /* @__PURE__ */ jsxRuntime.jsx(ActiveEntityContext.Provider, { value, children });
+}
+var NOOP_CONTEXT = {
+  active: null,
+  pinned: false,
+  set: () => {
+  },
+  pin: () => {
+  },
+  clear: () => {
+  }
+};
+function useActiveEntity() {
+  return React3.useContext(ActiveEntityContext) ?? NOOP_CONTEXT;
+}
+function useIsActive(key) {
+  return useActiveEntity().active?.key === key;
+}
+var MARKS_SELECTOR = "[data-marks]";
+var MARK_SELECTOR = "[data-entity]";
+function siblingsOf(el) {
+  const group = el.closest(MARKS_SELECTOR);
+  if (!group) return [el];
+  return Array.from(group.querySelectorAll(MARK_SELECTOR)).filter(
+    (m) => m.getAttribute("aria-disabled") !== "true"
+  );
+}
+function useEntityMark(key, opts = {}) {
+  const ctx = useActiveEntity();
+  const { source = "mark", label, data, onActivate, disabled = false } = opts;
+  const elRef = React3.useRef(null);
+  const [isFirst, setIsFirst] = React3.useState(false);
+  const lastPointerType = React3.useRef("mouse");
+  const isActive = ctx.active?.key === key;
+  const isPinnedHere = isActive && ctx.pinned;
+  const ref = React3.useCallback((el) => {
+    elRef.current = el;
+  }, []);
+  React3.useLayoutEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+    const group = el.closest(MARKS_SELECTOR);
+    const head = group ? group.querySelector(MARK_SELECTOR) : null;
+    setIsFirst(head === el || head === null);
+  }, [key]);
+  const entity = React3.useCallback(
+    () => ({ key, source, element: elRef.current, data }),
+    [key, source, data]
+  );
+  const onPointerDown = React3.useCallback((event) => {
+    lastPointerType.current = event.pointerType || "mouse";
+  }, []);
+  const onPointerEnter = React3.useCallback(
+    (event) => {
+      if (disabled || event.pointerType === "touch") return;
+      ctx.set(entity());
+    },
+    [ctx, entity, disabled]
+  );
+  const onPointerLeave = React3.useCallback(
+    (event) => {
+      if (event.pointerType === "touch") return;
+      ctx.clear();
+    },
+    [ctx]
+  );
+  const onFocus = React3.useCallback(() => {
+    if (disabled) return;
+    if (lastPointerType.current === "touch") return;
+    ctx.set(entity());
+  }, [ctx, entity, disabled]);
+  const onBlur = React3.useCallback(() => {
+    ctx.clear();
+  }, [ctx]);
+  const onClick = React3.useCallback(
+    (event) => {
+      if (disabled) {
+        event.preventDefault();
+        return;
+      }
+      if (tapIntent(lastPointerType.current, isPinnedHere) === "pin") {
+        event.preventDefault();
+        ctx.pin(entity());
+        return;
+      }
+      onActivate?.();
+    },
+    [ctx, entity, disabled, isPinnedHere, onActivate]
+  );
+  const onKeyDown = React3.useCallback(
+    (event) => {
+      const el = elRef.current;
+      if (!el) return;
+      if (event.key === "Escape") {
+        ctx.clear({ force: true });
+        event.stopPropagation();
+        return;
+      }
+      if (event.key === "Enter" || event.key === " ") {
+        if (disabled) return;
+        event.preventDefault();
+        onActivate?.();
+        return;
+      }
+      if (!isRovingKey(event.key)) return;
+      const marks = siblingsOf(el);
+      const target = rovingTarget(event.key, marks.indexOf(el), marks.length);
+      if (target === null) return;
+      event.preventDefault();
+      marks[target].focus();
+    },
+    [ctx, disabled, onActivate]
+  );
+  return {
+    ref,
+    "data-entity": key,
+    "data-active": isActive ? "true" : void 0,
+    tabIndex: markTabIndex({ disabled, active: isActive, first: isFirst }),
+    role: "button",
+    "aria-label": label ?? key,
+    "aria-disabled": disabled ? true : void 0,
+    onPointerDown,
+    onPointerEnter,
+    onPointerLeave,
+    onFocus,
+    onBlur,
+    onKeyDown,
+    onClick
+  };
+}
+
+// src/components/metagraphed/interaction/chart-tooltip-logic.ts
+var TOOLTIP_GAP_PX = 8;
+function placeTooltip(mark, container, width, gap = TOOLTIP_GAP_PX) {
+  let left = mark.right - container.left + gap;
+  if (left + width > container.width)
+    left = mark.left - container.left - gap - width;
+  return Math.max(0, Math.round(left));
+}
+function tooltipPlacement(viewportWidth) {
+  return viewportWidth < 640 ? "static" : "float";
+}
+function useIsMobile() {
+  const [mobile, setMobile] = React3.useState(false);
+  React3.useLayoutEffect(() => {
+    const update = () => setMobile(tooltipPlacement(window.innerWidth) === "static");
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return mobile;
+}
+function ChartTooltip({
+  top = 110,
+  fallback,
+  className
 }) {
-  const [open, setOpen] = React3.useState(false);
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "span",
+  const { active } = useActiveEntity();
+  const ref = React3.useRef(null);
+  const mobile = useIsMobile();
+  const [left, setLeft] = React3.useState(null);
+  const [, mounted] = React3.useState(false);
+  React3.useLayoutEffect(() => mounted(true), []);
+  const host = React3.useRef(null);
+  const container = host.current?.parentElement ?? null;
+  const anchored = active !== null && active.element !== null && container !== null && container.contains(active.element);
+  React3.useLayoutEffect(() => {
+    if (!anchored || mobile || !ref.current || !active?.element || !container) {
+      setLeft(null);
+      return;
+    }
+    setLeft(
+      placeTooltip(
+        active.element.getBoundingClientRect(),
+        container.getBoundingClientRect(),
+        ref.current.offsetWidth
+      )
+    );
+  }, [anchored, mobile, active, container]);
+  const data = active ? active.data ?? fallback?.(active.key) ?? null : null;
+  const show = anchored && data !== null;
+  return /* @__PURE__ */ jsxRuntime.jsx("div", { ref: host, style: { display: "contents" }, "data-mg-tooltip-host": "", children: show && data ? /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
     {
-      className: classNames("relative inline-flex", className),
-      tabIndex: focusable ? 0 : void 0,
-      onMouseEnter: () => setOpen(true),
-      onMouseLeave: () => setOpen(false),
-      onFocus: () => setOpen(true),
-      onBlur: () => setOpen(false),
+      ref,
+      className: ["mg-chart-tooltip", className].filter(Boolean).join(" "),
+      "data-placement": mobile ? "static" : "float",
+      "data-rows": data.rows && data.rows.length > 0 ? "" : void 0,
+      "data-mg-tooltip": "",
+      role: "status",
+      "aria-live": "polite",
+      style: mobile ? void 0 : {
+        top,
+        left: left ?? 0,
+        visibility: left === null ? "hidden" : void 0
+      },
       children: [
-        children,
-        open ? /* @__PURE__ */ jsxRuntime.jsx(
-          "span",
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-chart-tooltip-head", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("strong", { children: data.title }),
+          data.total ? /* @__PURE__ */ jsxRuntime.jsx("span", { children: data.total }) : null
+        ] }),
+        data.rows?.map((row) => /* @__PURE__ */ jsxRuntime.jsxs(
+          "div",
           {
-            role: "tooltip",
-            className: "absolute left-0 top-full z-[var(--mg-z-overlay)] mt-1.5 w-72 max-w-[80vw] rounded border border-border bg-card p-3 text-13 text-ink",
-            children: content
-          }
-        ) : null
+            className: "mg-chart-tooltip-row",
+            "data-current": row.key === active?.key ? "true" : void 0,
+            children: [
+              /* @__PURE__ */ jsxRuntime.jsxs("span", { children: [
+                row.swatch ? /* @__PURE__ */ jsxRuntime.jsx(
+                  "span",
+                  {
+                    className: "mg-chart-tooltip-swatch",
+                    style: { "--swatch": row.swatch },
+                    "aria-hidden": true
+                  }
+                ) : null,
+                row.label
+              ] }),
+              /* @__PURE__ */ jsxRuntime.jsx("span", { children: row.value })
+            ]
+          },
+          row.key
+        )),
+        data.note ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-chart-tooltip-note", children: data.note }) : null
+      ]
+    }
+  ) : null });
+}
+function Raw({
+  title = "Raw identifiers & sources",
+  rows = [],
+  children,
+  defaultOpen,
+  className,
+  id
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "details",
+    {
+      id,
+      className: ["mg-raw", className].filter(Boolean).join(" "),
+      open: defaultOpen,
+      "data-mg-raw": "",
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsxs("summary", { children: [
+          title,
+          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-raw-chip", "aria-hidden": true, children: "RAW" })
+        ] }),
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-raw-body", children: [
+          rows.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("dl", { children: rows.map((row) => /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-raw-row", children: [
+            /* @__PURE__ */ jsxRuntime.jsx("dt", { children: row.label }),
+            /* @__PURE__ */ jsxRuntime.jsx("dd", { children: row.href ? /* @__PURE__ */ jsxRuntime.jsx("a", { href: row.href, className: "text-accent hover:underline", children: /* @__PURE__ */ jsxRuntime.jsx("code", { title: row.value, children: row.value }) }) : /* @__PURE__ */ jsxRuntime.jsx("code", { title: row.value, children: row.value }) }),
+            /* @__PURE__ */ jsxRuntime.jsx(
+              CopyButton,
+              {
+                value: row.value,
+                label: row.copyLabel ?? row.label,
+                compact: true,
+                className: "mg-raw-copy"
+              }
+            )
+          ] }, row.label)) }) : null,
+          children
+        ] })
       ]
     }
   );
+}
+function RawCode({
+  children,
+  label
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "relative", children: [
+    /* @__PURE__ */ jsxRuntime.jsx("pre", { className: "mg-raw-code", "aria-label": label, children: /* @__PURE__ */ jsxRuntime.jsx("code", { children }) }),
+    /* @__PURE__ */ jsxRuntime.jsx(
+      CopyButton,
+      {
+        value: children,
+        label: label ?? "snippet",
+        className: "absolute top-1 right-1"
+      }
+    )
+  ] });
+}
+
+// src/components/metagraphed/charts/chart-aria.ts
+function chartSegmentsAriaLabel(segments) {
+  return segments.map((s) => `${s.label} ${s.value}`).join(", ");
+}
+function synthesizeBarMiniAriaLabel(data) {
+  if (data.length === 0) return "Bar chart with no data";
+  return chartSegmentsAriaLabel(data);
+}
+function synthesizeDonutAriaLabel(segments) {
+  if (segments.length === 0) return "Donut chart with no data";
+  const total = segments.reduce((sum3, s) => sum3 + Math.max(0, s.value), 0);
+  if (total <= 0) return "Donut chart with no data";
+  return chartSegmentsAriaLabel(segments);
+}
+var SPARKLINE_EMPTY_ARIA_LABEL = "Sparkline chart with no data";
+var CANDLESTICK_MINI_EMPTY_ARIA_LABEL = "Candlestick chart with no data";
+var STACKED_AREA_EMPTY_ARIA_LABEL = "Stacked area chart with no data";
+function markAriaLabel(domain, total) {
+  if (total === void 0 || total === null || total === "") return domain;
+  return `${domain} \xB7 ${total} total`;
 }
 function Kbd({
   children,
@@ -1948,40 +2321,32 @@ function KeyChip({
 }) {
   const { copied, copy } = useCopy({ label });
   const short = value.length > head + tail + 1 ? `${value.slice(0, head)}\u2026${value.slice(-tail)}` : value;
-  return (
-    // Self-wrapped so KeyChip works outside AppShell's global provider.
-    /* @__PURE__ */ jsxRuntime.jsxs(TooltipProvider, { children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(Tooltip, { delayDuration: 120, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntime.jsxs(
-          "button",
-          {
-            type: "button",
-            onClick: () => copy(value),
-            "aria-label": copied ? `${label} copied` : `Copy ${label}: ${value}`,
-            className: classNames(
-              "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left text-11 text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
-              className
-            ),
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate tabular-nums", children: short }),
-              /* @__PURE__ */ jsxRuntime.jsx(
-                CopyIconToggle,
-                {
-                  copied,
-                  className: "text-ink-muted group-hover:text-ink"
-                }
-              )
-            ]
-          }
-        ) }),
-        /* @__PURE__ */ jsxRuntime.jsxs(TooltipContent, { side: "top", className: "max-w-[90vw] break-all text-11", children: [
-          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mr-1 text-11 opacity-70", children: label }),
-          value
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntime.jsx(CopyStatusRegion, { children: copied ? `${label} copied to clipboard` : "" })
-    ] })
-  );
+  return /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntime.jsxs(
+      "button",
+      {
+        type: "button",
+        onClick: () => copy(value),
+        title: value,
+        "aria-label": copied ? `${label} copied` : `Copy ${label}: ${value}`,
+        className: classNames(
+          "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left text-11 text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
+          className
+        ),
+        children: [
+          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate tabular-nums", children: short }),
+          /* @__PURE__ */ jsxRuntime.jsx(
+            CopyIconToggle,
+            {
+              copied,
+              className: "text-ink-muted group-hover:text-ink"
+            }
+          )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntime.jsx(CopyStatusRegion, { children: copied ? `${label} copied to clipboard` : "" })
+  ] });
 }
 function ListShell({
   filters,
@@ -2391,15 +2756,14 @@ function SectionAnchor({
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mb-3 flex items-center gap-3", children: [
           /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0 flex-1", children: [
             /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex min-w-0 max-w-full items-center gap-1.5", children: [
-              /* @__PURE__ */ jsxRuntime.jsx(
-                "h2",
+              /* @__PURE__ */ jsxRuntime.jsx("h2", { className: "min-w-0 truncate font-display text-13 font-semibold text-ink-strong", children: title }),
+              info ? /* @__PURE__ */ jsxRuntime.jsx(
+                Definition,
                 {
-                  className: "min-w-0 truncate font-display text-13 font-semibold text-ink-strong",
-                  title: typeof title === "string" ? title : void 0,
-                  children: title
+                  term: typeof title === "string" ? title : id,
+                  sentence: info
                 }
-              ),
-              info ? /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: info }) : null,
+              ) : null,
               /* @__PURE__ */ jsxRuntime.jsx(
                 "button",
                 {
@@ -2493,7 +2857,6 @@ function ShareButton({
         type: "button",
         onClick,
         "aria-label": "Copy link with current filters, sort, and page",
-        title: "Copy link with current filters, sort, and page",
         className: classNames(
           connected ? "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : bare ? iconOnly ? "inline-flex items-center justify-center rounded p-1 min-h-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : (
             // #8467: px-1 sm:px-2 (not a flat px-2) so the button doesn't
@@ -2589,10 +2952,6 @@ function LiveTickerProvider({ children }) {
 function useLiveTicker() {
   return React3.useContext(LiveTickerContext);
 }
-function timeAgoAbsoluteTitle(at) {
-  if (!isUsableTimestamp(at)) return void 0;
-  return formatFreshnessAbsolute(at) ?? void 0;
-}
 function timeAgoTickDelayMs(ageMs) {
   return ageMs < 6e4 ? 1e3 : 6e4;
 }
@@ -2624,15 +2983,7 @@ function TimeAgo({
     return () => clearTimeout(timeoutId);
   }, [mounted, at, hasSharedTicker]);
   const text = !at ? fallback : mounted ? formatRelative(at) : "";
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "span",
-    {
-      className,
-      title: timeAgoAbsoluteTitle(at),
-      suppressHydrationWarning: true,
-      children: text
-    }
-  );
+  return /* @__PURE__ */ jsxRuntime.jsx("span", { className, suppressHydrationWarning: true, children: text });
 }
 function hasApiErrorShape(err) {
   return typeof err === "object" && err !== null && typeof err.status === "number" && typeof err.url === "string";
@@ -2931,7 +3282,6 @@ function McpToolsList({
     /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-wrap gap-1.5", children: visibleTools(tools, open).map((t) => /* @__PURE__ */ jsxRuntime.jsx(
       "span",
       {
-        title: t.title,
         className: "inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 text-10 text-ink-muted",
         children: t.name
       },
@@ -3082,7 +3432,7 @@ function MethodologyCallout({
 }) {
   const [open, setOpen] = React3.useState(false);
   const freshLine = formatFreshness(generatedAt, windowLabel);
-  const freshAbs = formatFreshnessAbsolute(generatedAt);
+  formatFreshnessAbsolute(generatedAt);
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "aside",
     {
@@ -3100,14 +3450,7 @@ function MethodologyCallout({
               /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Info, { className: "mt-0.5 size-3.5 shrink-0 text-accent" }),
               /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "min-w-0 flex-1", children: [
                 /* @__PURE__ */ jsxRuntime.jsx("span", { className: "block text-13 text-ink-muted", children: "Data freshness & methodology" }),
-                freshLine ? /* @__PURE__ */ jsxRuntime.jsx(
-                  "span",
-                  {
-                    className: "mt-0.5 block text-10 text-ink-muted/80",
-                    title: freshAbs ?? void 0,
-                    children: freshLine
-                  }
-                ) : null
+                freshLine ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mt-0.5 block text-10 text-ink-muted/80", children: freshLine }) : null
               ] }),
               /* @__PURE__ */ jsxRuntime.jsx(
                 lucideReact.ChevronDown,
@@ -3155,24 +3498,6 @@ function MethodologyCallout({
     }
   );
 }
-
-// src/components/metagraphed/charts/chart-aria.ts
-function chartSegmentsAriaLabel(segments) {
-  return segments.map((s) => `${s.label} ${s.value}`).join(", ");
-}
-function synthesizeBarMiniAriaLabel(data) {
-  if (data.length === 0) return "Bar chart with no data";
-  return chartSegmentsAriaLabel(data);
-}
-function synthesizeDonutAriaLabel(segments) {
-  if (segments.length === 0) return "Donut chart with no data";
-  const total = segments.reduce((sum3, s) => sum3 + Math.max(0, s.value), 0);
-  if (total <= 0) return "Donut chart with no data";
-  return chartSegmentsAriaLabel(segments);
-}
-var SPARKLINE_EMPTY_ARIA_LABEL = "Sparkline chart with no data";
-var CANDLESTICK_MINI_EMPTY_ARIA_LABEL = "Candlestick chart with no data";
-var STACKED_AREA_EMPTY_ARIA_LABEL = "Stacked area chart with no data";
 function BarMini({
   data,
   max,
@@ -3584,52 +3909,17 @@ function SparkLegend({
   source,
   windowLabel,
   updatedAt,
-  staleness,
-  side = "top"
+  staleness
 }) {
   const fresh = formatFreshness(updatedAt, windowLabel);
   const freshAbs = formatFreshnessAbsolute(updatedAt);
-  return (
-    // Self-wrapped so SparkLegend works outside AppShell's global provider.
-    /* @__PURE__ */ jsxRuntime.jsx(TooltipProvider, { children: /* @__PURE__ */ jsxRuntime.jsxs(Tooltip, { delayDuration: 200, children: [
-      /* @__PURE__ */ jsxRuntime.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntime.jsx(
-        "span",
-        {
-          tabIndex: 0,
-          className: "inline-flex max-w-full items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded",
-          children
-        }
-      ) }),
-      /* @__PURE__ */ jsxRuntime.jsxs(
-        TooltipContent,
-        {
-          side,
-          sideOffset: 6,
-          collisionPadding: 8,
-          avoidCollisions: true,
-          className: "max-w-xs text-13",
-          children: [
-            /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "text-13 mb-1", children: [
-              metric,
-              windowLabel ? ` \xB7 ${windowLabel}` : ""
-            ] }),
-            /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mb-1", children: [
-              /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-11 opacity-70", children: "source \xB7 " }),
-              source
-            ] }),
-            staleness ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mb-1", children: [
-              /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-11 opacity-70", children: "staleness \xB7 " }),
-              staleness
-            ] }) : null,
-            fresh || freshAbs ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-1 text-10 opacity-80", children: [
-              fresh ?? "",
-              freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""
-            ] }) : null
-          ]
-        }
-      )
-    ] }) })
-  );
+  const term = windowLabel ? `${metric} \xB7 ${windowLabel}` : metric;
+  const sentence = [
+    source.replace(/\.?$/, "."),
+    staleness ? `Staleness: ${staleness.replace(/\.?$/, ".")}` : null,
+    fresh || freshAbs ? `${fresh ?? ""}${freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""}.` : null
+  ].filter(Boolean).join(" ");
+  return /* @__PURE__ */ jsxRuntime.jsx(Definition, { term, sentence, children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "inline-flex max-w-full items-center", children }) });
 }
 function Sparkline({
   values,
@@ -3827,7 +4117,14 @@ function StatTile({
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-[6rem] flex-1", children: [
           /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center gap-1 text-13 text-ink-muted", children: [
             /* @__PURE__ */ jsxRuntime.jsx("span", { className: "line-clamp-3 leading-tight", children: eyebrow }),
-            tooltip ? /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: tooltip, className: "shrink-0" }) : null
+            tooltip ? /* @__PURE__ */ jsxRuntime.jsx(
+              Definition,
+              {
+                term: typeof eyebrow === "string" ? eyebrow : "This metric",
+                sentence: tooltip,
+                className: "shrink-0"
+              }
+            ) : null
           ] }),
           /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-1 flex min-w-0 items-baseline gap-1.5", children: [
             /* @__PURE__ */ jsxRuntime.jsx("span", { className: "shrink-0 font-display text-16 font-semibold tabular-nums leading-none text-ink-strong sm:text-28 md:text-28", children: value }),
@@ -3855,51 +4152,40 @@ function StatWithSpark({
 }) {
   const freshLine = formatFreshness(updatedAt, windowLabel);
   const freshAbs = formatFreshnessAbsolute(updatedAt);
-  return (
-    // Self-wrapped so StatWithSpark works outside AppShell's global provider.
-    /* @__PURE__ */ jsxRuntime.jsx(TooltipProvider, { children: /* @__PURE__ */ jsxRuntime.jsxs(Tooltip, { delayDuration: 200, children: [
-      /* @__PURE__ */ jsxRuntime.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntime.jsxs(
-        "div",
-        {
-          tabIndex: 0,
-          className: classNames(
-            "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface transition-colors",
-            className
-          ),
-          children: [
-            /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-13 text-ink-muted truncate", children: label }),
-            /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-baseline gap-1.5 min-w-0", children: [
-              /* @__PURE__ */ jsxRuntime.jsx(
-                "span",
-                {
-                  className: classNames(
-                    "font-display text-16 font-semibold tabular-nums leading-none truncate",
-                    tone === "ok" && "text-health-ok",
-                    tone === "warn" && "text-health-warn",
-                    tone === "down" && "text-health-down",
-                    tone === "default" && "text-ink-strong"
-                  ),
-                  children: value
-                }
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
+    {
+      className: classNames(
+        "group flex flex-col gap-1 px-3 py-2.5 min-w-0 transition-colors",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center gap-1 min-w-0", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-13 text-ink-muted truncate", children: label }),
+          full ? /* @__PURE__ */ jsxRuntime.jsx(Definition, { term: label, sentence: full }) : null
+        ] }),
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-baseline gap-1.5 min-w-0", children: [
+          /* @__PURE__ */ jsxRuntime.jsx(
+            "span",
+            {
+              className: classNames(
+                "font-display text-16 font-semibold tabular-nums leading-none truncate",
+                tone === "ok" && "text-health-ok",
+                tone === "warn" && "text-health-warn",
+                tone === "down" && "text-health-down",
+                tone === "default" && "text-ink-strong"
               ),
-              unit ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "shrink-0 text-11 text-ink-muted", children: unit }) : null,
-              delta
-            ] }),
-            viz ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-0.5 min-h-[18px]", children: viz }) : null,
-            hint ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-10 text-ink-muted/80 truncate", children: hint }) : null,
-            freshLine ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-10 text-ink-muted/70 truncate", children: freshLine }) : null
-          ]
-        }
-      ) }),
-      /* @__PURE__ */ jsxRuntime.jsxs(TooltipContent, { side: "bottom", className: "max-w-xs text-13", children: [
-        /* @__PURE__ */ jsxRuntime.jsx("div", { children: full ?? hint ?? label }),
-        freshAbs || windowLabel ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-1 text-10 text-primary-foreground/70", children: [
-          freshAbs ? `Last checked ${freshAbs}` : null,
-          freshAbs && windowLabel ? " \xB7 " : "",
-          windowLabel ? `${windowLabel} window` : null
-        ] }) : null
-      ] })
-    ] }) })
+              children: value
+            }
+          ),
+          unit ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "shrink-0 text-11 text-ink-muted", children: unit }) : null,
+          delta
+        ] }),
+        viz ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-0.5 min-h-[18px]", children: viz }) : null,
+        hint ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-10 text-ink-muted/80 truncate", children: hint }) : null,
+        freshLine || freshAbs ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-10 text-ink-muted/70 truncate", children: freshLine ?? `Last checked ${freshAbs}` }) : null
+      ]
+    }
   );
 }
 function MiniStack({
@@ -3931,8 +4217,7 @@ function MiniStack({
             style: {
               width: `${s.value / total * 100}%`,
               background: s.color
-            },
-            title: `${s.label} \xB7 ${s.value}`
+            }
           },
           s.label
         ) : null
@@ -3991,33 +4276,23 @@ function MiniRadial({
 function DotRow({
   dots
 }) {
-  return (
-    // One provider for the row rather than one per dot -- self-wrapped so DotRow
-    // works outside AppShell's global provider.
-    /* @__PURE__ */ jsxRuntime.jsx(TooltipProvider, { children: /* @__PURE__ */ jsxRuntime.jsx(
-      "div",
-      {
-        className: "flex items-center gap-1",
-        role: "img",
-        "aria-label": "Source coverage",
-        children: dots.map((d) => /* @__PURE__ */ jsxRuntime.jsxs(Tooltip, { delayDuration: 150, children: [
-          /* @__PURE__ */ jsxRuntime.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntime.jsx(
-            "span",
-            {
-              className: classNames(
-                "size-1.5 rounded-full mg-dot",
-                d.on ? "bg-accent" : "bg-border"
-              )
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntime.jsxs(TooltipContent, { side: "top", className: "text-10", children: [
-            d.label,
-            " ",
-            d.on ? "\u2713" : "\u2014"
-          ] })
-        ] }, d.label))
-      }
-    ) })
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "div",
+    {
+      className: "flex items-center gap-1",
+      role: "img",
+      "aria-label": `Source coverage: ${dots.map((d) => `${d.label} ${d.on ? "present" : "missing"}`).join(", ")}`,
+      children: dots.map((d) => /* @__PURE__ */ jsxRuntime.jsx(
+        "span",
+        {
+          className: classNames(
+            "size-1.5 rounded-full mg-dot",
+            d.on ? "bg-accent" : "bg-border"
+          )
+        },
+        d.label
+      ))
+    }
   );
 }
 function NoDataSpark({
@@ -4028,36 +4303,24 @@ function NoDataSpark({
 }) {
   const freshAbs = formatFreshnessAbsolute(updatedAt);
   const freshLine = formatFreshness(updatedAt, windowLabel);
-  return (
-    // Self-wrapped so NoDataSpark works outside AppShell's global provider.
-    /* @__PURE__ */ jsxRuntime.jsx(TooltipProvider, { children: /* @__PURE__ */ jsxRuntime.jsxs(Tooltip, { delayDuration: 150, children: [
-      /* @__PURE__ */ jsxRuntime.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntime.jsxs(
-        "div",
-        {
-          tabIndex: 0,
-          role: "img",
-          "aria-label": `${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`,
-          className: "flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          style: { height },
-          children: [
-            /* @__PURE__ */ jsxRuntime.jsx(
-              "span",
-              {
-                "aria-hidden": true,
-                className: "inline-block size-1 rounded-full mg-dot bg-ink-muted/60"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate text-13 text-ink-muted/80", children: freshLine ?? reason })
-          ]
-        }
-      ) }),
-      /* @__PURE__ */ jsxRuntime.jsxs(TooltipContent, { side: "top", className: "max-w-xs text-13", children: [
-        reason,
-        ".",
-        " ",
-        freshAbs ? `Last checked ${freshAbs}${windowLabel ? ` \xB7 ${windowLabel} window` : ""}.` : "No probe samples recorded yet."
-      ] })
-    ] }) })
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
+    {
+      role: "img",
+      "aria-label": `${reason}${freshAbs ? `, last checked ${freshAbs}` : ", no probe samples recorded yet"}`,
+      className: "flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper px-1.5",
+      style: { height },
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsx(
+          "span",
+          {
+            "aria-hidden": true,
+            className: "inline-block size-1 rounded-full mg-dot bg-ink-muted/60"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate text-13 text-ink-muted/80", children: freshLine ?? reason })
+      ]
+    }
   );
 }
 var sum = (ns) => ns.reduce((a, b) => a + b, 0);
@@ -4144,7 +4407,6 @@ function TreemapMini({
       children: tiles.map((t) => /* @__PURE__ */ jsxRuntime.jsx(
         "div",
         {
-          title: `${t.label} \xB7 ${formatValue(t.value)} \xB7 ${(t.share * 100).toFixed(1)}%`,
           className: "absolute overflow-hidden p-1",
           style: {
             left: `${t.x}%`,
@@ -4613,7 +4875,6 @@ function Indicator({
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "span",
     {
-      title,
       className: classNames(
         "inline-flex min-w-0",
         isRow ? "items-baseline gap-1.5" : "flex-col gap-0.5",
@@ -4781,7 +5042,6 @@ function ColumnCustomizer({
                   type: "button",
                   onClick: onReset,
                   className: "mg-focus-ring inline-flex items-center gap-1 text-10 text-ink-muted hover:text-ink-strong",
-                  title: "Reset to defaults",
                   children: [
                     /* @__PURE__ */ jsxRuntime.jsx(lucideReact.RotateCcw, { className: "size-3", "aria-hidden": true }),
                     " Reset"
@@ -5261,7 +5521,7 @@ function DefinitionList({
           className
         ),
         children: items.map((it, i) => /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-          /* @__PURE__ */ jsxRuntime.jsx("dt", { title: it.title, className: "text-10 text-ink-muted", children: it.term }),
+          /* @__PURE__ */ jsxRuntime.jsx("dt", { className: "text-10 text-ink-muted", children: it.term }),
           /* @__PURE__ */ jsxRuntime.jsx("dd", { className: "mt-1 truncate text-13 text-ink-strong", children: it.detail })
         ] }, i))
       }
@@ -5269,7 +5529,7 @@ function DefinitionList({
   }
   if (layout === "stacked") {
     return /* @__PURE__ */ jsxRuntime.jsx("dl", { className: cn("space-y-3", className), children: items.map((it, i) => /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-      /* @__PURE__ */ jsxRuntime.jsx("dt", { title: it.title, className: "text-10 text-ink-muted", children: it.term }),
+      /* @__PURE__ */ jsxRuntime.jsx("dt", { className: "text-10 text-ink-muted", children: it.term }),
       /* @__PURE__ */ jsxRuntime.jsx("dd", { className: "mt-1 text-13 text-ink-strong", children: it.detail })
     ] }, i)) });
   }
@@ -5278,7 +5538,7 @@ function DefinitionList({
     {
       className: "flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0",
       children: [
-        /* @__PURE__ */ jsxRuntime.jsx("dt", { title: it.title, className: "text-11 shrink-0 text-ink-muted", children: it.term }),
+        /* @__PURE__ */ jsxRuntime.jsx("dt", { className: "text-11 shrink-0 text-ink-muted", children: it.term }),
         /* @__PURE__ */ jsxRuntime.jsx("dd", { className: "min-w-0 truncate text-right text-13 text-ink-strong", children: it.detail })
       ]
     },
@@ -5400,19 +5660,11 @@ function MetaStrip({
         "flex flex-wrap items-center gap-x-2 gap-y-1 text-13 text-ink-muted",
         className
       ),
-      children: items.map((it, i) => /* @__PURE__ */ jsxRuntime.jsxs(
-        "span",
-        {
-          title: it.title,
-          className: "inline-flex items-center gap-1.5",
-          children: [
-            i > 0 ? /* @__PURE__ */ jsxRuntime.jsx("span", { "aria-hidden": true, className: "text-ink-subtle-text", children: sep }) : null,
-            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-10", children: it.label }),
-            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink-strong", children: it.value })
-          ]
-        },
-        i
-      ))
+      children: items.map((it, i) => /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
+        i > 0 ? /* @__PURE__ */ jsxRuntime.jsx("span", { "aria-hidden": true, className: "text-ink-subtle-text", children: sep }) : null,
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-10", children: it.label }),
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink-strong", children: it.value })
+      ] }, i))
     }
   );
 }
@@ -5800,7 +6052,6 @@ function ReadinessGauge({
     {
       tabIndex: 0,
       "aria-label": description,
-      title: description,
       className: classNames(
         "mg-focus-ring inline-grid items-center gap-2",
         compact ? "min-w-[78px] grid-cols-[minmax(0,1fr)_1.75rem]" : "min-w-[96px] grid-cols-[minmax(0,1fr)_2rem]",
@@ -5871,7 +6122,6 @@ function ProvenanceChip({
     "span",
     {
       tabIndex: 0,
-      title: item.description,
       "aria-label": `${item.label}: ${item.description}`,
       className: classNames(
         "mg-focus-ring inline-flex items-center rounded border bg-transparent px-1.5 py-0.5 text-10",
@@ -6504,6 +6754,7 @@ exports.AccordionContent = AccordionContent;
 exports.AccordionItem = AccordionItem;
 exports.AccordionTrigger = AccordionTrigger;
 exports.ActionBar = ActionBar;
+exports.ActiveEntityProvider = ActiveEntityProvider;
 exports.AnimatedNumber = AnimatedNumber;
 exports.BackToTop = BackToTop;
 exports.BarMini = BarMini;
@@ -6511,6 +6762,7 @@ exports.BrandIcon = BrandIcon;
 exports.CandidateChip = CandidateChip;
 exports.CandlestickMini = CandlestickMini;
 exports.ChartSkeleton = ChartSkeleton;
+exports.ChartTooltip = ChartTooltip;
 exports.Chip = Chip;
 exports.ClaudeIcon = ClaudeIcon;
 exports.ColumnCustomizer = ColumnCustomizer;
@@ -6528,7 +6780,9 @@ exports.CopyIconToggle = CopyIconToggle;
 exports.CopyableCode = CopyableCode;
 exports.CurationChip = CurationChip;
 exports.DailyRollupFreshness = DailyRollupFreshness;
+exports.Definition = Definition;
 exports.DefinitionList = DefinitionList;
+exports.DefinitionsProvider = DefinitionsProvider;
 exports.Dialog = Dialog;
 exports.DialogClose = DialogClose;
 exports.DialogContent = DialogContent;
@@ -6559,12 +6813,7 @@ exports.FreshnessIndicator = FreshnessIndicator;
 exports.GhostButton = GhostButton;
 exports.HealthDot = HealthDot;
 exports.HealthPill = HealthPill;
-exports.HoverCard = HoverCard;
-exports.HoverCardContent = HoverCardContent;
-exports.HoverCardTrigger = HoverCardTrigger;
-exports.HoverPreview = HoverPreview;
 exports.Indicator = Indicator;
-exports.InfoTooltip = InfoTooltip;
 exports.Kbd = Kbd;
 exports.KeyChip = KeyChip;
 exports.ListShell = ListShell;
@@ -6597,6 +6846,8 @@ exports.PrimaryLinksRail = PrimaryLinksRail;
 exports.ProvenanceChip = ProvenanceChip;
 exports.QueryBar = QueryBar;
 exports.QueryProgress = QueryProgress;
+exports.Raw = Raw;
+exports.RawCode = RawCode;
 exports.ReadinessGauge = ReadinessGauge;
 exports.RealtimeFreshness = RealtimeFreshness;
 exports.ResponsiveTable = ResponsiveTable;
@@ -6635,10 +6886,6 @@ exports.TableSkeleton = TableSkeleton;
 exports.TableState = TableState;
 exports.TimeAgo = TimeAgo;
 exports.Toaster = Toaster;
-exports.Tooltip = Tooltip;
-exports.TooltipContent = TooltipContent;
-exports.TooltipProvider = TooltipProvider;
-exports.TooltipTrigger = TooltipTrigger;
 exports.TreemapMini = TreemapMini;
 exports.ViewModeToggle = ViewModeToggle;
 exports.Wordmark = Wordmark;
@@ -6652,12 +6899,17 @@ exports.fmtYield = fmtYield;
 exports.isScrolledPast = isScrolledPast;
 exports.layoutSankey = layoutSankey;
 exports.layoutStackedArea = layoutStackedArea;
+exports.markAriaLabel = markAriaLabel;
 exports.nextTabIndex = nextTabIndex;
 exports.prefetchBrandIcon = prefetchBrandIcon;
 exports.rovingTabIndex = rovingTabIndex;
 exports.safeExternalUrl = safeExternalUrl;
 exports.tierFreshnessLabel = tierFreshnessLabel;
+exports.useActiveEntity = useActiveEntity;
 exports.useColumnVisibility = useColumnVisibility;
+exports.useDefinition = useDefinition;
+exports.useEntityMark = useEntityMark;
+exports.useIsActive = useIsActive;
 exports.useLiveTicker = useLiveTicker;
 exports.useQueryBarContext = useQueryBarContext;
 exports.useRovingTablist = useRovingTablist;

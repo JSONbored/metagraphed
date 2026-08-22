@@ -92,7 +92,6 @@ export function PanelShell({
                 ? "border-health-warn/40 bg-health-warn/10 text-health-warn"
                 : "border-border bg-paper text-ink-muted")
             }
-            title={meta?.generatedAt}
           >
             {stale ? "stale · " : "updated "}
             <TimeAgo at={meta!.generatedAt} />

@@ -1,3 +1,4 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useQuery } from "@tanstack/react-query";
 import { emissionChangesQuery, networkRandomnessQuery } from "@/lib/metagraphed/queries";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -51,9 +52,7 @@ function ChangeLog() {
             key={`${ch.kind}-${ch.observed_at ?? i}-${ch.param ?? ""}`}
             className="flex gap-3 text-10"
           >
-            <span className="w-40 shrink-0 truncate text-ink-muted" title={ch.param ?? ch.kind}>
-              {ch.param ?? ch.kind}
-            </span>
+            <span className="w-40 shrink-0 truncate text-ink-muted">{ch.param ?? ch.kind}</span>
             <span className="min-w-0 flex-1 tabular-nums text-ink">
               {ch.previous_value != null ? `${ch.previous_value} → ` : ""}
               {ch.value ?? "—"}
@@ -121,8 +120,11 @@ function RandomnessCard() {
 
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div title={hint}>
-      <div className="text-11 text-ink-muted">{label}</div>
+    <div>
+      <div className="flex items-center gap-1 text-11 text-ink-muted">
+        {label}
+        <Definition term={label} sentence={hint} />
+      </div>
       <div className="text-11 tabular-nums text-ink">{value}</div>
     </div>
   );

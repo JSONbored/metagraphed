@@ -29,7 +29,6 @@ export function McpToolsList({
         {visibleTools(tools, open).map((t) => (
           <span
             key={t.name}
-            title={t.title}
             className="inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 text-10 text-ink-muted"
           >
             {t.name}

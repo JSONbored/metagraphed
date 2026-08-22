@@ -357,7 +357,6 @@ function AutoRefreshControl({
       <button
         onClick={onToggle}
         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-ink hover:bg-surface transition-colors border-r border-border"
-        title={enabled ? "Pause auto-refresh" : "Resume auto-refresh"}
         aria-pressed={enabled}
       >
         {enabled ? <Pause className="size-3" /> : <Play className="size-3" />}

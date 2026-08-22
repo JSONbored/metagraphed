@@ -308,7 +308,6 @@ export function ResetFiltersButton({
           ? "inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
           : "inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-13 font-medium text-ink hover:border-ink/30 min-h-7"
       }
-      title="Clear search, filters, and pagination"
     >
       <X className="size-3" /> Reset filters
     </button>

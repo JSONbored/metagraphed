@@ -1,5 +1,5 @@
 import { Activity, Layers, Radio, Server } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   Breadcrumbs,
   Chip,
@@ -70,12 +70,16 @@ import {
   FreshnessIndicator,
   HealthDot,
   HealthPill,
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-  HoverPreview,
-  InfoTooltip,
   Kbd,
+  ActiveEntityProvider,
+  ChartTooltip,
+  Definition,
+  DefinitionsProvider,
+  Raw,
+  RawCode,
+  useEntityMark,
+  useIsActive,
+  markAriaLabel,
   KeyChip,
   ListShell,
   LoadMore,
@@ -125,16 +129,13 @@ import {
   TableState,
   TabStrip,
   TimeAgo,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
   TreemapMini,
   ViewModeToggle,
   Wordmark,
   YieldPercentileStrip,
 } from "@jsonbored/ui-kit";
 import { GITHUB_REPO_URL } from "@/lib/metagraphed/identity";
+import { DEFINITIONS } from "@/lib/metagraphed/definitions";
 
 const COLUMNS: ColumnDef[] = [
   { id: "netuid", label: "Netuid", required: true },
@@ -179,7 +180,9 @@ export function PrimitivesPreview() {
       <TokensSection cols={cols} updated={updated} />
       <LayoutSection updated={updated} />
       <DataDisplaySection />
-      <InteractionSection />
+      <DefinitionsProvider definitions={DEFINITIONS}>
+        <InteractionSection />
+      </DefinitionsProvider>
       <FeedbackSection updated={updated} />
 
       <p className="mt-10 text-13 text-ink-muted">
@@ -614,7 +617,6 @@ function DataDisplaySection() {
             metric="Health trend"
             source="Live probe series, sample data."
             windowLabel="7d"
-            side="top"
           >
             <Sparkline values={SPARK_POINTS.map((p) => p.v)} width={120} height={28} />
           </SparkLegend>
@@ -923,30 +925,21 @@ function InteractionSection() {
             }
           />
         </Show>
-        <Show name="Kbd, InfoTooltip, HoverPreview">
-          <div className="flex flex-wrap items-center gap-4">
+        <Show name="Kbd, Definition">
+          <div className="flex flex-wrap items-center gap-4" data-testid="definition-demo">
             <span className="text-13 text-ink-muted">
               Press <Kbd>⌘</Kbd> <Kbd>K</Kbd>
             </span>
-            <InfoTooltip label="Explains what this metric means." />
-            <HoverPreview
-              content={<span className="text-13">Preview content on hover/focus.</span>}
-            >
-              <span tabIndex={0} className="cursor-default underline decoration-dotted">
-                Hover me
-              </span>
-            </HoverPreview>
+            <span className="inline-flex items-center gap-1 text-13">
+              Emission share <Definition term="Emission share" />
+            </span>
+            <Definition term="Validator take">
+              <span className="rounded border border-rule px-1.5 text-11">take 18%</span>
+            </Definition>
           </div>
         </Show>
-        <Show name="Tooltip">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <GhostButton size="sm">Hover</GhostButton>
-              </TooltipTrigger>
-              <TooltipContent>Radix tooltip content</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <Show name="ActiveEntityProvider, useEntityMark, ChartTooltip">
+          <EntityDemo />
         </Show>
         <Show name="Popover">
           <Popover>
@@ -956,13 +949,20 @@ function InteractionSection() {
             <PopoverContent className="w-56 p-3 text-13">Popover content.</PopoverContent>
           </Popover>
         </Show>
-        <Show name="HoverCard">
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <GhostButton size="sm">Hover card</GhostButton>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-56 text-13">Hover card content.</HoverCardContent>
-          </HoverCard>
+        <Show name="Raw, RawCode">
+          <Raw
+            defaultOpen
+            rows={[
+              { label: "Coldkey", value: "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9" },
+              {
+                label: "OpenAPI",
+                value: "https://api.metagraph.sh/openapi.json",
+                href: "https://api.metagraph.sh/openapi.json",
+              },
+            ]}
+          >
+            <RawCode label="curl">{"curl https://api.metagraph.sh/api/v1/subnets/1"}</RawCode>
+          </Raw>
         </Show>
         <Show name="Dialog">
           <Dialog>
@@ -1186,5 +1186,88 @@ function FeedbackSection({ updated }: { updated: string }) {
         </Show>
       </div>
     </Section>
+  );
+}
+
+const DEMO_KEYS = Array.from({ length: 12 }, (_, i) => `m-${i + 1}`);
+const DEMO_VALUES = [42, 58, 35, 71, 64, 29, 80, 53, 47, 66, 38, 75];
+
+function DemoBar({ index, onActivate }: { index: number; onActivate: (key: string) => void }) {
+  const key = DEMO_KEYS[index]!;
+  const value = DEMO_VALUES[index]!;
+  const mark = useEntityMark(key, {
+    source: "demo-bars",
+    label: markAriaLabel(`Mark ${index + 1}`, `${value}%`),
+    onActivate: () => onActivate(key),
+    data: {
+      title: `Mark ${index + 1}`,
+      total: `${value}%`,
+      rows: DEMO_KEYS.slice(Math.max(0, index - 1), index + 2).map((k) => ({
+        key: k,
+        label: `Mark ${Number(k.slice(2))}`,
+        value: `${DEMO_VALUES[Number(k.slice(2)) - 1]}%`,
+        swatch: `var(--chart-${((Number(k.slice(2)) - 1) % 11) + 1})`,
+      })),
+    },
+  });
+  return (
+    <button
+      type="button"
+      {...mark}
+      className="mg-demo-bar"
+      style={
+        { "--fill": `${value}%`, "--swatch": `var(--chart-${(index % 11) + 1})` } as CSSProperties
+      }
+    />
+  );
+}
+
+function EntityDemo() {
+  const [activated, setActivated] = useState<string>("");
+  return (
+    <ActiveEntityProvider>
+      <div data-testid="entity-demo" className="space-y-3">
+        <button type="button" data-testid="entity-demo-before" className="text-11 text-ink-muted">
+          before the group
+        </button>
+        <div className="relative" data-marks>
+          <ChartTooltip top={8} />
+          <div className="flex h-32 items-end gap-1">
+            {DEMO_KEYS.map((_, i) => (
+              <DemoBar key={DEMO_KEYS[i]} index={i} onActivate={setActivated} />
+            ))}
+          </div>
+        </div>
+        <ul className="divide-y divide-rule border-y border-rule text-13">
+          {DEMO_KEYS.map((key, i) => (
+            <DemoRow key={key} index={i} />
+          ))}
+        </ul>
+        <p className="text-11 text-ink-muted">
+          activated: <span data-testid="entity-demo-activated">{activated}</span>
+        </p>
+      </div>
+    </ActiveEntityProvider>
+  );
+}
+
+function DemoRow({ index }: { index: number }) {
+  const active = useIsActive(DEMO_KEYS[index]!);
+  return (
+    <li
+      data-entity={DEMO_KEYS[index]}
+      data-active={active ? "true" : undefined}
+      className="flex items-center justify-between px-2 py-1"
+    >
+      <span className="flex items-center gap-2">
+        <span
+          className="mg-chart-tooltip-swatch"
+          style={{ "--swatch": `var(--chart-${(index % 11) + 1})` } as CSSProperties}
+          aria-hidden
+        />
+        Mark {index + 1}
+      </span>
+      <span className="tabular-nums">{DEMO_VALUES[index]}%</span>
+    </li>
   );
 }

@@ -14,9 +14,6 @@ import {
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { useRegisterApiSource, useApiSourceCtx } from "@/lib/metagraphed/api-source-context";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   BrandIcon,
   ExternalLink,
   safeExternalUrl,
@@ -68,15 +65,6 @@ interface Props {
   banner?: ReactNode;
   uptimePct?: number | null;
   evidenceCount?: number;
-}
-
-function host(u?: string) {
-  if (!u) return "";
-  try {
-    return new URL(u).hostname.replace(/^www\./, "");
-  } catch {
-    return u;
-  }
 }
 
 /**
@@ -587,55 +575,34 @@ export function SubnetMasthead({
                     ? "hover:bg-surface hover:text-ink-strong"
                     : "cursor-default opacity-40");
 
-                return (
-                  <Tooltip key={l.label} delayDuration={150}>
-                    <TooltipTrigger asChild>
-                      {safeHref ? (
-                        <span className="inline-flex">
-                          {/* span carries TooltipTrigger's Slot ref/props --
-                              ExternalLink doesn't forward refs to its anchor
-                              (same wrapper recipe as batch 2/5). */}
-                          <ExternalLink
-                            bare
-                            href={safeHref}
-                            title={l.label}
-                            ariaLabel={l.label}
-                            className={className}
-                          >
-                            <Icon className="size-4" />
-                          </ExternalLink>
-                        </span>
-                      ) : (
-                        <span
-                          className={className}
-                          title="Blocked unsafe external URL"
-                          aria-label={`${l.label}: blocked unsafe external URL`}
-                        >
-                          <Icon className="size-4" />
-                        </span>
-                      )}
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-11">
-                      {safeHref ? host(safeHref) : "Blocked unsafe external URL"}
-                    </TooltipContent>
-                  </Tooltip>
+                return safeHref ? (
+                  <ExternalLink
+                    key={l.label}
+                    bare
+                    href={safeHref}
+                    ariaLabel={l.label}
+                    className={className}
+                  >
+                    <Icon className="size-4" />
+                  </ExternalLink>
+                ) : (
+                  <span
+                    key={l.label}
+                    className={className}
+                    aria-label={`${l.label}: blocked unsafe external URL`}
+                  >
+                    <Icon className="size-4" />
+                  </span>
                 );
               })}
-              <Tooltip delayDuration={150}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={openApiDrawer}
-                    aria-label="View API sources for this subnet"
-                    className="inline-flex size-8 items-center justify-center text-ink-muted transition-colors hover:bg-surface hover:text-ink-strong"
-                  >
-                    <Code2 className="size-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-11">
-                  {"{ } API"}
-                </TooltipContent>
-              </Tooltip>
+              <button
+                type="button"
+                onClick={openApiDrawer}
+                aria-label="View API sources for this subnet"
+                className="inline-flex size-8 items-center justify-center text-ink-muted transition-colors hover:bg-surface hover:text-ink-strong"
+              >
+                <Code2 className="size-4" />
+              </button>
               <ShareButton connected />
             </Panel>
           }

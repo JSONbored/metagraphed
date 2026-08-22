@@ -51,12 +51,6 @@ export function LiveBlockRail() {
         : streamStatus === "error"
           ? "Polling"
           : null;
-  const streamTitle =
-    streamStatus === "open"
-      ? "Connected to /api/v1/chain/stream — new blocks refresh this rail immediately"
-      : streamStatus === "error"
-        ? "Chain stream unavailable — falling back to the 12s poll"
-        : "Opening /api/v1/chain/stream";
 
   if (rows.length === 0) return null;
   const latest = rows[0]!;
@@ -84,11 +78,7 @@ export function LiveBlockRail() {
             matching chain-events-feed.tsx's Live/Connecting/Polling
             language -- it used to pulse unconditionally regardless of
             whether anything was actually pushing updates. */}
-        <span
-          aria-hidden
-          className="relative inline-flex size-2 items-center justify-center"
-          title={streamTitle}
-        >
+        <span aria-hidden className="relative inline-flex size-2 items-center justify-center">
           {streamStatus === "open" ? (
             <>
               <span className="relative inline-flex size-1.5 rounded-full mg-dot bg-health-ok" />

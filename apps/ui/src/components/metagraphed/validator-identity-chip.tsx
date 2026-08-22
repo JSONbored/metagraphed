@@ -40,9 +40,7 @@ export function ValidatorIdentityChip({
         size={size}
       />
       {showName ? (
-        <span className="truncate font-medium text-ink-strong text-13" title={name}>
-          {name}
-        </span>
+        <span className="truncate font-medium text-ink-strong text-13">{name}</span>
       ) : null}
     </span>
   );

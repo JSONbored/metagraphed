@@ -33,8 +33,8 @@ import {
   StatTile,
   TableState,
   DownloadCsvButton,
-  InfoTooltip,
   BackToTop,
+  Definition,
 } from "@jsonbored/ui-kit";
 import {
   blockChainEventsQuery,
@@ -596,9 +596,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                           </td>
                           <td className="px-4 py-2.5 text-11 text-ink-muted">
                             <div className="flex max-w-xs items-center gap-1.5">
-                              <span className="truncate" title={formatChainEventArgs(event.args)}>
-                                {formatChainEventArgs(event.args)}
-                              </span>
+                              <span className="truncate">{formatChainEventArgs(event.args)}</span>
                               <CopyButton
                                 value={formatChainEventArgs(event.args)}
                                 label="args"
@@ -858,10 +856,7 @@ function GroupedEvents({
                         <tr
                           key={`${event.block_number}-${event.event_index}-${event.event_kind ?? "unknown"}`}
                         >
-                          <td
-                            className="px-2 py-1.5 text-11 text-ink-strong"
-                            title={event.event_kind ?? undefined}
-                          >
+                          <td className="px-2 py-1.5 text-11 text-ink-strong">
                             {eventKindLabel(event.event_kind)}
                           </td>
                           {showHotkeyCol ? (
@@ -957,7 +952,7 @@ function FieldRow({
     <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
       <dt className="inline-flex items-center gap-1 text-13 text-ink-muted sm:w-40 sm:shrink-0">
         <span>{label}</span>
-        {hint ? <InfoTooltip label={hint} /> : null}
+        {hint ? <Definition term={label} sentence={hint} /> : null}
       </dt>
       <dd className="min-w-0">{children}</dd>
     </div>

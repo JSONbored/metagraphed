@@ -53,7 +53,6 @@ export function ProvenanceChip({
   return (
     <span
       tabIndex={0}
-      title={item.description}
       aria-label={`${item.label}: ${item.description}`}
       className={classNames(
         "mg-focus-ring inline-flex items-center rounded border bg-transparent px-1.5 py-0.5 text-10",

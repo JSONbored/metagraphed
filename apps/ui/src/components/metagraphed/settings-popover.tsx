@@ -24,7 +24,6 @@ export function SettingsPopover() {
         <button
           type="button"
           aria-label="Settings"
-          title="Settings"
           className="inline-flex items-center justify-center rounded border border-border min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-rule-strong transition-colors"
         >
           <Settings className="size-3.5" aria-hidden="true" />
@@ -51,13 +50,7 @@ export function SettingsPanel() {
       <Section label="Theme">
         <SegmentedRow>
           {THEMES.map(({ id, label, Icon }) => (
-            <SegmentBtn
-              key={id}
-              active={choice === id}
-              onClick={() => setChoice(id)}
-              label={label}
-              title={`${label} theme`}
-            >
+            <SegmentBtn key={id} active={choice === id} onClick={() => setChoice(id)} label={label}>
               <Icon className="size-3.5" aria-hidden="true" />
               <span>{label}</span>
             </SegmentBtn>
@@ -143,13 +136,11 @@ function SegmentBtn({
   active,
   onClick,
   label,
-  title,
   children,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
-  title?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -158,7 +149,6 @@ function SegmentBtn({
       onClick={onClick}
       aria-pressed={active}
       aria-label={label}
-      title={title ?? label}
       className={classNames(
         "flex-1 inline-flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-13 font-medium transition-colors min-h-8",
         active ? "bg-raised text-ink-strong" : "text-ink-muted hover:text-ink-strong",

@@ -1,7 +1,7 @@
+import { Definition } from "../interaction/definition";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { classNames } from "@/lib/format";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { Panel } from "@/components/metagraphed/panel";
 
 interface Props {
@@ -93,7 +93,11 @@ export function StatTile({
               trust" in a 66px column) genuinely needs three. */}
           <span className="line-clamp-3 leading-tight">{eyebrow}</span>
           {tooltip ? (
-            <InfoTooltip label={tooltip} className="shrink-0" />
+            <Definition
+              term={typeof eyebrow === "string" ? eyebrow : "This metric"}
+              sentence={tooltip}
+              className="shrink-0"
+            />
           ) : null}
         </div>
         <div className="mt-1 flex min-w-0 items-baseline gap-1.5">
