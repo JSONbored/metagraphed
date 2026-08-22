@@ -8,7 +8,6 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
   BrandIcon,
   CopyableCode,
-  ShareButton,
   AnalyticsSection,
   Raw,
   RangeControl,
@@ -100,7 +99,6 @@ function ProviderShell({ slug }: { slug: string }) {
                 ...((v) => (v ? [{ label: "Repository", value: v, href: v }] : []))(p?.repo),
               ]}
             />
-            <ShareButton connected />
           </Panel>
         }
         sentence={

@@ -6,8 +6,8 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { RegistryPipelinePanel } from "@/components/metagraphed/registry-pipeline-panel";
 import {
+  DataTable,
   ExternalLink,
-  TableState,
   BrandIcon,
   CurationChip,
   AnalyticsSection,
@@ -16,6 +16,8 @@ import {
   FactSentence,
   FactCell,
 } from "@jsonbored/ui-kit";
+import { EmptyState } from "@/components/metagraphed/states";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import { X, Search } from "lucide-react";
@@ -36,7 +38,7 @@ import {
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { GITHUB_REPO } from "@/lib/metagraphed/config";
-import { classNames } from "@/lib/metagraphed/format";
+import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
 import type { CurationLevel, Gap, Subnet } from "@/lib/metagraphed/types";
 import { MISSING_KINDS, STATUS_OPTIONS, TARGET_OPTIONS, SORT_OPTIONS } from "./contribute";
@@ -782,7 +784,6 @@ function GapRow({
           </div>
         </div>
       </Panel>
-      trailing
     </li>
   );
 }
@@ -842,86 +843,90 @@ function CompletenessList() {
   const { data } = useSuspenseQuery(reviewProfileCompletenessQuery());
   const meta = data.meta;
   const rows = data.data ?? [];
-  if (rows.length === 0)
-    return (
-      <TableState
-        variant="empty"
-        title="No completeness data"
-        description="Completeness scores will appear here once profiles are scored."
-        cta={{ label: "Browse subnets", href: "/subnets" }}
-        generatedAt={meta?.generated_at}
-      />
-    );
   return (
-    <ul className="space-y-1.5">
-      {rows.slice(0, 24).map((r) => (
-        <li
-          key={r.netuid}
-          className="flex items-center gap-4 rounded border border-border bg-card px-4 py-2.5"
-        >
-          <Link
-            to="/subnets/$netuid"
-            params={{ netuid: r.netuid }}
-            className="text-11 text-ink-muted hover:text-accent w-12"
-          >
-            SN{r.netuid}
-          </Link>
-          <div className="flex-1 h-1.5 rounded bg-surface-2 overflow-hidden">
-            <div
-              className="h-full bg-accent"
-              style={{ width: `${Math.round((r.completeness ?? 0) * 100)}%` }}
-            />
-          </div>
-          <span className="text-11 text-ink-strong w-10 text-right tabular-nums">
-            {Math.round((r.completeness ?? 0) * 100)}%
-          </span>
-        </li>
-      ))}
-    </ul>
+    <DataTable
+      rows={rows}
+      rowKey={(r) => String(r.netuid)}
+      caption="Profile completeness"
+      source="profile-completeness"
+      link={RouterLink}
+      rowHref={(r) => `/subnets/${r.netuid}`}
+      empty={
+        <EmptyState
+          title="No completeness data"
+          description="Completeness scores will appear here once profiles are scored."
+          action={{ label: "Browse subnets", href: "/subnets" }}
+          lastChecked={meta?.generated_at}
+        />
+      }
+      columns={[
+        {
+          key: "netuid",
+          label: "Subnet",
+          sortable: true,
+          value: (r) => r.netuid,
+          format: (_v, r) => `SN${r.netuid}`,
+        },
+        {
+          key: "completeness",
+          label: "Completeness",
+          kind: "tint",
+          sortable: true,
+          value: (r) => r.completeness ?? null,
+          tint: (r) => r.completeness ?? null,
+          format: (v) => (typeof v === "number" ? `${Math.round(v * 100)}%` : "—"),
+        },
+      ]}
+    />
   );
 }
 
 function AdapterCandidates() {
   const { data } = useSuspenseQuery(reviewAdapterCandidatesQuery());
   const meta = data.meta;
-  const rows = data.data ?? [];
-  if (rows.length === 0)
-    return (
-      <TableState
-        variant="empty"
-        title="No adapter candidates"
-        description="Adapter candidates appear once a subnet has enough public surface area to warrant one."
-        cta={{ label: "Suggest on GitHub", href: GITHUB_REPO, external: true }}
-        generatedAt={meta?.generated_at}
-      />
-    );
+  // The payload can carry several rows for one subnet (and rows with no
+  // netuid at all), so the row key has to include the position.
+  const rows = (data.data ?? []).map((r, i) => ({ ...r, rowId: `${r.netuid ?? "none"}-${i}` }));
   return (
-    <ul className="space-y-1.5">
-      {rows.map((r, i) => (
-        <li
-          key={`${r.netuid}-${i}`}
-          className="flex items-center gap-3 rounded border border-border bg-card px-4 py-2.5"
-        >
-          {r.netuid != null ? (
-            <Link
-              to="/subnets/$netuid"
-              params={{ netuid: r.netuid }}
-              className="text-11 text-ink-muted hover:text-accent w-12"
-            >
-              SN{r.netuid}
-            </Link>
-          ) : (
-            <span className="text-11 text-ink-muted w-12">—</span>
-          )}
-          <span className="flex-1 text-13 text-ink">
-            {r.reason ?? <span className="text-ink-muted">No recommendation recorded</span>}
-          </span>
-          {r.score != null ? (
-            <span className="text-11 text-ink-strong tabular-nums">{Math.round(r.score)}</span>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+    <DataTable
+      rows={rows}
+      rowKey={(r) => r.rowId}
+      caption="Adapter candidates"
+      source="adapter-candidates"
+      link={RouterLink}
+      rowHref={(r) => (r.netuid != null ? `/subnets/${r.netuid}` : undefined)}
+      empty={
+        <EmptyState
+          title="No adapter candidates"
+          description="Adapter candidates appear once a subnet has enough public surface area to warrant one."
+          action={{ label: "Suggest on GitHub", href: GITHUB_REPO, external: true }}
+          lastChecked={meta?.generated_at}
+        />
+      }
+      columns={[
+        {
+          key: "netuid",
+          label: "Subnet",
+          sortable: true,
+          value: (r) => r.netuid ?? null,
+          format: (v) => (typeof v === "number" ? `SN${v}` : "—"),
+        },
+        {
+          key: "reason",
+          label: "Recommendation",
+          value: (r) => r.reason ?? null,
+          format: (v) => (typeof v === "string" && v ? v : "No recommendation recorded"),
+        },
+        {
+          key: "score",
+          label: "Score",
+          kind: "number",
+          sortable: true,
+          value: (r) => r.score ?? null,
+          format: (v) => formatNumber(typeof v === "number" ? Math.round(v) : null),
+        },
+      ]}
+    />
   );
 }
 
@@ -929,53 +934,41 @@ function EnrichmentQueue() {
   const { data } = useSuspenseQuery(reviewEnrichmentQueueQuery());
   const meta = data.meta;
   const rows = data.data ?? [];
-  if (rows.length === 0)
-    return (
-      <TableState
-        variant="empty"
-        title="Queue is empty"
-        description="Nothing is currently awaiting enrichment."
-        cta={{ label: "Browse registry", href: "/subnets" }}
-        generatedAt={meta?.generated_at}
-      />
-    );
   return (
-    <Panel flush className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-13">
-          <thead className="text-10 bg-surface-2/60 text-ink-muted">
-            <tr>
-              <th className="px-4 py-2.5 text-left">ID</th>
-              <th className="px-4 py-2.5 text-left">Netuid</th>
-              <th className="px-4 py-2.5 text-left">Priority</th>
-              <th className="px-4 py-2.5 text-left">Note</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((r) => (
-              <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 text-11 text-ink-muted">{r.id}</td>
-                <td className="px-4 py-2.5 text-11">
-                  {r.netuid != null ? (
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: r.netuid }}
-                      className="hover:text-accent"
-                    >
-                      SN{r.netuid}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-4 py-2.5 text-11">{r.priority ?? "—"}</td>
-                <td className="px-4 py-2.5 text-13 text-ink-muted">{r.note ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Panel>
+    <DataTable
+      rows={rows}
+      rowKey={(r) => r.id}
+      caption="Enrichment queue"
+      source="enrichment-queue"
+      link={RouterLink}
+      rowHref={(r) => (r.netuid != null ? `/subnets/${r.netuid}` : undefined)}
+      empty={
+        <EmptyState
+          title="Queue is empty"
+          description="Nothing is currently awaiting enrichment."
+          action={{ label: "Browse registry", href: "/subnets" }}
+          lastChecked={meta?.generated_at}
+        />
+      }
+      columns={[
+        { key: "id", label: "ID", kind: "identifier", sortable: true, value: (r) => r.id },
+        {
+          key: "netuid",
+          label: "Netuid",
+          sortable: true,
+          value: (r) => r.netuid ?? null,
+          format: (v) => (typeof v === "number" ? `SN${v}` : "—"),
+        },
+        {
+          key: "priority",
+          label: "Priority",
+          kind: "number",
+          sortable: true,
+          value: (r) => r.priority ?? null,
+        },
+        { key: "note", label: "Note", value: (r) => r.note ?? null },
+      ]}
+    />
   );
 }
 
@@ -985,57 +978,48 @@ function EnrichmentTargets() {
   const { data } = useSuspenseQuery(reviewEnrichmentTargetsQuery());
   const meta = data.meta;
   const rows = data.data ?? [];
-  if (rows.length === 0)
-    return (
-      <TableState
-        variant="empty"
-        title="No enrichment targets"
-        description="Every subnet's target surfaces are covered — nothing outstanding."
-        cta={{ label: "Browse registry", href: "/subnets" }}
-        generatedAt={meta?.generated_at}
-      />
-    );
   return (
-    <Panel flush className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-13">
-          <thead className="text-10 bg-surface-2/60 text-ink-muted">
-            <tr>
-              <th className="px-4 py-2.5 text-left">Netuid</th>
-              <th className="px-4 py-2.5 text-left">Subnet</th>
-              <th className="px-4 py-2.5 text-left">Target</th>
-              <th className="px-4 py-2.5 text-left">Action</th>
-              <th className="px-4 py-2.5 text-left">Priority</th>
-              <th className="px-4 py-2.5 text-left">Missing / recommended</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((r) => (
-              <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 text-11">
-                  {r.netuid != null ? (
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: r.netuid }}
-                      className="hover:text-accent"
-                    >
-                      SN{r.netuid}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-4 py-2.5 text-13 text-ink-strong">{r.name ?? "—"}</td>
-                <td className="px-4 py-2.5 text-11 text-ink-muted">{r.targetType ?? "—"}</td>
-                <td className="px-4 py-2.5 text-11 text-ink-muted">{r.targetAction ?? "—"}</td>
-                <td className="px-4 py-2.5 text-11">{r.priority ?? "—"}</td>
-                <td className="px-4 py-2.5 text-13 text-ink-muted">{r.note ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Panel>
+    <DataTable
+      rows={rows}
+      rowKey={(r) => r.id}
+      caption="Enrichment targets"
+      source="enrichment-targets"
+      link={RouterLink}
+      rowHref={(r) => (r.netuid != null ? `/subnets/${r.netuid}` : undefined)}
+      empty={
+        <EmptyState
+          title="No enrichment targets"
+          description="Every subnet's target surfaces are covered — nothing outstanding."
+          action={{ label: "Browse registry", href: "/subnets" }}
+          lastChecked={meta?.generated_at}
+        />
+      }
+      columns={[
+        {
+          key: "netuid",
+          label: "Netuid",
+          sortable: true,
+          value: (r) => r.netuid ?? null,
+          format: (v) => (typeof v === "number" ? `SN${v}` : "—"),
+        },
+        { key: "name", label: "Subnet", sortable: true, value: (r) => r.name ?? null },
+        { key: "targetType", label: "Target", sortable: true, value: (r) => r.targetType ?? null },
+        {
+          key: "targetAction",
+          label: "Action",
+          sortable: true,
+          value: (r) => r.targetAction ?? null,
+        },
+        {
+          key: "priority",
+          label: "Priority",
+          kind: "number",
+          sortable: true,
+          value: (r) => r.priority ?? null,
+        },
+        { key: "note", label: "Missing / recommended", value: (r) => r.note ?? null },
+      ]}
+    />
   );
 }
 
@@ -1046,61 +1030,57 @@ function EnrichmentEvidence() {
   const { data } = useSuspenseQuery(reviewEnrichmentEvidenceQuery());
   const meta = data.meta;
   const rows = data.data ?? [];
-  if (rows.length === 0)
-    return (
-      <TableState
-        variant="empty"
-        title="No enrichment evidence"
-        description="No candidate evidence is currently behind the enrichment queue."
-        cta={{ label: "Browse registry", href: "/subnets" }}
-        generatedAt={meta?.generated_at}
-      />
-    );
   return (
-    <Panel flush className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-13">
-          <thead className="text-10 bg-surface-2/60 text-ink-muted">
-            <tr>
-              <th className="px-4 py-2.5 text-left">Netuid</th>
-              <th className="px-4 py-2.5 text-left">Lane</th>
-              <th className="px-4 py-2.5 text-left">Evidence action</th>
-              <th className="px-4 py-2.5 text-left">Missing kinds</th>
-              <th className="px-4 py-2.5 text-left">Direct submission kinds</th>
-              <th className="px-4 py-2.5 text-left">Priority</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((r) => (
-              <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 text-11">
-                  {r.netuid != null ? (
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: r.netuid }}
-                      className="hover:text-accent"
-                    >
-                      SN{r.netuid}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-4 py-2.5 text-11 text-ink-muted">{r.lane ?? "—"}</td>
-                <td className="px-4 py-2.5 text-11 text-ink-muted">{r.evidenceAction ?? "—"}</td>
-                <td className="px-4 py-2.5 text-13 text-ink-muted">
-                  {r.missingKinds.length > 0 ? r.missingKinds.join(", ") : "—"}
-                </td>
-                <td className="px-4 py-2.5 text-13 text-ink-muted">
-                  {r.directSubmissionKinds.length > 0 ? r.directSubmissionKinds.join(", ") : "—"}
-                </td>
-                <td className="px-4 py-2.5 text-11">{r.priority ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Panel>
+    <DataTable
+      rows={rows}
+      rowKey={(r) => r.id}
+      caption="Enrichment evidence"
+      source="enrichment-evidence"
+      link={RouterLink}
+      rowHref={(r) => (r.netuid != null ? `/subnets/${r.netuid}` : undefined)}
+      empty={
+        <EmptyState
+          title="No enrichment evidence"
+          description="No candidate evidence is currently behind the enrichment queue."
+          action={{ label: "Browse registry", href: "/subnets" }}
+          lastChecked={meta?.generated_at}
+        />
+      }
+      columns={[
+        {
+          key: "netuid",
+          label: "Netuid",
+          sortable: true,
+          value: (r) => r.netuid ?? null,
+          format: (v) => (typeof v === "number" ? `SN${v}` : "—"),
+        },
+        { key: "lane", label: "Lane", sortable: true, value: (r) => r.lane ?? null },
+        {
+          key: "evidenceAction",
+          label: "Evidence action",
+          sortable: true,
+          value: (r) => r.evidenceAction ?? null,
+        },
+        {
+          key: "missingKinds",
+          label: "Missing kinds",
+          value: (r) => (r.missingKinds.length > 0 ? r.missingKinds.join(", ") : null),
+        },
+        {
+          key: "directSubmissionKinds",
+          label: "Direct submission kinds",
+          value: (r) =>
+            r.directSubmissionKinds.length > 0 ? r.directSubmissionKinds.join(", ") : null,
+        },
+        {
+          key: "priority",
+          label: "Priority",
+          kind: "number",
+          sortable: true,
+          value: (r) => r.priority ?? null,
+        },
+      ]}
+    />
   );
 }
 
@@ -1124,124 +1104,139 @@ function AttributionCandidates() {
   const { data } = useSuspenseQuery(reviewAttributionCandidatesQuery());
   const meta = data.meta;
   const rows = data.data ?? [];
-  if (rows.length === 0)
-    return (
-      <TableState
-        variant="empty"
-        title="No attribution candidates"
-        description="Nothing is waiting for a judgement — every candidate has been adjudicated, or every source the sweep reached was a listing."
-        cta={{ label: "Browse registry", href: "/subnets" }}
-        generatedAt={meta?.generated_at}
-      />
-    );
   return (
-    <Panel flush className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-13">
-          <thead className="text-10 bg-surface-2/60 text-ink-muted">
-            <tr>
-              <th className="px-4 py-2.5 text-left">Netuid</th>
-              <th className="px-4 py-2.5 text-left">Address (unverified)</th>
-              <th className="px-4 py-2.5 text-left">Found on</th>
-              <th className="px-4 py-2.5 text-left">Addresses on that page</th>
-              <th className="px-4 py-2.5 text-left">Last seen</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((r) => (
-              <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 text-11">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: r.netuid }}
-                    className="hover:text-accent"
-                  >
-                    SN{r.netuid}
-                  </Link>
-                </td>
-                {/* WHOLE, not truncated: a reviewer compares it against the
-                    page, and a shortened address cannot be compared. */}
-                <td className="px-4 py-2.5 text-11 break-all text-ink-muted">{r.ss58}</td>
-                {/* ExternalLink, not a bare anchor: these URLs are UNTRUSTED
-                    third-party strings scraped off pages the registry does not
-                    control, and it is the component that runs safeExternalUrl
-                    over them. A raw href here would render whatever the sweep
-                    found. */}
-                <td className="px-4 py-2.5 text-13 break-all">
-                  <ExternalLink href={r.sourceUrl} className="text-ink-muted">
-                    {r.sourceUrl}
-                  </ExternalLink>
-                </td>
-                <td className="px-4 py-2.5 text-11 text-ink-muted">
-                  {r.sourceAddressCount ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 text-13 text-ink-muted">
-                  {r.lastSeen ? r.lastSeen.slice(0, 10) : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="border-t border-border px-4 py-2.5 text-13 text-ink-muted">
+    <div className="space-y-2">
+      <DataTable
+        rows={rows}
+        rowKey={(r) => r.id}
+        caption="Attribution candidates"
+        source="attribution-candidates"
+        link={RouterLink}
+        empty={
+          <EmptyState
+            title="No attribution candidates"
+            description="Nothing is waiting for a judgement — every candidate has been adjudicated, or every source the sweep reached was a listing."
+            action={{ label: "Browse registry", href: "/subnets" }}
+            lastChecked={meta?.generated_at}
+          />
+        }
+        columns={[
+          {
+            key: "netuid",
+            label: "Netuid",
+            kind: "link",
+            sortable: true,
+            value: (r) => r.netuid,
+            format: (v) => (typeof v === "number" ? `SN${v}` : "—"),
+            href: (r) => `/subnets/${r.netuid}`,
+          },
+          {
+            // WHOLE, not truncated: a reviewer compares it against the page,
+            // and a shortened address cannot be compared — so this is plain
+            // text, never `kind: "identifier"`.
+            key: "ss58",
+            label: "Address (unverified)",
+            sortable: true,
+            value: (r) => r.ss58,
+            render: (r) => <span className="break-all text-ink-muted">{r.ss58}</span>,
+          },
+          {
+            // ExternalLink, not a bare anchor: these URLs are UNTRUSTED
+            // third-party strings scraped off pages the registry does not
+            // control, and it is the component that runs safeExternalUrl over
+            // them. A raw href here would render whatever the sweep found.
+            key: "sourceUrl",
+            label: "Found on",
+            value: (r) => r.sourceUrl,
+            render: (r) => (
+              <ExternalLink href={r.sourceUrl} className="break-all text-ink-muted">
+                {r.sourceUrl}
+              </ExternalLink>
+            ),
+          },
+          {
+            key: "sourceAddressCount",
+            label: "Addresses on that page",
+            kind: "number",
+            sortable: true,
+            value: (r) => r.sourceAddressCount ?? null,
+          },
+          {
+            key: "lastSeen",
+            label: "Last seen",
+            kind: "time",
+            sortable: true,
+            align: "right",
+            value: (r) => r.lastSeen ?? null,
+          },
+        ]}
+      />
+      <p className="text-13 text-ink-muted">
         Showing {rows.length}
         {data.reviewableCount != null ? ` of ${data.reviewableCount} awaiting review` : ""}.
         {data.suppressedCount != null && data.suppressedSourceCount != null
           ? ` ${data.suppressedCount} more were suppressed from ${data.suppressedSourceCount} page(s) carrying more than ${data.listingAddressCap ?? "the cap"} addresses each — those are listings, and every address on one belongs to somebody else.`
           : ""}
       </p>
-    </Panel>
+    </div>
   );
 }
 
 // #3356: the priority-scored per-subnet gap board -- distinct from the
 // interface-facet OpenGapsSection above and from the enrichment-queue/
 // -targets/-evidence sections, which are enrichment-pipeline data, not
-// gap-priority scoring. Mirrors AdapterCandidates's row-list idiom.
+// gap-priority scoring.
 function GapPriorityList() {
   const { data } = useSuspenseQuery(reviewGapPrioritiesQuery());
   const meta = data.meta;
-  const rows = data.data ?? [];
-  if (rows.length === 0)
-    return (
-      <TableState
-        variant="empty"
-        title="No gap priorities"
-        description="The priority-scored gap board is empty — nothing currently ranked."
-        cta={{ label: "Browse registry", href: "/subnets" }}
-        generatedAt={meta?.generated_at}
-      />
-    );
+  const rows = (data.data ?? []).map((r, i) => ({ ...r, rowId: `${r.netuid ?? "none"}-${i}` }));
   return (
-    <ul className="space-y-1.5">
-      {rows.map((r, i) => (
-        <li
-          key={`${r.netuid}-${i}`}
-          className="flex items-center gap-3 rounded border border-border bg-card px-4 py-2.5"
-        >
-          {r.netuid != null ? (
-            <Link
-              to="/subnets/$netuid"
-              params={{ netuid: r.netuid }}
-              className="text-11 text-ink-muted hover:text-accent w-12 shrink-0"
-            >
-              SN{r.netuid}
-            </Link>
-          ) : (
-            <span className="text-11 text-ink-muted w-12 shrink-0">—</span>
-          )}
-          <span className="flex-1 text-13 text-ink truncate">{r.name ?? "—"}</span>
-          <CurationChip level={r.curation_level} />
-          <span className="hidden sm:block max-w-[240px] truncate text-13 text-ink-muted">
-            {r.missing_kinds && r.missing_kinds.length > 0 ? r.missing_kinds.join(", ") : "—"}
-          </span>
-          {r.priority_score != null ? (
-            <span className="text-11 text-ink-strong tabular-nums shrink-0">
-              {Math.round(r.priority_score)}
-            </span>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+    <DataTable
+      rows={rows}
+      rowKey={(r) => r.rowId}
+      caption="Gap priorities"
+      source="gap-priorities"
+      link={RouterLink}
+      rowHref={(r) => (r.netuid != null ? `/subnets/${r.netuid}` : undefined)}
+      empty={
+        <EmptyState
+          title="No gap priorities"
+          description="The priority-scored gap board is empty — nothing currently ranked."
+          action={{ label: "Browse registry", href: "/subnets" }}
+          lastChecked={meta?.generated_at}
+        />
+      }
+      columns={[
+        {
+          key: "netuid",
+          label: "Subnet",
+          sortable: true,
+          value: (r) => r.netuid ?? null,
+          format: (v) => (typeof v === "number" ? `SN${v}` : "—"),
+        },
+        { key: "name", label: "Name", sortable: true, value: (r) => r.name ?? null },
+        {
+          key: "curation_level",
+          label: "Curation",
+          sortable: true,
+          value: (r) => r.curation_level ?? null,
+          render: (r) => <CurationChip level={r.curation_level} />,
+        },
+        {
+          key: "missing_kinds",
+          label: "Missing kinds",
+          value: (r) =>
+            r.missing_kinds && r.missing_kinds.length > 0 ? r.missing_kinds.join(", ") : null,
+        },
+        {
+          key: "priority_score",
+          label: "Priority",
+          kind: "number",
+          sortable: true,
+          value: (r) => r.priority_score ?? null,
+          format: (v) => formatNumber(typeof v === "number" ? Math.round(v) : null),
+        },
+      ]}
+    />
   );
 }

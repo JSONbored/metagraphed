@@ -9,12 +9,12 @@ import { RefreshCw, Pause, Play, ChevronDown, ChevronRight, ArrowUpRight } from 
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CaptureCurrencyPanel } from "@/components/metagraphed/capture-currency-panel";
-import { StaleBanner } from "@/components/metagraphed/states";
+import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import {
+  DataTable,
   HealthPill,
-  TableState,
   TimeAgo,
   AnimatedNumber,
   CompositionBreakdown,
@@ -514,40 +514,37 @@ function Cell({
 function SourceHealth({ interval }: { interval: number | false }) {
   const { data } = useSuspenseQuery({ ...sourceHealthQuery(), refetchInterval: interval });
   const rows = data.data ?? [];
-  if (rows.length === 0) {
-    return (
-      <TableState
-        variant="empty"
-        title="No source health"
-        description="Source freshness telemetry will appear once probes report in."
-      />
-    );
-  }
   return (
-    <Panel flush className="overflow-x-auto">
-      <table className="w-full text-13">
-        <thead className="text-10 bg-surface-2/60 text-ink-muted">
-          <tr>
-            <th className="px-4 py-3 text-left">Source</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3 text-right">Last seen</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.map((s) => (
-            <tr key={s.name} className="mg-row-hover">
-              <td className="px-4 py-3 font-medium">{s.name}</td>
-              <td className="px-4 py-3">
-                <HealthPill state={s.ok === false ? "down" : s.ok ? "ok" : "unknown"} />
-              </td>
-              <td className="px-4 py-3 text-right text-11 text-ink-muted">
-                <TimeAgo at={s.last_seen} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Panel>
+    <DataTable
+      rows={rows}
+      rowKey={(s) => s.name}
+      caption="Source health"
+      source="source-health"
+      empty={
+        <EmptyState
+          title="No source health"
+          description="Source freshness telemetry will appear once probes report in."
+        />
+      }
+      columns={[
+        { key: "name", label: "Source", sortable: true, value: (s) => s.name },
+        {
+          key: "status",
+          label: "Status",
+          kind: "status",
+          sortable: true,
+          value: (s) => (s.ok === false ? "down" : s.ok ? "ok" : "unknown"),
+        },
+        {
+          key: "last_seen",
+          label: "Last seen",
+          kind: "time",
+          sortable: true,
+          align: "right",
+          value: (s) => s.last_seen ?? null,
+        },
+      ]}
+    />
   );
 }
 
@@ -647,8 +644,7 @@ function Incidents({ interval }: { interval: number | false }) {
 
   if (rows.length === 0) {
     return (
-      <TableState
-        variant="empty"
+      <EmptyState
         title="No recent incidents"
         description="Nothing is currently failing or degraded — everything's quiet."
       />
@@ -715,7 +711,7 @@ function Incidents({ interval }: { interval: number | false }) {
       </div>
 
       {groups.length === 0 ? (
-        <TableState variant="empty" title="No incidents match this filter" />
+        <EmptyState title="No incidents match this filter" />
       ) : (
         <>
           <ul className="space-y-2">

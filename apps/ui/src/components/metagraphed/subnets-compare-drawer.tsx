@@ -7,7 +7,7 @@ import { useCompareSelection } from "@/lib/metagraphed/compare-selection";
 import { compareQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { CompareSubnet, HealthState } from "@/lib/metagraphed/types";
-import { HealthPill, CurationChip } from "@jsonbored/ui-kit";
+import { HealthPill, CurationChip, DefinitionList, Skeleton } from "@jsonbored/ui-kit";
 
 /**
  * Floating bottom dock + expandable side-by-side compare drawer for selected
@@ -229,44 +229,27 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
     );
   }
 
+  // NOT a DataTable: nothing here is a list of like things. It is one column
+  // of the same nine facts per selected subnet, and the reader compares ACROSS
+  // the columns. Rendered as a definition list per subnet, the comparison
+  // survives a narrow viewport — the transposed table it replaces needed a
+  // sticky first column and two nested stacking contexts to stay legible, and
+  // still scrolled the last-selected subnet off screen on a phone.
   return (
-    <div className="border-t border-border max-h-[55vh] overflow-auto">
-      <table className="min-w-full text-13">
-        {/* eslint-disable-next-line no-restricted-syntax -- deliberate raw z-index: this is a local stacking context (sticky corner cell layered over the sticky row/column headers inside one scroll container), not a global layer, so none of the --mg-z-* layer tokens applies (#7841) */}
-        <thead className="sticky top-0 z-[1]">
-          <tr>
-            {/* eslint-disable-next-line no-restricted-syntax -- deliberate raw z-index: this is a local stacking context (sticky corner cell layered over the sticky row/column headers inside one scroll container), not a global layer, so none of the --mg-z-* layer tokens applies (#7841) */}
-            <th className="sticky left-0 z-[2] w-40 px-3 py-2 text-left text-ink-muted">Metric</th>
-            {netuids.map((n) => (
-              <th
-                key={n}
-                className="min-w-[6rem] whitespace-nowrap px-3 py-2 text-left text-ink-strong"
-              >
-                SN{n}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.map((row) => (
-            <tr key={row.label}>
-              {/* eslint-disable-next-line no-restricted-syntax -- deliberate raw z-index: this is a local stacking context (sticky corner cell layered over the sticky row/column headers inside one scroll container), not a global layer, so none of the --mg-z-* layer tokens applies (#7841) */}
-              <td className="sticky left-0 z-[1] bg-card px-3 py-2 text-10 text-ink-muted">
-                {row.label}
-              </td>
-              {netuids.map((n) => (
-                <td key={n} className="px-3 py-2">
-                  {isPending ? (
-                    <span className="inline-block h-3 w-12 animate-pulse rounded bg-border/60" />
-                  ) : (
-                    row.render(n)
-                  )}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="max-h-[55vh] overflow-auto border-t border-border">
+      <div className="grid gap-4 p-3 sm:grid-cols-2 lg:grid-cols-3">
+        {netuids.map((n) => (
+          <section key={n} className="min-w-0">
+            <h3 className="mb-1.5 text-10 text-ink-muted">SN{n}</h3>
+            <DefinitionList
+              items={rows.map((row) => ({
+                term: row.label,
+                detail: isPending ? <Skeleton className="h-3 w-12" /> : row.render(n),
+              }))}
+            />
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

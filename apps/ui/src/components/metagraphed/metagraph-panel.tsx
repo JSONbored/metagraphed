@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ShieldCheck } from "lucide-react";
 import { subnetMetagraphQuery } from "@/lib/metagraphed/queries";
-import { TableState, FactStrip, FactCell, RankedRails } from "@jsonbored/ui-kit";
+import { FactStrip, FactCell, RankedRails } from "@jsonbored/ui-kit";
+import { EmptyState } from "@/components/metagraphed/states";
 import { NeuronTable } from "@/components/metagraphed/neuron-table";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
@@ -54,11 +55,10 @@ export function MetagraphTableLoader({
 
   if (neurons.length === 0) {
     return (
-      <TableState
-        variant="empty"
+      <EmptyState
         title="No metagraph snapshot"
         description="No live neuron snapshot is indexed for this subnet yet — stake, emission, rank, and validator permits will appear here once the metagraph is captured."
-        generatedAt={meta?.generated_at}
+        lastChecked={meta?.generated_at}
       />
     );
   }

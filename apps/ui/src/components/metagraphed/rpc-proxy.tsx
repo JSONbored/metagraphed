@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import type { EndpointsSearch } from "@/routes/apis.endpoints";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -5,11 +6,12 @@ import { Zap, GitBranch, Database, ShieldCheck, Gauge, ArrowUpDown } from "lucid
 import { API_BASE } from "@/lib/metagraphed/config";
 import { useNetwork } from "@/hooks/use-api-base";
 import { rpcUsageQuery } from "@/lib/metagraphed/queries";
-import { CopyButton, TimeAgo } from "@jsonbored/ui-kit";
+import { CopyButton, DataTable, TimeAgo, type DataTableColumn } from "@jsonbored/ui-kit";
 import { EmptyState, StaleBanner } from "./states";
 import { Panel } from "./primitives";
+import { RouterLink } from "./router-link";
 import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
-import type { RpcUsage } from "@/lib/metagraphed/types";
+import type { RpcUsage, RpcUsageEndpoint } from "@/lib/metagraphed/types";
 
 // The proxy is one service fronting multiple chains (finney + test today). Map
 // the selected network to its chain segment + a label; the hero shows the URL
@@ -149,6 +151,49 @@ function UsageStat({
   );
 }
 
+/** One endpoint row, carrying the share of total traffic it took. */
+type RpcUsageEndpointRow = RpcUsageEndpoint & { share: number | null };
+
+const ENDPOINT_COLUMNS: Array<DataTableColumn<RpcUsageEndpointRow>> = [
+  { key: "endpoint", label: "Endpoint", sortable: true, value: (e) => e.endpoint_id },
+  { key: "provider", label: "Provider", sortable: true, value: (e) => e.provider },
+  {
+    key: "requests",
+    label: "Requests",
+    kind: "number",
+    sortable: true,
+    value: (e) => e.requests,
+    format: (v) => formatNumber(typeof v === "number" ? v : null),
+  },
+  // The distribution IS the question a load balancer's usage table answers, so
+  // the share paints the cell rather than sitting in it as one more figure.
+  {
+    key: "share",
+    label: "Share",
+    kind: "tint",
+    sortable: true,
+    value: (e) => e.share,
+    tint: (e) => e.share,
+    format: (v) => pct(typeof v === "number" ? v : null),
+  },
+  {
+    key: "errors",
+    label: "Errors",
+    kind: "number",
+    sortable: true,
+    value: (e) => e.error_rate,
+    format: (v) => pct(typeof v === "number" ? v : null),
+  },
+  {
+    key: "latency",
+    label: "Avg latency",
+    kind: "number",
+    sortable: true,
+    value: (e) => e.avg_latency_ms,
+    format: (v) => ms(typeof v === "number" ? v : null),
+  },
+];
+
 export function ProxyUsagePanel() {
   // #3976: window is URL-backed on /endpoints (this panel's only host) so a
   // shared link restores the same 7d/30d view and back/forward works.
@@ -162,6 +207,15 @@ export function ProxyUsagePanel() {
   const s = usage.summary;
   const hasTraffic = s.total_requests > 0;
   const stale = isStaleFreshness(data.meta?.generated_at);
+
+  const endpointRows = useMemo<RpcUsageEndpointRow[]>(
+    () =>
+      usage.endpoints.map((e) => ({
+        ...e,
+        share: s.total_requests ? e.requests / s.total_requests : null,
+      })),
+    [usage.endpoints, s.total_requests],
+  );
 
   return (
     <div className="space-y-3">
@@ -256,48 +310,14 @@ export function ProxyUsagePanel() {
           ) : null}
 
           {usage.endpoints.length > 0 ? (
-            <Panel flush className="overflow-x-auto">
-              <table className="w-full text-13">
-                <caption className="px-3 pt-2 text-left text-10 text-ink-muted">
-                  Per-endpoint distribution
-                </caption>
-                <thead className="bg-surface text-10 text-ink-muted">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Endpoint</th>
-                    <th className="px-3 py-2 text-left">Provider</th>
-                    <th className="px-3 py-2 text-right">Requests</th>
-                    <th className="px-3 py-2 text-right">Share</th>
-                    <th className="px-3 py-2 text-right">Errors</th>
-                    <th className="px-3 py-2 text-right">Avg latency</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {usage.endpoints.map((e) => {
-                    const share = s.total_requests ? e.requests / s.total_requests : null;
-                    return (
-                      <tr key={e.endpoint_id ?? e.rank} className="mg-row-hover">
-                        <td className="px-3 py-2 font-mono text-13 text-ink-strong">
-                          {e.endpoint_id ?? "—"}
-                        </td>
-                        <td className="px-3 py-2 text-13 text-ink-muted">{e.provider ?? "—"}</td>
-                        <td className="px-3 py-2 text-right font-mono">
-                          {formatNumber(e.requests)}
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-ink-muted">
-                          {pct(share)}
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-ink-muted">
-                          {pct(e.error_rate)}
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-ink-muted">
-                          {ms(e.avg_latency_ms)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </Panel>
+            <DataTable
+              rows={endpointRows}
+              columns={ENDPOINT_COLUMNS}
+              rowKey={(e) => e.endpoint_id ?? String(e.rank)}
+              caption="Per-endpoint distribution"
+              link={RouterLink}
+              storageKey="rpc-usage-endpoints"
+            />
           ) : null}
         </>
       )}

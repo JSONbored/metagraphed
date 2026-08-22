@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
-import { TableState, RankedRails } from "@jsonbored/ui-kit";
+import { RankedRails } from "@jsonbored/ui-kit";
+import { EmptyState } from "@/components/metagraphed/states";
 import { NeuronTable } from "@/components/metagraphed/neuron-table";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { SponsoredValidatorCallout } from "@/components/metagraphed/sponsored-validator-callout";
@@ -43,11 +44,10 @@ export function ValidatorsTableLoader({
 
   if (validators.length === 0) {
     return (
-      <TableState
-        variant="empty"
+      <EmptyState
         title="No active validators"
         description="No permitted validators are indexed for this subnet in the current snapshot — the validator set will populate here once the metagraph is captured."
-        generatedAt={meta?.generated_at}
+        lastChecked={meta?.generated_at}
       />
     );
   }

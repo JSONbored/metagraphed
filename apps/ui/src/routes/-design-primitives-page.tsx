@@ -3,20 +3,12 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   Breadcrumbs,
   Chip,
-  ColumnCustomizer,
   EmptyState,
-  FilterField,
-  FilterInput,
-  FilterSelect,
-  FilterToolbar,
   GhostButton,
   Indicator,
   LoadingPill,
   Panel,
   StatusBadge,
-  TableSkeleton,
-  useColumnVisibility,
-  type ColumnDef,
 } from "@/components/metagraphed/primitives";
 import {
   Accordion,
@@ -30,6 +22,7 @@ import {
   MarkerRail,
   RankGrid,
   RankedRails,
+  DataTable,
   COMPOSITION_SPECIMEN,
   LEADER_SPECIMEN,
   MARKER_SPECIMEN,
@@ -59,12 +52,9 @@ import {
   DialogTrigger,
   Divider,
   DiscordIcon,
-  DownloadCsvButton,
   EligibilityChip,
   EntityHero,
   ExternalLink,
-  FilterChipRow,
-  FilterSheet,
   HealthDot,
   HealthPill,
   Kbd,
@@ -84,8 +74,6 @@ import {
   useIsActive,
   markAriaLabel,
   KeyChip,
-  ListShell,
-  LoadMore,
   McpToolsList,
   PanelError,
   PanelHeader,
@@ -94,13 +82,10 @@ import {
   PopoverContent,
   PopoverTrigger,
   ProvenanceChip,
-  QueryBar,
   QueryProgress,
-  ResponsiveTable,
   ReviewChip,
   RoutePending,
   ScrollShadow,
-  ShareButton,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -109,24 +94,12 @@ import {
   SheetTitle,
   SheetTrigger,
   Skeleton,
-  TableState,
   TimeAgo,
-  ViewModeToggle,
   Wordmark,
 } from "@jsonbored/ui-kit";
 import { GITHUB_REPO_URL } from "@/lib/metagraphed/identity";
 import { DEFINITIONS } from "@/lib/metagraphed/definitions";
-
-const COLUMNS: ColumnDef[] = [
-  { id: "netuid", label: "Netuid", required: true },
-  { id: "name", label: "Name", required: true },
-  { id: "curation", label: "Curation" },
-  { id: "surfaces", label: "Surfaces" },
-  { id: "endpoints", label: "Endpoints" },
-  { id: "health", label: "Health" },
-  { id: "trend", label: "7d Trend", defaultVisible: false },
-  { id: "updated", label: "Updated", defaultVisible: false },
-];
+import { formatTao } from "@/lib/metagraphed/format";
 
 // A fixed sample timestamp, not `Date.now()` -- this page must render
 // deterministically (see the page description below): a live clock read at
@@ -135,7 +108,6 @@ const COLUMNS: ColumnDef[] = [
 const SAMPLE_UPDATED_AT = "2026-07-24T18:44:00.000Z";
 
 export function PrimitivesPreview() {
-  const cols = useColumnVisibility("primitives-preview", COLUMNS);
   const updated = SAMPLE_UPDATED_AT;
 
   return (
@@ -156,10 +128,11 @@ export function PrimitivesPreview() {
 
       <TabNav />
 
-      <TokensSection cols={cols} />
+      <TokensSection />
       <LayoutSection updated={updated} />
       <DataDisplaySection />
       <ChartsSection />
+      <TableSection />
       <DefinitionsProvider definitions={DEFINITIONS}>
         <InteractionSection />
       </DefinitionsProvider>
@@ -179,6 +152,7 @@ const NAV_SECTIONS = [
   { id: "layout", label: "Layout" },
   { id: "data-display", label: "Data display" },
   { id: "charts", label: "Charts" },
+  { id: "table", label: "Table" },
   { id: "interaction", label: "Interaction" },
   { id: "feedback", label: "Feedback" },
 ] as const;
@@ -284,7 +258,7 @@ const RADIUS_TOKENS = [
   ["rounded", "hero tiles, panels"],
 ] as const;
 
-function TokensSection({ cols }: { cols: ReturnType<typeof useColumnVisibility> }) {
+function TokensSection() {
   return (
     <Section id="tokens" title="Tokens">
       <div className="grid gap-4 md:grid-cols-2">
@@ -386,42 +360,6 @@ function TokensSection({ cols }: { cols: ReturnType<typeof useColumnVisibility> 
           <Indicator icon={Server} label="surfaces" value="14" hint="of 20" />
           <Indicator icon={Radio} label="endpoints" value="7" />
           <Indicator icon={Activity} label="health" value="99.4%" title="30d probe uptime" />
-        </div>
-      </Section>
-
-      <Section title="Filter toolbar + freshness + density + columns">
-        <div className="rounded border border-border bg-card p-3">
-          <FilterToolbar
-            trailing={
-              <>
-                <ColumnCustomizer
-                  columns={COLUMNS}
-                  isVisible={cols.isVisible}
-                  onToggle={cols.toggle}
-                  onReset={cols.reset}
-                />
-              </>
-            }
-          >
-            <FilterField label="search" htmlFor="pv-q" grow>
-              <FilterInput id="pv-q" placeholder="Search netuid, name, provider…" />
-            </FilterField>
-            <FilterField label="kind" htmlFor="pv-kind">
-              <FilterSelect id="pv-kind" defaultValue="">
-                <option value="">All</option>
-                <option value="rest">REST</option>
-                <option value="sse">SSE</option>
-                <option value="graphql">GraphQL</option>
-              </FilterSelect>
-            </FilterField>
-            <FilterField label="curation" htmlFor="pv-cur">
-              <FilterSelect id="pv-cur" defaultValue="">
-                <option value="">Any</option>
-                <option value="verified">Verified</option>
-                <option value="candidate">Candidate</option>
-              </FilterSelect>
-            </FilterField>
-          </FilterToolbar>
         </div>
       </Section>
     </Section>
@@ -590,6 +528,70 @@ function ChartsSection() {
   );
 }
 
+const TABLE_SPECIMEN = [
+  {
+    id: "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
+    name: "Targon",
+    stake: 1_890_000,
+    health: "ok",
+    seen: SAMPLE_UPDATED_AT,
+    change: 0.42,
+  },
+  {
+    id: "5CUbyC7Yx8Qk2mJvR4nHtPqLwZaEdFgTbNcVsXyU9i2XSG",
+    name: "Chutes",
+    stake: 351_600,
+    health: "degraded",
+    seen: SAMPLE_UPDATED_AT,
+    change: -0.12,
+  },
+  {
+    id: "5Ev5mQ3RtYuIoPaSdFgHjKlZxCvBnM7qWeRtYuIo8Pnh9s",
+    name: "Affine",
+    stake: 169_200,
+    health: "down",
+    seen: SAMPLE_UPDATED_AT,
+    change: 0,
+  },
+];
+
+function TableSection() {
+  return (
+    <Section id="table" title="Table">
+      <DataTable
+        rows={TABLE_SPECIMEN}
+        rowKey={(row) => row.id}
+        caption="Validators"
+        rowHref={(row) => `/validators/${row.id}`}
+        columns={[
+          { key: "name", label: "Operator", sortable: true, value: (row) => row.name },
+          { key: "id", label: "Hotkey", kind: "identifier", value: (row) => row.id },
+          {
+            key: "stake",
+            label: "Stake",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.stake,
+            format: (value) => formatTao(typeof value === "number" ? value : null),
+          },
+          { key: "health", label: "Health", kind: "status", value: (row) => row.health },
+          { key: "seen", label: "Last probe", kind: "time", value: (row) => row.seen },
+          { key: "change", label: "Δ 7d", kind: "delta", value: (row) => row.change },
+          {
+            key: "share",
+            label: "Share",
+            kind: "tint",
+            demote: true,
+            value: (row) => row.stake / 2_500_000,
+            tint: (row) => row.stake / 2_500_000,
+            format: (value) => `${Math.round((typeof value === "number" ? value : 0) * 100)}%`,
+          },
+        ]}
+      />
+    </Section>
+  );
+}
+
 function DataDisplaySection() {
   return (
     <Section id="data-display" title="Data display">
@@ -599,16 +601,6 @@ function DataDisplaySection() {
             <TrendDelta values={SPARK_VALUES} label="7d specimen" />
             <TrendDelta values={[...SPARK_VALUES].reverse()} label="7d specimen" />
             <TrendDelta values={[3, 3]} label="7d specimen" />
-          </div>
-        </Show>
-        <Show name="TableState">
-          <div className="space-y-3">
-            <TableState variant="empty" title="No rows match this filter" />
-            <TableState
-              variant="stale"
-              title="Data may be out of date"
-              generatedAt={SAMPLE_UPDATED_AT}
-            />
           </div>
         </Show>
       </div>
@@ -632,7 +624,7 @@ function DataDisplaySection() {
             </div>
           </Panel>
           <Panel title="Loading" flush>
-            <TableSkeleton rows={4} columns={4} />
+            <Skeleton className="h-32 w-full" />
           </Panel>
           <Panel title="Empty state">
             <EmptyState
@@ -661,49 +653,9 @@ function DataDisplaySection() {
 /* ---------- Interaction ---------- */
 
 function InteractionSection() {
-  const [viewMode, setViewMode] = useState<"table" | "grid" | "matrix">("table");
-  const [q, setQ] = useState("");
-  const [chips, setChips] = useState([
-    { id: "kind", label: "Kind", value: "REST" },
-    { id: "health", label: "Health", value: "OK" },
-  ]);
-
   return (
     <Section id="interaction" title="Interaction">
       <div className="grid gap-4 md:grid-cols-2">
-        <Show name="QueryBar">
-          <QueryBar ariaLabel="Design primitives filter demo">
-            <QueryBar.Search value={q} onChange={setQ} placeholder="Search…" />
-            <QueryBar.Divider />
-            <QueryBar.FilterTrigger
-              label="Health"
-              value=""
-              onChange={() => undefined}
-              options={[
-                { value: "ok", label: "OK" },
-                { value: "warn", label: "Warn" },
-              ]}
-            />
-            <QueryBar.Utility>
-              <ShareButton bare />
-            </QueryBar.Utility>
-          </QueryBar>
-        </Show>
-
-        <Show name="ViewModeToggle">
-          <ViewModeToggle value={viewMode} onChange={setViewMode} />
-        </Show>
-        <Show name="ShareButton">
-          <div className="flex flex-wrap gap-2">
-            <ShareButton />
-            <div className="mg-actions">
-              <ShareButton bare connected />
-            </div>
-          </div>
-        </Show>
-        <Show name="DownloadCsvButton">
-          <DownloadCsvButton url="https://api.metagraph.sh/api/v1/subnets" />
-        </Show>
         <Show name="CopyableCode, CopyButton, CopyIconToggle, KeyChip">
           <div className="flex flex-wrap items-center gap-3">
             <CopyableCode value="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" />
@@ -724,47 +676,8 @@ function InteractionSection() {
           </div>
         </Show>
 
-        <Show name="FilterChipRow">
-          <FilterChipRow
-            items={chips}
-            onRemove={(id) => setChips((c) => c.filter((x) => x.id !== id))}
-            onClearAll={() => setChips([])}
-          />
-        </Show>
-        <Show name="FilterSheet">
-          <FilterSheet label="Filters" activeCount={2}>
-            <label className="grid gap-1">
-              <span className="text-10 text-ink-muted">Sample field</span>
-              <FilterInput placeholder="…" />
-            </label>
-          </FilterSheet>
-        </Show>
-
-        <Show name="ScrollShadow, ResponsiveTable">
-          <ResponsiveTable minWidth={480}>
-            <table className="w-full text-left text-13">
-              <thead>
-                <tr>
-                  <th className="px-3 py-1.5 text-ink-muted">Netuid</th>
-                  <th className="px-3 py-1.5 text-ink-muted">Name</th>
-                  <th className="px-3 py-1.5 text-ink-muted">Health</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                <tr>
-                  <td className="px-3 py-1.5">1</td>
-                  <td className="px-3 py-1.5">Apex</td>
-                  <td className="px-3 py-1.5">OK</td>
-                </tr>
-              </tbody>
-            </table>
-          </ResponsiveTable>
-          {/* ScrollShadow was imported and named in this Show's label but only
-              demonstrated indirectly, via ResponsiveTable's internal use of it
-              (#8294). A design-system reference should show the primitive
-              itself, so here it is standalone — scroll it to see the edge fades
-              appear and disappear per edge. */}
-          <ScrollShadow className="mt-3">
+        <Show name="ScrollShadow">
+          <ScrollShadow>
             <div className="flex w-max items-center gap-2 py-1">
               {Array.from({ length: 24 }, (_, i) => (
                 <span
@@ -776,36 +689,6 @@ function InteractionSection() {
               ))}
             </div>
           </ScrollShadow>
-        </Show>
-        <Show name="ListShell, LoadMore">
-          <ListShell
-            filters={<FilterInput placeholder="Filter…" />}
-            table={
-              <table className="w-full text-left text-13">
-                <thead>
-                  <tr>
-                    <th className="px-3 py-1.5 text-ink-muted">Netuid</th>
-                    <th className="px-3 py-1.5 text-ink-muted">Health</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  <tr>
-                    <td className="px-3 py-1.5">1</td>
-                    <td className="px-3 py-1.5">OK</td>
-                  </tr>
-                </tbody>
-              </table>
-            }
-            footer={
-              <LoadMore
-                hasMore
-                isLoading={false}
-                onLoadMore={() => undefined}
-                shown={1}
-                total={129}
-              />
-            }
-          />
         </Show>
         <Show name="Kbd, Definition">
           <div className="flex flex-wrap items-center gap-4" data-testid="definition-demo">
@@ -909,7 +792,7 @@ function FeedbackSection({ updated }: { updated: string }) {
   return (
     <Section id="feedback" title="Feedback">
       <div className="grid gap-4 md:grid-cols-2">
-        <Show name="Skeleton, PanelSkeleton, TableSkeleton">
+        <Show name="Skeleton, PanelSkeleton">
           <div className="space-y-3">
             <Skeleton className="h-4 w-2/3" />
             <PanelSkeleton height="sm" />

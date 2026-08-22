@@ -1,11 +1,9 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Fragment, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   AlertCircle,
-  ChevronDown,
   ChevronLeft,
-  ChevronRight,
   Github,
   Globe,
   MessageCircle,
@@ -20,6 +18,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { AccountRootClaim } from "@/components/metagraphed/account-root-claim";
 import {
   EmptyState,
+  ErrorState,
   Skeleton,
   StatUnavailable,
   StaleBanner,
@@ -31,10 +30,7 @@ import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
 import {
   CopyableCode,
   TimeAgo,
-  TableState,
-  ShareButton,
   Chip,
-  DownloadCsvButton,
   ExternalLink,
   BackToTop,
   Definition,
@@ -45,8 +41,11 @@ import {
   FactSentence,
   SectionNav,
   RankedRails,
+  DataTable,
+  type CellValue,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel } from "@/components/metagraphed/primitives";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import { AccountPositionHistoryChart } from "@/components/metagraphed/account-position-history-chart";
 import { AccountHoldingsHistory } from "@/components/metagraphed/account-holdings-history";
@@ -82,7 +81,6 @@ import {
   formatTakePct,
 } from "@/lib/metagraphed/validator-apy";
 import { classNames, formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
-import { buildUrl } from "@/lib/metagraphed/client";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { useAddressLabels } from "@/lib/metagraphed/address-labels";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
@@ -249,7 +247,6 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           <>
             <div className="mg-actions">
               <WatchStarButton kind="account" id={ss58} label="this account" iconOnly />
-              <ShareButton bare iconOnly />
             </div>
             {/* #8484: outside the ActionBar (its children need their own
                 `bare` variant for the segmented look) but still in `actions`
@@ -844,7 +841,20 @@ function SectionBadge({
   );
 }
 
-const TH = "px-4 py-3";
+/** `DataTable` cell formatter for a count column, in this page's units. */
+function fmtCount(value: CellValue): string {
+  return formatNumber(typeof value === "number" ? value : null);
+}
+
+/** `DataTable` cell formatter for a τ amount, matching `fmtStake`. */
+function fmtStakeCell(value: CellValue): string {
+  return fmtStake(typeof value === "number" ? value : null);
+}
+
+/** `#12,345`, the block-number form every feed on this page uses. */
+function fmtBlock(value: CellValue): string {
+  return typeof value === "number" ? `#${formatNumber(value)}` : "—";
+}
 
 function AccountFeedSectionSkeleton({
   id,
@@ -900,13 +910,7 @@ function AccountExtrinsicsSection({
         name="Signed extrinsics"
         footnote="The newest transactions this account signed, from the chain-direct extrinsics tier."
       >
-        <TableState
-          variant="error"
-          title="Couldn't load signed extrinsics"
-          description="The extrinsics tier is optional enrichment — the rest of the account page is unaffected."
-          error={error}
-          onRetry={onRetry}
-        />
+        <ErrorState error={error} onRetry={onRetry} context="signed extrinsics" />
       </AnalyticsSection>
     );
   }
@@ -916,84 +920,82 @@ function AccountExtrinsicsSection({
       id="extrinsics"
       name="Signed extrinsics"
       footnote="The newest transactions this account signed, from the chain-direct extrinsics tier."
-      controls={
-        <div className="flex items-center gap-2">
-          <SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>
-          <DownloadCsvButton url={buildUrl(`/api/v1/accounts/${ss58}/extrinsics`)} />
-        </div>
-      }
+      controls={<SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>}
     >
-      <DataPanel>
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface">
-            <tr>
-              <th className={TH}>Block</th>
-              <th className={TH}>Call</th>
-              <th className={TH}>Result</th>
-              <th className={`${TH} text-right`}>Observed</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((x, i) => {
-              // #8371: this section is scoped to extrinsics `ss58` itself
-              // signed, so it's always the right signer context for the
-              // sentence -- unlike a generic feed, no per-row signer field
-              // to read.
-              const sentence = summarizeCall(x.call_module, x.call_function, x.call_args, {
-                signer: ss58,
-              });
-              return (
-                <tr
-                  key={x.extrinsic_hash ?? `${x.block_number}-${x.extrinsic_index}-${i}`}
-                  className="hover:bg-surface"
+      <DataTable
+        rows={rows}
+        rowKey={(row) => row.extrinsic_hash ?? `${row.block_number}-${row.extrinsic_index}`}
+        caption="Signed extrinsics"
+        captionHidden
+        link={RouterLink}
+        source="account-extrinsics"
+        columns={[
+          {
+            key: "block",
+            label: "Block",
+            sortable: true,
+            value: (row) => row.block_number,
+            format: fmtBlock,
+            render: (row) =>
+              row.block_number != null ? (
+                <Link
+                  to="/blocks/$ref"
+                  params={{ ref: String(row.block_number) }}
+                  className="text-ink hover:text-accent hover:underline"
                 >
-                  <td className="px-4 py-4 font-mono text-13">
-                    {x.block_number != null ? (
-                      <Link
-                        to="/blocks/$ref"
-                        params={{ ref: String(x.block_number) }}
-                        className="text-ink hover:text-accent hover:underline"
-                      >
-                        #{formatNumber(x.block_number)}
-                        {x.extrinsic_index != null ? (
-                          <span className="text-ink-muted">·{x.extrinsic_index}</span>
-                        ) : null}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-11 text-ink">
-                    {x.extrinsic_hash ? (
-                      <Link
-                        to="/extrinsics/$hash"
-                        params={{ hash: x.extrinsic_hash }}
-                        className="hover:text-accent hover:underline"
-                      >
-                        {sentence ?? extrinsicCall(x.call_module, x.call_function)}
-                      </Link>
-                    ) : (
-                      (sentence ?? extrinsicCall(x.call_module, x.call_function))
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-11">
-                    {x.success == null ? (
-                      <span className="text-ink-muted">—</span>
-                    ) : x.success ? (
-                      <span className="text-health-ok">ok</span>
-                    ) : (
-                      <span className="text-health-down">fail</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-right text-11 text-ink-muted">
-                    <TimeAgo at={x.observed_at} />
-                  </td>
-                </tr>
+                  #{formatNumber(row.block_number)}
+                  {row.extrinsic_index != null ? (
+                    <span className="text-ink-muted">·{row.extrinsic_index}</span>
+                  ) : null}
+                </Link>
+              ) : (
+                "—"
+              ),
+          },
+          {
+            key: "call",
+            label: "Call",
+            // #8371: this section is scoped to extrinsics `ss58` itself
+            // signed, so it's always the right signer context for the
+            // sentence -- unlike a generic feed, no per-row signer field
+            // to read.
+            value: (row) =>
+              summarizeCall(row.call_module, row.call_function, row.call_args, { signer: ss58 }) ??
+              extrinsicCall(row.call_module, row.call_function),
+            render: (row) => {
+              const sentence =
+                summarizeCall(row.call_module, row.call_function, row.call_args, {
+                  signer: ss58,
+                }) ?? extrinsicCall(row.call_module, row.call_function);
+              return row.extrinsic_hash ? (
+                <Link
+                  to="/extrinsics/$hash"
+                  params={{ hash: row.extrinsic_hash }}
+                  className="hover:text-accent hover:underline"
+                >
+                  {sentence}
+                </Link>
+              ) : (
+                sentence
               );
-            })}
-          </tbody>
-        </table>
-      </DataPanel>
+            },
+          },
+          {
+            key: "result",
+            label: "Result",
+            kind: "status",
+            value: (row) => (row.success == null ? null : row.success ? "ok" : "failed"),
+          },
+          {
+            key: "observed",
+            label: "Observed",
+            kind: "time",
+            align: "right",
+            sortable: true,
+            value: (row) => row.observed_at,
+          },
+        ]}
+      />
     </AnalyticsSection>
   );
 }
@@ -1034,13 +1036,7 @@ function AccountTransfersSection({
         name="Transfers"
         footnote="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
       >
-        <TableState
-          variant="error"
-          title="Couldn't load transfers"
-          description="The transfers tier is optional enrichment — the rest of the account page is unaffected."
-          error={error}
-          onRetry={onRetry}
-        />
+        <ErrorState error={error} onRetry={onRetry} context="transfers" />
       </AnalyticsSection>
     );
   }
@@ -1050,75 +1046,91 @@ function AccountTransfersSection({
       id="transfers"
       name="Transfers"
       footnote="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
-      controls={
-        <div className="flex items-center gap-2">
-          <SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>
-          <DownloadCsvButton url={buildUrl(`/api/v1/accounts/${ss58}/transfers`)} />
-        </div>
-      }
+      controls={<SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>}
     >
-      <DataPanel>
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface">
-            <tr>
-              <th className={TH}>Block</th>
-              <th className={TH}>Direction</th>
-              <th className={TH}>Counterparty</th>
-              <th className={`${TH} text-right`}>Amount</th>
-              <th className={`${TH} text-right`}>Observed</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((t, i) => {
-              const counterparty = t.direction === "sent" ? t.to : t.from;
+      <DataTable
+        rows={rows}
+        rowKey={(row) => `${row.block_number}-${row.event_index}`}
+        caption="Transfers"
+        captionHidden
+        link={RouterLink}
+        source="account-transfers"
+        columns={[
+          {
+            key: "block",
+            label: "Block",
+            sortable: true,
+            value: (row) => row.block_number,
+            format: fmtBlock,
+            render: (row) =>
+              row.block_number != null ? (
+                <Link
+                  to="/blocks/$ref"
+                  params={{ ref: String(row.block_number) }}
+                  className="text-ink hover:text-accent hover:underline"
+                >
+                  #{formatNumber(row.block_number)}
+                </Link>
+              ) : (
+                "—"
+              ),
+          },
+          {
+            key: "direction",
+            label: "Direction",
+            value: (row) => row.direction,
+            // Sent and received are the two halves of one flow, not health
+            // states, so they keep this page's own directional tones rather
+            // than the status dot's ok/warn/down vocabulary.
+            render: (row) =>
+              row.direction === "received" ? (
+                <span className="text-health-ok">received</span>
+              ) : row.direction === "sent" ? (
+                <span className="text-health-warn-text">sent</span>
+              ) : (
+                <span className="text-ink-muted">—</span>
+              ),
+          },
+          {
+            key: "counterparty",
+            label: "Counterparty",
+            value: (row) => transferCounterparty(row),
+            render: (row) => {
+              const counterparty = transferCounterparty(row);
               return (
-                <tr key={`${t.block_number}-${t.event_index}-${i}`} className="hover:bg-surface">
-                  <td className="px-4 py-4 font-mono text-13">
-                    {t.block_number != null ? (
-                      <Link
-                        to="/blocks/$ref"
-                        params={{ ref: String(t.block_number) }}
-                        className="text-ink hover:text-accent hover:underline"
-                      >
-                        #{formatNumber(t.block_number)}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-11">
-                    {t.direction === "received" ? (
-                      <span className="text-health-ok">received</span>
-                    ) : t.direction === "sent" ? (
-                      <span className="text-health-warn-text">sent</span>
-                    ) : (
-                      <span className="text-ink-muted">—</span>
-                    )}
-                  </td>
-                  <td
-                    className="px-4 py-4 text-11 text-ink-muted"
-                    title={counterparty ?? undefined}
-                  >
-                    <AddressDisplay
-                      ss58={counterparty}
-                      fallback={<>{counterparty ?? "—"}</>}
-                      linkToAccount={counterparty !== ss58}
-                    />
-                  </td>
-                  <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
-                    {t.amount_tao != null ? `${formatNumber(t.amount_tao)} τ` : "—"}
-                  </td>
-                  <td className="px-4 py-4 text-right text-11 text-ink-muted">
-                    <TimeAgo at={t.observed_at} />
-                  </td>
-                </tr>
+                <AddressDisplay
+                  ss58={counterparty}
+                  fallback={<>{counterparty ?? "—"}</>}
+                  linkToAccount={counterparty !== ss58}
+                />
               );
-            })}
-          </tbody>
-        </table>
-      </DataPanel>
+            },
+          },
+          {
+            key: "amount",
+            label: "Amount",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.amount_tao,
+            format: fmtStakeCell,
+          },
+          {
+            key: "observed",
+            label: "Observed",
+            kind: "time",
+            align: "right",
+            sortable: true,
+            value: (row) => row.observed_at,
+          },
+        ]}
+      />
     </AnalyticsSection>
   );
+}
+
+/** The other side of a transfer: whoever this account was not. */
+function transferCounterparty(t: Transfer): string | null {
+  return t.direction === "sent" ? t.to : t.from;
 }
 
 function fmtStake(v: number | null | undefined): string {
@@ -1183,19 +1195,17 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
         name="Stake moves"
         question="Where this account re-delegated stake over the window: total movements, the subnets it moved across, and the per-subnet breakdown."
       >
-        <TableState
-          variant="error"
-          title="Could not load stake moves"
-          description="The stake-moves tier is optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="stake moves"
         />
       </AnalyticsSection>
     );
   }
   const subnets = m?.subnets ?? [];
   if (!m || subnets.length === 0) return null;
-  const rows = [...subnets].sort((a, b) => b.movements - a.movements).slice(0, 20);
+  const rows = [...subnets].sort((a, b) => b.movements - a.movements);
 
   return (
     <AnalyticsSection
@@ -1231,47 +1241,49 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
           className={KPI_TILE}
         />
       </FactStrip>
-      <DataPanel>
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface">
-            <tr>
-              <th className={TH}>Subnet</th>
-              <th className={`${TH} text-right`}>Movements</th>
-              <th className={`${TH} text-right`}>Last moved</th>
-              <th className={`${TH} text-right`}>Price at last move</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((s) => (
-              <tr key={s.netuid} className="hover:bg-surface">
-                <td className="px-4 py-4 font-mono text-13">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: s.netuid }}
-                    className="text-ink hover:text-accent hover:underline"
-                  >
-                    SN{s.netuid}
-                  </Link>
-                </td>
-                <td className="px-4 py-4 text-right font-mono text-13 tabular-nums text-ink">
-                  {formatNumber(s.movements)}
-                </td>
-                <td className="px-4 py-4 text-right text-11 text-ink-muted">
-                  {s.last_moved_at ? <TimeAgo at={s.last_moved_at} /> : "—"}
-                </td>
-                <td className="px-4 py-4 text-right text-11 tabular-nums text-ink-muted">
-                  {fmtAlphaPrice(s.price_tao_at_last_move)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </DataPanel>
-      {subnets.length > rows.length ? (
-        <p className="mt-3 text-10 text-ink-muted">
-          Showing the {rows.length} most-active of {formatNumber(subnets.length)} subnets.
-        </p>
-      ) : null}
+      <DataTable
+        rows={rows}
+        rowKey={(row) => String(row.netuid)}
+        caption="Stake moves by subnet"
+        captionHidden
+        link={RouterLink}
+        source="account-stake-moves"
+        pageSize={20}
+        rowHref={(row) => `/subnets/${row.netuid}`}
+        columns={[
+          {
+            key: "netuid",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => row.netuid,
+            format: (value) => `SN${String(value)}`,
+          },
+          {
+            key: "movements",
+            label: "Movements",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.movements,
+            format: fmtCount,
+          },
+          {
+            key: "last_moved",
+            label: "Last moved",
+            kind: "time",
+            align: "right",
+            sortable: true,
+            value: (row) => row.last_moved_at,
+          },
+          {
+            key: "price",
+            label: "Price at last move",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.price_tao_at_last_move,
+            format: (_value, row) => fmtAlphaPrice(row.price_tao_at_last_move),
+          },
+        ]}
+      />
     </AnalyticsSection>
   );
 }
@@ -1294,12 +1306,10 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
   if (result.isError) {
     return (
       <AnalyticsSection id="counterparties" name="Counterparties" question={SUBTITLE}>
-        <TableState
-          variant="error"
-          title="Couldn't load counterparties"
-          description="The counterparties tier is optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="counterparties"
         />
       </AnalyticsSection>
     );
@@ -1307,7 +1317,7 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
   const parties = c?.counterparties ?? [];
   if (!c || parties.length === 0) return null;
   const volume = (p: AccountCounterparty) => (p.sent_tao ?? 0) + (p.received_tao ?? 0);
-  const rows = [...parties].sort((a, b) => volume(b) - volume(a)).slice(0, 20);
+  const rows = [...parties].sort((a, b) => volume(b) - volume(a));
 
   return (
     <AnalyticsSection
@@ -1345,70 +1355,79 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
           className={KPI_TILE}
         />
       </FactStrip>
-      <DataPanel>
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface">
-            <tr>
-              <th className={TH}>Address</th>
-              <th className={`${TH} text-right`}>Sent</th>
-              <th className={`${TH} text-right`}>Received</th>
-              <th className={`${TH} text-right`}>Net flow</th>
-              <th className={`${TH} text-right`}>Transfers</th>
-              <th className={`${TH} text-right`}>Last block</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((p, i) => (
-              <tr key={`${p.address}-${i}`} className="hover:bg-surface">
-                <td className="px-4 py-4 text-11 text-ink-muted" title={p.address}>
-                  <AddressDisplay
-                    ss58={p.address}
-                    fallback={<>{p.address}</>}
-                    linkToAccount={p.address !== ss58}
-                  />
-                </td>
-                <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
-                  {p.sent_tao != null ? `${formatNumber(p.sent_tao)} τ` : "—"}
-                </td>
-                <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
-                  {p.received_tao != null ? `${formatNumber(p.received_tao)} τ` : "—"}
-                </td>
-                <td className="px-4 py-4 text-right text-11 tabular-nums">
-                  {p.net_tao == null ? (
-                    <span className="text-ink-muted">—</span>
-                  ) : (
-                    <span className={p.net_tao >= 0 ? "text-health-ok" : "text-health-warn-text"}>
-                      {p.net_tao >= 0 ? "+" : ""}
-                      {formatNumber(p.net_tao)} τ
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
-                  {formatNumber(p.transfer_count ?? 0)}
-                </td>
-                <td className="px-4 py-4 text-right font-mono text-13">
-                  {p.last_block != null ? (
-                    <Link
-                      to="/blocks/$ref"
-                      params={{ ref: String(p.last_block) }}
-                      className="text-ink hover:text-accent hover:underline"
-                    >
-                      #{formatNumber(p.last_block)}
-                    </Link>
-                  ) : (
-                    <span className="text-ink-muted">—</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </DataPanel>
-      {parties.length > rows.length ? (
-        <p className="mt-3 text-10 text-ink-muted">
-          Showing the {rows.length} highest-volume of {formatNumber(parties.length)} counterparties.
-        </p>
-      ) : null}
+      <DataTable
+        rows={rows}
+        rowKey={(row) => row.address}
+        caption="Counterparties"
+        captionHidden
+        link={RouterLink}
+        source="account-counterparties"
+        pageSize={20}
+        columns={[
+          {
+            key: "address",
+            label: "Address",
+            value: (row) => row.address,
+            render: (row) => (
+              <AddressDisplay
+                ss58={row.address}
+                fallback={<>{row.address}</>}
+                linkToAccount={row.address !== ss58}
+              />
+            ),
+          },
+          {
+            key: "sent",
+            label: "Sent",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.sent_tao,
+            format: fmtStakeCell,
+          },
+          {
+            key: "received",
+            label: "Received",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.received_tao,
+            format: fmtStakeCell,
+          },
+          {
+            key: "net",
+            label: "Net flow",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.net_tao,
+            render: (row) =>
+              row.net_tao == null ? (
+                <span className="text-ink-muted">—</span>
+              ) : (
+                <span className={row.net_tao >= 0 ? "text-health-ok" : "text-health-warn-text"}>
+                  {row.net_tao >= 0 ? "+" : ""}
+                  {formatNumber(row.net_tao)} τ
+                </span>
+              ),
+          },
+          {
+            key: "transfers",
+            label: "Transfers",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.transfer_count ?? 0,
+            format: fmtCount,
+          },
+          {
+            key: "last_block",
+            label: "Last block",
+            kind: "link",
+            align: "right",
+            sortable: true,
+            value: (row) => row.last_block,
+            format: fmtBlock,
+            href: (row) => (row.last_block != null ? `/blocks/${row.last_block}` : undefined),
+          },
+        ]}
+      />
     </AnalyticsSection>
   );
 }
@@ -1538,7 +1557,7 @@ function DelegationSide({
   onRetry,
   emptyTitle,
   emptyDescription,
-  unavailableTitle,
+  unavailableContext,
 }: {
   label: string;
   ss58: string;
@@ -1548,21 +1567,15 @@ function DelegationSide({
   onRetry: () => void;
   emptyTitle: string;
   emptyDescription: string;
-  unavailableTitle: string;
+  unavailableContext: string;
 }) {
   return (
     <div>
       <h3 className="mb-2 whitespace-nowrap text-11 text-ink-muted">{label}</h3>
       {unavailable ? (
-        <TableState
-          variant="error"
-          title={unavailableTitle}
-          description="Live RPC didn't respond — the rest of the page is unaffected."
-          error={error}
-          onRetry={onRetry}
-        />
+        <ErrorState error={error} onRetry={onRetry} context={unavailableContext} />
       ) : rows.length === 0 ? (
-        <TableState variant="empty" title={emptyTitle} description={emptyDescription} />
+        <EmptyState title={emptyTitle} description={emptyDescription} />
       ) : (
         <DelegationEdgeList ss58={ss58} rows={rows} />
       )}
@@ -1629,7 +1642,7 @@ function AccountDelegationSection({ ss58 }: { ss58: string }) {
           onRetry={() => void childrenResult.refetch()}
           emptyTitle="No children"
           emptyDescription="This account delegates stake-weight to no child hotkeys."
-          unavailableTitle="Children unavailable"
+          unavailableContext="child hotkeys"
         />
         <DelegationSide
           label="Parents"
@@ -1640,7 +1653,7 @@ function AccountDelegationSection({ ss58 }: { ss58: string }) {
           onRetry={() => void parentsResult.refetch()}
           emptyTitle="No parents"
           emptyDescription="No parent hotkeys delegate stake-weight to this account."
-          unavailableTitle="Parents unavailable"
+          unavailableContext="parent hotkeys"
         />
       </div>
     </AnalyticsSection>
@@ -1695,12 +1708,10 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
   if (result.isError) {
     return (
       <AnalyticsSection id="entities" name="Entity">
-        <TableState
-          variant="error"
-          title="Couldn't load entity labels"
-          description="The entity-labels tier is optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="entity labels"
         />
       </AnalyticsSection>
     );
@@ -1729,66 +1740,71 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
       {ties.length > 0 ? (
         <>
           <h3 className="mb-2 whitespace-nowrap text-11 text-ink-muted">Ownership</h3>
-          <DataPanel>
-            <table className="w-full text-left text-13">
-              <thead className="bg-surface">
-                <tr>
-                  <th className={`${TH} whitespace-nowrap`}>SN</th>
-                  <th className={`${TH} whitespace-nowrap`}>Role</th>
-                  <th className={`${TH} whitespace-nowrap text-right`}>Block</th>
-                  <th className={`${TH} whitespace-nowrap text-right`}>When</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {ties.map((tie, i) => (
-                  <tr key={`${tie.netuid}-${tie.block_number}-${i}`} className="hover:bg-surface">
-                    <td className="whitespace-nowrap px-4 py-4 font-mono text-13">
-                      {tie.netuid != null ? (
-                        <Link
-                          to="/subnets/$netuid"
-                          params={{ netuid: tie.netuid }}
-                          className="text-ink hover:text-accent hover:underline"
-                        >
-                          SN{tie.netuid}
-                        </Link>
-                      ) : (
-                        <span className="text-ink-muted">—</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-11">
-                      <span
-                        className={
-                          tie.role === "gained_ownership"
-                            ? "text-health-ok"
-                            : tie.role === "lost_ownership"
-                              ? "text-health-warn-text"
-                              : "text-ink-muted"
-                        }
-                      >
-                        {ownershipRoleLabel(tie.role)}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-right font-mono text-13">
-                      {tie.block_number != null ? (
-                        <Link
-                          to="/blocks/$ref"
-                          params={{ ref: String(tie.block_number) }}
-                          className="text-ink hover:text-accent hover:underline"
-                        >
-                          #{formatNumber(tie.block_number)}
-                        </Link>
-                      ) : (
-                        <span className="text-ink-muted">—</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-right text-11 text-ink-muted">
-                      {tie.observed_at ? <TimeAgo at={tie.observed_at} /> : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </DataPanel>
+          <DataTable
+            rows={ties}
+            rowKey={(row) => `${row.netuid}-${row.block_number}`}
+            caption="Subnet ownership ties"
+            captionHidden
+            link={RouterLink}
+            source="account-ownership-ties"
+            columns={[
+              {
+                key: "netuid",
+                label: "SN",
+                sortable: true,
+                value: (row) => row.netuid,
+                render: (row) =>
+                  row.netuid != null ? (
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: row.netuid }}
+                      className="text-ink hover:text-accent hover:underline"
+                    >
+                      SN{row.netuid}
+                    </Link>
+                  ) : (
+                    <span className="text-ink-muted">—</span>
+                  ),
+              },
+              {
+                key: "role",
+                label: "Role",
+                value: (row) => ownershipRoleLabel(row.role),
+                render: (row) => (
+                  <span
+                    className={
+                      row.role === "gained_ownership"
+                        ? "text-health-ok"
+                        : row.role === "lost_ownership"
+                          ? "text-health-warn-text"
+                          : "text-ink-muted"
+                    }
+                  >
+                    {ownershipRoleLabel(row.role)}
+                  </span>
+                ),
+              },
+              {
+                key: "block",
+                label: "Block",
+                kind: "link",
+                align: "right",
+                sortable: true,
+                value: (row) => row.block_number,
+                format: fmtBlock,
+                href: (row) =>
+                  row.block_number != null ? `/blocks/${row.block_number}` : undefined,
+              },
+              {
+                key: "when",
+                label: "When",
+                kind: "time",
+                align: "right",
+                sortable: true,
+                value: (row) => row.observed_at,
+              },
+            ]}
+          />
         </>
       ) : null}
     </AnalyticsSection>
@@ -1847,12 +1863,10 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
         question={SUBTITLE}
         controls={windowControl}
       >
-        <TableState
-          variant="error"
-          title="Couldn't load stake flow"
-          description="The stake-flow tier is optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="stake flow"
         />
       </AnalyticsSection>
     );
@@ -1940,66 +1954,73 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
         </div>
       ) : null}
 
-      {subnets.length > 0 ? (
-        <DataPanel>
-          <table className="w-full text-left text-13">
-            <thead className="bg-surface">
-              <tr>
-                <th className={TH}>Subnet</th>
-                <th className={TH}>Direction</th>
-                <th className={`${TH} text-right`}>Net flow</th>
-                <th className={`${TH} text-right`}>Gross flow</th>
-                <th className={`${TH} text-right`}>Events</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {[...subnets]
-                .sort((a, b) => (b.gross_flow_tao ?? 0) - (a.gross_flow_tao ?? 0))
-                .slice(0, 20)
-                .map((s) => (
-                  <tr key={s.netuid} className="hover:bg-surface">
-                    <td className="px-4 py-4 font-mono text-13">
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: s.netuid }}
-                        className="text-ink hover:text-accent hover:underline"
-                      >
-                        SN{s.netuid}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-4 text-11">
-                      <span className={stakeFlowDirClass(s.direction)}>{s.direction ?? "—"}</span>
-                    </td>
-                    <td className="px-4 py-4 text-right text-11 tabular-nums">
-                      {s.net_flow_tao == null ? (
-                        <span className="text-ink-muted">—</span>
-                      ) : (
-                        <span
-                          className={
-                            s.net_flow_tao >= 0 ? "text-health-ok" : "text-health-warn-text"
-                          }
-                        >
-                          {s.net_flow_tao >= 0 ? "+" : "−"}
-                          {fmtStake(Math.abs(s.net_flow_tao))}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
-                      {fmtStake(s.gross_flow_tao)}
-                    </td>
-                    <td className="px-4 py-4 text-right text-11 tabular-nums text-ink-muted">
-                      {formatNumber((s.stake_events ?? 0) + (s.unstake_events ?? 0))}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </DataPanel>
-      ) : (
-        <p className="rounded border border-border/80 px-4 py-4 text-11 text-ink-muted">
-          No stake or unstake flow recorded for this account over the {f?.window ?? window} window.
-        </p>
-      )}
+      <DataTable
+        rows={[...subnets].sort((a, b) => (b.gross_flow_tao ?? 0) - (a.gross_flow_tao ?? 0))}
+        rowKey={(row) => String(row.netuid)}
+        caption="Stake flow by subnet"
+        captionHidden
+        link={RouterLink}
+        source="account-stake-flow"
+        pageSize={20}
+        rowHref={(row) => `/subnets/${row.netuid}`}
+        empty={
+          <EmptyState
+            title="No stake flow in this window"
+            description={`No stake or unstake flow recorded for this account over the ${f?.window ?? window} window.`}
+          />
+        }
+        columns={[
+          {
+            key: "netuid",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => row.netuid,
+            format: (value) => `SN${String(value)}`,
+          },
+          {
+            key: "direction",
+            label: "Direction",
+            value: (row) => row.direction,
+            render: (row) => (
+              <span className={stakeFlowDirClass(row.direction)}>{row.direction ?? "—"}</span>
+            ),
+          },
+          {
+            key: "net_flow",
+            label: "Net flow",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.net_flow_tao,
+            render: (row) =>
+              row.net_flow_tao == null ? (
+                <span className="text-ink-muted">—</span>
+              ) : (
+                <span
+                  className={row.net_flow_tao >= 0 ? "text-health-ok" : "text-health-warn-text"}
+                >
+                  {row.net_flow_tao >= 0 ? "+" : "−"}
+                  {fmtStake(Math.abs(row.net_flow_tao))}
+                </span>
+              ),
+          },
+          {
+            key: "gross_flow",
+            label: "Gross flow",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.gross_flow_tao,
+            format: fmtStakeCell,
+          },
+          {
+            key: "events",
+            label: "Events",
+            kind: "number",
+            sortable: true,
+            value: (row) => (row.stake_events ?? 0) + (row.unstake_events ?? 0),
+            format: fmtCount,
+          },
+        ]}
+      />
     </AnalyticsSection>
   );
 }
@@ -2014,11 +2035,6 @@ const POSITIONS_PAGE_SIZE = 25;
 function AccountPortfolioSection({ ss58 }: { ss58: string }) {
   const result = useQuery(accountPortfolioQuery(ss58));
   const p = result.data?.data;
-  // Per-position drill-down (#4329/6.4 -- the "Alpha Holdings chart"): each
-  // row expands in place rather than navigating away, so a viewer can compare
-  // several positions' history without losing the portfolio table.
-  const [expandedNetuid, setExpandedNetuid] = useState<number | null>(null);
-  const [visibleCount, setVisibleCount] = useState(POSITIONS_PAGE_SIZE);
 
   if (result.isPending && !p) {
     return (
@@ -2036,12 +2052,10 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
         name="Portfolio"
         question="Cross-subnet neuron positions for this account: per-subnet stake, emission, and role, with an aggregate stake and yield summary."
       >
-        <TableState
-          variant="error"
-          title="Could not load portfolio"
-          description="The portfolio tier is optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="the portfolio"
         />
       </AnalyticsSection>
     );
@@ -2083,92 +2097,66 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
           className={KPI_TILE}
         />
       </FactStrip>
-      <DataPanel>
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface">
-            <tr>
-              <th className={TH} aria-hidden="true" />
-              <th className={TH}>Subnet</th>
-              <th className={TH}>Role</th>
-              <th className={`${TH} text-right`}>Stake</th>
-              <th className={`${TH} text-right`}>Emission</th>
-              <th className={`${TH} text-right`}>Incentive</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {positions.slice(0, visibleCount).map((pos) => {
-              const expanded = expandedNetuid === pos.netuid;
-              return (
-                <Fragment key={`${pos.netuid}-${pos.uid ?? "x"}`}>
-                  <tr className="hover:bg-surface">
-                    <td className="px-3 py-4">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedNetuid(expanded ? null : pos.netuid)}
-                        aria-expanded={expanded}
-                        aria-label={`${expanded ? "Hide" : "Show"} SN${pos.netuid} position history`}
-                        className="flex size-5 items-center justify-center rounded text-ink-muted hover:text-ink-strong"
-                      >
-                        <ChevronDown
-                          className={classNames(
-                            "size-3.5 transition-transform",
-                            expanded ? "rotate-180" : "",
-                          )}
-                        />
-                      </button>
-                    </td>
-                    <td className="px-4 py-4 font-mono text-13">
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: pos.netuid }}
-                        className="text-ink hover:text-accent hover:underline"
-                      >
-                        SN{pos.netuid}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-4 text-11">
-                      {pos.role === "validator" ? (
-                        <span className="text-health-ok">validator</span>
-                      ) : pos.role === "miner" ? (
-                        <span className="text-chart-1">miner</span>
-                      ) : (
-                        <span className="text-ink-muted">{"—"}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
-                      {fmtPositionStake(pos.stake_alpha, pos.netuid)}
-                    </td>
-                    <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
-                      {fmtPositionStake(pos.emission_alpha, pos.netuid)}
-                    </td>
-                    <td className="px-4 py-4 text-right text-11 tabular-nums text-ink-muted">
-                      {pos.incentive != null ? pos.incentive.toFixed(4) : "—"}
-                    </td>
-                  </tr>
-                  {expanded ? (
-                    <tr className="bg-surface">
-                      <td colSpan={6} className="px-4 py-4">
-                        <AccountPositionHistoryChart ss58={ss58} netuid={pos.netuid} />
-                      </td>
-                    </tr>
-                  ) : null}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-        {positions.length > visibleCount ? (
-          <div className="flex justify-center border-t border-border p-3">
-            <button
-              type="button"
-              onClick={() => setVisibleCount((c) => c + POSITIONS_PAGE_SIZE)}
-              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3.5 py-1.5 text-11 text-ink-muted hover:border-ink/30 hover:text-ink-strong"
-            >
-              Show {Math.min(POSITIONS_PAGE_SIZE, positions.length - visibleCount)} more
-            </button>
-          </div>
-        ) : null}
-      </DataPanel>
+      {/* Per-position drill-down (#4329/6.4 -- the "Alpha Holdings chart"):
+          activating a row expands its history in place rather than navigating
+          away, so a viewer can compare several positions without losing the
+          portfolio table. */}
+      <DataTable
+        rows={positions}
+        rowKey={(row) => `${row.netuid}-${row.uid ?? "x"}`}
+        caption="Portfolio positions"
+        captionHidden
+        link={RouterLink}
+        source="account-portfolio"
+        pageSize={POSITIONS_PAGE_SIZE}
+        expand={(row) => <AccountPositionHistoryChart ss58={ss58} netuid={row.netuid} />}
+        columns={[
+          {
+            key: "netuid",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => row.netuid,
+            format: (value) => `SN${String(value)}`,
+          },
+          {
+            key: "role",
+            label: "Role",
+            value: (row) => row.role,
+            render: (row) =>
+              row.role === "validator" ? (
+                <span className="text-health-ok">validator</span>
+              ) : row.role === "miner" ? (
+                <span className="text-chart-1">miner</span>
+              ) : (
+                <span className="text-ink-muted">—</span>
+              ),
+          },
+          {
+            key: "stake",
+            label: "Stake",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.stake_alpha,
+            format: (_value, row) => fmtPositionStake(row.stake_alpha, row.netuid),
+          },
+          {
+            key: "emission",
+            label: "Emission",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.emission_alpha,
+            format: (_value, row) => fmtPositionStake(row.emission_alpha, row.netuid),
+          },
+          {
+            key: "incentive",
+            label: "Incentive",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.incentive,
+            format: fmtCount,
+          },
+        ]}
+      />
     </AnalyticsSection>
   );
 }
@@ -2190,12 +2178,10 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
   if (result.isError) {
     return (
       <AnalyticsSection id="identity" name="Identity" question={SUBTITLE}>
-        <TableState
-          variant="error"
-          title="Could not load identity"
-          description="The identity tier is optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="the identity"
         />
       </AnalyticsSection>
     );
@@ -2355,12 +2341,10 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
         name="Teardown activity"
         question={`Axon endpoint removals (AxonInfoRemoved) for this account over the trailing ${windowLabel} window.`}
       >
-        <TableState
-          variant="error"
-          title="Could not load teardown activity"
-          description="The axon-removals tier is optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="teardown activity"
         />
       </AnalyticsSection>
     );
@@ -2423,12 +2407,10 @@ function AccountRegistrationActivitySection({ ss58 }: { ss58: string }) {
         name="Registration activity"
         question={`Neuron registrations (NeuronRegistered) for this account over the trailing ${windowLabel} window.`}
       >
-        <TableState
-          variant="error"
-          title="Could not load registration activity"
-          description="The registrations tier is optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="registration activity"
         />
       </AnalyticsSection>
     );
@@ -2486,12 +2468,10 @@ function AccountDeregistrationActivitySection({ ss58 }: { ss58: string }) {
         name="Deregistration activity"
         question={`Neuron deregistrations (NeuronDeregistered) for this account over the trailing ${windowLabel} window.`}
       >
-        <TableState
-          variant="error"
-          title="Could not load deregistration activity"
-          description="The deregistrations tier is optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="deregistration activity"
         />
       </AnalyticsSection>
     );
@@ -2557,12 +2537,10 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
         name="Weight-setting activity"
         question={`Validator WeightsSet events for this account over the trailing ${windowLabel} window.`}
       >
-        <TableState
-          variant="error"
-          title="Could not load weight-setting activity"
-          description="The weight-setters tier is optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="weight-setting activity"
         />
       </AnalyticsSection>
     );
@@ -2599,38 +2577,40 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
               className={KPI_TILE}
             />
           </FactStrip>
-          <DataPanel>
-            <table className="w-full text-left text-13">
-              <thead className="bg-surface">
-                <tr>
-                  <th className={TH}>Subnet</th>
-                  <th className={`${TH} text-right`}>Weight sets</th>
-                  <th className={`${TH} text-right`}>Last set</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {subnets.map((row) => (
-                  <tr key={row.netuid} className="hover:bg-surface">
-                    <td className="px-4 py-4 font-mono text-13">
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: row.netuid }}
-                        className="inline-flex items-center rounded border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
-                      >
-                        SN{row.netuid}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-4 text-right font-mono text-13 tabular-nums text-ink">
-                      {formatNumber(row.weight_sets)}
-                    </td>
-                    <td className="px-4 py-4 text-right text-11 text-ink-muted">
-                      <TimeAgo at={row.last_set_at ?? undefined} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </DataPanel>
+          <DataTable
+            rows={subnets}
+            rowKey={(row) => String(row.netuid)}
+            caption="Weight sets by subnet"
+            captionHidden
+            link={RouterLink}
+            source="account-weight-setting"
+            rowHref={(row) => `/subnets/${row.netuid}`}
+            columns={[
+              {
+                key: "netuid",
+                label: "Subnet",
+                sortable: true,
+                value: (row) => row.netuid,
+                format: (value) => `SN${String(value)}`,
+              },
+              {
+                key: "weight_sets",
+                label: "Weight sets",
+                kind: "number",
+                sortable: true,
+                value: (row) => row.weight_sets,
+                format: fmtCount,
+              },
+              {
+                key: "last_set",
+                label: "Last set",
+                kind: "time",
+                align: "right",
+                sortable: true,
+                value: (row) => row.last_set_at,
+              },
+            ]}
+          />
         </>
       }
     </AnalyticsSection>
@@ -2678,15 +2658,13 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
         name={endpointAnnouncementsTitle}
         question={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
       >
-        <TableState
-          variant="error"
-          title="Could not load endpoint announcement activity"
-          description="The serving and prometheus tiers are optional enrichment — the rest of the account page is unaffected."
+        <ErrorState
           error={servingResult.error ?? prometheusResult.error}
           onRetry={() => {
             void servingResult.refetch();
             void prometheusResult.refetch();
           }}
+          context="endpoint announcement activity"
         />
       </AnalyticsSection>
     );
@@ -2760,10 +2738,6 @@ function AccountFootprintSection({
 }) {
   const subnetsResult = useQuery(accountSubnetsQuery(ss58));
   const rows = subnetsResult.data?.data.subnets ?? fallback;
-  // #8358: same "≤25 rows behind Load-more" budget as the portfolio table --
-  // a top validator's registration footprint is as large as its position
-  // count (same account, same magnitude).
-  const [visibleCount, setVisibleCount] = useState(POSITIONS_PAGE_SIZE);
 
   // Keep this optional enrichment non-blocking: fallback registrations should
   // render while the dedicated subnet feed is pending or has failed.
@@ -2789,12 +2763,10 @@ function AccountFootprintSection({
         name="Subnet footprint"
         question="Current registrations across the indexed network, netuid-ordered, with stake distribution."
       >
-        <TableState
-          variant="error"
-          title="Could not load subnet footprint"
-          description="The account's cross-subnet registrations could not be loaded."
+        <ErrorState
           error={subnetsResult.error}
           onRetry={() => void subnetsResult.refetch()}
+          context="the subnet footprint"
         />
       </AnalyticsSection>
     );
@@ -2823,124 +2795,77 @@ function AccountFootprintSection({
           />
         </div>
       ) : null}
-      {/* #6428: five columns at `px-5` do not fit a 375px viewport, so Permit
-          and Active -- and with them this section's only route to a validator
-          profile -- sit outside the scroll viewport on mobile. Desktop keeps
-          the table; mobile gets the card fallback endpoint-list.tsx uses for
-          the same problem, so every field (and the permit link) is reachable
-          without a horizontal swipe. */}
-      <DataPanel className="hidden md:block">
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface">
-            <tr>
-              <th className={TH}>Subnet</th>
-              <th className={`${TH} text-right`}>UID</th>
-              <th className={`${TH} text-right`}>Stake</th>
-              <th className={TH}>Permit</th>
-              <th className={TH}>Active</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.slice(0, visibleCount).map((r) => (
-              <tr key={`${r.netuid}-${r.uid}`} className="hover:bg-surface">
-                <td className="px-4 py-4 font-mono text-13">
-                  {r.netuid != null ? (
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: r.netuid }}
-                      // Same deep-link as SubnetPerformanceTable: this row already
-                      // knows its uid, so land on the neuron card, not the overview.
-                      search={subnetPositionSearch(r.uid)}
-                      className="inline-flex items-center rounded border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
-                    >
-                      SN{r.netuid}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-4 py-4 text-right font-mono text-13 tabular-nums text-ink">
-                  {r.uid != null ? formatNumber(r.uid) : "—"}
-                </td>
-                <td className="px-4 py-4 text-right font-mono text-13 tabular-nums text-ink">
-                  {fmtStake(r.stake_tao)}
-                </td>
-                <td className="px-4 py-4 text-11">
-                  {r.validator_permit ? (
-                    <ValidatorPermitBadge ss58={ss58} />
-                  ) : (
-                    <span className="text-ink-muted">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-4 text-11">
-                  {r.active ? (
-                    <span className="inline-flex rounded bg-health-ok/10 px-2 py-0.5 text-health-ok">
-                      active
-                    </span>
-                  ) : (
-                    <span className="inline-flex rounded bg-surface px-2 py-0.5 text-ink-muted">
-                      idle
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </DataPanel>
-
-      <ul className="space-y-2 md:hidden">
-        {rows.slice(0, visibleCount).map((r) => (
-          <li key={`${r.netuid}-${r.uid}`} className="rounded border border-border bg-card p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2">
-                {r.netuid != null ? (
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: r.netuid }}
-                    className="inline-flex items-center rounded border border-border bg-paper px-2.5 py-1 font-mono text-13 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
-                  >
-                    SN{r.netuid}
-                  </Link>
-                ) : (
-                  <span className="font-mono text-13 text-ink-muted">—</span>
-                )}
-                {r.validator_permit ? <ValidatorPermitBadge ss58={ss58} /> : null}
-              </div>
-              {r.active ? (
-                <span className="inline-flex shrink-0 rounded bg-health-ok/10 px-2 py-0.5 text-11 text-health-ok">
-                  active
-                </span>
+      {/* #8358: same "≤25 rows a page" budget as the portfolio table -- a top
+          validator's registration footprint is as large as its position count
+          (same account, same magnitude). #6428: below 640px the same five
+          columns become one label/value card per subnet, so Permit and Active
+          -- and with them this section's only route to a validator profile --
+          stay reachable without a horizontal swipe. */}
+      <DataTable
+        rows={rows}
+        rowKey={(row) => `${row.netuid}-${row.uid}`}
+        caption="Subnet footprint"
+        captionHidden
+        link={RouterLink}
+        source="account-footprint"
+        pageSize={POSITIONS_PAGE_SIZE}
+        columns={[
+          {
+            key: "netuid",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => row.netuid,
+            render: (row) =>
+              row.netuid != null ? (
+                <Link
+                  to="/subnets/$netuid"
+                  params={{ netuid: row.netuid }}
+                  // Same deep-link as SubnetPerformanceTable: this row already
+                  // knows its uid, so land on the neuron card, not the overview.
+                  search={subnetPositionSearch(row.uid)}
+                  className="inline-flex items-center rounded border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
+                >
+                  SN{row.netuid}
+                </Link>
               ) : (
-                <span className="inline-flex shrink-0 rounded bg-surface px-2 py-0.5 text-11 text-ink-muted">
-                  idle
-                </span>
-              )}
-            </div>
-            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-11">
-              <dt className="text-13 text-ink-muted">UID</dt>
-              <dd className="text-right font-mono tabular-nums text-ink">
-                {r.uid != null ? formatNumber(r.uid) : "—"}
-              </dd>
-              <dt className="text-13 text-ink-muted">Stake</dt>
-              <dd className="text-right font-mono tabular-nums text-ink">
-                {fmtStake(r.stake_tao)}
-              </dd>
-            </dl>
-          </li>
-        ))}
-      </ul>
-      {rows.length > visibleCount ? (
-        <div className="flex justify-center pt-3">
-          <button
-            type="button"
-            onClick={() => setVisibleCount((c) => c + POSITIONS_PAGE_SIZE)}
-            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3.5 py-1.5 text-11 text-ink-muted hover:border-ink/30 hover:text-ink-strong"
-          >
-            Show {Math.min(POSITIONS_PAGE_SIZE, rows.length - visibleCount)} more
-          </button>
-        </div>
-      ) : null}
+                "—"
+              ),
+          },
+          {
+            key: "uid",
+            label: "UID",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.uid,
+            format: fmtCount,
+          },
+          {
+            key: "stake",
+            label: "Stake",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.stake_tao,
+            format: fmtStakeCell,
+          },
+          {
+            key: "permit",
+            label: "Permit",
+            value: (row) => (row.validator_permit ? "validator" : null),
+            render: (row) =>
+              row.validator_permit ? (
+                <ValidatorPermitBadge ss58={ss58} />
+              ) : (
+                <span className="text-ink-muted">—</span>
+              ),
+          },
+          {
+            key: "active",
+            label: "Active",
+            kind: "status",
+            value: (row) => (row.active ? "active" : "idle"),
+          },
+        ]}
+      />
     </AnalyticsSection>
   );
 }
@@ -3027,12 +2952,10 @@ function AccountEventsSection({
         name="Chain events"
         footnote="Full first-party event feed for this account, newest first — filter by kind, page through history."
       >
-        <TableState
-          variant="error"
-          title="Couldn't load chain events"
-          description="The chain-events feed is temporarily unavailable — the rest of the account page is unaffected."
+        <ErrorState
           error={result.error}
           onRetry={() => void result.refetch()}
+          context="chain events"
         />
       </AnalyticsSection>
     );
@@ -3044,116 +2967,99 @@ function AccountEventsSection({
       name="Chain events"
       footnote="Full first-party event feed for this account, newest first — filter by kind, page through history."
       controls={
-        <div className="flex items-center gap-2">
-          {kindOptions.length > 0 ? (
-            <FilterChip
-              ariaLabel="Filter by event kind"
-              value={search.ev_kind ?? ""}
-              onChange={(v) => setSearch({ ev_kind: v || undefined, ev_offset: undefined })}
-              options={kindOptions.map((k) => ({ value: k.kind, label: k.kind }))}
-            />
-          ) : null}
-          <DownloadCsvButton
-            url={buildUrl(`/api/v1/accounts/${ss58}/events`, { kind: search.ev_kind })}
+        kindOptions.length > 0 ? (
+          <FilterChip
+            ariaLabel="Filter by event kind"
+            value={search.ev_kind ?? ""}
+            onChange={(v) => setSearch({ ev_kind: v || undefined, ev_offset: undefined })}
+            options={kindOptions.map((k) => ({ value: k.kind, label: k.kind }))}
           />
-        </div>
+        ) : null
       }
     >
       {events.length > 0 ? (
-        <DataPanel>
-          <table className="w-full text-left text-13">
-            <thead className="bg-surface">
-              <tr>
-                <th className={TH}>Block</th>
-                <th className={TH}>Kind</th>
-                <th className={TH}>Subnet</th>
-                <th className={`${TH} text-right`}>Amount</th>
-                <th className={`${TH} text-right`}>Observed</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {events.map((ev, i) => (
-                <tr key={`${ev.block_number}-${ev.event_index}-${i}`} className="hover:bg-surface">
-                  <td className="px-4 py-4 font-mono text-13">
-                    {ev.block_number != null ? (
-                      <Link
-                        to="/blocks/$ref"
-                        params={{ ref: String(ev.block_number) }}
-                        className="text-ink hover:text-accent hover:underline"
-                      >
-                        #{formatNumber(ev.block_number)}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-11 text-ink-strong">
-                    {eventKindLabel(ev.event_kind)}
-                  </td>
-                  <td className="px-4 py-4 text-11 text-ink-muted">
-                    {ev.netuid != null ? (
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: ev.netuid }}
-                        className="hover:text-accent hover:underline"
-                      >
-                        SN{ev.netuid}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
-                    {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
-                    {/* #8369: what it was worth at the time, as secondary
-                        text. Renders nothing for events that have no price.
-                        #8602 adds the fiat leg beside it, which renders
-                        nothing of its own for events predating the index. */}
-                    <PriceAtTx
-                      price={ev.price_at_tx}
-                      basis={ev.price_basis}
-                      blockNumber={ev.block_number}
-                      usd={ev.usd_at_tx}
-                    />
-                  </td>
-                  <td className="px-4 py-4 text-right text-11 text-ink-muted">
-                    <TimeAgo at={ev.observed_at} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="flex items-center justify-between gap-3 border-t border-border bg-surface px-4 py-3 text-11 text-ink-muted">
-            <span>
-              {events.length
-                ? `${formatNumber(offset + 1)}–${formatNumber(offset + events.length)}`
-                : "0"}
-              {search.ev_kind ? ` · ${search.ev_kind}` : ""}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSearch({ ev_offset: Math.max(0, offset - limit) || undefined })}
-                disabled={!hasPrev}
-                className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 font-medium hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-40 min-h-9"
-              >
-                <ChevronLeft className="size-3" /> Newer
-              </button>
-              <button
-                type="button"
-                onClick={() => setSearch({ ev_offset: offset + limit })}
-                disabled={!hasNext}
-                className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 font-medium hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-40 min-h-9"
-              >
-                Older <ChevronRight className="size-3" />
-              </button>
-            </div>
-          </div>
-        </DataPanel>
+        <DataTable
+          rows={events}
+          rowKey={(row) => `${row.block_number}-${row.event_index}`}
+          caption="Chain events"
+          captionHidden
+          link={RouterLink}
+          source="account-events"
+          // Server-side offset paging, in the URL: the table only ever holds
+          // one page, so it reports the window it knows about — the current
+          // page plus one more when the feed says there is one.
+          page={Math.floor(offset / limit) + 1}
+          onPage={(next) => setSearch({ ev_offset: (next - 1) * limit || undefined })}
+          pageSize={limit}
+          total={offset + events.length + (hasNext ? 1 : 0)}
+          columns={[
+            {
+              key: "block",
+              label: "Block",
+              sortable: true,
+              value: (row) => row.block_number,
+              format: fmtBlock,
+              render: (row) =>
+                row.block_number != null ? (
+                  <Link
+                    to="/blocks/$ref"
+                    params={{ ref: String(row.block_number) }}
+                    className="text-ink hover:text-accent hover:underline"
+                  >
+                    #{formatNumber(row.block_number)}
+                  </Link>
+                ) : (
+                  "—"
+                ),
+            },
+            {
+              key: "kind",
+              label: "Kind",
+              value: (row) => eventKindLabel(row.event_kind),
+            },
+            {
+              key: "netuid",
+              label: "Subnet",
+              kind: "link",
+              value: (row) => row.netuid,
+              format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
+              href: (row) => (row.netuid != null ? `/subnets/${row.netuid}` : undefined),
+            },
+            {
+              key: "amount",
+              label: "Amount",
+              kind: "number",
+              sortable: true,
+              value: (row) => row.amount_tao,
+              render: (row) => (
+                <>
+                  {row.amount_tao != null ? fmtStake(row.amount_tao) : "—"}
+                  {/* #8369: what it was worth at the time, as secondary
+                      text. Renders nothing for events that have no price.
+                      #8602 adds the fiat leg beside it, which renders
+                      nothing of its own for events predating the index. */}
+                  <PriceAtTx
+                    price={row.price_at_tx}
+                    basis={row.price_basis}
+                    blockNumber={row.block_number}
+                    usd={row.usd_at_tx}
+                  />
+                </>
+              ),
+            },
+            {
+              key: "observed",
+              label: "Observed",
+              kind: "time",
+              align: "right",
+              sortable: true,
+              value: (row) => row.observed_at,
+            },
+          ]}
+        />
       ) : (
         <div className="space-y-3">
-          <TableState
-            variant="empty"
+          <EmptyState
             title={search.ev_kind ? `No ${search.ev_kind} events` : "No chain events indexed"}
             description={
               search.ev_kind
@@ -3175,13 +3081,5 @@ function AccountEventsSection({
         </div>
       )}
     </AnalyticsSection>
-  );
-}
-
-function DataPanel({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div className={classNames("overflow-x-auto rounded border border-border/80", className)}>
-      {children}
-    </div>
   );
 }

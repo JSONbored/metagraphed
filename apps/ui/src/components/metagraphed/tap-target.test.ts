@@ -35,10 +35,25 @@ describe("mg-tap-target (#8254)", () => {
   });
 
   it("is applied to every watchlist star, the densest undersized control we ship", () => {
-    // Both index pages render a star in the card view and again in the table
-    // row; all of them carry the utility.
-    const stars = (src: string) => (src.match(/mg-tap-target/g) ?? []).length;
-    expect(stars(subnets)).toBeGreaterThanOrEqual(3);
-    expect(stars(validators)).toBeGreaterThanOrEqual(1);
+    // #11610 removed the hand-written mobile card branch from both index
+    // pages -- DataTable renders one DOM in every mode, so there is no longer
+    // a second, card-only star for the same row. Counting render paths would
+    // now pin a number that says nothing; the bar is per-CONTROL: every
+    // watchlist toggle in these files carries the utility, however many the
+    // page happens to render.
+    const watchToggles = (src: string) =>
+      [...src.matchAll(/<button[\s\S]{0,900}?<\/button>/g)]
+        .map((match) => match[0])
+        .filter((button) => /aria-label=\{[\s\S]*?watchlist/.test(button));
+    for (const [name, src] of [
+      ["subnets", subnets],
+      ["validators", validators],
+    ] as const) {
+      const toggles = watchToggles(src);
+      // Guard the guard: a rename of the aria-label would otherwise empty the
+      // set and pass on nothing.
+      expect(toggles.length, `${name} renders no watchlist toggle`).toBeGreaterThan(0);
+      for (const toggle of toggles) expect(toggle).toContain("mg-tap-target");
+    }
   });
 });

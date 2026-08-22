@@ -1,10 +1,11 @@
-import { Definition } from "@jsonbored/ui-kit";
+import { Definition, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
 import { useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { reviewProfileCompletenessQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { Panel } from "@/components/metagraphed/primitives";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import type { Subnet } from "@/lib/metagraphed/types";
 
 const KINDS = [
@@ -37,6 +38,75 @@ const CELL_TONE: Record<Cell, { bg: string; ring: string; label: string }> = {
   unknown: { bg: "bg-border/40 hover:bg-border", ring: "ring-border", label: "Unknown" },
 };
 
+/** One subnet row of the matrix: its metadata plus a verdict per kind. */
+interface MatrixRow {
+  netuid: number;
+  name: string;
+  completeness: number;
+  missingCount: number;
+  cells: Record<Kind, Cell>;
+}
+
+/** One kind's verdict, as a link into that subnet's surfaces tab. */
+function CellLink({ row, kind }: { row: MatrixRow; kind: Kind }) {
+  const tone = CELL_TONE[row.cells[kind]];
+  return (
+    <Link
+      to="/subnets/$netuid"
+      params={{ netuid: row.netuid }}
+      search={{ tab: "surfaces" }}
+      className={classNames(
+        "block h-6 w-full rounded transition-all hover:ring-2",
+        tone.bg,
+        tone.ring,
+      )}
+      title={`${tone.label} · ${kind} · SN${row.netuid}`}
+    >
+      <span className="sr-only">{`${kind} ${tone.label}`}</span>
+    </Link>
+  );
+}
+
+const MATRIX_COLUMNS: Array<DataTableColumn<MatrixRow>> = [
+  {
+    key: "subnet",
+    label: "Subnet",
+    sortable: true,
+    value: (r) => r.name,
+    render: (r) => (
+      <Link
+        to="/subnets/$netuid"
+        params={{ netuid: r.netuid }}
+        className="inline-flex min-w-0 items-center gap-1.5 hover:text-accent"
+      >
+        <span className="text-10 text-ink-muted">SN{r.netuid}</span>
+        <span className="truncate">{r.name}</span>
+      </Link>
+    ),
+  },
+  ...KINDS.map<DataTableColumn<MatrixRow>>((k) => ({
+    key: k,
+    label: k,
+    align: "left" as const,
+    value: (r: MatrixRow) => CELL_TONE[r.cells[k]].label,
+    render: (r: MatrixRow) => <CellLink row={r} kind={k} />,
+  })),
+  {
+    key: "completeness",
+    label: "Comp",
+    kind: "number",
+    sortable: true,
+    value: (r) => r.completeness,
+    format: (v) => `${Math.round((typeof v === "number" ? v : 0) * 100)}%`,
+  },
+];
+
+const SORT_OPTIONS = [
+  { v: "missing-desc", label: "Most missing" },
+  { v: "missing-asc", label: "Most complete" },
+  { v: "netuid", label: "By netuid" },
+] as const;
+
 /**
  * Coverage matrix: subnets (rows) × required resource kinds (cols). Cells
  * encode whether the kind is verified, only present as a candidate, or
@@ -55,7 +125,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
   const [sort, setSort] = useState<"missing-desc" | "missing-asc" | "netuid">("missing-desc");
 
   // Lookup table: subnet metadata + the canonical missing-kinds array.
-  const rows = useMemo(() => {
+  const rows = useMemo<MatrixRow[]>(() => {
     const subnetByNetuid = new Map<number, Subnet>();
     for (const s of subnets) subnetByNetuid.set(s.netuid as number, s);
 
@@ -91,124 +161,44 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
   }, [rows]);
 
   return (
-    <Panel flush className="overflow-hidden">
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-paper">
-        <div className="min-w-0">
-          <div className="text-13 text-ink-muted">Coverage matrix</div>
-          <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
-            What each subnet is missing
-          </h3>
-        </div>
-        <div className="flex items-center gap-1">
-          {(
-            [
-              { v: "missing-desc", label: "Most missing" },
-              { v: "missing-asc", label: "Most complete" },
-              { v: "netuid", label: "By netuid" },
-            ] as const
-          ).map((o) => (
-            <button
-              key={o.v}
-              type="button"
-              onClick={() => setSort(o.v)}
-              className={classNames(
-                "inline-flex items-center rounded border px-2 py-0.5 text-13 transition-colors",
-                sort === o.v
-                  ? "border-accent/60 bg-accent/10 text-accent"
-                  : "border-border text-ink-muted hover:text-ink-strong",
-              )}
-              aria-pressed={sort === o.v}
-            >
-              {o.label}
-            </button>
-          ))}
-          <Definition term="Coverage matrix" />
-        </div>
-      </header>
-
-      {/* At 375px only the subnet column + ~4 kind cells fit, and the far-right
-          "Comp" column — the signal that actually separates a 25%-complete
-          subnet from a full one — scrolls off-screen, so every row reads as
-          covered (#5310). Two cues fix that: each row shows its completeness in
-          the always-visible sticky column (below, mobile only), and a
-          right-edge fade signals there's more to scroll. */}
-      <div className="relative">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-11">
-            <thead>
-              <tr className="bg-paper">
-                <th className="sticky left-0 z-[var(--mg-z-sticky)] bg-paper text-left px-3 py-2 text-ink-muted border-b border-border">
-                  Subnet
-                </th>
-                {KINDS.map((k) => (
-                  <th
-                    key={k}
-                    className="px-2 py-2 text-center text-ink-muted border-b border-border"
-                  >
-                    {k}
-                  </th>
-                ))}
-                <th className="px-2 py-2 text-right text-ink-muted border-b border-border">Comp</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr
-                  key={r.netuid}
-                  className="border-b border-border last:border-b-0 hover:bg-paper"
-                >
-                  <td className="sticky left-0 z-[var(--mg-z-sticky)] bg-card px-3 py-1.5 border-r border-border text-ink-strong">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: r.netuid }}
-                        className="inline-flex min-w-0 items-center gap-1.5 hover:text-accent"
-                      >
-                        <span className="text-10 text-ink-muted">SN{r.netuid}</span>
-                        <span className="truncate max-w-[110px] sm:max-w-[160px]">{r.name}</span>
-                      </Link>
-                      <CompletenessChip value={r.completeness} netuid={r.netuid} />
-                    </div>
-                  </td>
-                  {KINDS.map((k) => {
-                    const cell = r.cells[k];
-                    const tone = CELL_TONE[cell];
-                    return (
-                      <td key={k} className="p-1 align-middle">
-                        <Link
-                          to="/subnets/$netuid"
-                          params={{ netuid: r.netuid }}
-                          search={{ tab: "surfaces" }}
-                          className={classNames(
-                            "block h-6 w-full rounded transition-all hover:ring-2",
-                            tone.bg,
-                            tone.ring,
-                          )}
-                          title={`${tone.label} · ${k} · SN${r.netuid}`}
-                        >
-                          <span className="sr-only">{`${k} ${tone.label}`}</span>
-                        </Link>
-                      </td>
-                    );
-                  })}
-                  <td className="px-2 py-1.5 text-right tabular-nums text-ink-strong">
-                    {Math.round(r.completeness * 100)}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card to-transparent md:hidden"
-        />
-        <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-ink-strong/70 px-1.5 py-0.5 text-13 text-paper md:hidden">
-          scroll →
-        </div>
-      </div>
-
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-paper px-4 py-2 text-10 text-ink-muted">
+    <div className="space-y-2">
+      {/* Eleven columns: at 375px the old grid put the "Comp" column -- the one
+          signal separating a 25%-complete subnet from a full one -- behind a
+          horizontal scroll nobody makes, so every row read as covered (#5310).
+          A labelled card per subnet keeps every kind AND the score on screen,
+          which is why the sticky column, the edge fade and the "scroll →" badge
+          that used to paper over it are all gone. */}
+      <DataTable
+        rows={rows}
+        columns={MATRIX_COLUMNS}
+        rowKey={(r) => String(r.netuid)}
+        caption="What each subnet is missing"
+        link={RouterLink}
+        source="coverage-matrix"
+        mobile="cards"
+        filters={
+          <>
+            {SORT_OPTIONS.map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                onClick={() => setSort(o.v)}
+                className={classNames(
+                  "inline-flex items-center rounded border px-2 py-0.5 text-13 transition-colors",
+                  sort === o.v
+                    ? "border-accent/60 bg-accent/10 text-accent"
+                    : "border-border text-ink-muted hover:text-ink-strong",
+                )}
+                aria-pressed={sort === o.v}
+              >
+                {o.label}
+              </button>
+            ))}
+            <Definition term="Coverage matrix" />
+          </>
+        }
+      />
+      <div className="flex flex-wrap items-center justify-between gap-3 text-10 text-ink-muted">
         <div className="flex items-center gap-3">
           <Legend cell="present" count={totals.present} />
           <Legend cell="candidate" count={totals.candidate} />
@@ -216,37 +206,8 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
           <Legend cell="unknown" count={totals.unknown} />
         </div>
         <div>showing top {rows.length} subnets</div>
-      </footer>
-    </Panel>
-  );
-}
-
-// Always-visible per-row completeness. On mobile the far-right "Comp" column —
-// the one signal that actually distinguishes a 25%-complete subnet from a
-// 100% one — scrolls off-screen, leaving only the leftmost (usually present)
-// kind cells visible, so every row reads as fully covered (#5310). Surfacing
-// completeness inside the sticky column (mobile only; the "Comp" column still
-// serves md+) makes a low-coverage subnet obvious without scrolling. Coloured
-// by tier so an incomplete subnet reads red at a glance.
-function CompletenessChip({ value, netuid }: { value: number; netuid: number }) {
-  const pct = Math.round(value * 100);
-  const tone =
-    value >= 0.8
-      ? "border-health-ok/40 bg-health-ok/10 text-health-ok"
-      : value >= 0.5
-        ? "border-health-warn/40 bg-health-warn/10 text-health-warn"
-        : "border-health-down/40 bg-health-down/10 text-health-down";
-  return (
-    <span
-      className={classNames(
-        "ml-auto inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-10 font-semibold tabular-nums md:hidden",
-        tone,
-      )}
-
-      aria-label={`SN${netuid} completeness ${pct}%`}
-    >
-      {pct}%
-    </span>
+      </div>
+    </div>
   );
 }
 

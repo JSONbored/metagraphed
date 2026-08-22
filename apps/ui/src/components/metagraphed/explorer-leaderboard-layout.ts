@@ -5,7 +5,7 @@
  * subnet columns beside several right-aligned numeric columns. Without a
  * dedicated horizontal scroll shell the table pins to the section width and
  * forces the page body to overflow on narrow viewports — the same treatment
- * `ListShell` applies to paginated list tables.
+ * `DataTable` applies to paginated lists.
  *
  * @see https://github.com/JSONbored/metagraphed/issues/3932
  */

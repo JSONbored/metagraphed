@@ -5,26 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
+import { DataTable, SectionHead, FactStrip, FactCell, RangeControl } from "@jsonbored/ui-kit";
+import { AsyncPanel, PanelSkeleton, QueryProgress } from "@/components/metagraphed/primitives";
 import {
-  HealthDot,
-  DownloadCsvButton,
-  ShareButton,
-  SectionHead,
-  FactStrip,
-  FactCell,
-  RangeControl,
-} from "@jsonbored/ui-kit";
-import {
-  AsyncPanel,
-  FilterChipRow,
-  FilterSheet,
-  PagerFooter,
-  PanelSkeleton,
-  QueryBar,
-  QueryProgress,
-  ResponsiveTable,
-  type FilterChipItem,
-} from "@/components/metagraphed/primitives";
+  ResetFiltersButton,
+  SearchInput,
+  SelectFilter,
+} from "@/components/metagraphed/table-controls";
 import { EndpointsPriorityStrip } from "@/components/metagraphed/endpoints-priority-strip";
 import { EndpointOperationalList } from "@/components/metagraphed/endpoint-operational-list";
 import { EndpointComparePanel } from "@/components/metagraphed/endpoint-compare-panel";
@@ -34,10 +21,9 @@ import { LatencyRanking } from "@/components/metagraphed/charts/latency-ranking"
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
 import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
-import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { rpcEndpointsSummaryLine } from "@/lib/metagraphed/rpc-endpoints-summary";
-import { buildUrl } from "@/lib/metagraphed/client";
-import { ApisTabActions } from "./-apis-hub";
+
 import {
   endpointsQuery,
   endpointIncidentsQuery,
@@ -102,9 +88,6 @@ export function EndpointsPage() {
   const [tab, setTab] = useState<EndpointsTab>("endpoints");
   return (
     <>
-      <ApisTabActions>
-        <ShareButton />
-      </ApisTabActions>
       <div className="space-y-section">
         {/* Endpoint KPIs stay visible above the tabs so the tab bar has context
             and doesn't float alone under the hero. */}
@@ -313,14 +296,6 @@ function PoolsTable() {
   const { data } = useSuspenseQuery(rpcPoolsQuery());
   const rows = (data.data ?? []) as RpcPool[];
   const stale = isStaleFreshness(data.meta?.generated_at);
-  if (rows.length === 0)
-    return (
-      <EmptyState
-        title="No RPC pools tracked"
-        description="The proxy routes across registered pools — pool members and their eligibility appear here once registered."
-        action={{ label: "Open API", href: "/api/v1/rpc/pools", external: true }}
-      />
-    );
   return (
     <div className="space-y-2">
       {stale ? (
@@ -333,52 +308,55 @@ function PoolsTable() {
           ]}
         />
       ) : null}
-      <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
-        <table className="w-full text-13">
-          <thead className="text-10 bg-surface text-ink-muted">
-            <tr>
-              <th className="px-3 py-2 text-left">Pool</th>
-              <th className="px-3 py-2 text-left">Region</th>
-              <th className="px-3 py-2 text-right">Members</th>
-              <th className="px-3 py-2 text-center">Archive</th>
-              <th className="px-3 py-2 text-center">Eligibility</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((p) => {
-              const eligibility: PoolEligibility = p.proxy_enabled
-                ? "proxy-enabled"
-                : p.archive_capable
-                  ? "archive-capable"
-                  : "pool-member";
+      <DataTable
+        rows={rows}
+        rowKey={(p) => p.id}
+        caption="RPC pools"
+        source="rpc-pools"
+        empty={
+          <EmptyState
+            title="No RPC pools tracked"
+            description="The proxy routes across registered pools — pool members and their eligibility appear here once registered."
+            action={{ label: "Open API", href: "/api/v1/rpc/pools", external: true }}
+          />
+        }
+        columns={[
+          { key: "name", label: "Pool", sortable: true, value: (p) => p.name ?? p.id },
+          { key: "region", label: "Region", sortable: true, value: (p) => p.region ?? null },
+          {
+            key: "members",
+            label: "Members",
+            kind: "number",
+            sortable: true,
+            value: (p) => p.members_count ?? null,
+          },
+          {
+            key: "archive",
+            label: "Archive",
+            sortable: true,
+            value: (p) => (p.archive_capable ? "yes" : null),
+          },
+          {
+            key: "eligibility",
+            label: "Eligibility",
+            sortable: true,
+            value: (p) => ELIGIBILITY_LABEL[poolEligibility(p)],
+            render: (p) => {
+              const eligibility = poolEligibility(p);
               return (
-                <tr
-                  key={p.id}
-                  id={`pool-${p.id}`}
-                  className="mg-row-hover scroll-mt-24 target:bg-accent/10"
+                <span
+                  className={classNames(
+                    "text-13 inline-flex items-center rounded border px-1.5 py-0.5",
+                    ELIGIBILITY_TONE[eligibility],
+                  )}
                 >
-                  <td className="px-3 py-2 font-medium text-ink-strong">{p.name ?? p.id}</td>
-                  <td className="px-3 py-2 text-13">{p.region ?? "—"}</td>
-                  <td className="px-3 py-2 text-right font-mono">{p.members_count ?? "—"}</td>
-                  <td className="px-3 py-2 text-center text-13 text-ink-muted">
-                    {p.archive_capable ? "yes" : "—"}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <span
-                      className={classNames(
-                        "text-13 inline-flex items-center rounded border px-1.5 py-0.5",
-                        ELIGIBILITY_TONE[eligibility],
-                      )}
-                    >
-                      {ELIGIBILITY_LABEL[eligibility]}
-                    </span>
-                  </td>
-                </tr>
+                  {ELIGIBILITY_LABEL[eligibility]}
+                </span>
               );
-            })}
-          </tbody>
-        </table>
-      </ResponsiveTable>
+            },
+          },
+        ]}
+      />
       <p className="px-1 text-10 text-ink-muted">
         Proxy-eligible members serve live traffic through the reverse proxy above; the proxy prefers
         in-sync, healthy nodes and fails over automatically.
@@ -387,18 +365,23 @@ function PoolsTable() {
   );
 }
 
+/** The pool's own access tier, from the two capability flags it carries. */
+function poolEligibility(p: RpcPool): PoolEligibility {
+  if (p.proxy_enabled) return "proxy-enabled";
+  if (p.archive_capable) return "archive-capable";
+  return "pool-member";
+}
+
 function EndpointPoolsTable() {
   const { data } = useSuspenseQuery(endpointPoolsQuery());
   const rows = (data.data ?? []) as RpcPool[];
   const stale = isStaleFreshness(data.meta?.generated_at);
-  if (rows.length === 0)
-    return (
-      <EmptyState
-        title="No endpoint pools tracked"
-        description="Generalized pool composition across subtensor-rpc, subtensor-wss, and archive kinds appears here once pools are scored."
-        action={{ label: "Open API", href: "/api/v1/endpoint-pools", external: true }}
-      />
-    );
+  const endpointTotal = (p: RpcPool) =>
+    typeof p.endpoint_count === "number"
+      ? p.endpoint_count
+      : typeof p.members_count === "number"
+        ? p.members_count
+        : null;
   return (
     <div className="space-y-2">
       {stale ? (
@@ -411,51 +394,50 @@ function EndpointPoolsTable() {
           ]}
         />
       ) : null}
-      <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
-        <table className="w-full text-13">
-          <thead className="text-10 bg-surface text-ink-muted">
-            <tr>
-              <th className="px-3 py-2 text-left">Pool</th>
-              <th className="px-3 py-2 text-left">Kind</th>
-              <th className="px-3 py-2 text-right">Endpoints</th>
-              <th className="px-3 py-2 text-left">Best endpoint</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((p) => {
+      <DataTable
+        rows={rows}
+        rowKey={(p) => p.id}
+        caption="Endpoint pools"
+        source="endpoint-pools"
+        empty={
+          <EmptyState
+            title="No endpoint pools tracked"
+            description="Generalized pool composition across subtensor-rpc, subtensor-wss, and archive kinds appears here once pools are scored."
+            action={{ label: "Open API", href: "/api/v1/endpoint-pools", external: true }}
+          />
+        }
+        columns={[
+          { key: "id", label: "Pool", sortable: true, value: (p) => p.id },
+          {
+            key: "kind",
+            label: "Kind",
+            sortable: true,
+            value: (p) => String(p.kind ?? "") || null,
+          },
+          {
+            key: "endpoints",
+            label: "Endpoints",
+            kind: "number",
+            sortable: true,
+            value: (p) => endpointTotal(p),
+            format: (_value, p) => {
+              const total = endpointTotal(p);
               const eligible = typeof p.eligible_count === "number" ? p.eligible_count : null;
-              const total =
-                typeof p.endpoint_count === "number"
-                  ? p.endpoint_count
-                  : typeof p.members_count === "number"
-                    ? p.members_count
-                    : null;
-              const bestId =
-                typeof p.best_endpoint_id === "string" && p.best_endpoint_id.trim()
-                  ? p.best_endpoint_id
-                  : null;
-              return (
-                <tr
-                  key={p.id}
-                  id={`endpoint-pool-${p.id}`}
-                  className="mg-row-hover scroll-mt-24 target:bg-accent/10"
-                >
-                  <td className="px-3 py-2 font-medium text-ink-strong">{p.id}</td>
-                  <td className="px-3 py-2 text-11">{String(p.kind ?? "—")}</td>
-                  <td className="px-3 py-2 text-right text-11">
-                    {eligible != null && total != null
-                      ? `${eligible}/${total} eligible`
-                      : total != null
-                        ? String(total)
-                        : "—"}
-                  </td>
-                  <td className="px-3 py-2 text-11 text-ink-muted">{bestId ?? "—"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </ResponsiveTable>
+              if (eligible != null && total != null) return `${eligible}/${total} eligible`;
+              return total != null ? String(total) : "—";
+            },
+          },
+          {
+            key: "best_endpoint_id",
+            label: "Best endpoint",
+            sortable: true,
+            value: (p) =>
+              typeof p.best_endpoint_id === "string" && p.best_endpoint_id.trim()
+                ? p.best_endpoint_id
+                : null,
+          },
+        ]}
+      />
       <p className="px-1 text-10 text-ink-muted">
         Covers all pool kinds (subtensor-rpc, subtensor-wss, archive) from the generalized
         endpoint-pools artifact — distinct from the Bittensor RPC proxy pools above.
@@ -480,14 +462,6 @@ function RpcEndpointsTable() {
   const rows = data.data.endpoints;
   const summaryLine = rpcEndpointsSummaryLine(data.data.summary);
   const stale = isStaleFreshness(data.meta?.generated_at);
-  if (rows.length === 0)
-    return (
-      <EmptyState
-        title="No RPC endpoints tracked"
-        description="The base-layer Subtensor RPC/WSS registry appears here once endpoints are registered."
-        action={{ label: "Open API", href: "/api/v1/rpc/endpoints", external: true }}
-      />
-    );
   return (
     <div className="space-y-2">
       {stale ? (
@@ -496,48 +470,66 @@ function RpcEndpointsTable() {
           refreshQueryKeys={[rpcEndpointsQuery().queryKey]}
         />
       ) : null}
-      <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
-        <table className="w-full text-13">
-          <thead className="text-10 bg-surface text-ink-muted">
-            <tr>
-              <th className="px-3 py-2 text-left">Provider</th>
-              <th className="px-3 py-2 text-left">Kind</th>
-              <th className="px-3 py-2 text-left">Classification</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Archive</th>
-              <th className="px-3 py-2 text-right">Latency</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((e: RpcEndpoint) => (
-              <tr key={e.id} className="mg-row-hover">
-                <td className="px-3 py-2 font-medium text-ink-strong">{e.provider ?? "—"}</td>
-                <td className="px-3 py-2 text-11">{e.kind ?? "—"}</td>
-                <td className="px-3 py-2">
-                  <span
-                    className={classNames(
-                      "text-13 inline-flex items-center rounded border px-1.5 py-0.5",
-                      CLASSIFICATION_TONE[e.classification ?? "unknown"] ??
-                        CLASSIFICATION_TONE.unknown,
-                    )}
-                  >
-                    {e.classification ?? "unknown"}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <HealthDot state={statusToHealth(e.status)} />
-                </td>
-                <td className="px-3 py-2 text-center text-13 text-ink-muted">
-                  {e.archive_support == null ? "—" : e.archive_support ? "yes" : "no"}
-                </td>
-                <td className="px-3 py-2 text-right text-11">
-                  {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </ResponsiveTable>
+      <DataTable
+        rows={rows}
+        rowKey={(e: RpcEndpoint) => e.id}
+        caption="Root RPC/WSS endpoints"
+        source="rpc-endpoints"
+        empty={
+          <EmptyState
+            title="No RPC endpoints tracked"
+            description="The base-layer Subtensor RPC/WSS registry appears here once endpoints are registered."
+            action={{ label: "Open API", href: "/api/v1/rpc/endpoints", external: true }}
+          />
+        }
+        columns={[
+          {
+            key: "provider",
+            label: "Provider",
+            sortable: true,
+            value: (e: RpcEndpoint) => e.provider ?? null,
+          },
+          { key: "kind", label: "Kind", sortable: true, value: (e: RpcEndpoint) => e.kind ?? null },
+          {
+            key: "classification",
+            label: "Classification",
+            sortable: true,
+            value: (e: RpcEndpoint) => e.classification ?? "unknown",
+            render: (e: RpcEndpoint) => (
+              <span
+                className={classNames(
+                  "text-13 inline-flex items-center rounded border px-1.5 py-0.5",
+                  CLASSIFICATION_TONE[e.classification ?? "unknown"] ?? CLASSIFICATION_TONE.unknown,
+                )}
+              >
+                {e.classification ?? "unknown"}
+              </span>
+            ),
+          },
+          {
+            key: "status",
+            label: "Status",
+            kind: "status",
+            sortable: true,
+            value: (e: RpcEndpoint) => statusToHealth(e.status),
+          },
+          {
+            key: "archive",
+            label: "Archive",
+            sortable: true,
+            value: (e: RpcEndpoint) =>
+              e.archive_support == null ? null : e.archive_support ? "yes" : "no",
+          },
+          {
+            key: "latency",
+            label: "Latency",
+            kind: "number",
+            sortable: true,
+            value: (e: RpcEndpoint) => e.latency_ms ?? null,
+            format: (v) => (typeof v === "number" ? `${formatNumber(v)}ms` : "—"),
+          },
+        ]}
+      />
       {summaryLine ? <p className="px-1 text-10 text-ink-muted">{summaryLine}</p> : null}
     </div>
   );
@@ -790,9 +782,6 @@ function EndpointsTable() {
     search.eligibility,
   ]);
 
-  // The table filters client-side over the full fetched list; the CSV export
-  // hits the backend route directly (full endpoint snapshot, no client filters).
-  const endpointsCsvUrl = buildUrl("/api/v1/endpoints");
   const sortPreset = `${search.sort}:${search.order}`;
   const setSortPreset = (value: string) => {
     const [sort, order] = value.split(":") as [EndpointsSearch["sort"], EndpointsSearch["order"]];
@@ -836,235 +825,140 @@ function EndpointsTable() {
   return (
     <div className="space-y-3 relative">
       <QueryProgress active={isFetchingRows} position="sticky" />
-      {/* One shared command surface replaces the previous stacked category,
-          search, select, toggle, and view-control bars. */}
+      {/* One filter row over the whole directory: search, the six field
+          filters, the callable-only scope toggle, and the result count. */}
       <div
         className="sticky z-[var(--mg-z-raised)] -mx-1 bg-paper px-1 py-2"
         style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
       >
-        <QueryBar ariaLabel="Filter endpoint directory">
-          <QueryBar.Search
+        <div className="flex flex-wrap items-center gap-2">
+          <SearchInput
             value={search.q}
             onChange={(v) => setSearch({ q: v })}
-            debounceMs={180}
             placeholder="Search URL, provider, netuid…"
           />
-          <QueryBar.Divider />
-          <div className="hidden items-center sm:flex">
-            <QueryBar.FilterTrigger
-              label="Kind"
-              value={search.category === "all" ? "" : search.category}
-              onChange={(v) => setSearch({ category: (v || "all") as EndpointsSearch["category"] })}
-              options={(
-                [
-                  ["rpc", "RPC"],
-                  ["wss", "WSS"],
-                  ["api", "API"],
-                  ["sse", "SSE"],
-                  ["data", "Data"],
-                  ["other", "Other"],
-                ] as const
-              )
-                .filter(([value]) => (categoryCounts[value] ?? 0) > 0)
-                .map(([value, label]) => ({
-                  value,
-                  label: `${label} · ${categoryCounts[value] ?? 0}`,
-                }))}
+          <SelectFilter
+            label="Kind"
+            value={search.category === "all" ? "" : search.category}
+            onChange={(v) => setSearch({ category: (v || "all") as EndpointsSearch["category"] })}
+            options={(
+              [
+                ["rpc", "RPC"],
+                ["wss", "WSS"],
+                ["api", "API"],
+                ["sse", "SSE"],
+                ["data", "Data"],
+                ["other", "Other"],
+              ] as const
+            )
+              .filter(([value]) => (categoryCounts[value] ?? 0) > 0)
+              .map(([value, label]) => ({
+                value,
+                label: `${label} · ${categoryCounts[value] ?? 0}`,
+              }))}
+          />
+          <SelectFilter
+            label="Health"
+            value={search.health}
+            onChange={(v) => setSearch({ health: v })}
+            options={["ok", "warn", "down", "unknown"].map((value) => ({ value, label: value }))}
+          />
+          <SelectFilter
+            label="Sort"
+            value={sortPreset}
+            onChange={setSortPreset}
+            allowEmpty={false}
+            options={[
+              { value: "netuid:asc", label: "Subnet number" },
+              { value: "health:asc", label: "Health first" },
+              { value: "latency:asc", label: "Fastest latency" },
+              { value: "latency:desc", label: "Slowest latency" },
+              { value: "probed:desc", label: "Newest probe" },
+              { value: "provider:asc", label: "Provider A–Z" },
+            ]}
+          />
+          <SelectFilter
+            label="Provider"
+            value={search.provider}
+            onChange={(v) => setSearch({ provider: v })}
+            options={providers.map((value) => ({ value, label: value }))}
+          />
+          <SelectFilter
+            label="Region"
+            value={search.region}
+            onChange={(v) => setSearch({ region: v })}
+            options={regions.map((value) => ({ value, label: value }))}
+          />
+          <SelectFilter
+            label="Access"
+            value={search.eligibility}
+            onChange={(v) => setSearch({ eligibility: v })}
+            options={[
+              { value: "proxy-enabled", label: "Proxy enabled" },
+              { value: "pool-member", label: "Pool member" },
+              { value: "archive-capable", label: "Archive capable" },
+              { value: "unassigned", label: "Unassigned" },
+            ]}
+          />
+          <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-13">
+            <span className="shrink-0 text-ink-muted">Subnet</span>
+            <input
+              value={search.netuid}
+              onChange={(event) => setSearch({ netuid: event.target.value.replace(/[^0-9]/g, "") })}
+              inputMode="numeric"
+              placeholder="Any"
+              className="w-20 min-w-0 rounded bg-transparent font-mono text-13 text-ink-strong placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <QueryBar.FilterTrigger
-              label="Health"
-              value={search.health}
-              onChange={(v) => setSearch({ health: v })}
-              options={["ok", "warn", "down", "unknown"].map((value) => ({ value, label: value }))}
-            />
-            <QueryBar.FilterTrigger
-              label="Sort"
-              value={sortPreset}
-              onChange={setSortPreset}
-              options={[
-                { value: "netuid:asc", label: "Subnet number" },
-                { value: "health:asc", label: "Health first" },
-                { value: "latency:asc", label: "Fastest latency" },
-                { value: "latency:desc", label: "Slowest latency" },
-                { value: "probed:desc", label: "Newest probe" },
-                { value: "provider:asc", label: "Provider A–Z" },
-              ]}
-            />
-            <div className="hidden xl:contents">
-              <QueryBar.FilterTrigger
-                label="Provider"
-                value={search.provider}
-                onChange={(v) => setSearch({ provider: v })}
-                options={providers.map((value) => ({ value, label: value }))}
-              />
-              <QueryBar.FilterTrigger
-                label="Region"
-                value={search.region}
-                onChange={(v) => setSearch({ region: v })}
-                options={regions.map((value) => ({ value, label: value }))}
-              />
-              <QueryBar.FilterTrigger
-                label="Access"
-                value={search.eligibility}
-                onChange={(v) => setSearch({ eligibility: v })}
-                options={[
-                  { value: "proxy-enabled", label: "Proxy enabled" },
-                  { value: "pool-member", label: "Pool member" },
-                  { value: "archive-capable", label: "Archive capable" },
-                  { value: "unassigned", label: "Unassigned" },
-                ]}
-              />
-            </div>
-          </div>
-          <QueryBar.Utility>
-            <FilterSheet
-              label="More filters"
-              activeCount={activeFilterCount([
-                search.netuid,
-                search.provider,
-                search.region,
-                search.eligibility,
-              ])}
-              className="xl:hidden"
-            >
-              <label className="grid gap-1">
-                <span className="text-10 text-ink-muted">Subnet number</span>
-                <input
-                  value={search.netuid}
-                  onChange={(event) =>
-                    setSearch({ netuid: event.target.value.replace(/[^0-9]/g, "") })
-                  }
-                  inputMode="numeric"
-                  placeholder="Any subnet"
-                  className="h-9 rounded border border-border bg-paper px-2 font-mono text-13 text-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </label>
-              <QueryBar.FilterTrigger
-                label="Provider"
-                value={search.provider}
-                onChange={(value) => setSearch({ provider: value })}
-                options={providers.map((value) => ({ value, label: value }))}
-                className="w-full justify-between border border-border"
-              />
-              <QueryBar.FilterTrigger
-                label="Region"
-                value={search.region}
-                onChange={(value) => setSearch({ region: value })}
-                options={regions.map((value) => ({ value, label: value }))}
-                className="w-full justify-between border border-border"
-              />
-              <QueryBar.FilterTrigger
-                label="Access"
-                value={search.eligibility}
-                onChange={(value) => setSearch({ eligibility: value })}
-                options={[
-                  { value: "proxy-enabled", label: "Proxy enabled" },
-                  { value: "pool-member", label: "Pool member" },
-                  { value: "archive-capable", label: "Archive capable" },
-                  { value: "unassigned", label: "Unassigned" },
-                ]}
-                className="w-full justify-between border border-border"
-              />
-              <QueryBar.FilterTrigger
-                label="Sort"
-                value={sortPreset}
-                onChange={setSortPreset}
-                options={[
-                  { value: "netuid:asc", label: "Subnet number" },
-                  { value: "health:asc", label: "Health first" },
-                  { value: "latency:asc", label: "Fastest latency" },
-                  { value: "latency:desc", label: "Slowest latency" },
-                  { value: "probed:desc", label: "Newest probe" },
-                  { value: "provider:asc", label: "Provider A–Z" },
-                ]}
-                className="w-full justify-between border border-border"
-              />
-            </FilterSheet>
-            <button
-              type="button"
-              onClick={() =>
-                setSearch({
-                  callable: !search.callable,
-                  ...(!search.callable && search.category === "other"
-                    ? { category: "all" as const }
-                    : {}),
-                })
-              }
-              aria-pressed={search.callable}
-              title={
-                search.callable
-                  ? `Showing callable endpoints — ${directoryCount} reference links hidden`
-                  : "Showing all endpoint records"
-              }
+          </label>
+          <button
+            type="button"
+            onClick={() =>
+              setSearch({
+                callable: !search.callable,
+                ...(!search.callable && search.category === "other"
+                  ? { category: "all" as const }
+                  : {}),
+              })
+            }
+            aria-pressed={search.callable}
+            title={
+              search.callable
+                ? `Showing callable endpoints — ${directoryCount} reference links hidden`
+                : "Showing all endpoint records"
+            }
+            className={classNames(
+              "mg-focus-ring inline-flex h-8 items-center gap-1.5 rounded px-2 text-13",
+              search.callable ? "text-accent-text" : "text-ink-muted hover:text-ink-strong",
+            )}
+          >
+            <span
               className={classNames(
-                "mg-focus-ring inline-flex h-8 items-center gap-1.5 rounded px-2 text-13",
-                search.callable ? "text-accent-text" : "text-ink-muted hover:text-ink-strong",
+                "size-1.5 rounded-full mg-dot",
+                search.callable ? "bg-accent" : "bg-ink-subtle",
               )}
-            >
-              <span
-                className={classNames(
-                  "size-1.5 rounded-full mg-dot",
-                  search.callable ? "bg-accent" : "bg-ink-subtle",
-                )}
-                aria-hidden
-              />
-              <span className="hidden xl:inline">Callable</span>
-            </button>
-            <DownloadCsvButton url={endpointsCsvUrl} />
-          </QueryBar.Utility>
-        </QueryBar>
-        <QueryBar.MetaRow
-          count={sorted.length}
-          total={scoped.length}
-          noun="endpoints"
-          activeCount={
-            activeCount + (search.category !== "all" ? 1 : 0) + (search.callable ? 1 : 0)
-          }
-          onReset={resetAll}
-          trailing={
-            <span>
-              {search.callable && directoryCount > 0
-                ? `${directoryCount} reference links hidden`
-                : "All records visible"}
-            </span>
-          }
-        />
+              aria-hidden
+            />
+            <span>Callable</span>
+          </button>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-11 text-ink-muted">
+          <span>
+            {formatNumber(sorted.length)} of {formatNumber(scoped.length)} endpoints
+          </span>
+          <span>
+            {search.callable && directoryCount > 0
+              ? `${directoryCount} reference links hidden`
+              : "All records visible"}
+          </span>
+          <ResetFiltersButton
+            active={
+              activeCount + (search.category !== "all" ? 1 : 0) + (search.callable ? 1 : 0) > 0
+            }
+            onReset={resetAll}
+            bare
+          />
+        </div>
       </div>
-
-      <FilterChipRow
-        items={[
-          ...(search.q ? [{ id: "q", label: "Search", value: search.q } as FilterChipItem] : []),
-          ...(search.netuid
-            ? [{ id: "netuid", label: "Netuid", value: search.netuid } as FilterChipItem]
-            : []),
-          ...(search.provider
-            ? [{ id: "provider", label: "Provider", value: search.provider } as FilterChipItem]
-            : []),
-          ...(search.region
-            ? [{ id: "region", label: "Region", value: search.region } as FilterChipItem]
-            : []),
-          ...(search.health
-            ? [{ id: "health", label: "Health", value: search.health } as FilterChipItem]
-            : []),
-          ...(search.eligibility
-            ? [
-                {
-                  id: "eligibility",
-                  label: "Eligibility",
-                  value: search.eligibility,
-                } as FilterChipItem,
-              ]
-            : []),
-          ...(search.callable
-            ? [{ id: "callable", label: "Scope", value: "callable only" } as FilterChipItem]
-            : []),
-        ]}
-        onRemove={(id) => {
-          if (id === "callable") setSearch({ callable: false });
-          else setSearch({ [id]: "" } as Partial<EndpointsSearch>);
-        }}
-        onClearAll={resetAll}
-      />
 
       {stale ? (
         <StaleBanner
@@ -1111,13 +1005,29 @@ function EndpointsTable() {
             onToggleCompare={toggleCompare}
             compareMax={4}
           />
-          <PagerFooter
-            summary={`Page ${safePage} of ${totalPages} · ${pageRows.length} shown · ${sorted.length} total`}
-            hasPrev={safePage > 1}
-            hasNext={safePage < totalPages}
-            onPrev={() => setSearch({ page: Math.max(1, safePage - 1) })}
-            onNext={() => setSearch({ page: Math.min(totalPages, safePage + 1) })}
-          />
+          {/* The directory below is a card list, not a DataTable, so it
+              carries its own pager rather than the table's. */}
+          <div className="mg-dt-footer">
+            <span className="mg-dt-range">
+              Page {safePage} of {totalPages} · {pageRows.length} shown · {sorted.length} total
+            </span>
+            <nav className="mg-dt-pager" aria-label="Endpoint directory pages">
+              <button
+                type="button"
+                onClick={() => setSearch({ page: Math.max(1, safePage - 1) })}
+                disabled={safePage <= 1}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearch({ page: Math.min(totalPages, safePage + 1) })}
+                disabled={safePage >= totalPages}
+              >
+                Next
+              </button>
+            </nav>
+          </div>
         </>
       )}
     </div>

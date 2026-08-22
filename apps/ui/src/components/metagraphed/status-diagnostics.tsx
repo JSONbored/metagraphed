@@ -8,14 +8,10 @@ import {
   healthQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
-import { HealthPill, TimeAgo, TableState, RankedRails } from "@jsonbored/ui-kit";
-import {
-  SortHeader,
-  ariaSort,
-  SelectFilter,
-  ResetFiltersButton,
-} from "@/components/metagraphed/table-controls";
-import { Skeleton } from "@/components/metagraphed/states";
+import { DataTable, RankedRails, type DataTableColumn } from "@jsonbored/ui-kit";
+import { SelectFilter, ResetFiltersButton } from "@/components/metagraphed/table-controls";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { HealthHistorySurface, SourceHealthProvider } from "@/lib/metagraphed/types";
@@ -46,6 +42,50 @@ const CLASSIFICATION_COLOR: Record<string, string> = {
 
 type SurfaceSortField = "netuid" | "provider" | "kind" | "status" | "latency_ms";
 
+// The column keys ARE the URL's sort vocabulary (#3977), so a header click and
+// a shared `?sort=` link cannot describe different orderings.
+const SURFACE_COLUMNS: Array<DataTableColumn<HealthHistorySurface>> = [
+  {
+    key: "netuid",
+    label: "SN",
+    align: "left",
+    sortable: true,
+    value: (s) => s.netuid ?? null,
+    render: (s) =>
+      s.netuid != null ? (
+        <Link
+          to="/subnets/$netuid"
+          params={{ netuid: s.netuid }}
+          className="tabular-nums hover:text-ink-strong"
+        >
+          {String(s.netuid).padStart(3, "0")}
+        </Link>
+      ) : (
+        "—"
+      ),
+  },
+  { key: "surface", label: "Surface", value: (s) => s.surface_id ?? null },
+  { key: "provider", label: "Provider", sortable: true, value: (s) => s.provider ?? null },
+  { key: "kind", label: "Kind", sortable: true, value: (s) => s.kind ?? null },
+  {
+    key: "status",
+    label: "Status",
+    kind: "status",
+    sortable: true,
+    value: (s) => s.status ?? null,
+  },
+  { key: "classification", label: "Classification", value: (s) => s.classification ?? null },
+  {
+    key: "latency_ms",
+    label: "Latency",
+    kind: "number",
+    sortable: true,
+    value: (s) => s.latency_ms ?? null,
+    format: (v) => (typeof v === "number" ? `${v} ms` : "—"),
+  },
+  { key: "last_ok", label: "Last OK", kind: "time", value: (s) => s.last_ok ?? null },
+];
+
 export function HealthHistoryDrilldown() {
   // Default to the most-recent probe date from /api/v1/health (UTC day).
   const { data: hRes } = useSuspenseQuery(healthQuery());
@@ -73,7 +113,7 @@ export function HealthHistoryDrilldown() {
             value={date}
             max={defaultDate}
             onChange={(e) => setDate(e.target.value || defaultDate)}
-            className="bg-transparent text-ink-strong text-13 focus:outline-none"
+            className="bg-transparent text-13 text-ink-strong focus:outline-none"
             aria-label="Probe history date"
           />
         </label>
@@ -100,21 +140,6 @@ function HealthHistoryBody({ date }: { date: string }) {
   const order = search.order;
   const setKind = (next: string) => navigate({ search: (prev) => ({ ...prev, kind: next }) });
   const setStatus = (next: string) => navigate({ search: (prev) => ({ ...prev, status: next }) });
-
-  const onSort = (field: string) => {
-    const f = field as SurfaceSortField;
-    navigate({
-      search: (previous) => {
-        // #8628: a search middleware collapses `prev` to `{}` in the reducer's
-        // type. validateSearch still applies every default when parsing, so
-        // the value really does carry all fields at runtime.
-        const prev = previous as StatusSearch;
-        return f === prev.sort
-          ? { ...prev, order: prev.order === "asc" ? "desc" : "asc" }
-          : { ...prev, sort: f, order: "asc" };
-      },
-    });
-  };
 
   const classData: Array<{ label: string; value: number }> = useMemo(
     () =>
@@ -154,11 +179,10 @@ function HealthHistoryBody({ date }: { date: string }) {
 
   if (res.data.surfaces.length === 0) {
     return (
-      <TableState
-        variant="empty"
+      <EmptyState
         title="No probe history for this date"
         description="The health-history artifact has no surfaces recorded for the selected day — pick a more recent date."
-        generatedAt={res.meta?.generated_at}
+        lastChecked={res.meta?.generated_at}
       />
     );
   }
@@ -171,7 +195,7 @@ function HealthHistoryBody({ date }: { date: string }) {
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
         <Panel>
-          <div className="text-10 text-ink-muted mb-1">Status counts</div>
+          <div className="mb-1 text-10 text-ink-muted">Status counts</div>
           <div className="flex items-center gap-4 font-mono text-13 tabular-nums">
             <span className="text-health-ok">{okCount} ok</span>
             <span className="text-health-warn">{degraded} degraded</span>
@@ -180,7 +204,7 @@ function HealthHistoryBody({ date }: { date: string }) {
           </div>
         </Panel>
         <Panel>
-          <div className="text-10 text-ink-muted mb-1.5">Classification mix</div>
+          <div className="mb-1.5 text-10 text-ink-muted">Classification mix</div>
           <RankedRails
             items={railItems(classData)}
             formatValue={(v) => formatNumber(v)}
@@ -189,138 +213,59 @@ function HealthHistoryBody({ date }: { date: string }) {
         </Panel>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <SelectFilter label="kind" value={kind} onChange={setKind} options={kindOptions} />
-        <SelectFilter
-          label="status"
-          value={status}
-          onChange={setStatus}
-          options={[
-            { value: "ok", label: "ok" },
-            { value: "warn", label: "degraded" },
-            { value: "down", label: "failed" },
-            { value: "unknown", label: "unknown" },
-          ]}
-        />
-        {/* Scoped to the two keys this row owns. `date` has its own control in
-            the header above, and sort/order/window are set from other parts of
-            /status -- clearing them from here would drop state the reader never
-            touched from this row. */}
-        <ResetFiltersButton
-          active={Boolean(kind || status)}
-          onReset={() => navigate({ search: (prev) => ({ ...prev, kind: "", status: "" }) })}
-        />
-        <span className="ml-auto text-10 text-ink-muted">
-          {rows.length} of {res.data.surfaces.length} surfaces
-        </span>
-      </div>
-
-      <Panel flush className="overflow-x-auto">
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface text-10 text-ink-muted">
-            <tr>
-              <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "netuid", order)}>
-                <SortHeader
-                  label="SN"
-                  field="netuid"
-                  active={sort === "netuid"}
-                  order={order}
-                  onSort={onSort}
-                />
-              </th>
-              <th className="px-3 py-2.5">Surface</th>
-              <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "provider", order)}>
-                <SortHeader
-                  label="Provider"
-                  field="provider"
-                  active={sort === "provider"}
-                  order={order}
-                  onSort={onSort}
-                />
-              </th>
-              <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "kind", order)}>
-                <SortHeader
-                  label="Kind"
-                  field="kind"
-                  active={sort === "kind"}
-                  order={order}
-                  onSort={onSort}
-                />
-              </th>
-              <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "status", order)}>
-                <SortHeader
-                  label="Status"
-                  field="status"
-                  active={sort === "status"}
-                  order={order}
-                  onSort={onSort}
-                />
-              </th>
-              <th
-                className="px-3 py-2.5 text-right"
-                aria-sort={ariaSort(sort === "latency_ms", order)}
-              >
-                <SortHeader
-                  label="Latency"
-                  field="latency_ms"
-                  active={sort === "latency_ms"}
-                  order={order}
-                  onSort={onSort}
-                  align="right"
-                />
-              </th>
-              <th className="px-3 py-2.5 text-right">Last OK</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((s, i) => (
-              <SurfaceHistoryRow key={`${s.surface_id ?? i}`} surface={s} />
-            ))}
-          </tbody>
-        </table>
-      </Panel>
+      <DataTable
+        rows={rows}
+        columns={SURFACE_COLUMNS}
+        rowKey={(s) => s.surface_id ?? `${s.netuid}-${s.kind}-${s.provider}`}
+        caption="Probed surfaces"
+        link={RouterLink}
+        source="health-history"
+        storageKey="health-history-surfaces"
+        sort={{ key: sort, dir: order }}
+        onSort={(next) =>
+          navigate({
+            search: (previous) => {
+              // #8628: a search middleware collapses `prev` to `{}` in the
+              // reducer's type. validateSearch still applies every default when
+              // parsing, so the value really does carry all fields at runtime.
+              const prev = previous as StatusSearch;
+              return {
+                ...prev,
+                sort: (next?.key ?? "netuid") as SurfaceSortField,
+                order: next?.dir ?? "asc",
+              };
+            },
+          })
+        }
+        filters={
+          <>
+            <SelectFilter label="kind" value={kind} onChange={setKind} options={kindOptions} />
+            <SelectFilter
+              label="status"
+              value={status}
+              onChange={setStatus}
+              options={[
+                { value: "ok", label: "ok" },
+                { value: "warn", label: "degraded" },
+                { value: "down", label: "failed" },
+                { value: "unknown", label: "unknown" },
+              ]}
+            />
+            {/* Scoped to the two keys this row owns. `date` has its own control
+                in the header above, and sort/order/window are set from other
+                parts of /status -- clearing them from here would drop state the
+                reader never touched from this row. */}
+            <ResetFiltersButton
+              active={Boolean(kind || status)}
+              onReset={() => navigate({ search: (prev) => ({ ...prev, kind: "", status: "" }) })}
+            />
+          </>
+        }
+      />
+      <p className="text-10 text-ink-muted">
+        {rows.length} of {res.data.surfaces.length} surfaces
+      </p>
     </div>
-  );
-}
-
-function SurfaceHistoryRow({ surface }: { surface: HealthHistorySurface }) {
-  return (
-    <tr className="mg-row-hover">
-      <td className="px-3 py-2.5 text-11 text-ink-muted">
-        {surface.netuid != null ? (
-          <Link
-            to="/subnets/$netuid"
-            params={{ netuid: surface.netuid }}
-            className="hover:text-ink-strong"
-          >
-            {String(surface.netuid).padStart(3, "0")}
-          </Link>
-        ) : (
-          "—"
-        )}
-      </td>
-      <td className="px-3 py-2.5 text-11 text-ink-strong">
-        <span className="truncate" title={surface.surface_id}>
-          {surface.surface_id ?? "—"}
-        </span>
-      </td>
-      <td className="px-3 py-2.5 text-11 text-ink-muted">{surface.provider ?? "—"}</td>
-      <td className="px-3 py-2.5 text-11 text-ink-muted">{surface.kind ?? "—"}</td>
-      <td className="px-3 py-2.5">
-        <span className="inline-flex items-center gap-1.5">
-          <HealthPill state={statusState(surface.status)} />
-          {surface.classification ? (
-            <span className="text-10 text-ink-muted">{surface.classification}</span>
-          ) : null}
-        </span>
-      </td>
-      <td className="px-3 py-2.5 text-right text-11 tabular-nums text-ink">
-        {surface.latency_ms != null ? `${surface.latency_ms} ms` : "—"}
-      </td>
-      <td className="px-3 py-2.5 text-right text-11 text-ink-muted">
-        {surface.last_ok ? <TimeAgo at={surface.last_ok} /> : "—"}
-      </td>
-    </tr>
   );
 }
 
@@ -328,46 +273,112 @@ function SurfaceHistoryRow({ surface }: { surface: HealthHistorySurface }) {
  * #8b — /source-health provider table
  * ================================================================== */
 
-type ProviderSortField =
-  "name" | "kind" | "status" | "endpoint_count" | "candidate_count" | "verification_result_count";
+// dead / redirected / live classification counts → a compact failure-reason cell.
+const CLASSIFICATION_ORDER = [
+  "live",
+  "redirected",
+  "auth-required",
+  "transient",
+  "timeout",
+  "dead",
+];
+
+function classificationEntries(provider: SourceHealthProvider): Array<[string, number]> {
+  return Object.entries(provider.classifications ?? {})
+    .sort(([a], [b]) => {
+      const ia = CLASSIFICATION_ORDER.indexOf(a);
+      const ib = CLASSIFICATION_ORDER.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    })
+    .filter(([, v]) => v > 0);
+}
+
+const PROVIDER_COLUMNS: Array<DataTableColumn<SourceHealthProvider>> = [
+  {
+    key: "name",
+    label: "Provider",
+    sortable: true,
+    value: (p) => p.name ?? p.id,
+    render: (p) => (
+      <>
+        <span className="font-medium text-ink-strong">{p.name ?? p.id}</span>
+        {p.authority ? <span className="ml-1.5 text-10 text-ink-muted">{p.authority}</span> : null}
+      </>
+    ),
+  },
+  { key: "kind", label: "Kind", sortable: true, value: (p) => p.kind ?? null },
+  {
+    key: "status",
+    label: "Status",
+    kind: "status",
+    sortable: true,
+    value: (p) => p.status ?? null,
+  },
+  {
+    key: "endpoint_count",
+    label: "Endpoints",
+    kind: "number",
+    sortable: true,
+    value: (p) => p.endpoint_count ?? 0,
+  },
+  {
+    key: "candidate_count",
+    label: "Candidates",
+    kind: "number",
+    sortable: true,
+    value: (p) => p.candidate_count ?? 0,
+  },
+  {
+    key: "verification_mix",
+    label: "Verification mix",
+    sortable: true,
+    value: (p) => p.verification_result_count ?? 0,
+    render: (p) => {
+      const entries = classificationEntries(p);
+      if (entries.length === 0) return <span className="text-10 text-ink-muted">—</span>;
+      return (
+        <span className="flex flex-wrap gap-1">
+          {entries.map(([label, value]) => (
+            <span
+              key={label}
+              className={classNames(
+                "inline-flex items-center gap-1 rounded border px-1 py-0.5 text-10",
+                label === "dead"
+                  ? "border-health-down/40 text-health-down"
+                  : label === "live"
+                    ? "border-health-ok/40 text-health-ok"
+                    : "border-border text-ink-muted",
+              )}
+            >
+              {label} {value}
+            </span>
+          ))}
+        </span>
+      );
+    },
+  },
+];
 
 export function SourceHealthTable() {
   const { data: res } = useSuspenseQuery(sourceHealthProvidersQuery());
   const summary = res.data.summary;
   const [status, setStatus] = useState("");
-  const [sort, setSort] = useState<ProviderSortField>("verification_result_count");
-  const [order, setOrder] = useState<"asc" | "desc">("desc");
 
-  const onSort = (field: string) => {
-    const f = field as ProviderSortField;
-    if (f === sort) setOrder((o) => (o === "asc" ? "desc" : "asc"));
-    else {
-      setSort(f);
-      setOrder(f === "name" || f === "kind" ? "asc" : "desc");
-    }
-  };
-
+  // The busiest provider first, which is the order a reader wants before they
+  // touch a header; the table owns every re-sort from there.
   const rows = useMemo(() => {
     const filtered = res.data.providers.filter((p) => !status || statusState(p.status) === status);
-    const mul = order === "asc" ? 1 : -1;
-    return [...filtered].sort((a, b) => {
-      const va = a[sort];
-      const vb = b[sort];
-      if (va == null && vb == null) return 0;
-      if (va == null) return 1;
-      if (vb == null) return -1;
-      if (typeof va === "number" && typeof vb === "number") return (va - vb) * mul;
-      return String(va).localeCompare(String(vb), undefined, { numeric: true }) * mul;
-    });
-  }, [res.data.providers, status, sort, order]);
+    return [...filtered].sort(
+      (a, b) => (b.verification_result_count ?? 0) - (a.verification_result_count ?? 0),
+    );
+  }, [res.data.providers, status]);
 
   if (res.data.providers.length === 0) {
     return (
-      <TableState
-        variant="empty"
+      <EmptyState
         title="No providers recorded"
         description="The source-health artifact returned no providers."
-        generatedAt={res.meta?.generated_at}
+        lastChecked={res.meta?.generated_at}
       />
     );
   }
@@ -385,146 +396,31 @@ export function SourceHealthTable() {
         </span>
       </Panel>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <SelectFilter
-          label="status"
-          value={status}
-          onChange={setStatus}
-          options={[
-            { value: "ok", label: "ok" },
-            { value: "warn", label: "degraded" },
-            { value: "down", label: "failed" },
-            { value: "unknown", label: "unknown" },
-          ]}
-        />
-        <span className="ml-auto text-10 text-ink-muted">
-          {rows.length} of {res.data.providers.length} providers
-        </span>
-      </div>
-
-      <Panel flush className="overflow-x-auto">
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface text-10 text-ink-muted">
-            <tr>
-              <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "name", order)}>
-                <SortHeader
-                  label="Provider"
-                  field="name"
-                  active={sort === "name"}
-                  order={order}
-                  onSort={onSort}
-                />
-              </th>
-              <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "kind", order)}>
-                <SortHeader
-                  label="Kind"
-                  field="kind"
-                  active={sort === "kind"}
-                  order={order}
-                  onSort={onSort}
-                />
-              </th>
-              <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "status", order)}>
-                <SortHeader
-                  label="Status"
-                  field="status"
-                  active={sort === "status"}
-                  order={order}
-                  onSort={onSort}
-                />
-              </th>
-              <th
-                className="px-3 py-2.5 text-right"
-                aria-sort={ariaSort(sort === "endpoint_count", order)}
-              >
-                <SortHeader
-                  label="Endpoints"
-                  field="endpoint_count"
-                  active={sort === "endpoint_count"}
-                  order={order}
-                  onSort={onSort}
-                  align="right"
-                />
-              </th>
-              <th
-                className="px-3 py-2.5 text-right"
-                aria-sort={ariaSort(sort === "candidate_count", order)}
-              >
-                <SortHeader
-                  label="Candidates"
-                  field="candidate_count"
-                  active={sort === "candidate_count"}
-                  order={order}
-                  onSort={onSort}
-                  align="right"
-                />
-              </th>
-              <th className="px-3 py-2.5">Verification mix</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((p) => (
-              <ProviderRow key={p.id} provider={p} />
-            ))}
-          </tbody>
-        </table>
-      </Panel>
+      <DataTable
+        rows={rows}
+        columns={PROVIDER_COLUMNS}
+        rowKey={(p) => p.id}
+        caption="Source providers"
+        link={RouterLink}
+        source="source-health"
+        storageKey="source-health-providers"
+        filters={
+          <SelectFilter
+            label="status"
+            value={status}
+            onChange={setStatus}
+            options={[
+              { value: "ok", label: "ok" },
+              { value: "warn", label: "degraded" },
+              { value: "down", label: "failed" },
+              { value: "unknown", label: "unknown" },
+            ]}
+          />
+        }
+      />
+      <p className="text-10 text-ink-muted">
+        {rows.length} of {res.data.providers.length} providers
+      </p>
     </div>
-  );
-}
-
-// dead / redirected / live classification counts → a compact failure-reason cell.
-function ProviderRow({ provider }: { provider: SourceHealthProvider }) {
-  const cls = provider.classifications ?? {};
-  const order = ["live", "redirected", "auth-required", "transient", "timeout", "dead"];
-  const entries = Object.entries(cls)
-    .sort(([a], [b]) => {
-      const ia = order.indexOf(a);
-      const ib = order.indexOf(b);
-      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-    })
-    .filter(([, v]) => v > 0);
-  return (
-    <tr className="mg-row-hover">
-      <td className="px-3 py-2.5">
-        <span className="font-medium text-ink-strong">{provider.name ?? provider.id}</span>
-        {provider.authority ? (
-          <span className="ml-1.5 text-10 text-ink-muted">{provider.authority}</span>
-        ) : null}
-      </td>
-      <td className="px-3 py-2.5 text-11 text-ink-muted">{provider.kind ?? "—"}</td>
-      <td className="px-3 py-2.5">
-        <HealthPill state={statusState(provider.status)} />
-      </td>
-      <td className="px-3 py-2.5 text-right text-11 tabular-nums text-ink">
-        {provider.endpoint_count ?? 0}
-      </td>
-      <td className="px-3 py-2.5 text-right text-11 tabular-nums text-ink-muted">
-        {provider.candidate_count ?? 0}
-      </td>
-      <td className="px-3 py-2.5">
-        {entries.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {entries.map(([label, value]) => (
-              <span
-                key={label}
-                className={classNames(
-                  "inline-flex items-center gap-1 rounded border px-1 py-0.5 text-10",
-                  label === "dead"
-                    ? "border-health-down/40 text-health-down"
-                    : label === "live"
-                      ? "border-health-ok/40 text-health-ok"
-                      : "border-border text-ink-muted",
-                )}
-              >
-                {label} {value}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <span className="text-10 text-ink-muted">—</span>
-        )}
-      </td>
-    </tr>
   );
 }

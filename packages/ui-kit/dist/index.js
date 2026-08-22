@@ -1,9 +1,9 @@
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as React3 from 'react';
-import { createContext, forwardRef, useId, useState, useMemo, useCallback, useRef, useEffect, useContext, useReducer, useLayoutEffect, Children, isValidElement } from 'react';
+import { createContext, forwardRef, useState, useRef, useEffect, useMemo, useCallback, useContext, useId, useReducer, useLayoutEffect, Children, isValidElement } from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import { ChevronDown, X, Search, Check, ArrowUp, Copy, Download, AlertCircle, RefreshCw, Share2, ChevronLeft, ChevronRight, Clock, Inbox, ExternalLink as ExternalLink$1, ChevronUp, Columns3, RotateCcw, AlertTriangle, Filter, Loader2, Lock } from 'lucide-react';
+import { ChevronDown, X, Search, ArrowUp, Check, Copy, ChevronUp, RotateCcw, AlertTriangle, Filter, Inbox, ExternalLink as ExternalLink$1, Loader2, RefreshCw, AlertCircle, Lock } from 'lucide-react';
 import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
 import { Command as Command$1 } from 'cmdk';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -1376,43 +1376,6 @@ function CopyableCode({
     /* @__PURE__ */ jsx(CopyStatusRegion, { children: copied ? `${label ?? "Value"} copied to clipboard` : "" })
   ] });
 }
-function buildCsvDownloadUrl(url) {
-  const parsed = new URL(url);
-  parsed.searchParams.set("format", "csv");
-  return parsed.toString();
-}
-function DownloadCsvButton({
-  url,
-  label = "Download CSV",
-  className,
-  bare
-}) {
-  const exportUrl = buildCsvDownloadUrl(url);
-  const onClick = () => {
-    window.location.href = exportUrl;
-  };
-  return /* @__PURE__ */ jsxs(
-    "button",
-    {
-      type: "button",
-      onClick,
-      "aria-label": label,
-      className: classNames(
-        bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : (
-          // rounded-full matches the pill idiom shared by SectionBadge/FilterChip/
-          // other compact header controls it commonly sits next to — a plain
-          // `rounded` rectangle reads as a mismatched shape beside a pill.
-          "inline-flex items-center gap-1.5 rounded border border-border bg-card p-1.5 text-13 font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5 sm:py-1"
-        ),
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsx(Download, { className: "size-3 text-ink-muted", "aria-hidden": true }),
-        /* @__PURE__ */ jsx("span", { className: "hidden sm:inline", children: label })
-      ]
-    }
-  );
-}
 var DefinitionsContext = createContext({});
 function DefinitionsProvider({
   definitions,
@@ -2441,10 +2404,10 @@ function markAriaLabel(domain, total) {
   if (total === void 0 || total === null || total === "") return domain;
   return `${domain} \xB7 ${total} total`;
 }
-function momentumAriaLabel(unit, endValue, deltaLabel2, rangeLabel) {
+function momentumAriaLabel(unit, endValue, deltaLabel2, rangeLabel2) {
   const noun = unit.charAt(0).toUpperCase() + unit.slice(1);
   if (endValue === null) return `${noun}: no data in the window`;
-  const range = rangeLabel ? ` over ${rangeLabel}` : "";
+  const range = rangeLabel2 ? ` over ${rangeLabel2}` : "";
   return `${noun}: ${endValue}, ${deltaLabel2}${range}`;
 }
 function Kbd({
@@ -2497,380 +2460,6 @@ function KeyChip({
     ),
     /* @__PURE__ */ jsx(CopyStatusRegion, { children: copied ? `${label} copied to clipboard` : "" })
   ] });
-}
-function ListShell({
-  filters,
-  cards,
-  table,
-  footer,
-  empty,
-  isEmpty,
-  isStale,
-  viewportRef,
-  stickyHeader = true
-}) {
-  const tableCard = "rounded border border-border bg-card overflow-hidden";
-  const viewportClass = stickyHeader ? "mg-table-scroll mg-list-viewport" : "mg-table-scroll overflow-x-auto";
-  return /* @__PURE__ */ jsxs("div", { children: [
-    /* @__PURE__ */ jsx(
-      "div",
-      {
-        className: classNames(
-          // Sticky below `md`, in normal flow at and above it. Offset reads
-          // --mg-sticky-offset (published by AppShell to match real header +
-          // ticker height) with a fallback.
-          //
-          // The breakpoint is the same one that swaps cards for the table,
-          // and that is the whole reason for it: a page-sticky filter bar and
-          // a table header pinned inside a bounded viewport are in different
-          // scroll contexts, so once the page scrolls far enough for the
-          // table's top to pass under this bar, the bar covers the header --
-          // the column labels disappear again, by a different mechanism than
-          // the one they were just fixed for. Below `md` there is no table
-          // (cards render instead), nothing to cover, and a filter bar that
-          // follows a long list is genuinely useful, so it stays pinned.
-          //
-          // /subnets reached this conclusion first and encoded it as a
-          // page-specific override in apps/ui/src/styles.css
-          // (`#subnets-list > div > div:first-child { position: static }`,
-          // at >=1024px only, which is why tablet still showed the overlap).
-          // That override is deleted; this is the general rule.
-          "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
-          "bg-paper",
-          "border-b border-border md:border md:rounded md:bg-card",
-          "px-3 py-2 md:p-2.5"
-        ),
-        style: {
-          top: "calc(var(--mg-sticky-offset, 3.5rem) + var(--mg-tabs-h, 0px))"
-        },
-        children: /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-2", children: filters })
-      }
-    ),
-    isEmpty ? (
-      // Marked so a test can tell "this list rendered nothing" apart from
-      // "this list rendered fine". The responsive-overflow sweep only ever
-      // asserted that nothing OVERFLOWS, and an empty page cannot overflow,
-      // so a route whose fixture had gone stale rendered no rows at all and
-      // still passed -- /chain/extrinsics sat like that undetected. This
-      // attribute is what makes that state observable.
-      /* @__PURE__ */ jsx("div", { "data-mg-list-empty": "", children: empty })
-    ) : /* @__PURE__ */ jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
-      cards ? /* @__PURE__ */ jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
-      /* @__PURE__ */ jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxs("div", { className: tableCard, children: [
-        /* @__PURE__ */ jsx("div", { ref: viewportRef, className: viewportClass, children: table }),
-        footer
-      ] }) }),
-      cards && footer ? /* @__PURE__ */ jsx("div", { className: "md:hidden mt-3", children: footer }) : null
-    ] })
-  ] });
-}
-function LoadMore({
-  hasMore,
-  isLoading,
-  onLoadMore,
-  shown,
-  total,
-  error,
-  cursorInvalid
-}) {
-  if (isLoading) {
-    return /* @__PURE__ */ jsxs(
-      "div",
-      {
-        className: "border-t border-border bg-surface p-3 space-y-1.5",
-        "aria-live": "polite",
-        "aria-busy": "true",
-        children: [
-          /* @__PURE__ */ jsx("span", { className: "sr-only", children: "Loading more results\u2026" }),
-          /* @__PURE__ */ jsx(Skeleton, { className: "h-7 w-full" }),
-          /* @__PURE__ */ jsx(Skeleton, { className: "h-7 w-full" }),
-          /* @__PURE__ */ jsx(Skeleton, { className: "h-7 w-3/4" })
-        ]
-      }
-    );
-  }
-  if (error) {
-    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 text-13", children: [
-      /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5 text-health-down", children: [
-        /* @__PURE__ */ jsx(AlertCircle, { className: "size-3" }),
-        "Couldn\u2019t load more \u2014 ",
-        error.message || "network error",
-        "."
-      ] }),
-      /* @__PURE__ */ jsxs(
-        "button",
-        {
-          type: "button",
-          onClick: onLoadMore,
-          className: "inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 font-medium hover:border-ink/30 min-h-9",
-          children: [
-            /* @__PURE__ */ jsx(RefreshCw, { className: "size-3" }),
-            " Retry"
-          ]
-        }
-      )
-    ] });
-  }
-  if (cursorInvalid) {
-    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 text-13 text-health-warn", children: [
-      /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
-        /* @__PURE__ */ jsx(AlertCircle, { className: "size-3" }),
-        "Pagination stopped \u2014 the server returned an invalid next cursor."
-      ] }),
-      /* @__PURE__ */ jsxs("span", { className: "font-mono text-ink-muted", children: [
-        shown,
-        total != null ? ` / ${total}` : ""
-      ] })
-    ] });
-  }
-  return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-border bg-surface px-4 py-2 text-11 text-ink-muted", children: [
-    /* @__PURE__ */ jsxs("span", { children: [
-      shown,
-      total != null ? ` of ${total}` : ""
-    ] }),
-    hasMore ? /* @__PURE__ */ jsx(
-      "button",
-      {
-        type: "button",
-        onClick: onLoadMore,
-        className: "inline-flex items-center rounded border border-border bg-card px-3 py-1.5 text-13 font-medium hover:border-ink/30 min-h-9",
-        children: "Load more"
-      }
-    ) : /* @__PURE__ */ jsx("span", { className: "opacity-60", children: "end of list" })
-  ] });
-}
-var SHARE_COPIED_EVENT = "mg:share-copied";
-function ShareButton({
-  url,
-  label = "Share view",
-  className,
-  bare,
-  iconOnly,
-  connected
-}) {
-  const hideText = connected || iconOnly;
-  const { copied, copy } = useCopy({ toastOnSuccess: false });
-  const [announcement, setAnnouncement] = useState("");
-  useEffect(() => {
-    if (!copied) setAnnouncement("");
-  }, [copied]);
-  const onClick = async () => {
-    const href = url ?? (typeof window !== "undefined" ? window.location.href : "");
-    if (!href) return;
-    const ok = await copy(href);
-    if (ok) {
-      toast.success("Link copied", {
-        description: "Filters, sort, and pagination are preserved in the URL."
-      });
-      setAnnouncement(`Link copied to clipboard: ${href}`);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent(SHARE_COPIED_EVENT));
-      }
-    } else {
-      setAnnouncement("Couldn't copy link to clipboard.");
-    }
-  };
-  return /* @__PURE__ */ jsxs(Fragment, { children: [
-    /* @__PURE__ */ jsxs(
-      "button",
-      {
-        type: "button",
-        onClick,
-        "aria-label": "Copy link with current filters, sort, and page",
-        className: classNames(
-          connected ? "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : bare ? iconOnly ? "inline-flex items-center justify-center rounded p-1 min-h-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : (
-            // #8467: px-1 sm:px-2 (not a flat px-2) so the button doesn't
-            // carry text-sized padding once the label itself disappears
-            // below sm -- see the label span's hidden/sm:inline pairing.
-            "inline-flex items-center gap-1.5 rounded px-1 sm:px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          ) : iconOnly ? "inline-flex size-8 items-center justify-center rounded border border-border bg-card text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-1.5 sm:px-2.5 py-1 text-13 font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          className
-        ),
-        children: [
-          copied ? /* @__PURE__ */ jsx(
-            Check,
-            {
-              className: connected || iconOnly && !bare ? "size-4 text-health-ok" : "size-3 text-health-ok"
-            }
-          ) : /* @__PURE__ */ jsx(
-            Share2,
-            {
-              className: connected || iconOnly && !bare ? "size-4" : "size-3 text-ink-muted"
-            }
-          ),
-          hideText ? null : /* @__PURE__ */ jsx("span", { className: "hidden sm:inline", children: copied ? "Link copied" : label })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsx(CopyStatusRegion, { children: announcement })
-  ] });
-}
-function PagerBar({
-  hasPrev,
-  hasNext,
-  onPrev,
-  onNext,
-  prevLabel = "Newer",
-  nextLabel = "Older"
-}) {
-  const itemCls = "inline-flex items-center gap-1 rounded px-2.5 py-1.5 min-h-9 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-muted";
-  return /* @__PURE__ */ jsxs("div", { className: "mg-actions", children: [
-    /* @__PURE__ */ jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: onPrev,
-        disabled: !hasPrev,
-        className: itemCls,
-        children: [
-          /* @__PURE__ */ jsx(ChevronLeft, { className: "size-3" }),
-          " ",
-          prevLabel
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: onNext,
-        disabled: !hasNext,
-        className: itemCls,
-        children: [
-          nextLabel,
-          " ",
-          /* @__PURE__ */ jsx(ChevronRight, { className: "size-3" })
-        ]
-      }
-    )
-  ] });
-}
-function hasApiErrorShape(err) {
-  return typeof err === "object" && err !== null && typeof err.status === "number" && typeof err.url === "string";
-}
-function TableState({
-  variant,
-  title,
-  description,
-  generatedAt,
-  cta,
-  onRetry,
-  error,
-  className
-}) {
-  const tone = {
-    empty: "border-border",
-    stale: "border-health-warn/40",
-    error: "border-health-down/40"
-  }[variant];
-  const Icon = { empty: Inbox, stale: Clock, error: AlertCircle }[variant];
-  const iconCls = {
-    empty: "text-accent",
-    stale: "text-health-warn",
-    error: "text-health-down"
-  }[variant];
-  const apiErr = hasApiErrorShape(error) ? error : null;
-  const status = apiErr?.status;
-  const url = apiErr?.url;
-  const message = variant === "error" ? error?.message ?? "Unknown error" : void 0;
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      role: variant === "error" ? "alert" : void 0,
-      className: classNames(
-        "rounded border bg-card px-8 py-16 text-center",
-        tone,
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsx("div", { className: "mx-auto inline-flex size-10 items-center justify-center rounded border border-border bg-paper", children: /* @__PURE__ */ jsx(Icon, { className: classNames("size-4", iconCls) }) }),
-        /* @__PURE__ */ jsx("h3", { className: "mt-4 font-display text-16 font-semibold text-ink-strong", children: title }),
-        description ? /* @__PURE__ */ jsx("p", { className: "mx-auto mt-1.5 max-w-md text-13 text-ink-muted leading-relaxed", children: description }) : null,
-        variant === "stale" && generatedAt ? /* @__PURE__ */ jsxs("p", { className: "mt-3 text-11 text-ink-muted", children: [
-          "Last verified ",
-          /* @__PURE__ */ jsx(TimeAgo, { at: generatedAt })
-        ] }) : null,
-        message ? /* @__PURE__ */ jsxs("p", { className: "mx-auto mt-3 max-w-md text-11 text-ink-muted", children: [
-          status ? /* @__PURE__ */ jsxs("span", { className: "text-health-down", children: [
-            "HTTP ",
-            status,
-            " \xB7 "
-          ] }) : null,
-          message
-        ] }) : null,
-        cta || onRetry || url ? /* @__PURE__ */ jsxs("div", { className: "mt-4 flex flex-wrap items-center justify-center gap-2", children: [
-          onRetry ? /* @__PURE__ */ jsxs(
-            "button",
-            {
-              type: "button",
-              onClick: onRetry,
-              className: "inline-flex items-center gap-1.5 rounded border border-border bg-paper px-3.5 py-1.5 text-13 font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors",
-              children: [
-                /* @__PURE__ */ jsx(RefreshCw, { className: "size-3" }),
-                " Retry"
-              ]
-            }
-          ) : null,
-          cta ? /* @__PURE__ */ jsxs(
-            "a",
-            {
-              href: cta.href,
-              ...cta.external ? { target: "_blank", rel: "noopener noreferrer" } : {},
-              className: "inline-flex items-center gap-1.5 rounded bg-ink-strong px-3.5 py-1.5 text-13 font-medium text-paper hover:opacity-90 transition-opacity",
-              children: [
-                cta.label,
-                cta.external ? /* @__PURE__ */ jsx(ExternalLink$1, { className: "size-3" }) : null
-              ]
-            }
-          ) : null,
-          url ? /* @__PURE__ */ jsxs(
-            ExternalLink,
-            {
-              bare: true,
-              href: url,
-              className: "inline-flex items-center gap-1.5 text-11 text-ink-muted hover:text-ink-strong",
-              children: [
-                "View API URL ",
-                /* @__PURE__ */ jsx(ExternalLink$1, { className: "size-3" })
-              ]
-            }
-          ) : null
-        ] }) : null
-      ]
-    }
-  );
-}
-var OPTIONS = [
-  {
-    value: "table",
-    label: "Table"
-  },
-  {
-    value: "grid",
-    label: "Grid"
-  },
-  {
-    value: "matrix",
-    label: "Matrix"
-  }
-];
-function ViewModeToggle({
-  value,
-  onChange,
-  options = ["table", "grid", "matrix"],
-  className
-}) {
-  const available = OPTIONS.filter((o) => options.includes(o.value));
-  return /* @__PURE__ */ jsx(
-    RangeControl,
-    {
-      options: available,
-      value,
-      onChange,
-      label: "View mode",
-      className
-    }
-  );
 }
 function Wordmark({ className }) {
   return /* @__PURE__ */ jsxs(
@@ -3198,261 +2787,6 @@ function Indicator({
     }
   );
 }
-function FilterField({
-  label,
-  htmlFor,
-  hint,
-  children,
-  className,
-  grow
-}) {
-  return /* @__PURE__ */ jsxs(
-    "label",
-    {
-      htmlFor,
-      className: classNames(
-        "flex flex-col gap-1 min-w-0",
-        grow ? "flex-1 min-w-[180px]" : null,
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsxs("span", { className: "text-10 text-ink-muted inline-flex items-center gap-1.5", children: [
-          label,
-          hint ? /* @__PURE__ */ jsx("span", { className: "opacity-70", children: hint }) : null
-        ] }),
-        children
-      ]
-    }
-  );
-}
-var CONTROL_CLASSES = "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 text-13text-ink-strong placeholder:text-ink-subtle-text mg-focus-ringhover:border-ink/25 transition-colors";
-function FilterInput({
-  className,
-  leadingIcon = true,
-  ...props
-}) {
-  if (!leadingIcon) {
-    return /* @__PURE__ */ jsx("input", { ...props, className: classNames(CONTROL_CLASSES, className) });
-  }
-  return /* @__PURE__ */ jsxs("span", { className: "relative inline-flex w-full items-center", children: [
-    /* @__PURE__ */ jsx(
-      Search,
-      {
-        className: "pointer-events-none absolute left-2.5 size-3.5 text-ink-muted",
-        "aria-hidden": true
-      }
-    ),
-    /* @__PURE__ */ jsx(
-      "input",
-      {
-        ...props,
-        className: classNames(CONTROL_CLASSES, "pl-8", className)
-      }
-    )
-  ] });
-}
-function FilterSelect({
-  className,
-  children,
-  ...props
-}) {
-  return /* @__PURE__ */ jsx(
-    "select",
-    {
-      ...props,
-      className: classNames(CONTROL_CLASSES, "pr-6 appearance-none", className),
-      children
-    }
-  );
-}
-function FilterToolbar({
-  children,
-  trailing,
-  className
-}) {
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      className: classNames(
-        "flex w-full flex-wrap items-end gap-2 md:gap-3",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsx("div", { className: "flex flex-1 flex-wrap items-end gap-2 md:gap-3 min-w-0", children }),
-        trailing ? /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-1.5 shrink-0", children: trailing }) : null
-      ]
-    }
-  );
-}
-function ColumnCustomizer({
-  columns,
-  isVisible,
-  onToggle,
-  onReset,
-  className
-}) {
-  const [open, setOpen] = useState(false);
-  const visibleCount = columns.filter((c) => isVisible(c.id)).length;
-  return /* @__PURE__ */ jsxs("div", { className: classNames("relative", className), children: [
-    /* @__PURE__ */ jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: () => setOpen((v) => !v),
-        "aria-haspopup": "menu",
-        "aria-expanded": open,
-        title: "Customize visible columns",
-        className: "mg-focus-ring inline-flex items-center gap-1.5 h-9 rounded border border-border bg-card px-2.5 text-10 text-ink-muted hover:text-ink-strong hover:border-ink/25 transition-colors",
-        children: [
-          /* @__PURE__ */ jsx(Columns3, { className: "size-3", "aria-hidden": true }),
-          /* @__PURE__ */ jsx("span", { className: "hidden sm:inline", children: "Columns" }),
-          /* @__PURE__ */ jsxs("span", { className: "text-ink-strong tabular-nums normal-case", children: [
-            visibleCount,
-            "/",
-            columns.length
-          ] })
-        ]
-      }
-    ),
-    open ? /* @__PURE__ */ jsxs(Fragment, { children: [
-      /* @__PURE__ */ jsx(
-        "button",
-        {
-          type: "button",
-          "aria-label": "Close column menu",
-          className: "fixed inset-0 z-[var(--mg-z-overlay)] cursor-default",
-          onClick: () => setOpen(false)
-        }
-      ),
-      /* @__PURE__ */ jsxs(
-        "div",
-        {
-          role: "menu",
-          className: "absolute right-0 z-[var(--mg-z-overlay)] mt-1.5 w-64 rounded border border-border bg-card p-1",
-          children: [
-            /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-2 py-1.5", children: [
-              /* @__PURE__ */ jsx("span", { className: "text-10 text-ink-muted", children: "Columns" }),
-              /* @__PURE__ */ jsxs(
-                "button",
-                {
-                  type: "button",
-                  onClick: onReset,
-                  className: "mg-focus-ring inline-flex items-center gap-1 text-10 text-ink-muted hover:text-ink-strong",
-                  children: [
-                    /* @__PURE__ */ jsx(RotateCcw, { className: "size-3", "aria-hidden": true }),
-                    " Reset"
-                  ]
-                }
-              )
-            ] }),
-            /* @__PURE__ */ jsx("div", { className: "max-h-72 overflow-y-auto py-0.5", children: columns.map((c) => {
-              const checked = isVisible(c.id);
-              return /* @__PURE__ */ jsxs(
-                "label",
-                {
-                  className: classNames(
-                    "flex items-center gap-2 rounded px-2 py-1.5 text-13 text-ink hover:bg-surface-2 cursor-pointer",
-                    c.required ? "opacity-60 cursor-not-allowed" : null
-                  ),
-                  children: [
-                    /* @__PURE__ */ jsx(
-                      "input",
-                      {
-                        type: "checkbox",
-                        checked,
-                        disabled: c.required,
-                        onChange: () => onToggle(c.id),
-                        className: "accent-accent size-3.5"
-                      }
-                    ),
-                    /* @__PURE__ */ jsx("span", { className: "flex-1 truncate", children: c.label }),
-                    c.required ? /* @__PURE__ */ jsx("span", { className: "text-10 text-ink-subtle-text", children: "Locked" }) : null
-                  ]
-                },
-                c.id
-              );
-            }) })
-          ]
-        }
-      )
-    ] }) : null
-  ] });
-}
-var STORAGE_PREFIX = "mg:cols:v1:";
-function readPersisted(key) {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    return parsed.filter((v) => typeof v === "string");
-  } catch {
-    return null;
-  }
-}
-function writePersisted(key, visible) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(visible));
-  } catch {
-  }
-}
-function defaultVisible(columns) {
-  return columns.filter((c) => c.required || c.defaultVisible !== false).map((c) => c.id);
-}
-function useColumnVisibility(pageKey, columns) {
-  const initial = useMemo(() => defaultVisible(columns), [columns]);
-  const [visible, setVisible] = useState(initial);
-  useEffect(() => {
-    const persisted = readPersisted(pageKey);
-    if (!persisted) return;
-    const set = new Set(persisted);
-    for (const c of columns) if (c.required) set.add(c.id);
-    const known = new Set(columns.map((c) => c.id));
-    setVisible(Array.from(set).filter((id) => known.has(id)));
-  }, [pageKey, columns]);
-  useEffect(() => {
-    writePersisted(pageKey, visible);
-  }, [pageKey, visible]);
-  const isVisible = useCallback(
-    (id) => visible.includes(id),
-    [visible]
-  );
-  const toggle = useCallback(
-    (id) => {
-      const col = columns.find((c) => c.id === id);
-      if (col?.required) return;
-      setVisible(
-        (prev) => prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]
-      );
-    },
-    [columns]
-  );
-  const reset = useCallback(() => {
-    setVisible(defaultVisible(columns));
-  }, [columns]);
-  return { visible, isVisible, toggle, reset, setVisible };
-}
-function TableColGroup({ widths }) {
-  const total = widths.reduce((sum, w) => sum + w, 0);
-  return /* @__PURE__ */ jsx("colgroup", { children: widths.map((w, i) => (
-    // Positional by definition: a <col> IS its index in the row.
-    /* @__PURE__ */ jsx(
-      "col",
-      {
-        style: { width: `${(w / total * 100).toFixed(3)}%` }
-      },
-      `col-${i}`
-    )
-  )) });
-}
-function columnWidths(columns, isVisible, leading = []) {
-  return [
-    ...leading,
-    ...columns.filter((c) => isVisible(c.id)).map((c) => c.width ?? 100)
-  ];
-}
 function Panel({
   title,
   action,
@@ -3549,70 +2883,6 @@ function EmptyState({
             }
           ) : null
         ] }) : null
-      ]
-    }
-  );
-}
-function TableSkeleton({
-  rows = 8,
-  columns = 5,
-  density = "comfortable",
-  withHeader = true,
-  className
-}) {
-  const rowPad = density === "compact" ? "py-2" : "py-3";
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      role: "status",
-      "aria-live": "polite",
-      "aria-busy": "true",
-      className: classNames(
-        "rounded border border-border bg-card overflow-hidden",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsx("span", { className: "sr-only", children: "Loading table\u2026" }),
-        withHeader ? /* @__PURE__ */ jsx(
-          "div",
-          {
-            className: "grid gap-3 border-b border-border bg-surface-2 px-4 py-2",
-            style: { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` },
-            children: Array.from({ length: columns }).map((_, c) => /* @__PURE__ */ jsx(
-              "span",
-              {
-                className: "h-3 rounded bg-border/70",
-                style: { width: `${40 + c * 17 % 40}%` }
-              },
-              `h-${c}`
-            ))
-          }
-        ) : null,
-        /* @__PURE__ */ jsx("div", { children: Array.from({ length: rows }).map((_, r) => /* @__PURE__ */ jsx(
-          "div",
-          {
-            className: classNames(
-              "grid gap-3 border-b border-border/60 px-4 last:border-b-0",
-              rowPad
-            ),
-            style: {
-              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`
-            },
-            children: Array.from({ length: columns }).map((_2, c) => /* @__PURE__ */ jsx(
-              "span",
-              {
-                className: "h-3 rounded bg-border/50",
-                style: {
-                  width: `${45 + (r * 13 + c * 29) % 45}%`,
-                  animation: "mg-skel-pulse 1.4s ease-in-out infinite",
-                  animationDelay: `${(r + c) % 6 * 90}ms`
-                }
-              },
-              `${r}-${c}`
-            ))
-          },
-          r
-        )) })
       ]
     }
   );
@@ -3753,50 +3023,6 @@ var GhostButton = forwardRef(
     );
   }
 );
-function PagerFooter({
-  summary,
-  onPrev,
-  onNext,
-  hasPrev,
-  hasNext,
-  loading,
-  className
-}) {
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      className: cn(
-        "flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 text-13 text-ink-muted",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsx("div", { className: "min-w-0 truncate", "aria-live": "polite", children: loading ? "Loading\u2026" : summary }),
-        /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
-          /* @__PURE__ */ jsx(
-            GhostButton,
-            {
-              onClick: onPrev,
-              disabled: !hasPrev || loading,
-              icon: /* @__PURE__ */ jsx(ChevronLeft, { className: "size-3.5" }),
-              "aria-label": "Previous page",
-              children: "Prev"
-            }
-          ),
-          /* @__PURE__ */ jsx(
-            GhostButton,
-            {
-              onClick: onNext,
-              disabled: !hasNext || loading,
-              iconRight: /* @__PURE__ */ jsx(ChevronRight, { className: "size-3.5" }),
-              "aria-label": "Next page",
-              children: "Next"
-            }
-          )
-        ] })
-      ]
-    }
-  );
-}
 function ScrollShadow({
   orientation = "horizontal",
   className,
@@ -3863,127 +3089,6 @@ function ScrollShadow({
           "pointer-events-none absolute z-[var(--mg-z-sticky)]",
           isH ? "right-0 top-0 h-full w-6 bg-gradient-to-l from-card to-transparent" : "bottom-0 left-0 h-6 w-full bg-gradient-to-t from-card to-transparent"
         )
-      }
-    ) : null
-  ] });
-}
-var HIDE_TABLE = {
-  sm: "hidden sm:block",
-  md: "hidden md:block",
-  lg: "hidden lg:block"
-};
-var SHOW_CARDS = {
-  sm: "sm:hidden",
-  md: "md:hidden",
-  lg: "lg:hidden"
-};
-function ResponsiveTable({
-  cardsFallback,
-  cardsBelow = "md",
-  minWidth = 720,
-  className,
-  children
-}) {
-  const min = typeof minWidth === "number" ? `${minWidth}px` : minWidth;
-  if (cardsFallback != null) {
-    return /* @__PURE__ */ jsxs("div", { className, children: [
-      /* @__PURE__ */ jsx("div", { className: SHOW_CARDS[cardsBelow], children: cardsFallback }),
-      /* @__PURE__ */ jsx("div", { className: HIDE_TABLE[cardsBelow], children: /* @__PURE__ */ jsx(ScrollShadow, { children: /* @__PURE__ */ jsx("div", { style: { minWidth: min }, children }) }) })
-    ] });
-  }
-  return /* @__PURE__ */ jsx(ScrollShadow, { className: classNames(className), children: /* @__PURE__ */ jsx("div", { style: { minWidth: min }, children }) });
-}
-function FilterSheet({
-  label = "Filters",
-  activeCount = 0,
-  children,
-  className
-}) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-  return /* @__PURE__ */ jsxs("div", { className, children: [
-    /* @__PURE__ */ jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: () => setOpen(true),
-        "aria-expanded": open,
-        "aria-haspopup": "dialog",
-        className: classNames(
-          "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1",
-          "text-11 transition-colors",
-          activeCount > 0 ? "border-accent/40 bg-accent/10 text-accent" : "border-border bg-card text-ink-strong hover:border-accent/40"
-        ),
-        children: [
-          /* @__PURE__ */ jsx(Filter, { className: "size-3.5", "aria-hidden": true }),
-          label,
-          activeCount > 0 ? /* @__PURE__ */ jsx("span", { className: "ml-0.5 inline-flex size-4 items-center justify-center rounded bg-accent text-10 text-accent-foreground", children: activeCount }) : null
-        ]
-      }
-    ),
-    open ? /* @__PURE__ */ jsxs(
-      "div",
-      {
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": label,
-        className: "fixed inset-0 z-[var(--mg-z-modal)] flex items-end sm:items-center sm:justify-center",
-        children: [
-          /* @__PURE__ */ jsx(
-            "div",
-            {
-              className: "absolute inset-0 bg-ink-strong/30",
-              onClick: () => setOpen(false),
-              "aria-hidden": true
-            }
-          ),
-          /* @__PURE__ */ jsxs(
-            "div",
-            {
-              className: classNames(
-                "relative z-[var(--mg-z-sticky)] w-full max-h-[85vh] overflow-y-auto",
-                "rounded border-t border-border bg-card p-4",
-                "sm:max-w-md sm:rounded sm:border sm:mx-4",
-                "mg-scroll"
-              ),
-              children: [
-                /* @__PURE__ */ jsxs("div", { className: "mb-4 flex items-center justify-between border-b border-border pb-3", children: [
-                  /* @__PURE__ */ jsxs("span", { className: "text-11 text-ink-strong", children: [
-                    label,
-                    activeCount > 0 ? /* @__PURE__ */ jsxs("span", { className: "ml-2 text-ink-muted", children: [
-                      "\xB7 ",
-                      activeCount,
-                      " active"
-                    ] }) : null
-                  ] }),
-                  /* @__PURE__ */ jsx(
-                    "button",
-                    {
-                      type: "button",
-                      onClick: () => setOpen(false),
-                      "aria-label": "Close filters",
-                      className: "inline-flex size-8 items-center justify-center rounded text-ink-muted hover:text-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      children: /* @__PURE__ */ jsx(X, { className: "size-4", "aria-hidden": true })
-                    }
-                  )
-                ] }),
-                /* @__PURE__ */ jsx("div", { className: "flex flex-col gap-3", children })
-              ]
-            }
-          )
-        ]
       }
     ) : null
   ] });
@@ -4071,354 +3176,6 @@ function ProvenanceChip({
     }
   );
 }
-function QueryBarRoot({
-  children,
-  className,
-  ariaLabel = "Filter bar"
-}) {
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      role: "search",
-      "aria-label": ariaLabel,
-      className: classNames(
-        "mg-query-shell",
-        "flex w-full flex-wrap items-center gap-1 min-w-0",
-        "h-10 rounded border border-border",
-        "px-1 transition-colors",
-        "focus-within:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
-        "focus-within:ring-2 focus-within:ring-ring/60",
-        className
-      ),
-      children
-    }
-  );
-}
-function QueryBarSearch({
-  value,
-  onChange,
-  placeholder = "Search\u2026",
-  shortcut = true,
-  debounceMs = 0,
-  className,
-  ...props
-}) {
-  const ref = useRef(null);
-  const [local, setLocal] = useState(value);
-  useEffect(() => {
-    setLocal(value);
-  }, [value]);
-  useEffect(() => {
-    if (local === value) return;
-    if (debounceMs <= 0) {
-      onChange(local);
-      return;
-    }
-    const t = window.setTimeout(() => onChange(local), debounceMs);
-    return () => window.clearTimeout(t);
-  }, [local, debounceMs]);
-  useEffect(() => {
-    if (!shortcut || typeof window === "undefined") return;
-    const onKey = (e) => {
-      if (e.key !== "/") return;
-      const target = e.target;
-      const tag = target?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable)
-        return;
-      e.preventDefault();
-      ref.current?.focus();
-      ref.current?.select();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [shortcut]);
-  return /* @__PURE__ */ jsxs("div", { className: "relative flex flex-1 items-center gap-2 min-w-0 pl-2", children: [
-    /* @__PURE__ */ jsx(Search, { className: "size-3.5 shrink-0 text-ink-muted", "aria-hidden": true }),
-    /* @__PURE__ */ jsx(
-      "input",
-      {
-        ...props,
-        ref,
-        type: "text",
-        value: local,
-        onChange: (e) => setLocal(e.target.value),
-        onKeyDown: (e) => {
-          if (e.key === "Enter" && debounceMs > 0 && local !== value) {
-            onChange(local);
-          }
-          if (e.key === "Escape" && local) {
-            e.preventDefault();
-            setLocal("");
-            onChange("");
-          }
-          props.onKeyDown?.(e);
-        },
-        placeholder,
-        "aria-label": placeholder,
-        className: classNames(
-          "peer flex-1 min-w-0 bg-transparent border-0 outline-none",
-          "py-1.5 text-13 text-ink-strong placeholder:text-ink-subtle-text",
-          "focus:outline-none focus:ring-0",
-          className
-        )
-      }
-    ),
-    local ? /* @__PURE__ */ jsx(
-      "button",
-      {
-        type: "button",
-        onClick: () => {
-          setLocal("");
-          onChange("");
-          ref.current?.focus();
-        },
-        "aria-label": "Clear search",
-        className: "mg-focus-ring inline-flex size-6 items-center justify-center rounded text-ink-muted hover:text-ink-strong",
-        children: /* @__PURE__ */ jsx(X, { className: "size-3.5", "aria-hidden": true })
-      }
-    ) : shortcut ? /* @__PURE__ */ jsx(
-      "kbd",
-      {
-        "aria-hidden": true,
-        className: "pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 text-10 text-ink-muted",
-        children: "/"
-      }
-    ) : null
-  ] });
-}
-function QueryBarDivider() {
-  return /* @__PURE__ */ jsx(
-    "span",
-    {
-      "aria-hidden": true,
-      className: "mx-0.5 hidden sm:block h-5 w-px shrink-0 bg-border"
-    }
-  );
-}
-function QueryBarUtility({
-  children,
-  className
-}) {
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      className: classNames(
-        "flex items-center gap-0.5 shrink-0 pr-1",
-        className
-      ),
-      children
-    }
-  );
-}
-function QueryBarFilterTrigger(props) {
-  const {
-    label,
-    options,
-    placeholder = "Any",
-    icon,
-    align = "start",
-    className
-  } = props;
-  const id = useId();
-  const [open, setOpen] = useState(false);
-  const selected = useMemo(
-    () => props.multi ? props.value : props.value ? [props.value] : [],
-    [props.multi, props.value]
-  );
-  const active = selected.length > 0;
-  const preview = useMemo(() => {
-    if (!active) return placeholder;
-    const labels = selected.map(
-      (v) => options.find((o) => o.value === v)?.label ?? v
-    );
-    if (labels.length === 1) return labels[0];
-    return `${labels[0]} +${labels.length - 1}`;
-  }, [selected, options, active, placeholder]);
-  const toggle = useCallback(
-    (v) => {
-      if (props.multi) {
-        const next = selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v];
-        props.onChange(next);
-      } else {
-        props.onChange(selected[0] === v ? "" : v);
-        setOpen(false);
-      }
-    },
-    [props, selected]
-  );
-  const clear = useCallback(() => {
-    if (props.multi) props.onChange([]);
-    else props.onChange("");
-  }, [props]);
-  return /* @__PURE__ */ jsxs(Popover, { open, onOpenChange: setOpen, children: [
-    /* @__PURE__ */ jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
-      "button",
-      {
-        id,
-        type: "button",
-        "aria-label": `${label} filter${active ? `, ${selected.length} selected` : ""}`,
-        className: classNames(
-          "mg-ghost-trigger group inline-flex h-8 shrink-0 items-center gap-1.5 rounded px-2",
-          "text-13 transition-colors",
-          "hover:bg-surface-2",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          active ? "text-ink-strong" : "text-ink-muted",
-          className
-        ),
-        children: [
-          icon ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted", children: icon }) : null,
-          /* @__PURE__ */ jsx("span", { className: "text-10 opacity-80", children: label }),
-          /* @__PURE__ */ jsx(
-            "span",
-            {
-              className: classNames(
-                "truncate max-w-[120px] font-medium",
-                active ? "text-ink-strong border-b border-accent" : "text-ink-subtle-text"
-              ),
-              children: preview
-            }
-          ),
-          /* @__PURE__ */ jsx(
-            ChevronDown,
-            {
-              className: classNames(
-                "size-3 shrink-0 text-ink-muted transition-transform",
-                open && "rotate-180"
-              ),
-              "aria-hidden": true
-            }
-          )
-        ]
-      }
-    ) }),
-    /* @__PURE__ */ jsx(
-      PopoverContent,
-      {
-        align,
-        sideOffset: 6,
-        className: "w-64 p-0 border-border bg-popover",
-        children: /* @__PURE__ */ jsxs(Command, { children: [
-          /* @__PURE__ */ jsx(
-            CommandInput,
-            {
-              placeholder: `Filter ${label.toLowerCase()}\u2026`,
-              className: "h-9"
-            }
-          ),
-          /* @__PURE__ */ jsxs(CommandList, { className: "max-h-72", children: [
-            /* @__PURE__ */ jsx(CommandEmpty, { children: "No matches." }),
-            /* @__PURE__ */ jsx(CommandGroup, { children: options.map((o) => {
-              const on = selected.includes(o.value);
-              return /* @__PURE__ */ jsxs(
-                CommandItem,
-                {
-                  value: o.label,
-                  ...o.keywords ? { keywords: o.keywords } : {},
-                  onSelect: () => toggle(o.value),
-                  className: "cursor-pointer aria-selected:bg-surface-2",
-                  children: [
-                    /* @__PURE__ */ jsx(
-                      "span",
-                      {
-                        className: classNames(
-                          "inline-flex size-4 shrink-0 items-center justify-center rounded border",
-                          on ? "border-accent bg-accent text-accent-foreground" : "border-border bg-transparent"
-                        ),
-                        "aria-hidden": true,
-                        children: on ? /* @__PURE__ */ jsx(Check, { className: "size-3" }) : null
-                      }
-                    ),
-                    /* @__PURE__ */ jsx("span", { className: "truncate", children: o.label })
-                  ]
-                },
-                o.value
-              );
-            }) })
-          ] }),
-          active ? /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between border-t border-border px-2 py-1.5", children: [
-            /* @__PURE__ */ jsxs("span", { className: "text-10 text-ink-muted", children: [
-              selected.length,
-              " selected"
-            ] }),
-            /* @__PURE__ */ jsx(
-              "button",
-              {
-                type: "button",
-                onClick: () => {
-                  clear();
-                  if (!props.multi) setOpen(false);
-                },
-                className: "mg-focus-ring rounded px-2 py-0.5 text-10 text-ink-muted hover:text-ink-strong",
-                children: "Clear"
-              }
-            )
-          ] }) : null
-        ] })
-      }
-    )
-  ] });
-}
-function QueryBarMetaRow({
-  count,
-  total,
-  noun = "results",
-  activeCount = 0,
-  onReset,
-  trailing,
-  className
-}) {
-  const showTotal = total != null && total !== count;
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      className: classNames(
-        "flex w-full items-center gap-2 pt-1.5",
-        "text-10 text-ink-muted",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsxs("span", { "aria-live": "polite", children: [
-          /* @__PURE__ */ jsx("span", { className: "text-ink-strong", children: count.toLocaleString() }),
-          showTotal ? /* @__PURE__ */ jsxs("span", { className: "opacity-70", children: [
-            " of ",
-            total.toLocaleString()
-          ] }) : null,
-          " ",
-          noun
-        ] }),
-        activeCount > 0 ? /* @__PURE__ */ jsxs(Fragment, { children: [
-          /* @__PURE__ */ jsx("span", { "aria-hidden": true, className: "opacity-40", children: "\xB7" }),
-          /* @__PURE__ */ jsxs("span", { children: [
-            activeCount,
-            " filter",
-            activeCount === 1 ? "" : "s"
-          ] }),
-          onReset ? /* @__PURE__ */ jsx(
-            "button",
-            {
-              type: "button",
-              onClick: onReset,
-              className: "mg-focus-ring rounded text-accent hover:text-ink-strong transition-colors",
-              children: "Reset"
-            }
-          ) : null
-        ] }) : null,
-        trailing ? /* @__PURE__ */ jsx("span", { className: "ml-auto flex items-center gap-2", children: trailing }) : null
-      ]
-    }
-  );
-}
-var _ctx = createContext(null);
-function useQueryBarContext() {
-  return useContext(_ctx);
-}
-var QueryBar = Object.assign(QueryBarRoot, {
-  Search: QueryBarSearch,
-  Divider: QueryBarDivider,
-  Utility: QueryBarUtility,
-  FilterTrigger: QueryBarFilterTrigger,
-  MetaRow: QueryBarMetaRow
-});
 var HEIGHTS = {
   sm: "min-h-[120px]",
   md: "min-h-[200px]",
@@ -4520,64 +3277,6 @@ function QueryProgress({
           }
         }
       )
-    }
-  );
-}
-function FilterChipRow({
-  items,
-  onRemove,
-  onClearAll,
-  className
-}) {
-  if (items.length === 0) return null;
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      role: "list",
-      "aria-label": "Active filters",
-      className: classNames(
-        "flex flex-wrap items-center gap-1.5 pt-2",
-        className
-      ),
-      children: [
-        items.map((item) => /* @__PURE__ */ jsxs(
-          "button",
-          {
-            role: "listitem",
-            type: "button",
-            onClick: () => onRemove(item.id),
-            "aria-label": `Remove ${item.label} filter (${item.value})`,
-            className: classNames(
-              "group inline-flex h-6 items-center gap-1.5 rounded border border-border bg-card px-2",
-              "text-11 transition-colors",
-              "hover:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            ),
-            children: [
-              item.icon ? /* @__PURE__ */ jsx("span", { className: "text-ink-muted", children: item.icon }) : null,
-              /* @__PURE__ */ jsx("span", { className: "text-10 text-ink-muted", children: item.label }),
-              /* @__PURE__ */ jsx("span", { className: "font-medium text-ink-strong", children: item.value }),
-              /* @__PURE__ */ jsx(
-                X,
-                {
-                  "aria-hidden": true,
-                  className: "size-3 text-ink-muted transition-colors group-hover:text-health-down"
-                }
-              )
-            ]
-          },
-          item.id
-        )),
-        onClearAll && items.length > 1 ? /* @__PURE__ */ jsx(
-          "button",
-          {
-            type: "button",
-            onClick: onClearAll,
-            className: "mg-focus-ring ml-1 rounded px-1.5 py-0.5 text-10 text-ink-muted hover:text-ink-strong",
-            children: "Clear all"
-          }
-        ) : null
-      ]
     }
   );
 }
@@ -5065,12 +3764,12 @@ function LineWithWindow({
   const wStart = inside[0];
   const wEnd = inside[inside.length - 1];
   const pct = (n, of) => `${(n / of * 100).toFixed(2)}%`;
-  const rangeLabel = wStart && wEnd ? formatRange ? formatRange(wStart.t, wEnd.t) : `${rangeFormat.format(new Date(wStart.t)).toUpperCase()} \u2192 ${rangeFormat.format(new Date(wEnd.t)).toUpperCase()}` : "";
+  const rangeLabel2 = wStart && wEnd ? formatRange ? formatRange(wStart.t, wEnd.t) : `${rangeFormat.format(new Date(wStart.t)).toUpperCase()} \u2192 ${rangeFormat.format(new Date(wEnd.t)).toUpperCase()}` : "";
   const summary = momentumAriaLabel(
     unit,
     wEnd ? formatValue(wEnd.v) : null,
     delta.label,
-    rangeLabel
+    rangeLabel2
   );
   return /* @__PURE__ */ jsxs(
     "div",
@@ -5087,7 +3786,7 @@ function LineWithWindow({
             /* @__PURE__ */ jsx("span", { className: "mg-line-delta", "data-state": delta.state, children: delta.label })
           ] }),
           /* @__PURE__ */ jsxs("p", { className: "mg-line-range", children: [
-            rangeLabel,
+            rangeLabel2,
             " \xB7 ",
             unit
           ] })
@@ -5756,5 +4455,754 @@ var LEADER_SPECIMEN = RAIL_SPECIMEN.map((r, i) => ({
   delta: i === 3 ? "new" : i * 7 % 11 / 10 - 0.3,
   href: `/subnets/${i + 1}`
 }));
+function DataTableMenu({
+  columns,
+  visibleKeys,
+  onVisibleKeys,
+  csv,
+  filename,
+  shareUrl,
+  label
+}) {
+  const [copied, setCopied] = useState(false);
+  const toggle = (key) => {
+    const next = visibleKeys.includes(key) ? visibleKeys.filter((k) => k !== key) : columns.filter((c) => c.key === key || visibleKeys.includes(c.key)).map((c) => c.key);
+    if (next.length > 0) onVisibleKeys(next);
+  };
+  const download = () => {
+    if (typeof document === "undefined") return;
+    const blob = new Blob([csv()], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${filename.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.csv`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+  const copyLink = () => {
+    const url = shareUrl ?? (typeof window === "undefined" ? "" : window.location.href);
+    if (!url) return;
+    void navigator.clipboard?.writeText(url).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return /* @__PURE__ */ jsxs(Popover, { children: [
+    /* @__PURE__ */ jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsx(
+      "button",
+      {
+        type: "button",
+        className: "mg-dt-menu-trigger",
+        "aria-label": `${label} options`,
+        children: /* @__PURE__ */ jsx("span", { "aria-hidden": "true", children: "\u22EF" })
+      }
+    ) }),
+    /* @__PURE__ */ jsxs(PopoverContent, { align: "end", className: "mg-dt-menu", children: [
+      /* @__PURE__ */ jsx("p", { className: "mg-dt-menu-heading", children: "Columns" }),
+      /* @__PURE__ */ jsx("ul", { className: "mg-dt-menu-columns", children: columns.map((column) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsxs("label", { children: [
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "checkbox",
+            checked: visibleKeys.includes(column.key),
+            onChange: () => toggle(column.key)
+          }
+        ),
+        /* @__PURE__ */ jsx("span", { children: column.label })
+      ] }) }, column.key)) }),
+      /* @__PURE__ */ jsxs("div", { className: "mg-dt-menu-actions", children: [
+        /* @__PURE__ */ jsx("button", { type: "button", onClick: download, children: "Download CSV" }),
+        /* @__PURE__ */ jsx("button", { type: "button", onClick: copyLink, children: copied ? "Link copied" : "Copy link" })
+      ] })
+    ] })
+  ] });
+}
 
-export { Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActiveEntityProvider, AnalyticsPage, AnalyticsSection, AnimatedNumber, BackToTop, BrandIcon, CHART_RAMP_SIZE, COMPOSITION_SPECIMEN, CandidateChip, ChartTooltip, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionBreakdown, CopyButton, CopyIconToggle, CopyableCode, CurationChip, Definition, DefinitionList, DefinitionsProvider, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, Fact, FactCell, FactSentence, FactStrip, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, GhostButton, HealthDot, HealthPill, Indicator, Kbd, KeyChip, LEADER_SPECIMEN, LINE_VIEWBOX, LeaderCards, LineWithWindow, ListShell, LiveMeta, LiveTickerProvider, LoadMore, LoadingPill, MARKER_SPECIMEN, MAX_SECTIONS, MarkerRail, McpToolsList, OTHER_COLOR, OTHER_KEY, OpenAIIcon, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, Provenance, ProvenanceChip, QueryBar, QueryProgress, RAIL_SPECIMEN, RangeControl, RankGrid, RankedRails, Raw, RawCode, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, ScrollShadow, SectionHead, SectionNav, SeriesPaletteRegistry, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, StackedColumns, StatusBadge, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, TrendDelta, ViewModeToggle, Wordmark, buildCsvDownloadUrl, classNames, cn, collapseOther, columnWidths, defaultVisible, deltaLabel, fmtYield, formatLineDate, isScrolledPast, lineSpecimen, markAriaLabel, markerPosition, momentumAriaLabel, monthTicks, nextTabIndex, pickActiveSection, placePoints, prefetchBrandIcon, provenanceSentence, railFill, rovingTabIndex, safeExternalUrl, sectionItems, smoothPath, stackedSpecimen, trendDeltaOf, useActiveEntity, useActiveSection, useColumnVisibility, useDefinition, useEntityMark, useIsActive, useLiveTicker, useQueryBarContext, useRovingGroup, useScrolled, windowDelta, windowPoints };
+// src/components/metagraphed/data-table/data-table-logic.ts
+function nextSort(current, key) {
+  if (!current || current.key !== key) return { key, dir: "asc" };
+  if (current.dir === "asc") return { key, dir: "desc" };
+  return null;
+}
+function isMissing(value) {
+  return value === null || value === void 0 || value === "";
+}
+function compareValues(a, b) {
+  if (isMissing(a) || isMissing(b))
+    return isMissing(a) && isMissing(b) ? 0 : isMissing(a) ? 1 : -1;
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b), "en-US", { numeric: true });
+}
+function sortRows(rows, sort, valueOf) {
+  if (!sort) return [...rows];
+  const decorated = rows.map((row, index) => ({
+    row,
+    index,
+    value: valueOf(row, sort.key)
+  }));
+  decorated.sort((x, y) => {
+    if (isMissing(x.value) || isMissing(y.value)) {
+      if (!isMissing(x.value)) return -1;
+      if (!isMissing(y.value)) return 1;
+      return x.index - y.index;
+    }
+    const diff = compareValues(x.value, y.value);
+    if (diff !== 0) return sort.dir === "asc" ? diff : -diff;
+    return x.index - y.index;
+  });
+  return decorated.map((d) => d.row);
+}
+function pageCount(total, pageSize) {
+  if (pageSize <= 0) return 1;
+  return Math.max(1, Math.ceil(total / pageSize));
+}
+function pageSlice(rows, page, pageSize) {
+  if (pageSize <= 0) return [...rows];
+  const start = Math.max(0, (page - 1) * pageSize);
+  return rows.slice(start, start + pageSize);
+}
+function rangeLabel(page, pageSize, total) {
+  if (total <= 0) return "0";
+  const start = Math.min(total, (page - 1) * pageSize + 1);
+  const end = Math.min(total, page * pageSize);
+  const n = (v) => v.toLocaleString("en-US");
+  return `${n(start)}\u2013${n(end)} of ${n(total)}`;
+}
+function pageWindow(page, pages) {
+  if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
+  const window2 = /* @__PURE__ */ new Set([1, pages, page]);
+  for (const p of [page - 1, page + 1]) if (p > 1 && p < pages) window2.add(p);
+  if (page <= 3) for (const p of [2, 3, 4]) window2.add(p);
+  if (page >= pages - 2)
+    for (const p of [pages - 3, pages - 2, pages - 1]) window2.add(p);
+  const sorted = [...window2].filter((p) => p >= 1 && p <= pages).sort((a, b) => a - b);
+  const out = [];
+  let previous = 0;
+  for (const p of sorted) {
+    if (previous && p - previous > 1) out.push(null);
+    out.push(p);
+    previous = p;
+  }
+  return out;
+}
+function truncateIdentifier(value, head = 6, tail = 6) {
+  if (value.length <= head + tail + 1) return value;
+  return `${value.slice(0, head)}\u2026${value.slice(-tail)}`;
+}
+function csvField(value) {
+  if (value === null || value === void 0) return "";
+  const text = String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+function toCsv(rows, columns, valueOf) {
+  const lines = [columns.map((c) => csvField(c.label)).join(",")];
+  for (const row of rows)
+    lines.push(columns.map((c) => csvField(valueOf(row, c.key))).join(","));
+  return `${lines.join("\r\n")}\r
+`;
+}
+function pickMobileMode(columnCount) {
+  return columnCount <= 6 ? "cards" : "scroll";
+}
+function defaultVisibleKeys(columns) {
+  return columns.filter((c) => !c.demote).map((c) => c.key);
+}
+function resolveVisibleKeys(columns, stored) {
+  if (!stored) return defaultVisibleKeys(columns);
+  const known = new Set(columns.map((c) => c.key));
+  const kept = stored.filter((key) => known.has(key));
+  return kept.length > 0 ? kept : defaultVisibleKeys(columns);
+}
+function shouldBoundViewport(renderedRows, threshold = 20) {
+  return renderedRows > threshold;
+}
+var numberFormat = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2
+});
+var DefaultLink2 = ({ href, children, ...rest }) => /* @__PURE__ */ jsx("a", { href, ...rest, children });
+function defaultFormat4(kind, value) {
+  if (value === null || value === void 0 || value === "") return "\u2014";
+  if (kind === "number" || kind === "tint") {
+    return typeof value === "number" ? numberFormat.format(value) : String(value);
+  }
+  if (kind === "delta" && typeof value === "number") {
+    const pct = Math.round(value * 100);
+    return pct > 0 ? `+${pct}%` : pct < 0 ? `\u2212${Math.abs(pct)}%` : "0%";
+  }
+  return String(value);
+}
+function statusTone(value) {
+  const word = value.toLowerCase();
+  if ([
+    "ok",
+    "up",
+    "healthy",
+    "active",
+    "verified",
+    "resolved",
+    "passed"
+  ].includes(word))
+    return "good";
+  if (["warn", "warning", "degraded", "stale", "partial", "pending"].includes(
+    word
+  ))
+    return "warn";
+  if (["down", "failed", "error", "offline", "rejected", "inactive"].includes(
+    word
+  ))
+    return "bad";
+  return "muted";
+}
+function DataTable({
+  rows,
+  columns,
+  rowKey,
+  caption,
+  captionHidden,
+  total,
+  sort: sortProp,
+  onSort,
+  page: pageProp,
+  onPage,
+  pageSize = 50,
+  paginate,
+  rowHref,
+  link,
+  onRowActivate,
+  expand,
+  search,
+  filters,
+  loading,
+  empty,
+  error,
+  dense,
+  mobile,
+  source = "table",
+  storageKey,
+  shareUrl,
+  className,
+  id
+}) {
+  const captionId = useId();
+  const [ownSort, setOwnSort] = useState(null);
+  const [ownPage, setOwnPage] = useState(1);
+  const [visibleKeys, setVisibleKeys] = useState(
+    () => defaultVisibleKeys(columns)
+  );
+  const [expanded, setExpanded] = useState(null);
+  const viewportRef = useRef(null);
+  const columnSignature = columns.map((c) => `${c.key}:${c.demote ? 1 : 0}`).join(",");
+  const columnSpec = useMemo(
+    () => columnSignature.split(",").filter(Boolean).map((part) => {
+      const [key, demoted] = part.split(":");
+      return { key, demote: demoted === "1" };
+    }),
+    [columnSignature]
+  );
+  useEffect(() => {
+    if (!storageKey || typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(`mg-columns:${storageKey}`);
+      setVisibleKeys(
+        resolveVisibleKeys(
+          columnSpec,
+          raw ? JSON.parse(raw) : null
+        )
+      );
+    } catch {
+      setVisibleKeys(defaultVisibleKeys(columnSpec));
+    }
+  }, [storageKey, columnSpec]);
+  useEffect(() => {
+    if (storageKey) return;
+    setVisibleKeys((current) => {
+      const known = new Set(columnSpec.map((c) => c.key));
+      const kept = current.filter((key) => known.has(key));
+      return kept.length === current.length ? current : kept;
+    });
+  }, [storageKey, columnSpec]);
+  const sort = onSort ? sortProp ?? null : ownSort;
+  const page = onPage ? pageProp ?? 1 : ownPage;
+  const valueOf = useCallback(
+    (row, key) => {
+      const column = columns.find((c) => c.key === key);
+      return column?.value ? column.value(row) : void 0;
+    },
+    [columns]
+  );
+  const shown = useMemo(
+    () => columns.filter((c) => visibleKeys.includes(c.key)),
+    [columns, visibleKeys]
+  );
+  const sorted = useMemo(
+    () => onSort ? [...rows] : sortRows(rows, sort, valueOf),
+    [rows, sort, valueOf, onSort]
+  );
+  const pages = pageCount(total ?? sorted.length, pageSize);
+  const paging = paginate ?? (!onPage ? sorted.length > pageSize : true);
+  const visibleRows = useMemo(
+    () => onPage || !paging ? sorted : pageSlice(sorted, page, pageSize),
+    [sorted, page, pageSize, onPage, paging]
+  );
+  const bounded = shouldBoundViewport(visibleRows.length);
+  const mobileMode = mobile ?? pickMobileMode(shown.length);
+  const rowCount = total ?? rows.length;
+  const handleSort = (key) => {
+    const next = nextSort(sort, key);
+    if (onSort) onSort(next);
+    else setOwnSort(next);
+    if (onPage) onPage(1);
+    else setOwnPage(1);
+  };
+  const goToPage = (next) => {
+    if (onPage) onPage(next);
+    else setOwnPage(next);
+    viewportRef.current?.scrollTo({ top: 0 });
+  };
+  const csv = () => toCsv(sorted, shown, valueOf);
+  const hasRows = visibleRows.length > 0;
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      id,
+      className: classNames("mg-dt", className),
+      "data-mg-data-table": "",
+      "data-mobile": mobileMode,
+      "data-dense": dense ? "true" : void 0,
+      children: [
+        /* @__PURE__ */ jsxs("div", { className: "mg-dt-caption", children: [
+          /* @__PURE__ */ jsxs("p", { id: captionId, className: captionHidden ? "sr-only" : "mg-dt-title", children: [
+            caption,
+            rowCount > 0 ? /* @__PURE__ */ jsxs("span", { className: "mg-dt-count", children: [
+              " ",
+              "(",
+              rowCount.toLocaleString("en-US"),
+              ")"
+            ] }) : null
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "mg-dt-tools", children: [
+            search ? /* @__PURE__ */ jsx(
+              "input",
+              {
+                type: "search",
+                className: "mg-dt-search",
+                value: search.value,
+                onChange: (event) => search.onChange(event.target.value),
+                placeholder: search.placeholder ?? "Search",
+                "aria-label": `Search ${caption}`
+              }
+            ) : null,
+            filters,
+            /* @__PURE__ */ jsx(
+              DataTableMenu,
+              {
+                columns,
+                visibleKeys,
+                onVisibleKeys: (keys) => {
+                  setVisibleKeys(keys);
+                  if (storageKey && typeof window !== "undefined") {
+                    try {
+                      window.localStorage.setItem(
+                        `mg-columns:${storageKey}`,
+                        JSON.stringify(keys)
+                      );
+                    } catch {
+                    }
+                  }
+                },
+                csv,
+                filename: caption,
+                shareUrl,
+                label: caption
+              }
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ jsx(
+          "div",
+          {
+            ref: viewportRef,
+            className: classNames(
+              "mg-dt-viewport",
+              bounded ? "mg-dt-viewport-bounded" : null
+            ),
+            children: /* @__PURE__ */ jsxs("table", { "aria-labelledby": captionId, children: [
+              /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { children: shown.map((column) => {
+                const active = sort?.key === column.key;
+                return /* @__PURE__ */ jsxs(
+                  "th",
+                  {
+                    scope: "col",
+                    "data-align": column.align ?? (column.kind === "number" || column.kind === "delta" || column.kind === "tint" ? "right" : void 0),
+                    "aria-sort": active ? sort.dir === "asc" ? "ascending" : "descending" : void 0,
+                    style: column.width ? {
+                      width: typeof column.width === "number" ? `${column.width}px` : column.width
+                    } : void 0,
+                    children: [
+                      column.sortable ? /* @__PURE__ */ jsxs(
+                        "button",
+                        {
+                          type: "button",
+                          className: "mg-dt-sort",
+                          onClick: () => handleSort(column.key),
+                          "data-active": active ? "true" : void 0,
+                          children: [
+                            column.label,
+                            /* @__PURE__ */ jsx(
+                              "i",
+                              {
+                                "aria-hidden": "true",
+                                "data-dir": active ? sort.dir : void 0
+                              }
+                            )
+                          ]
+                        }
+                      ) : column.label,
+                      column.definition ? /* @__PURE__ */ jsx(Definition, { term: column.definition }) : null
+                    ]
+                  },
+                  column.key
+                );
+              }) }) }),
+              /* @__PURE__ */ jsx("tbody", { children: loading ? Array.from({ length: 8 }, (_, i) => /* @__PURE__ */ jsx("tr", { className: "mg-dt-skeleton", children: shown.map((column) => /* @__PURE__ */ jsx(
+                "td",
+                {
+                  "data-label": mobileMode === "cards" ? column.label : void 0,
+                  children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-full" })
+                },
+                column.key
+              )) }, `skeleton-${i}`)) : hasRows ? visibleRows.map((row) => /* @__PURE__ */ jsx(
+                Row,
+                {
+                  row,
+                  entityKey: rowKey(row),
+                  expansionId: `${captionId}-${rowKey(row)}`,
+                  cardLabels: mobileMode === "cards",
+                  columns: shown,
+                  href: rowHref?.(row),
+                  link,
+                  onActivate: onRowActivate ? () => onRowActivate(row) : void 0,
+                  source,
+                  expand,
+                  expanded: expanded === rowKey(row),
+                  onExpand: () => setExpanded(
+                    (current) => current === rowKey(row) ? null : rowKey(row)
+                  )
+                },
+                rowKey(row)
+              )) : /* @__PURE__ */ jsx("tr", { className: "mg-dt-state", children: /* @__PURE__ */ jsx("td", { colSpan: shown.length, children: error ?? empty ?? "Nothing to show." }) }) })
+            ] })
+          }
+        ),
+        paging && pages > 1 ? /* @__PURE__ */ jsxs("div", { className: "mg-dt-footer", children: [
+          /* @__PURE__ */ jsx("span", { className: "mg-dt-range", children: rangeLabel(page, pageSize, total ?? sorted.length) }),
+          /* @__PURE__ */ jsxs("nav", { className: "mg-dt-pager", "aria-label": `${caption} pages`, children: [
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => goToPage(page - 1),
+                disabled: page <= 1,
+                children: "Previous"
+              }
+            ),
+            pageWindow(page, pages).map(
+              (p, i) => p === null ? /* @__PURE__ */ jsx("span", { "aria-hidden": "true", children: "\u2026" }, `gap-${i}`) : /* @__PURE__ */ jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => goToPage(p),
+                  "data-current": p === page ? "true" : void 0,
+                  "aria-current": p === page ? "page" : void 0,
+                  "aria-label": `Page ${p}`,
+                  children: p
+                },
+                p
+              )
+            ),
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => goToPage(page + 1),
+                disabled: page >= pages,
+                children: "Next"
+              }
+            )
+          ] })
+        ] }) : null
+      ]
+    }
+  );
+}
+function Row({
+  row,
+  entityKey,
+  expansionId,
+  columns,
+  cardLabels,
+  href,
+  link,
+  onActivate,
+  source,
+  expand,
+  expanded,
+  onExpand
+}) {
+  const mark = useEntityMark(entityKey, {
+    source,
+    label: entityKey,
+    onActivate: expand ? onExpand : onActivate
+  });
+  const {
+    role: _role,
+    tabIndex: _tabIndex,
+    "aria-label": _label,
+    ...rowMark
+  } = mark;
+  return /* @__PURE__ */ jsxs(Fragment, { children: [
+    /* @__PURE__ */ jsx(
+      "tr",
+      {
+        ...rowMark,
+        className: "mg-dt-row",
+        "data-expandable": expand ? "true" : void 0,
+        "data-expanded": expanded ? "true" : void 0,
+        children: columns.map((column, index) => /* @__PURE__ */ jsx(
+          Cell,
+          {
+            row,
+            column,
+            label: cardLabels ? column.label : void 0,
+            href: index === 0 ? href : void 0,
+            link,
+            disclosure: index === 0 && expand ? { expanded, controls: expansionId, onToggle: onExpand } : void 0,
+            onActivate: index === 0 && !href && !expand ? onActivate : void 0
+          },
+          column.key
+        ))
+      }
+    ),
+    expand && expanded ? /* @__PURE__ */ jsx("tr", { className: "mg-dt-expansion", id: expansionId, children: /* @__PURE__ */ jsx("td", { colSpan: columns.length, children: expand(row) }) }) : null
+  ] });
+}
+function Cell({
+  row,
+  column,
+  label,
+  href,
+  link,
+  onActivate,
+  disclosure
+}) {
+  const raw = column.value ? column.value(row) : void 0;
+  const text = column.format ? column.format(raw, row) : defaultFormat4(column.kind, raw);
+  const align = column.align ?? (column.kind === "number" || column.kind === "delta" || column.kind === "tint" ? "right" : void 0);
+  const tint = column.kind === "tint" ? column.tint?.(row) ?? null : null;
+  let body;
+  if (column.render) body = column.render(row);
+  else if (column.kind === "identifier" && typeof raw === "string" && raw)
+    body = /* @__PURE__ */ jsxs("span", { className: "mg-dt-id", title: raw, children: [
+      /* @__PURE__ */ jsx("span", { children: truncateIdentifier(raw) }),
+      /* @__PURE__ */ jsx(CopyButton, { value: raw, label: label ?? column.label, compact: true })
+    ] });
+  else if (column.kind === "status" && typeof raw === "string" && raw)
+    body = /* @__PURE__ */ jsxs("span", { className: "mg-dt-status", "data-tone": statusTone(raw), children: [
+      /* @__PURE__ */ jsx("i", { "aria-hidden": "true" }),
+      raw
+    ] });
+  else if (column.kind === "time" && typeof raw === "string" && raw)
+    body = /* @__PURE__ */ jsx(TimeAgo, { at: raw });
+  else if (column.kind === "delta" && typeof raw === "number")
+    body = /* @__PURE__ */ jsx(
+      "span",
+      {
+        className: "mg-dt-delta",
+        "data-state": raw > 0 ? "up" : raw < 0 ? "down" : "flat",
+        children: text
+      }
+    );
+  else if (column.kind === "link") {
+    const to = column.href?.(row);
+    const LinkCmp = link ?? DefaultLink2;
+    body = to ? /* @__PURE__ */ jsx(LinkCmp, { href: to, className: "mg-dt-link", children: text }) : text;
+  } else body = text;
+  const RowLink = link ?? DefaultLink2;
+  const content = disclosure !== void 0 ? /* @__PURE__ */ jsx(
+    "button",
+    {
+      type: "button",
+      className: "mg-dt-rowbutton",
+      "aria-expanded": disclosure.expanded,
+      "aria-controls": disclosure.expanded ? disclosure.controls : void 0,
+      onClick: (event) => {
+        event.stopPropagation();
+        disclosure.onToggle();
+      },
+      children: body
+    }
+  ) : href !== void 0 ? /* @__PURE__ */ jsx(RowLink, { href, className: "mg-dt-rowlink", children: body }) : onActivate ? /* @__PURE__ */ jsx("button", { type: "button", className: "mg-dt-rowbutton", onClick: onActivate, children: body }) : body;
+  return /* @__PURE__ */ jsx(
+    "td",
+    {
+      "data-label": label,
+      "data-align": align,
+      "data-kind": column.kind === "tint" ? "tint" : void 0,
+      style: tint === null ? void 0 : { "--tint": `${Math.round(tint * 100)}%` },
+      children: content
+    }
+  );
+}
+function LoadMore({
+  hasMore,
+  isLoading,
+  onLoadMore,
+  shown,
+  total,
+  error,
+  cursorInvalid
+}) {
+  if (isLoading) {
+    return /* @__PURE__ */ jsxs(
+      "div",
+      {
+        className: "border-t border-border bg-surface p-3 space-y-1.5",
+        "aria-live": "polite",
+        "aria-busy": "true",
+        children: [
+          /* @__PURE__ */ jsx("span", { className: "sr-only", children: "Loading more results\u2026" }),
+          /* @__PURE__ */ jsx(Skeleton, { className: "h-7 w-full" }),
+          /* @__PURE__ */ jsx(Skeleton, { className: "h-7 w-full" }),
+          /* @__PURE__ */ jsx(Skeleton, { className: "h-7 w-3/4" })
+        ]
+      }
+    );
+  }
+  if (error) {
+    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 text-13", children: [
+      /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5 text-health-down", children: [
+        /* @__PURE__ */ jsx(AlertCircle, { className: "size-3" }),
+        "Couldn\u2019t load more \u2014 ",
+        error.message || "network error",
+        "."
+      ] }),
+      /* @__PURE__ */ jsxs(
+        "button",
+        {
+          type: "button",
+          onClick: onLoadMore,
+          className: "inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 font-medium hover:border-ink/30 min-h-9",
+          children: [
+            /* @__PURE__ */ jsx(RefreshCw, { className: "size-3" }),
+            " Retry"
+          ]
+        }
+      )
+    ] });
+  }
+  if (cursorInvalid) {
+    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 text-13 text-health-warn", children: [
+      /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
+        /* @__PURE__ */ jsx(AlertCircle, { className: "size-3" }),
+        "Pagination stopped \u2014 the server returned an invalid next cursor."
+      ] }),
+      /* @__PURE__ */ jsxs("span", { className: "font-mono text-ink-muted", children: [
+        shown,
+        total != null ? ` / ${total}` : ""
+      ] })
+    ] });
+  }
+  return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-border bg-surface px-4 py-2 text-11 text-ink-muted", children: [
+    /* @__PURE__ */ jsxs("span", { children: [
+      shown,
+      total != null ? ` of ${total}` : ""
+    ] }),
+    hasMore ? /* @__PURE__ */ jsx(
+      "button",
+      {
+        type: "button",
+        onClick: onLoadMore,
+        className: "inline-flex items-center rounded border border-border bg-card px-3 py-1.5 text-13 font-medium hover:border-ink/30 min-h-9",
+        children: "Load more"
+      }
+    ) : /* @__PURE__ */ jsx("span", { className: "opacity-60", children: "end of list" })
+  ] });
+}
+function FilterField({
+  label,
+  htmlFor,
+  hint,
+  children,
+  className,
+  grow
+}) {
+  return /* @__PURE__ */ jsxs(
+    "label",
+    {
+      htmlFor,
+      className: classNames(
+        "flex flex-col gap-1 min-w-0",
+        grow ? "flex-1 min-w-[180px]" : null,
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxs("span", { className: "text-10 text-ink-muted inline-flex items-center gap-1.5", children: [
+          label,
+          hint ? /* @__PURE__ */ jsx("span", { className: "opacity-70", children: hint }) : null
+        ] }),
+        children
+      ]
+    }
+  );
+}
+var CONTROL_CLASSES = "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 text-13text-ink-strong placeholder:text-ink-subtle-text mg-focus-ringhover:border-ink/25 transition-colors";
+function FilterInput({
+  className,
+  leadingIcon = true,
+  ...props
+}) {
+  if (!leadingIcon) {
+    return /* @__PURE__ */ jsx("input", { ...props, className: classNames(CONTROL_CLASSES, className) });
+  }
+  return /* @__PURE__ */ jsxs("span", { className: "relative inline-flex w-full items-center", children: [
+    /* @__PURE__ */ jsx(
+      Search,
+      {
+        className: "pointer-events-none absolute left-2.5 size-3.5 text-ink-muted",
+        "aria-hidden": true
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "input",
+      {
+        ...props,
+        className: classNames(CONTROL_CLASSES, "pl-8", className)
+      }
+    )
+  ] });
+}
+function FilterSelect({
+  className,
+  children,
+  ...props
+}) {
+  return /* @__PURE__ */ jsx(
+    "select",
+    {
+      ...props,
+      className: classNames(CONTROL_CLASSES, "pr-6 appearance-none", className),
+      children
+    }
+  );
+}
+
+// src/lib/csv.ts
+function buildCsvDownloadUrl(url) {
+  const parsed = new URL(url);
+  parsed.searchParams.set("format", "csv");
+  return parsed.toString();
+}
+
+export { Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActiveEntityProvider, AnalyticsPage, AnalyticsSection, AnimatedNumber, BackToTop, BrandIcon, CHART_RAMP_SIZE, COMPOSITION_SPECIMEN, CandidateChip, ChartTooltip, Chip, ClaudeIcon, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionBreakdown, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DataTable, Definition, DefinitionList, DefinitionsProvider, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, EligibilityChip, EmptyState, EntityHero, ExternalLink, Fact, FactCell, FactSentence, FactStrip, FilterField, FilterInput, FilterSelect, GhostButton, HealthDot, HealthPill, Indicator, Kbd, KeyChip, LEADER_SPECIMEN, LINE_VIEWBOX, LeaderCards, LineWithWindow, LiveMeta, LiveTickerProvider, LoadMore, LoadingPill, MARKER_SPECIMEN, MAX_SECTIONS, MarkerRail, McpToolsList, OTHER_COLOR, OTHER_KEY, OpenAIIcon, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, Provenance, ProvenanceChip, QueryProgress, RAIL_SPECIMEN, RangeControl, RankGrid, RankedRails, Raw, RawCode, ReviewChip, RoutePending, SCOPES, ScrollShadow, SectionHead, SectionNav, SeriesPaletteRegistry, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, StackedColumns, StatusBadge, TimeAgo, Toaster, TrendDelta, Wordmark, buildCsvDownloadUrl, classNames, cn, collapseOther, compareValues, csvField, defaultVisibleKeys, deltaLabel, fmtYield, formatLineDate, isMissing, isScrolledPast, lineSpecimen, markAriaLabel, markerPosition, momentumAriaLabel, monthTicks, nextSort, nextTabIndex, pageCount, pageSlice, pageWindow, pickActiveSection, pickMobileMode, placePoints, prefetchBrandIcon, provenanceSentence, railFill, rangeLabel, resolveVisibleKeys, rovingTabIndex, safeExternalUrl, sectionItems, shouldBoundViewport, smoothPath, sortRows, stackedSpecimen, statusTone, toCsv, trendDeltaOf, truncateIdentifier, useActiveEntity, useActiveSection, useDefinition, useEntityMark, useIsActive, useLiveTicker, useRovingGroup, useScrolled, windowDelta, windowPoints };

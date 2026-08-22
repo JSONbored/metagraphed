@@ -20,22 +20,26 @@ import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import {
+  EmptyState,
+  ErrorState,
+  PageHeading,
+  Skeleton,
+  StaleBanner,
+} from "@/components/metagraphed/states";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import {
   CopyableCode,
   CopyButton,
   Kbd,
   TimeAgo,
-  ShareButton,
-  TableState,
-  DownloadCsvButton,
   BackToTop,
   Definition,
   AnalyticsSection,
   FactCell,
   EntityHero,
   FactSentence,
+  DataTable,
 } from "@jsonbored/ui-kit";
 import {
   blockChainEventsQuery,
@@ -44,7 +48,7 @@ import {
   blockQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
-import { buildUrl } from "@/lib/metagraphed/client";
+
 import { blockRefPathSegment, isValidBlockRef, shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { formatChainEventArgs } from "@/lib/metagraphed/chain-event-args";
@@ -61,6 +65,7 @@ import {
   shortSs58Chip,
 } from "@/components/metagraphed/related-entity-chips";
 import { nextTabIndex } from "@jsonbored/ui-kit";
+import { RouterLink } from "@/components/metagraphed/router-link";
 
 export function BlockDetailPage() {
   const { ref } = useParams({ from: "/blocks/$ref" });
@@ -180,7 +185,6 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               <div className="hidden sm:flex">
                 <JumpToBlock />
               </div>
-              <ShareButton bare />
             </div>
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner
@@ -390,91 +394,61 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           id="extrinsics"
           name="Extrinsics"
           footnote={BLOCK_SECTION_HINTS.extrinsics}
-          controls={<DownloadCsvButton url={buildUrl(`/api/v1/blocks/${sourceRef}/extrinsics`)} />}
         >
-          {extrinsicsQuery.isPending ? (
-            <Skeleton className="h-44" />
-          ) : extrinsicsQuery.error ? (
-            <TableState
-              variant="error"
-              title="Couldn't load block extrinsics"
-              description="This section is optional — the rest of the block detail is unaffected."
-              error={extrinsicsQuery.error}
-              onRetry={() => {
-                void extrinsicsQuery.refetch();
-              }}
-            />
-          ) : extrinsics.length === 0 ? (
-            <EmptyState
-              title="No block extrinsics"
-              description="This block has no indexed extrinsics (or the poller window for this shard is still catching up)."
-            />
-          ) : (
-            <Panel flush className="overflow-x-auto">
-              <table className="w-full text-left text-13">
-                <thead className="bg-surface">
-                  <tr>
-                    <th className="px-4 py-2.5 text-right">Index</th>
-                    <th className="px-4 py-2.5">Extrinsic</th>
-                    <th className="px-4 py-2.5">Call</th>
-                    <th className="px-4 py-2.5">Result</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {extrinsics.map((extrinsic) => {
-                    const result =
-                      extrinsic.success == null ? "—" : extrinsic.success ? "Success" : "Failed";
-                    // This table spells the result out ("Success"/"Failed")
-                    // rather than the feeds' "ok"/"fail", so it keeps its own
-                    // rendering instead of the shared SuccessBadge -- swapping it
-                    // in would silently reword the page. What it borrows is the
-                    // token pair: the fail branch already used --health-down
-                    // while success stayed on raw emerald, so the two halves of
-                    // one ternary disagreed (#6403).
-                    const resultClass =
-                      extrinsic.success == null
-                        ? "text-ink-muted"
-                        : extrinsic.success
-                          ? "text-health-ok"
-                          : "text-health-down";
-
-                    return (
-                      <tr
-                        key={
-                          extrinsic.extrinsic_hash ||
-                          `${extrinsic.block_number}-${extrinsic.extrinsic_index}`
-                        }
-                        className="mg-row-accent hover:bg-surface"
-                      >
-                        <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
-                          {extrinsic.extrinsic_index != null
-                            ? formatNumber(extrinsic.extrinsic_index)
-                            : "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-11 text-ink-muted break-all">
-                          {extrinsic.extrinsic_hash ? (
-                            <Link
-                              to="/extrinsics/$hash"
-                              params={{ hash: extrinsic.extrinsic_hash }}
-                              className="font-medium text-ink-strong hover:underline"
-                            >
-                              {shortHash(extrinsic.extrinsic_hash, 10)}
-                            </Link>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-11 text-ink-strong">
-                          {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
-                        </td>
-                        <td className={`px-4 py-2.5 text-11 ${resultClass}`}>{result}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </Panel>
-          )}
+          <DataTable
+            rows={extrinsics}
+            rowKey={(row) => row.extrinsic_hash || `${row.block_number}-${row.extrinsic_index}`}
+            caption="Extrinsics"
+            captionHidden
+            link={RouterLink}
+            loading={extrinsicsQuery.isPending}
+            error={
+              extrinsicsQuery.error ? (
+                <ErrorState
+                  error={extrinsicsQuery.error}
+                  onRetry={() => {
+                    void extrinsicsQuery.refetch();
+                  }}
+                  context="block extrinsics"
+                />
+              ) : undefined
+            }
+            empty={
+              <EmptyState
+                title="No block extrinsics"
+                description="This block has no indexed extrinsics (or the poller window for this shard is still catching up)."
+              />
+            }
+            columns={[
+              {
+                key: "index",
+                label: "Index",
+                kind: "number",
+                sortable: true,
+                value: (row) => row.extrinsic_index ?? null,
+              },
+              {
+                key: "hash",
+                label: "Extrinsic",
+                kind: "link",
+                value: (row) => (row.extrinsic_hash ? shortHash(row.extrinsic_hash, 10) : null),
+                href: (row) =>
+                  row.extrinsic_hash ? `/extrinsics/${row.extrinsic_hash}` : undefined,
+              },
+              {
+                key: "call",
+                label: "Call",
+                sortable: true,
+                value: (row) => extrinsicCall(row.call_module, row.call_function),
+              },
+              {
+                key: "result",
+                label: "Result",
+                kind: "status",
+                value: (row) => (row.success == null ? null : row.success ? "Success" : "Failed"),
+              },
+            ]}
+          />
         </AnalyticsSection>
 
         <AnalyticsSection
@@ -482,19 +456,16 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           name="Events"
           footnote={BLOCK_SECTION_HINTS.events}
           question="Grouped by parent extrinsic. System events (fees, deposits, ExtrinsicSuccess) are collapsed by default."
-          controls={<DownloadCsvButton url={buildUrl(`/api/v1/blocks/${sourceRef}/events`)} />}
         >
           {eventsQuery.isPending ? (
             <Skeleton className="h-44" />
           ) : eventsQuery.error ? (
-            <TableState
-              variant="error"
-              title="Couldn't load block events"
-              description="This section is optional — the rest of the block detail is unaffected."
+            <ErrorState
               error={eventsQuery.error}
               onRetry={() => {
                 void eventsQuery.refetch();
               }}
+              context="block events"
             />
           ) : events.length === 0 ? (
             <EmptyState
@@ -535,67 +506,57 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               </span>
             </summary>
             <div className="border-t border-border p-2">
-              {chainEventsQuery.isPending ? (
-                <Skeleton className="h-44" />
-              ) : chainEventsQuery.error ? (
-                <TableState
-                  variant="error"
-                  title="Couldn't load block chain events"
-                  description="This section is optional — the rest of the block detail is unaffected."
-                  error={chainEventsQuery.error}
-                  onRetry={() => {
-                    void chainEventsQuery.refetch();
-                  }}
-                />
-              ) : chainEvents.length === 0 ? (
-                <EmptyState
-                  title="No chain events"
-                  description="This block has no decoded pallet events indexed yet, or the all-events backfill hasn't reached it."
-                />
-              ) : (
-                <Panel flush className="overflow-x-auto">
-                  <table className="w-full text-left text-13">
-                    <thead className="bg-surface">
-                      <tr>
-                        <th className="px-4 py-2.5">Pallet.method</th>
-                        <th className="px-4 py-2.5">Phase</th>
-                        <th className="px-4 py-2.5 text-right">Extrinsic</th>
-                        <th className="px-4 py-2.5">Args</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {chainEvents.map((event) => (
-                        <tr
-                          key={`${event.block_number}-${event.event_index}`}
-                          className="mg-row-accent hover:bg-surface"
-                        >
-                          <td className="px-4 py-2.5 text-11 text-ink-strong">
-                            {extrinsicCall(event.pallet, event.method)}
-                          </td>
-                          <td className="px-4 py-2.5 text-11 text-ink-muted">
-                            {event.phase ?? "—"}
-                          </td>
-                          <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink">
-                            {event.extrinsic_index != null
-                              ? formatNumber(event.extrinsic_index)
-                              : "—"}
-                          </td>
-                          <td className="px-4 py-2.5 text-11 text-ink-muted">
-                            <div className="flex max-w-xs items-center gap-1.5">
-                              <span className="truncate">{formatChainEventArgs(event.args)}</span>
-                              <CopyButton
-                                value={formatChainEventArgs(event.args)}
-                                label="args"
-                                compact
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </Panel>
-              )}
+              <DataTable
+                rows={chainEvents}
+                rowKey={(row) => `${row.block_number}-${row.event_index}`}
+                caption="Chain events"
+                captionHidden
+                loading={chainEventsQuery.isPending}
+                error={
+                  chainEventsQuery.error ? (
+                    <ErrorState
+                      error={chainEventsQuery.error}
+                      onRetry={() => {
+                        void chainEventsQuery.refetch();
+                      }}
+                      context="block chain events"
+                    />
+                  ) : undefined
+                }
+                empty={
+                  <EmptyState
+                    title="No chain events"
+                    description="This block has no decoded pallet events indexed yet, or the all-events backfill hasn't reached it."
+                  />
+                }
+                columns={[
+                  {
+                    key: "method",
+                    label: "Pallet.method",
+                    sortable: true,
+                    value: (row) => extrinsicCall(row.pallet, row.method),
+                  },
+                  { key: "phase", label: "Phase", value: (row) => row.phase ?? null },
+                  {
+                    key: "extrinsic",
+                    label: "Extrinsic",
+                    kind: "number",
+                    sortable: true,
+                    value: (row) => row.extrinsic_index ?? null,
+                  },
+                  {
+                    key: "args",
+                    label: "Args",
+                    value: (row) => formatChainEventArgs(row.args),
+                    render: (row) => (
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate">{formatChainEventArgs(row.args)}</span>
+                        <CopyButton value={formatChainEventArgs(row.args)} label="args" compact />
+                      </span>
+                    ),
+                  },
+                ]}
+              />
             </div>
           </details>
         </AnalyticsSection>
@@ -829,43 +790,51 @@ function GroupedEvents({
               </button>
               {isOpen ? (
                 <div className="border-t border-border bg-surface px-3 py-2">
-                  <table className="w-full text-left text-13">
-                    <thead>
-                      <tr className="text-10 text-ink-muted">
-                        <th className="px-2 py-1.5">Kind</th>
-                        {showHotkeyCol ? <th className="px-2 py-1.5">Hotkey</th> : null}
-                        <th className="px-2 py-1.5 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {g.list.map((event) => (
-                        <tr
-                          key={`${event.block_number}-${event.event_index}-${event.event_kind ?? "unknown"}`}
-                        >
-                          <td className="px-2 py-1.5 text-11 text-ink-strong">
-                            {eventKindLabel(event.event_kind)}
-                          </td>
-                          {showHotkeyCol ? (
-                            <td className="px-2 py-1.5 text-11 text-ink">
-                              <AddressDisplay
-                                ss58={event.hotkey}
-                                keep={10}
-                                compact
-                                fallback={<span className="text-ink-muted">—</span>}
-                              />
-                            </td>
-                          ) : null}
-                          <td className="px-2 py-1.5 text-right tabular-nums text-ink">
-                            {event.amount_tao != null ? (
-                              <TaoValue amount={event.amount_tao} layout="stacked" precision={4} />
-                            ) : (
-                              <span className="text-11 text-ink-muted">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <DataTable
+                    rows={g.list}
+                    rowKey={(event) =>
+                      `${event.block_number}-${event.event_index}-${event.event_kind ?? "unknown"}`
+                    }
+                    caption="Events in this extrinsic"
+                    captionHidden
+                    dense
+                    columns={[
+                      {
+                        key: "kind",
+                        label: "Kind",
+                        value: (event) => eventKindLabel(event.event_kind),
+                      },
+                      ...(showHotkeyCol
+                        ? [
+                            {
+                              key: "hotkey",
+                              label: "Hotkey",
+                              value: (event: (typeof g.list)[number]) => event.hotkey ?? null,
+                              render: (event: (typeof g.list)[number]) => (
+                                <AddressDisplay
+                                  ss58={event.hotkey}
+                                  keep={10}
+                                  compact
+                                  fallback={<span className="text-ink-muted">—</span>}
+                                />
+                              ),
+                            },
+                          ]
+                        : []),
+                      {
+                        key: "amount",
+                        label: "Amount",
+                        kind: "number" as const,
+                        value: (event: (typeof g.list)[number]) => event.amount_tao ?? null,
+                        render: (event: (typeof g.list)[number]) =>
+                          event.amount_tao == null ? (
+                            <span className="text-11 text-ink-muted">—</span>
+                          ) : (
+                            <TaoValue amount={event.amount_tao} layout="stacked" precision={4} />
+                          ),
+                      },
+                    ]}
+                  />
                 </div>
               ) : null}
             </li>

@@ -1,15 +1,17 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Crown, Swords } from "lucide-react";
 import { subnetConvictionQuery } from "@/lib/metagraphed/queries";
-import { CopyableCode } from "@jsonbored/ui-kit";
+import { CopyableCode, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import {
   rowGapPct,
   summarizeContest,
   type ContestStatus,
 } from "@/lib/metagraphed/conviction-contest";
+import type { SubnetConvictionEntry } from "@/lib/metagraphed/types";
 
 const UNITS_PER_WHOLE = 1_000_000_000;
 
@@ -55,6 +57,8 @@ const CHALLENGER_TONE: Record<
   uncontested: { label: null, className: "text-ink-muted", Icon: null },
 };
 
+const alpha = (value: unknown) => (typeof value === "number" ? fmtAlpha(value) : "—");
+
 /**
  * Live per-subnet ownership-contest leaderboard (#6638, frontend companion
  * #6715): who currently holds the most rolled conviction on this subnet --
@@ -76,6 +80,80 @@ const CHALLENGER_TONE: Record<
 export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
   const { data: res, isLoading, isError, error, refetch } = useQuery(subnetConvictionQuery(netuid));
   const data = res?.data;
+  const leaderboard = useMemo(() => data?.leaderboard ?? [], [data?.leaderboard]);
+
+  const king = data?.king ?? null;
+  const summary = useMemo(() => summarizeContest(leaderboard, king), [leaderboard, king]);
+  const challengerHotkey = summary.challenger?.hotkey ?? null;
+  const summaryKing = summary.king;
+  const status = summary.status;
+
+  const columns = useMemo<Array<DataTableColumn<SubnetConvictionEntry>>>(
+    () => [
+      {
+        key: "hotkey",
+        label: "Hotkey",
+        value: (entry) => entry.hotkey,
+        render: (entry) => {
+          const isKing = king != null && entry.hotkey === king;
+          const isChallenger = entry.hotkey === challengerHotkey;
+          const gap = rowGapPct(entry, summaryKing);
+          const tone = isChallenger ? CHALLENGER_TONE[status] : null;
+          const showLabel = isChallenger && tone?.label != null;
+          return (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                {isKing ? (
+                  <Crown
+                    aria-label="Top-ranked (king)"
+                    className="size-3.5 shrink-0 text-health-warn"
+                  />
+                ) : null}
+                <CopyableCode value={entry.hotkey} className="max-w-full" />
+                {entry.is_owner ? (
+                  <span className="shrink-0 rounded border border-border px-1.5 py-0.5 text-13 text-ink-muted">
+                    owner
+                  </span>
+                ) : null}
+              </div>
+              {!isKing && gap != null ? (
+                <div
+                  className={classNames(
+                    "flex items-center gap-1.5 text-11 tabular-nums",
+                    tone?.className ?? "text-ink-muted",
+                  )}
+                >
+                  {showLabel && tone?.Icon ? (
+                    <tone.Icon aria-hidden className="size-3 shrink-0" />
+                  ) : null}
+                  <span className={showLabel ? "font-medium" : undefined}>
+                    {fmtGapPct(gap)} behind{showLabel ? ` · ${tone.label}` : ""}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          );
+        },
+      },
+      {
+        key: "locked_mass",
+        label: "Locked mass",
+        kind: "number",
+        sortable: true,
+        value: (entry) => entry.locked_mass,
+        format: alpha,
+      },
+      {
+        key: "conviction",
+        label: "Conviction",
+        kind: "number",
+        sortable: true,
+        value: (entry) => entry.conviction,
+        format: alpha,
+      },
+    ],
+    [king, challengerHotkey, summaryKing, status],
+  );
 
   if (isError) {
     return <ErrorState error={error} onRetry={() => refetch()} context="subnet conviction" />;
@@ -84,26 +162,6 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
   if (isLoading) {
     return <Skeleton className="h-40 w-full" />;
   }
-
-  const leaderboard = data?.leaderboard ?? [];
-
-  if (leaderboard.length === 0) {
-    return (
-      <EmptyState
-        title="No active challengers"
-        description="Conviction leaderboard entries appear once an account locks alpha to build conviction on this subnet -- most subnets have none at any given time."
-      />
-    );
-  }
-
-  const summary = summarizeContest(leaderboard, data?.king ?? null);
-  const challengerHotkey = summary.challenger?.hotkey ?? null;
-  const rowTint =
-    summary.status === "takeover-imminent"
-      ? "bg-health-down/5"
-      : summary.status === "contested"
-        ? "bg-health-warn/5"
-        : null;
 
   return (
     <div className="space-y-3">
@@ -114,82 +172,19 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
           {data.maturity_rate != null ? ` · maturity_rate ${formatNumber(data.maturity_rate)}` : ""}
         </p>
       ) : null}
-      <Panel flush className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-13">
-            <thead className="bg-surface">
-              <tr>
-                <th className="px-4 py-2.5 text-ink-muted">Hotkey</th>
-                <th className="px-4 py-2.5 text-right text-ink-muted">Locked mass</th>
-                <th className="px-4 py-2.5 text-right text-ink-muted">Conviction</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {leaderboard.map((entry) => {
-                const isKing = data?.king != null && entry.hotkey === data.king;
-                const isChallenger = entry.hotkey === challengerHotkey;
-                const gap = rowGapPct(entry, summary.king);
-                const tone = isChallenger ? CHALLENGER_TONE[summary.status] : null;
-                const showLabel = isChallenger && tone?.label != null;
-                return (
-                  <tr
-                    key={entry.hotkey}
-                    className={classNames(
-                      "mg-row-accent hover:bg-surface",
-                      isChallenger && rowTint ? rowTint : null,
-                    )}
-                  >
-                    <td className="px-4 py-2.5 align-top">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          {isKing ? (
-                            <Crown
-                              aria-label="Top-ranked (king)"
-                              className="size-3.5 shrink-0 text-health-warn"
-                            />
-                          ) : null}
-                          <CopyableCode value={entry.hotkey} className="max-w-full" />
-                          {entry.is_owner ? (
-                            <span
-                              className={classNames(
-                                "shrink-0 rounded border border-border px-1.5 py-0.5 text-13 text-ink-muted",
-                              )}
-                            >
-                              owner
-                            </span>
-                          ) : null}
-                        </div>
-                        {!isKing && gap != null ? (
-                          <div
-                            className={classNames(
-                              "flex items-center gap-1.5 text-11 tabular-nums",
-                              tone?.className ?? "text-ink-muted",
-                            )}
-                          >
-                            {showLabel && tone?.Icon ? (
-                              <tone.Icon aria-hidden className="size-3 shrink-0" />
-                            ) : null}
-                            <span className={showLabel ? "font-medium" : undefined}>
-                              {fmtGapPct(gap)} behind
-                              {showLabel ? ` · ${tone.label}` : ""}
-                            </span>
-                          </div>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 align-top text-right font-mono text-13 tabular-nums text-ink">
-                      {fmtAlpha(entry.locked_mass)}
-                    </td>
-                    <td className="px-4 py-2.5 align-top text-right font-mono text-13 tabular-nums text-ink-strong">
-                      {fmtAlpha(entry.conviction)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
+      <DataTable
+        rows={leaderboard}
+        columns={columns}
+        rowKey={(entry) => entry.hotkey}
+        caption="Conviction leaderboard"
+        link={RouterLink}
+        empty={
+          <EmptyState
+            title="No active challengers"
+            description="Conviction leaderboard entries appear once an account locks alpha to build conviction on this subnet -- most subnets have none at any given time."
+          />
+        }
+      />
     </div>
   );
 }

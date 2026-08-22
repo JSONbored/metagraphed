@@ -10,7 +10,6 @@ import {
   safeExternalUrl,
   CurationChip,
   HealthPill,
-  ShareButton,
   TimeAgo,
 } from "@jsonbored/ui-kit";
 import { StaleBanner } from "@/components/metagraphed/states";
@@ -506,7 +505,6 @@ export function SubnetMasthead({
               >
                 <Code2 className="size-4" />
               </button>
-              <ShareButton connected />
             </Panel>
           }
         </div>

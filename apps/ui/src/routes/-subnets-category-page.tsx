@@ -1,14 +1,10 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { AsyncPanel, Panel, TableSkeleton } from "@/components/metagraphed/primitives";
-import {
-  StatusBadge,
-  type HealthStatus,
-  SectionHead,
-  EntityHero,
-  FactSentence,
-} from "@jsonbored/ui-kit";
+import { AsyncPanel } from "@/components/metagraphed/primitives";
+import { Skeleton } from "@/components/metagraphed/states";
+import { DataTable, SectionHead, EntityHero, FactSentence } from "@jsonbored/ui-kit";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { SUBNETS_ALL_LIMIT, subnetsQuery } from "@/lib/metagraphed/queries";
 import { categoryCopy, MIN_CATEGORY_SUBNETS } from "@/lib/metagraphed/subnet-categories";
 import type { Subnet } from "@/lib/metagraphed/types";
@@ -58,51 +54,43 @@ function CategoryTable({ slug }: { slug: string }) {
         name={`${copy.label} on Bittensor today`}
         question={`${rows.length} subnets are classified under ${copy.label.toLowerCase()}. ${withSpec} publish at least one first-party interface and ${probed} have a surface that answered our most recent probe. ${copy.guidance}`}
       />
-      <Panel>
-        <table className="w-full text-left text-10">
-          <caption className="sr-only">
-            Bittensor {copy.label.toLowerCase()} subnets, ranked by integration readiness
-          </caption>
-          <thead>
-            <tr className="border-b border-border text-ink-muted">
-              <th scope="col" className="px-3 py-2">
-                Subnet
-              </th>
-              <th scope="col" className="px-3 py-2">
-                Readiness
-              </th>
-              <th scope="col" className="px-3 py-2">
-                Surfaces
-              </th>
-              <th scope="col" className="px-3 py-2">
-                Health
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.netuid} className="border-b border-border/60">
-                <th scope="row" className="px-3 py-2">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: row.netuid }}
-                    className="text-accent-text hover:underline"
-                  >
-                    SN{row.netuid} {row.name ?? ""}
-                  </Link>
-                </th>
-                <td className="px-3 py-2 tabular-nums">{row.integration_readiness ?? "—"}</td>
-                <td className="px-3 py-2 tabular-nums">
-                  {row.official_surface_count ?? 0}/{row.surface_count ?? 0}
-                </td>
-                <td className="px-3 py-2">
-                  <StatusBadge status={(row.status as HealthStatus) ?? "unknown"} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
+      <DataTable
+        rows={rows}
+        rowKey={(row) => String(row.netuid)}
+        caption={`Bittensor ${copy.label.toLowerCase()} subnets, ranked by integration readiness`}
+        source="subnet-category"
+        link={RouterLink}
+        rowHref={(row) => `/subnets/${row.netuid}`}
+        columns={[
+          {
+            key: "subnet",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => `SN${row.netuid}${row.name ? ` ${row.name}` : ""}`,
+          },
+          {
+            key: "readiness",
+            label: "Readiness",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.integration_readiness ?? null,
+          },
+          {
+            key: "surfaces",
+            label: "Surfaces",
+            sortable: true,
+            value: (row) => row.official_surface_count ?? 0,
+            format: (_value, row) => `${row.official_surface_count ?? 0}/${row.surface_count ?? 0}`,
+          },
+          {
+            key: "health",
+            label: "Health",
+            kind: "status",
+            sortable: true,
+            value: (row) => (typeof row.status === "string" ? row.status : "unknown"),
+          },
+        ]}
+      />
       <div className="mt-10">
         <SectionHead
           name={`What "${copy.label.toLowerCase()}" means here`}
@@ -126,7 +114,7 @@ export function SubnetCategoryPage() {
         name={`${copy.label} subnets`}
         sentence={<FactSentence>{copy.summary}</FactSentence>}
       />
-      <AsyncPanel context="subnet-category" fallback={<TableSkeleton rows={8} columns={4} />}>
+      <AsyncPanel context="subnet-category" fallback={<Skeleton className="h-64 w-full" />}>
         <CategoryTable slug={slug} />
       </AsyncPanel>
     </AppShell>

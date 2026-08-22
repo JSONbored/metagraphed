@@ -10,9 +10,9 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import {
   BrandIcon,
+  DataTable,
   TimeAgo,
   CurationChip,
-  HealthPill,
   CopyableCode,
   CopyButton,
   ClaudeIcon,
@@ -38,6 +38,7 @@ import { RecentIdentityChanges } from "@/components/metagraphed/recent-identity-
 import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
 import { HeroFeatureRow } from "@/components/metagraphed/hero-feature-row";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { RouterLink } from "@/components/metagraphed/router-link";
 
 import {
   blocksQuery,
@@ -261,7 +262,7 @@ export function OverviewPage() {
             </div>
             <AsyncPanel
               context="subnets"
-              fallback={<TableSkeleton />}
+              fallback={<Skeleton className="h-80 w-full" />}
               retryQueryKeys={[subnetsQuery({ limit: 12 }).queryKey]}
             >
               <SubnetPreviewTable />
@@ -754,18 +755,6 @@ function PerfCard({
   );
 }
 
-function TableSkeleton() {
-  return (
-    <Panel flush className="overflow-hidden">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="border-b border-border last:border-b-0 px-4 py-3">
-          <Skeleton className="h-4 w-full" />
-        </div>
-      ))}
-    </Panel>
-  );
-}
-
 function SubnetPreviewTable() {
   const { data, refetch } = useSuspenseQuery(subnetsQuery({ limit: 12 }));
   // Best-effort overlays: the subnet list is the hard dependency for this table,
@@ -787,85 +776,93 @@ function SubnetPreviewTable() {
     }
   }
 
-  if (!Array.isArray(subnets) || subnets.length === 0) {
-    return (
-      <EmptyState
-        title="No subnets returned"
-        description="The API responded but returned an empty list."
-      />
-    );
-  }
-
+  const preview = Array.isArray(subnets) ? subnets.slice(0, 12) : [];
   const total = coverage?.netuids_active ?? coverage?.netuids_total;
 
   return (
-    <Panel flush className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface text-10 text-ink-muted">
-            <tr>
-              <th className="px-4 py-3">UID</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Symbol</th>
-              <th className="px-4 py-3 text-right">Participants</th>
-              <th className="px-4 py-3">Curation</th>
-              <th className="px-4 py-3 text-right">Surfaces</th>
-              <th className="px-4 py-3">Health</th>
-              <th className="px-4 py-3 text-right">Updated</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {subnets.slice(0, 12).map((s) => (
-              <tr key={s.netuid} className="mg-row-hover">
-                <td className="px-4 py-3 font-mono text-13 text-ink-muted">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: s.netuid }}
-                    className="hover:text-accent transition-colors"
-                  >
-                    {String(s.netuid).padStart(3, "0")}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: s.netuid }}
-                    className="inline-flex items-center gap-2 font-medium text-ink-strong hover:text-accent transition-colors"
-                  >
-                    <BrandIcon
-                      size={20}
-                      name={s.name ?? `Subnet ${s.netuid}`}
-                      fallback={s.netuid}
-                      url={s.website}
-                      netuid={s.netuid}
-                    />
-                    <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-11 text-ink-muted">{s.symbol ?? "—"}</td>
-                <td className="px-4 py-3 text-right font-mono text-13 text-ink">
-                  {formatNumber(s.participants)}
-                </td>
-                <td className="px-4 py-3">
-                  <CurationChip level={s.curation_level} />
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-13">
-                  {s.surfaces_count ?? "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <HealthPill state={healthBySubnet.get(s.netuid) ?? s.health ?? "unknown"} />
-                </td>
-                <td className="px-4 py-3 text-right text-11 text-ink-muted">
-                  <TimeAgo at={s.updated_at ?? s.freshness} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="border-t border-border bg-surface px-4 py-2.5 flex justify-between text-11 text-ink-muted">
+    <>
+      <DataTable
+        rows={preview}
+        rowKey={(s) => String(s.netuid)}
+        caption="Active subnets"
+        captionHidden
+        source="home-subnets"
+        link={RouterLink}
+        rowHref={(s) => `/subnets/${s.netuid}`}
+        empty={
+          <EmptyState
+            title="No subnets returned"
+            description="The API responded but returned an empty list."
+          />
+        }
+        columns={[
+          {
+            key: "netuid",
+            label: "UID",
+            sortable: true,
+            value: (s) => s.netuid,
+            format: (_value, s) => String(s.netuid).padStart(3, "0"),
+          },
+          {
+            key: "name",
+            label: "Name",
+            sortable: true,
+            value: (s) => s.name ?? `Subnet ${s.netuid}`,
+            render: (s) => (
+              <span className="inline-flex items-center gap-2 text-ink-strong">
+                <BrandIcon
+                  size={20}
+                  name={s.name ?? `Subnet ${s.netuid}`}
+                  fallback={s.netuid}
+                  url={s.website}
+                  netuid={s.netuid}
+                />
+                <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
+              </span>
+            ),
+          },
+          { key: "symbol", label: "Symbol", sortable: true, value: (s) => s.symbol ?? null },
+          {
+            key: "participants",
+            label: "Participants",
+            kind: "number",
+            sortable: true,
+            value: (s) => s.participants ?? null,
+            format: (value) => formatNumber(typeof value === "number" ? value : null),
+          },
+          {
+            key: "curation",
+            label: "Curation",
+            value: (s) => s.curation_level ?? null,
+            render: (s) => <CurationChip level={s.curation_level} />,
+          },
+          {
+            key: "surfaces",
+            label: "Surfaces",
+            kind: "number",
+            sortable: true,
+            value: (s) => s.surfaces_count ?? null,
+          },
+          {
+            key: "health",
+            label: "Health",
+            kind: "status",
+            sortable: true,
+            value: (s) => healthBySubnet.get(s.netuid) ?? s.health ?? "unknown",
+          },
+          {
+            key: "updated",
+            label: "Updated",
+            kind: "time",
+            sortable: true,
+            align: "right",
+            value: (s) => s.updated_at ?? s.freshness ?? null,
+          },
+        ]}
+      />
+      <div className="mt-2 flex justify-between text-11 text-ink-muted">
         <span>
-          Showing {Math.min(12, subnets.length)}
+          Showing {preview.length}
           {total ? ` of ${formatNumber(total)}` : ""} ·{" "}
           <Link to="/subnets" className="hover:text-accent underline underline-offset-2">
             view all
@@ -875,7 +872,7 @@ function SubnetPreviewTable() {
           refresh
         </button>
       </div>
-    </Panel>
+    </>
   );
 }
 

@@ -71,30 +71,38 @@ describe("alpha is displayed in the unit the API serves", () => {
 });
 
 describe("it reads as a leaderboard, not a list of labelled fields", () => {
-  it("renders a rank at both breakpoints", () => {
+  it("carries a rank derived from the list order", () => {
     // The first version had none: the order carried all the meaning and a
-    // reader had to count rows to recover it.
-    expect(component).toMatch(/\{i \+ 1\}/);
-    expect(component).toMatch(/holders\.map\(\(entry, i\) =>/);
+    // reader had to count rows to recover it. It is now a real column, so it
+    // survives the reader re-sorting the table on another key.
+    expect(component).toMatch(
+      /holders\.map\(\(entry, i\) => \(\{ \.\.\.entry, rank: i \+ 1 \}\)\)/,
+    );
+    expect(component).toMatch(/key: "rank"/);
   });
 
-  it("encodes share as a bar, not only a percentage", () => {
+  it("encodes share as a tint, not only a percentage", () => {
     // Concentration is the question this section exists to answer, and a column
-    // of percentages does not answer it at a glance. Both breakpoints get the
-    // bar so they say the same thing.
-    const bars = component.match(/style=\{\{ width: `\$\{Math\.min\(100,/g) ?? [];
-    expect(bars.length).toBe(2);
+    // of percentages does not answer it at a glance. The `tint` cell kind
+    // paints the cell in proportion to the share at every breakpoint, so both
+    // say the same thing without a hand-rolled bar.
+    const share = component.slice(component.indexOf('key: "share"'));
+    expect(share.slice(0, 400)).toContain('kind: "tint"');
+    expect(share.slice(0, 400)).toMatch(/tint: \(entry\) => entry\.share_of_total/);
   });
 
-  it("marks the bar aria-hidden, since the percentage is the value", () => {
-    // Redundant encoding, not the only one -- a screen reader gets the number.
-    const at = component.indexOf("rounded bg-border/60");
-    expect(component.slice(Math.max(0, at - 260), at)).toContain("aria-hidden");
+  it("keeps the share's accessible value the percentage, not the tint", () => {
+    // The tint is a redundant encoding -- the cell text a screen reader gets is
+    // still pctStr, never a bare fraction.
+    const share = component.slice(component.indexOf('key: "share"'));
+    expect(share.slice(0, 400)).toMatch(/format: \(v\) => pctStr\(/);
   });
 
-  it("shows the hotkey count only when it says something", () => {
-    // A "1" on every row is noise, and null means unread rather than one.
-    expect(component).toMatch(/entry\.hotkey_count != null && entry\.hotkey_count > 1/);
+  it("renders a missing hotkey count as an em dash rather than a 1", () => {
+    // null means unread rather than one, and formatNumber's own fallback is
+    // the em dash -- never a fabricated count.
+    expect(component).toMatch(/value: \(entry\) => entry\.hotkey_count/);
+    expect(component).toMatch(/formatNumber\(typeof v === "number" \? v : null\)/);
   });
 });
 
@@ -125,8 +133,9 @@ describe("the summary is labelled stats, not a run-on strip", () => {
     // LIST, not about the subnet, so they belong with it.
     expect(component).toMatch(/Showing the top \$\{formatNumber\(shown\)\}/);
     const footerAt = component.indexOf("Showing the top");
-    const panelEnd = component.indexOf("</Panel>");
-    expect(footerAt).toBeGreaterThan(panelEnd);
+    const tableAt = component.indexOf("<DataTable");
+    expect(tableAt).toBeGreaterThan(-1);
+    expect(footerAt).toBeGreaterThan(tableAt);
   });
 });
 

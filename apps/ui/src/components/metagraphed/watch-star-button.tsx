@@ -25,13 +25,11 @@ export function WatchStarButton({
   /** Entity noun for the accessible name, e.g. "SN64" or a validator name. */
   label: string;
   /**
-   * Drop the "Watch"/"Watched" text and render just the star, matching
-   * `ShareButton bare iconOnly` exactly (same padding, min-height, icon size,
-   * and hover treatment) so the two sit in an ActionBar as one uniform pair
-   * of icon segments instead of a labelled pill beside an icon. A star is a
-   * universally-recognized affordance; the label still reaches assistive tech
-   * via `aria-label`/`title`, and the watched state stays legible through the
-   * filled/accent icon.
+   * Drop the "Watch"/"Watched" text and render just the star, so it sits in an
+   * action row as an icon segment rather than a labelled pill beside its icon
+   * neighbours. A star is a universally-recognized affordance; the label still
+   * reaches assistive tech via `aria-label`/`title`, and the watched state
+   * stays legible through the filled/accent icon.
    */
   iconOnly?: boolean;
 }) {

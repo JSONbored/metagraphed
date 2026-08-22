@@ -27,7 +27,7 @@ type RuntimeUpgradeCardListProps = {
  * 3-column table is undiscoverably clipped behind horizontal scroll on a narrow
  * viewport, so below `md` each upgrade renders as a stacked card instead —
  * mirroring the `md:hidden` card path every other tabular list page provides
- * (validators, leaderboards, providers, ListShell tables).
+ * (validators, leaderboards, providers, DataTable lists).
  */
 export function RuntimeUpgradeCardList({ rows, className }: RuntimeUpgradeCardListProps) {
   return (

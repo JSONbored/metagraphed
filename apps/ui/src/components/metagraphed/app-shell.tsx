@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { captureEvent } from "@/lib/analytics";
 import { useQuery } from "@tanstack/react-query";
 import { Github, Menu, Rss, Search } from "lucide-react";
 import {
@@ -22,7 +21,6 @@ import {
   Sheet,
   SheetContent,
   SheetTitle,
-  SHARE_COPIED_EVENT,
 } from "@jsonbored/ui-kit";
 import { SettingsPopover, SettingsPanel } from "./settings-popover";
 import { classNames } from "@/lib/metagraphed/format";
@@ -117,13 +115,6 @@ export function AppShell({
     const v = visitFromPath(pathname);
     if (v) pushRecentVisit(v);
   }, [pathname]);
-
-  // One global listener for ui-kit's share-copied announcement.
-  useEffect(() => {
-    const onShareCopied = () => captureEvent("share_copied");
-    window.addEventListener(SHARE_COPIED_EVENT, onShareCopied);
-    return () => window.removeEventListener(SHARE_COPIED_EVENT, onShareCopied);
-  }, []);
 
   // Publish the live header height as --mg-sticky-offset so sticky sub-nav /
   // toolbars pin flush against the chrome.

@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { ShareButton, SectionHead, EntityHero, FactSentence } from "@jsonbored/ui-kit";
+import { SectionHead, EntityHero, FactSentence } from "@jsonbored/ui-kit";
 import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { AgentContextCard } from "@/components/metagraphed/agent-context-card";
 import { AgentConnectCard } from "@/components/metagraphed/agent-connect-card";
@@ -18,11 +18,6 @@ export function AgentsPage() {
     <AppShell>
       <EntityHero
         name="Use AI to explore Bittensor"
-        action={
-          <div className="mg-actions">
-            <ShareButton bare />
-          </div>
-        }
         sentence={
           <FactSentence>
             Point any agent at metagraphed — over MCP, a typed SDK, or plain HTTP — and it can find,

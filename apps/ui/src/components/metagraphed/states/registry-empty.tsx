@@ -80,7 +80,7 @@ const TONE = {
  *
  * Scope: registry-PROVENANCE content specifically — the badge + freshness +
  * evidence rows are the point. For plain list/grid emptiness use `EmptyState`,
- * and for paginated-table emptiness use `TableState`; see the empty-state
+ * and a table passes one of those to its own `empty`/`error` slot; see the empty-state
  * decision rule above `EmptyState` in `../states.tsx` (#3962).
  */
 export function RegistryEmpty({

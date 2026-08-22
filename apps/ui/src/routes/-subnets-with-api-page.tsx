@@ -1,14 +1,9 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { AsyncPanel, Panel, TableSkeleton } from "@/components/metagraphed/primitives";
-import {
-  StatusBadge,
-  type HealthStatus,
-  SectionHead,
-  EntityHero,
-  FactSentence,
-} from "@jsonbored/ui-kit";
+import { AsyncPanel } from "@/components/metagraphed/primitives";
+import { Skeleton } from "@/components/metagraphed/states";
+import { DataTable, SectionHead, EntityHero, FactSentence } from "@jsonbored/ui-kit";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { HubSections, hubLede } from "@/components/metagraphed/hub-prose";
 import { agentCatalogMapQuery } from "@/lib/metagraphed/queries";
 import type { AgentCatalogSummary } from "@/lib/metagraphed/types";
@@ -72,54 +67,47 @@ function WithApiTable() {
           `computed from this registry's own 15-minute probe cycle, not from operator claims.`
         }
       />
-      <Panel>
-        <table className="w-full text-left text-10">
-          <caption className="sr-only">
-            Bittensor subnets publishing a machine-readable API specification, ranked by integration
-            readiness
-          </caption>
-          <thead>
-            <tr className="border-b border-border text-ink-muted">
-              <th scope="col" className="px-3 py-2">
-                Subnet
-              </th>
-              <th scope="col" className="px-3 py-2">
-                Readiness
-              </th>
-              <th scope="col" className="px-3 py-2">
-                Services
-              </th>
-              <th scope="col" className="px-3 py-2">
-                Last probe
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.netuid} className="border-b border-border/60">
-                <th scope="row" className="px-3 py-2">
-                  {/* A real anchor per row: this page's second job is linking
-                      the subnet pages, and #11231 is what happens without it. */}
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: row.netuid }}
-                    className="text-accent-text hover:underline"
-                  >
-                    SN{row.netuid} {row.name ?? ""}
-                  </Link>
-                </th>
-                <td className="px-3 py-2 tabular-nums">{row.integration_readiness ?? "—"}</td>
-                <td className="px-3 py-2 tabular-nums">
-                  {row.callable_count ?? 0}/{row.service_count ?? 0}
-                </td>
-                <td className="px-3 py-2">
-                  <StatusBadge status={(row.health as HealthStatus) ?? "unknown"} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
+      {/* A real anchor per row: this page's second job is linking the subnet
+          pages, and #11231 is what happens without it. `paginate={false}` keeps
+          every one of them in the server-rendered HTML. */}
+      <DataTable
+        rows={rows}
+        rowKey={(row) => String(row.netuid)}
+        caption="Bittensor subnets publishing a machine-readable API specification, ranked by integration readiness"
+        source="subnets-with-api"
+        link={RouterLink}
+        rowHref={(row) => `/subnets/${row.netuid}`}
+        paginate={false}
+        columns={[
+          {
+            key: "subnet",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => `SN${row.netuid}${row.name ? ` ${row.name}` : ""}`,
+          },
+          {
+            key: "readiness",
+            label: "Readiness",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.integration_readiness ?? null,
+          },
+          {
+            key: "services",
+            label: "Services",
+            sortable: true,
+            value: (row) => row.callable_count ?? 0,
+            format: (_value, row) => `${row.callable_count ?? 0}/${row.service_count ?? 0}`,
+          },
+          {
+            key: "health",
+            label: "Last probe",
+            kind: "status",
+            sortable: true,
+            value: (row) => row.health ?? "unknown",
+          },
+        ]}
+      />
     </>
   );
 }
@@ -131,7 +119,7 @@ export function SubnetsWithApiPage() {
         name="Subnets with an API spec"
         sentence={<FactSentence>{hubLede("/subnets/with-api")}</FactSentence>}
       />
-      <AsyncPanel context="subnets-with-api" fallback={<TableSkeleton rows={10} columns={4} />}>
+      <AsyncPanel context="subnets-with-api" fallback={<Skeleton className="h-80 w-full" />}>
         <WithApiTable />
       </AsyncPanel>
       <HubSections path="/subnets/with-api" />

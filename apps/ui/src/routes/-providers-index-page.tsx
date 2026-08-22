@@ -1,24 +1,14 @@
-import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ProvidersSearch } from "./apis.providers";
 import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Globe, Github, BookOpen, Radio, Layers, Network } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ProviderIndexDirectory } from "@/components/metagraphed/provider-index-directory";
-import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import {
-  AsyncPanel,
-  FilterChipRow,
-  PanelSkeleton,
-  FilterSheet,
-  QueryBar,
-  QueryProgress,
-  type FilterChipItem,
-} from "@/components/metagraphed/primitives";
-import { CopyLinkButton } from "@/components/metagraphed/primitives/copy-link-button";
-import { LoadMore, ResponsiveTable } from "@jsonbored/ui-kit";
-import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
+import { AsyncPanel, PanelSkeleton, QueryProgress } from "@/components/metagraphed/primitives";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { ResetFiltersButton, SelectFilter } from "@/components/metagraphed/table-controls";
 import {
   providersQuery,
   endpointsQuery,
@@ -29,17 +19,7 @@ import {
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
-import { buildUrl } from "@/lib/metagraphed/client";
-import { resolveProviderCard } from "@/lib/metagraphed/provider-card-fields";
-import { APIS_HUB_PAGE_STEP, nextListLimit } from "@/lib/metagraphed/list-page-window";
-import {
-  BrandIcon,
-  prefetchBrandIcon,
-  ViewModeToggle,
-  ShareButton,
-  DownloadCsvButton,
-  TimeAgo,
-} from "@jsonbored/ui-kit";
+import { BrandIcon, DataTable, prefetchBrandIcon, type SortState } from "@jsonbored/ui-kit";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { ProvidersPulseRail } from "@/components/metagraphed/providers-pulse-rail";
 import type { Provider } from "@/lib/metagraphed/types";
@@ -48,54 +28,18 @@ import { providerSortKeys } from "./apis.providers";
 import { ApisTabActions } from "./-apis-hub";
 import { cancelIdle, requestIdle } from "@/lib/metagraphed/idle";
 
-/** The layouts this route offers, and the two its search schema accepts. */
-const PROVIDER_VIEWS = ["table", "grid"] as const;
-
-function isProviderView(value: string): value is (typeof PROVIDER_VIEWS)[number] {
-  return PROVIDER_VIEWS.some((view) => view === value);
-}
-
 export function ProvidersPage() {
   const search = useSearch({ from: "/apis/providers" }) as ProvidersSearch;
   const navigate = useNavigate({ from: "/apis/providers" });
-  const view = search.view ?? "table";
   const filtersActive = Boolean(
     search.q || search.kind || search.authority || (search.sort && search.sort !== "name"),
   );
-  const onReset = () => navigate({ search: { view: search.view }, replace: true });
-  // This page fetches the full provider list once and filters/sorts client-side,
-  // so the CSV export hits the backend route directly (full provider snapshot, no
-  // client filters) — same shape as endpoints.tsx. Forwarding the page's own
-  // search state would also break: `authority=high` is a nav shortcut (official +
-  // provider-claimed) and the surfaces/endpoints/subnets/updated sort keys are
-  // client-only, none of which are valid /api/v1/providers query values — the
-  // route rejects them with 400 invalid_query.
-  const providersCsvUrl = buildUrl("/api/v1/providers");
+  const onReset = () => navigate({ search: {}, replace: true });
   return (
     <>
       <ApisTabActions>
-        <ViewModeToggle
-          value={view}
-          options={[...PROVIDER_VIEWS]}
-          onChange={(v) => {
-            // ui-kit's ViewMode is "table" | "grid" | "matrix"; this toggle is
-            // configured with two of the three, and this route's search schema
-            // accepts exactly those two. The guard cannot fail as configured --
-            // it exists so that adding a third option here without widening the
-            // schema is a no-op rather than a value the schema silently
-            // `.catch()`es back to its default, which looks identical to the
-            // user and leaves a wrong ?view= in a shared URL.
-            if (!isProviderView(v)) return;
-            navigate({
-              search: (prev) => ({ ...prev, view: v }),
-              replace: true,
-            });
-          }}
-        />
         <div className="mg-actions">
           <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
-          <DownloadCsvButton url={providersCsvUrl} bare />
-          <ShareButton bare />
         </div>
       </ApisTabActions>
       <AsyncPanel
@@ -107,18 +51,18 @@ export function ProvidersPage() {
       </AsyncPanel>
       <AsyncPanel
         context="providers"
-        fallback={<ProvidersSkeleton />}
+        fallback={<Skeleton className="h-80 w-full" />}
         retryQueryKeys={[
           metagraphedQueryKey("providers"),
           metagraphedQueryKey("source-health-providers"),
         ]}
       >
-        <ProvidersGrid view={view} />
+        <ProvidersTable />
       </AsyncPanel>
-      {/* #11204: the grid above renders one screenful into the server-rendered
-          HTML, so 113 of 138 provider pages had no internal link anywhere on
-          the site. This is the complete index — see the component for why it is
-          not a duplicate of the grid. */}
+      {/* #11204: the list above renders every provider into the server-rendered
+          HTML (`paginate={false}`), so no provider page is left without an
+          internal link. This alphabetical directory is the second entry point —
+          see the component for why it is not a duplicate of the table. */}
       <AsyncPanel
         context="provider index"
         fallback={<PanelSkeleton height="sm" className="mt-8" />}
@@ -133,26 +77,6 @@ export function ProvidersPage() {
       {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
       <HubSections path="/apis/providers" />
     </>
-  );
-}
-
-function ProvidersSkeleton() {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Panel className="animate-pulse h-[180px]" key={i}>
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded bg-surface" />
-            <div className="flex-1 space-y-2">
-              <div className="h-2.5 w-1/2 rounded bg-surface" />
-              <div className="h-3 w-2/3 rounded bg-surface" />
-              <div className="h-2 w-1/3 rounded bg-surface" />
-            </div>
-          </div>
-          <div className="mt-4 h-8 rounded bg-surface" />
-        </Panel>
-      ))}
-    </div>
   );
 }
 
@@ -178,7 +102,7 @@ function authorityTone(a?: string): string {
   }
 }
 
-function ProvidersGrid({ view }: { view: "grid" | "table" }) {
+function ProvidersTable() {
   const search = useSearch({ from: "/apis/providers" }) as ProvidersSearch;
   const navigate = useNavigate({ from: "/apis/providers" });
   const setSearch = (patch: Record<string, unknown>) =>
@@ -256,37 +180,6 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
     return arr;
   }, [filtered, sortKey, counts]);
 
-  // #8360: bound DOM at 25 rows/cards; filters/sort still run over the full set.
-  // One effect owns both filter-reset and `#provider-{slug}` expansion so a
-  // deep-link past page 1 cannot be clobbered by a same-tick reset (#8420).
-  const location = useLocation();
-  const [listLimit, setListLimit] = useState(APIS_HUB_PAGE_STEP);
-  const filterKey = `${q}\0${kind}\0${authority}\0${sortKey}`;
-  const prevFilterKeyRef = useRef(filterKey);
-  useEffect(() => {
-    const filtersChanged = prevFilterKeyRef.current !== filterKey;
-    prevFilterKeyRef.current = filterKey;
-    const hash = location.hash?.replace(/^#/, "") ?? "";
-    const m = /^provider-(.+)$/.exec(hash);
-    const slug = m ? decodeURIComponent(m[1]!) : null;
-    const idx = slug ? sorted.findIndex((p) => p.slug === slug) : -1;
-    setListLimit((prev) =>
-      nextListLimit({
-        prev,
-        filtersChanged,
-        targetIndex: idx,
-        step: APIS_HUB_PAGE_STEP,
-      }),
-    );
-    if (slug && idx >= 0) {
-      const id = `provider-${slug}`;
-      requestAnimationFrame(() => {
-        document.getElementById(id)?.scrollIntoView({ block: "nearest" });
-      });
-    }
-  }, [filterKey, location.hash, sorted]);
-  const visible = useMemo(() => sorted.slice(0, listLimit), [sorted, listLimit]);
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handle = requestIdle(() => {
@@ -314,6 +207,17 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
 
   const hasFilters = Boolean(q || kind || authority || (sortKey && sortKey !== "name"));
 
+  // The route's sort is a bare key with no direction: names read A→Z and every
+  // tally reads high→low. `sorted` above is already in that order, so the table
+  // is handed rows it must not re-sort — passing `onSort` is what tells it so.
+  const sortState: SortState = { key: sortKey, dir: sortKey === "name" ? "asc" : "desc" };
+  const onSort = (next: SortState | null) =>
+    setSearch({
+      sort: (next && (providerSortKeys as readonly string[]).includes(next.key)
+        ? next.key
+        : "name") as ProviderSortKey,
+    });
+
   return (
     <div className="space-y-3">
       {stale ? (
@@ -325,23 +229,35 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
 
       <SourceHealthRollup />
 
-      <div className="sticky top-[var(--mg-sticky-offset)] z-[var(--mg-z-raised)] bg-paper py-2">
-        <QueryBar ariaLabel="Provider directory filters">
-          <QueryBar.Search
-            value={q}
-            onChange={(v) => setSearch({ q: v })}
-            placeholder="Search providers, slugs, hosts…"
-            debounceMs={200}
-            shortcut
-          />
-          <div className="hidden items-center md:flex">
-            <QueryBar.FilterTrigger
+      <QueryProgress active={isFetchingProviders} position="sticky" />
+
+      {/* `paginate={false}`: every provider ships in the server-rendered HTML,
+          which is what tests/e2e/crawlable-subnet-index.spec.ts asserts. */}
+      <DataTable
+        rows={sorted}
+        rowKey={(p) => p.slug}
+        caption="Provider directory"
+        source="providers"
+        storageKey="providers"
+        link={RouterLink}
+        rowHref={(p) => `/providers/${encodeURIComponent(p.slug)}`}
+        paginate={false}
+        sort={sortState}
+        onSort={onSort}
+        search={{
+          value: q,
+          onChange: (value) => setSearch({ q: value }),
+          placeholder: "Search providers, slugs, hosts…",
+        }}
+        filters={
+          <>
+            <SelectFilter
               label="Kind"
               value={kind}
               onChange={(v) => setSearch({ kind: v })}
               options={kinds.map((value) => ({ value, label: value }))}
             />
-            <QueryBar.FilterTrigger
+            <SelectFilter
               label="Authority"
               value={authority}
               onChange={(v) => setSearch({ authority: v })}
@@ -350,388 +266,106 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                 label: value === "high" ? "Official + claimed" : value,
               }))}
             />
-            <QueryBar.FilterTrigger
-              label="Sort"
-              value={sortKey}
-              onChange={(v) => setSearch({ sort: v as ProviderSortKey })}
-              options={providerSortKeys.map((value) => ({ value, label: value }))}
-            />
-          </div>
-          <QueryBar.Utility>
-            <FilterSheet
-              label="More filters"
-              className="md:hidden"
-              activeCount={(kind ? 1 : 0) + (authority ? 1 : 0) + (sortKey !== "name" ? 1 : 0)}
-            >
-              <QueryBar.FilterTrigger
-                label="Kind"
-                value={kind}
-                onChange={(v) => setSearch({ kind: v })}
-                options={kinds.map((value) => ({ value, label: value }))}
-                className="w-full justify-between border border-border"
-              />
-              <QueryBar.FilterTrigger
-                label="Authority"
-                value={authority}
-                onChange={(v) => setSearch({ authority: v })}
-                options={authorityOptions.map((value) => ({
-                  value,
-                  label: value === "high" ? "Official + claimed" : value,
-                }))}
-                className="w-full justify-between border border-border"
-              />
-              <QueryBar.FilterTrigger
-                label="Sort"
-                value={sortKey}
-                onChange={(v) => setSearch({ sort: v as ProviderSortKey })}
-                options={providerSortKeys.map((value) => ({ value, label: value }))}
-                className="w-full justify-between border border-border"
-              />
-            </FilterSheet>
             <ResetFiltersButton
               active={hasFilters}
               onReset={() => setSearch({ q: "", kind: "", authority: "", sort: "name" })}
               bare
             />
-            <span className="hidden px-2 text-13 tabular-nums sm:inline">
-              {sorted.length} of {rows.length} providers
-            </span>
-          </QueryBar.Utility>
-        </QueryBar>
-      </div>
-
-      <FilterChipRow
-        items={[
-          ...(q ? [{ id: "q", label: "Search", value: q } as FilterChipItem] : []),
-          ...(kind ? [{ id: "kind", label: "Kind", value: kind } as FilterChipItem] : []),
-          ...(authority
-            ? [{ id: "authority", label: "Authority", value: authority } as FilterChipItem]
-            : []),
-        ]}
-        onRemove={(id) => setSearch({ [id]: "" } as Parameters<typeof setSearch>[0])}
-        onClearAll={() => setSearch({ q: "", kind: "", authority: "" })}
-      />
-
-      <QueryProgress active={isFetchingProviders} position="sticky" />
-
-      {sorted.length === 0 ? (
-        <EmptyState
-          title="No providers match this filter"
-          description="Try clearing filters or adjusting your search."
-          action={{ label: "Browse all endpoints", href: "/apis/endpoints" }}
-        />
-      ) : view === "table" ? (
-        <>
-          {/* < lg: the 7-column table pushes the Subnets/Surfaces/Endpoints
-              columns off-screen behind an undiscoverable horizontal scroll on
-              phone/tablet widths (the audit flagged 768px specifically), so
-              narrow viewports get a stacked card per provider instead —
-              mirrors the leaderboards/validators mobile fallback split
-              (#5320/#5321). Wider than those 5-column boards, so the cutover
-              is `lg` (1024px) rather than `md`. */}
-          <div className="space-y-2 lg:hidden">
-            {visible.map((p) => {
-              const f = resolveProviderCard(p, counts[p.slug]);
-              const host = maskHost(p.website ?? p.homepage);
-              return (
-                <Link
-                  key={p.slug}
-                  id={`provider-${p.slug}`}
-                  to="/providers/$slug"
-                  params={{ slug: p.slug }}
-                  className="block rounded border border-border bg-card p-3 transition-colors hover:border-accent/60 target:border-accent/60"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex min-w-0 items-center gap-2">
-                      <BrandIcon
-                        url={p.website ?? p.homepage}
-                        iconUrl={p.icon_url}
-                        repoUrl={p.repo}
-                        providerSlug={p.slug}
-                        name={f.name}
-                        fallback={p.slug}
-                        size={20}
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium text-ink-strong">{f.name}</span>
-                        <span className="block truncate text-10 text-ink-muted">{p.slug}</span>
-                      </span>
-                    </span>
-                    {p.authority ? (
-                      <span
-                        className={classNames(
-                          "shrink-0 rounded border px-1.5 py-0.5 text-13",
-                          authorityTone(p.authority),
-                        )}
-                      >
-                        {p.authority}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2 text-11 text-ink-muted">
-                    <span className="inline-flex min-w-0 items-center gap-2">
-                      <span className="shrink-0">{f.kindLabel}</span>
-                      {host ? <span className="max-w-[20ch] truncate">{host}</span> : null}
-                    </span>
-                    <TimeAgo
-                      at={typeof p.updated_at === "string" ? p.updated_at : undefined}
-                      className="shrink-0"
-                    />
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2 border-t border-border/60 pt-2">
-                    <ProviderCardStat label="Subnets" value={f.subnetsLabel} />
-                    <ProviderCardStat label="Surfaces" value={f.surfacesLabel} />
-                    <ProviderCardStat label="Endpoints" value={f.endpointsLabel} />
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-          <ResponsiveTable
-            className="hidden rounded border border-border bg-card lg:block"
-            minWidth={960}
-          >
-            <table className="w-full text-left text-13">
-              <thead className="text-10 bg-surface text-ink-muted">
-                <tr>
-                  <th className="px-3 py-2">Provider</th>
-                  <th className="px-3 py-2">Kind</th>
-                  <th className="px-3 py-2">Authority</th>
-                  <th className="px-3 py-2">Host</th>
-                  <th className="px-3 py-2 text-right">Subnets</th>
-                  <th className="px-3 py-2 text-right">Surfaces</th>
-                  <th className="px-3 py-2 text-right">Endpoints</th>
-                  <th className="px-3 py-2 text-right">Updated</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {visible.map((p) => {
-                  const host = maskHost(p.website ?? p.homepage);
-                  const c = counts[p.slug];
-                  return (
-                    <tr
-                      key={p.slug}
-                      id={`provider-${p.slug}`}
-                      className="mg-row-accent hover:bg-surface target:bg-accent/5"
-                    >
-                      <td className="px-3 py-2">
-                        <Link
-                          to="/providers/$slug"
-                          params={{ slug: p.slug }}
-                          className="inline-flex items-center gap-2 min-w-0"
-                        >
-                          <BrandIcon
-                            url={p.website ?? p.homepage}
-                            iconUrl={p.icon_url}
-                            repoUrl={p.repo}
-                            providerSlug={p.slug}
-                            name={p.name ?? p.slug}
-                            fallback={p.slug}
-                            size={20}
-                          />
-                          <span className="font-medium text-ink-strong truncate">
-                            {p.name ?? p.slug}
-                          </span>
-                          <span className="text-10 text-ink-muted truncate">{p.slug}</span>
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2 text-11 text-ink-muted">{p.kind ?? "—"}</td>
-                      <td className="px-3 py-2">
-                        {p.authority ? (
-                          <span
-                            className={classNames(
-                              "text-13 rounded border px-1.5 py-0.5",
-                              authorityTone(p.authority),
-                            )}
-                          >
-                            {p.authority}
-                          </span>
-                        ) : (
-                          <span className="text-ink-muted">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-11 text-ink-muted truncate max-w-[22ch]">
-                        {host ?? "—"}
-                      </td>
-                      <td className="px-3 py-2 text-right text-11 tabular-nums">
-                        {c?.subnets ?? 0}
-                      </td>
-                      <td className="px-3 py-2 text-right text-11 tabular-nums">
-                        {c?.surfaces ?? 0}
-                      </td>
-                      <td className="px-3 py-2 text-right text-11 tabular-nums">
-                        {c?.endpoints ?? 0}
-                      </td>
-                      <td className="px-3 py-2 text-right text-11 text-ink-muted">
-                        <div className="inline-flex items-center gap-1 justify-end">
-                          <TimeAgo
-                            at={typeof p.updated_at === "string" ? p.updated_at : undefined}
-                          />
-                          <CopyLinkButton hash={`provider-${p.slug}`} size="xs" />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </ResponsiveTable>
-        </>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((p) => {
-            const webHost = maskHost(p.website);
-            const repoHost = maskHost(p.repo);
-            const docsHost = maskHost(p.docs);
-            const isOfficial = p.authority === "official";
-            return (
-              <Link
-                key={p.slug}
-                id={`provider-${p.slug}`}
-                to="/providers/$slug"
-                params={{ slug: p.slug }}
-                className={classNames(
-                  "group block rounded border border-border bg-card p-4 transition-colors",
-                  "hover:border-accent/60",
-                  "target:border-accent/60",
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <BrandIcon
-                      url={p.website ?? p.homepage}
-                      iconUrl={p.icon_url}
-                      repoUrl={p.repo}
-                      providerSlug={p.slug}
-                      name={p.name ?? p.slug}
-                      fallback={p.slug}
-                      size={36}
-                    />
-                    <div className="min-w-0">
-                      <div className="text-10 text-ink-muted">{p.kind ?? "provider"}</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {isOfficial ? (
-                          // #6423: see hero-subnet-chips -- role="img" so the
-                          // colour-only badge announces its meaning.
-                          <span
-                            role="img"
-                            aria-label="Official provider"
-                            className="inline-block size-1.5 rounded-full mg-dot bg-accent shrink-0"
-                          />
-                        ) : null}
-                        <div className="font-display text-16 font-semibold text-ink-strong line-clamp-2 leading-tight">
-                          {p.name ?? p.slug}
-                        </div>
-                      </div>
-                      <div className="text-10 text-ink-muted truncate">{p.slug}</div>
-                    </div>
-                  </div>
-                  {p.authority ? (
-                    <span
-                      className={classNames(
-                        "text-13 rounded border px-1.5 py-0.5 shrink-0",
-                        authorityTone(p.authority),
-                      )}
-                    >
-                      {p.authority}
-                    </span>
-                  ) : null}
-                </div>
-                {p.notes ? (
-                  <p className="mt-3 text-13 text-ink-muted leading-relaxed line-clamp-2">
-                    {p.notes}
-                  </p>
-                ) : null}
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-13 text-ink-muted">
-                  {webHost ? (
-                    <span className="inline-flex items-center gap-1 min-w-0">
-                      <Globe className="size-3 shrink-0" />
-                      <span className="font-mono truncate max-w-[18ch]">{webHost}</span>
-                    </span>
-                  ) : null}
-                  {repoHost ? (
-                    <span className="inline-flex items-center gap-1 min-w-0">
-                      <Github className="size-3 shrink-0" />
-                      <span className="font-mono truncate max-w-[18ch]">{repoHost}</span>
-                    </span>
-                  ) : null}
-                  {docsHost ? (
-                    <span className="inline-flex items-center gap-1 min-w-0">
-                      <BookOpen className="size-3 shrink-0" />
-                      <span className="font-mono truncate max-w-[18ch]">{docsHost}</span>
-                    </span>
-                  ) : null}
-                  {!webHost && !repoHost && !docsHost ? (
-                    <span className="text-10">no public links yet</span>
-                  ) : null}
-                  <TimeAgo
-                    at={typeof p.updated_at === "string" ? p.updated_at : undefined}
-                    className="font-mono"
-                  />
-                </div>
-                <ProviderCountsRow counts={counts[p.slug]} />
-              </Link>
-            );
-          })}
-        </div>
-      )}
-
-      {sorted.length > APIS_HUB_PAGE_STEP ? (
-        <div id="providers-pager">
-          <LoadMore
-            shown={visible.length}
-            total={sorted.length}
-            hasMore={listLimit < sorted.length}
-            isLoading={false}
-            onLoadMore={() => setListLimit((prev) => prev + APIS_HUB_PAGE_STEP)}
+          </>
+        }
+        empty={
+          <EmptyState
+            title="No providers match this filter"
+            description="Try clearing filters or adjusting your search."
+            action={{ label: "Browse all endpoints", href: "/apis/endpoints" }}
           />
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function ProviderCountsRow({
-  counts,
-}: {
-  counts?: { surfaces: number; endpoints: number; subnets: number };
-}) {
-  const s = counts?.surfaces ?? 0;
-  const e = counts?.endpoints ?? 0;
-  const n = counts?.subnets ?? 0;
-  return (
-    <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/60 pt-3">
-      <CountTile icon={<Layers className="size-3" />} label="Surfaces" value={s} />
-      <CountTile icon={<Radio className="size-3" />} label="Endpoints" value={e} />
-      <CountTile icon={<Network className="size-3" />} label="Subnets" value={n} />
-    </div>
-  );
-}
-
-function ProviderCardStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col">
-      <span className="text-13 text-ink-muted">{label}</span>
-      <span className="font-mono text-13 tabular-nums text-ink-strong">{value}</span>
-    </div>
-  );
-}
-
-function CountTile({ icon, label, value }: { icon?: ReactNode; label: string; value: number }) {
-  return (
-    <div className="flex flex-col">
-      <span className="inline-flex items-center gap-1 text-13 text-ink-muted">
-        {icon}
-        {label}
-      </span>
-      <span
-        className={classNames(
-          "font-mono text-13 tabular-nums",
-          value > 0 ? "text-ink-strong" : "text-ink-muted",
-        )}
-      >
-        {value > 0 ? value : "—"}
-      </span>
+        }
+        columns={[
+          {
+            key: "name",
+            label: "Provider",
+            sortable: true,
+            value: (p) => p.name ?? p.slug,
+            render: (p) => (
+              <span className="inline-flex min-w-0 items-center gap-2">
+                <BrandIcon
+                  url={p.website ?? p.homepage}
+                  iconUrl={p.icon_url}
+                  repoUrl={p.repo}
+                  providerSlug={p.slug}
+                  name={p.name ?? p.slug}
+                  fallback={p.slug}
+                  size={20}
+                />
+                {p.authority === "official" ? (
+                  // #6423: see hero-subnet-chips -- role="img" so the
+                  // colour-only badge announces its meaning. `mg-dot` is the
+                  // one round element the design system allows, and it paints
+                  // itself from `currentColor`.
+                  <span role="img" aria-label="Official provider" className="mg-dot text-accent" />
+                ) : null}
+                <span className="truncate text-ink-strong">{p.name ?? p.slug}</span>
+                <span className="truncate text-10 text-ink-muted">{p.slug}</span>
+              </span>
+            ),
+          },
+          { key: "kind", label: "Kind", sortable: true, value: (p) => p.kind ?? null },
+          {
+            key: "authority",
+            label: "Authority",
+            sortable: true,
+            value: (p) => p.authority ?? null,
+            render: (p) =>
+              p.authority ? (
+                <span
+                  className={classNames(
+                    "text-13 rounded border px-1.5 py-0.5",
+                    authorityTone(p.authority),
+                  )}
+                >
+                  {p.authority}
+                </span>
+              ) : (
+                <span className="text-ink-muted">—</span>
+              ),
+          },
+          {
+            key: "host",
+            label: "Host",
+            sortable: true,
+            value: (p) => maskHost(p.website ?? p.homepage),
+          },
+          {
+            key: "subnets",
+            label: "Subnets",
+            kind: "number",
+            sortable: true,
+            value: (p) => counts[p.slug]?.subnets ?? 0,
+          },
+          {
+            key: "surfaces",
+            label: "Surfaces",
+            kind: "number",
+            sortable: true,
+            value: (p) => counts[p.slug]?.surfaces ?? 0,
+          },
+          {
+            key: "endpoints",
+            label: "Endpoints",
+            kind: "number",
+            sortable: true,
+            value: (p) => counts[p.slug]?.endpoints ?? 0,
+          },
+          {
+            key: "updated",
+            label: "Updated",
+            kind: "time",
+            sortable: true,
+            align: "right",
+            value: (p) => (typeof p.updated_at === "string" ? p.updated_at : null),
+          },
+        ]}
+      />
     </div>
   );
 }

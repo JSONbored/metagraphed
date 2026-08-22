@@ -1,40 +1,29 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import {
-  AsyncPanel,
-  TableSkeleton,
-  PagerFooter,
-  PanelSkeleton,
-  QueryBar,
-  FilterSheet,
-  FilterChipRow,
-  type FilterChipItem,
-} from "@/components/metagraphed/primitives";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AsyncPanel, PanelSkeleton } from "@/components/metagraphed/primitives";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
   TimeAgo,
-  ListShell,
-  ShareButton,
-  DownloadCsvButton,
-  CopyButton,
   CopyableCode,
   BackToTop,
   FactStrip,
   FactCell,
+  DataTable,
+  type DataTableColumn,
 } from "@jsonbored/ui-kit";
-import { PageSizeSelect } from "@/components/metagraphed/table-controls";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import { LiveBlockRail } from "@/components/metagraphed/blocks/live-block-rail";
 import { CadenceTrend } from "@/components/metagraphed/blocks/cadence-trend";
 import { AuthorSharePanel } from "@/components/metagraphed/blocks/author-share-panel";
 import { blocksQuery, blocksSummaryQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
-import { buildUrl } from "@/lib/metagraphed/client";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { ChainTabActions } from "./-chain-hub";
 import type { Block } from "@/lib/metagraphed/types";
 import type { BlocksSearch } from "./chain.blocks";
 
@@ -53,21 +42,8 @@ function blocksQueryParams(search: BlocksSearch): Record<string, string | number
 }
 
 export function BlocksPage() {
-  const search = useSearch({ from: "/chain/blocks" }) as BlocksSearch;
-  const blocksCsvUrl = buildUrl("/api/v1/blocks", blocksQueryParams(search));
-
   return (
     <>
-      {/* The hub owns the shell, title and description now (#8290). These
-          actions came off this page's own masthead and render above the tab
-          content rather than beside the tab strip — a shrink-0 sibling there is
-          exactly what starved the profile tabs to 196px on mobile (#8254). */}
-      <ChainTabActions>
-        <div className="mg-actions">
-          <DownloadCsvButton url={blocksCsvUrl} bare />
-          <ShareButton bare />
-        </div>
-      </ChainTabActions>
       <AsyncPanel
         context="Live block rail"
         retryQueryKeys={[metagraphedQueryKey("blocks"), metagraphedQueryKey("chain-activity")]}
@@ -91,7 +67,7 @@ export function BlocksPage() {
       <AsyncPanel
         context="Blocks table"
         retryQueryKeys={[metagraphedQueryKey("blocks")]}
-        fallback={<TableSkeleton rows={10} columns={6} />}
+        fallback={<Skeleton className="h-80 w-full" />}
       >
         <BlocksTable />
       </AsyncPanel>
@@ -140,8 +116,8 @@ function BlockProductionHeader() {
 
 /**
  * One block row in card form — block #, age, hash, author, ext/evt counts.
- * Shared by the full table's mobile card layout and any bounded preview that
- * reuses the same row shape (metagraphed#8359).
+ * Used by any bounded preview that reuses this row shape (metagraphed#8359);
+ * the full table renders its own narrow-screen cards from the table markup.
  */
 export function BlockCard({ block }: { block: Block }) {
   return (
@@ -168,6 +144,34 @@ export function BlockCard({ block }: { block: Block }) {
   );
 }
 
+/**
+ * Local mirror of a URL-backed text filter, debounced by 200ms: without that,
+ * every keystroke rewrites the URL, changes the query key and re-suspends the
+ * table mid-word.
+ */
+function useDebouncedFilter(
+  value: string,
+  commit: (next: string) => void,
+  delayMs = 200,
+): [string, (next: string) => void] {
+  const [text, setText] = useState(value);
+  const commitRef = useRef(commit);
+  useEffect(() => {
+    commitRef.current = commit;
+  });
+  // A reset button or a back navigation changes the URL from outside; the
+  // input follows it rather than fighting it.
+  useEffect(() => {
+    setText(value);
+  }, [value]);
+  useEffect(() => {
+    if (text === value) return;
+    const timer = window.setTimeout(() => commitRef.current(text), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [text, value, delayMs]);
+  return [text, setText];
+}
+
 function BlocksTable() {
   const search = useSearch({ from: "/chain/blocks" }) as BlocksSearch;
   const navigate = useNavigate({ from: "/blocks/" });
@@ -178,18 +182,20 @@ function BlocksTable() {
   // Blocks turn over fast (~12s/block) — poll the first page only, so paging
   // through older blocks (offset > 0) isn't yanked or reflowed mid-read.
   const refetchInterval = useRefetchInterval(15_000, search.offset === 0);
-  const rows = (useSuspenseQuery({ ...blocksQuery(queryParams), refetchInterval }).data.data ??
-    []) as Block[];
-
-  // Per-page maxima drive the inline activity bars in the Extrinsics/Events
-  // cells so scanning "which blocks were busy" is a visual, not numeric, task.
-  const maxExt = Math.max(1, ...rows.map((b) => b.extrinsic_count ?? 0));
-  const maxEvt = Math.max(1, ...rows.map((b) => b.event_count ?? 0));
+  const pageData = useSuspenseQuery({ ...blocksQuery(queryParams), refetchInterval }).data.data;
+  // Stable identity: the column set below derives its per-page maxima and
+  // inter-block gaps from these rows, so a fresh `[]` each render would make
+  // the table re-read its stored column selection on every render.
+  const rows = useMemo(() => (pageData ?? []) as Block[], [pageData]);
 
   // Offset pagination: the API returns newest-first pages with no total. A full
   // page (rows === limit) implies more may exist; a short page is the tail.
-  const hasPrev = search.offset > 0;
   const hasNext = rows.length === search.limit;
+  const page = Math.floor(search.offset / search.limit) + 1;
+  // No count comes back with the feed, so the pager gets the smallest total
+  // consistent with what we know: everything read so far, plus one more page
+  // while a full page says there may be one.
+  const total = search.offset + rows.length + (hasNext ? search.limit : 0);
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
@@ -198,8 +204,9 @@ function BlocksTable() {
       resetScroll: false,
     });
 
-  const goPrev = () => setSearch({ offset: Math.max(0, search.offset - search.limit) });
-  const goNext = () => setSearch({ offset: search.offset + search.limit });
+  const [authorText, setAuthorText] = useDebouncedFilter(search.author, (next) =>
+    setSearch({ author: next, offset: 0 }),
+  );
 
   const filtersActive = Boolean(
     search.author ||
@@ -209,14 +216,6 @@ function BlocksTable() {
     search.min_extrinsics ||
     search.min_events,
   );
-
-  const secondaryFilterCount =
-    (search.spec_version ? 1 : 0) +
-    (search.block_start ? 1 : 0) +
-    (search.block_end ? 1 : 0) +
-    (search.min_extrinsics ? 1 : 0) +
-    (search.min_events ? 1 : 0);
-  const activeCount = (search.author ? 1 : 0) + secondaryFilterCount;
 
   const resetAll = () =>
     setSearch({
@@ -229,202 +228,139 @@ function BlocksTable() {
       offset: 0,
     });
 
-  const chipItems: FilterChipItem[] = [];
-  if (search.author)
-    chipItems.push({
-      id: "author",
-      label: "Author",
-      value: shortHash(search.author) ?? search.author,
-    });
-  if (search.spec_version)
-    chipItems.push({ id: "spec_version", label: "Spec", value: search.spec_version });
-  if (search.block_start || search.block_end)
-    chipItems.push({
-      id: "range",
-      label: "Range",
-      value: `${search.block_start || "…"} → ${search.block_end || "…"}`,
-    });
-  if (search.min_extrinsics)
-    chipItems.push({ id: "min_extrinsics", label: "Min ext", value: `≥ ${search.min_extrinsics}` });
-  if (search.min_events)
-    chipItems.push({ id: "min_events", label: "Min evt", value: `≥ ${search.min_events}` });
-
-  const removeChip = (id: string) => {
-    switch (id) {
-      case "author":
-        setSearch({ author: "", offset: 0 });
-        break;
-      case "spec_version":
-        setSearch({ spec_version: "", offset: 0 });
-        break;
-      case "range":
-        setSearch({ block_start: "", block_end: "", offset: 0 });
-        break;
-      case "min_extrinsics":
-        setSearch({ min_extrinsics: "", offset: 0 });
-        break;
-      case "min_events":
-        setSearch({ min_events: "", offset: 0 });
-        break;
-    }
-  };
+  // The five range/threshold filters, rendered inline in the table's own
+  // caption row rather than behind a sheet.
+  const numericFilters = [
+    {
+      key: "spec_version",
+      label: "Spec version",
+      value: search.spec_version,
+      placeholder: "e.g. 268",
+    },
+    {
+      key: "block_start",
+      label: "Block from",
+      value: search.block_start,
+      placeholder: "e.g. 6000000",
+    },
+    { key: "block_end", label: "Block to", value: search.block_end, placeholder: "e.g. 6100000" },
+    {
+      key: "min_extrinsics",
+      label: "Min extrinsics",
+      value: search.min_extrinsics,
+      placeholder: "e.g. 5",
+    },
+    { key: "min_events", label: "Min events", value: search.min_events, placeholder: "e.g. 20" },
+  ];
 
   const numericInputCls =
-    "w-full rounded border border-border bg-paper px-2 py-1.5 font-mono text-13 text-ink-strong placeholder:text-ink-muted focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-ring transition-colors";
+    "w-24 min-w-0 rounded bg-transparent font-mono text-13 text-ink-strong placeholder:text-ink-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-  const filters = (
-    <div className="flex w-full flex-col gap-0 min-w-0">
-      <div className="flex w-full items-center gap-2 min-w-0">
-        <QueryBar className="flex-1 min-w-0">
-          <QueryBar.Search
-            value={search.author}
-            onChange={(v) => setSearch({ author: v, offset: 0 })}
-            placeholder="Search by author ss58…"
-            shortcut
-            debounceMs={200}
-          />
-          <QueryBar.Divider />
-          <QueryBar.Utility className="ml-auto">
-            <span className="hidden sm:inline text-13 text-ink-muted">↓ Newest</span>
-            <PageSizeSelect
-              value={search.limit}
-              onChange={(n) => setSearch({ limit: n, offset: 0 })}
-              options={[10, 25, 50, 100]}
-            />
-          </QueryBar.Utility>
-        </QueryBar>
-        <FilterSheet label="Filters" activeCount={secondaryFilterCount}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-13 text-ink-muted">Spec version</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={search.spec_version}
-                onChange={(e) =>
-                  setSearch({ spec_version: e.target.value.replace(/[^0-9]/g, ""), offset: 0 })
-                }
-                placeholder="e.g. 268"
-                className={numericInputCls}
+  const columns = useMemo<Array<DataTableColumn<Block>>>(() => {
+    // Per-page maxima drive the tinted Extrinsics/Events cells so scanning
+    // "which blocks were busy" is a visual, not a numeric, task.
+    const maxExt = Math.max(1, ...rows.map((b) => b.extrinsic_count ?? 0));
+    const maxEvt = Math.max(1, ...rows.map((b) => b.event_count ?? 0));
+    // Gap = seconds since the previous (older) block was produced. Rows are
+    // newest-first, so the older neighbour is the next one along.
+    const gaps = new Map<number, number>();
+    rows.forEach((b, i) => {
+      const older = rows[i + 1];
+      if (!b.observed_at || !older?.observed_at) return;
+      const gapMs = Date.parse(b.observed_at) - Date.parse(older.observed_at);
+      if (Number.isFinite(gapMs)) gaps.set(b.block_number, gapMs / 1000);
+    });
+    // Free decentralization tell: how often an author appears on this page.
+    const authorRuns = new Map<string, number>();
+    for (const b of rows) {
+      if (!b.author) continue;
+      authorRuns.set(b.author, (authorRuns.get(b.author) ?? 0) + 1);
+    }
+    return [
+      {
+        key: "block",
+        label: "Block",
+        width: 150,
+        value: (b) => b.block_number,
+        render: (b) => {
+          const gapSec = gaps.get(b.block_number);
+          const gapTone =
+            gapSec == null
+              ? "text-ink-subtle"
+              : gapSec > 48
+                ? "text-health-down"
+                : gapSec > 24
+                  ? "text-health-warn-text"
+                  : "text-ink-subtle";
+          return (
+            <>
+              <span className="font-mono text-ink-strong">#{formatNumber(b.block_number)}</span>
+              {gapSec == null ? null : (
+                <span className={classNames("ml-2 text-10", gapTone)}>
+                  +{humaniseSeconds(gapSec)}
+                </span>
+              )}
+            </>
+          );
+        },
+      },
+      {
+        key: "hash",
+        label: "Hash",
+        kind: "identifier",
+        width: 180,
+        value: (b) => b.block_hash ?? null,
+      },
+      {
+        key: "author",
+        label: "Author",
+        value: (b) => b.author ?? null,
+        render: (b) => {
+          const repeat = b.author ? (authorRuns.get(b.author) ?? 0) : 0;
+          return (
+            <span className="flex items-center gap-1.5 min-w-0">
+              <AddressDisplay
+                ss58={b.author}
+                compact
+                fallback={b.author ? <CopyableCode value={b.author} className="max-w-full" /> : "—"}
               />
-            </label>
-            <div className="hidden sm:block" aria-hidden />
-            <label className="flex flex-col gap-1.5">
-              <span className="text-13 text-ink-muted">Block from</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={search.block_start}
-                onChange={(e) =>
-                  setSearch({ block_start: e.target.value.replace(/[^0-9]/g, ""), offset: 0 })
-                }
-                placeholder="e.g. 6000000"
-                className={numericInputCls}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-13 text-ink-muted">Block to</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={search.block_end}
-                onChange={(e) =>
-                  setSearch({ block_end: e.target.value.replace(/[^0-9]/g, ""), offset: 0 })
-                }
-                placeholder="e.g. 6100000"
-                className={numericInputCls}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-13 text-ink-muted">Min extrinsics</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={search.min_extrinsics}
-                onChange={(e) =>
-                  setSearch({ min_extrinsics: e.target.value.replace(/[^0-9]/g, ""), offset: 0 })
-                }
-                placeholder="e.g. 5"
-                className={numericInputCls}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-13 text-ink-muted">Min events</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={search.min_events}
-                onChange={(e) =>
-                  setSearch({ min_events: e.target.value.replace(/[^0-9]/g, ""), offset: 0 })
-                }
-                placeholder="e.g. 20"
-                className={numericInputCls}
-              />
-            </label>
-          </div>
-          {secondaryFilterCount > 0 ? (
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={() =>
-                  setSearch({
-                    spec_version: "",
-                    block_start: "",
-                    block_end: "",
-                    min_extrinsics: "",
-                    min_events: "",
-                    offset: 0,
-                  })
-                }
-                className="rounded border border-border bg-card px-2.5 py-1 text-11 text-ink-muted hover:border-accent/40 hover:text-ink-strong transition-colors"
-              >
-                Clear numeric filters
-              </button>
-            </div>
-          ) : null}
-        </FilterSheet>
-      </div>
-      <QueryBar.MetaRow
-        count={rows.length}
-        noun="blocks"
-        activeCount={activeCount}
-        onReset={filtersActive ? resetAll : undefined}
-      />
-      <FilterChipRow
-        items={chipItems}
-        onRemove={removeChip}
-        onClearAll={activeCount > 1 ? resetAll : undefined}
-      />
-    </div>
-  );
-
-  const emptyNode = (
-    <EmptyState
-      title="No blocks indexed yet"
-      description="The chain poller fills this every few minutes — check back shortly, or open the API directly."
-      action={{
-        label: "Open /api/v1/blocks",
-        href: `${API_BASE}/api/v1/blocks`,
-        external: true,
-      }}
-    />
-  );
-
-  const footerNode = (
-    <div className="px-4 py-2">
-      <PagerFooter
-        summary={
-          rows.length
-            ? `${formatNumber(search.offset + 1)}–${formatNumber(search.offset + rows.length)}`
-            : "0"
-        }
-        hasPrev={hasPrev}
-        hasNext={hasNext}
-        onPrev={goPrev}
-        onNext={goNext}
-      />
-    </div>
-  );
+              {repeat > 1 ? (
+                <span className="mg-chip h-4 px-1.5 text-10 text-accent-text border-accent/40">
+                  ×{repeat}
+                </span>
+              ) : null}
+            </span>
+          );
+        },
+      },
+      {
+        key: "extrinsics",
+        label: "Extrinsics",
+        kind: "tint",
+        width: 120,
+        value: (b) => b.extrinsic_count ?? 0,
+        tint: (b) => (b.extrinsic_count ?? 0) / maxExt,
+        format: (value) => formatNumber(typeof value === "number" ? value : null),
+      },
+      {
+        key: "events",
+        label: "Events",
+        kind: "tint",
+        width: 110,
+        value: (b) => b.event_count ?? 0,
+        tint: (b) => (b.event_count ?? 0) / maxEvt,
+        format: (value) => formatNumber(typeof value === "number" ? value : null),
+      },
+      {
+        key: "observed",
+        label: "Observed",
+        kind: "time",
+        align: "right",
+        width: 120,
+        value: (b) => b.observed_at ?? null,
+      },
+    ];
+  }, [rows]);
 
   return (
     <>
@@ -434,150 +370,64 @@ function BlocksTable() {
           <AuthorSharePanel rows={rows} />
         </>
       ) : null}
-      <ListShell
-        filters={filters}
-        isEmpty={rows.length === 0}
-        empty={emptyNode}
-        cards={rows.map((b) => (
-          <BlockCard key={b.block_hash || b.block_number} block={b} />
-        ))}
-        table={
-          <table className="w-full text-left text-13">
-            <thead className="mg-table-head-pinned">
-              <tr>
-                <th className="px-4 py-2.5">Block</th>
-                <th className="px-4 py-2.5">Hash</th>
-                <th className="px-4 py-2.5">Author</th>
-                <th className="px-4 py-2.5 text-right">Extrinsics</th>
-                <th className="px-4 py-2.5 text-right">Events</th>
-                <th className="px-4 py-2.5 text-right">Observed</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((b, i) => {
-                // Gap = seconds since the previous (older) block was produced.
-                // Rows are newest-first, so the older neighbor is at i+1.
-                const nextOlder = rows[i + 1];
-                const gapMs =
-                  b.observed_at && nextOlder?.observed_at
-                    ? Date.parse(b.observed_at) - Date.parse(nextOlder.observed_at)
-                    : null;
-                const gapSec = gapMs != null && Number.isFinite(gapMs) ? gapMs / 1000 : null;
-                const gapTone =
-                  gapSec == null
-                    ? "text-ink-subtle"
-                    : gapSec > 48
-                      ? "text-health-down"
-                      : gapSec > 24
-                        ? "text-health-warn-text"
-                        : "text-ink-subtle";
-                // Free decentralization tell: count how often this author appears
-                // on the current page. A repeat on a short window is worth flagging.
-                const authorRepeat = b.author
-                  ? rows.reduce((n, r) => (r.author === b.author ? n + 1 : n), 0)
-                  : 0;
-                return (
-                  <tr
-                    key={b.block_hash || b.block_number}
-                    className="group mg-row-accent odd:bg-surface hover:bg-surface"
-                  >
-                    <td className="px-4 py-2.5 font-mono text-13 align-top">
-                      <Link
-                        to="/blocks/$ref"
-                        params={{ ref: String(b.block_number) }}
-                        className="font-medium text-ink-strong hover:underline"
-                      >
-                        #{formatNumber(b.block_number)}
-                      </Link>
-                      {gapSec != null ? (
-                        <div className={classNames("mt-0.5 text-10", gapTone)}>
-                          +{humaniseSeconds(gapSec)}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-2.5 text-11 text-ink-muted align-top">
-                      <span className="inline-flex items-center gap-1 min-w-0">
-                        <Link
-                          to="/blocks/$ref"
-                          params={{ ref: b.block_hash || String(b.block_number) }}
-                          className="hover:text-ink-strong truncate"
-                          title={b.block_hash}
-                        >
-                          {shortHash(b.block_hash)}
-                        </Link>
-                        {b.block_hash ? (
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <CopyButton value={b.block_hash} label="block hash" compact />
-                          </span>
-                        ) : null}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-11 text-ink-muted align-top">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <AddressDisplay
-                          ss58={b.author}
-                          compact
-                          fallback={
-                            b.author ? (
-                              <CopyableCode value={b.author} className="max-w-full" />
-                            ) : (
-                              "—"
-                            )
-                          }
-                        />
-                        {authorRepeat > 1 ? (
-                          <span className="mg-chip h-4 px-1.5 text-10 text-accent-text border-accent/40">
-                            ×{authorRepeat}
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink align-top">
-                      <ActivityCell value={b.extrinsic_count ?? 0} max={maxExt} tone="accent" />
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink align-top">
-                      <ActivityCell value={b.event_count ?? 0} max={maxEvt} tone="ink" />
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-11 text-ink-muted align-top">
-                      <TimeAgo at={b.observed_at} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      <DataTable
+        caption="Blocks"
+        rows={rows}
+        columns={columns}
+        rowKey={(b) => b.block_hash || String(b.block_number)}
+        rowHref={(b) => `/blocks/${b.block_number}`}
+        link={RouterLink}
+        storageKey="blocks"
+        source="block"
+        total={total}
+        page={page}
+        onPage={(next) => setSearch({ offset: Math.max(0, (next - 1) * search.limit) })}
+        pageSize={search.limit}
+        search={{
+          value: authorText,
+          onChange: setAuthorText,
+          placeholder: "Author ss58…",
+        }}
+        filters={
+          <>
+            <ResetFiltersButton active={filtersActive} onReset={resetAll} />
+            <div className="flex flex-wrap items-center gap-2">
+              {numericFilters.map((filter) => (
+                <label
+                  key={filter.key}
+                  className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-13"
+                >
+                  <span className="shrink-0 text-ink-muted">{filter.label}</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={filter.value}
+                    onChange={(e) =>
+                      setSearch({
+                        [filter.key]: e.target.value.replace(/[^0-9]/g, ""),
+                        offset: 0,
+                      })
+                    }
+                    placeholder={filter.placeholder}
+                    className={numericInputCls}
+                  />
+                </label>
+              ))}
+            </div>
+          </>
         }
-        footer={footerNode}
+        empty={
+          <EmptyState
+            title="No blocks indexed yet"
+            description="The chain poller fills this every few minutes — check back shortly, or open the API directly."
+            action={{
+              label: "Open /api/v1/blocks",
+              href: `${API_BASE}/api/v1/blocks`,
+              external: true,
+            }}
+          />
+        }
       />
     </>
-  );
-}
-
-/**
- * Right-aligned number with a thin horizontal bar underneath, normalized
- * against the page-max so busy blocks are visually obvious at a glance.
- * `tone="accent"` (extrinsics) uses mint; `tone="ink"` (events) uses ink.
- */
-function ActivityCell({
-  value,
-  max,
-  tone,
-}: {
-  value: number;
-  max: number;
-  tone: "accent" | "ink";
-}) {
-  const pct = max > 0 ? Math.max(2, Math.round((value / max) * 100)) : 0;
-  const barCls = tone === "accent" ? "bg-accent/70" : "bg-ink-strong/40";
-  return (
-    <span className="inline-flex flex-col items-end gap-1 min-w-[3.5rem]">
-      <span>{formatNumber(value)}</span>
-      <span aria-hidden className="block h-[3px] w-full rounded bg-border/50 overflow-hidden">
-        <span
-          className={classNames("block h-full rounded transition-[width]", barCls)}
-          style={{ width: `${pct}%` }}
-        />
-      </span>
-    </span>
   );
 }
