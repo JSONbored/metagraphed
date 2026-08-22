@@ -46,17 +46,6 @@ export function formatRelative(iso?: string | null): string {
   return past ? `${value}${unit} ago` : `in ${value}${unit}`;
 }
 
-export function isStaleFreshness(
-  iso?: string | null,
-  thresholdMs = 12 * 60 * 60_000,
-): boolean {
-  // Data refreshes on a ~6h cycle, so only flag a snapshot as stale once it has
-  // clearly missed multiple cycles (12h). Missing/invalid/placeholder
-  // timestamps stay conservative so callers can show an unknown-freshness cue.
-  if (!isUsableTimestamp(iso)) return true;
-  return Date.now() - Date.parse(iso) > thresholdMs;
-}
-
 /**
  * Centralized freshness formatter — used by the fact cells,
  * MethodologyCallout and OperationalPanel so every "last-updated" stamp
