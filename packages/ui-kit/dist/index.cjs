@@ -2747,6 +2747,313 @@ function InteractiveDataField({
     }
   );
 }
+var COMPOSITION_TIMELINE_TONES = [
+  "chart-1",
+  "chart-2",
+  "chart-3",
+  "chart-4",
+  "chart-5",
+  "chart-6",
+  "chart-7",
+  "chart-8",
+  "chart-9",
+  "chart-10",
+  "chart-11"
+];
+function compositionToneAt(index) {
+  const stride = 4;
+  const tones = COMPOSITION_TIMELINE_TONES;
+  return tones[Math.max(0, index) * stride % tones.length] ?? tones[0];
+}
+var NO_INSPECTION = { kind: "none" };
+function resolveSegmentEmphasis(inspection, columnId, seriesId) {
+  switch (inspection.kind) {
+    case "column":
+      return inspection.id === columnId ? "vivid" : "graphite";
+    case "series":
+      return inspection.id === seriesId ? "vivid" : "graphite";
+    default:
+      return "vivid";
+  }
+}
+function resolveColumnEmphasis(inspection, columnId) {
+  if (inspection.kind !== "column") return "rest";
+  return inspection.id === columnId ? "active" : "receded";
+}
+function segmentRows(series, shares) {
+  const values = series.map((entry) => {
+    const value = shares[entry.id];
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  });
+  const total = values.reduce((sum3, value) => sum3 + value, 0);
+  if (total <= 0) return { rows: "", total: 0 };
+  return {
+    rows: values.map((value) => `${value / total * 100}%`).join(" "),
+    total
+  };
+}
+function formatCompositionShare(share) {
+  if (!Number.isFinite(share) || share <= 0) return "0%";
+  const percentage = share * 100;
+  if (percentage >= 10) return `${percentage.toFixed(1)}%`;
+  if (percentage >= 1) return `${percentage.toFixed(2)}%`;
+  return `${percentage.toFixed(3)}%`;
+}
+function CompositionTimeline({
+  ariaLabel,
+  series,
+  columns,
+  inspection: controlledInspection,
+  onInspectionChange,
+  axisStart,
+  axisEnd,
+  tableCaption,
+  formatValue = formatCompositionShare,
+  className
+}) {
+  const inspectorId = React3.useId();
+  const tableId = React3.useId();
+  const laneRefs = React3.useRef({});
+  const [uncontrolled, setUncontrolled] = React3.useState(NO_INSPECTION);
+  const [hovered, setHovered] = React3.useState(
+    null
+  );
+  const committed = controlledInspection ?? uncontrolled;
+  const inspection = hovered ?? committed;
+  const ordered = [
+    ...series.filter((entry) => !entry.residual),
+    ...series.filter((entry) => entry.residual)
+  ];
+  if (ordered.length === 0 || columns.length === 0) return null;
+  function commit(next) {
+    setHovered(null);
+    if (controlledInspection === void 0) setUncontrolled(next);
+    onInspectionChange?.(next);
+  }
+  function focusColumn(index) {
+    const column = columns[index];
+    if (!column) return;
+    commit({ kind: "column", id: column.id });
+    laneRefs.current[column.id]?.focus();
+  }
+  function handleLaneKeyDown(event, index) {
+    let nextIndex = null;
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        nextIndex = Math.min(index + 1, columns.length - 1);
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        nextIndex = Math.max(index - 1, 0);
+        break;
+      case "Home":
+        nextIndex = 0;
+        break;
+      case "End":
+        nextIndex = columns.length - 1;
+        break;
+      case "Escape":
+        commit(NO_INSPECTION);
+        return;
+      default:
+        return;
+    }
+    event.preventDefault();
+    focusColumn(nextIndex);
+  }
+  const activeColumnId = inspection.kind === "column" ? inspection.id : columns[0]?.id;
+  const inspectedColumn = inspection.kind === "column" ? columns.find((column) => column.id === inspection.id) : void 0;
+  const inspectedSeries = inspection.kind === "series" ? ordered.find((entry) => entry.id === inspection.id) : void 0;
+  const liveSummary = inspectedColumn ? `${inspectedColumn.label}. ${ordered.map(
+    (entry) => `${entry.label} ${formatValue(inspectedColumn.shares[entry.id] ?? 0)}`
+  ).join(", ")}.` : inspectedSeries ? `${inspectedSeries.label} across ${columns.length} days.` : "";
+  const labelInterval = Math.max(1, Math.ceil(columns.length / 8));
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "figure",
+    {
+      className: classNames("mg-composition-timeline", className),
+      "aria-label": ariaLabel,
+      "data-inspecting": inspection.kind === "none" ? void 0 : inspection.kind,
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-composition-timeline-plot", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-composition-timeline-scroll", children: /* @__PURE__ */ jsxRuntime.jsxs(
+            "div",
+            {
+              className: "mg-composition-timeline-chart",
+              style: { "--mg-composition-count": columns.length },
+              children: [
+                /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-composition-timeline-axis", "aria-hidden": "true", children: columns.map((column, index) => /* @__PURE__ */ jsxRuntime.jsx(
+                  "span",
+                  {
+                    className: "mg-composition-timeline-axis-item",
+                    "data-emphasis": resolveColumnEmphasis(inspection, column.id),
+                    "data-label-hidden": !column.axisLabel || index % labelInterval !== 0 ? "true" : void 0,
+                    children: /* @__PURE__ */ jsxRuntime.jsx("span", { children: column.axisLabel })
+                  },
+                  column.id
+                )) }),
+                /* @__PURE__ */ jsxRuntime.jsx(
+                  "div",
+                  {
+                    className: "mg-composition-timeline-lanes",
+                    role: "group",
+                    "aria-label": `${ariaLabel} Hover, focus, or tap a day to inspect it; arrow keys move between days. Use the series key to follow one series across every day.`,
+                    children: columns.map((column, index) => {
+                      const { rows, total } = segmentRows(ordered, column.shares);
+                      const emphasis = resolveColumnEmphasis(inspection, column.id);
+                      const isInspected = inspectedColumn?.id === column.id;
+                      const placement = index < Math.ceil(columns.length * 0.2) ? "right" : index > Math.floor(columns.length * 0.8) ? "left" : "center";
+                      return /* @__PURE__ */ jsxRuntime.jsxs(
+                        "button",
+                        {
+                          type: "button",
+                          className: "mg-composition-timeline-lane",
+                          "data-emphasis": emphasis,
+                          "aria-label": `${column.label}${column.caption ? `. ${column.caption}` : ""}`,
+                          "aria-pressed": isInspected,
+                          "aria-describedby": isInspected ? inspectorId : void 0,
+                          tabIndex: column.id === activeColumnId ? 0 : -1,
+                          ref: (node) => {
+                            laneRefs.current[column.id] = node;
+                          },
+                          onFocus: () => commit({ kind: "column", id: column.id }),
+                          onPointerEnter: (event) => {
+                            if (event.pointerType !== "touch") {
+                              setHovered({ kind: "column", id: column.id });
+                            }
+                          },
+                          onPointerLeave: (event) => {
+                            if (event.pointerType !== "touch") setHovered(null);
+                          },
+                          onClick: () => commit({ kind: "column", id: column.id }),
+                          onKeyDown: (event) => handleLaneKeyDown(event, index),
+                          children: [
+                            /* @__PURE__ */ jsxRuntime.jsx(
+                              "span",
+                              {
+                                className: "mg-composition-timeline-stack",
+                                "aria-hidden": "true",
+                                style: {
+                                  "--mg-composition-rows": rows
+                                },
+                                children: total > 0 ? ordered.map((entry) => /* @__PURE__ */ jsxRuntime.jsx(
+                                  "i",
+                                  {
+                                    className: "mg-composition-timeline-segment",
+                                    "data-tone": entry.residual ? "residual" : entry.tone,
+                                    "data-emphasis": resolveSegmentEmphasis(
+                                      inspection,
+                                      column.id,
+                                      entry.id
+                                    )
+                                  },
+                                  entry.id
+                                )) : null
+                              }
+                            ),
+                            isInspected ? /* @__PURE__ */ jsxRuntime.jsxs(
+                              "span",
+                              {
+                                id: inspectorId,
+                                className: "mg-composition-timeline-inspector",
+                                "data-placement": placement,
+                                children: [
+                                  /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-composition-timeline-inspector-domain", children: column.label }),
+                                  column.caption ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-composition-timeline-inspector-caption", children: column.caption }) : null,
+                                  /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-composition-timeline-inspector-rows", children: ordered.map((entry) => /* @__PURE__ */ jsxRuntime.jsxs("span", { children: [
+                                    /* @__PURE__ */ jsxRuntime.jsx(
+                                      "i",
+                                      {
+                                        "aria-hidden": "true",
+                                        className: "mg-composition-timeline-swatch",
+                                        "data-tone": entry.residual ? "residual" : entry.tone
+                                      }
+                                    ),
+                                    /* @__PURE__ */ jsxRuntime.jsx("span", { children: entry.label }),
+                                    /* @__PURE__ */ jsxRuntime.jsx("b", { children: formatValue(column.shares[entry.id] ?? 0) })
+                                  ] }, entry.id)) })
+                                ]
+                              }
+                            ) : null
+                          ]
+                        },
+                        column.id
+                      );
+                    })
+                  }
+                )
+              ]
+            }
+          ) }),
+          inspection.kind !== "none" ? /* @__PURE__ */ jsxRuntime.jsx(
+            "button",
+            {
+              type: "button",
+              className: "mg-composition-timeline-dismiss",
+              onClick: () => commit(NO_INSPECTION),
+              children: "Clear"
+            }
+          ) : null
+        ] }),
+        axisStart || axisEnd ? /* @__PURE__ */ jsxRuntime.jsxs("figcaption", { className: "mg-composition-timeline-caption", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("span", { children: axisStart }),
+          /* @__PURE__ */ jsxRuntime.jsx("span", { children: axisEnd })
+        ] }) : null,
+        /* @__PURE__ */ jsxRuntime.jsx("ul", { className: "mg-composition-timeline-key", children: ordered.map((entry) => {
+          const selected = inspectedSeries?.id === entry.id;
+          return /* @__PURE__ */ jsxRuntime.jsx("li", { children: /* @__PURE__ */ jsxRuntime.jsxs(
+            "button",
+            {
+              type: "button",
+              className: "mg-composition-timeline-key-item",
+              "data-tone": entry.residual ? "residual" : entry.tone,
+              "data-emphasis": inspection.kind === "series" && !selected ? "graphite" : "vivid",
+              "aria-pressed": selected,
+              onPointerEnter: (event) => {
+                if (event.pointerType !== "touch") {
+                  setHovered({ kind: "series", id: entry.id });
+                }
+              },
+              onPointerLeave: (event) => {
+                if (event.pointerType !== "touch") setHovered(null);
+              },
+              onClick: () => commit(
+                selected ? NO_INSPECTION : { kind: "series", id: entry.id }
+              ),
+              children: [
+                /* @__PURE__ */ jsxRuntime.jsx(
+                  "i",
+                  {
+                    "aria-hidden": "true",
+                    "data-tone": entry.residual ? "residual" : entry.tone
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntime.jsx("span", { children: entry.label }),
+                entry.residual ? /* @__PURE__ */ jsxRuntime.jsx("em", { children: "derived" }) : null
+              ]
+            }
+          ) }, entry.id);
+        }) }),
+        /* @__PURE__ */ jsxRuntime.jsx("p", { className: "sr-only", role: "status", "aria-live": "polite", children: liveSummary }),
+        /* @__PURE__ */ jsxRuntime.jsxs("table", { className: "mg-composition-timeline-data", id: tableId, children: [
+          /* @__PURE__ */ jsxRuntime.jsx("caption", { children: tableCaption ?? ariaLabel }),
+          /* @__PURE__ */ jsxRuntime.jsx("thead", { children: /* @__PURE__ */ jsxRuntime.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "col", children: "Day" }),
+            ordered.map((entry) => /* @__PURE__ */ jsxRuntime.jsxs("th", { scope: "col", children: [
+              entry.label,
+              entry.residual ? " (derived)" : ""
+            ] }, entry.id))
+          ] }) }),
+          /* @__PURE__ */ jsxRuntime.jsx("tbody", { children: columns.map((column) => /* @__PURE__ */ jsxRuntime.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "row", children: column.label }),
+            ordered.map((entry) => /* @__PURE__ */ jsxRuntime.jsx("td", { children: formatValue(column.shares[entry.id] ?? 0) }, entry.id))
+          ] }, column.id)) })
+        ] })
+      ]
+    }
+  );
+}
 function EntityHero({
   eyebrow,
   live,
@@ -7131,6 +7438,7 @@ exports.AnimatedNumber = AnimatedNumber;
 exports.BackToTop = BackToTop;
 exports.BarMini = BarMini;
 exports.BrandIcon = BrandIcon;
+exports.COMPOSITION_TIMELINE_TONES = COMPOSITION_TIMELINE_TONES;
 exports.CandidateChip = CandidateChip;
 exports.CandlestickMini = CandlestickMini;
 exports.ChartSkeleton = ChartSkeleton;
@@ -7146,6 +7454,7 @@ exports.CommandItem = CommandItem;
 exports.CommandList = CommandList;
 exports.CommandSeparator = CommandSeparator;
 exports.CommandShortcut = CommandShortcut;
+exports.CompositionTimeline = CompositionTimeline;
 exports.CopyButton = CopyButton;
 exports.CopyIconToggle = CopyIconToggle;
 exports.CopyableCode = CopyableCode;
@@ -7284,15 +7593,20 @@ exports.buildCsvDownloadUrl = buildCsvDownloadUrl;
 exports.classNames = classNames;
 exports.cn = cn;
 exports.columnWidths = columnWidths;
+exports.compositionToneAt = compositionToneAt;
 exports.defaultVisible = defaultVisible;
 exports.fmtYield = fmtYield;
+exports.formatCompositionShare = formatCompositionShare;
 exports.isScrolledPast = isScrolledPast;
 exports.layoutSankey = layoutSankey;
 exports.layoutStackedArea = layoutStackedArea;
 exports.nextTabIndex = nextTabIndex;
 exports.prefetchBrandIcon = prefetchBrandIcon;
+exports.resolveColumnEmphasis = resolveColumnEmphasis;
+exports.resolveSegmentEmphasis = resolveSegmentEmphasis;
 exports.rovingTabIndex = rovingTabIndex;
 exports.safeExternalUrl = safeExternalUrl;
+exports.segmentRows = segmentRows;
 exports.tierFreshnessLabel = tierFreshnessLabel;
 exports.useColumnVisibility = useColumnVisibility;
 exports.useLiveTicker = useLiveTicker;

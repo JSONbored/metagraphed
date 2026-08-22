@@ -2203,11 +2203,18 @@ html[data-density="compact"] .bg-card > table td {
   display: block;
   min-height: 0;
 }
+/* One reading column, deliberately.
+   The earlier composition split the hero into a large left title facing a
+   boxed right column that held both the explanation and the button. That
+   arrangement made the sentence read as a caption for the lattice rather than
+   as the thesis's own second line, and it put the primary action in the
+   quietest corner of the page. The copy now descends in one column at a fixed
+   measure — kicker, title, sentence, action — and the lattice becomes the
+   spatial counterweight it was always meant to be instead of a facing panel. */
 .mg-page-hero--landing[data-ambient="document"] .mg-page-hero-copy {
   display: grid;
-  max-width: none;
-  grid-template-columns: minmax(0, 1.18fr) minmax(15rem, 0.62fr);
-  column-gap: clamp(2.5rem, 8vw, 8rem);
+  max-width: min(100%, 46rem);
+  grid-template-columns: minmax(0, 1fr);
   row-gap: 0;
 }
 .mg-page-hero--landing[data-ambient="document"] .mg-page-kicker {
@@ -2223,7 +2230,7 @@ html[data-density="compact"] .bg-card > table td {
   justify-content: flex-start;
 }
 .mg-page-hero--landing[data-ambient="document"] h1 {
-  max-width: 13ch;
+  max-width: 18ch;
   margin-top: clamp(1.15rem, 2.6vw, 1.75rem);
   color: var(--ink-strong);
   font-family: var(--font-mono);
@@ -2261,10 +2268,9 @@ html[data-density="compact"] .bg-card > table td {
 }
 .mg-page-hero--landing[data-ambient="document"] .mg-page-hero-description {
   align-self: start;
-  max-width: 20rem;
-  grid-column: 2;
-  grid-row: 2;
-  margin: clamp(0.25rem, 0.8vw, 0.65rem) 0 0;
+  max-width: 32rem;
+  grid-column: 1;
+  margin: clamp(1.35rem, 2.4vw, 2rem) 0 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -2276,11 +2282,9 @@ html[data-density="compact"] .bg-card > table td {
     both;
 }
 .mg-page-hero--landing[data-ambient="document"] .mg-page-hero-primary-actions {
-  grid-column: 2;
-  grid-row: 2;
-  align-self: end;
+  grid-column: 1;
   justify-content: flex-start;
-  margin-top: 0;
+  margin-top: clamp(1.75rem, 3vw, 2.5rem);
   animation: mg-page-hero-copy-reveal 560ms 250ms cubic-bezier(0.16, 1, 0.3, 1)
     both;
 }
@@ -2814,8 +2818,14 @@ html[data-density="compact"] .bg-card > table td {
   border-radius: 0;
   background: transparent;
   cursor: crosshair;
-  isolation: isolate;
   scroll-snap-align: center;
+}
+/* The inspected lane rises so its readout paints over the lanes that follow
+   it in the DOM. `isolation: isolate` used to sit on every lane, which trapped
+   the readout in its own stacking context — later siblings then drew straight
+   through the tooltip's text, slicing the percentages in half. */
+.mg-composition-timeline-lane[data-emphasis="active"] {
+  z-index: 5;
 }
 .mg-interactive-data-field-bar-fill {
   position: absolute;
@@ -2997,6 +3007,441 @@ html[data-density="compact"] .bg-card > table td {
 @media (prefers-reduced-motion: reduce) {
   .mg-interactive-data-field-axis-item,
   .mg-interactive-data-field-segment {
+    transition: none;
+  }
+}
+
+/* ============================================================
+ * Composition timeline
+ *
+ * A temporal-composition instrument (#11547): narrow dotted daily lanes,
+ * sharp stacked categorical segments, and one compact anchored inspection.
+ *
+ * Two rules carry the whole grammar. Every real series stays vivid AT REST —
+ * this chart is legible before it is touched, not dull until hovered. And
+ * product mint never expresses data: it is spent only on the focus ring, so
+ * a keyboard user can always see where they are without a colour that means
+ * something else in the visual language.
+ * ============================================================ */
+.mg-composition-timeline {
+  /* Derived from the ACTIVE token scope, never from a `.dark` class.
+     The landing shell scopes its own graphite `--paper`/`--ink-strong` without
+     ever setting `.dark`, so a class-keyed override left this field serving a
+     near-white inspector surface on a graphite page. Mixing against the
+     surrounding tokens makes the field correct in the light app, the dark app
+     and the landing shell with one declaration. */
+  --mg-composition-graphite: color-mix(in srgb, var(--paper) 82%, var(--ink-strong));
+  /* "Everything else" is not a category and must not spend a categorical
+     tone. The last ramp entry is a red, which read as an alert state on a
+     segment that only means "the rest of the normalised unit". */
+  --mg-composition-residual: color-mix(in srgb, var(--paper) 62%, var(--ink-strong));
+  --mg-composition-surface: color-mix(in srgb, var(--paper) 94%, var(--ink-strong));
+  --mg-composition-rail: color-mix(in srgb, var(--ink-strong) 5%, transparent);
+  --mg-composition-gap: 0.4rem;
+  --mg-composition-height: clamp(11rem, 15vw, 15rem);
+  margin: 0;
+}
+.mg-composition-timeline-plot {
+  position: relative;
+  min-width: 0;
+}
+.mg-composition-timeline-scroll {
+  min-width: 0;
+}
+.mg-composition-timeline-chart {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: 2.25rem var(--mg-composition-height);
+  gap: 0.6rem;
+  padding: var(--mg-space-md) 0 var(--mg-space-sm);
+  /* The information texture, clipped to the plot rather than used as
+     wallpaper: it reads as graph paper under the marks, never behind prose. */
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in srgb, var(--ink-strong) 14%, transparent) 0.7px,
+    transparent 0.8px
+  );
+  background-size: 6px 6px;
+}
+.mg-composition-timeline-axis,
+.mg-composition-timeline-lanes {
+  display: flex;
+  min-width: 0;
+  margin-inline: calc(var(--mg-composition-gap) / -2);
+}
+.mg-composition-timeline-axis-item,
+.mg-composition-timeline-lane {
+  box-sizing: border-box;
+  min-width: 0;
+  flex: 1 1 0;
+  padding-inline: calc(var(--mg-composition-gap) / 2);
+}
+.mg-composition-timeline-axis-item {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  text-transform: uppercase;
+  transition: color 120ms ease;
+}
+.mg-composition-timeline-axis-item > span {
+  display: block;
+  padding-bottom: 0.1rem;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+.mg-composition-timeline-axis-item[data-label-hidden="true"] > span {
+  visibility: hidden;
+}
+.mg-composition-timeline-axis-item[data-emphasis="active"] {
+  color: var(--ink-strong);
+}
+
+.mg-composition-timeline-lanes {
+  height: 100%;
+}
+.mg-composition-timeline-lane {
+  appearance: none;
+  position: relative;
+  display: block;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: crosshair;
+  scroll-snap-align: center;
+}
+/* The inspected lane rises so its readout paints over the lanes that follow
+   it in the DOM. `isolation: isolate` used to sit on every lane, which trapped
+   the readout in its own stacking context — later siblings then drew straight
+   through the tooltip's text, slicing the percentages in half. */
+.mg-composition-timeline-lane[data-emphasis="active"] {
+  z-index: 5;
+}
+/* The rail. A day with no data still occupies its slot, so a gap in the
+   series reads as an absence rather than as a narrower chart. */
+.mg-composition-timeline-lane::before {
+  position: absolute;
+  content: "";
+  inset: 0 calc(var(--mg-composition-gap) / 2);
+  background: var(--mg-composition-rail);
+}
+.mg-composition-timeline-stack {
+  position: absolute;
+  inset: 0 calc(var(--mg-composition-gap) / 2);
+  z-index: 1;
+  display: grid;
+  grid-template-rows: var(--mg-composition-rows);
+  overflow: hidden;
+}
+.mg-composition-timeline-segment {
+  display: block;
+  min-height: 0;
+  background: var(--mg-composition-graphite);
+  transition: background 120ms ease;
+}
+.mg-composition-timeline-segment[data-emphasis="graphite"] {
+  background: var(--mg-composition-graphite);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="residual"],
+.mg-composition-timeline-swatch[data-tone="residual"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="residual"] {
+  background: var(--mg-composition-residual);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-1"],
+.mg-composition-timeline-swatch[data-tone="chart-1"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-1"] {
+  background: var(--chart-1);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-2"],
+.mg-composition-timeline-swatch[data-tone="chart-2"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-2"] {
+  background: var(--chart-2);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-3"],
+.mg-composition-timeline-swatch[data-tone="chart-3"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-3"] {
+  background: var(--chart-3);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-4"],
+.mg-composition-timeline-swatch[data-tone="chart-4"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-4"] {
+  background: var(--chart-4);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-5"],
+.mg-composition-timeline-swatch[data-tone="chart-5"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-5"] {
+  background: var(--chart-5);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-6"],
+.mg-composition-timeline-swatch[data-tone="chart-6"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-6"] {
+  background: var(--chart-6);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-7"],
+.mg-composition-timeline-swatch[data-tone="chart-7"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-7"] {
+  background: var(--chart-7);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-8"],
+.mg-composition-timeline-swatch[data-tone="chart-8"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-8"] {
+  background: var(--chart-8);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-9"],
+.mg-composition-timeline-swatch[data-tone="chart-9"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-9"] {
+  background: var(--chart-9);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-10"],
+.mg-composition-timeline-swatch[data-tone="chart-10"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-10"] {
+  background: var(--chart-10);
+}
+.mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-11"],
+.mg-composition-timeline-swatch[data-tone="chart-11"],
+.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-11"] {
+  background: var(--chart-11);
+}
+
+/* Mint, and only here. */
+.mg-composition-timeline-lane:focus-visible,
+.mg-composition-timeline-key-item:focus-visible {
+  z-index: 3;
+  outline: 2px solid var(--brand-green);
+  outline-offset: -2px;
+}
+
+/* Anchored INSIDE the plot, dropping from the top of the lane.
+   Hanging it above the lane (`bottom: 100%`) put a ~130px readout above a
+   ~190px column, so it cleared the plot entirely, covered the module heading,
+   and pushed its own first line — the date — off the top of the region. */
+.mg-composition-timeline-inspector {
+  position: absolute;
+  z-index: 4;
+  top: 0.25rem;
+  display: grid;
+  width: 13.5rem;
+  gap: 0.3rem;
+  padding: 0.6rem 0.55rem;
+  /* Fully opaque: it sits over live marks now, and a translucent readout let
+     the lanes behind it show through its own numbers. */
+  background: var(--mg-composition-surface);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--ink-strong) 22%, transparent),
+    0 0.5rem 1.25rem rgb(0 0 0 / 38%);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  line-height: 1.45;
+  pointer-events: none;
+  text-align: left;
+}
+.mg-composition-timeline-inspector[data-placement="right"] {
+  left: calc(100% + 0.4rem);
+}
+.mg-composition-timeline-inspector[data-placement="center"] {
+  left: 50%;
+  transform: translateX(-50%);
+}
+.mg-composition-timeline-inspector[data-placement="left"] {
+  right: calc(100% + 0.4rem);
+}
+.mg-composition-timeline-inspector-domain {
+  color: var(--ink-strong);
+  font-size: var(--mg-type-caption);
+  font-weight: 600;
+}
+.mg-composition-timeline-inspector-rows {
+  display: grid;
+  gap: 0.15rem;
+}
+.mg-composition-timeline-inspector-rows > span {
+  display: grid;
+  align-items: center;
+  gap: 0.4rem;
+  grid-template-columns: 0.4rem 1fr auto;
+}
+.mg-composition-timeline-inspector-rows b {
+  color: var(--ink-strong);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.mg-composition-timeline-swatch {
+  display: block;
+  width: 0.4rem;
+  height: 0.4rem;
+  background: var(--mg-composition-graphite);
+}
+.mg-composition-timeline-dismiss {
+  display: none;
+}
+.mg-composition-timeline-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mg-space-lg);
+  padding-top: var(--mg-space-sm);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  letter-spacing: var(--mg-tracking-label);
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+/* The key is a control, not a caption: each entry follows one series across
+   every day, which is the second of the two questions this chart answers. */
+.mg-composition-timeline-key {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: var(--mg-space-sm) 0 0;
+  gap: 0.3rem 0.9rem;
+  list-style: none;
+}
+.mg-composition-timeline-key-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  letter-spacing: var(--mg-tracking-label);
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+.mg-composition-timeline-key-item i {
+  display: block;
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: none;
+  background: var(--mg-composition-graphite);
+  transition: background 120ms ease;
+}
+.mg-composition-timeline-key-item[data-emphasis="graphite"] i {
+  background: var(--mg-composition-graphite);
+}
+.mg-composition-timeline-key-item[aria-pressed="true"],
+.mg-composition-timeline-key-item:hover {
+  color: var(--ink-strong);
+}
+.mg-composition-timeline-key-item em {
+  font-style: normal;
+  opacity: 0.65;
+}
+
+/* Tablet and below: preserve mark width and scroll, never compress a long
+   series into slivers. */
+@media (max-width: 63.99rem) {
+  .mg-composition-timeline-scroll {
+    overflow-x: auto;
+    overflow-y: visible;
+    overscroll-behavior-x: contain;
+    padding-inline: var(--mg-space-md);
+    scroll-padding-inline: var(--mg-space-md);
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+  .mg-composition-timeline-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .mg-composition-timeline-chart {
+    --mg-composition-point-width: 1.5rem;
+    width: max(
+      100%,
+      calc(var(--mg-composition-count) * var(--mg-composition-point-width))
+    );
+  }
+  .mg-composition-timeline-lane {
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .mg-composition-timeline {
+    --mg-composition-height: 14rem;
+  }
+  .mg-composition-timeline-chart {
+    grid-template-rows: 2rem var(--mg-composition-height);
+    padding-top: var(--mg-space-sm);
+  }
+  /* Anchoring is unreliable at this width and would cover the touched mark,
+     so the readout becomes a bottom sheet with a real dismiss control. */
+  .mg-composition-timeline-inspector {
+    position: fixed;
+    /* `top` must be released explicitly: the desktop rule anchors from the
+       top of the lane, and leaving it set alongside `bottom` here stretched
+       the bottom sheet to the full height of the viewport. */
+    top: auto;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-height: min(20rem, 46vh);
+    overflow: auto;
+    transform: none;
+  }
+  .mg-composition-timeline-dismiss {
+    position: fixed;
+    z-index: 5;
+    right: 1rem;
+    bottom: calc(min(20rem, 46vh) + 1.25rem);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    background: var(--mg-composition-surface);
+    padding: 0.3rem 0.6rem;
+    color: var(--ink-strong);
+    font-family: var(--font-mono);
+    font-size: var(--mg-type-micro);
+    letter-spacing: var(--mg-tracking-label);
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .mg-composition-timeline-dismiss:focus-visible {
+    outline: 2px solid var(--brand-green);
+    outline-offset: 2px;
+  }
+}
+
+/* Visually hidden, and actually hidden.
+   Two table-specific traps, both measured rather than guessed:
+   1. A table ignores `width: 1px` unless `table-layout: fixed` is set, so the
+      shared `sr-only` utility leaves it at full intrinsic width.
+   2. `table-layout: fixed` governs COLUMNS, not the caption. With `sr-only`'s
+      `white-space: nowrap` the caption became one unbreakable 1,133px line
+      that dragged the table's box across the viewport at every width under
+      1280px. Letting the caption wrap and break is what actually collapses
+      the box; the content stays fully available to assistive technology. */
+.mg-composition-timeline-data {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  margin: -1px;
+  padding: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  table-layout: fixed;
+  white-space: normal;
+  word-break: break-all;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-composition-timeline-axis-item,
+  .mg-composition-timeline-segment,
+  .mg-composition-timeline-key-item i {
     transition: none;
   }
 }

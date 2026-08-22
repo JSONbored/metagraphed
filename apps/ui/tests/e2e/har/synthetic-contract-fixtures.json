@@ -1,0 +1,2521 @@
+{
+  "_README": [
+    "SYNTHETIC CONTRACT FIXTURES -- NOT A RECORDING OF PRODUCTION.",
+    "",
+    "Every response in this file was CONSTRUCTED from the committed API",
+    "contract (packages/contract/index.d.ts) and its worked example. None of",
+    "it was captured from api.metagraph.sh, and none of it describes real",
+    "Bittensor state. The numbers are a deterministic synthetic series chosen",
+    "to exercise chart geometry; they must never be cited as observed data.",
+    "",
+    "WHY THIS FILE EXISTS, AND WHEN IT SHOULD DISAPPEAR",
+    "",
+    "GET /api/v1/chain/subnet-price-share-composition is implemented on this",
+    "branch but is NOT yet deployed -- api.metagraph.sh returns 404 for it",
+    "(verified 2026-08-21, against a 200 control on /api/v1/chain/activity).",
+    "The homepage's only live visual reads that endpoint, so without a fixture",
+    "13 homepage e2e tests have nothing to render.",
+    "",
+    "ssr-supplement.json was the obvious place and is the wrong one: it is",
+    "documented as recorded production bytes, and api-stub's record() refuses",
+    "to persist even a real non-2xx response on the grounds that 'a recorded",
+    "error is worse than a gap'. Writing invented bytes into that file would",
+    "launder fiction as a capture. Hence a separate, human-readable file whose",
+    "name and contents say what it is.",
+    "",
+    "The stub loads this LAST, so any real HAR or supplement entry wins. Once",
+    "the endpoint ships, record the real response and delete the entry here."
+  ],
+  "responses": {
+    "/api/v1/chain/subnet-price-share-composition": {
+      "synthetic": true,
+      "reason": "endpoint implemented on this branch, not yet deployed (404 in production)",
+      "status": 200,
+      "contentType": "application/json",
+      "body": {
+        "ok": true,
+        "schema_version": 1,
+        "data": {
+          "days": [
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 118,
+              "snapshot_date": "2026-06-01",
+              "values": [
+                {
+                  "price_share": 0.212,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.187979,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.126497,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.114759,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.08101,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.050028,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.227727,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-01T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 119,
+              "snapshot_date": "2026-06-02",
+              "values": [
+                {
+                  "price_share": 0.224972,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.17799,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.130241,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.118503,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.071021,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.063,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.214273,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-02T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 120,
+              "snapshot_date": "2026-06-03",
+              "values": [
+                {
+                  "price_share": 0.232205,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.173959,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.128827,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.125949,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.059122,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.075972,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.203966,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-03T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 121,
+              "snapshot_date": "2026-06-04",
+              "values": [
+                {
+                  "price_share": 0.231983,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.175004,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.125664,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.131766,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.051496,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.083205,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.200882,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-04T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 122,
+              "snapshot_date": "2026-06-05",
+              "values": [
+                {
+                  "price_share": 0.227629,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.176272,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.12629,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.130748,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.052015,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.082983,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.204063,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-05T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 123,
+              "snapshot_date": "2026-06-06",
+              "values": [
+                {
+                  "price_share": 0.224765,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.17289,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.133964,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.121789,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.05946,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.078629,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.208503,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-06T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 124,
+              "snapshot_date": "2026-06-07",
+              "values": [
+                {
+                  "price_share": 0.226912,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.163932,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.146936,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.10886,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.068503,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.075765,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.209092,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-07T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 118,
+              "snapshot_date": "2026-06-08",
+              "values": [
+                {
+                  "price_share": 0.23273,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.153365,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.159467,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.098221,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.073696,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.077912,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.204609,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-08T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 119,
+              "snapshot_date": "2026-06-09",
+              "values": [
+                {
+                  "price_share": 0.23701,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.147277,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.165853,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.093968,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.073474,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.08373,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.198688,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-09T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 120,
+              "snapshot_date": "2026-06-10",
+              "values": [
+                {
+                  "price_share": 0.234658,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.149424,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.164438,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.095235,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.07116,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.08801,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.197075,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-10T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 121,
+              "snapshot_date": "2026-06-11",
+              "values": [
+                {
+                  "price_share": 0.22467,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.158467,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.158635,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.097153,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.072226,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.085658,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.203191,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-11T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 122,
+              "snapshot_date": "2026-06-12",
+              "values": [
+                {
+                  "price_share": 0.211091,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.168958,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.154174,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.094801,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.079899,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.07567,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.215407,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-12T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 123,
+              "snapshot_date": "2026-06-13",
+              "values": [
+                {
+                  "price_share": 0.20023,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.175344,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.154693,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.087175,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.092431,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.062091,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.228036,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-13T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 124,
+              "snapshot_date": "2026-06-14",
+              "values": [
+                {
+                  "price_share": 0.196199,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.175969,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.158973,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.078146,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.104115,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.05123,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.235368,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-14T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 118,
+              "snapshot_date": "2026-06-15",
+              "values": [
+                {
+                  "price_share": 0.198116,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.174095,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.16192,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.073686,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.109308,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.047199,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.235676,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-15T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 119,
+              "snapshot_date": "2026-06-16",
+              "values": [
+                {
+                  "price_share": 0.201063,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.175161,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.158539,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.07743,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.106445,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.049116,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.232246,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-16T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 120,
+              "snapshot_date": "2026-06-17",
+              "values": [
+                {
+                  "price_share": 0.200045,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.182394,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.147901,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.087922,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.099044,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.052063,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.230631,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-17T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 121,
+              "snapshot_date": "2026-06-18",
+              "values": [
+                {
+                  "price_share": 0.193956,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.194078,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.134099,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.099606,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.092955,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.051045,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.234261,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-18T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 122,
+              "snapshot_date": "2026-06-19",
+              "values": [
+                {
+                  "price_share": 0.186555,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.20457,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.123461,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.106839,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.091937,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.044956,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.241682,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-19T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 123,
+              "snapshot_date": "2026-06-20",
+              "values": [
+                {
+                  "price_share": 0.183692,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.208314,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.12008,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.107905,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.094884,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.037555,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.24757,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-20T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 124,
+              "snapshot_date": "2026-06-21",
+              "values": [
+                {
+                  "price_share": 0.188885,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.203854,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.123027,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.106031,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.096801,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.034692,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.24671,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-21T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 118,
+              "snapshot_date": "2026-06-22",
+              "values": [
+                {
+                  "price_share": 0.200569,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.194825,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.127307,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.106656,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.09277,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.039885,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.237988,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-22T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 119,
+              "snapshot_date": "2026-06-23",
+              "values": [
+                {
+                  "price_share": 0.213101,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.187199,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.127826,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.113042,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.081909,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.051569,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.225354,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-23T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 120,
+              "snapshot_date": "2026-06-24",
+              "values": [
+                {
+                  "price_share": 0.220774,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.184847,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.123365,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.123533,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.06833,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.064101,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.21505,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-24T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 121,
+              "snapshot_date": "2026-06-25",
+              "values": [
+                {
+                  "price_share": 0.22184,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.186765,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.117562,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.132576,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.058342,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.071774,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.211141,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-25T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 122,
+              "snapshot_date": "2026-06-26",
+              "values": [
+                {
+                  "price_share": 0.219526,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.188032,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.116147,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.134723,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.05599,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.07284,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.212742,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-26T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 123,
+              "snapshot_date": "2026-06-27",
+              "values": [
+                {
+                  "price_share": 0.219304,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.183779,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.122533,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.128635,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.06027,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.070526,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.214953,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-27T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 124,
+              "snapshot_date": "2026-06-28",
+              "values": [
+                {
+                  "price_share": 0.224497,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.17314,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.135064,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.118068,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.066088,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.070304,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.212839,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-28T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 118,
+              "snapshot_date": "2026-06-29",
+              "values": [
+                {
+                  "price_share": 0.23354,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.160211,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.148036,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.10911,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.068235,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.075497,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.205371,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-29T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 119,
+              "snapshot_date": "2026-06-30",
+              "values": [
+                {
+                  "price_share": 0.240985,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.151252,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.15571,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.105728,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.065371,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.08454,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.196414,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-06-30T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 120,
+              "snapshot_date": "2026-07-01",
+              "values": [
+                {
+                  "price_share": 0.241504,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.150234,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.156336,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.106996,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.061017,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.091985,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.191928,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-01T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 121,
+              "snapshot_date": "2026-07-02",
+              "values": [
+                {
+                  "price_share": 0.233878,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.156051,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.153173,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.108041,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.060795,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.092504,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.195558,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-02T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 122,
+              "snapshot_date": "2026-07-03",
+              "values": [
+                {
+                  "price_share": 0.221979,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.163497,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.151759,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.10401,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.068028,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.084878,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.205849,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-03T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 123,
+              "snapshot_date": "2026-07-04",
+              "values": [
+                {
+                  "price_share": 0.21199,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.167241,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.155503,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.094021,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.081,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.072979,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.217266,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-04T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 124,
+              "snapshot_date": "2026-07-05",
+              "values": [
+                {
+                  "price_share": 0.207959,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.165827,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.162949,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.082122,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.093972,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.06299,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.224181,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-05T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 118,
+              "snapshot_date": "2026-07-06",
+              "values": [
+                {
+                  "price_share": 0.209004,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.162664,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.168766,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.074496,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.101205,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.058959,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.224906,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-06T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 119,
+              "snapshot_date": "2026-07-07",
+              "values": [
+                {
+                  "price_share": 0.210272,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.16329,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.167748,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.075015,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.100983,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.060004,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.222688,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-07T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 120,
+              "snapshot_date": "2026-07-08",
+              "values": [
+                {
+                  "price_share": 0.20689,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.170964,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.158789,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.08246,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.096629,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.061272,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.222996,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-08T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 121,
+              "snapshot_date": "2026-07-09",
+              "values": [
+                {
+                  "price_share": 0.197932,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.183936,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.14586,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.091503,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.093765,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.05789,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.229114,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-09T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 122,
+              "snapshot_date": "2026-07-10",
+              "values": [
+                {
+                  "price_share": 0.187365,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.196467,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.135221,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.096696,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.095912,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.048932,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.239407,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-10T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 123,
+              "snapshot_date": "2026-07-11",
+              "values": [
+                {
+                  "price_share": 0.181277,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.202853,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.130968,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.096474,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.10173,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.038365,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.248333,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-11T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 124,
+              "snapshot_date": "2026-07-12",
+              "values": [
+                {
+                  "price_share": 0.183424,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.201438,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.132235,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.09416,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.10601,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.032277,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.250456,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-12T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 118,
+              "snapshot_date": "2026-07-13",
+              "values": [
+                {
+                  "price_share": 0.192467,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.195635,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.134153,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.095226,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.103658,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.034424,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.244437,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-13T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 119,
+              "snapshot_date": "2026-07-14",
+              "values": [
+                {
+                  "price_share": 0.202958,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.191174,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.131801,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.102899,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.09367,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.043467,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.234031,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-14T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 120,
+              "snapshot_date": "2026-07-15",
+              "values": [
+                {
+                  "price_share": 0.209344,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.191693,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.124175,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.115431,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.080091,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.053958,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.225308,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-15T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 121,
+              "snapshot_date": "2026-07-16",
+              "values": [
+                {
+                  "price_share": 0.209969,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.195973,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.115146,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.127115,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.06923,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.060344,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.222223,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-16T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 122,
+              "snapshot_date": "2026-07-17",
+              "values": [
+                {
+                  "price_share": 0.208095,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.19892,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.110686,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.132308,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.065199,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.060969,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.223823,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-17T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 123,
+              "snapshot_date": "2026-07-18",
+              "values": [
+                {
+                  "price_share": 0.209161,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.195539,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.11443,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.129445,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.067116,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.059095,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.225214,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-18T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 124,
+              "snapshot_date": "2026-07-19",
+              "values": [
+                {
+                  "price_share": 0.216394,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.184901,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.124922,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.122044,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.070063,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.060161,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.221515,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-19T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 118,
+              "snapshot_date": "2026-07-20",
+              "values": [
+                {
+                  "price_share": 0.228078,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.171099,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.136606,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.115955,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.069045,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.067394,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.211823,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-20T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 119,
+              "snapshot_date": "2026-07-21",
+              "values": [
+                {
+                  "price_share": 0.23857,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.160461,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.143839,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.114937,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.062956,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.079078,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.200159,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-21T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 120,
+              "snapshot_date": "2026-07-22",
+              "values": [
+                {
+                  "price_share": 0.242314,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.15708,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.144905,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.117884,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.055555,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.08957,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.192692,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-22T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 121,
+              "snapshot_date": "2026-07-23",
+              "values": [
+                {
+                  "price_share": 0.237854,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.160027,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.143031,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.119801,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.052692,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.093314,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.193281,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-23T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 122,
+              "snapshot_date": "2026-07-24",
+              "values": [
+                {
+                  "price_share": 0.228825,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.164307,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.143656,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.11577,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.057885,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.088854,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.200703,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-24T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 123,
+              "snapshot_date": "2026-07-25",
+              "values": [
+                {
+                  "price_share": 0.221199,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.164826,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.150042,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.104909,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.069569,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.079825,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.20963,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-25T00:04:00.000Z"
+            },
+            {
+              "observed_price_share_total": 1.0,
+              "priced_subnet_count": 124,
+              "snapshot_date": "2026-07-26",
+              "values": [
+                {
+                  "price_share": 0.218847,
+                  "series_id": "subnet:64",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.160365,
+                  "series_id": "subnet:4",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.160533,
+                  "series_id": "subnet:8",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.09133,
+                  "series_id": "subnet:51",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.082101,
+                  "series_id": "subnet:56",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.072199,
+                  "series_id": "subnet:19",
+                  "source": "recorded"
+                },
+                {
+                  "price_share": 0.214625,
+                  "series_id": "other",
+                  "source": "derived"
+                }
+              ],
+              "writer_captured_at": "2026-07-26T00:04:00.000Z"
+            }
+          ],
+          "metric": "artifact_normalized_moving_price_share",
+          "newest_day": "2026-07-26",
+          "observation_basis": "estimated_observed_price_set",
+          "oldest_day": "2026-06-01",
+          "point_count": 56,
+          "reference_day": "2026-07-26",
+          "reference_writer_captured_at": "2026-07-26T00:04:00.000Z",
+          "schema_version": 1,
+          "series": [
+            {
+              "id": "subnet:64",
+              "kind": "subnet",
+              "label": null,
+              "netuid": 64,
+              "reference_price_share": 0.218847
+            },
+            {
+              "id": "subnet:4",
+              "kind": "subnet",
+              "label": null,
+              "netuid": 4,
+              "reference_price_share": 0.160365
+            },
+            {
+              "id": "subnet:8",
+              "kind": "subnet",
+              "label": null,
+              "netuid": 8,
+              "reference_price_share": 0.160533
+            },
+            {
+              "id": "subnet:51",
+              "kind": "subnet",
+              "label": null,
+              "netuid": 51,
+              "reference_price_share": 0.09133
+            },
+            {
+              "id": "subnet:56",
+              "kind": "subnet",
+              "label": null,
+              "netuid": 56,
+              "reference_price_share": 0.082101
+            },
+            {
+              "id": "subnet:19",
+              "kind": "subnet",
+              "label": null,
+              "netuid": 19,
+              "reference_price_share": 0.072199
+            },
+            {
+              "id": "other",
+              "kind": "other",
+              "label": "Other artifact-normalized price share",
+              "netuid": null,
+              "reference_price_share": 0.214625
+            }
+          ],
+          "series_limit": 6,
+          "target_day_count": 56
+        },
+        "meta": {
+          "artifact_path": "synthetic-contract-fixture",
+          "cache": "short",
+          "contract_version": "2026-07-03.2",
+          "generated_at": "2026-07-26T00:04:00.000Z",
+          "source": "synthetic"
+        }
+      }
+    }
+  }
+}

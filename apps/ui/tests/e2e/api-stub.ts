@@ -137,6 +137,54 @@ for (const [key, value] of Object.entries(supplement)) {
   if (!byPath.has(pathname)) byPath.set(pathname, recorded);
 }
 
+// Synthetic contract fixtures, loaded LAST so every real recording wins.
+//
+// These are constructed from the committed contract, not captured from
+// production, and they exist only for an endpoint that is implemented but not
+// yet deployed. They are deliberately NOT in ssr-supplement.json: that file is
+// recorded bytes, and record() refuses to persist even a genuine non-2xx on
+// the grounds that a recorded error is worse than a gap. Inventing bytes into
+// it would launder fiction as a capture. Serving them is announced on stdout
+// so a run can never quietly pass on made-up data.
+type SyntheticFixtures = {
+  responses?: Record<
+    string,
+    {
+      synthetic?: boolean;
+      reason?: string;
+      status: number;
+      contentType: string;
+      body: unknown;
+    }
+  >;
+};
+const SYNTHETIC = path.join(HAR_DIR, "synthetic-contract-fixtures.json");
+if (existsSync(SYNTHETIC)) {
+  const doc = JSON.parse(readFileSync(SYNTHETIC, "utf8")) as SyntheticFixtures;
+  for (const [key, value] of Object.entries(doc.responses ?? {})) {
+    const pathname = key.split("?")[0]!;
+    if (byUrl.has(key) || byPath.has(pathname)) {
+      console.log(
+        `[api-stub] IGNORING synthetic fixture for ${key} — a real recording exists. ` +
+          `Delete the synthetic entry.`,
+      );
+      continue;
+    }
+    entryCount += 1;
+    const recorded = {
+      status: value.status,
+      contentType: value.contentType,
+      body: Buffer.from(JSON.stringify(value.body), "utf8"),
+    };
+    byUrl.set(key, recorded);
+    byPath.set(pathname, recorded);
+    console.log(
+      `[api-stub] SYNTHETIC fixture serving ${key} — constructed from the contract, ` +
+        `not recorded from production${value.reason ? ` (${value.reason})` : ""}.`,
+    );
+  }
+}
+
 /**
  * A hit, and whether it answered the exact URL asked for.
  *

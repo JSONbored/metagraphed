@@ -80,7 +80,9 @@ function HomeHero() {
           <DataPageHeroTitleLine emphasis="focus">in focus.</DataPageHeroTitleLine>
         </>
       }
-      description="Live chain context for people and agents."
+      // The reading lens, not a restatement of the title. The eyebrow already
+      // says who this is for, so this line says what is actually here.
+      description="Every subnet, validator, and block — with the public interfaces that make them callable."
       primaryActions={
         <>
           <Link to="/subnets" className="mg-focus-ring mg-page-primary-action">

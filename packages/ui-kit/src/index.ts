@@ -157,6 +157,20 @@ export {
   type InteractiveDataFieldTone,
 } from "@/components/metagraphed/interactive-data-field";
 export {
+  COMPOSITION_TIMELINE_TONES,
+  CompositionTimeline,
+  compositionToneAt,
+  formatCompositionShare,
+  resolveColumnEmphasis,
+  resolveSegmentEmphasis,
+  segmentRows,
+  type CompositionTimelineColumn,
+  type CompositionTimelineInspection,
+  type CompositionTimelineProps,
+  type CompositionTimelineSeries,
+  type CompositionTimelineTone,
+} from "@/components/metagraphed/composition-timeline";
+export {
   type EntityHeroProps,
   type EntityHeroStat,
   EntityHero,
