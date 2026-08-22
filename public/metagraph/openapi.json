@@ -65019,6 +65019,7 @@
           },
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -65143,6 +65144,7 @@
           },
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -65267,6 +65269,7 @@
           },
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -65391,6 +65394,7 @@
           },
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -70603,6 +70607,7 @@
             "description": "Unexpected backend error."
           }
         },
+        "summary": "Fetch up to 25,000 chain events in one paid call",
         "tags": [
           "chain",
           "analytics"
@@ -71989,6 +71994,7 @@
           },
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -72125,6 +72131,7 @@
           },
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -72251,6 +72258,7 @@
           },
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -72377,6 +72385,7 @@
           },
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -72758,6 +72767,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -72867,6 +72877,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -72990,6 +73001,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -73099,6 +73111,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -73208,6 +73221,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -73364,6 +73378,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -73487,6 +73502,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -73595,6 +73611,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -73812,6 +73829,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -73999,6 +74017,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -74209,6 +74228,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -74316,6 +74336,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -74483,6 +74504,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -74592,6 +74614,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -74700,6 +74723,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -74818,6 +74842,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -74941,6 +74966,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -75064,6 +75090,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -75173,6 +75200,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -75296,6 +75324,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -75433,6 +75462,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -75556,6 +75586,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -75664,6 +75695,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -75673,6 +75705,7 @@
           },
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -75800,6 +75833,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -76011,6 +76045,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "ss58",
             "required": true,
@@ -76554,6 +76589,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -86269,6 +86305,7 @@
             "description": "Unexpected backend error."
           }
         },
+        "summary": "Fetch up to 25,000 chain events in one paid call",
         "tags": [
           "chain",
           "analytics"
@@ -97393,6 +97430,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -97514,6 +97552,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -97637,6 +97676,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -97748,6 +97788,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -97873,6 +97914,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -98142,6 +98184,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -98251,6 +98294,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -98399,6 +98443,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -98508,6 +98553,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -98617,6 +98663,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -98742,6 +98789,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -98865,6 +98913,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -98990,6 +99039,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -99138,6 +99188,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -99464,6 +99515,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -99601,6 +99653,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -99798,6 +99851,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -99977,6 +100031,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -100225,6 +100280,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -100471,6 +100527,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -100595,6 +100652,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -100719,6 +100777,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -100828,6 +100887,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -100954,6 +101014,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -101076,6 +101137,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -101185,6 +101247,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -101353,6 +101416,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -101521,6 +101585,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -101630,6 +101695,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -101741,6 +101807,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -101850,6 +101917,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -102009,6 +102077,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -102163,6 +102232,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -102287,6 +102357,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -102297,6 +102368,7 @@
           },
           {
             "description": "A neuron's UID within its subnet's metagraph.",
+            "example": 0,
             "in": "path",
             "name": "uid",
             "required": true,
@@ -102416,6 +102488,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -102426,6 +102499,7 @@
           },
           {
             "description": "A neuron's UID within its subnet's metagraph.",
+            "example": 0,
             "in": "path",
             "name": "uid",
             "required": true,
@@ -102552,6 +102626,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -102699,6 +102774,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -102819,6 +102895,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -102943,6 +103020,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -103052,6 +103130,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -103161,6 +103240,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -103270,6 +103350,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -103418,6 +103499,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -103537,6 +103619,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -103660,6 +103743,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -103771,6 +103855,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -103894,6 +103979,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -104018,6 +104104,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -104141,6 +104228,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -104279,6 +104367,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -104402,6 +104491,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -104535,6 +104625,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -104658,6 +104749,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -104780,6 +104872,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -105055,6 +105148,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -105248,6 +105342,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -105357,6 +105452,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -105495,6 +105591,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -105653,6 +105750,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -105763,6 +105861,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -105888,6 +105987,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -106031,6 +106131,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -106140,6 +106241,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -106249,6 +106351,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -106372,6 +106475,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -106495,6 +106599,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -106628,6 +106733,7 @@
         "parameters": [
           {
             "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
             "in": "path",
             "name": "netuid",
             "required": true,
@@ -107809,6 +107915,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded hotkey address identifying one validator identity.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "hotkey",
             "required": true,
@@ -107917,6 +108024,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded hotkey address identifying one validator identity.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "hotkey",
             "required": true,
@@ -108053,6 +108161,7 @@
         "parameters": [
           {
             "description": "An SS58-encoded hotkey address identifying one validator identity.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
             "in": "path",
             "name": "hotkey",
             "required": true,

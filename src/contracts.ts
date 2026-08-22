@@ -6005,6 +6005,29 @@ export const SHARED_PATH_PARAMETER_DESCRIPTIONS: Record<string, string> = {
 };
 
 /**
+ * A VALID value for each path parameter, published as `example` (#11602).
+ *
+ * A description says what a parameter MEANS; an example says what to SEND. The
+ * difference is not cosmetic -- a consumer that builds a request from this
+ * document substitutes the example, and with none it substitutes the template.
+ * Measured with `pay catalog check`: five of our fourteen catalogued endpoints
+ * probed as `/api/v1/subnets/{netuid}` and answered 404. With these, the same
+ * five probe `/api/v1/subnets/1` and answer 200.
+ *
+ * STABLE VALUES ONLY, which is what decides who gets one. Subnet 1 has existed
+ * since genesis and the address below is long-lived. A block number or an
+ * extrinsic hash is NOT stable -- any concrete one starts 404ing weeks after
+ * it is written, which is worse than no example. Those keep their prose and no
+ * example, deliberately.
+ */
+export const SHARED_PATH_PARAMETER_EXAMPLES: Record<string, string | number> = {
+  netuid: 1,
+  ss58: "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+  hotkey: "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+  uid: 0,
+};
+
+/**
  * Apply the shared path-parameter prose, without overriding an inline one.
  *
  * Exported for its own test: the "name not in the table" arm is unreachable
@@ -6020,7 +6043,20 @@ export function withSharedPathParameterDescription<T extends object>(
   const spec = parameter as { name?: unknown; description?: unknown };
   if (typeof spec.name !== "string" || spec.description) return parameter;
   const shared = SHARED_PATH_PARAMETER_DESCRIPTIONS[spec.name];
-  return shared ? { ...parameter, description: shared } : parameter;
+  // The description gates BOTH. An example for a parameter with no prose
+  // publishes a value with nothing saying what it means, and
+  // tests/openapi-summary-description.test.ts forbids that pairing outright --
+  // so returning early here is what keeps this function free of an arm no
+  // input can reach.
+  if (!shared) return parameter;
+  const example = SHARED_PATH_PARAMETER_EXAMPLES[spec.name];
+  return {
+    ...parameter,
+    description: shared,
+    // Only where a STABLE value exists; see the table's header for why `ref`
+    // and `hash` deliberately have none.
+    ...(example === undefined ? {} : { example }),
+  };
 }
 
 export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
@@ -6276,6 +6312,13 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   "global-validators": "Fetch the network-wide validator leaderboard",
   "account-summary": "Fetch a cross-subnet activity summary for one account",
   health: "Fetch aggregate health across all probed surfaces",
+  // The paid export tier. Needs a label for the same reason the other
+  // catalogued routes do, and for one more: `pay catalog check` falls back to
+  // `description` when `summary` is absent and then applies its 63-character
+  // limit to THAT -- so a route with no short label is reported as having a
+  // 633-character one. Publishing a real summary is the fix; shortening a
+  // description that is doing its own job would not be.
+  "export-chain-events": "Fetch up to 25,000 chain events in one paid call",
 };
 
 export function buildOpenApiArtifact(

@@ -612,7 +612,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Network-scoped form of /api/v1/export/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
+        /**
+         * Fetch up to 25,000 chain events in one paid call
+         * @description Network-scoped form of /api/v1/export/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         */
         get: operations["exportChainEventsByNetwork"];
         put?: never;
         post?: never;
@@ -2469,7 +2472,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch up to 25,000 chain events in one call -- the same rows, filters and ordering as /api/v1/chain-events, without the 100-row page ceiling or the cursor bookkeeping that comes with it. ?pallet / ?method narrow by event id; ?before reads down from a block number, which is how a caller walks a large range in deliberate chunks; ?limit caps the call (<=25000, default 5000). REQUIRES PAYMENT: this route answers 402 with an x402 quote when no payment is presented, on Base or Solana -- see /.well-known/x402. It is the one family that does; every other route on this API serves an unpaid caller normally. Served live, no static file. */
+        /**
+         * Fetch up to 25,000 chain events in one paid call
+         * @description Fetch up to 25,000 chain events in one call -- the same rows, filters and ordering as /api/v1/chain-events, without the 100-row page ceiling or the cursor bookkeeping that comes with it. ?pallet / ?method narrow by event id; ?before reads down from a block number, which is how a caller walks a large range in deliberate chunks; ?limit caps the call (<=25000, default 5000). REQUIRES PAYMENT: this route answers 402 with an x402 quote when no payment is presented, on Base or Solana -- see /.well-known/x402. It is the one family that does; every other route on this API serves an unpaid caller normally. Served live, no static file.
+         */
         get: operations["exportChainEvents"];
         put?: never;
         post?: never;
@@ -14285,7 +14291,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -14399,7 +14408,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -14524,7 +14536,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -14649,7 +14664,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -20168,7 +20186,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -20523,7 +20544,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -20637,7 +20661,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -20762,7 +20789,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -21126,7 +21156,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21277,7 +21310,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21398,7 +21434,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21510,7 +21549,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21639,7 +21681,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21794,7 +21839,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21922,7 +21970,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22058,7 +22109,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22199,7 +22253,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22343,7 +22400,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22470,7 +22530,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22592,7 +22655,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22711,7 +22777,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22834,7 +22903,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22975,7 +23047,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23107,7 +23182,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23231,7 +23309,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23348,7 +23429,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23481,7 +23565,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23603,7 +23690,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23735,7 +23825,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23857,7 +23950,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23974,9 +24070,15 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -24115,7 +24217,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -24247,7 +24352,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded account address -- a hotkey or coldkey. */
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -24774,7 +24882,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -42332,7 +42443,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -42688,7 +42802,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -42801,7 +42918,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -42916,7 +43036,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43051,7 +43174,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43180,7 +43306,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43363,7 +43492,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43479,7 +43611,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43601,7 +43736,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43801,7 +43939,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43938,7 +44079,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44071,7 +44215,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44208,7 +44355,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44371,7 +44521,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44532,7 +44685,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44692,7 +44848,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44824,7 +44983,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44962,7 +45124,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45181,7 +45346,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45320,7 +45488,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45450,7 +45621,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45571,7 +45745,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45701,7 +45878,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45818,7 +45998,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45943,7 +46126,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46094,7 +46280,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46222,7 +46411,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46341,7 +46533,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46449,7 +46644,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46572,7 +46770,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46695,7 +46896,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46823,7 +47027,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46953,7 +47160,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -47108,9 +47318,15 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
-                /** @description A neuron's UID within its subnet's metagraph. */
+                /**
+                 * @description A neuron's UID within its subnet's metagraph.
+                 * @example 0
+                 */
                 uid: number;
             };
             cookie?: never;
@@ -47243,9 +47459,15 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
-                /** @description A neuron's UID within its subnet's metagraph. */
+                /**
+                 * @description A neuron's UID within its subnet's metagraph.
+                 * @example 0
+                 */
                 uid: number;
             };
             cookie?: never;
@@ -47371,7 +47593,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -47506,7 +47731,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -47856,7 +48084,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48000,7 +48231,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48139,7 +48373,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48254,7 +48491,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48428,7 +48668,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48547,7 +48790,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48991,7 +49237,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49104,7 +49353,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49219,7 +49471,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49335,7 +49590,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49496,7 +49754,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49614,7 +49875,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49727,7 +49991,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49845,7 +50112,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49962,7 +50232,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50078,7 +50351,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50218,7 +50494,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50357,7 +50636,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50478,7 +50760,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50608,7 +50893,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50760,7 +51048,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50900,7 +51191,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51055,7 +51349,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51186,7 +51483,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51307,7 +51607,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51441,7 +51744,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51597,7 +51903,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51713,7 +52022,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51845,7 +52157,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51992,7 +52307,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The subnet's numeric id on the Bittensor network, as used by the chain itself. */
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -52947,7 +53265,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description An SS58-encoded hotkey address identifying one validator identity. */
+                /**
+                 * @description An SS58-encoded hotkey address identifying one validator identity.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 hotkey: string;
             };
             cookie?: never;
@@ -53111,7 +53432,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded hotkey address identifying one validator identity. */
+                /**
+                 * @description An SS58-encoded hotkey address identifying one validator identity.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 hotkey: string;
             };
             cookie?: never;
@@ -53246,7 +53570,10 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description An SS58-encoded hotkey address identifying one validator identity. */
+                /**
+                 * @description An SS58-encoded hotkey address identifying one validator identity.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 hotkey: string;
             };
             cookie?: never;
