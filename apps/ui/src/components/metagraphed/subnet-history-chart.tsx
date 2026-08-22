@@ -1,26 +1,26 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { subnetHistoryQuery } from "@/lib/metagraphed/queries";
-import { Sparkline, RangeControl } from "@jsonbored/ui-kit";
+import { RangeControl } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
-import { healthColorVar } from "@/lib/health-tokens";
+import {
+  MetricHistory,
+  toLinePoints,
+  type MetricHistorySeries,
+} from "@/components/metagraphed/metric-history";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetHistoryPoint } from "@/lib/metagraphed/types";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
-// Lowercase windows, mirroring the /history API + the inline toggle conventions
-// used by health-trends.tsx. "all" maps to the API's widest supported window.
 // The route's own published windows (#10994) -- restating them here is
 // how a chart offers a window its route rejects.
 const WINDOWS = QUERY_PARAMETER_ENUMS["/api/v1/subnets/{netuid}/history"].window;
 type Win = (typeof WINDOWS)[number];
 
 /**
- * Per-subnet on-chain history (#1302). A window selector drives a daily snapshot
- * series; each metric renders as a labelled Sparkline row (mirrors
- * subnet-growth-card.tsx's GrowthRow). Optional detail — renders null when the
- * subnet has no history yet, so it never clutters a cold profile.
+ * Per-subnet on-chain history (#1302): a window selector drives a daily
+ * snapshot series; one `LineWithWindow` shows the picked metric. Renders the
+ * empty state when the subnet has no history yet.
  */
 export function SubnetHistoryChart({ netuid }: { netuid: number }) {
   const [win, setWin] = useState<Win>("90d");
@@ -33,40 +33,59 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
   } = useQuery(subnetHistoryQuery(netuid, win));
   const points = useMemo<SubnetHistoryPoint[]>(() => res?.data?.points ?? [], [res?.data?.points]);
 
-  const series = useMemo(() => {
+  const metrics = useMemo<MetricHistorySeries[]>(() => {
     const pick = (key: keyof SubnetHistoryPoint) =>
-      points
-        .map((p) => p[key])
-        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-    return {
-      neurons: pick("neuron_count"),
-      validators: pick("validator_count"),
-      stake: pick("total_stake_tao"),
-      emission: pick("total_emission_tao"),
-    };
+      toLinePoints(
+        points,
+        (p) => p.snapshot_date,
+        (p) => p[key],
+      );
+    return [
+      {
+        key: "neurons",
+        label: "Neurons",
+        unit: "neurons",
+        points: pick("neuron_count"),
+        format: (v) => formatNumber(v),
+      },
+      {
+        key: "validators",
+        label: "Validators",
+        unit: "validators",
+        points: pick("validator_count"),
+        format: (v) => formatNumber(v),
+      },
+      {
+        key: "stake",
+        label: "Total stake",
+        unit: "alpha staked",
+        points: pick("total_stake_alpha"),
+        format: formatTao,
+      },
+      {
+        key: "emission",
+        label: "Total emission",
+        unit: "alpha emitted",
+        points: pick("total_emission_alpha"),
+        format: formatTao,
+      },
+    ];
   }, [points]);
 
-  const hasData =
-    series.neurons.length +
-      series.validators.length +
-      series.stake.length +
-      series.emission.length >
-    0;
-
-  const windowSelector = (
-    <RangeControl
-      label="History window"
-      options={WINDOWS.map((w) => ({ value: w, label: String(w) }))}
-      value={win}
-      onChange={setWin}
-    />
-  );
+  const hasData = metrics.some((m) => m.points.length > 0);
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-end">{windowSelector}</div>
+      <div className="flex items-center justify-end">
+        <RangeControl
+          label="History window"
+          options={WINDOWS.map((w) => ({ value: w, label: String(w) }))}
+          value={win}
+          onChange={setWin}
+        />
+      </div>
       {isLoading ? (
-        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-96 w-full" />
       ) : isError ? (
         <ErrorState error={error} onRetry={() => refetch()} context="subnet history" />
       ) : !hasData ? (
@@ -75,61 +94,12 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
           description="Daily snapshots will appear here once enough chain history has accumulated for this subnet."
         />
       ) : (
-        <Panel bodyClassName="space-y-3">
-          {series.neurons.length > 0 ? (
-            <HistoryRow label="Neurons" series={series.neurons} color="var(--accent)" />
-          ) : null}
-          {series.validators.length > 0 ? (
-            <HistoryRow
-              label="Validators"
-              series={series.validators}
-              color={healthColorVar("ok")}
-            />
-          ) : null}
-          {series.stake.length > 0 ? (
-            <HistoryRow
-              label="Total stake"
-              series={series.stake}
-              color={healthColorVar("warn")}
-              format={formatTao}
-            />
-          ) : null}
-          {series.emission.length > 0 ? (
-            <HistoryRow
-              label="Total emission"
-              series={series.emission}
-              color="var(--accent)"
-              format={formatTao}
-            />
-          ) : null}
-        </Panel>
+        <MetricHistory
+          id={`subnet-${netuid}-history`}
+          metrics={metrics}
+          ariaLabel={`Subnet ${netuid} history`}
+        />
       )}
-    </div>
-  );
-}
-
-function HistoryRow({
-  label,
-  series,
-  color,
-  format,
-}: {
-  label: string;
-  series: number[];
-  color: string;
-  format?: (v: number) => string;
-}) {
-  const last = series[series.length - 1]!;
-  const display = format ? format(last) : Number.isFinite(last) ? formatNumber(last) : "—";
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 text-11 text-ink-muted">{label}</span>
-      <div className="flex-1 min-w-0">
-        <Sparkline values={series} color={color} width={220} height={28} formatValue={format} />
-      </div>
-      <span className="w-20 shrink-0 text-right font-display text-13 font-semibold tabular-nums text-ink-strong">
-        {display}
-      </span>
     </div>
   );
 }

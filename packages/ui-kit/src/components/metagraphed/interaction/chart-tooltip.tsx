@@ -97,11 +97,21 @@ export function ChartTooltip({
             <strong>{data.title}</strong>
             {data.total ? <span>{data.total}</span> : null}
           </div>
+          {data.rows && data.rows.length > 0 ? (
+            <div className="mg-chart-tooltip-divider" />
+          ) : null}
           {data.rows?.map((row) => (
             <div
               key={row.key}
               className="mg-chart-tooltip-row"
               data-current={row.key === active?.key ? "true" : undefined}
+              data-muted={
+                active &&
+                data.rows?.some((r) => r.key === active.key) &&
+                row.key !== active.key
+                  ? "true"
+                  : undefined
+              }
             >
               <span>
                 {row.swatch ? (
@@ -111,9 +121,9 @@ export function ChartTooltip({
                     aria-hidden
                   />
                 ) : null}
-                {row.label}
+                <span>{row.label}</span>
               </span>
-              <span>{row.value}</span>
+              <b>{row.value}</b>
             </div>
           ))}
           {data.note ? (

@@ -1,37 +1,36 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { accountPositionHistoryQuery } from "@/lib/metagraphed/queries";
-import { Sparkline, RangeControl } from "@jsonbored/ui-kit";
+import { RangeControl } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
-import { healthColorVar } from "@/lib/health-tokens";
-import { formatNumber } from "@/lib/metagraphed/format";
+import {
+  MetricHistory,
+  toLinePoints,
+  type MetricHistorySeries,
+} from "@/components/metagraphed/metric-history";
 import type { AccountPositionHistoryPoint } from "@/lib/metagraphed/types";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
-// Lowercase windows, matching the /history API's window enum.
 // The route's own published windows (#10994) -- restating them here is
 // how a chart offers a window its route rejects.
 const WINDOWS = QUERY_PARAMETER_ENUMS["/api/v1/accounts/{ss58}/subnets/{netuid}/history"].window;
 type Win = (typeof WINDOWS)[number];
 
-function taoStr(v?: number) {
-  if (v == null || !Number.isFinite(v)) return "—";
+function taoStr(v: number) {
+  if (!Number.isFinite(v)) return "—";
   if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
   if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
   return `${v.toFixed(v < 10 ? 3 : 2)} τ`;
 }
 
-function yieldStr(v?: number) {
-  if (v == null || !Number.isFinite(v)) return "—";
-  return v.toExponential(2);
+function yieldStr(v: number) {
+  return Number.isFinite(v) ? v.toExponential(2) : "—";
 }
 
 /** Staked/emission-over-time + yield daily history for one account's position
  * on one subnet -- the "Alpha Holdings chart" (#4329/6.4), reusing the
- * account_position_daily rollup. Mirrors validator-history-chart.tsx's window
- * selector + stacked HistoryRow pattern. Renders null-safe empty state when
- * this position has no history yet (e.g. a freshly-registered neuron). */
+ * account_position_daily rollup. Empty state when this position has no
+ * history yet (e.g. a freshly-registered neuron). */
 export function AccountPositionHistoryChart({ ss58, netuid }: { ss58: string; netuid: number }) {
   const [win, setWin] = useState<Win>("90d");
   const {
@@ -46,34 +45,46 @@ export function AccountPositionHistoryChart({ ss58, netuid }: { ss58: string; ne
     [res?.data?.points],
   );
 
-  const series = useMemo(() => {
+  const metrics = useMemo<MetricHistorySeries[]>(() => {
     const pick = (key: keyof AccountPositionHistoryPoint) =>
-      points
-        .map((p) => p[key])
-        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-    return {
-      stake: pick("stake_tao"),
-      emission: pick("emission_tao"),
-      yield: pick("yield"),
-    };
+      toLinePoints(
+        points,
+        (p) => p.snapshot_date,
+        (p) => p[key],
+      );
+    return [
+      {
+        key: "stake",
+        label: "Staked",
+        unit: "TAO staked",
+        points: pick("stake_tao"),
+        format: taoStr,
+      },
+      {
+        key: "emission",
+        label: "Emission",
+        unit: "TAO emitted",
+        points: pick("emission_tao"),
+        format: taoStr,
+      },
+      { key: "yield", label: "Yield", unit: "yield", points: pick("yield"), format: yieldStr },
+    ];
   }, [points]);
 
-  const hasData = series.stake.length + series.emission.length + series.yield.length > 0;
-
-  const windowSelector = (
-    <RangeControl
-      label="History window"
-      options={WINDOWS.map((w) => ({ value: w, label: String(w) }))}
-      value={win}
-      onChange={setWin}
-    />
-  );
+  const hasData = metrics.some((m) => m.points.length > 0);
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-end">{windowSelector}</div>
+      <div className="flex items-center justify-end">
+        <RangeControl
+          label="History window"
+          options={WINDOWS.map((w) => ({ value: w, label: String(w) }))}
+          value={win}
+          onChange={setWin}
+        />
+      </div>
       {isLoading ? (
-        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-96 w-full" />
       ) : isError ? (
         <ErrorState error={error} onRetry={() => refetch()} context="position history" />
       ) : !hasData ? (
@@ -82,59 +93,12 @@ export function AccountPositionHistoryChart({ ss58, netuid }: { ss58: string; ne
           description="Daily snapshots will appear here once enough chain history has accumulated for this position."
         />
       ) : (
-        <Panel bodyClassName="space-y-3">
-          {series.stake.length > 0 ? (
-            <HistoryRow
-              label="Staked"
-              series={series.stake}
-              color={healthColorVar("warn")}
-              format={taoStr}
-            />
-          ) : null}
-          {series.emission.length > 0 ? (
-            <HistoryRow
-              label="Emission"
-              series={series.emission}
-              color="var(--accent)"
-              format={taoStr}
-            />
-          ) : null}
-          {series.yield.length > 0 ? (
-            <HistoryRow
-              label="Yield"
-              series={series.yield}
-              color="var(--chart-1)"
-              format={yieldStr}
-            />
-          ) : null}
-        </Panel>
+        <MetricHistory
+          id={`position-${ss58}-${netuid}-history`}
+          metrics={metrics}
+          ariaLabel={`SN${netuid} position history`}
+        />
       )}
-    </div>
-  );
-}
-
-function HistoryRow({
-  label,
-  series,
-  color,
-  format,
-}: {
-  label: string;
-  series: number[];
-  color: string;
-  format?: (v: number) => string;
-}) {
-  const last = series[series.length - 1]!;
-  const display = format ? format(last) : Number.isFinite(last) ? formatNumber(last) : "—";
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 text-11 text-ink-muted">{label}</span>
-      <div className="flex-1 min-w-0">
-        <Sparkline values={series} color={color} width={220} height={28} formatValue={format} />
-      </div>
-      <span className="w-20 shrink-0 text-right font-display text-13 font-semibold tabular-nums text-ink-strong">
-        {display}
-      </span>
     </div>
   );
 }

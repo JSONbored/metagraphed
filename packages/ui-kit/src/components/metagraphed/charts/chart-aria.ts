@@ -22,22 +22,6 @@ export function synthesizeDonutAriaLabel(segments: ChartAriaDatum[]): string {
 }
 
 /**
- * Fallback accessible names for the line-series primitives' empty states
- * (#6375). BarMini/Donut synthesize a label from their data; Sparkline and
- * CandlestickMini have no data to describe when empty, so their fallback is a
- * constant.
- *
- * The phrasing keeps both existing conventions: "<chart> with no data" matches
- * synthesizeBarMiniAriaLabel/synthesizeDonutAriaLabel above, and the chart noun
- * matches each component's own `ariaLabel ?? "..."` fallback for its keyboard
- * hint (sparkline.tsx, candlestick-mini.tsx).
- */
-export const SPARKLINE_EMPTY_ARIA_LABEL = "Sparkline chart with no data";
-export const CANDLESTICK_MINI_EMPTY_ARIA_LABEL =
-  "Candlestick chart with no data";
-export const STACKED_AREA_EMPTY_ARIA_LABEL = "Stacked area chart with no data";
-
-/**
  * Accessible name for one mark in an interactive chart (#11606): the domain
  * label and, when the mark carries one, its total -- `"AUG 22 · 7.4T total"`.
  * Every `useEntityMark` call should pass a label; this is the default one.
@@ -48,4 +32,21 @@ export function markAriaLabel(
 ): string {
   if (total === undefined || total === null || total === "") return domain;
   return `${domain} · ${total} total`;
+}
+
+/**
+ * The one-sentence reading of a `LineWithWindow` (#11608) -- its group name
+ * and what a screen reader hears before the table:
+ * `"Tokens: 254T, +89% over JUN 28, 2026 → AUG 22, 2026"`.
+ */
+export function momentumAriaLabel(
+  unit: string,
+  endValue: string | null,
+  deltaLabel: string,
+  rangeLabel: string,
+): string {
+  const noun = unit.charAt(0).toUpperCase() + unit.slice(1);
+  if (endValue === null) return `${noun}: no data in the window`;
+  const range = rangeLabel ? ` over ${rangeLabel}` : "";
+  return `${noun}: ${endValue}, ${deltaLabel}${range}`;
 }

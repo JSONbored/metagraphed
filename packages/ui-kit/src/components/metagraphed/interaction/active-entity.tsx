@@ -177,7 +177,10 @@ export interface EntityMarkProps {
 }
 
 const MARKS_SELECTOR = "[data-marks]";
-const MARK_SELECTOR = "[data-entity]";
+// A mark is a button (role="button" is in EntityMarkProps); a chart may also
+// stamp data-entity on non-focusable parts -- a stacked column's segments --
+// which must not join the roving order.
+const MARK_SELECTOR = '[data-entity][role="button"]';
 
 function siblingsOf(el: Element): Element[] {
   const group = el.closest(MARKS_SELECTOR);

@@ -25,10 +25,13 @@ import {
   AccordionTrigger,
   AnimatedNumber,
   BarMini,
+  LineWithWindow,
+  StackedColumns,
+  TrendDelta,
+  lineSpecimen,
+  stackedSpecimen,
   BrandIcon,
   CandidateChip,
-  CandlestickMini,
-  ChartSkeleton,
   Command,
   CommandEmpty,
   CommandGroup,
@@ -101,8 +104,6 @@ import {
   SheetTitle,
   SheetTrigger,
   Skeleton,
-  SparkLegend,
-  Sparkline,
   TableState,
   TimeAgo,
   TreemapMini,
@@ -155,6 +156,7 @@ export function PrimitivesPreview() {
       <TokensSection cols={cols} />
       <LayoutSection updated={updated} />
       <DataDisplaySection />
+      <ChartsSection />
       <DefinitionsProvider definitions={DEFINITIONS}>
         <InteractionSection />
       </DefinitionsProvider>
@@ -173,6 +175,7 @@ const NAV_SECTIONS = [
   { id: "tokens", label: "Tokens" },
   { id: "layout", label: "Layout" },
   { id: "data-display", label: "Data display" },
+  { id: "charts", label: "Charts" },
   { id: "interaction", label: "Interaction" },
   { id: "feedback", label: "Feedback" },
 ] as const;
@@ -497,20 +500,55 @@ const DONUT_DATA = [
   { label: "SSE", value: 12, color: "var(--chart-4)" },
 ];
 
-const CANDLE_DATA = [
-  { label: "Mon", open: 0.052, high: 0.058, low: 0.05, close: 0.056 },
-  { label: "Tue", open: 0.056, high: 0.06, low: 0.054, close: 0.055 },
-  { label: "Wed", open: 0.055, high: 0.057, low: 0.049, close: 0.05 },
-  { label: "Thu", open: 0.05, high: 0.061, low: 0.05, close: 0.059 },
-];
-
 const TREEMAP_DATA = [
   { label: "Official", value: 91, color: "var(--accent)" },
   { label: "Provider-claimed", value: 24, color: "var(--chart-2)" },
   { label: "Community", value: 14, color: "var(--ink-subtle)" },
 ];
 
-const SPARK_POINTS = [12, 14, 13, 18, 22, 20, 26].map((v, i) => ({ t: `d${i}`, v }));
+const SPARK_VALUES = [12, 14, 13, 18, 22, 20, 26];
+const LINE_SPECIMEN = lineSpecimen(120);
+const STACKED_SPECIMEN = stackedSpecimen();
+const formatTokens = (v: number) => `${v}T`;
+
+function ChartsSection() {
+  // Its own store, like EntityDemo: the specimen must work wherever the page
+  // is mounted, and the three charts should cross-highlight each other.
+  return (
+    <ActiveEntityProvider>
+      <Section id="charts" title="Charts">
+        <div className="grid gap-4">
+          <Show name="StackedColumns">
+            <StackedColumns
+              {...STACKED_SPECIMEN}
+              ariaLabel="Daily emission by subnet (specimen)"
+              formatValue={(v) => `${v}τ`}
+            />
+          </Show>
+          <Show name="LineWithWindow">
+            <LineWithWindow
+              {...LINE_SPECIMEN}
+              unit="tokens"
+              formatValue={formatTokens}
+              ariaLabel="Momentum specimen"
+              source="line-specimen"
+            />
+          </Show>
+          <Show name="LineWithWindow compact">
+            <LineWithWindow
+              {...LINE_SPECIMEN}
+              compact
+              unit="tokens"
+              formatValue={formatTokens}
+              ariaLabel="Momentum specimen, compact"
+              source="line-specimen-compact"
+            />
+          </Show>
+        </div>
+      </Section>
+    </ActiveEntityProvider>
+  );
+}
 
 function DataDisplaySection() {
   return (
@@ -525,25 +563,12 @@ function DataDisplaySection() {
             <DonutLegend segments={DONUT_DATA} />
           </div>
         </Show>
-        <Show name="Sparkline">
-          <Sparkline
-            values={SPARK_POINTS.map((p) => p.v)}
-            points={SPARK_POINTS}
-            width={200}
-            height={40}
-          />
-        </Show>
-        <Show name="SparkLegend">
-          <SparkLegend
-            metric="Health trend"
-            source="Live probe series, sample data."
-            windowLabel="7d"
-          >
-            <Sparkline values={SPARK_POINTS.map((p) => p.v)} width={120} height={28} />
-          </SparkLegend>
-        </Show>
-        <Show name="CandlestickMini">
-          <CandlestickMini data={CANDLE_DATA} width={280} height={120} />
+        <Show name="TrendDelta">
+          <div className="flex items-center gap-3">
+            <TrendDelta values={SPARK_VALUES} label="7d specimen" />
+            <TrendDelta values={[...SPARK_VALUES].reverse()} label="7d specimen" />
+            <TrendDelta values={[3, 3]} label="7d specimen" />
+          </div>
         </Show>
         <Show name="TreemapMini">
           <TreemapMini data={TREEMAP_DATA} className="h-32" />
@@ -865,10 +890,9 @@ function FeedbackSection({ updated }: { updated: string }) {
   return (
     <Section id="feedback" title="Feedback">
       <div className="grid gap-4 md:grid-cols-2">
-        <Show name="Skeleton, ChartSkeleton, PanelSkeleton, TableSkeleton">
+        <Show name="Skeleton, PanelSkeleton, TableSkeleton">
           <div className="space-y-3">
             <Skeleton className="h-4 w-2/3" />
-            <ChartSkeleton height={48} />
             <PanelSkeleton height="sm" />
           </div>
         </Show>

@@ -7,13 +7,17 @@ import {
   YieldPercentileStrip,
   fmtYield,
   BarMini,
-  Sparkline,
   FactStrip,
   FactCell,
   RangeControl,
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
+import {
+  MetricHistory,
+  toLinePoints,
+  type MetricHistorySeries,
+} from "@/components/metagraphed/metric-history";
 import { Panel } from "@/components/metagraphed/primitives";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import type { SubnetYieldNeuron, YieldHistoryPoint } from "@/lib/metagraphed/types";
@@ -52,7 +56,7 @@ function VsMedian({ vs }: { vs: SubnetYieldNeuron["vs_median"] }) {
  * Concentration panel. Distribution summary (subnet aggregate, mean, median,
  * p25/p75/p90), a validator/miner split, the ranked per-UID leaderboard (top
  * yielders), and the daily yield-distribution drift. Mirrors the concentration/
- * metagraph render primitives (FactCell / BarMini / Sparkline / table).
+ * metagraph render primitives (FactCell / BarMini / LineWithWindow / table).
  */
 export function YieldLoader({ netuid }: { netuid: number }) {
   const { data } = useSuspenseQuery(subnetYieldQuery(netuid));
@@ -234,22 +238,39 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
   } = useQuery(subnetYieldHistoryQuery(netuid, win));
   const points = useMemo<YieldHistoryPoint[]>(() => res?.data?.points ?? [], [res?.data?.points]);
 
-  const series = useMemo(() => {
-    // History points arrive newest-first; reverse so the sparkline reads L→R in
-    // time. Null metrics (early window) are filtered per-series, not per-point.
-    const ordered = [...points].reverse();
+  const metrics = useMemo<MetricHistorySeries[]>(() => {
     const pick = (key: keyof YieldHistoryPoint) =>
-      ordered
-        .map((point) => point[key])
-        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-    return {
-      subnet: pick("subnet_yield"),
-      median: pick("median_yield"),
-      p90: pick("p90_yield"),
-    };
+      toLinePoints(
+        points,
+        (p) => p.snapshot_date,
+        (p) => p[key],
+      );
+    return [
+      {
+        key: "subnet",
+        label: "Subnet yield",
+        unit: "subnet yield",
+        points: pick("subnet_yield"),
+        format: fmtYield,
+      },
+      {
+        key: "median",
+        label: "Median yield",
+        unit: "median yield",
+        points: pick("median_yield"),
+        format: fmtYield,
+      },
+      {
+        key: "p90",
+        label: "p90 yield",
+        unit: "p90 yield",
+        points: pick("p90_yield"),
+        format: fmtYield,
+      },
+    ];
   }, [points]);
 
-  const hasData = series.subnet.length + series.median.length + series.p90.length > 0;
+  const hasData = metrics.some((m) => m.points.length > 0);
 
   const toggle = (
     <RangeControl
@@ -276,40 +297,8 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
           description="Daily yield-distribution snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel bodyClassName="space-y-3">
-          {series.subnet.length > 0 ? (
-            <DriftRow label="Subnet yield" series={series.subnet} color="var(--accent)" />
-          ) : null}
-          {series.median.length > 0 ? (
-            <DriftRow label="Median yield" series={series.median} color="var(--chart-1)" />
-          ) : null}
-          {series.p90.length > 0 ? (
-            <DriftRow label="p90 yield" series={series.p90} color="var(--health-warn)" />
-          ) : null}
-        </Panel>
+        <MetricHistory id="subnet-yield-drift" metrics={metrics} ariaLabel="Yield drift" />
       )}
-    </div>
-  );
-}
-
-function DriftRow({ label, series, color }: { label: string; series: number[]; color: string }) {
-  const last = series[series.length - 1];
-  return (
-    <div className="grid grid-cols-1 gap-1 min-[400px]:grid-cols-[minmax(0,7rem)_1fr_auto] min-[400px]:items-center min-[400px]:gap-3">
-      <span className="text-11 text-ink-muted">{label}</span>
-      <div className="min-w-0">
-        <Sparkline
-          values={series}
-          color={color}
-          width={220}
-          height={28}
-          formatValue={fmtYield}
-          ariaLabel={label}
-        />
-      </div>
-      <span className="min-w-0 font-display text-13 font-semibold tabular-nums text-ink-strong min-[400px]:text-right">
-        {last != null ? fmtYield(last) : "—"}
-      </span>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { Panel } from "@/components/metagraphed/primitives";
-import { Sparkline, TimeAgo } from "@jsonbored/ui-kit";
+import { TimeAgo, TrendDelta } from "@jsonbored/ui-kit";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { useChainStream } from "@/hooks/use-chain-stream";
 import { blocksQuery, chainActivityQuery } from "@/lib/metagraphed/queries";
@@ -59,7 +59,6 @@ export function LiveBlockRail() {
   const maxExt = Math.max(1, ...strip.map((b) => b.extrinsic_count ?? 0));
 
   const daily = chrono.map((d) => d.block_count);
-  const dailyPts = chrono.map((d) => ({ t: d.day, v: d.block_count }));
 
   return (
     <Panel
@@ -172,16 +171,7 @@ export function LiveBlockRail() {
             {formatNumber(daily.reduce((s, n) => s + n, 0))}
           </div>
         </div>
-        {daily.length > 0 ? (
-          <Sparkline
-            values={daily}
-            points={dailyPts}
-            width={140}
-            height={36}
-            ariaLabel="Daily block throughput, oldest to newest"
-            formatValue={formatNumber}
-          />
-        ) : null}
+        {daily.length > 1 ? <TrendDelta values={daily} label="Blocks, last 7d" /> : null}
       </div>
     </Panel>
   );

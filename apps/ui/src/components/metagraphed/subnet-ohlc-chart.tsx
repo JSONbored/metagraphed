@@ -1,15 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { subnetOhlcQuery } from "@/lib/metagraphed/queries";
-import { CandlestickMini, type CandlestickDatum, RangeControl } from "@jsonbored/ui-kit";
+import { LineWithWindow, RangeControl, formatLineDate, type LinePoint } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
 import { formatTao, formatUsdApprox } from "@/lib/metagraphed/format";
 import { alphaUsdCoverage } from "@/lib/metagraphed/alpha-usd.functions";
 
-// Lookback windows offered as pills. "max" is 365d, the server's own clamp
-// ceiling for ?days= (see subnetOhlcQuery's params doc) -- naming it "max"
-// rather than "365d" keeps the label honest if that ceiling ever moves.
+// Lookback windows. "max" is 365d, the server's own clamp ceiling for ?days=
+// (see subnetOhlcQuery's params doc) -- naming it "max" rather than "365d"
+// keeps the label honest if that ceiling ever moves.
 const WINDOWS = [
   { key: "7d", days: 7 },
   { key: "30d", days: 30 },
@@ -19,11 +18,8 @@ const WINDOWS = [
 type WindowKey = (typeof WINDOWS)[number]["key"];
 
 // Interval is derived from the window rather than exposed as its own control:
-// hourly candles below 30d, daily at 30d and above. The threshold isn't
-// arbitrary -- it's the point where hourly buckets would exceed CandlestickMini's
-// 500-candle cap and the chart would silently plot only the most recent slice
-// while the pill still claimed the full window (30d hourly = 720 buckets, vs.
-// 30 daily). Every window below therefore stays lossless: 7d hourly = 168.
+// hourly closes below 30d, daily at 30d and above, so every window stays
+// lossless (7d hourly = 168 points; 30d daily = 30).
 function intervalForWindow(days: number): "1h" | "1d" {
   return days < 30 ? "1h" : "1d";
 }
@@ -38,12 +34,19 @@ function fmtOhlcPrice(v: number): string {
   return v < 1 ? v.toFixed(4) : v.toFixed(3);
 }
 
+const hourFormat = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  timeZone: "UTC",
+});
+
 /**
- * OHLC price/volume candlestick chart for one subnet (#5656, Phase 2 of the
- * OHLC epic #5304 -- follows #5655's backend). An interval toggle mirrors
- * subnet-history-chart.tsx's window-selector pattern; root (netuid 0) and a
- * cold/empty series both render an EmptyState rather than an empty chart
- * area, matching the backend's own root_excluded / empty-candles contract.
+ * Alpha close price over time for one subnet (#5656 → #11608: the close
+ * series as a `LineWithWindow`; the candlestick was not a question any page
+ * asked). Root (netuid 0) and a cold/empty series both render an EmptyState
+ * rather than an empty chart, matching the backend's own root_excluded /
+ * empty-candles contract.
  */
 export function SubnetOhlcChart({ netuid }: { netuid: number }) {
   const [windowKey, setWindowKey] = useState<WindowKey>("30d");
@@ -58,22 +61,19 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
   } = useQuery(subnetOhlcQuery(netuid, { interval, days }));
   const data = res?.data;
 
-  const candles = useMemo<CandlestickDatum[]>(() => {
-    if (!data?.candles.length) return [];
-    return data.candles.map((c) => ({
-      label: c.bucket_start_iso,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-      volume: c.volume_tao,
-    }));
-  }, [data?.candles]);
+  const points = useMemo<LinePoint[]>(
+    () =>
+      (data?.candles ?? [])
+        .filter((c) => Number.isFinite(c.close) && Number.isFinite(c.bucket_start))
+        .map((c) => ({ t: c.bucket_start, v: c.close }))
+        .sort((a, b) => a.t - b.t),
+    [data?.candles],
+  );
 
   // A subnet younger than the selected window -- or one that only started
   // trading partway through it -- gets its real extent labeled, rather than
-  // silently rendering a short series under a pill claiming a long one. Only
-  // annotated when the first bucket lands more than one bucket after the
+  // silently rendering a short series under a control claiming a long one.
+  // Only annotated when the first bucket lands more than one bucket after the
   // window's own start, so a series that simply begins on the boundary isn't.
   //
   // The explicit "en-US" locale is the #8356 fix, not a style choice:
@@ -116,15 +116,8 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
 
   const latest = data?.candles[data.candles.length - 1];
   // What the response STATES about its own USD coverage (#10385) -- never
-  // inferred by counting nulls in the candle array. The TAO series runs the
-  // full window and the USD series starts when the TAO/USD index does, so a
-  // chart that showed both without qualifying the shorter one would invite a
-  // comparison the data does not support.
+  // inferred by counting nulls in the candle array.
   const usd = alphaUsdCoverage(data);
-  // The product of the candle's own close and the rate published ON that
-  // candle -- the same number the API already computed as close_usd, formatted
-  // with the existing helper rather than a second one. Per-candle, so a
-  // historical close is never shown at today's rate.
   const latestUsd =
     usd.available && latest ? formatUsdApprox(latest.close, latest.usd_per_tao) : null;
 
@@ -132,32 +125,28 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
     <div className="space-y-3">
       <div className="flex items-center justify-end">{windowSelector}</div>
       {isLoading ? (
-        // Matches the rendered chart's height so switching windows doesn't
-        // bounce the page (the chart is the tab's lead module -- anything
-        // below it would shift on every pill press).
-        <Skeleton className="h-[220px] w-full" />
-      ) : candles.length === 0 ? (
+        <Skeleton className="h-96 w-full" />
+      ) : points.length === 0 ? (
         <EmptyState
           title="No trades yet"
-          description="OHLC candles are built from executed stake/unstake trades -- once this subnet has trading activity in the selected window, candles will appear here."
+          description="Price history is built from executed stake/unstake trades -- once this subnet has trading activity in the selected window, it will appear here."
         />
       ) : (
-        <Panel>
-          <CandlestickMini
-            data={candles}
-            width={640}
-            // The lead module of the tab: it fills the panel instead of
-            // stopping at the 640-unit viewBox width mid-panel (which left
-            // roughly half of a desktop-width panel empty).
-            maxWidth="none"
-            height={220}
+        <div className="space-y-2">
+          <LineWithWindow
+            points={points}
+            window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
+            unit="τ per α, close"
             formatValue={fmtOhlcPrice}
-            formatVolume={formatTao}
-            ariaLabel={`Subnet ${netuid} alpha price and volume, ${candles.length} ${interval} candles over ${windowKey}`}
+            formatDate={(t) =>
+              interval === "1h" ? hourFormat.format(new Date(t)).toUpperCase() : formatLineDate(t)
+            }
+            ariaLabel={`Subnet ${netuid} alpha close price, ${points.length} ${interval} buckets over ${windowKey}`}
+            source={`subnet-${netuid}-price`}
           />
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-10 text-ink-muted">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-10 text-ink-muted">
             <span>
-              {candles.length} {interval} candles
+              {points.length} {interval} closes
               {coverageStart ? ` · price history begins ${coverageStart}` : ""}
             </span>
             {latest ? (
@@ -170,8 +159,8 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
           {/* The USD boundary, rendered only when it differs from the TAO
               window. A caption on a fully-covered chart is noise, and noise is
               what stops captions being read on the charts that need them. */}
-          {usd.caption ? <div className="mt-1 text-10 text-ink-muted">{usd.caption}</div> : null}
-        </Panel>
+          {usd.caption ? <div className="text-10 text-ink-muted">{usd.caption}</div> : null}
+        </div>
       )}
     </div>
   );

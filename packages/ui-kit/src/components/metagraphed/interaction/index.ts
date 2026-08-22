@@ -19,3 +19,8 @@ export {
   type Definitions,
 } from "./definition";
 export { Raw, RawCode, type RawProps, type RawRow } from "./raw";
+export {
+  Provenance,
+  provenanceSentence,
+  type ProvenanceProps,
+} from "./provenance";

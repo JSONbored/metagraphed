@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkline, type SparklinePoint } from "@jsonbored/ui-kit";
+import { LineWithWindow, RangeControl } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { toLinePoints } from "@/components/metagraphed/metric-history";
 import { accountHistoryQuery } from "@/lib/metagraphed/queries";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber } from "@/lib/metagraphed/format";
 import type { AccountDay } from "@/lib/metagraphed/types";
 
 const DEFAULT_HISTORY_LIMIT = 180;
@@ -27,22 +28,6 @@ function formatDay(day: string, withYear = false): string {
 
 function eventCountLabel(count: number): string {
   return `${formatNumber(count)} event${count === 1 ? "" : "s"}`;
-}
-
-function kindListLabel(kinds: string[]): string {
-  if (kinds.length === 0) return "unknown kinds";
-  if (kinds.length <= 4) return kinds.join(", ");
-  return `${kinds.slice(0, 4).join(", ")} +${kinds.length - 4} more`;
-}
-
-function blockRangeLabel(firstBlock?: number | null, lastBlock?: number | null): string | null {
-  if (firstBlock == null && lastBlock == null) return null;
-  if (firstBlock != null && lastBlock != null) {
-    if (firstBlock === lastBlock) return `block #${formatNumber(firstBlock)}`;
-    return `blocks #${formatNumber(firstBlock)}-${formatNumber(lastBlock)}`;
-  }
-  const block = firstBlock ?? lastBlock;
-  return block != null ? `block #${formatNumber(block)}` : null;
 }
 
 function mergeKinds(target: string[], incoming: string[]) {
@@ -99,23 +84,6 @@ function filterOneSubnet(days: AccountDay[], netuid: number): AccountHistorySeri
     .sort((a, b) => a.day.localeCompare(b.day));
 }
 
-function scopeLabel(day: AccountHistorySeriesDay, scope: Scope): string {
-  if (scope !== "all") return `SN${scope}`;
-  if (day.scoped_netuids.length === 0) return "unscoped";
-  if (day.scoped_netuids.length === 1) return `SN${day.scoped_netuids[0]}`;
-  return `${day.scoped_netuids.length} subnets`;
-}
-
-function hoverLabel(day: AccountHistorySeriesDay, scope: Scope): string {
-  const parts = [
-    formatDay(day.day, true),
-    scopeLabel(day, scope),
-    kindListLabel(day.event_kinds),
-    blockRangeLabel(day.first_block, day.last_block),
-  ].filter(Boolean);
-  return parts.join(" · ");
-}
-
 export function AccountHistoryChart({ ss58 }: { ss58: string }) {
   const [scope, setScope] = useState<Scope>("all");
   const { data, isLoading, isError, error, refetch } = useQuery(
@@ -136,10 +104,14 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
     [days, scope],
   );
 
-  const values = scopedDays.map((day) => day.event_count);
-  const points = useMemo<SparklinePoint[]>(
-    () => scopedDays.map((day) => ({ t: hoverLabel(day, scope), v: day.event_count })),
-    [scopedDays, scope],
+  const points = useMemo(
+    () =>
+      toLinePoints(
+        scopedDays,
+        (day) => day.day,
+        (day) => day.event_count,
+      ),
+    [scopedDays],
   );
 
   const totalEvents = scopedDays.reduce((sum, day) => sum + day.event_count, 0);
@@ -147,14 +119,14 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
   const lastDay = scopedDays[scopedDays.length - 1]?.day;
 
   if (isLoading) {
-    return <Skeleton className="h-56 w-full" />;
+    return <Skeleton className="h-96 w-full" />;
   }
 
   if (isError) {
     return <ErrorState error={error} onRetry={() => refetch()} context="account history" />;
   }
 
-  if (days.length === 0 || scopedDays.length === 0) {
+  if (days.length === 0 || scopedDays.length === 0 || points.length === 0) {
     return (
       <EmptyState
         title="No daily hotkey activity yet"
@@ -166,84 +138,48 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
   return (
     <div className="space-y-4">
       {availableNetuids.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-13 text-ink-muted">scope</span>
-          {/* #7842: documented exception -- 80% doesn't cleanly snap to either
-              glass tier (would add unwanted blur; 's 60%
-              visibly lightens this segmented-toggle track). Kept as a bare
-              fraction rather than a wrong tier. */}
-          <div className="inline-flex flex-wrap rounded border border-border/80 bg-card p-1">
-            <button
-              type="button"
-              onClick={() => setScope("all")}
-              className={classNames(
-                "rounded px-3 py-1.5 text-11 transition-colors",
-                scope === "all"
-                  ? "bg-ink-strong text-paper"
-                  : "text-ink-muted hover:text-ink-strong",
-              )}
-            >
-              all subnets
-            </button>
-            {availableNetuids.map((netuid) => (
-              <button
-                key={netuid}
-                type="button"
-                onClick={() => setScope(netuid)}
-                className={classNames(
-                  "rounded px-3 py-1.5 text-11 transition-colors",
-                  scope === netuid
-                    ? "bg-ink-strong text-paper"
-                    : "text-ink-muted hover:text-ink-strong",
-                )}
-              >
-                SN{netuid}
-              </button>
-            ))}
-          </div>
-        </div>
+        <RangeControl
+          label="Activity scope"
+          options={[
+            { value: "all", label: "All subnets" },
+            ...availableNetuids.map((netuid) => ({ value: String(netuid), label: `SN${netuid}` })),
+          ]}
+          value={scope === "all" ? "all" : String(scope)}
+          onChange={(next) => setScope(next === "all" ? "all" : Number(next))}
+        />
       ) : null}
 
-      <div className="overflow-hidden rounded border border-border/80">
-        <div className="grid gap-4 border-b border-border/70 px-4 py-4 md:grid-cols-3">
-          <MetricBlock
-            label="Total activity"
-            value={eventCountLabel(totalEvents)}
-            hint="indexed events"
-          />
-          <MetricBlock
-            label="Active days"
-            value={formatNumber(scopedDays.length)}
-            hint="non-zero sessions"
-          />
-          <MetricBlock
-            label="Tracked range"
-            value={
-              firstDay && lastDay ? `${formatDay(firstDay)} to ${formatDay(lastDay, true)}` : "—"
-            }
-            hint="UTC daily rollup"
-          />
-        </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricBlock
+          label="Total activity"
+          value={eventCountLabel(totalEvents)}
+          hint="indexed events"
+        />
+        <MetricBlock
+          label="Active days"
+          value={formatNumber(scopedDays.length)}
+          hint="non-zero sessions"
+        />
+        <MetricBlock
+          label="Tracked range"
+          value={
+            firstDay && lastDay ? `${formatDay(firstDay)} to ${formatDay(lastDay, true)}` : "—"
+          }
+          hint="UTC daily rollup"
+        />
+      </div>
 
-        <div className="bg-accent-surface px-4 py-4 md:px-6 md:py-6">
-          <div className="rounded border border-border/70 bg-paper px-4 py-4 md:px-6 md:py-6">
-            <Sparkline
-              values={values}
-              points={points}
-              width={1040}
-              height={132}
-              ariaLabel="Daily account activity history"
-              formatValue={eventCountLabel}
-            />
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-11 text-ink-muted">
-              <span>
-                {scope === "all" ? "aggregated across subnets" : `filtered to SN${scope}`}
-              </span>
-              <span>hover to inspect event kinds</span>
-              <span>first-party chain events only</span>
-            </div>
-          </div>
-        </div>
+      <LineWithWindow
+        points={points}
+        window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
+        unit="events per day"
+        formatValue={eventCountLabel}
+        ariaLabel="Daily account activity history"
+        source={`account-${ss58}-activity`}
+      />
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-11 text-ink-muted">
+        <span>{scope === "all" ? "aggregated across subnets" : `filtered to SN${scope}`}</span>
+        <span>first-party chain events only</span>
       </div>
     </div>
   );

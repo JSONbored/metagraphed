@@ -8,13 +8,12 @@ import {
   BrandIcon,
   safeExternalUrl,
   CopyIconToggle,
-  Sparkline,
   ExternalLink,
   Definition,
+  TrendDelta,
 } from "@jsonbored/ui-kit";
 import { useCopy } from "@/hooks/use-copy";
 import { Panel } from "@/components/metagraphed/primitives";
-import { healthColorVar } from "@/lib/health-tokens";
 import { classNames } from "@/lib/metagraphed/format";
 import {
   endpointCategory,
@@ -23,7 +22,7 @@ import {
   CATEGORY_LABEL,
   type EndpointCategory,
 } from "@/lib/metagraphed/endpoint-pool";
-import type { Endpoint, HealthState, RpcPool } from "@/lib/metagraphed/types";
+import type { Endpoint, RpcPool } from "@/lib/metagraphed/types";
 
 /**
  * Endpoint list — kind-grouped table on desktop, stacked cards on mobile.
@@ -82,7 +81,7 @@ export function EndpointList({
                 <th className="px-4 py-2.5 text-left w-40">
                   <HeaderHint
                     label="Health"
-                    hint="Probe-derived only. Sparkline shows last 12 probes when available."
+                    hint="Probe-derived only. The delta is the change across the last 12 probes when available."
                   />
                 </th>
                 <th className="px-4 py-2.5 text-right w-24">Latency</th>
@@ -234,15 +233,7 @@ function Row({
         <div className="flex items-center gap-2">
           <HealthDot state={e.health} />
           {series.length > 1 ? (
-            <Sparkline
-              values={series}
-              width={80}
-              height={20}
-              color={healthColor(e.health)}
-              fill
-              className="opacity-90"
-              ariaLabel="Recent probe trend"
-            />
+            <TrendDelta values={series} label="Recent probe latency" />
           ) : (
             <span className="text-10 text-ink-muted">—</span>
           )}
@@ -385,14 +376,6 @@ function HeaderHint({ label, hint }: { label: string; hint: string }) {
       </span>
     </Definition>
   );
-}
-
-function healthColor(state?: HealthState | string): string {
-  const s = (state ?? "unknown") as string;
-  if (s === "ok") return healthColorVar("ok");
-  if (s === "warn" || s === "degraded") return healthColorVar("warn");
-  if (s === "down" || s === "offline") return healthColorVar("down");
-  return healthColorVar("unknown");
 }
 
 /**

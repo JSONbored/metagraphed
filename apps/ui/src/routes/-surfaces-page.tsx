@@ -26,7 +26,7 @@ import {
   ViewModeToggle,
   ListShell,
   LoadMore,
-  SparkLegend,
+  Provenance,
   SectionHead,
 } from "@jsonbored/ui-kit";
 import {
@@ -498,7 +498,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           <span aria-hidden>·</span>
           {renderProviderCell(s)}
         </span>
-        <SparkLegend
+        <Provenance
           metric="Surface verification"
           source="/api/v1/surfaces"
           windowLabel={windowLabel}
@@ -506,7 +506,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           staleness="Re-verified on every registry build; unverified rows have never been probed."
         >
           <TimeAgo at={s.last_verified_at} fallback="never verified" />
-        </SparkLegend>
+        </Provenance>
       </div>
     </Panel>
   );
@@ -620,7 +620,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
                       </div>
                     </td>
                     <td className="px-3 py-2 text-right text-11 text-ink-muted">
-                      <SparkLegend
+                      <Provenance
                         metric="Surface verification"
                         source="/api/v1/surfaces"
                         windowLabel={windowLabel}
@@ -628,7 +628,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
                         staleness="Re-verified on every registry build; unverified rows have never been probed."
                       >
                         <TimeAgo at={s.last_verified_at} fallback="never verified" />
-                      </SparkLegend>
+                      </Provenance>
                     </td>
                   </tr>
                 ))}

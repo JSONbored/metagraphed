@@ -4,7 +4,7 @@ import {
   CopyButton,
   ExternalLink,
   HealthPill,
-  SparkLegend,
+  Provenance,
   TimeAgo,
 } from "@jsonbored/ui-kit";
 
@@ -47,7 +47,7 @@ export function EndpointCardList({
           <Panel key={e.id} className="min-w-0" bodyClassName="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-13 text-ink-muted">{kindLabel}</span>
-              <SparkLegend
+              <Provenance
                 metric="Endpoint health"
                 source="/api/v1/endpoints"
                 windowLabel={windowLabel}
@@ -55,7 +55,7 @@ export function EndpointCardList({
                 staleness="Falls back to last known state when the probe hasn't completed."
               >
                 <HealthPill state={e.health} />
-              </SparkLegend>
+              </Provenance>
             </div>
             <div className="text-11 min-w-0">
               {e.url ? (
@@ -109,7 +109,7 @@ export function EndpointCardList({
               ) : null}
               {e.region ? <span className="font-mono">{e.region}</span> : null}
               {e.latency_ms != null ? (
-                <SparkLegend
+                <Provenance
                   metric="Latency"
                   source="/api/v1/endpoints (last probe)"
                   windowLabel={windowLabel}
@@ -117,10 +117,10 @@ export function EndpointCardList({
                   staleness="No new measurement is taken between probes — last measured value is shown."
                 >
                   <span className="font-mono ml-auto">{e.latency_ms}ms</span>
-                </SparkLegend>
+                </Provenance>
               ) : null}
             </div>
-            <SparkLegend
+            <Provenance
               metric="Last probe"
               source="/api/v1/endpoints"
               windowLabel={windowLabel}
@@ -130,7 +130,7 @@ export function EndpointCardList({
               <span className="text-10 text-ink-muted">
                 probed <TimeAgo at={e.last_probed_at} />
               </span>
-            </SparkLegend>
+            </Provenance>
           </Panel>
         );
       })}

@@ -20,7 +20,7 @@ import {
   CopyableCode,
   CopyButton,
   DownloadCsvButton,
-  Sparkline,
+  LineWithWindow,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel, PagerFooter, Panel } from "@/components/metagraphed/primitives";
 import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
@@ -33,6 +33,7 @@ import { API_BASE } from "@/lib/metagraphed/config";
 import type { Extrinsic } from "@/lib/metagraphed/types";
 import type { ExtrinsicsSearch } from "./chain.extrinsics";
 import { ChainTabActions } from "./-chain-hub";
+import { toLinePoints } from "@/components/metagraphed/metric-history";
 
 function extrinsicsQueryParams(search: ExtrinsicsSearch): Record<string, string | number> {
   const queryParams: Record<string, string | number> = {
@@ -81,14 +82,19 @@ export function ExtrinsicsPage() {
 }
 
 /**
- * Fees-over-time sparkline (#3385) — reuses chainFeesQuery + Sparkline the same
- * way explorer.tsx charts "Total fees". Fixed 7d window; no ?window= toggle here.
+ * Fees-over-time line (#3385) — reuses chainFeesQuery the same way
+ * explorer.tsx charts "Total fees". Fixed 7d window; no ?window= toggle here.
  */
 function FeesTrendCard() {
   const fees = useSuspenseQuery(chainFeesQuery("7d")).data.data;
   const feeChrono = [...fees.daily].reverse();
   const values = feeChrono.map((d) => d.total_fee_tao);
   const latest = values.length > 0 ? values[values.length - 1]! : null;
+  const points = toLinePoints(
+    feeChrono,
+    (d) => d.day,
+    (d) => d.total_fee_tao,
+  );
 
   return (
     <Panel flush className="mb-6">
@@ -102,15 +108,17 @@ function FeesTrendCard() {
             {latest == null ? "—" : formatTao(latest)}
           </span>
         </div>
-        <Sparkline
-          values={values}
-          points={feeChrono.map((d) => ({ t: d.day, v: d.total_fee_tao }))}
-          width={640}
-          height={48}
-          color="var(--accent)"
-          ariaLabel="Daily total fees"
-          formatValue={formatTao}
-        />
+        {points.length > 1 ? (
+          <LineWithWindow
+            compact
+            points={points}
+            window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
+            unit="TAO in fees"
+            formatValue={formatTao}
+            ariaLabel="Daily total fees"
+            source="chain-fees"
+          />
+        ) : null}
       </div>
     </Panel>
   );

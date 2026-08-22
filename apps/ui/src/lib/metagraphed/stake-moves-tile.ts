@@ -11,7 +11,7 @@ export interface StakeMovesTileModel {
   perMover: number | null;
   /** MiniStack composition: unique movers vs repeat moves. */
   segments: Array<{ label: string; value: number; color: string }>;
-  /** Short human summary for the SparkLegend tooltip. */
+  /** Short human summary for the Provenance tooltip. */
   summary: string;
 }
 

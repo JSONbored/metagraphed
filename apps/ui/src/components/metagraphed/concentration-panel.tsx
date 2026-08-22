@@ -6,8 +6,13 @@ import {
   subnetPerformanceQuery,
   subnetPerformanceHistoryQuery,
 } from "@/lib/metagraphed/queries";
-import { BarMini, Sparkline, FactStrip, FactCell, RangeControl } from "@jsonbored/ui-kit";
+import { BarMini, FactStrip, FactCell, RangeControl } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
+import {
+  MetricHistory,
+  toLinePoints,
+  type MetricHistorySeries,
+} from "@/components/metagraphed/metric-history";
 import { classNames } from "@/lib/metagraphed/format";
 import { Panel } from "@/components/metagraphed/primitives";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
@@ -152,28 +157,46 @@ function DriftCard({ netuid }: { netuid: number }) {
     [res?.data?.points],
   );
 
-  const series = useMemo(() => {
-    // History points arrive newest-first; reverse so the sparkline reads L→R in
-    // time. Null metrics (early window) are filtered per-series, not per-point.
-    const ordered = [...points].reverse();
+  const metrics = useMemo<MetricHistorySeries[]>(() => {
     const pick = (key: keyof ConcentrationHistoryPoint) =>
-      ordered
-        .map((p) => p[key])
-        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-    return {
-      stakeGini: pick("stake_gini"),
-      emissionGini: pick("emission_gini"),
-      stakeTop10: pick("stake_top_10pct_share"),
-      emissionTop10: pick("emission_top_10pct_share"),
-    };
+      toLinePoints(
+        points,
+        (p) => p.snapshot_date,
+        (p) => p[key],
+      );
+    return [
+      {
+        key: "stakeGini",
+        label: "Stake Gini",
+        unit: "stake Gini",
+        points: pick("stake_gini"),
+        format: (v) => v.toFixed(3),
+      },
+      {
+        key: "emissionGini",
+        label: "Emission Gini",
+        unit: "emission Gini",
+        points: pick("emission_gini"),
+        format: (v) => v.toFixed(3),
+      },
+      {
+        key: "stakeTop10",
+        label: "Stake top 10%",
+        unit: "stake share of the top 10%",
+        points: pick("stake_top_10pct_share"),
+        format: (v) => `${(v * 100).toFixed(1)}%`,
+      },
+      {
+        key: "emissionTop10",
+        label: "Emission top 10%",
+        unit: "emission share of the top 10%",
+        points: pick("emission_top_10pct_share"),
+        format: (v) => `${(v * 100).toFixed(1)}%`,
+      },
+    ];
   }, [points]);
 
-  const hasData =
-    series.stakeGini.length +
-      series.emissionGini.length +
-      series.stakeTop10.length +
-      series.emissionTop10.length >
-    0;
+  const hasData = metrics.some((m) => m.points.length > 0);
 
   const toggle = (
     <RangeControl
@@ -200,73 +223,12 @@ function DriftCard({ netuid }: { netuid: number }) {
           description="Daily concentration snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel bodyClassName="space-y-3">
-          {series.stakeGini.length > 0 ? (
-            <DriftRow
-              label="Stake Gini"
-              series={series.stakeGini}
-              color="var(--health-warn)"
-              format={(v) => v.toFixed(3)}
-            />
-          ) : null}
-          {series.emissionGini.length > 0 ? (
-            <DriftRow
-              label="Emission Gini"
-              series={series.emissionGini}
-              color="var(--accent)"
-              format={(v) => v.toFixed(3)}
-            />
-          ) : null}
-          {series.stakeTop10.length > 0 ? (
-            <DriftRow
-              label="Stake top 10%"
-              series={series.stakeTop10}
-              color="var(--chart-1)"
-              format={(v) => `${(v * 100).toFixed(1)}%`}
-            />
-          ) : null}
-          {series.emissionTop10.length > 0 ? (
-            <DriftRow
-              label="Emission top 10%"
-              series={series.emissionTop10}
-              color="var(--chart-3)"
-              format={(v) => `${(v * 100).toFixed(1)}%`}
-            />
-          ) : null}
-        </Panel>
-      )}
-    </div>
-  );
-}
-
-function DriftRow({
-  label,
-  series,
-  color,
-  format,
-}: {
-  label: string;
-  series: number[];
-  color: string;
-  format: (v: number) => string;
-}) {
-  const last = series[series.length - 1];
-  return (
-    <div className="grid grid-cols-1 gap-1 min-[400px]:grid-cols-[minmax(0,7rem)_1fr_auto] min-[400px]:items-center min-[400px]:gap-3">
-      <span className="text-11 text-ink-muted">{label}</span>
-      <div className="min-w-0">
-        <Sparkline
-          values={series}
-          color={color}
-          width={220}
-          height={28}
-          formatValue={format}
-          ariaLabel={label}
+        <MetricHistory
+          id="subnet-concentration-drift"
+          metrics={metrics}
+          ariaLabel="Concentration drift"
         />
-      </div>
-      <span className="min-w-0 font-display text-13 font-semibold tabular-nums text-ink-strong min-[400px]:text-right">
-        {last != null ? format(last) : "—"}
-      </span>
+      )}
     </div>
   );
 }
@@ -357,28 +319,46 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
     [res?.data?.points],
   );
 
-  const series = useMemo(() => {
-    // History points arrive newest-first; reverse so the sparkline reads L→R in
-    // time. Null metrics (early window) are filtered per-series, not per-point.
-    const ordered = [...points].reverse();
+  const metrics = useMemo<MetricHistorySeries[]>(() => {
     const pick = (key: keyof PerformanceHistoryPoint) =>
-      ordered
-        .map((point) => point[key])
-        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-    return {
-      incentiveGini: pick("incentive_gini"),
-      dividendsGini: pick("dividends_gini"),
-      incentiveTop10: pick("incentive_top_10pct_share"),
-      dividendsTop10: pick("dividends_top_10pct_share"),
-    };
+      toLinePoints(
+        points,
+        (p) => p.snapshot_date,
+        (p) => p[key],
+      );
+    return [
+      {
+        key: "incentiveGini",
+        label: "Incentive Gini",
+        unit: "incentive Gini",
+        points: pick("incentive_gini"),
+        format: (v) => v.toFixed(3),
+      },
+      {
+        key: "dividendsGini",
+        label: "Dividends Gini",
+        unit: "dividends Gini",
+        points: pick("dividends_gini"),
+        format: (v) => v.toFixed(3),
+      },
+      {
+        key: "incentiveTop10",
+        label: "Incentive top 10%",
+        unit: "incentive share of the top 10%",
+        points: pick("incentive_top_10pct_share"),
+        format: (v) => `${(v * 100).toFixed(1)}%`,
+      },
+      {
+        key: "dividendsTop10",
+        label: "Dividends top 10%",
+        unit: "dividends share of the top 10%",
+        points: pick("dividends_top_10pct_share"),
+        format: (v) => `${(v * 100).toFixed(1)}%`,
+      },
+    ];
   }, [points]);
 
-  const hasData =
-    series.incentiveGini.length +
-      series.dividendsGini.length +
-      series.incentiveTop10.length +
-      series.dividendsTop10.length >
-    0;
+  const hasData = metrics.some((m) => m.points.length > 0);
 
   const toggle = (
     <RangeControl
@@ -405,40 +385,7 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
           description="Daily reward-distribution snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel bodyClassName="space-y-3">
-          {series.incentiveGini.length > 0 ? (
-            <DriftRow
-              label="Incentive Gini"
-              series={series.incentiveGini}
-              color="var(--health-warn)"
-              format={(v) => v.toFixed(3)}
-            />
-          ) : null}
-          {series.dividendsGini.length > 0 ? (
-            <DriftRow
-              label="Dividends Gini"
-              series={series.dividendsGini}
-              color="var(--accent)"
-              format={(v) => v.toFixed(3)}
-            />
-          ) : null}
-          {series.incentiveTop10.length > 0 ? (
-            <DriftRow
-              label="Incentive top 10%"
-              series={series.incentiveTop10}
-              color="var(--chart-1)"
-              format={(v) => `${(v * 100).toFixed(1)}%`}
-            />
-          ) : null}
-          {series.dividendsTop10.length > 0 ? (
-            <DriftRow
-              label="Dividends top 10%"
-              series={series.dividendsTop10}
-              color="var(--chart-3)"
-              format={(v) => `${(v * 100).toFixed(1)}%`}
-            />
-          ) : null}
-        </Panel>
+        <MetricHistory id="subnet-reward-drift" metrics={metrics} ariaLabel="Reward drift" />
       )}
     </div>
   );

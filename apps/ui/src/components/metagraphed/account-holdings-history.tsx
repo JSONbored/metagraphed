@@ -1,18 +1,20 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import {
-  Sparkline,
-  StackedAreaMini,
-  type StackedAreaSeries,
+  LineWithWindow,
   RangeControl,
+  SeriesPaletteRegistry,
+  StackedColumns,
+  formatLineDate,
+  type StackedColumn,
 } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { accountPortfolioQuery, accountPositionHistoryQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { dayToMs, toLinePoints } from "@/components/metagraphed/metric-history";
 import type { AccountPositionHistory, PortfolioPosition } from "@/lib/metagraphed/types";
-import { CHART_PALETTE } from "@/lib/metagraphed/chart-palette";
 
 // The issue's 30d/90d/1y/max control, mapped onto the position-history API's
 // own window enum ("all" is the API spelling of "max").
@@ -24,8 +26,7 @@ const WINDOWS = [
 ] as const;
 type Win = (typeof WINDOWS)[number]["id"];
 
-/** Stacked-area band cap — matches the design system's 6-color categorical
- * chart ramp exactly, and the first page of small multiples below. */
+/** Stacked-column series cap, and the first page of small multiples below. */
 const TOP_POSITIONS = 6;
 
 /**
@@ -40,8 +41,6 @@ const TOP_POSITIONS = 6;
  * Positions tab's own table uses for its long tail.
  */
 const POSITIONS_PAGE_SIZE = 6;
-
-const CHART_COLORS = CHART_PALETTE;
 
 function taoStr(v?: number | null) {
   if (v == null || !Number.isFinite(v)) return "—";
@@ -83,9 +82,9 @@ export function alignHoldingsSeries(
 
 /** #8370: the account History tab — staked holdings over time.
  *
- * (a) A stacked area of staked TAO by subnet across the account's top
- * positions; (b) per-position small-multiple sparklines, top 6 by current
- * value with the long tail behind a "+N more" expander. Both windowed, both
+ * (a) Stacked columns of staked TAO by subnet across the account's top
+ * positions; (b) per-position small multiples, top 6 by current value with
+ * the long tail behind a "+N more" expander. Both windowed, both
  * labeling their actual data extent when depth is partial (the genesis
  * backfill, #8368, grows it from behind).
  *
@@ -101,6 +100,9 @@ export function alignHoldingsSeries(
 export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
   const [win, setWin] = useState<Win>("90d");
   const [visibleCount, setVisibleCount] = useState(TOP_POSITIONS);
+  // One palette for the stack and the small multiples, so SN3 is the same
+  // swatch in both.
+  const [registry] = useState(() => new SeriesPaletteRegistry());
 
   const portfolioResult = useQuery(accountPortfolioQuery(ss58));
   const positions = useMemo<PortfolioPosition[]>(() => {
@@ -129,13 +131,24 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
   // gymnastics over the useQueries result array's identity.
   const aligned = alignHoldingsSeries(histories.slice(0, TOP_POSITIONS));
 
-  const stacked: StackedAreaSeries[] = aligned.series.map((s, i) => ({
-    id: `sn${s.netuid}`,
-    label: `SN${s.netuid}`,
-    values: s.values,
-    color: CHART_COLORS[i % CHART_COLORS.length]!,
-  }));
-  const hasChartData = stacked.some((s) => s.values.some((v) => v > 0));
+  const seriesOrder = aligned.series.map((s) => `sn${s.netuid}`);
+  registry.assign(seriesOrder);
+  const columns: StackedColumn[] = aligned.dates.map((date, i) => {
+    const segments = aligned.series.map((s) => ({
+      key: `sn${s.netuid}`,
+      label: `SN${s.netuid}`,
+      value: s.values[i] ?? 0,
+    }));
+    const t = dayToMs(date);
+    const label = Number.isFinite(t) ? formatLineDate(t) : date;
+    return {
+      key: date,
+      label,
+      total: segments.reduce((sum, seg) => sum + seg.value, 0),
+      segments,
+    };
+  });
+  const hasChartData = columns.some((c) => c.total > 0);
   const extentStart = aligned.dates[0] ?? null;
   const extentEnd = aligned.dates[aligned.dates.length - 1] ?? null;
 
@@ -197,23 +210,23 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
               ? ` · top ${TOP_POSITIONS} positions by current value`
               : ""}
           </div>
-          <StackedAreaMini
-            series={stacked}
-            labels={aligned.dates}
-            width={720}
-            height={180}
+          <StackedColumns
+            columns={columns}
+            seriesOrder={seriesOrder}
+            registry={registry}
             formatValue={(v) => taoStr(v)}
-            ariaLabel={`Staked TAO by subnet over time for ${stacked.length} positions`}
+            ariaLabel={`Staked TAO by subnet over time for ${seriesOrder.length} positions`}
+            columnSource={`account-${ss58}-holdings`}
           />
           <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {stacked.map((s) => (
-              <li key={s.id} className="flex items-center gap-1.5 text-13 text-ink-muted">
+            {seriesOrder.map((id) => (
+              <li key={id} className="flex items-center gap-1.5 text-13 text-ink-muted">
                 <span
                   aria-hidden
-                  className="inline-block size-2 rounded"
-                  style={{ background: s.color }}
+                  className="mg-swatch"
+                  style={{ "--swatch": registry.palette().colorOf(id) } as CSSProperties}
                 />
-                {s.label}
+                {id.toUpperCase()}
               </li>
             ))}
           </ul>
@@ -226,10 +239,11 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {visiblePositions.map((pos, i) => {
               const history = historyResults[i]?.data?.data;
-              const values = (history?.points ?? [])
-                .map((p) => p.stake_tao)
-                .filter((v): v is number => v != null && Number.isFinite(v));
-              const color = CHART_COLORS[i % CHART_COLORS.length]!;
+              const points = toLinePoints(
+                history?.points ?? [],
+                (p) => p.snapshot_date,
+                (p) => p.stake_tao,
+              );
               return (
                 <div key={pos.netuid} className="rounded border border-border/80 px-4 py-3">
                   <div className="flex items-baseline justify-between gap-2">
@@ -245,17 +259,15 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
                     </span>
                   </div>
                   <div className="mt-2">
-                    {values.length > 0 ? (
-                      <Sparkline
-                        values={values}
-                        color={color}
-                        // Sparkline clamps its container to `width`, so this
-                        // is sized past the widest card in the 1/2/3-column
-                        // grid rather than left short of the card's edge.
-                        width={520}
-                        height={36}
+                    {points.length > 0 ? (
+                      <LineWithWindow
+                        compact
+                        points={points}
+                        window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
+                        unit="TAO staked"
                         formatValue={taoStr}
                         ariaLabel={`SN${pos.netuid} staked TAO history`}
+                        source={`account-${ss58}-sn${pos.netuid}`}
                       />
                     ) : (
                       <span className="text-13 text-ink-muted">No history yet</span>

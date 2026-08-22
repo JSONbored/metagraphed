@@ -64,8 +64,6 @@ export {
   type QueryBarFilterOption,
   type QueryBarFilterTriggerProps,
   type QueryBarMetaRowProps,
-  ChartSkeleton,
-  type ChartSkeletonProps,
   PanelError,
   type PanelErrorProps,
   QueryProgress,
@@ -82,7 +80,5 @@ export { Breadcrumbs } from "./breadcrumbs";
 export type { BreadcrumbsProps } from "./breadcrumbs";
 export { CopyLinkButton } from "./copy-link-button";
 export type { CopyLinkButtonProps } from "./copy-link-button";
-export { ChartCard } from "./chart-card";
-export type { ChartCardProps } from "./chart-card";
 export { AsyncPanel } from "./async-panel";
 export type { AsyncPanelProps } from "./async-panel";

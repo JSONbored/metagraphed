@@ -3,8 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { useMemo } from "react";
 
-import { AnimatedTraceSparkline } from "@/components/metagraphed/charts/animated-trace-sparkline";
-import { BrandIcon, Sparkline, TimeAgo } from "@jsonbored/ui-kit";
+import { BrandIcon, LineWithWindow, TimeAgo } from "@jsonbored/ui-kit";
+import { toLinePoints } from "@/components/metagraphed/metric-history";
 import {
   chainActivityQuery,
   healthQuery,
@@ -59,7 +59,7 @@ export function splitChainActivityToday(
 /**
  * Two-up feature row that lives directly beneath the centered hero.
  * Left = neutral chain-throughput trace (7d). Right = compact live-subnet list
- * with per-row price sparklines. Everything renders skeletons/placeholders on
+ * with per-row price deltas. Everything renders skeletons/placeholders on
  * cold fetch so layout never jumps.
  */
 export function HeroFeatureRow() {
@@ -91,13 +91,15 @@ function ChainThroughputCard() {
     [activity?.observed_at],
   );
 
-  const { series, blocksToday } = useMemo(() => {
+  const { points, blocksToday } = useMemo(() => {
     const oldestFirst = activity?.days?.length ? [...activity.days].reverse() : [];
-    const { fullDayBlockCounts, blocksToday: today } = splitChainActivityToday(
-      oldestFirst,
-      todayUtc,
+    const { blocksToday: today } = splitChainActivityToday(oldestFirst, todayUtc);
+    const points = toLinePoints(
+      oldestFirst.filter((d) => d.day !== todayUtc),
+      (d) => d.day,
+      (d) => d.block_count,
     );
-    return { series: fullDayBlockCounts, blocksToday: today };
+    return { points, blocksToday: today };
   }, [activity, todayUtc]);
 
   const endpointsOk = health?.ok;
@@ -133,21 +135,22 @@ function ChainThroughputCard() {
       </div>
 
       <div className="mt-4 px-1">
-        {series.length >= 2 ? (
-          <AnimatedTraceSparkline
-            values={series}
-            direction="flat"
-            width={640}
-            height={180}
-            // #8354: today (still accumulating, not comparable to a whole
-            // day's total) is deliberately excluded from this trend --
-            // labeled by what's actually drawn, not the window the API call
-            // asked for.
-            ariaLabel={`Blocks produced per full UTC day over the last ${series.length} days`}
-            className="w-full"
+        {points.length >= 2 ? (
+          // #8354: today (still accumulating, not comparable to a whole
+          // day's total) is deliberately excluded from this trend --
+          // labeled by what's actually drawn, not the window the API call
+          // asked for.
+          <LineWithWindow
+            compact
+            points={points}
+            window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
+            unit="blocks per day"
+            formatValue={formatNumber}
+            ariaLabel={`Blocks produced per full UTC day over the last ${points.length} days`}
+            source="chain-throughput"
           />
         ) : (
-          <div className="h-[180px] w-full animate-pulse rounded bg-surface-2" />
+          <div className="h-28 w-full animate-pulse rounded bg-surface-2" />
         )}
       </div>
 
@@ -222,8 +225,6 @@ function LiveSubnetRow({ sn }: { sn: Subnet }) {
     closes.length >= 2 && closes[0] ? ((closes.at(-1)! - closes[0]) / closes[0]) * 100 : null;
   const dir: "up" | "down" | "flat" =
     deltaPct == null ? "flat" : deltaPct > 0.5 ? "up" : deltaPct < -0.5 ? "down" : "flat";
-  const strokeColor =
-    dir === "up" ? "var(--health-ok)" : dir === "down" ? "var(--health-down)" : "var(--ink-muted)";
   const deltaTone =
     dir === "up" ? "text-health-ok" : dir === "down" ? "text-health-down" : "text-ink-muted";
 
@@ -244,20 +245,6 @@ function LiveSubnetRow({ sn }: { sn: Subnet }) {
         <div className="min-w-0 flex-1">
           <div className="truncate text-ink-strong">{sn.name ?? `Subnet ${sn.netuid}`}</div>
           <div className="text-13 text-ink-muted">SN{sn.netuid}</div>
-        </div>
-        <div className="hidden shrink-0 sm:block">
-          {closes.length >= 2 ? (
-            <Sparkline
-              values={closes}
-              width={72}
-              height={22}
-              interactive={false}
-              color={strokeColor}
-              ariaLabel={`${sn.name ?? "Subnet"} 7-day price trend`}
-            />
-          ) : (
-            <div className="h-[22px] w-[72px] rounded bg-surface-2/60" />
-          )}
         </div>
         <div className="shrink-0 flex flex-col items-end gap-0.5">
           <span className="text-11 tabular-nums text-ink-strong">
