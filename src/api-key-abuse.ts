@@ -20,6 +20,8 @@
 // reads a cached snapshot and never computes anything. That keeps enforcement
 // at one KV read rather than a network round trip per request.
 
+import { DEFAULT_ACCOUNT_KIND, type AccountKind } from "./account-kind.ts";
+
 /**
  * Reason codes are a CLOSED set, not free text.
  *
@@ -166,6 +168,15 @@ export function scoreUsageAnomalies(
 /** An active block, as held in the cached snapshot the edge reads. */
 export interface BlockEntry {
   accountId: number;
+  /**
+   * WHICH identity system `accountId` belongs to (#11573).
+   *
+   * Optional for one reason only: a snapshot written before the discriminator
+   * existed carries no kind, and those entries are all `rpc` accounts. Absent
+   * is therefore read as `rpc` rather than as "matches anything" -- see
+   * evaluateBlock.
+   */
+  accountKind?: AccountKind | null;
   reasonCode: BlockReasonCode;
   note?: string | null;
   blockedAt?: number | null;
@@ -200,6 +211,12 @@ const NOT_BLOCKED: BlockVerdict = {
 export function evaluateBlock(
   snapshot: { blocks?: unknown } | null | undefined,
   accountId: unknown,
+  /**
+   * WHICH identity system `accountId` belongs to (#11573). Defaulted rather
+   * than required so existing callers keep their meaning exactly: every id
+   * they pass is an `rpc_accounts` id.
+   */
+  accountKind: AccountKind = DEFAULT_ACCOUNT_KIND,
 ): BlockVerdict {
   const id = Number(accountId);
   if (!Number.isInteger(id) || id <= 0) return NOT_BLOCKED;
@@ -207,6 +224,16 @@ export function evaluateBlock(
   if (!Array.isArray(blocks)) return NOT_BLOCKED;
   for (const entry of blocks as BlockEntry[]) {
     if (Number(entry?.accountId) !== id) continue;
+    // MATCHING ON THE ID ALONE WAS THE BUG (#11573). `github_accounts.id` and
+    // `rpc_accounts.id` are separate sequences in the same numeric range, so
+    // an id-only match blocks an unrelated account of the other kind -- and a
+    // block is the one verdict where a false positive is total.
+    //
+    // An entry with no kind is read as `rpc`, never as a wildcard: it predates
+    // the discriminator, and every such block was written against an
+    // `rpc_accounts` id. Treating it as "matches anything" would resurrect the
+    // exact collision from inside the compatibility path.
+    if ((entry?.accountKind ?? DEFAULT_ACCOUNT_KIND) !== accountKind) continue;
     const reasonCode = isBlockReasonCode(entry?.reasonCode)
       ? entry.reasonCode
       : "abuse_manual";

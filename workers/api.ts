@@ -1,3 +1,4 @@
+import { DEFAULT_ACCOUNT_KIND, type AccountKind } from "../src/account-kind.ts";
 import { economicsFieldSources } from "../src/economics-field-sources.ts";
 import {
   CHAIN_CONCENTRATION_DAILY_TABLE,
@@ -1052,6 +1053,11 @@ export function recordApiKeyUsage(
   // request_count, so the tenant dashboard can show "you were throttled N
   // times" without those attempts inflating the usage they are billed against.
   rejected = false,
+  // #11573: WHICH identity system `accountId` belongs to. Defaulted so every
+  // existing caller keeps its exact meaning -- each one passes an
+  // `rpc_accounts` id -- while an OAuth caller can say so and stop having its
+  // usage filed against the rpc account of the same number.
+  accountKind: AccountKind = DEFAULT_ACCOUNT_KIND,
 ): void {
   if (!env.DATA_API?.fetch || !env.API_KEY_LOOKUP_INTERNAL_TOKEN) return;
   const pending = env.DATA_API.fetch(
@@ -1063,6 +1069,7 @@ export function recordApiKeyUsage(
       },
       body: JSON.stringify({
         account_id: Number(accountId),
+        account_kind: accountKind,
         route,
         rejected,
       }),

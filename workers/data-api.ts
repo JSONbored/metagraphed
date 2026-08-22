@@ -17,6 +17,7 @@
 // TAO/USD index cron. Routes whose store is gone still answer exactly what
 // they answered before the deletion -- see dispatchDataApiRequest's own note
 // for why that matters to the forward gate.
+import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import {
   accountBalanceSyncRowSchema,
   accountIdentitySyncRowSchema,
@@ -5252,6 +5253,65 @@ async function handleGithubAccountUpsert(
   });
 }
 
+// The CURRENT tier of a GitHub OAuth account, by account id (#11562).
+//
+// WHY A ROUTE AND NOT A CLAIM BAKED INTO THE OAUTH GRANT. `props` is minted
+// once by completeAuthorization and stored with the grant, so a tier carried
+// there would not move until the user re-consented -- and the first thing that
+// will ever change a tier is a subscription upgrade, which has to take effect
+// on the next request rather than the next login. The API-key path already has
+// the property this preserves, and src/api-tiers.ts states it: the tier is read
+// from the lookup on every request, so a server-side change lands WITHOUT
+// re-issuing the credential, bounded only by the cache TTL in front of it.
+//
+// Same internal-token gate as handleGithubAccountUpsert above, for the same
+// reason -- the only caller is our own Worker over the DATA_API service
+// binding, and it already reads this secret.
+async function handleGithubAccountTier(
+  request: Request,
+  env: DataApiEnv,
+  ctx: ExecutionContext,
+) {
+  const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      { error: "github account lookup is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(API_KEY_LOOKUP_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      { error: `provide a valid ${API_KEY_LOOKUP_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  // Number, not string: `id` is `integer`, and a non-numeric value must not
+  // reach the query as a coerced NaN. An absent or malformed id is answered
+  // `found: false` rather than 400 -- the caller's next move is identical
+  // either way (fall back to the anonymous ceiling), and a 400 would invite it
+  // to treat a shape problem as an outage.
+  // POSITIVE integer, not merely an integer: `Number(null)` is 0, which passes
+  // Number.isInteger and would reach the query as a real-looking id. Ids are
+  // identity-generated and start at 1, so 0 and negatives are never accounts.
+  const accountId = Number(body?.account_id);
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return writeJson({ found: false });
+  }
+  return withAccountsSql(env, ctx, async (sql) => {
+    const [account] = await sql<{ tier: GithubAccounts["tier"] }>`
+      SELECT tier FROM github_accounts WHERE id = ${accountId} LIMIT 1`;
+    // A deleted or unknown account is `found: false`, NOT a default tier. The
+    // caller must not be able to mistake "we could not find you" for "you are
+    // on free" -- those differ the moment `free` stops being the bottom rung.
+    return account
+      ? writeJson({ found: true, tier: account.tier })
+      : writeJson({ found: false });
+  });
+}
+
 // Shared by every /api/v1/keys route: resolves the Authorization header to
 // { accountId, ss58 }, or a ready-to-return error response. A missing
 // WALLET_SESSION_SECRET is a deployment-config gap (503), distinct from a
@@ -5531,24 +5591,35 @@ async function handleApiKeyUsageIncrement(
   if (error) return error;
   const accountId = Number(body?.account_id);
   const route = typeof body?.route === "string" ? body.route.slice(0, 128) : "";
+  // #11573: WHICH identity system `account_id` belongs to. Absent means `rpc`,
+  // which is what every caller meant before the discriminator existed; an
+  // unrecognised value is rejected rather than defaulted, because silently
+  // filing a github id under `rpc` is the collision this column exists to end.
+  const accountKind =
+    body?.account_kind === undefined
+      ? DEFAULT_ACCOUNT_KIND
+      : asAccountKind(body.account_kind);
   // #8609: a REJECTED request increments rejected_count instead of
   // request_count. Only a literal true counts -- anything else is a success,
   // so a malformed flag can never silently erase real usage.
   const rejected = body?.rejected === true;
-  if (!Number.isFinite(accountId) || !route) {
-    return writeJson({ error: "provide account_id and route" }, 400);
+  if (!Number.isFinite(accountId) || !route || accountKind === null) {
+    return writeJson(
+      { error: "provide account_id, route and a known account_kind" },
+      400,
+    );
   }
   try {
     await withAccountsSql(env, ctx, async (sql) => {
       const day = new Date().toISOString().slice(0, 10);
       await sql<never>`
         INSERT INTO api_key_usage_daily
-          (account_id, day, route, request_count, rejected_count)
+          (account_kind, account_id, day, route, request_count, rejected_count)
         VALUES (
-          ${accountId}, ${day}, ${route},
+          ${accountKind}, ${accountId}, ${day}, ${route},
           ${rejected ? 0 : 1}, ${rejected ? 1 : 0}
         )
-        ON CONFLICT (account_id, day, route)
+        ON CONFLICT (account_kind, account_id, day, route)
         DO UPDATE SET
           request_count =
             api_key_usage_daily.request_count + EXCLUDED.request_count,
@@ -5597,15 +5668,26 @@ async function handleApiQuotaSpend(
   const accountId = Number(body.account_id);
   const cost = Number(body.cost);
   const limit = Number(body.limit);
+  // #11573: see handleApiKeyUsageIncrement -- absent means `rpc`, unrecognised
+  // is a 400. A quota row is a bill; filing one under the wrong identity system
+  // debits someone else.
+  const accountKind =
+    body.account_kind === undefined
+      ? DEFAULT_ACCOUNT_KIND
+      : asAccountKind(body.account_kind);
   if (
     !Number.isInteger(accountId) ||
     accountId <= 0 ||
     !Number.isFinite(cost) ||
     cost < 0 ||
     !Number.isFinite(limit) ||
-    limit <= 0
+    limit <= 0 ||
+    accountKind === null
   ) {
-    return writeJson({ error: "provide account_id, cost and limit" }, 400);
+    return writeJson(
+      { error: "provide account_id, cost, limit and a known account_kind" },
+      400,
+    );
   }
 
   const now = Date.now();
@@ -5631,9 +5713,10 @@ async function handleApiQuotaSpend(
     // enforcement is still the single guarded statement, only the 429's
     // advisory `spent` readout could in principle race a concurrent spend.)
     const attempt = await sql<{ units_spent: ApiQuotaDaily["units_spent"] }>`
-      INSERT INTO api_quota_daily (account_id, day, units_spent, updated_at)
-      VALUES (${accountId}, ${day}, ${cost}, ${now})
-      ON CONFLICT (account_id, day) DO UPDATE
+      INSERT INTO api_quota_daily
+        (account_kind, account_id, day, units_spent, updated_at)
+      VALUES (${accountKind}, ${accountId}, ${day}, ${cost}, ${now})
+      ON CONFLICT (account_kind, account_id, day) DO UPDATE
         SET units_spent = api_quota_daily.units_spent + EXCLUDED.units_spent,
             updated_at = ${now}
         WHERE api_quota_daily.units_spent + EXCLUDED.units_spent <= ${limit}
@@ -5644,7 +5727,9 @@ async function handleApiQuotaSpend(
     }
     const [current] = await sql<{ units_spent: ApiQuotaDaily["units_spent"] }>`
       SELECT units_spent FROM api_quota_daily
-      WHERE account_id = ${accountId} AND day = ${day}`;
+      WHERE account_kind = ${accountKind}
+        AND account_id = ${accountId}
+        AND day = ${day}`;
     return applyQuotaSpend(Number(current?.units_spent ?? 0), cost, limit, now);
   });
   return result instanceof Response ? result : writeJson(result);
@@ -5905,14 +5990,15 @@ const API_KEY_BLOCK_TOKEN_HEADER = "x-api-key-block-token";
  */
 async function refreshBlocklistSnapshot(env: DataApiEnv, sql: PgSql) {
   const rows = await sql<{
+    account_kind: string;
     account_id: ApiKeyBlocks["account_id"];
     reason_code: ApiKeyBlocks["reason_code"];
     blocked_at: ApiKeyBlocks["blocked_at"];
   }>`
-    SELECT account_id, reason_code, blocked_at
+    SELECT account_kind, account_id, reason_code, blocked_at
     FROM api_key_blocks
     WHERE unblocked_at IS NULL
-    ORDER BY account_id`;
+    ORDER BY account_kind, account_id`;
   const snapshot = {
     generated_at: new Date().toISOString(),
     blocks: rows.map((row) => ({
@@ -5921,6 +6007,12 @@ async function refreshBlocklistSnapshot(env: DataApiEnv, sql: PgSql) {
       // already the right shape rather than relying on every reader to
       // remember (the #8607 trap).
       accountId: Number(row.account_id),
+      // #11573: WHICH identity system that id belongs to. Narrowed rather than
+      // passed through, so a value the database somehow holds outside the
+      // vocabulary cannot reach evaluateBlock as an unmatchable string and
+      // silently un-block someone. Falling back to `rpc` matches the column
+      // default and the compatibility reading on the consumer side.
+      accountKind: asAccountKind(row.account_kind) ?? DEFAULT_ACCOUNT_KIND,
       reasonCode: row.reason_code,
       blockedAt: Number(row.blocked_at),
     })),
@@ -5976,8 +6068,19 @@ async function handleApiKeyBlock(
   if (error) return error;
   const accountId = Number(body?.account_id);
   const reasonCode = body?.reason_code;
-  if (!Number.isInteger(accountId) || accountId <= 0) {
-    return writeJson({ error: "provide a valid account_id" }, 400);
+  // #11573: a block is scoped to (kind, id). Absent means `rpc`, which is what
+  // every block written before the discriminator meant; an unrecognised value
+  // is refused rather than defaulted, because blocking the wrong identity
+  // system cuts off an unrelated account entirely.
+  const accountKind =
+    body?.account_kind === undefined
+      ? DEFAULT_ACCOUNT_KIND
+      : asAccountKind(body.account_kind);
+  if (!Number.isInteger(accountId) || accountId <= 0 || accountKind === null) {
+    return writeJson(
+      { error: "provide a valid account_id and a known account_kind" },
+      400,
+    );
   }
   if (!isBlockReasonCode(reasonCode)) {
     return writeJson(
@@ -5998,12 +6101,16 @@ async function handleApiKeyBlock(
     // idempotent instead of 500ing.
     const [row] = await sql<{ id: ApiKeyBlocks["id"] }>`
       INSERT INTO api_key_blocks
-        (account_id, reason_code, note, blocked_at, blocked_by)
-      VALUES (${accountId}, ${reasonCode}, ${note}, ${Date.now()}, ${blockedBy})
+        (account_kind, account_id, reason_code, note, blocked_at, blocked_by)
+      VALUES (
+        ${accountKind}, ${accountId}, ${reasonCode}, ${note},
+        ${Date.now()}, ${blockedBy}
+      )
       ON CONFLICT DO NOTHING
       RETURNING id`;
     const active = await refreshBlocklistSnapshot(env, sql);
     return writeJson({
+      account_kind: accountKind,
       account_id: accountId,
       reason_code: reasonCode,
       already_blocked: !row,
@@ -6026,8 +6133,17 @@ async function handleApiKeyUnblock(
   const { body, error } = await readAccountRouteBody(request);
   if (error) return error;
   const accountId = Number(body?.account_id);
-  if (!Number.isInteger(accountId) || accountId <= 0) {
-    return writeJson({ error: "provide a valid account_id" }, 400);
+  // #11573: must name the same (kind, id) the block was written against, or an
+  // unblock silently matches nothing and the caller is told it worked.
+  const accountKind =
+    body?.account_kind === undefined
+      ? DEFAULT_ACCOUNT_KIND
+      : asAccountKind(body.account_kind);
+  if (!Number.isInteger(accountId) || accountId <= 0 || accountKind === null) {
+    return writeJson(
+      { error: "provide a valid account_id and a known account_kind" },
+      400,
+    );
   }
   // Required, not optional. An unblock with no stated reason is how a
   // false-positive review becomes unauditable a month later.
@@ -6042,7 +6158,9 @@ async function handleApiKeyUnblock(
     const [row] = await sql<{ id: ApiKeyBlocks["id"] }>`
       UPDATE api_key_blocks
       SET unblocked_at = ${Date.now()}, unblocked_note = ${note.slice(0, 2000)}
-      WHERE account_id = ${accountId} AND unblocked_at IS NULL
+      WHERE account_kind = ${accountKind}
+        AND account_id = ${accountId}
+        AND unblocked_at IS NULL
       RETURNING id`;
     const active = await refreshBlocklistSnapshot(env, sql);
     return writeJson({
@@ -8695,6 +8813,12 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/auth/github/upsert-account"
     ) {
       return handleGithubAccountUpsert(request, env, ctx);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/accounts/github/tier"
+    ) {
+      return handleGithubAccountTier(request, env, ctx);
     }
     if (url.pathname.startsWith("/api/v1/keys")) {
       return handleAccountKeysRoute(request, env, ctx, url);

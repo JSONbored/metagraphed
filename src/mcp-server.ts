@@ -1253,6 +1253,11 @@ import {
   requireTierForDepth,
 } from "./mcp-tier-gate.ts";
 import {
+  oauthAccountIdFrom,
+  resolveOAuthAccountTier,
+} from "./oauth-account-tier.ts";
+import type { AccountKind } from "./account-kind.ts";
+import {
   DEREGISTRATION_UNAVAILABLE_CODE,
   DEREGISTRATION_UNAVAILABLE_MESSAGE,
   projectDeregistrationRanking,
@@ -17759,12 +17764,22 @@ export { parseUserAgentClient };
 async function enforceMcpRateLimit(
   request: Request,
   env: Env,
-  ctx?: { waitUntil?: (promise: Promise<unknown>) => void },
+  ctx?: {
+    waitUntil?: (promise: Promise<unknown>) => void;
+    // #11562: set by @cloudflare/workers-oauth-provider once it has ALREADY
+    // validated the Bearer token. Present only on an authenticated request,
+    // which is why the tier below is optional rather than defaulted.
+    props?: { accountId?: unknown };
+  },
 ): Promise<{
   rejection: Response | null;
   authTier: string;
   accountId: string | null;
-  quotaPending?: { accountId: string; dailyUnits: number };
+  quotaPending?: {
+    accountId: string;
+    accountKind: AccountKind;
+    dailyUnits: number;
+  };
 }> {
   // #8520: tiered rate limiting via the shared applyTieredRateLimit helper
   // (workers/tiered-rate-limit.ts), mirroring workers/api.ts's DATA checkpoint.
@@ -17776,11 +17791,31 @@ async function enforceMcpRateLimit(
   // cost-weighted daily quota cannot be priced yet (every MCP call is POST /mcp,
   // so the pathname says nothing about what was asked for), so it is DEFERRED
   // and spent by handleMcpRequest once the body names the tools.
+  // #11562: an OAuth-authenticated caller resolves a REAL tier instead of
+  // falling through to "anonymous".
+  //
+  // Only attempted when the OAuth provider actually put an account on the
+  // execution context -- an anonymous request has no props and costs nothing
+  // extra here. A caller presenting an `mg_` key never reaches this branch
+  // with props set either: src/github-oauth.ts routes `mg_` bearers around the
+  // provider entirely, so the two identity systems cannot both be present.
+  //
+  // A lookup that cannot answer yields no identity, which means the anonymous
+  // ceiling -- the safe direction, and the same one applyTieredRateLimit takes
+  // for an unrecognised tier.
+  const oauthAccountId = oauthAccountIdFrom(ctx?.props?.accountId);
+  let oauthIdentity: { accountId: number; tier: string } | null = null;
+  if (oauthAccountId !== null) {
+    const resolved = await resolveOAuthAccountTier(env, oauthAccountId);
+    if (resolved.found && typeof resolved.tier === "string" && resolved.tier) {
+      oauthIdentity = { accountId: oauthAccountId, tier: resolved.tier };
+    }
+  }
   const rateLimit = await applyTieredRateLimit(
     request,
     env,
     MCP_TIERED_RATE_LIMIT,
-    { deferQuota: true },
+    { deferQuota: true, oauthIdentity },
   );
   // Fire-and-forget usage counter for the self-serve dashboard, only for a keyed
   // caller (accountId set). Matches workers/api.ts's "chain-events" label call.
@@ -17798,7 +17833,14 @@ async function enforceMcpRateLimit(
   // #8609; the MCP checkpoint was never brought into line. Same ordering here
   // now, for the same reason.
   if (rateLimit.accountId) {
-    recordApiKeyUsage(env, ctx, rateLimit.accountId, "mcp", !rateLimit.allowed);
+    recordApiKeyUsage(
+      env,
+      ctx,
+      rateLimit.accountId,
+      "mcp",
+      !rateLimit.allowed,
+      rateLimit.accountKind,
+    );
   }
   // applyTieredRateLimit always sets `tier`: a tier name for a verified key,
   // or the literal "anonymous". No fallback needed, and inventing one would
@@ -17844,7 +17886,9 @@ async function enforceMcpRateLimit(
 async function spendMcpQuota(
   request: Request,
   env: Env,
-  pending: { accountId: string; dailyUnits: number } | undefined,
+  pending:
+    | { accountId: string; accountKind: AccountKind; dailyUnits: number }
+    | undefined,
   body: unknown,
   policy: RateLimitTierPolicy,
   tier: string,
@@ -17858,7 +17902,14 @@ async function spendMcpQuota(
   );
   if (!quota || quota.allowed) return null;
   const rejection = tieredRejectionResponse(
-    { allowed: false, policy, tier, quota, accountId: pending.accountId },
+    {
+      allowed: false,
+      policy,
+      tier,
+      quota,
+      accountId: pending.accountId,
+      accountKind: pending.accountKind,
+    },
     {
       code: "rate_limited",
       message: "Daily MCP quota exhausted for this account.",

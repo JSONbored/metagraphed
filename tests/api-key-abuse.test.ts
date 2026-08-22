@@ -427,3 +427,45 @@ describe("runAbuseScan reports, it does not enforce (#8611)", () => {
     assert.deepEqual(result, { ok: true, flagged: 0, accountsSeen: 0 });
   });
 });
+
+// #11573: a block is scoped to (kind, id). Matching on the id alone was the
+// bug -- `github_accounts.id` and `rpc_accounts.id` are separate sequences in
+// the same numeric range, and a block is the one verdict whose false positive
+// costs a customer everything.
+describe("evaluateBlock — account kind", () => {
+  const snapshot = {
+    blocks: [
+      { accountId: 5, accountKind: "github", reasonCode: "abuse_manual" },
+    ],
+  };
+
+  test("blocks the account it names", () => {
+    assert.equal(evaluateBlock(snapshot, 5, "github").blocked, true);
+  });
+
+  test("does NOT block the same id under a different kind", () => {
+    // The whole point: rpc account 5 is a different account from github
+    // account 5 and must be unaffected by a block on the other.
+    assert.equal(evaluateBlock(snapshot, 5, "rpc").blocked, false);
+  });
+
+  test("an entry with no kind is read as rpc, not as a wildcard", () => {
+    // Snapshots written before the discriminator carry no kind, and every
+    // block in them was against an rpc id. Treating absent as "matches
+    // anything" would resurrect the collision from inside the compatibility
+    // path -- so it must block rpc and only rpc.
+    const legacy = {
+      blocks: [{ accountId: 5, reasonCode: "abuse_manual" }],
+    };
+    assert.equal(evaluateBlock(legacy, 5, "rpc").blocked, true);
+    assert.equal(evaluateBlock(legacy, 5, "github").blocked, false);
+  });
+
+  test("defaults to rpc when no kind is supplied, preserving every existing caller", () => {
+    const legacy = {
+      blocks: [{ accountId: 5, reasonCode: "abuse_manual" }],
+    };
+    assert.equal(evaluateBlock(legacy, 5).blocked, true);
+    assert.equal(evaluateBlock(snapshot, 5).blocked, false);
+  });
+});
