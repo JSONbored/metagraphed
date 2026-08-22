@@ -605,6 +605,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{network}/export/chain-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Network-scoped form of /api/v1/export/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
+        get: operations["exportChainEventsByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/{network}/extrinsics": {
         parameters: {
             query?: never;
@@ -2437,6 +2454,23 @@ export interface paths {
         };
         /** @description Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure. */
         get: operations["evmAddressMapping"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/export/chain-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Fetch up to 25,000 chain events in one call -- the same rows, filters and ordering as /api/v1/chain-events, without the 100-row page ceiling or the cursor bookkeeping that comes with it. ?pallet / ?method narrow by event id; ?before reads down from a block number, which is how a caller walks a large range in deliberate chunks; ?limit caps the call (<=25000, default 5000). REQUIRES PAYMENT: this route answers 402 with an x402 quote when no payment is presented, on Base or Solana -- see /.well-known/x402. It is the one family that does; every other route on this API serves an unpaid caller normally. Served live, no static file. */
+        get: operations["exportChainEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -19011,6 +19045,137 @@ export interface operations {
             };
         };
     };
+    exportChainEventsByNetwork: {
+        parameters: {
+            query?: {
+                /** @description Filter to events emitted by this pallet, e.g. `SubtensorModule` or `Balances`. */
+                pallet?: string;
+                /** @description Filter to events with this method name within the pallet, e.g. `StakeAdded`. */
+                method?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
+                before?: number;
+                /** @description Maximum number of rows to return in one page (at most 25000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 5000. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "count": 1,
+                     *         "events": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "event_index": 1,
+                     *             "method": "GET",
+                     *             "pallet": "example"
+                     *           }
+                     *         ],
+                     *         "next_before": 1,
+                     *         "next_cursor": "100.123.4"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainEventsFeedArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     extrinsicsFeedByNetwork: {
         parameters: {
             query?: {
@@ -33920,6 +34085,134 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportChainEvents: {
+        parameters: {
+            query?: {
+                /** @description Filter to events emitted by this pallet, e.g. `SubtensorModule` or `Balances`. */
+                pallet?: string;
+                /** @description Filter to events with this method name within the pallet, e.g. `StakeAdded`. */
+                method?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
+                before?: number;
+                /** @description Maximum number of rows to return in one page (at most 25000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 5000. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "count": 1,
+                     *         "events": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "event_index": 1,
+                     *             "method": "GET",
+                     *             "pallet": "example"
+                     *           }
+                     *         ],
+                     *         "next_before": 1,
+                     *         "next_cursor": "100.123.4"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainEventsFeedArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -326,7 +326,42 @@ function resolveLeg(
  * An allowlist rather than a cost-weight threshold, because "expensive" and
  * "worth offering headroom on" are different questions.
  */
-export const X402_PAID_FAMILIES: readonly string[] = ["ai", "deep-history"];
+export const X402_PAID_FAMILIES: readonly string[] = [
+  "ai",
+  "deep-history",
+  "export",
+];
+
+/**
+ * The families where a payment is REQUIRED, not merely accepted (#11600).
+ *
+ * Everything in X402_PAID_FAMILIES accepts a payment and gives headroom for
+ * it. These additionally REFUSE without one -- an unpaid call gets a 402
+ * instead of the anonymous tier.
+ *
+ * ## WHY THIS DOES NOT BREAK THE INVARIANT
+ *
+ * The invariant is that a payment never gates a call that WOULD HAVE
+ * SUCCEEDED. An export call has never succeeded for anyone: the family is new,
+ * nothing in apps/ui calls it, and no free tier of it was ever offered. There
+ * is no behaviour here to take away.
+ *
+ * That is also why it is a separate family rather than a flag on the existing
+ * ones. `ai` and `deep-history` are called anonymously by our own website --
+ * /api/v1/ask from the Ask feature and the command palette, /api/v1/blocks and
+ * /api/v1/chain-events from the block explorer, with a user-typed block range.
+ * Requiring payment on either would 402 a visitor reading our own site.
+ *
+ * A caller who wants those for free still gets them, paginated, exactly as
+ * before. What costs money is the shape that costs US money: one unpaginated
+ * pass over a window the free tier does not offer.
+ */
+export const X402_REQUIRED_FAMILIES: readonly string[] = ["export"];
+
+/** Does this route refuse a caller who presents no payment at all? */
+export function x402RequiresPayment(pathname: string): boolean {
+  return X402_REQUIRED_FAMILIES.includes(routeCost(pathname).family);
+}
 
 /** Can a payment buy headroom here, and what does one call cost in atomic
  * units? Null means presenting one buys nothing, so none is ever quoted. */

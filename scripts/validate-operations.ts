@@ -49,6 +49,14 @@ export const DECLARED_UNEXPOSED: Readonly<Record<string, string>> = {
   openapi:
     "the OpenAPI document. Same reason as api-index -- it describes the REST " +
     "surface, and the other two surfaces describe themselves.",
+  "export-chain-events":
+    "the paid export tier (#11600), and HTTP-only on purpose. The x402 gate " +
+    "prices a request by its resolved pathname; every MCP call arrives on " +
+    "/mcp and every GraphQL call on /api/v1/graphql, both `edge` family at " +
+    "weight 1. Mirroring this route on either surface would serve a " +
+    "25,000-row export for free through the surface the payment exists to " +
+    "bound. The free paginated twin (list_chain_events / chainEvents) is " +
+    "reachable from both and is unchanged.",
   "search-resolve":
     "a redirect helper: it resolves a search hit to its canonical URL and " +
     "answers 302, which is an HTTP affordance neither GraphQL nor MCP has.",

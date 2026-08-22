@@ -70446,6 +70446,175 @@
         ]
       }
     },
+    "/api/v1/{network}/export/chain-events": {
+      "get": {
+        "description": "Network-scoped form of /api/v1/export/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "exportChainEventsByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter to events emitted by this pallet, e.g. `SubtensorModule` or `Balances`.",
+            "in": "query",
+            "name": "pallet",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter to events with this method name within the pallet, e.g. `StakeAdded`.",
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 25000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 5000.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5000,
+              "maximum": 25000,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ChainEventsFeedArtifactResponse": {
+                    "$ref": "#/components/examples/ChainEventsFeedArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainEventsFeedArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "402": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "chain",
+          "analytics"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
     "/api/v1/{network}/extrinsics": {
       "get": {
         "description": "Network-scoped form of /api/v1/extrinsics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
@@ -85949,6 +86118,160 @@
         },
         "tags": [
           "accounts"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/export/chain-events": {
+      "get": {
+        "description": "Fetch up to 25,000 chain events in one call -- the same rows, filters and ordering as /api/v1/chain-events, without the 100-row page ceiling or the cursor bookkeeping that comes with it. ?pallet / ?method narrow by event id; ?before reads down from a block number, which is how a caller walks a large range in deliberate chunks; ?limit caps the call (<=25000, default 5000). REQUIRES PAYMENT: this route answers 402 with an x402 quote when no payment is presented, on Base or Solana -- see /.well-known/x402. It is the one family that does; every other route on this API serves an unpaid caller normally. Served live, no static file.",
+        "operationId": "exportChainEvents",
+        "parameters": [
+          {
+            "description": "Filter to events emitted by this pallet, e.g. `SubtensorModule` or `Balances`.",
+            "in": "query",
+            "name": "pallet",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter to events with this method name within the pallet, e.g. `StakeAdded`.",
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 25000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 5000.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5000,
+              "maximum": 25000,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ChainEventsFeedArtifactResponse": {
+                    "$ref": "#/components/examples/ChainEventsFeedArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainEventsFeedArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "402": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "chain",
+          "analytics"
         ],
         "x-metagraphed-networks": [
           "finney",

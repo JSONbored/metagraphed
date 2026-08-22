@@ -31,6 +31,11 @@ export const CHAIN_HISTORY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/blocks/{ref}/extrinsics",
   "/api/v1/chain-events",
   "/api/v1/chain-events/stats",
+  // The paid export tier (#11600) reads the same per-network Iceberg namespace
+  // its free twin does, through the same reader, so it is served wherever that
+  // network's decode lane has run -- and belongs here rather than in
+  // live-chain-routes for exactly the reason this file's header gives.
+  "/api/v1/export/chain-events",
   "/api/v1/extrinsics",
   "/api/v1/extrinsics/{hash}",
 ];
