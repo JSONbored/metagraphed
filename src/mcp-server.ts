@@ -18616,6 +18616,87 @@ export async function handleMcpRequest(
   return response;
 }
 
+/**
+ * The tools named in this body that require an identity, if any (#11563).
+ *
+ * Reads the PARSED body rather than re-deriving from the SDK, because the
+ * refusal has to happen before the SDK sees the message at all -- see
+ * mcpAuthChallenge for why.
+ *
+ * Handles the legacy array batch for the same reason the batch ceiling does:
+ * one HTTP request can carry many calls, and a protected one hidden among
+ * public ones must still challenge.
+ */
+export function authRequiredToolsIn(body: unknown): string[] {
+  const messages = Array.isArray(body) ? body : [body];
+  const names: string[] = [];
+  for (const message of messages) {
+    const row = rowOf(message);
+    if (row?.method !== "tools/call") continue;
+    const name = rowOf(row.params)?.name;
+    if (typeof name === "string" && AUTH_REQUIRED_TOOL_NAMES.has(name)) {
+      names.push(name);
+    }
+  }
+  return names;
+}
+
+/**
+ * The 401 that makes an MCP client offer to sign in (#11563).
+ *
+ * ## WHY A TRANSPORT-LEVEL 401 AND NOT A TOOL ERROR
+ *
+ * This used to be `toolError("auth_required", ...)`, which rides
+ * `structuredContent.error` inside an HTTP 200. The MCP authorization spec and
+ * Claude's own lazy-authentication guidance both say what that does: a 200
+ * carrying `isError: true` is an APPLICATION failure, so the client hands the
+ * text to the model and moves on. No sign-in is ever offered. Only a
+ * transport-level 401 makes a client pause the call, run the authorization
+ * flow, and retry the same request with a token.
+ *
+ * Measured consequence of the old shape: five accounts completed the GitHub
+ * flow unprompted and every other caller stayed anonymous, because nothing in
+ * the surface ever asked (#11562). The tier ladder was reachable only by
+ * someone who already knew it existed.
+ *
+ * ## WHY THE METADATA URL IS DERIVED FROM THE REQUEST
+ *
+ * RFC 9728 says the `resource` in the metadata document must match the server
+ * URL the caller actually used, and this server is mounted at more than one
+ * path (`/mcp` and the `/mcp/core` listing profile). Hard-coding `/mcp` would
+ * hand a `/mcp/core` caller a document describing a different resource, which
+ * a spec-compliant client is right to reject. The OAuth provider already
+ * serves a per-path document -- verified in production for both -- so deriving
+ * the pointer the same way keeps the two halves agreeing.
+ *
+ * `scope` is stated so the consent prompt asks for what the protected tools
+ * actually need, rather than everything the resource advertises.
+ */
+export function mcpAuthChallenge(request: Request, tools: string[]): Response {
+  const url = new URL(request.url);
+  const metadata = `${url.origin}/.well-known/oauth-protected-resource${url.pathname}`;
+  return new Response(
+    JSON.stringify({
+      error: "invalid_token",
+      error_description:
+        `Authentication required for: ${tools.join(", ")}. ` +
+        "Sign in, or send an Authorization: Bearer header with an mg_ API key.",
+    }),
+    {
+      status: 401,
+      headers: {
+        ...MCP_HEADERS,
+        "www-authenticate":
+          `Bearer error="invalid_token", ` +
+          `error_description="Authentication required for this tool", ` +
+          `resource_metadata="${metadata}", ` +
+          `scope="profile"`,
+        [MCP_REFUSAL_HEADER]: "auth_required",
+      },
+    },
+  );
+}
+
 async function dispatchMcpRequest(
   request: Request,
   env: Env,
@@ -18653,6 +18734,31 @@ async function dispatchMcpRequest(
 
   const { value: body, error: bodyError } = await readLimitedMcpBody(request);
   if (bodyError) return bodyError;
+
+  // #11563: challenge BEFORE the SDK, and before the quota.
+  //
+  // Before the SDK, because once a tool handler is running its return value is
+  // already destined to be wrapped in a 200 -- the refusal has to be the HTTP
+  // status itself or no client will offer to sign in.
+  //
+  // Before the quota, for the reason the blocklist states one control up:
+  // debiting a caller for a request we are about to refuse would bill them for
+  // work never served, and would mask the challenge as a 429.
+  //
+  // `resolveSurfaceCredentialIdentity` is the SAME test the protected tools
+  // themselves apply, and it accepts either identity system -- a verified `mg_`
+  // key or an OAuth account on the execution context -- so the gate and the
+  // handlers can never disagree about who is authenticated.
+  const protectedTools = authRequiredToolsIn(body);
+  if (
+    protectedTools.length > 0 &&
+    resolveSurfaceCredentialIdentity({
+      accountId,
+      executionCtx: deps.executionCtx,
+    }) === null
+  ) {
+    return mcpAuthChallenge(request, protectedTools);
+  }
 
   // The cost-weighted quota is spent HERE, not in the gate above: only now do we
   // know which tools were asked for. This is what stops `tools/call {"ask"}`

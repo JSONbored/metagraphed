@@ -2,6 +2,8 @@
 // the Agent Skills discovery index (digest must match the shipped SKILL.md)
 // and the honest auth.md. The MCP server card (SEP-1649) is now worker-computed
 // and tested via mcpServerCardResponse rather than read from a committed file.
+import { AUTH_REQUIRED_TOOL_NAMES } from "../src/mcp-server.ts";
+import { FREE_HISTORY_WINDOW_DAYS } from "../src/mcp-tier-gate.ts";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
@@ -143,6 +145,36 @@ describe("Discovery artifacts", () => {
     assert.match(authMd, /optional and additive/i);
     assert.match(authMd, /oauth-protected-resource/i);
     assert.match(authMd, /Bearer mg_/);
+    // #11566: the two facts that were WRONG, now derived rather than restated.
+    //
+    // auth.md is what an agent reads to decide whether authenticating is worth
+    // it, and it spent a release saying it unlocked nothing -- written before
+    // the depth gate (#11179 phase 3) and never revisited. It also said an
+    // anonymous request "is not challenged", which the 401 gate (#11563) made
+    // false for the credential tools.
+    assert.doesNotMatch(
+      authMd,
+      /does not\s+currently unlock additional endpoints, tools, or data/i,
+      "the claim the depth gate falsified must not come back",
+    );
+    assert.doesNotMatch(
+      authMd,
+      /An anonymous\s+request is not challenged/i,
+      "the claim the 401 gate falsified must not come back",
+    );
+    // The free window is the CONSTANT the code enforces, not a number retyped
+    // into prose -- so the document cannot drift from the gate.
+    assert.match(
+      authMd,
+      new RegExp(`${FREE_HISTORY_WINDOW_DAYS} days`),
+      "auth.md must state the free depth the tier gate actually enforces",
+    );
+    // ...and every tool that really does need an identity is named, so an
+    // agent can tell which calls will challenge before it makes them.
+    for (const name of AUTH_REQUIRED_TOOL_NAMES) {
+      assert.match(authMd, new RegExp(`\`${name}\``), name);
+    }
+    assert.match(authMd, /401/, "the challenge is stated, not implied");
     // The old text's specific falsehoods must not come back.
     assert.doesNotMatch(authMd, /Auth scheme: none$/im);
     assert.doesNotMatch(authMd, /Protected resources: none/i);
