@@ -27,7 +27,6 @@ import {
   DataPageHandoff,
   DataPageModule,
   DataPageStage,
-  DataPageTaskPaths,
   Panel,
   ResponsiveTable,
 } from "@/components/metagraphed/primitives";
@@ -44,19 +43,20 @@ import { WatchEntitySheet } from "@/components/metagraphed/watch-entity-sheet";
 import { SurfacePlayground } from "@/components/metagraphed/surface-playground";
 import { UptimeBadgeEmbed } from "@/components/metagraphed/uptime-badge-embed";
 import {
-  CandidateChip,
-  ExternalLink,
-  TimeAgo,
-  LiveTickerProvider,
-  SectionAnchor,
-  TableState,
-  HealthPill,
-  CopyableCode,
-  MethodologyCallout,
+  AnalyticsSection,
   BackToTop,
-  StatTile,
+  CandidateChip,
+  CopyableCode,
+  ExternalLink,
+  HealthPill,
+  LiveTickerProvider,
+  MethodologyCallout,
   RealtimeFreshness,
+  SectionAnchor,
   Sparkline,
+  StatTile,
+  TableState,
+  TimeAgo,
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
@@ -264,94 +264,40 @@ function DetailSkeleton() {
 
 /* ----------------------------- dossier views ----------------------------- */
 
-function OverviewView({ netuid, profile }: { netuid: number; profile?: SubnetProfile }) {
+function OverviewView({ netuid }: { netuid: number; profile?: SubnetProfile }) {
   return (
     <>
-      <DataPageModule
-        kind="question"
-        title="Choose a path"
-        caption="Start with the job you came to do. Detailed chain records remain available without competing with this first decision."
-      >
-        <DataPageTaskPaths
-          label="Subnet paths"
-          paths={[
-            {
-              title: "Build",
-              description: "Inspect public endpoints, callable surfaces, and operational evidence.",
-              meta: `${formatNumber(profile?.endpoint_count)} tracked endpoint${profile?.endpoint_count === 1 ? "" : "s"}`,
-              action: (
-                <Link
-                  to="/subnets/$netuid"
-                  params={{ netuid }}
-                  search={{ tab: "build" }}
-                  className="mg-page-quiet-action mg-focus-ring"
-                >
-                  Open build →
-                </Link>
-              ),
-            },
-            {
-              title: "Research",
-              description:
-                "Read price history, emission context, liquidity, and participation economics.",
-              meta: "Chart-led market context",
-              action: (
-                <Link
-                  to="/subnets/$netuid"
-                  params={{ netuid }}
-                  search={{ tab: "research" }}
-                  className="mg-page-quiet-action mg-focus-ring"
-                >
-                  Open research →
-                </Link>
-              ),
-            },
-            {
-              title: "Participate",
-              description:
-                "Review the validator set and the current network context before delegating or validating.",
-              meta: `${formatNumber(profile?.participants)} active UID${profile?.participants === 1 ? "" : "s"}`,
-              action: (
-                <Link
-                  to="/subnets/$netuid"
-                  params={{ netuid }}
-                  search={{ tab: "participate" }}
-                  className="mg-page-quiet-action mg-focus-ring"
-                >
-                  Open participation →
-                </Link>
-              ),
-            },
-          ]}
-        />
-      </DataPageModule>
+      {/* "Choose a path" used to lead this page: three link cards pointing at
+          Build, Research and Participate — which is exactly what the tab strip
+          directly above them already offers. A page cannot open with a menu of
+          its own tabs and also be about the subnet. Deleted, and the page opens
+          with the one composition it can honestly draw.
 
-      {/* #11521: "is there anything here I can call?" is the builder's first
-          question, and the answer was a number in a paths row. Counts of
-          distinct surfaces are additive and share one unit, so unlike this
-          subnet's economics they genuinely divide a whole — this is the one
-          composition the page can honestly draw. */}
-      <DataPageModule
+          #11521: "is there anything here I can call?" is the builder's first
+          question, and the answer used to be a number inside that paths row.
+          Counts of distinct surfaces are additive and share one unit, so unlike
+          this subnet's economics they genuinely divide a whole. */}
+      <AnalyticsSection
         id="surface-mix"
-        title="What this subnet exposes"
-        caption="Verified public surfaces by kind. Open Build to call them."
+        name="What this subnet exposes."
+        question="Verified public surfaces by kind — open Build to call them."
       >
         <QueryErrorBoundary fallback={() => null}>
           <Suspense fallback={<Skeleton className="h-40 w-full" />}>
             <SubnetSurfaceMix netuid={netuid} />
           </Suspense>
         </QueryErrorBoundary>
-      </DataPageModule>
+      </AnalyticsSection>
 
-      <DataPageModule
+      <AnalyticsSection
         id="recent-activity"
-        title="Latest observed change"
-        caption="A compact, first-party event glance. Open Records for the full historical stream."
+        name="Latest observed change."
+        question="A compact first-party event glance; Records carries the full stream."
       >
         <QueryErrorBoundary fallback={() => null}>
           <SubnetRecentActivityFeed netuid={netuid} />
         </QueryErrorBoundary>
-      </DataPageModule>
+      </AnalyticsSection>
     </>
   );
 }
