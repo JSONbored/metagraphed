@@ -483,6 +483,22 @@
   font-size: var(--mg-type-caption);
 }
 
+/* #11520: the Browse purpose line. A quiet second line under the name, not a
+   column: it answers "what is this?" without taking width from the measures
+   beside it, and it is clamped so one verbose registry entry cannot set the
+   row height for the whole table. */
+.mg-subnet-purpose {
+  display: -webkit-box;
+  overflow: hidden;
+  max-width: 34rem;
+  margin: 0.2rem 0 0;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--ink-muted);
+  font-size: var(--mg-type-caption);
+  line-height: 1.45;
+}
+
 .mg-home-route-rail {
   border-top: 1px solid var(--border);
 }

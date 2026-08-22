@@ -2747,6 +2747,61 @@ function InteractiveDataField({
     }
   );
 }
+var DIRECTORY_MODES = [
+  {
+    value: "browse",
+    label: "Browse",
+    hint: "What each one does, whether it is healthy, and what it exposes."
+  },
+  {
+    value: "research",
+    label: "Research",
+    hint: "Every metric, sortable and exportable, with columns you choose."
+  },
+  {
+    value: "compare",
+    label: "Compare",
+    hint: "Select rows and read them side by side."
+  }
+];
+function isDirectoryMode(value) {
+  return DIRECTORY_MODES.some((mode) => mode.value === value);
+}
+function DirectoryModeTabs({
+  mode,
+  onChange,
+  modes = DIRECTORY_MODES,
+  ariaLabel = "Directory mode",
+  className
+}) {
+  const active = modes.find((entry) => entry.value === mode) ?? modes[0];
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: classNames("mg-directory-mode", className), children: [
+    /* @__PURE__ */ jsxRuntime.jsx(
+      "div",
+      {
+        role: "tablist",
+        "aria-label": ariaLabel,
+        className: "mg-directory-mode-strip",
+        children: modes.map(({ value, label }) => {
+          const selected = value === mode;
+          return /* @__PURE__ */ jsxRuntime.jsx(
+            "button",
+            {
+              type: "button",
+              role: "tab",
+              "aria-selected": selected,
+              className: "mg-directory-mode-tab mg-focus-ring",
+              onClick: () => onChange(value),
+              children: label
+            },
+            value
+          );
+        })
+      }
+    ),
+    active ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-directory-mode-hint", "aria-live": "polite", children: active.hint }) : null
+  ] });
+}
 var COMPOSITION_TIMELINE_TONES = [
   "chart-1",
   "chart-2",
@@ -7459,6 +7514,7 @@ exports.CopyButton = CopyButton;
 exports.CopyIconToggle = CopyIconToggle;
 exports.CopyableCode = CopyableCode;
 exports.CurationChip = CurationChip;
+exports.DIRECTORY_MODES = DIRECTORY_MODES;
 exports.DailyRollupFreshness = DailyRollupFreshness;
 exports.DataPageCanvas = DataPageCanvas;
 exports.DataPageDisclosure = DataPageDisclosure;
@@ -7482,6 +7538,7 @@ exports.DialogOverlay = DialogOverlay;
 exports.DialogPortal = DialogPortal;
 exports.DialogTitle = DialogTitle;
 exports.DialogTrigger = DialogTrigger;
+exports.DirectoryModeTabs = DirectoryModeTabs;
 exports.DiscordIcon = DiscordIcon;
 exports.Divider = Divider;
 exports.Donut = Donut;
@@ -7597,6 +7654,7 @@ exports.compositionToneAt = compositionToneAt;
 exports.defaultVisible = defaultVisible;
 exports.fmtYield = fmtYield;
 exports.formatCompositionShare = formatCompositionShare;
+exports.isDirectoryMode = isDirectoryMode;
 exports.isScrolledPast = isScrolledPast;
 exports.layoutSankey = layoutSankey;
 exports.layoutStackedArea = layoutStackedArea;

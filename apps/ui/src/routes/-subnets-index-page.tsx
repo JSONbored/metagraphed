@@ -29,6 +29,8 @@ import {
   DataPageHero,
   DataPageModule,
   DataPageStage,
+  DirectoryModeTabs,
+  type DirectoryMode,
   type ColumnDef,
   type FilterChipItem,
   type HealthStatus,
@@ -169,6 +171,50 @@ const SUBNET_COLUMNS: ColumnDef[] = [
   { id: "lifecycle", label: "Lifecycle", defaultVisible: false, width: 110 },
 ];
 
+/**
+ * #11520: what Browse shows. Name and UID are structural; the rest answers
+ * "what does this do, is it healthy, what does it expose, and what is it
+ * worth" — the four questions a reader who has never seen the registry
+ * actually has. Everything else (emission, stake, market cap, registration
+ * cost, curation, lifecycle…) is a Research question and lives there.
+ *
+ * Deliberately a fixed set with no customizer: a default view that can be
+ * reconfigured into the old wall is not a default.
+ */
+const BROWSE_COLUMN_IDS: ReadonlySet<string> = new Set([
+  "netuid",
+  "name",
+  "surfaces",
+  "health",
+  "alphaPrice",
+]);
+
+/**
+ * The plain-language purpose line.
+ *
+ * `description` is the subnet's own copy where one exists; `derived_description`
+ * is the registry's enrichment. Prefer the former, fall back to the latter, and
+ * return null rather than a placeholder — a row with nothing to say should stay
+ * quiet instead of printing an em dash under every name.
+ *
+ * Trimmed to one clause: these strings run to full paragraphs, and a table row
+ * is not where a paragraph belongs.
+ */
+export function subnetPurpose(subnet: {
+  description?: string | null;
+  derived_description?: string | null;
+}): string | null {
+  const raw = (subnet.description ?? subnet.derived_description ?? "").trim();
+  if (!raw) return null;
+  const firstSentence = raw.split(/(?<=[.!?])\s/)[0]?.trim() ?? raw;
+  const clause = firstSentence.length > 0 ? firstSentence : raw;
+  if (clause.length <= 96) return clause;
+  // Cut on a word boundary so the ellipsis never lands mid-word.
+  const cut = clause.slice(0, 96);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > 40 ? cut.slice(0, lastSpace) : cut).replace(/[.,;:]$/, "")}…`;
+}
+
 function joinCatalog(
   rows: Array<Subnet & { health?: string }>,
   catalogMap: Record<number, AgentCatalogSummary | undefined>,
@@ -217,6 +263,16 @@ export function SubnetsPage() {
       replace: true,
       resetScroll: false,
     });
+  // #11520: the task switch. `replace` so cycling modes while reading does not
+  // fill the back stack, and `resetScroll: false` so the reader keeps their
+  // place in the list they were already looking at.
+  const setMode = (mode: DirectoryMode) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, mode }),
+      replace: true,
+      resetScroll: false,
+    });
+  const mode: DirectoryMode = search.mode;
   return (
     <AppShell>
       <DataPageStage>
@@ -260,7 +316,14 @@ export function SubnetsPage() {
                 title="Live registry."
                 caption="Search, compare, and open a subnet dossier."
               >
-                <SubnetsSavedViews />
+                <DirectoryModeTabs
+                  mode={mode}
+                  onChange={setMode}
+                  ariaLabel="Subnet directory mode"
+                />
+                {/* Saved views are a research/compare affordance: a first-time
+                    reader has none, and the row reads as an empty control. */}
+                {mode === "browse" ? null : <SubnetsSavedViews />}
                 <AsyncPanel
                   context="subnets"
                   fallback={
@@ -272,6 +335,7 @@ export function SubnetsPage() {
                   }
                 >
                   <SubnetsTable
+                    mode={mode}
                     view={search.view}
                     density={effectiveDensity}
                     onViewChange={setView}
@@ -512,11 +576,13 @@ function ExcludeToggle({
 }
 
 function SubnetsTable({
+  mode,
   view,
   density = "comfortable",
   onViewChange,
   onDensityChange,
 }: {
+  mode: DirectoryMode;
   view: ViewMode;
   density?: Density;
   onViewChange: (view: ViewMode) => void;
@@ -524,7 +590,19 @@ function SubnetsTable({
 }) {
   const search = useSearch({ from: "/subnets/" }) as SubnetsSearch;
   const navigate = useNavigate({ from: "/subnets/" });
-  const columns = useColumnVisibility("subnets", SUBNET_COLUMNS);
+  // Research and Compare share the full instrument; Browse is the reduced one.
+  const advanced = mode !== "browse";
+  const persistedColumns = useColumnVisibility("subnets", SUBNET_COLUMNS);
+  // Overriding `isVisible` rather than editing every cell site keeps the two
+  // modes from drifting apart one column at a time, and leaves the reader's
+  // persisted Research choices untouched while they are in Browse.
+  const columns = useMemo(
+    () =>
+      advanced
+        ? persistedColumns
+        : { ...persistedColumns, isVisible: (id: string) => BROWSE_COLUMN_IDS.has(id) },
+    [advanced, persistedColumns],
+  );
   // Local trend window powering the per-row Price/Stake/MCap sparklines +
   // tone. Not URL-persisted (view chrome, not a filter over the row set).
   const [trendWindow, setTrendWindow] = useState<"7d" | "30d" | "90d">("7d");
@@ -961,29 +1039,38 @@ function SubnetsTable({
 
   const directoryRefinements = (
     <div className="flex flex-col gap-3 border-b border-border pb-4">
-      <div className="flex flex-col gap-2">
-        <span className="mg-type-label uppercase text-ink-muted">Display</span>
-        <ViewModeToggle
-          value={view}
-          onChange={onViewChange}
-          className="w-full [&>div>button>span]:inline"
-        />
-        {view === "table" ? (
-          <DensityToggle
-            value={density}
-            onChange={onDensityChange}
+      {advanced ? (
+        <div className="flex flex-col gap-2">
+          <span className="mg-type-label uppercase text-ink-muted">Display</span>
+          <ViewModeToggle
+            value={view}
+            onChange={onViewChange}
             className="w-full [&>div>button>span]:inline"
           />
-        ) : null}
-      </div>
+          {view === "table" ? (
+            <DensityToggle
+              value={density}
+              onChange={onDensityChange}
+              className="w-full [&>div>button>span]:inline"
+            />
+          ) : null}
+        </div>
+      ) : null}
 
+      {/* Share stays in every mode: #11520 asks for shareable URLs, and a
+          reader who has just narrowed a Browse list is exactly the person who
+          wants to send it. Only the CSV export is a Research affordance. */}
       <div className="flex flex-col gap-2">
-        <span className="mg-type-label uppercase text-ink-muted">Export &amp; share</span>
-        <div className="grid grid-cols-2 gap-2">
-          <DownloadCsvButton
-            url={subnetsCsvUrl}
-            className="w-full justify-center rounded [&>span]:!inline"
-          />
+        <span className="mg-type-label uppercase text-ink-muted">
+          {advanced ? "Export & share" : "Share"}
+        </span>
+        <div className={classNames("grid gap-2", advanced ? "grid-cols-2" : "grid-cols-1")}>
+          {advanced ? (
+            <DownloadCsvButton
+              url={subnetsCsvUrl}
+              className="w-full justify-center rounded [&>span]:!inline"
+            />
+          ) : null}
           <ShareButton className="w-full justify-center rounded [&>span]:!inline" />
         </div>
       </div>
@@ -1023,7 +1110,7 @@ function SubnetsTable({
           count={rootCount}
           title={rootToggleTitle}
         />
-        {view === "table" ? (
+        {advanced && view === "table" ? (
           <>
             <div className="flex flex-col gap-1.5">
               <span className="mg-type-caption text-ink-muted">Sparkline window</span>
@@ -1100,7 +1187,7 @@ function SubnetsTable({
               count={rootCount}
               title={rootToggleTitle}
             />
-            {view === "table" ? (
+            {advanced && view === "table" ? (
               <>
                 <SegmentedToggle<"7d" | "30d" | "90d">
                   options={[
@@ -1330,6 +1417,12 @@ function SubnetsTable({
                   </div>
                 </div>
               </div>
+              {/* The same plain-language answer the Browse table row carries.
+                  A card is the phone's primary row, so it gets the purpose
+                  line too rather than being the terse version of the page. */}
+              {!advanced && subnetPurpose(s) ? (
+                <p className="mg-subnet-purpose">{subnetPurpose(s)}</p>
+              ) : null}
               {/* #8248: lead mobile cards with the 3 facts a reader actually
                 compares subnets by -- price, emission share, health -- in
                 place of the old participants/surfaces/updated registry-
@@ -1452,7 +1545,7 @@ function SubnetsTable({
                       title="Verified public surfaces registered for this subnet (APIs, docs, dashboards, data artifacts, SSE streams)."
                     >
                       <SortHeader
-                        label="Surfaces"
+                        label={advanced ? "Surfaces" : "Interfaces"}
                         field="surfaces_count"
                         active={search.sort === "surfaces_count"}
                         order={search.order}
@@ -1703,6 +1796,12 @@ function SubnetsTable({
                             <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
                           </Link>
                         </EntityHoverCard>
+                        {/* The plain-language answer to "what is this?", which
+                            the table never showed. Browse only: in Research the
+                            row is a measurement and the prose competes with it. */}
+                        {!advanced && subnetPurpose(s) ? (
+                          <p className="mg-subnet-purpose">{subnetPurpose(s)}</p>
+                        ) : null}
                       </td>
                       {columns.isVisible("symbol") ? (
                         <td className={classNames(cellPad, "mg-type-data text-ink-muted")}>

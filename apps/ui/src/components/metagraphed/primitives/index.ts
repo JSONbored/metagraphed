@@ -5,6 +5,13 @@
 // unaffected. The handful still defined locally (below the re-exports)
 // genuinely need apps/ui's router/query/hooks and can't move.
 export {
+  DIRECTORY_MODES,
+  DirectoryModeTabs,
+  isDirectoryMode,
+  type DirectoryMode,
+  type DirectoryModeOption,
+} from "@jsonbored/ui-kit";
+export {
   Chip,
   type ChipTone,
   type ChipProps,

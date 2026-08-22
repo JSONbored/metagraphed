@@ -157,6 +157,13 @@ export {
   type InteractiveDataFieldTone,
 } from "@/components/metagraphed/interactive-data-field";
 export {
+  DIRECTORY_MODES,
+  DirectoryModeTabs,
+  isDirectoryMode,
+  type DirectoryMode,
+  type DirectoryModeOption,
+} from "@/components/metagraphed/directory-mode";
+export {
   COMPOSITION_TIMELINE_TONES,
   CompositionTimeline,
   compositionToneAt,

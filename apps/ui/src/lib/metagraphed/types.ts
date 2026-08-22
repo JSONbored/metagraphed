@@ -180,6 +180,14 @@ export interface Subnet {
    * user-facing ones and the only set worth building URLs from.
    */
   derived_categories?: string[];
+  /** The subnet's own published summary, when it has one. Wire fields on every
+   *  /api/v1/subnets row (schemas-src/routes/subnets.ts) that this interface
+   *  had never declared, so they could only be read back through the index
+   *  signature as `unknown`. #11520's Browse mode shows one of them as the
+   *  plain-language purpose line. */
+  description?: string | null;
+  /** The registry's enrichment summary, used when the subnet publishes none. */
+  derived_description?: string | null;
   /** How completely the subnet documents its interfaces, 0-100. Ours, not theirs. */
   integration_readiness?: number;
   /** Surfaces the operator publishes themselves, as opposed to registry-observed. */

@@ -2738,6 +2738,55 @@ html[data-density=compact] .bg-card > table td {
     outline-offset: 2px;
   }
 }
+.mg-directory-mode {
+  padding-bottom: var(--mg-space-md);
+}
+.mg-directory-mode-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.mg-directory-mode-tab {
+  position: relative;
+  min-height: 2.75rem;
+  border: 0;
+  background: transparent;
+  padding: var(--mg-space-xs) var(--mg-space-sm);
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption-lg);
+  font-weight: 500;
+  transition: color 140ms ease-out;
+}
+.mg-directory-mode-tab:hover {
+  color: var(--ink-strong);
+}
+.mg-directory-mode-tab[aria-selected=true] {
+  color: var(--ink-strong);
+}
+.mg-directory-mode-tab[aria-selected=true]::after {
+  position: absolute;
+  right: var(--mg-space-xs);
+  bottom: -1px;
+  left: var(--mg-space-xs);
+  height: 1.5px;
+  background: var(--accent);
+  content: "";
+}
+.mg-directory-mode-hint {
+  margin: var(--mg-space-sm) 0 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption);
+  line-height: 1.5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-directory-mode-tab {
+    transition: none;
+  }
+}
 .mg-composition-timeline-data {
   position: absolute;
   width: 1px;
