@@ -3205,6 +3205,51 @@ function AnalyticsSection({
     }
   );
 }
+function ShareCell({
+  share,
+  label,
+  className
+}) {
+  const value = typeof share === "number" && Number.isFinite(share) ? Math.min(1, Math.max(0, share)) : null;
+  if (value === null) {
+    return /* @__PURE__ */ jsxRuntime.jsx("span", { className: classNames("mg-share-cell-empty", className), children: "\u2014" });
+  }
+  return /* @__PURE__ */ jsxRuntime.jsxs("span", { className: classNames("mg-share-cell", className), children: [
+    /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-share-cell-track", "aria-hidden": "true", children: /* @__PURE__ */ jsxRuntime.jsx(
+      "span",
+      {
+        className: "mg-share-cell-fill",
+        style: { width: `${value * 100}%` }
+      }
+    ) }),
+    /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-share-cell-value", children: label ?? `${(value * 100).toFixed(1)}%` })
+  ] });
+}
+function Statement({
+  index,
+  eyebrow,
+  lede,
+  tail,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: classNames("mg-statement", className), children: [
+    index != null || eyebrow ? /* @__PURE__ */ jsxRuntime.jsxs("p", { className: "mg-statement-eyebrow", children: [
+      index != null ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-statement-index", children: [
+        "[",
+        String(index).padStart(2, "0"),
+        "]"
+      ] }) : null,
+      eyebrow ? /* @__PURE__ */ jsxRuntime.jsx("span", { children: eyebrow }) : null
+    ] }) : null,
+    /* @__PURE__ */ jsxRuntime.jsxs("p", { className: "mg-statement-body", children: [
+      /* @__PURE__ */ jsxRuntime.jsx("mark", { className: "mg-statement-mark", children: lede }),
+      tail ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-statement-tail", children: [
+        " ",
+        tail
+      ] }) : null
+    ] })
+  ] });
+}
 function MeasureBand({
   measures,
   ariaLabel,
@@ -7885,6 +7930,7 @@ exports.SectionHeading = SectionHeading;
 exports.SectionLabel = SectionLabel;
 exports.SegmentedToggle = SegmentedToggle;
 exports.ShareButton = ShareButton;
+exports.ShareCell = ShareCell;
 exports.Sheet = Sheet;
 exports.SheetClose = SheetClose;
 exports.SheetContent = SheetContent;
@@ -7901,6 +7947,7 @@ exports.Sparkline = Sparkline;
 exports.StackedAreaMini = StackedAreaMini;
 exports.StatTile = StatTile;
 exports.StatWithSpark = StatWithSpark;
+exports.Statement = Statement;
 exports.StatusBadge = StatusBadge;
 exports.StickyToolbar = StickyToolbar;
 exports.TabStrip = TabStrip;

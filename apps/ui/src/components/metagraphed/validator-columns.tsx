@@ -5,6 +5,7 @@ import { useInView } from "@/hooks/use-in-view";
 import { formatNumber, classNames } from "@/lib/metagraphed/format";
 import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
+import { ShareCell } from "@jsonbored/ui-kit";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { validatorHistoryQuery } from "@/lib/metagraphed/queries";
 import {
@@ -199,6 +200,18 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     cell: (v) => taoCompact(v.total_stake_tao),
   },
   {
+    // Back on by default, as a rail rather than a number. It was retired when
+    // it was a second reading of total stake in digits; drawn as a fixed-width
+    // share bar it answers a different question — how much of the network is
+    // this one operator — at a glance, down the column, which no column of
+    // percentages does.
+    ...numeric("dominance", "Share", 132),
+    sortKey: "stake_dominance",
+    tdClassName: TD_BASE,
+    thClassName: TH_BASE,
+    cell: (v) => <ShareCell share={v.stake_dominance} />,
+  },
+  {
     ...numeric("take", "Take", 68),
     sortKey: "take",
     tdClassName: `${TD_NUM} text-ink-muted`,
@@ -229,14 +242,6 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     sortKey: "nominator_count",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => (v.nominator_count != null ? formatNumber(v.nominator_count) : "—"),
-  },
-  {
-    // Opt-in, not gone. Dominance is total stake restated as a share of the
-    // same total, so showing both spent a column on a second reading of a
-    // number already on the row.
-    ...numeric("dominance", "Dominance", 108, false),
-    sortKey: "stake_dominance",
-    cell: (v) => (v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"),
   },
   {
     ...numeric("delta30d", "30d Δ", 78),

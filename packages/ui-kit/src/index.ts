@@ -165,6 +165,8 @@ export {
   EntityCardGrid,
 } from "@/components/metagraphed/entity-card";
 export { AnalyticsSection } from "@/components/metagraphed/analytics-section";
+export { ShareCell } from "@/components/metagraphed/share-cell";
+export { Statement } from "@/components/metagraphed/statement";
 export {
   MeasureBand,
   type Measure,

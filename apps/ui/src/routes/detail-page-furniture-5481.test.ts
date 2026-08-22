@@ -165,10 +165,7 @@ describe("#7853 breadcrumb de-duplication: AppShell crumbLabel wiring", () => {
   it("keeps the structured-data breadcrumb the visual row used to mirror", () => {
     // Removing the row must not remove the claim Google reads. This is the one
     // consequence of that deletion that is not visible in a screenshot.
-    const server = readFileSync(
-      fileURLToPath(new URL("../server.ts", import.meta.url)),
-      "utf8",
-    );
+    const server = readFileSync(fileURLToPath(new URL("../server.ts", import.meta.url)), "utf8");
     expect(server).toContain("BreadcrumbList");
   });
 

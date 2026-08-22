@@ -77,6 +77,10 @@ describe("VALIDATOR_COLUMNS", () => {
       // The sorted measure sits beside the name it ranks, rather than four
       // columns away from it.
       "Total stake",
+      // Share is a RAIL, not a restated percentage — it answers "how much of
+      // the network is this one operator" down the column, which a column of
+      // digits does not.
+      "Share",
       "Take",
       "Est. APY",
       "Subnets",
@@ -89,17 +93,7 @@ describe("VALIDATOR_COLUMNS", () => {
     // Each of these is a field GET /api/v1/validators has always returned.
     // Off by default, so the directory reads the same until asked otherwise.
     const optIn = VALIDATOR_COLUMNS.filter((c) => !c.defaultVisible).map((c) => c.header);
-    expect(optIn).toEqual([
-      // Dominance joined these: it is total stake restated as a share of the
-      // same total, and the 113px it held was part of why the last column fell
-      // off the right edge of the table.
-      "Dominance",
-      "Emission",
-      "Avg trust",
-      "Realized 7d",
-      "Root stake",
-      "Alpha stake",
-    ]);
+    expect(optIn).toEqual(["Emission", "Avg trust", "Realized 7d", "Root stake", "Alpha stake"]);
   });
 
   it("gives every column a stable id and a width for the colgroup", () => {

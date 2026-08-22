@@ -5378,3 +5378,91 @@ html[data-density="compact"] .bg-card > table td {
     font-size: var(--mg-type-h3);
   }
 }
+
+/* ============================================================
+ * Share cell — a rail and a number in one table cell.
+ * Fixed track width so rails are comparable BETWEEN rows, which is the
+ * only reason to draw them.
+ * ============================================================ */
+.mg-share-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mg-space-sm);
+  min-width: 0;
+}
+.mg-share-cell-track {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 5.5rem;
+  height: 0.3rem;
+  flex: 0 0 auto;
+  background: color-mix(in oklab, var(--ink-strong) 10%, transparent);
+}
+.mg-share-cell-fill {
+  display: block;
+  height: 100%;
+  background: var(--ink-strong);
+}
+.mg-share-cell-value {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mg-share-cell-empty {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption);
+}
+
+/* ============================================================
+ * Statement — a finding at reading size, subject marked.
+ * ============================================================ */
+.mg-statement {
+  display: grid;
+  gap: var(--mg-space-md);
+  max-width: 54rem;
+}
+.mg-statement-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-sm);
+  margin: 0;
+  color: var(--ink-subtle, var(--ink-muted));
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  letter-spacing: var(--mg-tracking-label);
+  text-transform: uppercase;
+}
+.mg-statement-index {
+  font-variant-numeric: tabular-nums;
+}
+.mg-statement-body {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-h3);
+  font-weight: 500;
+  letter-spacing: var(--mg-tracking-display);
+  line-height: 1.5;
+}
+/* The claim. A real <mark>, so a screen reader and a find-in-page both agree
+   with the eye about which part is the point. */
+.mg-statement-mark {
+  background: color-mix(in oklab, var(--accent) 26%, transparent);
+  color: var(--ink-strong);
+  /* Breathing room without a pill: the highlight tracks the text box. */
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding: 0.1em 0.15em;
+}
+/* The qualification, which is why the claim is trustworthy. */
+.mg-statement-tail {
+  color: var(--ink-muted);
+}
+@media (max-width: 47.99rem) {
+  .mg-statement-body {
+    font-size: var(--mg-type-h4);
+  }
+}
