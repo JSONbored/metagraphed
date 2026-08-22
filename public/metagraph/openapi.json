@@ -1606,8 +1606,10 @@
             },
             "generated_at": "2026-06-01T00:00:00.000Z",
             "mcp": {
+              "core_endpoint": "https://api.metagraph.sh/example",
               "endpoint": "https://api.metagraph.sh/example",
               "install": "example",
+              "recommended_endpoint": "https://api.metagraph.sh/example",
               "server_card": "https://api.metagraph.sh/example",
               "tools": [
                 {
@@ -19471,11 +19473,21 @@
           "mcp": {
             "additionalProperties": false,
             "properties": {
+              "core_endpoint": {
+                "description": "The core listing profile: 23 tools instead of 243. Filters tools/list only -- a core session can still call every tool.",
+                "format": "uri",
+                "type": "string"
+              },
               "endpoint": {
                 "format": "uri",
                 "type": "string"
               },
               "install": {
+                "type": "string"
+              },
+              "recommended_endpoint": {
+                "description": "The endpoint a first-time caller should connect to, which `install` uses.",
+                "format": "uri",
                 "type": "string"
               },
               "server_card": {
