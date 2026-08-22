@@ -16,7 +16,7 @@ import {
   SUBNETS_ALL_LIMIT,
 } from "./lib/metagraphed/subnet-categories";
 import { isoTimestamp } from "./lib/metagraphed/freshness";
-import { API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
+import { API_DATA_ORIGIN, API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
 import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
 
 type ServerEntry = {
@@ -372,7 +372,7 @@ async function buildSitemap(): Promise<Response> {
     // page of subnets. A hard-coded 500 here made the sitemap and the hub two
     // different requests, which the e2e stub answers with two different
     // recordings.
-    const res = await fetch(`${API_ORIGIN}/api/v1/subnets?limit=${SUBNETS_ALL_LIMIT}`, {
+    const res = await fetch(`${API_DATA_ORIGIN}/api/v1/subnets?limit=${SUBNETS_ALL_LIMIT}`, {
       headers: { accept: "application/json" },
     });
     if (res.ok) {
@@ -422,7 +422,7 @@ async function buildSitemap(): Promise<Response> {
   // Stamping that would be the "lastmod is really just now" antipattern the helper above exists
   // to avoid, on 1029 URLs at once.
   try {
-    const res = await fetch(`${API_ORIGIN}/api/v1/validators?limit=2000`, {
+    const res = await fetch(`${API_DATA_ORIGIN}/api/v1/validators?limit=2000`, {
       headers: { accept: "application/json" },
     });
     if (res.ok) {
@@ -441,7 +441,7 @@ async function buildSitemap(): Promise<Response> {
     // Network hiccup — validators are omitted; the sitemap stays valid XML.
   }
   try {
-    const res = await fetch(`${API_ORIGIN}/api/v1/providers?limit=500`, {
+    const res = await fetch(`${API_DATA_ORIGIN}/api/v1/providers?limit=500`, {
       headers: { accept: "application/json" },
     });
     if (res.ok) {
