@@ -838,6 +838,16 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
     subtitle: "What Metagraphed is, and how the data is produced",
     eyebrow: "About",
   },
+  "/privacy": {
+    title: "Privacy policy",
+    subtitle: "What we collect, how long it is kept, and who else processes it",
+    eyebrow: "Legal",
+  },
+  "/terms": {
+    title: "Terms of use",
+    subtitle: "What you can rely on, what you cannot, and fair use",
+    eyebrow: "Legal",
+  },
 };
 
 /** Shortens an ss58/hotkey for a card, which has no room for 48 characters. */
