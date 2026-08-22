@@ -14860,6 +14860,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -14982,6 +14991,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -15088,6 +15106,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15216,6 +15243,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15354,6 +15390,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15501,6 +15546,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -15636,6 +15690,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -15743,6 +15806,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19066,6 +19138,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -19185,6 +19266,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21888,6 +21978,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -22156,6 +22255,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22781,6 +22889,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -23919,6 +24036,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -24975,6 +25101,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -25121,6 +25256,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -25241,6 +25385,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -25345,6 +25498,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25471,6 +25633,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25614,6 +25785,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -25744,6 +25924,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26210,6 +26399,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -26314,6 +26512,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -33873,6 +34080,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -33990,6 +34206,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -41097,9 +41322,9 @@ export interface operations {
     };
     searchSemantic: {
         parameters: {
-            query?: {
+            query: {
                 /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
-                q?: string;
+                q: string;
                 /** @description Maximum number of rows to return in one page (at most 20). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 10. */
                 limit?: number;
                 type?: "subnet" | "surface" | "provider";
@@ -41182,6 +41407,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
