@@ -91,6 +91,26 @@ export function onApiBaseChange(cb: (next: string) => void): () => void {
  */
 export const API_BASE = getApiBase();
 
+/**
+ * The paid bulk-export endpoints (metagraphed#11600).
+ *
+ * NOT in queries.ts, and that is the point: these are the only routes on the
+ * API that answer 402 to an unpaid caller, so this app must never fetch one.
+ * They are named here so the UI can POINT at them -- a visitor reading a
+ * paginated feed should be able to find out that a single-call export exists
+ * -- without any code path that would call one and render a payment error.
+ */
+export const PAID_EXPORT_ENDPOINTS = [
+  {
+    path: "/api/v1/export/chain-events",
+    label: "Bulk export: chain events",
+    note: "Up to 25,000 events in one call. Requires an x402 payment.",
+  },
+] as const;
+
+/** Where a reader finds out what payment is accepted, and to which address. */
+export const X402_MANIFEST_PATH = "/.well-known/x402";
+
 // ─── Chain network (data partition on the API) ───────────────────────────────
 
 const NETWORK_STORAGE_KEY = "metagraphed:network";

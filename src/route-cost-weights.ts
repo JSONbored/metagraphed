@@ -47,6 +47,24 @@ export const ROUTE_COST_WEIGHTS: RouteCostFamily[] = [
     test: /^\/(api\/v1\/)?(ask|search\/semantic)(?=[/?]|$)/,
   },
   {
+    // The EXPORT family (#11600): one call that returns what a paginated read
+    // returns in fifty, over a window the free tier does not offer.
+    //
+    // Weight 60 because that is roughly what it costs. A paginated
+    // deep-history read is 5 and bounded by its page size; an export is
+    // bounded only by the cap it declares, and the lakehouse bills per byte
+    // SCANNED, not per row returned -- an unpruned predicate reads the table.
+    // Pricing it as twelve deep-history calls is the conservative direction:
+    // the alternative is a number that stops describing what it charges for
+    // the first time somebody widens the window.
+    //
+    // MUST sort before `deep-history`: /api/v1/export/chain-events would
+    // otherwise match that family's pattern and be priced at a twelfth.
+    family: "export",
+    weight: 60,
+    test: /^\/api\/v1\/export\/[a-z-]+(?=[/?]|$)/,
+  },
+  {
     // "storage + egress, the one tier with genuine bandwidth cost… the closest
     // thing this platform has to a caller who costs real, scaling money."
     family: "archive",

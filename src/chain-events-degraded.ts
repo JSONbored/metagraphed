@@ -32,6 +32,8 @@
 import { ColdTierAnswerSchema } from "../schemas-src/internal-wire.ts";
 import {
   CHAIN_EVENTS_LIMIT_DEFAULT,
+  EXPORT_CHAIN_EVENTS_LIMIT_DEFAULT,
+  EXPORT_CHAIN_EVENTS_LIMIT_MAX,
   CHAIN_EVENTS_LIMIT_MAX,
 } from "./route-limits.ts";
 import {
@@ -157,7 +159,15 @@ export function markedChainEventsPayloadOrThrow(
 export function degradedChainEventsPayload(url: URL): Row | null {
   const path = url.pathname;
 
-  if (path === "/api/v1/chain-events") {
+  if (
+    path === "/api/v1/chain-events" ||
+    // The paid export tier answers the SAME schema, so it degrades to the same
+    // shape (#11600). It has to be listed: the dispatch admits only paths this
+    // map covers, and a path added to the router without being added here
+    // returns 503 data_tier_unavailable instead of the marked empty -- which
+    // is exactly what happened when this route was first wired.
+    path === "/api/v1/export/chain-events"
+  ) {
     // Mirrors the feed's own cold-store answer: no rows, and both cursor forms
     // null so a paging client stops rather than re-requesting the same page.
     return { count: 0, events: [], next_before: null, next_cursor: null };
@@ -311,6 +321,19 @@ export async function coldTierChainEventsPayload(
   // account_events stream drops entirely (PrometheusServed exists only here).
   // The reader bounds each page to a block window; see its header for why an
   // unbounded port would have scanned ~2 GB per request.
+  // The paid export tier (#11600): same reader, same rows, export bounds.
+  // Reusing loadChainEventsColdTier rather than writing a second query is the
+  // point -- an export that drifted from the feed it exports would be a
+  // different answer sold at a higher price.
+  if (url.pathname === "/api/v1/export/chain-events") {
+    return lake(
+      (await loadChainEventsColdTier(
+        env,
+        exportChainEventsQueryFromUrl(url),
+        network,
+      )) as Row | null,
+    );
+  }
   if (url.pathname === "/api/v1/chain-events") {
     return lake(
       (await loadChainEventsColdTier(
@@ -380,6 +403,38 @@ export function chainEventsQueryFromUrl(url: URL): ChainEventsQuery {
   };
 }
 
+/**
+ * The same feed's query at EXPORT bounds (#11600).
+ *
+ * Deliberately narrower than chainEventsQueryFromUrl in one respect and wider
+ * in another. Wider: the limit clamps to 25,000 rather than 100. Narrower: no
+ * `cursor`, `block` or `extrinsic`.
+ *
+ * No cursor because an export that needs paging is the paginated route with
+ * extra steps, and a caller who pages a PAID route pays per page -- `before`
+ * is kept so a large range is walked in deliberate, priced chunks instead.
+ * No `block`/`extrinsic` because a single-block lookup is already cheap and
+ * already free on /api/v1/chain-events; charging export rates for it would be
+ * selling the same answer at 250x.
+ */
+export function exportChainEventsQueryFromUrl(url: URL): ChainEventsQuery {
+  const params = url.searchParams;
+  return {
+    limit: exportChainEventsLimit(params.get("limit")),
+    pallet: params.get("pallet"),
+    method: params.get("method"),
+    before: params.get("before"),
+  };
+}
+
+/** Clamped, not rejected -- matching the paginated twin's behaviour. */
+function exportChainEventsLimit(raw: string | null): number {
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 1)
+    return EXPORT_CHAIN_EVENTS_LIMIT_DEFAULT;
+  return Math.min(parsed, EXPORT_CHAIN_EVENTS_LIMIT_MAX);
+}
+
 /** The feed's page size, clamped to the same 1-100 range data-api enforced. */
 function chainEventsLimit(raw: string | null): number {
   const parsed = Number(raw);
@@ -393,6 +448,7 @@ function chainEventsLimit(raw: string | null): number {
 // one name, two numbers, and openapi.json published the one this path never
 // uses.
 export { CHAIN_EVENTS_LIMIT_DEFAULT, CHAIN_EVENTS_LIMIT_MAX };
+export { EXPORT_CHAIN_EVENTS_LIMIT_DEFAULT, EXPORT_CHAIN_EVENTS_LIMIT_MAX };
 
 export interface BlockChainEventsPayload {
   block_number: number;

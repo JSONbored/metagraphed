@@ -73,6 +73,8 @@ import {
   CHAIN_EVENTS_LIMIT_DEFAULT,
   CHAIN_EVENTS_LIMIT_MAX,
   CHAIN_EVENT_NAME_MAX_LENGTH,
+  EXPORT_CHAIN_EVENTS_LIMIT_DEFAULT,
+  EXPORT_CHAIN_EVENTS_LIMIT_MAX,
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
@@ -436,6 +438,19 @@ export const ROUTE_QUERY_SCHEMAS = {
       "profile",
       "health",
     ]).optional(),
+  }),
+  // The export tier (#11600). Same feed as /api/v1/chain-events, same filters,
+  // a far higher ceiling -- and no cursor, because an export that needs paging
+  // is the paginated route with extra steps. `before` stays: it is how a
+  // caller walks a large range in deliberate, priced chunks.
+  "/api/v1/export/chain-events": z.object({
+    pallet: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
+    method: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
+    before: blockBoundSchema("first").optional(),
+    limit: limitSchema(
+      EXPORT_CHAIN_EVENTS_LIMIT_MAX,
+      EXPORT_CHAIN_EVENTS_LIMIT_DEFAULT,
+    ).optional(),
   }),
   "/api/v1/search/semantic": z.object({
     // Both were wrong before #10075: `q` published no ceiling though the

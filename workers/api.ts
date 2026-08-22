@@ -6,6 +6,7 @@ import {
   resolveX402Config,
   verifyAndSettle,
   x402PriceFor,
+  x402RequiresPayment,
 } from "../src/x402.ts";
 import { DEFAULT_ACCOUNT_KIND, type AccountKind } from "../src/account-kind.ts";
 import { economicsFieldSources } from "../src/economics-field-sources.ts";
@@ -6320,6 +6321,11 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   // routes ungated -- see handleChainEventsFamily.
   if (
     url.pathname === "/api/v1/chain-events" ||
+    // The paid export tier (#11600). Routed into the SAME handler as its free
+    // twin so the limiter, usage accounting and network-prefix handling it
+    // already does apply unchanged -- the payment gate runs earlier, at
+    // dispatchCached, and is the only thing that differs.
+    url.pathname === "/api/v1/export/chain-events" ||
     url.pathname === "/api/v1/chain-events/stats" ||
     /^\/api\/v1\/blocks\/\d+\/chain-events$/.test(url.pathname) ||
     /^\/api\/v1\/subnets\/\d+\/ownership-history$/.test(url.pathname) ||
@@ -9083,10 +9089,29 @@ async function enforceX402(
       markPaidCall(request, verdict.payer, "paid");
       return { settlementHeader: verdict.responseHeader };
     case "unpaid":
-      // THE INVARIANT. No payment presented means proceed exactly as today --
-      // anonymous, rate-limited, free. Returning a 402 here is what would have
-      // broken our own site, which calls /api/v1/ask with no credential.
-      return null;
+      // THE INVARIANT, and its one deliberate exception (#11600).
+      //
+      // For every family that merely ACCEPTS payment, no payment presented
+      // means proceed exactly as today -- anonymous, rate-limited, free.
+      // Returning a 402 here is what would have broken our own site, which
+      // calls /api/v1/ask with no credential and /api/v1/blocks with a
+      // user-typed range.
+      //
+      // The `export` family is different, and it is different because it is
+      // NEW: nothing has ever been served from it for free, nothing in
+      // apps/ui calls it, and no free tier of it was withdrawn to create it.
+      // The invariant protects calls that would otherwise have succeeded;
+      // there are none here to protect.
+      return x402RequiresPayment(pathname)
+        ? {
+            reject: paymentRequiredResponse(
+              config,
+              request,
+              price.atomicAmount,
+              `metagraphed ${price.family} call`,
+            ),
+          }
+        : null;
     case "malformed":
       // 400, not 402: the caller DID present a payment and it was unreadable.
       // Answering 402 would tell them to pay again for a request whose problem
@@ -9205,6 +9230,12 @@ async function dispatchChainHistoryRoute(
   // identical on both -- only the chain differs.
   if (
     pathname === "/api/v1/chain-events" ||
+    // The paid export tier (#11600). Listed HERE as well as in the unprefixed
+    // dispatch because this function is what the capability matrix measures:
+    // a path served on the bare route and absent here is reported as served on
+    // testnet and 404s there, which is the failure
+    // tests/network-capabilities.test.ts caught when it was missing.
+    pathname === "/api/v1/export/chain-events" ||
     pathname === "/api/v1/chain-events/stats" ||
     BLOCK_CHAIN_EVENTS_PATH_PATTERN.test(pathname)
   ) {

@@ -2018,6 +2018,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "export-chain-events",
+    "/metagraph/export/chain-events.json",
+    "The chain_events lakehouse feed as a single unpaginated export (newest first), served live at /api/v1/export/chain-events (no static file). Same rows and same filters as /api/v1/chain-events; what differs is the ceiling -- up to 25,000 events in one call against that route's 100 -- and that the call REQUIRES an x402 payment. See /.well-known/x402.",
+    "ChainEventsFeedArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "chain-events-feed",
     "/metagraph/chain-events.json",
     "Recent all-events feed (newest first) from the chain_events lakehouse table, served live at /api/v1/chain-events; pass ?format=csv to download the page as CSV (no static file). Each page reads one bounded block window below its ceiling, so a short page still carries a continuation. Distinct from the curated account-attributed event stream.",
@@ -4320,6 +4327,20 @@ export const API_ROUTES = [
     ["blocks", "analytics"],
     csvRouteQuery([]),
     [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "export-chain-events",
+    "GET",
+    "/api/v1/export/chain-events",
+    "/metagraph/export/chain-events.json",
+    "Fetch up to 25,000 chain events in one call -- the same rows, filters and ordering as /api/v1/chain-events, without the 100-row page ceiling or the cursor bookkeeping that comes with it. ?pallet / ?method narrow by event id; ?before reads down from a block number, which is how a caller walks a large range in deliberate chunks; ?limit caps the call (<=25000, default 5000). REQUIRES PAYMENT: this route answers 402 with an x402 quote when no payment is presented, on Base or Solana -- see /.well-known/x402. It is the one family that does; every other route on this API serves an unpaid caller normally. Served live, no static file.",
+    "short",
+    ["chain", "analytics"],
+    // `[]`, with the parameters declared path-keyed in
+    // schemas-src/route-queries.ts -- the same shape /api/v1/search/semantic
+    // uses. Not the "declares nothing" case: a route ABSENT from that map
+    // accepts any query string, which is why this one is in it.
+    [],
   ),
   route(
     "chain-events-feed",
