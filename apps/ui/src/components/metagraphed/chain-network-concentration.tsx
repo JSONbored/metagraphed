@@ -21,18 +21,10 @@ import type {
   NetworkConcentrationHistory,
   NetworkConcentrationSubnets,
 } from "@/lib/metagraphed/types";
+import { CHART_PALETTE } from "@/lib/metagraphed/chart-palette";
 
 const TOP_SHOWN = 8;
-const RANK_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--chart-6)",
-  "var(--chart-7)",
-  "var(--chart-8)",
-];
+const RANK_COLORS = CHART_PALETTE.slice(0, TOP_SHOWN);
 
 /**
  * Network-wide concentration is a continuous part of the analytics document,

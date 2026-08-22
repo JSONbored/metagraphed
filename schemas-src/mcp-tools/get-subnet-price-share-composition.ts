@@ -7,13 +7,11 @@
 import { z } from "zod";
 import { SubnetPriceShareCompositionArtifactSchema } from "../routes/subnet-price-share-composition.ts";
 
+// The schemas are the contract; consumers read this shape through the
+// generated OpenAPI types, so the usual `z.infer` aliases would be three
+// exports nothing imports. Derive one inline (`z.infer<typeof …Schema>`) if a
+// call site ever needs it.
 export const GetSubnetPriceShareCompositionInputSchema = z.object({}).strict();
-export type GetSubnetPriceShareCompositionInput = z.infer<
-  typeof GetSubnetPriceShareCompositionInputSchema
->;
 
 export const GetSubnetPriceShareCompositionOutputSchema =
   SubnetPriceShareCompositionArtifactSchema;
-export type GetSubnetPriceShareCompositionOutput = z.infer<
-  typeof GetSubnetPriceShareCompositionOutputSchema
->;

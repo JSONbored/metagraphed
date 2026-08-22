@@ -69,7 +69,3 @@ export const SubnetPriceShareCompositionArtifactSchema = z
   .describe(
     "Bounded recorded artifact-normalized moving-price-share composition. `emission_share` is alpha price / sum of reported alpha prices from the legacy economics artifact; it includes Root when Root reports a price and does not preserve historic runtime eligibility inputs. It is deliberately not the runtime v440 Stage-1 share, final TAO emission, or a certified complete daily snapshot pass. The stable netuid cohort comes from reference_day; this route does not join identity history, so it does not claim a reused netuid is one project throughout the series. A day is omitted unless its numeric shares have one persisted writer_captured_at value and sum to one within six-decimal rounding tolerance. The timestamp check detects certain mixed writes but does not certify one upstream artifact or complete chain coverage.",
   );
-
-export type SubnetPriceShareCompositionArtifact = z.infer<
-  typeof SubnetPriceShareCompositionArtifactSchema
->;
