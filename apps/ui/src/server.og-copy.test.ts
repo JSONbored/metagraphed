@@ -89,3 +89,36 @@ describe("OG card copy coverage (#8489)", () => {
     expect(generic, `routes with no OG copy: ${generic.join(", ")}`).toEqual([]);
   });
 });
+
+// The sitemap and the subnet hub both derive "which categories get a page"
+// from a page of subnets, and both apply MIN_CATEGORY_SUBNETS to it. If they
+// fetch DIFFERENT page sizes they are two different requests, and two
+// different requests can produce two different answers.
+//
+// They did. The sitemap hard-coded `?limit=500` while the hub used
+// SUBNETS_ALL_LIMIT; in production both exceeded the ~128 subnets that exist,
+// so they agreed by accident. Under the hermetic e2e stub -- which indexes
+// recordings by exact URL and falls back to the bare pathname -- the two query
+// strings resolved to two different recorded payloads, and a category sitting
+// exactly on the threshold appeared in the sitemap while going unlinked from
+// the hub. That is precisely the unreachable-subtree defect #11266 fixed for
+// /news, reintroduced through a query parameter.
+describe("the sitemap and the hub agree on what 'every subnet' means", () => {
+  const serverSource = fs.readFileSync(path.join(import.meta.dirname, "server.ts"), "utf8");
+
+  it("the sitemap fetches subnets with the shared limit, not a literal", () => {
+    expect(serverSource).toContain("limit=${SUBNETS_ALL_LIMIT}");
+    // A literal here is the regression: it makes this a second, silently
+    // different request from the one the hub makes.
+    expect(serverSource).not.toMatch(/\/api\/v1\/subnets\?limit=\d+/);
+  });
+
+  it("both surfaces import the same constant", () => {
+    const hubSource = fs.readFileSync(
+      path.join(import.meta.dirname, "components/metagraphed/subnet-category-links.tsx"),
+      "utf8",
+    );
+    expect(serverSource).toContain("SUBNETS_ALL_LIMIT");
+    expect(hubSource).toContain("SUBNETS_ALL_LIMIT");
+  });
+});

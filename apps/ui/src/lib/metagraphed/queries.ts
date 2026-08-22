@@ -1840,7 +1840,9 @@ export function normalizeSubnet(raw: unknown): Subnet {
  * the registry table and the crawlable index cannot drift onto two different
  * limits and disagree about what "every subnet" means.
  */
-export const SUBNETS_ALL_LIMIT = 200;
+// Re-exported from its new home so every existing importer keeps working.
+// Moved because server.ts needs it too and cannot import this module.
+export { SUBNETS_ALL_LIMIT } from "./subnet-categories";
 
 export const subnetsQuery = (params?: QueryParams) =>
   queryOptions({

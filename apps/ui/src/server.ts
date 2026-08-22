@@ -10,7 +10,11 @@ import {
   siteGraphNodes,
   stringifyJsonLd,
 } from "./lib/metagraphed/json-ld";
-import { categoryPath, MIN_CATEGORY_SUBNETS } from "./lib/metagraphed/subnet-categories";
+import {
+  categoryPath,
+  MIN_CATEGORY_SUBNETS,
+  SUBNETS_ALL_LIMIT,
+} from "./lib/metagraphed/subnet-categories";
 import { isoTimestamp } from "./lib/metagraphed/freshness";
 import { API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
 import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
@@ -364,7 +368,11 @@ async function buildSitemap(): Promise<Response> {
     // News source unavailable — omit rather than fail the whole sitemap.
   }
   try {
-    const res = await fetch(`${API_ORIGIN}/api/v1/subnets?limit=500`, {
+    // The SAME limit the hub uses, so both derive their category set from one
+    // page of subnets. A hard-coded 500 here made the sitemap and the hub two
+    // different requests, which the e2e stub answers with two different
+    // recordings.
+    const res = await fetch(`${API_ORIGIN}/api/v1/subnets?limit=${SUBNETS_ALL_LIMIT}`, {
       headers: { accept: "application/json" },
     });
     if (res.ok) {
