@@ -446,7 +446,18 @@ export const ROUTE_QUERY_SCHEMAS = {
     // The bounds come FROM src/route-limits.ts rather than being restated
     // here -- that module is the owner, and schemas-src/mcp-tools/ has read it
     // directly since #9127.
-    q: querySchema(SEMANTIC_QUERY_MAX_LENGTH).optional(),
+    // REQUIRED, and published that way (#11599). The handler has always
+    // rejected a call without it -- `GET /api/v1/search/semantic` returns 400
+    // `invalid_query`, "Query parameter `q` is required.", verified against
+    // production -- while this schema said `.optional()`, so the spec told a
+    // client the one mandatory input was optional. That is the third time this
+    // route published something it does not do (see #10075 and #10065 above);
+    // the derivation in isRequiredQueryParameter reads THIS, so the fix
+    // belongs here rather than in a hand-written `required: true`.
+    //
+    // /api/v1/search is genuinely different and stays optional: it returns 200
+    // with no `q`. The two routes are not the same contract.
+    q: querySchema(SEMANTIC_QUERY_MAX_LENGTH),
     limit: limitSchema(SEMANTIC_LIMIT_MAX, SEMANTIC_LIMIT_DEFAULT).optional(),
     // #10065: the handler has scoped on this since semantic search shipped --
     // it filters the results and rejects an unknown value by name ("Unknown

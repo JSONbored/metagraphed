@@ -42,6 +42,7 @@ import {
   CHAIN_FIREHOSE_TOPICS,
 } from "./chain-firehose-topics.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
+import { x402PriceFor } from "./x402.ts";
 import { sampleFromSchema } from "./openapi-sample.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
@@ -6374,6 +6375,35 @@ export function buildOpenApiArtifact(
           304: {
             description: "ETag matched and the cached response is still valid.",
           },
+          // DERIVED FROM THE GATE, not from a list (infra#629, #11599).
+          //
+          // x402 added a live 402 path to every route in a payable family and
+          // declared it nowhere, so the contract said 402 was impossible on
+          // routes that return it. `x402PriceFor` is the same function the
+          // gate prices with, so a family joining or leaving it moves this
+          // declaration with it -- a hand-kept list is how the two drift.
+          //
+          // Only on routes that can actually return it. Declaring 402 on all
+          // 296 would be the opposite error: telling a caller that /api/v1/
+          // subnets might demand payment, which it never will.
+          ...(x402PriceFor(entry.path)
+            ? {
+                402: {
+                  description:
+                    "A payment was presented and could not be verified or settled. " +
+                    "The response carries a fresh x402 quote in the `accepts` array and " +
+                    "the PAYMENT-REQUIRED header. A request with NO payment is never " +
+                    "answered with 402 -- it is served on the anonymous tier.",
+                  content: {
+                    "application/json": {
+                      schema: {
+                        $ref: "#/components/schemas/ErrorEnvelope",
+                      },
+                    },
+                  },
+                },
+              }
+            : {}),
           400: {
             description: "Query parameters were malformed or unsupported.",
             content: {
