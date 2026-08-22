@@ -35,7 +35,12 @@ const ROUTES = ["/subnets", "/chain/blocks", "/chain/extrinsics", "/validators"]
 // is kept OUT of the route id above because `harPathForRoute` derives a fixture
 // filename from it — pointing the sweep at the default instead would have
 // quietly stopped testing the thing it exists to test.
-const ROUTE_SEARCH: Record<string, string> = { "/subnets": "?mode=research" };
+const ROUTE_SEARCH: Record<string, string> = {
+  "/subnets": "?mode=research",
+  // #11522: /validators defaults to the operator directory, a ranked rail with
+  // no table. Its per-key table is the Research mode.
+  "/validators": "?mode=research",
+};
 
 // Both sides of the `md` breakpoint where ListShell swaps cards for a table.
 // 768 is not decoration: /subnets shipped with its sticky rule gated to

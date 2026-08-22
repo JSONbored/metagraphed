@@ -3440,6 +3440,159 @@ html[data-density="compact"] .bg-card > table td {
 }
 
 /* ============================================================
+ * Ranked rail
+ *
+ * Value, name, then a bar proportional to the leader. Borrowed geometry from
+ * the ranked comparisons on a well-made data page: no cards, no borders, no
+ * column headers — the rail and the row rhythm carry it, and the eye reads
+ * number → name → distribution in that order.
+ * ============================================================ */
+.mg-ranked-rail {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mg-ranked-rail-item + .mg-ranked-rail-item {
+  border-top: 1px solid var(--border);
+}
+.mg-ranked-rail-row {
+  display: grid;
+  width: 100%;
+  align-items: center;
+  gap: var(--mg-space-sm);
+  grid-template-columns: 1.75rem auto auto minmax(0, 1fr) minmax(0, 1.1fr) auto;
+  border: 0;
+  background: transparent;
+  padding: 0.7rem var(--mg-space-xs);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 140ms ease-out;
+}
+.mg-ranked-rail-row:not(button) {
+  cursor: default;
+}
+.mg-ranked-rail-rank {
+  color: var(--ink-subtle, var(--ink-muted));
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  font-variant-numeric: tabular-nums;
+}
+.mg-ranked-rail-value {
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption-lg);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mg-ranked-rail-media {
+  display: flex;
+  width: 1.4rem;
+  height: 1.4rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.mg-ranked-rail-body {
+  display: grid;
+  min-width: 0;
+  gap: 0.1rem;
+}
+.mg-ranked-rail-label {
+  overflow: hidden;
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-ranked-rail-meta {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+}
+.mg-ranked-rail-track {
+  position: relative;
+  display: block;
+  height: 0.4rem;
+  background: color-mix(in oklab, var(--ink-strong) 6%, transparent);
+}
+.mg-ranked-rail-fill {
+  display: block;
+  height: 100%;
+  background: color-mix(in oklab, var(--ink-strong) 72%, transparent);
+  transition: width 160ms ease-out;
+}
+.mg-ranked-rail-details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.mg-ranked-rail-details > summary::-webkit-details-marker {
+  display: none;
+}
+.mg-ranked-rail-caret {
+  width: 0.7rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption-lg);
+  line-height: 1;
+  text-align: center;
+}
+.mg-ranked-rail-caret::before {
+  content: "+";
+}
+.mg-ranked-rail-details[open] .mg-ranked-rail-caret::before {
+  content: "\2212";
+}
+.mg-ranked-rail-details[open] .mg-ranked-rail-fill {
+  background: var(--accent);
+}
+.mg-ranked-rail-details[open] .mg-ranked-rail-value {
+  color: var(--accent-text);
+}
+.mg-ranked-rail-detail {
+  padding: 0 var(--mg-space-xs) var(--mg-space-md) 2rem;
+}
+.mg-ranked-rail-empty {
+  margin: 0;
+  padding: var(--mg-space-lg) 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption);
+}
+
+@media (hover: hover) {
+  button.mg-ranked-rail-row:hover {
+    background: color-mix(in oklab, var(--ink-strong) 3%, transparent);
+  }
+  button.mg-ranked-rail-row:hover .mg-ranked-rail-value {
+    color: var(--accent-text);
+  }
+  button.mg-ranked-rail-row:hover .mg-ranked-rail-fill {
+    background: var(--accent);
+  }
+}
+
+/* The phone drops the rail rather than shrinking it to a stub: a 40px bar
+   compares nothing, and the value is already there in full. */
+@media (max-width: 47.99rem) {
+  .mg-ranked-rail-row {
+    grid-template-columns: 1.5rem auto minmax(0, 1fr) auto;
+  }
+  .mg-ranked-rail-media,
+  .mg-ranked-rail-track {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-ranked-rail-row,
+  .mg-ranked-rail-fill {
+    transition: none;
+  }
+}
+
+/* ============================================================
  * Brand icon
  *
  * One instance per row in every directory on the site. Authored as real

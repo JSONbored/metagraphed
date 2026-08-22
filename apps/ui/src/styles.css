@@ -499,6 +499,51 @@
   line-height: 1.45;
 }
 
+/* #11522: the operator directory's supporting bits. The ranked rail itself is
+   the shared primitive; these are the two route-specific pieces. */
+.mg-validator-identities-note {
+  margin: var(--mg-space-md) 0 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  line-height: 1.5;
+}
+.mg-validator-keys {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: 1px;
+  list-style: none;
+}
+.mg-validator-key {
+  display: grid;
+  align-items: baseline;
+  gap: var(--mg-space-sm);
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+  padding: 0.35rem var(--mg-space-xs);
+  color: inherit;
+  text-decoration: none;
+}
+.mg-validator-key:hover {
+  background: color-mix(in oklab, var(--ink-strong) 3%, transparent);
+}
+.mg-validator-key:focus-visible {
+  outline: 2px solid var(--brand-green);
+  outline-offset: 2px;
+}
+.mg-validator-key > span {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+}
+.mg-validator-key > span:first-child {
+  color: var(--ink-strong);
+}
+.mg-validator-key > span:last-child {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .mg-home-route-rail {
   border-top: 1px solid var(--border);
 }

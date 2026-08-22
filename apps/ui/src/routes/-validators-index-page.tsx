@@ -26,6 +26,8 @@ import {
   TableSkeleton,
 } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { ValidatorIdentityDirectory } from "@/components/metagraphed/validator-identity-directory";
+import { DirectoryModeTabs, type DirectoryMode } from "@/components/metagraphed/primitives";
 import { ValidatorEconomicsRanking } from "@/components/metagraphed/validator-economics-ranking";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -61,6 +63,20 @@ import { readKey } from "@/lib/metagraphed/read-key";
 export const ALL_VALIDATORS_LIMIT = 2000;
 const CONCENTRATION_TOP_N = 10;
 
+/** Compare is a per-key task, so the operator directory does not offer it. */
+const VALIDATOR_MODES = [
+  {
+    value: "browse" as const,
+    label: "Operators",
+    hint: "Named operators ranked by stake. Expand one to see the keys it runs.",
+  },
+  {
+    value: "research" as const,
+    label: "All keys",
+    hint: "Every validator key, with the full metric set and comparison.",
+  },
+];
+
 export function ValidatorsPage() {
   const search = useSearch({ from: "/validators/" }) as ValidatorsSearch;
   const navigate = useNavigate({ from: "/validators/" });
@@ -69,6 +85,18 @@ export function ValidatorsPage() {
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, density: d }),
       replace: true,
+    });
+  const mode: DirectoryMode = search.mode === "research" ? "research" : "browse";
+  // The strip only offers the two this route implements, so anything else is
+  // narrowed away rather than written into a URL the schema would reject.
+  const setMode = (next: DirectoryMode) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        mode: next === "research" ? "research" : "browse",
+      }),
+      replace: true,
+      resetScroll: false,
     });
   return (
     <AppShell>
@@ -81,20 +109,35 @@ export function ValidatorsPage() {
           description="Search the live validator set by operator or key."
         />
         <DataPageCanvas>
-          <DataPageModule title="Directory." caption="Stake, ownership, and on-chain economics.">
-            <AsyncPanel
-              context="validators"
-              fallback={<TableSkeleton rows={10} columns={8} />}
-              retryQueryKeys={[
-                validatorsQuery({
-                  sort: "total_stake",
-                  limit: ALL_VALIDATORS_LIMIT,
-                  subnets: false,
-                }).queryKey,
-              ]}
-            >
-              <ValidatorsDirectory density={density} onDensityChange={onDensityChange} />
-            </AsyncPanel>
+          <DataPageModule title="Directory." caption="Who runs the network, and what they charge.">
+            <DirectoryModeTabs
+              mode={mode}
+              onChange={setMode}
+              modes={VALIDATOR_MODES}
+              ariaLabel="Validator directory mode"
+            />
+            {mode === "browse" ? (
+              <AsyncPanel
+                context="validator operators"
+                fallback={<TableSkeleton rows={8} columns={3} />}
+              >
+                <ValidatorIdentityDirectory query={search.q} />
+              </AsyncPanel>
+            ) : (
+              <AsyncPanel
+                context="validators"
+                fallback={<TableSkeleton rows={10} columns={8} />}
+                retryQueryKeys={[
+                  validatorsQuery({
+                    sort: "total_stake",
+                    limit: ALL_VALIDATORS_LIMIT,
+                    subnets: false,
+                  }).queryKey,
+                ]}
+              >
+                <ValidatorsDirectory density={density} onDensityChange={onDensityChange} />
+              </AsyncPanel>
+            )}
             <DataPageDisclosure label="How to read this directory">
               <ValidatorGuide />
             </DataPageDisclosure>

@@ -22,6 +22,10 @@ export const validatorsSearchSchema = z.object({
   // with a ×N chip instead of the same name repeated at every rank. On by
   // default; the toggle exists for anyone who wants the raw flat ranking.
   grouped: z.boolean().catch(true).default(true),
+  // #11522: Browse ranks named operators; Research keeps the per-key table.
+  // `browse` is the default and is stripped from the URL, so existing links
+  // keep working and land on the operator view.
+  mode: z.enum(["browse", "research"]).catch("browse").default("browse"),
   sort: z.string().catch("total_stake_tao").default("total_stake_tao"),
   // #5344: bring Validators up to the canonical ranked-list interaction model
   // (Subnets) — a sort DIRECTION toggled by clicking a column header, and a row

@@ -156,6 +156,10 @@ export {
   type InteractiveDataFieldProps,
   type InteractiveDataFieldTone,
 } from "@/components/metagraphed/interactive-data-field";
+export {
+  RankedRailList,
+  type RankedRailItem,
+} from "@/components/metagraphed/ranked-rail";
 export { DirectoryRow } from "@/components/metagraphed/directory-row";
 export {
   DIRECTORY_MODES,

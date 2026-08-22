@@ -2751,6 +2751,63 @@ function InteractiveDataField({
     }
   );
 }
+function RankedRailList({
+  items,
+  ariaLabel,
+  max,
+  emptyLabel = "Nothing to rank yet.",
+  className
+}) {
+  if (items.length === 0) {
+    return /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-ranked-rail-empty", role: "status", children: emptyLabel });
+  }
+  const scale = max ?? Math.max(
+    0,
+    ...items.map((item) => Number.isFinite(item.value) ? item.value : 0)
+  );
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "ul",
+    {
+      className: classNames("mg-ranked-rail", className),
+      "aria-label": ariaLabel,
+      children: items.map((item, index) => {
+        const value = Number.isFinite(item.value) ? Math.max(0, item.value) : 0;
+        const fraction = scale > 0 ? value / scale : 0;
+        const body = /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-rank", "aria-hidden": "true", children: String(index + 1).padStart(2, "0") }),
+          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-value", children: item.valueLabel }),
+          item.media ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-media", "aria-hidden": "true", children: item.media }) : null,
+          /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-ranked-rail-body", children: [
+            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-label", children: item.label }),
+            item.meta ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-meta", children: item.meta }) : null
+          ] }),
+          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-track", "aria-hidden": "true", children: /* @__PURE__ */ jsxRuntime.jsx(
+            "span",
+            {
+              className: "mg-ranked-rail-fill",
+              style: { width: `${Math.min(100, fraction * 100)}%` }
+            }
+          ) })
+        ] });
+        return /* @__PURE__ */ jsxRuntime.jsx("li", { className: "mg-ranked-rail-item", children: item.detail ? (
+          // A native <details>, not a React-state toggle. The contents stay
+          // in the server-rendered DOM whether or not anyone opens them,
+          // which is what keeps every one of an operator's keys reachable
+          // by a crawler — the exact regression #11231 was filed for.
+          // Browsers skip layout for closed details, so the collapsed cost
+          // is bytes only.
+          /* @__PURE__ */ jsxRuntime.jsxs("details", { className: "mg-ranked-rail-details", children: [
+            /* @__PURE__ */ jsxRuntime.jsxs("summary", { className: "mg-ranked-rail-row mg-focus-ring", children: [
+              body,
+              /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-caret", "aria-hidden": "true" })
+            ] }),
+            /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-ranked-rail-detail", children: item.detail })
+          ] })
+        ) : /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-ranked-rail-row", children: body }) }, item.id);
+      })
+    }
+  );
+}
 function DirectoryRow({
   media,
   title,
@@ -7637,6 +7694,7 @@ exports.PrimaryLinksRail = PrimaryLinksRail;
 exports.ProvenanceChip = ProvenanceChip;
 exports.QueryBar = QueryBar;
 exports.QueryProgress = QueryProgress;
+exports.RankedRailList = RankedRailList;
 exports.ReadinessGauge = ReadinessGauge;
 exports.RealtimeFreshness = RealtimeFreshness;
 exports.ResponsiveTable = ResponsiveTable;
