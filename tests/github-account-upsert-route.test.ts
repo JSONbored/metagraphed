@@ -186,3 +186,79 @@ test("correct token + invalid body -> the existing 400, NO write attempted", asy
   assert.equal(res.status, 400);
   assert.deepEqual(sqlCalls, []);
 });
+
+// #11562/#11573: POST /api/v1/internal/accounts/github/tier -- the lookup that
+// lets an OAuth-authenticated caller resolve a real tier instead of falling
+// through to "anonymous". Same internal-token gate as the upsert above, for the
+// same reason: the only caller is our own Worker over the service binding.
+function tierReq(body: Row, token: string | null = INTERNAL_TOKEN) {
+  return new Request("https://d/api/v1/internal/accounts/github/tier", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(token === null ? {} : { "x-api-key-lookup-token": token }),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+test("tier lookup: 503 when the internal token is not provisioned", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: undefined });
+  const res = await fetchRoute(tierReq({ account_id: 7 }), env);
+  assert.equal(res.status, 503);
+});
+
+test("tier lookup: 401 on a missing or wrong token", async () => {
+  for (const token of [null, "wrong-token"]) {
+    const res = await fetchRoute(tierReq({ account_id: 7 }, token), baseEnv());
+    assert.equal(res.status, 401, String(token));
+  }
+});
+
+test("tier lookup: rejects a malformed JSON body", async () => {
+  const res = await fetchRoute(
+    new Request("https://d/api/v1/internal/accounts/github/tier", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key-lookup-token": INTERNAL_TOKEN,
+      },
+      body: "not json",
+    }),
+    baseEnv(),
+  );
+  assert.equal(res.status, 400);
+});
+
+test("tier lookup: a non-integer id is not found, and never reaches the query", async () => {
+  // Answered `found: false` rather than 400: the caller's next move is the
+  // same either way (fall back to anonymous), and a 400 would invite it to
+  // treat a shape problem as an outage.
+  for (const account_id of ["abc", 1.5, null, undefined, -1 * 0 - 0.5]) {
+    sqlCalls.length = 0;
+    const res = await fetchRoute(tierReq({ account_id }), baseEnv());
+    assert.equal(res.status, 200, String(account_id));
+    assert.deepEqual(await res.json(), { found: false }, String(account_id));
+    assert.equal(sqlCalls.length, 0, "no query for an unreadable id");
+  }
+});
+
+test("tier lookup: returns the account's current tier", async () => {
+  mockQueue.current.push([{ tier: "paid" }]);
+  const res = await fetchRoute(tierReq({ account_id: 7 }), baseEnv());
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { found: true, tier: "paid" });
+  const call = sqlCalls.find((c) => /github_accounts/.test(c.text));
+  assert.ok(call, "queried github_accounts");
+  assert.ok(/SELECT tier FROM github_accounts/.test(call!.text));
+  assert.deepEqual(call!.values, [7]);
+});
+
+test("tier lookup: an unknown account is not found, NOT a default tier", async () => {
+  // "we could not find you" and "you are on free" must stay distinguishable --
+  // they differ the moment `free` stops being the bottom rung.
+  mockQueue.current.push([]);
+  const res = await fetchRoute(tierReq({ account_id: 999 }), baseEnv());
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { found: false });
+});

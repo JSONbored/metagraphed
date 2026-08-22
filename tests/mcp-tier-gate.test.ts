@@ -21,6 +21,7 @@ import {
   tierClears,
 } from "../src/mcp-tier-gate.ts";
 import { handleMcpRequest, MCP_CORE_TOOL_NAMES } from "../src/mcp-server.ts";
+import { applyTieredRateLimit } from "../workers/tiered-rate-limit.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 const guard = (tier: string, requested: number | null) =>
@@ -198,5 +199,155 @@ describe("depth is gated; visibility is not", () => {
     );
     // And the free-tier economics entry point stays in the curated core set.
     assert.ok(MCP_CORE_TOOL_NAMES.includes("get_economics"));
+  });
+});
+
+// #11562: the boundary above is only reachable if a caller can BE on a tier.
+// Until this landed, tier resolved solely from an `mg_` key, so an OAuth caller
+// who completed the whole GitHub flow was measured `anonymous` -- 460 tool
+// calls across 5 authenticated identities in production, every one of them.
+//
+// Composed from the REAL applyTieredRateLimit rather than a hand-written tier
+// string, so this proves the chain (OAuth identity -> resolved tier -> the
+// gate's verdict) rather than restating the gate's own assumption.
+describe("an OAuth caller clears a boundary an anonymous caller does not", () => {
+  const TIERS = {
+    free: { envVar: "GATE_FREE_LIMITER", limit: 300, windowSeconds: 60 },
+    paid: { envVar: "GATE_PAID_LIMITER", limit: 3000, windowSeconds: 60 },
+  };
+  const CONFIG = {
+    anonymous: { envVar: "GATE_ANON_LIMITER", limit: 60, windowSeconds: 60 },
+    keyed: TIERS.free,
+    tiers: TIERS,
+    keyPrefix: "gate",
+  };
+  const env = {
+    GATE_ANON_LIMITER: { limit: async () => ({ success: true }) },
+    GATE_PAID_LIMITER: { limit: async () => ({ success: true }) },
+  } as unknown as Env;
+  const request = () =>
+    new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+      headers: { "cf-connecting-ip": "203.0.113.9" },
+    });
+
+  test("anonymous is refused a window past the free depth", async () => {
+    const resolved = await applyTieredRateLimit(request(), env, CONFIG);
+    assert.equal(resolved.tier, "anonymous");
+    assert.throws(
+      () => guard(resolved.tier, 365),
+      (error: Error & { code?: string }) => error.code === "payment_required",
+    );
+  });
+
+  test("the same window goes through for an OAuth account on paid", async () => {
+    const resolved = await applyTieredRateLimit(request(), env, CONFIG, {
+      oauthIdentity: { accountId: 7, tier: "paid" },
+    });
+    assert.equal(resolved.tier, "paid");
+    assert.equal(resolved.accountKind, "github");
+    assert.doesNotThrow(() => guard(resolved.tier, 365));
+  });
+
+  test("an OAuth account on the DEFAULT tier is still bounded", async () => {
+    // `github_accounts.tier` defaults to 'free', so authenticating does not
+    // silently hand out paid depth -- it makes the caller addressable, which
+    // is what an upgrade then acts on.
+    const resolved = await applyTieredRateLimit(request(), env, CONFIG, {
+      oauthIdentity: { accountId: 7, tier: "free" },
+    });
+    assert.equal(resolved.tier, "free");
+    assert.doesNotThrow(() => guard(resolved.tier, FREE_HISTORY_WINDOW_DAYS));
+    assert.throws(
+      () => guard(resolved.tier, 365),
+      (error: Error & { code?: string }) => error.code === "payment_required",
+    );
+  });
+});
+
+// #11562: the same chain, driven through the REAL MCP entry point rather than
+// applyTieredRateLimit directly -- so the props the OAuth provider sets on the
+// ExecutionContext are proven to reach the tier resolver, which is the wiring
+// that was missing.
+describe("handleMcpRequest resolves a tier from the OAuth execution context", () => {
+  function envWithTierLookup(tier: string | null, found = true) {
+    return mockEnv({
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+      DATA_API: {
+        fetch: async () =>
+          new Response(JSON.stringify(found ? { found, tier } : { found }), {
+            status: 200,
+          }),
+      },
+      MCP_RATE_LIMITER: { limit: async () => ({ success: true }) },
+      MCP_RATE_LIMITER_KEYED: { limit: async () => ({ success: true }) },
+      MCP_RATE_LIMITER_COMMUNITY: { limit: async () => ({ success: true }) },
+      MCP_RATE_LIMITER_PAID: { limit: async () => ({ success: true }) },
+    } as Row);
+  }
+
+  const body = JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "tools/list",
+    params: {},
+  });
+  const request = () =>
+    new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+      },
+      body,
+    });
+
+  test("an authenticated caller is served, and the lookup is consulted", async () => {
+    const env = envWithTierLookup("paid");
+    const res = await handleMcpRequest(request(), env, {
+      executionCtx: { waitUntil() {}, props: { accountId: 7 } },
+    });
+    assert.equal(res.status, 200);
+  });
+
+  test("an account the lookup cannot resolve falls back to anonymous, not to a permissive default", async () => {
+    // found:false, and a found-but-tierless row -- both must yield no identity.
+    for (const env of [
+      envWithTierLookup(null, false),
+      envWithTierLookup(null, true),
+      envWithTierLookup("", true),
+    ]) {
+      const res = await handleMcpRequest(request(), env, {
+        executionCtx: { waitUntil() {}, props: { accountId: 7 } },
+      });
+      assert.equal(res.status, 200);
+    }
+  });
+
+  test("an unreadable props.accountId never reaches the lookup", async () => {
+    let called = 0;
+    const env = mockEnv({
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+      DATA_API: {
+        fetch: async () => {
+          called += 1;
+          return new Response("{}", { status: 200 });
+        },
+      },
+      MCP_RATE_LIMITER: { limit: async () => ({ success: true }) },
+    } as Row);
+    for (const accountId of [undefined, null, "abc", 0, -1]) {
+      const res = await handleMcpRequest(request(), env, {
+        executionCtx: { waitUntil() {}, props: { accountId } },
+      });
+      assert.equal(res.status, 200, String(accountId));
+    }
+    assert.equal(called, 0, "no lookup for a caller with no readable id");
+  });
+
+  test("no execution context at all is still served anonymously", async () => {
+    const env = envWithTierLookup("paid");
+    const res = await handleMcpRequest(request(), env, {});
+    assert.equal(res.status, 200);
   });
 });

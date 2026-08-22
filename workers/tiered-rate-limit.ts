@@ -22,6 +22,7 @@ import {
 } from "../src/api-key-validation.ts";
 import { routeCost } from "../src/route-cost-weights.ts";
 import { evaluateBlock, type BlockVerdict } from "../src/api-key-abuse.ts";
+import { DEFAULT_ACCOUNT_KIND, type AccountKind } from "../src/account-kind.ts";
 import { recordOrNull } from "../src/read-store.ts";
 import { QuotaSpendResponseSchema } from "../schemas-src/internal-wire.ts";
 
@@ -125,10 +126,23 @@ export interface TieredRateLimitResult {
    * to debit the cost-weighted quota once it knows what the request costs.
    * Only a multiplexed transport needs this -- see the `deferQuota` option.
    */
-  quotaPending?: { accountId: string; dailyUnits: number };
+  quotaPending?: {
+    accountId: string;
+    accountKind: AccountKind;
+    dailyUnits: number;
+  };
   /** The verified account id when a valid API key was supplied, else null
    * (anonymous, IP-keyed). */
   accountId: string | null;
+  /**
+   * WHICH identity system `accountId` belongs to (#11573).
+   *
+   * Always set, even when `accountId` is null, so a consumer never has to
+   * infer it. `rpc_accounts` and `github_accounts` are separate sequences in
+   * the same numeric range, so an id without a kind is not an identity -- see
+   * src/account-kind.ts.
+   */
+  accountKind: AccountKind;
   /**
    * Set when the account is on the #8611 blocklist. Present ONLY on a rejection
    * -- an allowed request carries no block, so a caller cannot tell from a 200
@@ -160,16 +174,17 @@ export const BLOCKLIST_KV_KEY = "api-key-blocklist";
 async function loadBlockVerdict(
   env: Env,
   accountId: unknown,
+  accountKind: AccountKind,
 ): Promise<BlockVerdict> {
   const kv = env.METAGRAPH_CONTROL;
-  if (!kv?.get) return evaluateBlock(null, accountId);
+  if (!kv?.get) return evaluateBlock(null, accountId, accountKind);
   try {
     const snapshot = (await kv.get(BLOCKLIST_KV_KEY, { type: "json" })) as {
       blocks?: unknown;
     } | null;
-    return evaluateBlock(snapshot, accountId);
+    return evaluateBlock(snapshot, accountId, accountKind);
   } catch {
-    return evaluateBlock(null, accountId);
+    return evaluateBlock(null, accountId, accountKind);
   }
 }
 
@@ -193,6 +208,7 @@ async function spendDailyQuota(
   request: Request,
   env: Env,
   accountId: string,
+  accountKind: AccountKind,
   dailyUnits: number,
   /** Explicit cost, when the pathname cannot price the work. See below. */
   costUnitsOverride?: number,
@@ -224,6 +240,9 @@ async function spendDailyQuota(
         },
         body: JSON.stringify({
           account_id: Number(accountId),
+          // #11573: the quota row is keyed on (kind, id). Without this an
+          // OAuth caller would debit the rpc account of the same number.
+          account_kind: accountKind,
           cost: weight,
           limit: dailyUnits,
         }),
@@ -267,8 +286,19 @@ export async function applyTieredRateLimit(
   {
     costUnits,
     deferQuota,
+    oauthIdentity,
   }: {
     costUnits?: number;
+    /**
+     * An ALREADY-VERIFIED OAuth caller and the tier resolved for them
+     * (#11562). Supplied by the surface that holds the OAuth context; this
+     * module never validates a token itself.
+     *
+     * Ranked BELOW a valid `mg_` key on purpose: a caller who sends a key is
+     * asserting that identity deliberately, which is the same precedence
+     * `mcpDistinctId` applies when both are present.
+     */
+    oauthIdentity?: { accountId: number; tier: string } | null;
     /**
      * Skip the daily-quota spend and hand back `quotaPending` instead.
      *
@@ -286,8 +316,44 @@ export async function applyTieredRateLimit(
     ? await validateApiKey(env, authHeader)
     : { ok: false as const };
 
-  if (auth.ok) {
-    const tier = typeof auth.tier === "string" && auth.tier ? auth.tier : null;
+  // #11573: ONE identity, from either system, so the blocklist, the per-minute
+  // ceiling and the daily quota all apply to an OAuth caller exactly as they do
+  // to a key holder. The alternative -- a second branch that took only the
+  // ceiling -- would ship a tier that is two-thirds enforced, and would have to
+  // be undone the moment billing attaches.
+  //
+  // A KEY OUTRANKS AN OAUTH TOKEN: a caller presenting a key is asserting that
+  // identity deliberately, which is the precedence `mcpDistinctId` already
+  // applies when both are present.
+  const identity = auth.ok
+    ? {
+        // `String()` unconditionally turned a null account id into the LITERAL
+        // "null" -- a single fabricated tenant that every identity-less key
+        // shared. verifyUnkeyKey returns `accountId: identity?.externalId ??
+        // null` while `valid` stays true, so any key minted without an Unkey
+        // identity landed there. Downstream that string is an identity:
+        // resolveSurfaceCredentialIdentity accepts it and returns
+        // `account:null`, so one holder could list, delete, and use another's
+        // stored surface credentials. It also collapsed them into one
+        // rate-limit bucket and one quota row, and `Number("null")` is NaN.
+        //
+        // Every consumer of this field already guards with
+        // `if (rateLimit.accountId)` and the declared type is `string | null`,
+        // so a real null is what they were written for.
+        accountId: auth.accountId == null ? null : String(auth.accountId),
+        accountKind: DEFAULT_ACCOUNT_KIND,
+        tier: typeof auth.tier === "string" && auth.tier ? auth.tier : null,
+      }
+    : oauthIdentity
+      ? {
+          accountId: String(oauthIdentity.accountId),
+          accountKind: "github" as const,
+          tier: oauthIdentity.tier,
+        }
+      : null;
+
+  if (identity) {
+    const { accountId, accountKind, tier } = identity;
     // Own-property lookup ONLY. `config.tiers?.[tier]` walks the prototype
     // chain, and `tier` comes from the key-validation response -- an account on
     // a tier literally named "constructor", "toString", "valueOf" or
@@ -301,23 +367,11 @@ export async function applyTieredRateLimit(
         ? (config.tiers as Record<string, RateLimitTierPolicy>)[tier]
         : config.keyed;
     const limiter = rateLimiterBinding(env, policy.envVar);
-    // `String()` unconditionally turned a null account id into the LITERAL
-    // "null" -- a single fabricated tenant that every identity-less key shared.
-    // verifyUnkeyKey returns `accountId: identity?.externalId ?? null` while
-    // `valid` stays true, so any key minted without an Unkey identity landed
-    // there. Downstream that string is an identity: resolveSurfaceCredentialIdentity
-    // accepts it and returns `account:null`, so one holder could list, delete,
-    // and use another's stored surface credentials. It also collapsed them into
-    // one rate-limit bucket and one quota row, and `Number("null")` is NaN.
-    //
-    // Every consumer of this field already guards with `if (rateLimit.accountId)`
-    // and the declared type is `string | null`, so a real null is what they were
-    // written for.
-    const accountId = auth.accountId == null ? null : String(auth.accountId);
     const result = {
       policy,
       tier: tier ?? "keyed",
       accountId,
+      accountKind,
     };
     // #8611: the blocklist comes BEFORE any ceiling. A blocked caller is not
     // "going too fast", and spending their daily quota on requests we are about
@@ -331,7 +385,7 @@ export async function applyTieredRateLimit(
     // for up to half an hour after someone hit block. The blocklist is its own
     // small snapshot on a short TTL instead, so a block lands within one
     // BLOCKLIST_KV_TTL rather than one identity-cache lifetime.
-    const block = await loadBlockVerdict(env, accountId);
+    const block = await loadBlockVerdict(env, accountId, accountKind);
     if (block.blocked) {
       return { allowed: false, ...result, block };
     }
@@ -352,8 +406,16 @@ export async function applyTieredRateLimit(
       // literal: it still gets its tier's ceiling (it does hold a valid key),
       // but it can never share a bucket with an unrelated caller.
       const { success } = await limiter.limit({
+        // #11573: the id alone is not an identity -- `github_accounts.id` and
+        // `rpc_accounts.id` are separate sequences in the same range, so the
+        // kind is part of the bucket. `rpc` keeps its historical key shape so
+        // no existing caller's window is reset by this change.
         key: `${config.keyPrefix}:${result.tier}:${
-          accountId ?? `ip:${resolveClientIp(request)}`
+          accountId
+            ? accountKind === DEFAULT_ACCOUNT_KIND
+              ? accountId
+              : `${accountKind}:${accountId}`
+            : `ip:${resolveClientIp(request)}`
         }`,
       });
       if (!success) return { allowed: false, ...result };
@@ -365,7 +427,7 @@ export async function applyTieredRateLimit(
     // honest option: the per-minute ceiling above still bounds the caller.
     if (policy.dailyUnits && accountId !== null && deferQuota) {
       Object.assign(result, {
-        quotaPending: { accountId, dailyUnits: policy.dailyUnits },
+        quotaPending: { accountId, accountKind, dailyUnits: policy.dailyUnits },
       });
       return { allowed: true, ...result };
     }
@@ -374,6 +436,7 @@ export async function applyTieredRateLimit(
         request,
         env,
         accountId,
+        accountKind,
         policy.dailyUnits,
         costUnits,
       );
@@ -387,13 +450,20 @@ export async function applyTieredRateLimit(
 
   const policy = config.anonymous;
   const limiter = rateLimiterBinding(env, policy.envVar);
-  if (!limiter?.limit) {
-    return { allowed: true, policy, tier: "anonymous", accountId: null };
-  }
+  // No identity at all. `accountKind` is still reported rather than left
+  // undefined -- a consumer must never have to distinguish "anonymous" from
+  // "we forgot to say", and `accountId: null` already carries the absence.
+  const anonymous = {
+    policy,
+    tier: "anonymous",
+    accountId: null,
+    accountKind: DEFAULT_ACCOUNT_KIND,
+  };
+  if (!limiter?.limit) return { allowed: true, ...anonymous };
   const { success } = await limiter.limit({
     key: `${config.keyPrefix}:${resolveClientIp(request)}`,
   });
-  return { allowed: success, policy, tier: "anonymous", accountId: null };
+  return { allowed: success, ...anonymous };
 }
 
 /**
@@ -513,7 +583,7 @@ export function tieredRateLimitHeaders(
 export async function spendDeferredDailyQuota(
   request: Request,
   env: Env,
-  pending: { accountId: string; dailyUnits: number },
+  pending: { accountId: string; accountKind: AccountKind; dailyUnits: number },
   costUnits: number,
   // Nullable, because it forwards a nullable result -- see spendDailyQuota.
 ): Promise<(TieredRateLimitResult["quota"] & { allowed: boolean }) | null> {
@@ -521,6 +591,7 @@ export async function spendDeferredDailyQuota(
     request,
     env,
     pending.accountId,
+    pending.accountKind,
     pending.dailyUnits,
     costUnits,
   );
