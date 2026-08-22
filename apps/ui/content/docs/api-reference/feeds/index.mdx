@@ -6,66 +6,66 @@ description: Every Feeds endpoint in the metagraphed API, with its method and pa
 32 endpoints.
 
 - [Feed Gaps](/docs/api-reference/feeds/feed-gaps) — `GET /api/v1/feeds/gaps`  
-  Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`.
+  Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each.
 - [Feed Gaps Atom](/docs/api-reference/feeds/feed-gaps-atom) — `GET /api/v1/feeds/gaps.atom`  
-  Always returns `application/atom+xml`, regardless of `Accept`.
+  Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each.
 - [Feed Gaps JSON](/docs/api-reference/feeds/feed-gaps-json) — `GET /api/v1/feeds/gaps.json`  
-  Always returns `application/feed+json`, regardless of `Accept`.
+  Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each.
 - [Feed Gaps Rss](/docs/api-reference/feeds/feed-gaps-rss) — `GET /api/v1/feeds/gaps.rss`  
-  Always returns `application/rss+xml`, regardless of `Accept`.
+  Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each.
 - [Feed Incidents](/docs/api-reference/feeds/feed-incidents) — `GET /api/v1/feeds/incidents`  
-  Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`.
+  Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored.
 - [Feed Incidents Atom](/docs/api-reference/feeds/feed-incidents-atom) — `GET /api/v1/feeds/incidents.atom`  
-  Always returns `application/atom+xml`, regardless of `Accept`.
+  Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored.
 - [Feed Incidents JSON](/docs/api-reference/feeds/feed-incidents-json) — `GET /api/v1/feeds/incidents.json`  
-  Always returns `application/feed+json`, regardless of `Accept`.
+  Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored.
 - [Feed Incidents Rss](/docs/api-reference/feeds/feed-incidents-rss) — `GET /api/v1/feeds/incidents.rss`  
-  Always returns `application/rss+xml`, regardless of `Accept`.
+  Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored.
 - [Feed Registry](/docs/api-reference/feeds/feed-registry) — `GET /api/v1/feeds/registry`  
-  Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`.
+  The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702).
 - [Feed Registry Atom](/docs/api-reference/feeds/feed-registry-atom) — `GET /api/v1/feeds/registry.atom`  
-  Always returns `application/atom+xml`, regardless of `Accept`.
+  The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702).
 - [Feed Registry JSON](/docs/api-reference/feeds/feed-registry-json) — `GET /api/v1/feeds/registry.json`  
-  Always returns `application/feed+json`, regardless of `Accept`.
+  The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702).
 - [Feed Registry Rss](/docs/api-reference/feeds/feed-registry-rss) — `GET /api/v1/feeds/registry.rss`  
-  Always returns `application/rss+xml`, regardless of `Accept`.
+  The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702).
 - [Feed Revenue](/docs/api-reference/feeds/feed-revenue) — `GET /api/v1/feeds/revenue`  
-  Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`.
+  Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure.
 - [Feed Revenue Atom](/docs/api-reference/feeds/feed-revenue-atom) — `GET /api/v1/feeds/revenue.atom`  
-  Always returns `application/atom+xml`, regardless of `Accept`.
+  Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure.
 - [Feed Revenue JSON](/docs/api-reference/feeds/feed-revenue-json) — `GET /api/v1/feeds/revenue.json`  
-  Always returns `application/feed+json`, regardless of `Accept`.
+  Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure.
 - [Feed Revenue Rss](/docs/api-reference/feeds/feed-revenue-rss) — `GET /api/v1/feeds/revenue.rss`  
-  Always returns `application/rss+xml`, regardless of `Accept`.
+  Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure.
 - [Feed Subnet](/docs/api-reference/feeds/feed-subnet) — `GET /api/v1/feeds/subnets/{netuid}`  
-  Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`.
+  One subnet's combined feed: its registry changes and its surface incidents, merged chronologically.
 - [Feed Subnet Atom](/docs/api-reference/feeds/feed-subnet-atom) — `GET /api/v1/feeds/subnets/{netuid}.atom`  
-  Always returns `application/atom+xml`, regardless of `Accept`.
+  One subnet's combined feed: its registry changes and its surface incidents, merged chronologically.
 - [Feed Subnet JSON](/docs/api-reference/feeds/feed-subnet-json) — `GET /api/v1/feeds/subnets/{netuid}.json`  
-  Always returns `application/feed+json`, regardless of `Accept`.
+  One subnet's combined feed: its registry changes and its surface incidents, merged chronologically.
 - [Feed Subnet Rss](/docs/api-reference/feeds/feed-subnet-rss) — `GET /api/v1/feeds/subnets/{netuid}.rss`  
-  Always returns `application/rss+xml`, regardless of `Accept`.
+  One subnet's combined feed: its registry changes and its surface incidents, merged chronologically.
 - [Feed Upgrades](/docs/api-reference/feeds/feed-upgrades) — `GET /api/v1/feeds/upgrades`  
-  Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`.
+  Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents.
 - [Feed Upgrades Atom](/docs/api-reference/feeds/feed-upgrades-atom) — `GET /api/v1/feeds/upgrades.atom`  
-  Always returns `application/atom+xml`, regardless of `Accept`.
+  Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents.
 - [Feed Upgrades JSON](/docs/api-reference/feeds/feed-upgrades-json) — `GET /api/v1/feeds/upgrades.json`  
-  Always returns `application/feed+json`, regardless of `Accept`.
+  Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents.
 - [Feed Upgrades Rss](/docs/api-reference/feeds/feed-upgrades-rss) — `GET /api/v1/feeds/upgrades.rss`  
-  Always returns `application/rss+xml`, regardless of `Accept`.
+  Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents.
 - [Feed Wallets](/docs/api-reference/feeds/feed-wallets) — `GET /api/v1/feeds/wallets`  
-  Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`.
+  Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE.
 - [Feed Wallets Atom](/docs/api-reference/feeds/feed-wallets-atom) — `GET /api/v1/feeds/wallets.atom`  
-  Always returns `application/atom+xml`, regardless of `Accept`.
+  Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE.
 - [Feed Wallets JSON](/docs/api-reference/feeds/feed-wallets-json) — `GET /api/v1/feeds/wallets.json`  
-  Always returns `application/feed+json`, regardless of `Accept`.
+  Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE.
 - [Feed Wallets Rss](/docs/api-reference/feeds/feed-wallets-rss) — `GET /api/v1/feeds/wallets.rss`  
-  Always returns `application/rss+xml`, regardless of `Accept`.
+  Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE.
 - [Feed Watch](/docs/api-reference/feeds/feed-watch) — `GET /api/v1/feeds/watch`  
-  Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`.
+  A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid.
 - [Feed Watch Atom](/docs/api-reference/feeds/feed-watch-atom) — `GET /api/v1/feeds/watch.atom`  
-  Always returns `application/atom+xml`, regardless of `Accept`.
+  A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid.
 - [Feed Watch JSON](/docs/api-reference/feeds/feed-watch-json) — `GET /api/v1/feeds/watch.json`  
-  Always returns `application/feed+json`, regardless of `Accept`.
+  A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid.
 - [Feed Watch Rss](/docs/api-reference/feeds/feed-watch-rss) — `GET /api/v1/feeds/watch.rss`  
-  Always returns `application/rss+xml`, regardless of `Accept`.
+  A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid.

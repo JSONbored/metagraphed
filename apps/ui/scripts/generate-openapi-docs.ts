@@ -25,17 +25,17 @@
 //   route) serves the same spec unwrapped -- verified via a direct fetch
 //   (top-level keys: openapi/info/paths/…, not ok/data/meta) -- and is what
 //   this script and every generated page's `document` prop use instead.
-// - The spec's `summary` field holds full explanatory sentences/paragraphs
-//   on every operation (24-1100 chars) with `description` left empty --
-//   fumadocs-openapi uses `summary` as the page title verbatim (no
+// - fumadocs-openapi uses `summary` as the page title verbatim (no
 //   truncation), and that title is what this app's docs.$.tsx renders as
-//   the sidebar label, breadcrumb, H1, and browser tab. splitOperationSummaries()
-//   below fixes this at the source for every operation, not just the
-//   longest ones (a sidebar mixing short-but-still-sentence-length titles
-//   next to properly-short ones reads as inconsistent): derives a short
-//   Title Case title from the operationId, and moves the original text to
-//   `description` (rendered by <DocsDescription>, right under the H1 --
-//   same layout the 4 hand-written docs pages already use). Applied twice,
+//   the sidebar label, breadcrumb, H1, and browser tab.
+//   splitOperationSummaries() below derives a short Title Case title from
+//   the operationId for every operation, not just the ones with a long
+//   summary -- a sidebar mixing short-but-still-sentence-length titles next
+//   to properly-short ones reads as inconsistent.
+//   The spec USED to hold full paragraphs in `summary` with `description`
+//   empty; metagraphed#11592 moved the prose to `description` where OpenAPI
+//   defines it, so the move below is now a fallback rather than the point.
+//   The title derivation is still the point. Applied twice,
 //   independently, once here (bakes the fix into the generated frontmatter)
 //   and once in src/lib/openapi-source.ts (fumadocs-openapi's own <APIPage/>
 //   internals independently re-derive a title from `operation.summary` at
@@ -117,9 +117,18 @@ function splitOperationSummaries(spec) {
   for (const methods of Object.values(spec.paths ?? {})) {
     for (const op of Object.values(methods)) {
       if (!op || typeof op !== "object" || !op.operationId) continue;
+      // NO EARLY RETURN ON AN ABSENT SUMMARY (metagraphed#11592).
+      //
+      // It used to `continue` when `summary` was empty, which was safe while
+      // the spec put prose in `summary` on every operation. It no longer
+      // does: the contract now emits prose as `description` and a `summary`
+      // only where a short label is written, so 278 of 296 operations have
+      // none -- and skipping them would hand their titles to
+      // fumadocs-openapi's own `idToTitle`, which does not know this repo's
+      // acronyms. The uniform Title Case this function exists to produce is
+      // derived for EVERY operation, exactly as before.
       const summary = op.summary ?? "";
-      if (!summary) continue;
-      if (!op.description) op.description = summary;
+      if (!op.description && summary) op.description = summary;
       op.summary = humanizeOperationId(op.operationId);
     }
   }
