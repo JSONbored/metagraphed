@@ -31,7 +31,7 @@ import {
   DirectoryModeTabs,
   DIRECTORY_MODES,
   type DirectoryModeOption,
-  DirectoryRow,
+  EntityCard,
   type DirectoryMode,
   type ColumnDef,
   type FilterChipItem,
@@ -133,6 +133,7 @@ type SubnetRow = Subnet & {
   // Emission column (and its sort) can read it off the row.
   emission_share?: number;
   alpha_price_tao?: number;
+  alpha_price_change_1d?: number | null;
   total_stake_tao?: number;
   alpha_market_cap_tao?: number;
 };
@@ -235,13 +236,30 @@ export function formatRegisteredOn(days: number | null): string | null {
  * next question is "degraded how?". /api/v1/health has always returned the
  * counts behind the verdict; the row just never showed them.
  */
+/**
+ * Which way a price moved, for colour.
+ *
+ * The dead band is deliberate: a 0.02% tick is noise, and painting it green
+ * tells a reader something moved when nothing did. Anything under a tenth of
+ * a percent reads flat.
+ */
+function priceDirection(change: number | null | undefined): "up" | "down" | "flat" | undefined {
+  if (change == null || !Number.isFinite(change)) return undefined;
+  if (Math.abs(change) < 0.1) return "flat";
+  return change > 0 ? "up" : "down";
+}
+
 export function formatHealthBasis(entry: {
   ok_count?: number;
   surface_count?: number;
 }): string | null {
   const { ok_count: ok, surface_count: total } = entry;
   if (typeof ok !== "number" || typeof total !== "number" || total <= 0) return null;
-  return `${ok}/${total} probed surfaces up`;
+  // "32/34 surfaces", not "32/34 probed surfaces up". It sits beside a health
+  // pill that already says Degraded or OK, so "probed"/"up" restate the thing
+  // the pill is for — and on a card those four extra words were the
+  // difference between one line and two.
+  return `${ok}/${total} surfaces`;
 }
 
 function joinCatalog(
@@ -1245,7 +1263,6 @@ function SubnetsTable({
               value={quickTab}
               onChange={(v: QuickTab) => onQuickTab(v)}
               ariaLabel="Quick filter"
-              className="border-0 bg-transparent"
             />
           </div>
           <QueryBar.Utility className="ml-auto hidden lg:flex">
@@ -1269,7 +1286,6 @@ function SubnetsTable({
                   value={trendWindow}
                   onChange={(v: "7d" | "30d" | "90d") => setTrendWindow(v)}
                   ariaLabel="Trend window for row sparklines"
-                  className="border-0 bg-transparent"
                 />
                 <ColumnCustomizer
                   columns={SUBNET_COLUMNS}
@@ -1432,10 +1448,9 @@ function SubnetsTable({
     ? null
     : browseRows.map((s) => {
         const entry = healthMap[s.netuid];
-        const registered = formatRegisteredOn(subnetAgeDays(s.registered_at_block, s.block));
         const basis = entry ? formatHealthBasis(entry) : null;
-        const interfaces = s.surfaces_count ?? 0;
         const price = readNumber(s, "alpha_price_tao");
+        const change = readNumber(s, "alpha_price_change_1d");
         return (
           <Link
             key={s.netuid}
@@ -1443,7 +1458,11 @@ function SubnetsTable({
             params={{ netuid: s.netuid }}
             className="mg-focus-ring block"
           >
-            <DirectoryRow
+            <EntityCard
+              // The netuid, oversized and faded. Every subnet has one, it is
+              // the only genuinely unique thing about a row at a glance, and
+              // as text it costs nothing to draw.
+              watermark={s.netuid}
               media={
                 <BrandIcon
                   url={s.website}
@@ -1452,28 +1471,31 @@ function SubnetsTable({
                   netuid={s.netuid}
                   name={s.name}
                   fallback={s.netuid}
-                  size={34}
+                  size={22}
                 />
               }
               title={s.name ?? `Subnet ${s.netuid}`}
-              identifier={`SN${s.netuid}`}
-              purpose={subnetPurpose(s)}
-              facts={[
-                <span key="health" className="inline-flex items-center gap-1.5">
+              meta={subnetPurpose(s)}
+              // Two facts, not four. The row carried health, probe basis,
+              // interface count AND a registration date; on a card that wrapped
+              // to a second line and made every card a different height. Health
+              // and reach are what a browser is deciding on — the registration
+              // date is a Research column, and it is the same figure that read
+              // as "this data is hundreds of days old" when it sat inline.
+              state={
+                <span className="inline-flex items-center gap-1.5">
                   <HealthPill state={s.health} />
                   {basis}
-                </span>,
-                interfaces > 0
-                  ? `${formatNumber(interfaces)} public interface${interfaces === 1 ? "" : "s"}`
-                  : "No public interfaces yet",
-                registered,
-              ]}
-              // Price only, deliberately no change figure: the delta is not on
-              // the row — the Research table derives it from a PER-SUBNET
-              // trajectory query, and firing 129 of those to decorate a browse
-              // list is exactly the kind of cost that made these pages slow.
-              // Research is one click away and carries the full trend.
+                </span>
+              }
               value={price != null ? `${price.toFixed(4)} τ` : null}
+              // The direction comes from /economics, which the row is already
+              // joined against — no per-subnet trajectory query, which is what
+              // made a delta too expensive to show here before. A missing
+              // change stays undefined rather than becoming "flat": not
+              // knowing which way a price moved is not the same answer as it
+              // not having moved.
+              direction={priceDirection(change)}
             />
           </Link>
         );
@@ -1485,6 +1507,9 @@ function SubnetsTable({
       <ListShell
         presentation="canvas"
         responsiveAt={advanced ? "md" : "always"}
+        // Browse lays its entries out as a grid; the research/compare modes
+        // keep the stacked mobile cards that sit beneath a real table.
+        cardsClassName={advanced ? undefined : "mg-entity-card-grid"}
         filters={filters}
         isEmpty={rows.length === 0}
         isStale={isFetching}

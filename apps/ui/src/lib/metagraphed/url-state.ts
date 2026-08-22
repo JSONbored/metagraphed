@@ -136,6 +136,8 @@ export function joinEconomics<
     registration_allowed?: boolean;
     emission_share?: number;
     alpha_price_tao?: number;
+    /** Percent change over the last day, already computed upstream. */
+    alpha_price_change_1d?: number | null;
     total_stake_tao?: number;
     alpha_market_cap_tao?: number;
   },
@@ -149,6 +151,7 @@ export function joinEconomics<
       registration_allowed?: boolean;
       emission_share?: number;
       alpha_price_tao?: number;
+      alpha_price_change_1d?: number | null;
       total_stake_tao?: number;
       alpha_market_cap_tao?: number;
     })
@@ -162,6 +165,9 @@ export function joinEconomics<
           registration_allowed: e.registration_allowed,
           emission_share: e.emission_share,
           alpha_price_tao: e.alpha_price_tao,
+          // Carried through so a price can be read as up/down/flat without a
+          // per-subnet trajectory query. /economics already computes it.
+          alpha_price_change_1d: e.alpha_price_change_1d,
           total_stake_tao: e.total_stake_tao,
           alpha_market_cap_tao: e.alpha_market_cap_tao,
         }

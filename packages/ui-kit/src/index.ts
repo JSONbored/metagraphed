@@ -161,6 +161,10 @@ export {
   type CompositionSlice,
 } from "@/components/metagraphed/composition-breakdown";
 export {
+  EntityCard,
+  EntityCardGrid,
+} from "@/components/metagraphed/entity-card";
+export {
   MeasureBand,
   type Measure,
 } from "@/components/metagraphed/measure-band";

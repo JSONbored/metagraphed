@@ -62,13 +62,19 @@ function QueryBarRoot({
     <div
       role="search"
       aria-label={ariaLabel}
+      // One rule, not a box. This was a rounded, glass-backed, ring-focused
+      // panel wrapping a field and a row of chips — four edges around controls
+      // that already sit inside a module with its own edge, which is most of
+      // what made these toolbars read as clutter. The reference draws its
+      // filters with no chrome whatsoever; a search field still needs to look
+      // like somewhere you can type, so it keeps exactly one hairline and
+      // lights that hairline on focus.
       className={classNames(
         "mg-query-shell",
-        "flex w-full items-center gap-1 min-w-0",
-        "h-10 rounded-md border border-border mg-glass-soft",
-        "px-1 transition-colors",
-        "focus-within:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
-        "focus-within:ring-2 focus-within:ring-ring/60",
+        "flex w-full items-center gap-4 min-w-0",
+        "h-10 border-b border-border",
+        "transition-colors",
+        "focus-within:border-[color-mix(in_oklab,var(--accent)_55%,var(--border))]",
         className,
       )}
     >
@@ -187,7 +193,9 @@ function QueryBarSearch({
       ) : shortcut ? (
         <kbd
           aria-hidden
-          className="pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 mg-type-data-sm text-ink-muted"
+          // No border, no fill. It is a hint, and a hint drawn as a chip on a
+          // bar with no other chips becomes the loudest thing on the row.
+          className="pointer-events-none hidden sm:inline-flex items-center mg-type-data-sm text-ink-subtle"
         >
           /
         </kbd>
@@ -201,12 +209,7 @@ function QueryBarSearch({
 /* -------------------------------------------------------------------------- */
 
 function QueryBarDivider() {
-  return (
-    <span
-      aria-hidden
-      className="mx-0.5 hidden sm:block h-5 w-px shrink-0 bg-border"
-    />
-  );
+  return <span aria-hidden className="hidden" />;
 }
 
 /* -------------------------------------------------------------------------- */

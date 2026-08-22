@@ -54,31 +54,38 @@ test.describe("#11520 subnet discovery modes", () => {
     expect(new URL(page.url()).searchParams.get("mode")).toBeNull();
   });
 
-  test("renders a directory of rows, not a spreadsheet", async ({ page }) => {
+  test("renders a directory of cards, not a spreadsheet", async ({ page }) => {
     await openSubnets(page);
 
     // Browse is a listing at every width — the table belongs to Research.
-    expect(await page.locator(".mg-directory-row").count()).toBeGreaterThan(5);
+    // Cards, not full-width rows: a row spent 1,090px to carry five short
+    // facts, and 129 of them stacked to 8,256px of scrolling.
+    expect(await page.locator(".mg-entity-card").count()).toBeGreaterThan(5);
     await expect(page.locator("table thead")).toHaveCount(0);
+
+    // And they are laid out as a grid, which is the whole point.
+    const columns = await page
+      .locator(".mg-entity-card-grid")
+      .evaluate((n) => getComputedStyle(n).gridTemplateColumns.split(/\s+/).length);
+    expect(columns).toBeGreaterThan(1);
   });
 
-  test("makes every row explain itself", async ({ page }) => {
+  test("makes every card explain itself", async ({ page }) => {
     await openSubnets(page);
-    const row = page.locator(".mg-directory-row").first();
-    const text = (await row.innerText()).replace(/\s+/g, " ");
+    const card = page.locator(".mg-entity-card").first();
+    const text = (await card.innerText()).replace(/\s+/g, " ");
 
     // A real sentence saying what this is.
-    await expect(row.locator(".mg-directory-row-purpose")).toHaveCount(1);
-    const purpose = (await row.locator(".mg-directory-row-purpose").innerText()).trim();
+    await expect(card.locator(".mg-entity-card-meta")).toHaveCount(1);
+    const purpose = (await card.locator(".mg-entity-card-meta").innerText()).trim();
     expect(purpose.length).toBeGreaterThan(8);
     expect(purpose).not.toBe("—");
 
-    // A health verdict a reader can check, not a bare adjective.
-    expect(text).toMatch(/\d+\/\d+ probed surfaces up/);
-    // A labelled count, not an unscaled bar.
-    expect(text).toMatch(/(\d[\d,]* public interfaces?|No public interfaces yet)/);
-    // A date, not "N days old" — which read as stale data next to a live price.
-    expect(text).toMatch(/Registered [A-Z][a-z]{2} \d{4}/);
+    // A health verdict a reader can check, not a bare adjective. The wording
+    // lost "probed … up": it sat beside a pill already reading OK/Degraded,
+    // and those words were the difference between one line and two on a card.
+    expect(text).toMatch(/\d+\/\d+ surfaces/);
+    // Never the phrasing that read as stale data beside a live price.
     expect(text).not.toMatch(/days old/);
   });
 
@@ -101,8 +108,11 @@ test.describe("#11520 subnet discovery modes", () => {
     expect(researchHeaders).toContain("Emission");
     expect(researchHeaders).toContain("Total stake");
     expect(researchHeaders.length).toBeGreaterThan(5);
-    // Research is the measurement view: a table, and no directory rows.
-    await expect(page.locator(".mg-directory-row")).toHaveCount(0);
+    // Research is the measurement view: a table, and none of Browse's cards.
+    // Asserted against the class Browse actually renders — the old assertion
+    // named `.mg-directory-row`, which nothing renders any more, so it would
+    // now pass on an empty page as readily as on a correct one.
+    await expect(page.locator(".mg-entity-card")).toHaveCount(0);
   });
 
   test("keeps the mode in the URL so a view can be shared", async ({ page }) => {
@@ -144,9 +154,9 @@ test.describe("#11520 subnet discovery modes", () => {
     // A card is the phone's primary row, so it must not be the terse version
     // of the page — that is how "mobile-first" quietly becomes "mobile-less".
     await openSubnets(page, "", 375, 812);
-    expect(await page.locator(".mg-directory-row").count()).toBeGreaterThan(3);
+    expect(await page.locator(".mg-entity-card").count()).toBeGreaterThan(3);
     expect(
-      await page.locator(".mg-directory-row .mg-directory-row-purpose").count(),
+      await page.locator(".mg-entity-card .mg-entity-card-meta").count(),
     ).toBeGreaterThan(3);
   });
 
@@ -195,7 +205,7 @@ test.describe("#11520 subnet discovery modes", () => {
       .poll(
         async () => {
           await page.getByRole("tab", { name: "Browse" }).click();
-          return page.locator(".mg-directory-row").count();
+          return page.locator(".mg-entity-card").count();
         },
         { timeout: 15_000 },
       )

@@ -60,6 +60,7 @@ const RESPONSIVE_CLASSES = {
 export function ListShell({
   filters,
   cards,
+  cardsClassName,
   table,
   footer,
   empty,
@@ -72,6 +73,13 @@ export function ListShell({
 }: {
   filters: ReactNode;
   cards?: ReactNode;
+  /**
+   * Extra classes for the card container, so a consumer can lay its entries
+   * out as a grid rather than a stack. The responsive class still applies —
+   * this composes with it rather than replacing it, because that class is
+   * what decides whether the cards are visible at this width at all.
+   */
+  cardsClassName?: string;
   table: ReactNode;
   footer?: ReactNode;
   empty?: ReactNode;
@@ -174,7 +182,11 @@ export function ListShell({
         <div data-mg-list-empty="">{empty}</div>
       ) : (
         <div className={isStale ? "opacity-70 transition-opacity" : undefined}>
-          {cards ? <div className={responsive.cards}>{cards}</div> : null}
+          {cards ? (
+            <div className={classNames(responsive.cards, cardsClassName)}>
+              {cards}
+            </div>
+          ) : null}
           <div className={cards ? responsive.table : undefined}>
             <div className={tableCard}>
               {/* ONE scroll container, both axes. These used to be two

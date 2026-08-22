@@ -574,8 +574,51 @@ function SegmentedToggle({
   value,
   onChange,
   ariaLabel,
-  className
+  className,
+  variant = "bare"
 }) {
+  const buttons = options.map(
+    ({ value: v, label, Icon, ariaLabel: optionAriaLabel, title }) => {
+      const active = v === value;
+      return /* @__PURE__ */ jsxRuntime.jsxs(
+        "button",
+        {
+          type: "button",
+          role: "tab",
+          "aria-selected": active,
+          "aria-label": optionAriaLabel ?? label,
+          title: title ?? label,
+          onClick: () => onChange(v),
+          className: classNames(
+            "mg-focus-ring inline-flex items-center gap-1.5 transition-colors",
+            variant === "bare" ? classNames(
+              "mg-segmented-bare-option",
+              active ? "text-ink-strong" : "text-ink-muted"
+            ) : classNames(
+              "min-h-8 rounded px-2 py-1 mg-type-caption font-medium",
+              active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
+            )
+          ),
+          children: [
+            Icon ? /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-3.5" }) : null,
+            /* @__PURE__ */ jsxRuntime.jsx("span", { className: Icon ? "hidden sm:inline" : void 0, children: label })
+          ]
+        },
+        v
+      );
+    }
+  );
+  if (variant === "bare") {
+    return /* @__PURE__ */ jsxRuntime.jsx(
+      "div",
+      {
+        role: "tablist",
+        "aria-label": ariaLabel,
+        className: classNames("mg-segmented-bare", className),
+        children: buttons
+      }
+    );
+  }
   return /* @__PURE__ */ jsxRuntime.jsx(
     Panel,
     {
@@ -585,31 +628,7 @@ function SegmentedToggle({
       "aria-label": ariaLabel,
       className,
       bodyClassName: "inline-flex items-center p-0.5",
-      children: options.map(
-        ({ value: v, label, Icon, ariaLabel: optionAriaLabel, title }) => {
-          const active = v === value;
-          return /* @__PURE__ */ jsxRuntime.jsxs(
-            "button",
-            {
-              type: "button",
-              role: "tab",
-              "aria-selected": active,
-              "aria-label": optionAriaLabel ?? label,
-              title: title ?? label,
-              onClick: () => onChange(v),
-              className: classNames(
-                "inline-flex items-center gap-1.5 rounded px-2 py-1 mg-type-caption font-medium transition-colors min-h-8",
-                active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
-              ),
-              children: [
-                Icon ? /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-3.5" }) : null,
-                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "hidden sm:inline", children: label })
-              ]
-            },
-            v
-          );
-        }
-      )
+      children: buttons
     }
   );
 }
@@ -2056,6 +2075,7 @@ var RESPONSIVE_CLASSES = {
 function ListShell({
   filters,
   cards,
+  cardsClassName,
   table,
   footer,
   empty,
@@ -2116,7 +2136,7 @@ function ListShell({
       // attribute is what makes that state observable.
       /* @__PURE__ */ jsxRuntime.jsx("div", { "data-mg-list-empty": "", children: empty })
     ) : /* @__PURE__ */ jsxRuntime.jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
-      cards ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: responsive.cards, children: cards }) : null,
+      cards ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: classNames(responsive.cards, cardsClassName), children: cards }) : null,
       /* @__PURE__ */ jsxRuntime.jsx("div", { className: cards ? responsive.table : void 0, children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: tableCard, children: [
         /* @__PURE__ */ jsxRuntime.jsx("div", { ref: viewportRef, className: viewportClass, children: table }),
         footer
@@ -3113,6 +3133,43 @@ function CompositionBreakdown({
 function formatShare(share) {
   const percentage = share * 100;
   return percentage >= 1 ? `${percentage.toFixed(1)}%` : `${percentage.toFixed(2)}%`;
+}
+function EntityCard({
+  watermark,
+  media,
+  title,
+  meta,
+  state,
+  value,
+  direction,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("article", { className: classNames("mg-entity-card", className), children: [
+    watermark ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-entity-card-watermark", "aria-hidden": "true", children: watermark }) : null,
+    /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-entity-card-head", children: [
+      media ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-entity-card-media", children: media }) : null,
+      /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-entity-card-title", children: title })
+    ] }),
+    meta ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-entity-card-meta", children: meta }) : null,
+    state || value ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-entity-card-foot", children: [
+      /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-entity-card-state", children: state }),
+      value ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-entity-card-value", "data-direction": direction, children: value }) : null
+    ] }) : null
+  ] });
+}
+function EntityCardGrid({
+  children,
+  className,
+  ariaLabel
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "div",
+    {
+      className: classNames("mg-entity-card-grid", className),
+      "aria-label": ariaLabel,
+      children
+    }
+  );
 }
 function MeasureBand({
   measures,
@@ -6700,14 +6757,14 @@ function FilterSheet({
         "aria-expanded": open,
         "aria-haspopup": "dialog",
         className: classNames(
-          "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1",
-          "mg-type-label uppercase transition-colors",
-          activeCount > 0 ? "border-accent/40 bg-accent/10 text-accent" : "border-border bg-card text-ink-strong hover:border-accent/40"
+          "mg-focus-ring inline-flex min-h-9 items-center gap-1.5",
+          "mg-type-caption font-medium transition-colors",
+          activeCount > 0 ? "text-accent-text" : "text-ink-muted hover:text-ink-strong"
         ),
         children: [
           /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Filter, { className: "size-3.5", "aria-hidden": true }),
           label,
-          activeCount > 0 ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "ml-0.5 inline-flex size-4 items-center justify-center rounded-full bg-accent text-[9px] text-accent-foreground", children: activeCount }) : null
+          activeCount > 0 ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-type-micro tabular-nums", children: activeCount }) : null
         ]
       }
     ),
@@ -7053,11 +7110,10 @@ function QueryBarRoot({
       "aria-label": ariaLabel,
       className: classNames(
         "mg-query-shell",
-        "flex w-full items-center gap-1 min-w-0",
-        "h-10 rounded-md border border-border mg-glass-soft",
-        "px-1 transition-colors",
-        "focus-within:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
-        "focus-within:ring-2 focus-within:ring-ring/60",
+        "flex w-full items-center gap-4 min-w-0",
+        "h-10 border-b border-border",
+        "transition-colors",
+        "focus-within:border-[color-mix(in_oklab,var(--accent)_55%,var(--border))]",
         className
       ),
       children
@@ -7150,20 +7206,14 @@ function QueryBarSearch({
       "kbd",
       {
         "aria-hidden": true,
-        className: "pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 mg-type-data-sm text-ink-muted",
+        className: "pointer-events-none hidden sm:inline-flex items-center mg-type-data-sm text-ink-subtle",
         children: "/"
       }
     ) : null
   ] });
 }
 function QueryBarDivider() {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "span",
-    {
-      "aria-hidden": true,
-      className: "mx-0.5 hidden sm:block h-5 w-px shrink-0 bg-border"
-    }
-  );
+  return /* @__PURE__ */ jsxRuntime.jsx("span", { "aria-hidden": true, className: "hidden" });
 }
 function QueryBarUtility({
   children,
@@ -7723,6 +7773,8 @@ exports.DotRow = DotRow;
 exports.DownloadCsvButton = DownloadCsvButton;
 exports.EligibilityChip = EligibilityChip;
 exports.EmptyState = EmptyState;
+exports.EntityCard = EntityCard;
+exports.EntityCardGrid = EntityCardGrid;
 exports.EntityHero = EntityHero;
 exports.ExternalLink = ExternalLink;
 exports.FilterChipRow = FilterChipRow;

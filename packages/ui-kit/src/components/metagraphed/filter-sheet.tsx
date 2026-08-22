@@ -49,20 +49,24 @@ export function FilterSheet({
         onClick={() => setOpen(true)}
         aria-expanded={open}
         aria-haspopup="dialog"
+        // Text, not a button-shaped object. It sits at the end of a filter row
+        // whose other controls now carry no chrome at all, so a bordered,
+        // filled, uppercased lozenge was the last box standing and drew far
+        // more attention than the drawer behind it deserves. The active state
+        // is carried by the count and by full ink, which is the same way every
+        // other control on this row says "on".
         className={classNames(
-          "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1",
-          "mg-type-label uppercase transition-colors",
+          "mg-focus-ring inline-flex min-h-9 items-center gap-1.5",
+          "mg-type-caption font-medium transition-colors",
           activeCount > 0
-            ? "border-accent/40 bg-accent/10 text-accent"
-            : "border-border bg-card text-ink-strong hover:border-accent/40",
+            ? "text-accent-text"
+            : "text-ink-muted hover:text-ink-strong",
         )}
       >
         <Filter className="size-3.5" aria-hidden />
         {label}
         {activeCount > 0 ? (
-          <span className="ml-0.5 inline-flex size-4 items-center justify-center rounded-full bg-accent text-[9px] text-accent-foreground">
-            {activeCount}
-          </span>
+          <span className="mg-type-micro tabular-nums">{activeCount}</span>
         ) : null}
       </button>
 

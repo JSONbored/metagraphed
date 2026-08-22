@@ -8,6 +8,7 @@ export { CompositionBreakdown, type CompositionSlice } from "@jsonbored/ui-kit";
 export { MeasureBand, type Measure } from "@jsonbored/ui-kit";
 export { RankedRailList, type RankedRailItem } from "@jsonbored/ui-kit";
 export { DirectoryRow } from "@jsonbored/ui-kit";
+export { EntityCard, EntityCardGrid } from "@jsonbored/ui-kit";
 export {
   DIRECTORY_MODES,
   DirectoryModeTabs,

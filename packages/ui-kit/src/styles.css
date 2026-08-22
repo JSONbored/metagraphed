@@ -4974,3 +4974,166 @@ html[data-density="compact"] .bg-card > table td {
     transition: none;
   }
 }
+
+/* ============================================================
+ * Entity card
+ *
+ * The directory entry as a card. Geometry measured from the reference's
+ * `leader-card`: 16px padding, 8px grid gap, a 1px hairline border, a raised
+ * surface lit by a ~4% top-down gradient, and square corners.
+ *
+ * Three zones with real space between them. The calm comes from how little is
+ * in the card, not from how the contents are styled — so the rules below are
+ * mostly about giving four elements room rather than fitting nine.
+ * ============================================================ */
+.mg-entity-card-grid {
+  display: grid;
+  /* auto-fill with a floor, not a column count. One rule covers 375px through
+     1280px; three breakpoint variants would have been three things to keep in
+     agreement. */
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  /* Equal rows. Without this a one-line purpose sat in a shorter card than a
+     two-line one and the grid went ragged, which loses the alignment that is
+     most of what the card format buys. */
+  grid-auto-rows: 1fr;
+  gap: var(--mg-space-xs);
+}
+.mg-entity-card {
+  position: relative;
+  display: grid;
+  /* The footer is pinned to the bottom by the middle row taking the slack, so
+     every card's two figures sit on one line across the whole grid. */
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  min-height: 9.5rem;
+  gap: var(--mg-space-sm);
+  padding: var(--mg-space-md);
+  border: 1px solid var(--border);
+  /* Square. The reference's cards are the one element on its page carrying no
+     radius, and at three across the shared vertical edges read as a grid
+     rather than as a row of separate lozenges. */
+  border-radius: 0;
+  background:
+    linear-gradient(
+      color-mix(in oklab, var(--ink-strong) 4%, transparent),
+      transparent 60%
+    ),
+    color-mix(in oklab, var(--ink-strong) 3%, transparent);
+}
+.mg-entity-card-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-xs);
+  min-width: 0;
+}
+.mg-entity-card-media {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+.mg-entity-card-title {
+  overflow: hidden;
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption-lg);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-entity-card-watermark {
+  position: absolute;
+  top: -0.55rem;
+  right: 0.35rem;
+  z-index: 0;
+  color: color-mix(in oklab, var(--ink-strong) 8%, transparent);
+  font-family: var(--font-mono);
+  font-size: 3.25rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: var(--mg-tracking-display);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+.mg-entity-card-meta {
+  position: relative;
+  z-index: 1;
+  /* Two lines, clamped. A card is a fixed shape; letting the purpose run turns
+     the grid into ragged rows and loses the one thing the format bought. */
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption);
+  line-height: 1.5;
+}
+.mg-entity-card-foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mg-space-sm);
+  min-width: 0;
+}
+.mg-entity-card-state {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-entity-card-value {
+  flex: 0 0 auto;
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Direction, not decoration. Absent `data-direction` stays neutral on purpose:
+   "we do not know which way this moved" and "this did not move" are different
+   answers, and painting the first one grey-as-flat states the second. */
+.mg-entity-card-value[data-direction="up"] {
+  color: var(--health-ok, var(--accent-text));
+}
+.mg-entity-card-value[data-direction="down"] {
+  color: var(--health-down);
+}
+a:hover > .mg-entity-card,
+a:focus-visible > .mg-entity-card {
+  border-color: color-mix(in oklab, var(--ink-strong) 24%, transparent);
+}
+
+/* Bare segmented toggle — the reference's filter control, measured: no
+   background, no border, no radius, no padding; colour alone carries state,
+   and the only motion is a 0.12s colour fade. */
+.mg-segmented-bare {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mg-space-md);
+  min-width: 0;
+}
+.mg-segmented-bare-option {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption);
+  font-weight: 500;
+  transition: color 0.12s ease;
+}
+.mg-segmented-bare-option:hover {
+  color: var(--ink-strong);
+}
