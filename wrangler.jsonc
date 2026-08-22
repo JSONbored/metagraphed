@@ -7,7 +7,15 @@
   // workers/api.ts directly and are unaffected by this).
   "main": "workers/api.entry.ts",
   "compatibility_date": "2026-06-06",
-  "compatibility_flags": ["nodejs_compat"],
+  // `global_fetch_strictly_public` (#11569): required before the OAuth provider
+  // will advertise Client ID Metadata Document support, and required for a
+  // good reason -- honouring a CIMD means fetching a URL the CALLER chose, and
+  // without this flag that is an SSRF primitive aimed at our own internal
+  // surfaces. Safe here because every global fetch this Worker makes already
+  // targets a public host (subnet surfaces, RPC endpoints, GitHub); every
+  // internal call goes over the DATA_API service binding, which the flag does
+  // not touch.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "minify": true,
   // Cloudflare's own per-deploy version UUID (metagraphed#7766: no longer
   // read for Sentry release tagging -- Sentry fully removed -- but still
