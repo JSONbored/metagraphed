@@ -1,5 +1,6 @@
 import { BarMini } from "@jsonbored/ui-kit";
-import { ChartCard } from "@/components/metagraphed/primitives";
+import { Panel } from "@/components/metagraphed/primitives";
+import { EmptyState } from "@/components/metagraphed/states";
 import type { ChainConcentration } from "@/lib/metagraphed/types";
 
 const formatShare = (v: number) => `${(v * 100).toFixed(1)}%`;
@@ -20,21 +21,23 @@ export function ChainConcentrationSnapshot({
   const hasData = stakeShare != null || emissionShare != null;
 
   return (
-    <ChartCard
+    <Panel
       title="Stake & emission concentration"
       caption="Current snapshot, not a trend — the network-wide concentration endpoint has no historical window."
-      height={120}
-      empty={!hasData}
     >
-      <BarMini
-        data={[
-          { label: "Stake", value: stakeShare ?? 0 },
-          { label: "Emission", value: emissionShare ?? 0 },
-        ]}
-        max={1}
-        formatValue={formatShare}
-        ariaLabel="Top-10% holder share of stake and emission"
-      />
-    </ChartCard>
+      {!hasData ? (
+        <EmptyState title="Not enough data yet" />
+      ) : (
+        <BarMini
+          data={[
+            { label: "Stake", value: stakeShare ?? 0 },
+            { label: "Emission", value: emissionShare ?? 0 },
+          ]}
+          max={1}
+          formatValue={formatShare}
+          ariaLabel="Top-10% holder share of stake and emission"
+        />
+      )}
+    </Panel>
   );
 }

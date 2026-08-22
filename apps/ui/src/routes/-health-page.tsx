@@ -19,12 +19,12 @@ import {
   AnimatedNumber,
   Donut,
   DonutLegend,
-  Sparkline,
   AnalyticsSection,
   EntityHero,
   FactSentence,
   FactStrip,
   FactCell,
+  TrendDelta,
 } from "@jsonbored/ui-kit";
 import { SubnetHealthMatrix } from "@/components/metagraphed/subnet-health-matrix";
 import { StatusMosaic } from "@/components/metagraphed/analytics/status-mosaic";
@@ -404,10 +404,10 @@ function AutoRefreshControl({
 function StatusBoard({ interval }: { interval: number | false }) {
   const { data: hRes } = useSuspenseQuery({ ...healthQuery(), refetchInterval: interval });
   const { data: fRes } = useSuspenseQuery({ ...freshnessQuery(), refetchInterval: interval });
-  // `stale` and `sourceAges` below both read the wall clock during render, so
-  // the server pass and the client's first pass disagree by however long the
-  // response spent in flight (#8241). Hold both at their pre-hydration value
-  // until hydration completes, matching useHydrated's documented use.
+  // `stale` reads the wall clock during render, so the server pass and the
+  // client's first pass disagree by however long the response spent in flight
+  // (#8241). Hold it at its pre-hydration value until hydration completes,
+  // matching useHydrated's documented use.
   const hydrated = useHydrated();
   const h = hRes.data;
   const f = fRes.data;
@@ -419,12 +419,6 @@ function StatusBoard({ interval }: { interval: number | false }) {
     { label: "Unknown", value: h?.unknown ?? 0, color: "var(--health-unknown)" },
   ].filter((s) => s.value > 0);
   const uptimePct = h?.uptime_24h != null ? (h.uptime_24h * 100).toFixed(2) + "%" : "—";
-
-  const sourceAges = hydrated
-    ? ((f?.sources ?? [])
-        .map((s) => (s.last_seen ? (Date.now() - new Date(s.last_seen).getTime()) / 1000 : null))
-        .filter((v): v is number => typeof v === "number") ?? [])
-    : [];
 
   return (
     <div className="space-y-4">
@@ -456,15 +450,7 @@ function StatusBoard({ interval }: { interval: number | false }) {
         </BoardCard>
 
         <BoardCard title="Source freshness">
-          <Sparkline
-            values={sourceAges}
-            width={320}
-            height={64}
-            color="var(--accent)"
-            ariaLabel="Source freshness"
-            className="w-full"
-          />
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <Cell label="Avg age" num={f?.avg_age_seconds} format={(n) => humaniseSeconds(n)} />
             <Cell label="Max age" num={f?.max_age_seconds} format={(n) => humaniseSeconds(n)} />
             <Cell label="Stale" num={f?.stale_count} />
@@ -640,7 +626,7 @@ function Incidents({ interval }: { interval: number | false }) {
     return out;
   }, [filtered]);
 
-  // 14-day incident sparkline (count of incidents per day, oldest first).
+  // 14-day incident trend (count of incidents per day, oldest first).
   const incidentsByDay = useMemo(() => {
     if (!hydrated) return [];
     const buckets = new Map<string, number>();
@@ -697,14 +683,7 @@ function Incidents({ interval }: { interval: number | false }) {
             {rows.length}
           </div>
         </div>
-        <Sparkline
-          values={incidentsByDay}
-          width={260}
-          height={44}
-          color="var(--health-down)"
-          ariaLabel="Incidents over time"
-          className="ml-auto"
-        />
+        <TrendDelta values={incidentsByDay} label="Incidents per day, 14d" className="ml-auto" />
       </Panel>
 
       <div className="flex flex-wrap items-center gap-1.5 text-11">

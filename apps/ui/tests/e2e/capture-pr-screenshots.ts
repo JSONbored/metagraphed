@@ -298,8 +298,13 @@ async function scrollToSection(page, sectionId) {
     page.evaluate((id) => {
       const section = document.getElementById(id);
       if (!section) return false;
+      // Only a sticky/fixed header takes viewport room at the target; a
+      // static header that has scrolled away has a hugely negative bottom,
+      // which used to push the target past the end of the page (#11608).
       const header = document.querySelector("header");
-      const clearance = (header?.getBoundingClientRect().bottom ?? 0) + 12;
+      const headerStyle = header ? getComputedStyle(header).position : "static";
+      const sticky = headerStyle === "sticky" || headerStyle === "fixed";
+      const clearance = (sticky ? header!.getBoundingClientRect().height : 0) + 12;
       const top = section.getBoundingClientRect().top + window.scrollY - clearance;
       window.scrollTo({ top: Math.max(0, top), behavior: "instant" });
       return true;

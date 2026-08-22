@@ -18,7 +18,7 @@ import {
   ClaudeIcon,
   OpenAIIcon,
   ExternalLink,
-  Sparkline,
+  TrendDelta,
 } from "@jsonbored/ui-kit";
 import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";
 import { MoversBand } from "@/components/metagraphed/movers-band";
@@ -746,13 +746,7 @@ function PerfCard({
         </div>
         {hasSeries ? (
           <div className="mt-4">
-            <Sparkline
-              values={series}
-              width={520}
-              height={56}
-              color={accent ? "var(--accent)" : "var(--ink-strong)"}
-              ariaLabel={label}
-            />
+            <TrendDelta values={series} label={`${label} trend`} />
           </div>
         ) : null}
       </div>

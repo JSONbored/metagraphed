@@ -7,7 +7,7 @@ import {
   subnetStakeTransfersQuery,
   subnetBurnHistoryQuery,
 } from "@/lib/metagraphed/queries";
-import { type SparklinePoint, FactCell } from "@jsonbored/ui-kit";
+import { FactCell } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { stakeMovesTileModel } from "@/lib/metagraphed/stake-moves-tile";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -27,7 +27,7 @@ function Notice({ children }: { children: string }) {
 // 30-day window, from the already-shipped subnetStakeMovesQuery. The endpoint
 // returns a flat window aggregate (count / distinct movers / avg) rather than a
 // series, so — per the issue — it renders as a single FactCell using the
-// MiniStack + SparkLegend single-snapshot idiom instead of a literal chart. The
+// MiniStack + Provenance single-snapshot idiom instead of a literal chart. The
 // MiniStack splits the total into unique movers vs repeat moves so the lone
 // aggregate still reads as a composition.
 function StakeMovesTile({ netuid }: { netuid: number }) {
@@ -48,7 +48,7 @@ function StakeMovesTile({ netuid }: { netuid: number }) {
 // already-shipped subnetStakeTransfersQuery. Like the sibling stake-moves tile,
 // the endpoint returns a flat window aggregate (count / distinct senders / avg)
 // rather than a series, so it renders as a single FactCell using the MiniStack +
-// SparkLegend single-snapshot idiom. The MiniStack splits the total into unique
+// Provenance single-snapshot idiom. The MiniStack splits the total into unique
 // senders vs repeat transfers so the lone aggregate still reads as a composition.
 function StakeTransfersTile({ netuid }: { netuid: number }) {
   const { data: res, isPending, isError } = useQuery(subnetStakeTransfersQuery(netuid));
@@ -134,7 +134,7 @@ function RegistrationTile({
 }) {
   const { data: res } = useQuery(subnetBurnHistoryQuery(netuid, "7d"));
   const card = res?.data;
-  const points: SparklinePoint[] = (card?.points ?? []).map((p) => ({
+  const points: Array<{ t: string; v: number }> = (card?.points ?? []).map((p) => ({
     t: p.observed_at,
     v: p.burn_tao,
   }));

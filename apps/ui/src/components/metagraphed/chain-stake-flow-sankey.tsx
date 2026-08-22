@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { SankeyMini } from "@jsonbored/ui-kit";
-import { ChartCard } from "@/components/metagraphed/primitives";
+import { Panel } from "@/components/metagraphed/primitives";
+import { EmptyState } from "@/components/metagraphed/states";
 import { buildStakeFlowSankeyData } from "@/lib/metagraphed/chain-analytics";
 import { formatTao } from "@/lib/metagraphed/format";
 import type { ChainStakeFlow, GlobalValidators } from "@/lib/metagraphed/types";
@@ -67,25 +68,26 @@ export function ChainStakeFlowSankey({
   const empty = shownNetuids.length === 0;
 
   return (
-    <ChartCard
+    <Panel
       title="Stake flow"
       caption={`Root → top ${shownNetuids.length || 0} subnets by ${window} stake movement → top validators' current stake in those subnets. The two hops are different kinds of number — flow on the left, current holdings on the right.`}
-      height={isMobile ? 420 : 320}
-      empty={empty}
-      emptyLabel="No stake movement in this window"
     >
-      <SankeyMini
-        nodes={nodes}
-        links={links}
-        orientation={isMobile ? "vertical" : "horizontal"}
-        columnExtent={isMobile ? 380 : 720}
-        stackExtent={isMobile ? 340 : 300}
-        formatValue={(v) => formatTao(v)}
-        onNodeSelect={(nodeId) => {
-          const target = resolveSankeyNode(nodeId);
-          if (target) navigate({ to: target.to, params: target.params });
-        }}
-      />
-    </ChartCard>
+      {empty ? (
+        <EmptyState title="No stake movement in this window" />
+      ) : (
+        <SankeyMini
+          nodes={nodes}
+          links={links}
+          orientation={isMobile ? "vertical" : "horizontal"}
+          columnExtent={isMobile ? 380 : 720}
+          stackExtent={isMobile ? 340 : 300}
+          formatValue={(v) => formatTao(v)}
+          onNodeSelect={(nodeId) => {
+            const target = resolveSankeyNode(nodeId);
+            if (target) navigate({ to: target.to, params: target.params });
+          }}
+        />
+      )}
+    </Panel>
   );
 }

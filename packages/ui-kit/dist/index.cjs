@@ -1763,7 +1763,7 @@ function useIsActive(key) {
   return useActiveEntity().active?.key === key;
 }
 var MARKS_SELECTOR = "[data-marks]";
-var MARK_SELECTOR = "[data-entity]";
+var MARK_SELECTOR = '[data-entity][role="button"]';
 function siblingsOf(el) {
   const group = el.closest(MARKS_SELECTOR);
   if (!group) return [el];
@@ -1945,11 +1945,13 @@ function ChartTooltip({
           /* @__PURE__ */ jsxRuntime.jsx("strong", { children: data.title }),
           data.total ? /* @__PURE__ */ jsxRuntime.jsx("span", { children: data.total }) : null
         ] }),
+        data.rows && data.rows.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-chart-tooltip-divider" }) : null,
         data.rows?.map((row) => /* @__PURE__ */ jsxRuntime.jsxs(
           "div",
           {
             className: "mg-chart-tooltip-row",
             "data-current": row.key === active?.key ? "true" : void 0,
+            "data-muted": active && data.rows?.some((r) => r.key === active.key) && row.key !== active.key ? "true" : void 0,
             children: [
               /* @__PURE__ */ jsxRuntime.jsxs("span", { children: [
                 row.swatch ? /* @__PURE__ */ jsxRuntime.jsx(
@@ -1960,9 +1962,9 @@ function ChartTooltip({
                     "aria-hidden": true
                   }
                 ) : null,
-                row.label
+                /* @__PURE__ */ jsxRuntime.jsx("span", { children: row.label })
               ] }),
-              /* @__PURE__ */ jsxRuntime.jsx("span", { children: row.value })
+              /* @__PURE__ */ jsxRuntime.jsx("b", { children: row.value })
             ]
           },
           row.key
@@ -2027,6 +2029,43 @@ function RawCode({
       }
     )
   ] });
+}
+function provenanceSentence({
+  source,
+  windowLabel,
+  updatedAt,
+  staleness
+}) {
+  const fresh = formatFreshness(updatedAt, windowLabel);
+  const freshAbs = formatFreshnessAbsolute(updatedAt);
+  return [
+    source.replace(/\.?$/, "."),
+    staleness ? `Staleness: ${staleness.replace(/\.?$/, ".")}` : null,
+    fresh || freshAbs ? `${fresh ?? ""}${freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""}.` : null
+  ].filter(Boolean).join(" ");
+}
+function Provenance({
+  children,
+  metric,
+  source,
+  windowLabel,
+  updatedAt,
+  staleness
+}) {
+  const term = windowLabel ? `${metric} \xB7 ${windowLabel}` : metric;
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    Definition,
+    {
+      term,
+      sentence: provenanceSentence({
+        source,
+        windowLabel,
+        updatedAt,
+        staleness
+      }),
+      children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "inline-flex max-w-full items-center", children })
+    }
+  );
 }
 function AnalyticsSection({
   id,
@@ -2437,12 +2476,15 @@ function synthesizeDonutAriaLabel(segments) {
   if (total <= 0) return "Donut chart with no data";
   return chartSegmentsAriaLabel(segments);
 }
-var SPARKLINE_EMPTY_ARIA_LABEL = "Sparkline chart with no data";
-var CANDLESTICK_MINI_EMPTY_ARIA_LABEL = "Candlestick chart with no data";
-var STACKED_AREA_EMPTY_ARIA_LABEL = "Stacked area chart with no data";
 function markAriaLabel(domain, total) {
   if (total === void 0 || total === null || total === "") return domain;
   return `${domain} \xB7 ${total} total`;
+}
+function momentumAriaLabel(unit, endValue, deltaLabel, rangeLabel) {
+  const noun = unit.charAt(0).toUpperCase() + unit.slice(1);
+  if (endValue === null) return `${noun}: no data in the window`;
+  const range = rangeLabel ? ` over ${rangeLabel}` : "";
+  return `${noun}: ${endValue}, ${deltaLabel}${range}`;
 }
 function Kbd({
   children,
@@ -3172,249 +3214,6 @@ function BarMini({
     }
   );
 }
-
-// src/components/metagraphed/charts/candlestick-geometry.ts
-var VOLUME_BAND_RATIO = 0.22;
-var VOLUME_BAND_GAP_RATIO = 0.04;
-function candlestickVolumeLayout(height, candles) {
-  let maxVolume = 0;
-  for (const c of candles) {
-    const v = c.volume;
-    if (typeof v === "number" && Number.isFinite(v) && v > maxVolume)
-      maxVolume = v;
-  }
-  const hasVolume = maxVolume > 0;
-  const volumeHeight = hasVolume ? height * VOLUME_BAND_RATIO : 0;
-  const priceHeight = hasVolume ? height - volumeHeight - height * VOLUME_BAND_GAP_RATIO : height;
-  return { hasVolume, maxVolume, volumeHeight, priceHeight };
-}
-function candlestickVolumeBarHeight(volume, maxVolume, volumeHeight) {
-  if (typeof volume !== "number" || !Number.isFinite(volume) || volume <= 0)
-    return 0;
-  if (maxVolume <= 0 || volumeHeight <= 0) return 0;
-  return Math.max(1, volume / maxVolume * volumeHeight);
-}
-var BODY_WIDTH_RATIO = 0.6;
-function CandlestickMini({
-  data,
-  width = 480,
-  maxWidth,
-  height = 160,
-  upColor = "var(--health-ok)",
-  downColor = "var(--health-down)",
-  className,
-  ariaLabel,
-  formatValue,
-  formatVolume,
-  interactive = true
-}) {
-  const wrapRef = React3.useRef(null);
-  const [hover, setHover] = React3.useState(null);
-  const cssMaxWidth = maxWidth === "none" ? void 0 : maxWidth ?? width;
-  const candles = data.slice(-500).filter(
-    (c) => Number.isFinite(c.open) && Number.isFinite(c.high) && Number.isFinite(c.low) && Number.isFinite(c.close)
-  );
-  if (candles.length === 0) {
-    return /* @__PURE__ */ jsxRuntime.jsx(
-      "svg",
-      {
-        width: "100%",
-        height,
-        viewBox: `0 0 ${width} ${height}`,
-        preserveAspectRatio: "none",
-        className: `block max-w-full ${className ?? ""}`,
-        style: { maxWidth: cssMaxWidth },
-        role: "img",
-        "aria-label": ariaLabel ?? CANDLESTICK_MINI_EMPTY_ARIA_LABEL,
-        children: /* @__PURE__ */ jsxRuntime.jsx(
-          "line",
-          {
-            x1: 0,
-            y1: height / 2,
-            x2: width,
-            y2: height / 2,
-            stroke: "var(--border)",
-            strokeDasharray: "2 3"
-          }
-        )
-      }
-    );
-  }
-  let min = candles[0].low;
-  let max = candles[0].high;
-  for (const c of candles) {
-    if (c.low < min) min = c.low;
-    if (c.high > max) max = c.high;
-  }
-  const span = max - min || 1;
-  const { hasVolume, maxVolume, volumeHeight, priceHeight } = candlestickVolumeLayout(height, candles);
-  const padY = priceHeight * 0.06;
-  const plotHeight = priceHeight - padY * 2;
-  const y = (v) => padY + plotHeight - (v - min) / span * plotHeight;
-  const slotWidth = width / candles.length;
-  const bodyWidth = Math.max(1, slotWidth * BODY_WIDTH_RATIO);
-  const bars = candles.map((c, i) => {
-    const cx = slotWidth * (i + 0.5);
-    const up = c.close >= c.open;
-    const color = up ? upColor : downColor;
-    const bodyTop = y(Math.max(c.open, c.close));
-    const bodyBottom = y(Math.min(c.open, c.close));
-    const bodyHeight = Math.max(1, bodyBottom - bodyTop);
-    const volHeight = candlestickVolumeBarHeight(
-      c.volume,
-      maxVolume,
-      volumeHeight
-    );
-    return {
-      cx,
-      up,
-      color,
-      wickTop: y(c.high),
-      wickBottom: y(c.low),
-      bodyTop,
-      bodyHeight,
-      volHeight,
-      volTop: height - volHeight
-    };
-  });
-  const canTooltip = interactive && candles.length > 0;
-  function onMove(e) {
-    if (!canTooltip) return;
-    const rect = wrapRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
-    const idx = Math.min(
-      candles.length - 1,
-      Math.floor(x / rect.width * candles.length)
-    );
-    setHover(idx);
-  }
-  function onKeyDown(e) {
-    if (!canTooltip) return;
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      setHover((prev) => Math.min(candles.length - 1, (prev ?? -1) + 1));
-    } else if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      setHover((prev) => Math.max(0, (prev ?? candles.length) - 1));
-    }
-  }
-  function onFocus() {
-    if (!canTooltip) return;
-    setHover((prev) => prev ?? 0);
-  }
-  const hoverCandle = hover != null ? candles[hover] : null;
-  const hoverBar = hover != null ? bars[hover] : null;
-  const fmt = formatValue ?? ((v) => v.toString());
-  const fmtVol = formatVolume ?? ((v) => v.toString());
-  const hoverVolume = hoverCandle?.volume;
-  const volumeText = hasVolume && typeof hoverVolume === "number" && Number.isFinite(hoverVolume) ? ` V ${fmtVol(hoverVolume)}` : "";
-  const tooltipText = hoverCandle ? `${hoverCandle.label} \xB7 O ${fmt(hoverCandle.open)} H ${fmt(hoverCandle.high)} L ${fmt(hoverCandle.low)} C ${fmt(hoverCandle.close)}${volumeText}` : "";
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      ref: wrapRef,
-      className: `relative block w-full ${className ?? ""}`,
-      style: { width: "100%", maxWidth: cssMaxWidth, height },
-      onPointerMove: onMove,
-      onPointerLeave: () => setHover(null),
-      onKeyDown,
-      onFocus,
-      onBlur: () => setHover(null),
-      tabIndex: canTooltip ? 0 : void 0,
-      "aria-label": canTooltip ? `${ariaLabel ?? "Candlestick chart"}, use arrow keys to step through candles` : void 0,
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(
-          "svg",
-          {
-            width: "100%",
-            height,
-            viewBox: `0 0 ${width} ${height}`,
-            preserveAspectRatio: "none",
-            role: "img",
-            "aria-label": ariaLabel,
-            className: "block w-full",
-            children: [
-              bars.map((b, i) => /* @__PURE__ */ jsxRuntime.jsxs("g", { children: [
-                /* @__PURE__ */ jsxRuntime.jsx(
-                  "line",
-                  {
-                    x1: b.cx,
-                    x2: b.cx,
-                    y1: b.wickTop,
-                    y2: b.wickBottom,
-                    stroke: b.color,
-                    strokeWidth: 1,
-                    vectorEffect: "non-scaling-stroke"
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntime.jsx(
-                  "rect",
-                  {
-                    x: b.cx - bodyWidth / 2,
-                    y: b.bodyTop,
-                    width: bodyWidth,
-                    height: b.bodyHeight,
-                    fill: b.color,
-                    opacity: b.up ? 0.85 : 0.7
-                  }
-                ),
-                b.volHeight > 0 ? (
-                  // Same up/down color as the candle it sits under, at a lower
-                  // opacity than either body -- the band is context for the price
-                  // series, so it must never out-weigh the candles visually.
-                  /* @__PURE__ */ jsxRuntime.jsx(
-                    "rect",
-                    {
-                      x: b.cx - bodyWidth / 2,
-                      y: b.volTop,
-                      width: bodyWidth,
-                      height: b.volHeight,
-                      fill: b.color,
-                      opacity: 0.4
-                    }
-                  )
-                ) : null
-              ] }, i)),
-              hoverBar ? /* @__PURE__ */ jsxRuntime.jsx(
-                "line",
-                {
-                  x1: hoverBar.cx,
-                  x2: hoverBar.cx,
-                  y1: 0,
-                  y2: height,
-                  stroke: "var(--ink-muted)",
-                  strokeOpacity: 0.35,
-                  strokeWidth: 1,
-                  vectorEffect: "non-scaling-stroke"
-                }
-              ) : null
-            ]
-          }
-        ),
-        hoverBar && tooltipText ? /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 text-10 leading-tight text-ink-strong whitespace-nowrap",
-            style: {
-              // `cx` is a viewBox coordinate, but `left` is CSS pixels -- the two
-              // only coincided while the rendered width happened to equal
-              // `width`. Expressing it as a percentage of the coordinate space
-              // makes it correct at any rendered width (notably `maxWidth:
-              // "none"`), and the CSS clamp keeps the 60px edge inset in real
-              // pixels rather than viewBox units.
-              left: `clamp(60px, ${hoverBar.cx / width * 100}%, calc(100% - 60px))`,
-              top: Math.max(0, hoverBar.wickTop - 4)
-            },
-            role: "tooltip",
-            children: tooltipText
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsx("span", { "aria-live": "polite", className: "sr-only", children: tooltipText })
-      ]
-    }
-  );
-}
 function Donut({
   segments,
   size = 96,
@@ -3533,187 +3332,6 @@ function DonutLegend({ segments }) {
     },
     s.label
   )) });
-}
-function SparkLegend({
-  children,
-  metric,
-  source,
-  windowLabel,
-  updatedAt,
-  staleness
-}) {
-  const fresh = formatFreshness(updatedAt, windowLabel);
-  const freshAbs = formatFreshnessAbsolute(updatedAt);
-  const term = windowLabel ? `${metric} \xB7 ${windowLabel}` : metric;
-  const sentence = [
-    source.replace(/\.?$/, "."),
-    staleness ? `Staleness: ${staleness.replace(/\.?$/, ".")}` : null,
-    fresh || freshAbs ? `${fresh ?? ""}${freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""}.` : null
-  ].filter(Boolean).join(" ");
-  return /* @__PURE__ */ jsxRuntime.jsx(Definition, { term, sentence, children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "inline-flex max-w-full items-center", children }) });
-}
-function Sparkline({
-  values,
-  points,
-  width = 120,
-  height = 28,
-  color = "var(--accent)",
-  fill = true,
-  className,
-  ariaLabel,
-  formatValue,
-  interactive = true
-}) {
-  const wrapRef = React3.useRef(null);
-  const [hover, setHover] = React3.useState(null);
-  const pts = values.slice(-500).filter((v) => typeof v === "number" && Number.isFinite(v));
-  if (pts.length === 0) {
-    return /* @__PURE__ */ jsxRuntime.jsx(
-      "svg",
-      {
-        width: "100%",
-        height,
-        viewBox: `0 0 ${width} ${height}`,
-        preserveAspectRatio: "none",
-        className: `block max-w-full ${className ?? ""}`,
-        style: { maxWidth: width },
-        role: "img",
-        "aria-label": ariaLabel ?? SPARKLINE_EMPTY_ARIA_LABEL,
-        children: /* @__PURE__ */ jsxRuntime.jsx(
-          "line",
-          {
-            x1: 0,
-            y1: height / 2,
-            x2: width,
-            y2: height / 2,
-            stroke: "var(--border)",
-            strokeDasharray: "2 3"
-          }
-        )
-      }
-    );
-  }
-  let min = pts[0];
-  let max = pts[0];
-  for (const value of pts) {
-    if (value < min) min = value;
-    if (value > max) max = value;
-  }
-  const span = max - min || 1;
-  const step = pts.length > 1 ? width / (pts.length - 1) : 0;
-  const coords = pts.map((v, i) => {
-    const x = pts.length === 1 ? width / 2 : i * step;
-    const y = height - 2 - (v - min) / span * (height - 4);
-    return [x, y];
-  });
-  const line = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const area = `${line} L${coords[coords.length - 1][0].toFixed(1)},${height} L0,${height} Z`;
-  const canTooltip = interactive && pts.length > 1;
-  function onMove(e) {
-    if (!canTooltip) return;
-    const rect = wrapRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
-    const idx = Math.round(x / rect.width * (pts.length - 1));
-    setHover(idx);
-  }
-  function onKeyDown(e) {
-    if (!canTooltip) return;
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      setHover((prev) => Math.min(pts.length - 1, (prev ?? -1) + 1));
-    } else if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      setHover((prev) => Math.max(0, (prev ?? pts.length) - 1));
-    }
-  }
-  function onFocus() {
-    if (!canTooltip) return;
-    setHover((prev) => prev ?? 0);
-  }
-  const hoverPoint = hover != null ? coords[hover] : null;
-  const hoverValue = hover != null ? pts[hover] : null;
-  const hoverLabel = hover != null ? points?.[hover]?.t : void 0;
-  const tooltipText = hoverValue != null ? `${hoverLabel ? `${hoverLabel} \xB7 ` : ""}${formatValue ? formatValue(hoverValue) : hoverValue}` : "";
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      ref: wrapRef,
-      className: `relative block w-full ${className ?? ""}`,
-      style: { width: "100%", maxWidth: width, height },
-      onPointerMove: onMove,
-      onPointerLeave: () => setHover(null),
-      onKeyDown,
-      onFocus,
-      onBlur: () => setHover(null),
-      tabIndex: canTooltip ? 0 : void 0,
-      "aria-label": canTooltip ? `${ariaLabel ?? "Sparkline chart"}, use arrow keys to step through values` : void 0,
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(
-          "svg",
-          {
-            width: "100%",
-            height,
-            viewBox: `0 0 ${width} ${height}`,
-            preserveAspectRatio: "none",
-            role: "img",
-            "aria-label": ariaLabel,
-            className: "block w-full",
-            children: [
-              fill ? /* @__PURE__ */ jsxRuntime.jsx("path", { d: area, fill: color, opacity: 0.12 }) : null,
-              /* @__PURE__ */ jsxRuntime.jsx(
-                "path",
-                {
-                  d: line,
-                  fill: "none",
-                  stroke: color,
-                  strokeWidth: 1.5,
-                  strokeLinecap: "round",
-                  strokeLinejoin: "round"
-                }
-              ),
-              hoverPoint ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-                /* @__PURE__ */ jsxRuntime.jsx(
-                  "line",
-                  {
-                    x1: hoverPoint[0],
-                    x2: hoverPoint[0],
-                    y1: 0,
-                    y2: height,
-                    stroke: "var(--ink-muted)",
-                    strokeOpacity: 0.35,
-                    strokeWidth: 1
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntime.jsx(
-                  "circle",
-                  {
-                    cx: hoverPoint[0],
-                    cy: hoverPoint[1],
-                    r: 2.5,
-                    fill: color
-                  }
-                )
-              ] }) : null
-            ]
-          }
-        ),
-        hoverPoint && tooltipText ? /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 text-10 leading-tight text-ink-strong whitespace-nowrap",
-            style: {
-              left: Math.max(24, Math.min(width - 24, hoverPoint[0])),
-              top: hoverPoint[1] - 4
-            },
-            role: "tooltip",
-            children: tooltipText
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsx("span", { "aria-live": "polite", className: "sr-only", children: tooltipText })
-      ]
-    }
-  );
 }
 var sum = (ns) => ns.reduce((a, b) => a + b, 0);
 var MIN_TILE_W_FOR_LABEL = 16;
@@ -4000,172 +3618,6 @@ function SankeyMini({
             node.id
           );
         })
-      ]
-    }
-  );
-}
-var MAX_SLOTS = 500;
-function layoutStackedArea(series) {
-  const slots = Math.min(
-    MAX_SLOTS,
-    series.reduce((n, s) => Math.max(n, s.values.length), 0)
-  );
-  const running = new Array(slots).fill(0);
-  const bands = [];
-  for (const s of series) {
-    const lower = [...running];
-    for (let i = 0; i < slots; i++) {
-      const idx = s.values.length - slots + i;
-      const raw = idx >= 0 && idx < s.values.length ? s.values[idx] : 0;
-      const v = typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : 0;
-      running[i] = running[i] + v;
-    }
-    bands.push({ id: s.id, lower, upper: [...running] });
-  }
-  let max = 0;
-  for (const t of running) if (t > max) max = t;
-  return { bands, totals: running, max, slots };
-}
-function StackedAreaMini({
-  series,
-  labels,
-  width = 560,
-  height = 160,
-  className,
-  ariaLabel,
-  formatValue,
-  interactive = true
-}) {
-  const wrapRef = React3.useRef(null);
-  const [hover, setHover] = React3.useState(null);
-  const drawable = series.filter(
-    (s) => s.values.some((v) => Number.isFinite(v) && v > 0)
-  );
-  const { bands, totals, max, slots } = layoutStackedArea(drawable);
-  if (drawable.length === 0 || slots === 0 || max <= 0) {
-    return /* @__PURE__ */ jsxRuntime.jsx(
-      "svg",
-      {
-        width: "100%",
-        height,
-        viewBox: `0 0 ${width} ${height}`,
-        preserveAspectRatio: "none",
-        className: `block w-full ${className ?? ""}`,
-        role: "img",
-        "aria-label": ariaLabel ?? STACKED_AREA_EMPTY_ARIA_LABEL,
-        children: /* @__PURE__ */ jsxRuntime.jsx(
-          "line",
-          {
-            x1: 0,
-            y1: height / 2,
-            x2: width,
-            y2: height / 2,
-            stroke: "var(--border)",
-            strokeDasharray: "2 3"
-          }
-        )
-      }
-    );
-  }
-  const padTop = 4;
-  const padBottom = 2;
-  const innerHeight = height - padTop - padBottom;
-  const step = slots > 1 ? width / (slots - 1) : 0;
-  const xAt = (i) => slots === 1 ? width / 2 : i * step;
-  const yAt = (v) => padTop + innerHeight - v / max * innerHeight;
-  const paths = bands.map((band) => {
-    const upper = band.upper.map((v, i) => [xAt(i), yAt(v)]);
-    const lower = band.lower.map((v, i) => [xAt(i), yAt(v)]).reverse();
-    const d = upper.map(
-      ([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`
-    ).join(" ") + " " + lower.map(([x, y]) => `L${x.toFixed(1)},${y.toFixed(1)}`).join(" ") + " Z";
-    return { id: band.id, d };
-  });
-  const canTooltip = interactive && slots > 1;
-  function onMove(e) {
-    if (!canTooltip) return;
-    const rect = wrapRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
-    setHover(Math.round(x / rect.width * (slots - 1)));
-  }
-  function onKeyDown(e) {
-    if (!canTooltip) return;
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      setHover((prev) => Math.min(slots - 1, (prev ?? -1) + 1));
-    } else if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      setHover((prev) => Math.max(0, (prev ?? slots) - 1));
-    }
-  }
-  const fmt = formatValue ?? ((v) => String(v));
-  const hoverX = hover != null ? xAt(hover) : null;
-  const hoverLines = hover != null ? [
-    ...labels?.[hover] ? [labels[hover]] : [],
-    ...drawable.map((s, bi) => {
-      const size = bands[bi].upper[hover] - bands[bi].lower[hover];
-      return size > 0 ? `${s.label}: ${fmt(size)}` : null;
-    }).filter((line) => line != null),
-    `Total: ${fmt(totals[hover])}`
-  ] : [];
-  const resolvedAriaLabel = ariaLabel ?? `Stacked area chart: ${drawable.map((s) => s.label).join(", ")} over ${slots} points`;
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      ref: wrapRef,
-      className: `relative block w-full ${className ?? ""}`,
-      style: { width: "100%", height },
-      onPointerMove: onMove,
-      onPointerLeave: () => setHover(null),
-      onKeyDown,
-      onFocus: () => {
-        if (canTooltip) setHover((prev) => prev ?? 0);
-      },
-      onBlur: () => setHover(null),
-      tabIndex: canTooltip ? 0 : void 0,
-      "aria-label": canTooltip ? `${resolvedAriaLabel}, use arrow keys to step through values` : void 0,
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(
-          "svg",
-          {
-            width: "100%",
-            height,
-            viewBox: `0 0 ${width} ${height}`,
-            preserveAspectRatio: "none",
-            role: "img",
-            "aria-label": resolvedAriaLabel,
-            className: "block w-full",
-            children: [
-              paths.map((p, i) => /* @__PURE__ */ jsxRuntime.jsx("path", { d: p.d, fill: drawable[i].color, opacity: 0.75, children: /* @__PURE__ */ jsxRuntime.jsx("title", { children: drawable[i].label }) }, p.id)),
-              hoverX != null ? /* @__PURE__ */ jsxRuntime.jsx(
-                "line",
-                {
-                  x1: hoverX,
-                  x2: hoverX,
-                  y1: 0,
-                  y2: height,
-                  stroke: "var(--ink-muted)",
-                  strokeOpacity: 0.35,
-                  strokeWidth: 1
-                }
-              ) : null
-            ]
-          }
-        ),
-        hoverX != null && hoverLines.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-1 text-10 leading-tight text-ink-strong whitespace-nowrap",
-            style: {
-              left: `${Math.max(8, Math.min(92, hoverX / width * 100))}%`,
-              top: height * 0.35
-            },
-            role: "tooltip",
-            children: hoverLines.map((line) => /* @__PURE__ */ jsxRuntime.jsx("div", { children: line }, line))
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsx("span", { "aria-live": "polite", className: "sr-only", children: hoverLines.join(", ") })
       ]
     }
   );
@@ -5566,60 +5018,6 @@ var QueryBar = Object.assign(QueryBarRoot, {
   FilterTrigger: QueryBarFilterTrigger,
   MetaRow: QueryBarMetaRow
 });
-function ChartSkeleton({
-  height = 40,
-  variant = "spark",
-  className,
-  label = "Loading chart"
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      role: "img",
-      "aria-label": label,
-      className: classNames(
-        "mg-chart-skeleton relative w-full overflow-hidden rounded",
-        "border border-border/60 bg-surface-2/40",
-        className
-      ),
-      style: { height },
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            className: "pointer-events-none absolute inset-x-2 bottom-1 h-px bg-border",
-            "aria-hidden": true
-          }
-        ),
-        variant === "bars" ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "absolute inset-2 flex items-end gap-[3px]", "aria-hidden": true, children: Array.from({ length: 16 }).map((_, i) => /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            className: "flex-1 rounded bg-ink-strong/10 animate-pulse",
-            style: { height: `${20 + i * 17 % 70}%` }
-          },
-          i
-        )) }) : null,
-        variant === "area" ? /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            className: "absolute inset-0 animate-pulse",
-            "aria-hidden": true,
-            style: {
-              background: "linear-gradient(to top, color-mix(in oklab, var(--accent) 12%, transparent), transparent 70%)"
-            }
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            className: "pointer-events-none absolute inset-y-0 -left-full w-1/2 mg-shimmer-sweep",
-            "aria-hidden": true
-          }
-        )
-      ]
-    }
-  );
-}
 var HEIGHTS = {
   sm: "min-h-[120px]",
   md: "min-h-[200px]",
@@ -5850,6 +5248,615 @@ function useScrolled(threshold = 4) {
   return scrolled;
 }
 
+// src/components/metagraphed/charts/series-palette.ts
+var CHART_RAMP_SIZE = 10;
+var OTHER_COLOR = "var(--chart-11)";
+var OTHER_KEY = "Other";
+var SeriesPaletteRegistry = class {
+  slots = /* @__PURE__ */ new Map();
+  /** Assigns the next free ramp index to every unseen key, in the order given. */
+  assign(keys) {
+    for (const key of keys) {
+      if (key === OTHER_KEY || this.slots.has(key)) continue;
+      if (this.slots.size >= CHART_RAMP_SIZE) continue;
+      this.slots.set(key, this.slots.size + 1);
+    }
+  }
+  indexOf(key) {
+    return this.slots.get(key) ?? null;
+  }
+  palette() {
+    const indexOf = (key) => this.indexOf(key);
+    return {
+      indexOf,
+      isOther: (key) => key === OTHER_KEY || indexOf(key) === null,
+      colorOf: (key) => {
+        const i = indexOf(key);
+        return i === null ? OTHER_COLOR : `var(--chart-${i})`;
+      }
+    };
+  }
+  /** The keys that own a swatch, in ramp order. */
+  keys() {
+    return [...this.slots.entries()].sort((a, b) => a[1] - b[1]).map(([k]) => k);
+  }
+};
+function collapseOther(segments, registry, label = OTHER_KEY) {
+  const kept = [];
+  let other = 0;
+  for (const s of segments) {
+    if (registry.indexOf(s.key) === null) other += s.value;
+    else
+      kept.push({
+        key: s.key,
+        label: s.label ?? s.key,
+        value: s.value
+      });
+  }
+  if (other > 0) kept.push({ key: OTHER_KEY, label, value: other });
+  return kept;
+}
+var defaultFormat2 = (v) => String(v);
+var BAR_PX = 15;
+function StackedColumns({
+  id,
+  columns,
+  seriesOrder,
+  registry,
+  other = OTHER_KEY,
+  formatValue = defaultFormat2,
+  ariaLabel,
+  columnSource = "stacked-columns",
+  className
+}) {
+  const ownRegistry = React3.useRef(null);
+  if (!registry && !ownRegistry.current)
+    ownRegistry.current = new SeriesPaletteRegistry();
+  const reg = registry ?? ownRegistry.current;
+  reg.assign(seriesOrder);
+  const palette = reg.palette();
+  const rows = React3.useMemo(
+    () => columns.map((c) => ({
+      ...c,
+      segments: collapseOther(c.segments, reg, other)
+    })),
+    [columns, reg, other]
+  );
+  const seriesKeys = React3.useMemo(() => {
+    const keys = reg.keys().filter((k) => rows.some((r) => r.segments.some((s) => s.key === k)));
+    if (rows.some((r) => r.segments.some((s) => s.key === OTHER_KEY)))
+      keys.push(OTHER_KEY);
+    return keys;
+  }, [reg, rows]);
+  const { active } = useActiveEntity();
+  const activeSeries = active && seriesKeys.includes(active.key) ? active.key : null;
+  const scrollRef = React3.useRef(null);
+  const [cadence, setCadence] = React3.useState(7);
+  const [gap, setGap] = React3.useState(12);
+  React3.useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const update = () => {
+      const width = el.clientWidth;
+      setCadence(width >= 768 ? 7 : 14);
+      const pitch = width / Math.max(1, rows.length);
+      setGap(pitch >= BAR_PX + 12 ? 12 : pitch >= BAR_PX + 8 ? 8 : 6);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [rows.length]);
+  React3.useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [rows.length]);
+  const max = Math.max(1, ...rows.map((r) => r.total));
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
+    {
+      id,
+      className: classNames("mg-stack", className),
+      "data-mg-stack": "",
+      "data-series-active": activeSeries ? "true" : void 0,
+      style: {
+        "--mg-stack-count": rows.length,
+        "--mg-stack-gap": `${gap}px`
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsx(ChartTooltip, { top: 110 }),
+        /* @__PURE__ */ jsxRuntime.jsx("div", { ref: scrollRef, className: "mg-stack-scroll", children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-stack-chart", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-stack-axis", "aria-hidden": "true", children: rows.map((c, i) => /* @__PURE__ */ jsxRuntime.jsx(
+            "div",
+            {
+              "data-entity": c.key,
+              "data-active": active?.key === c.key ? "true" : void 0,
+              "data-label-hidden": i % cadence !== 0 ? "true" : void 0,
+              children: /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-stack-axis-label", children: [
+                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-stack-axis-total", children: formatValue(c.total) }),
+                /* @__PURE__ */ jsxRuntime.jsx("span", { children: c.axisLabel ?? c.label })
+              ] })
+            },
+            c.key
+          )) }),
+          /* @__PURE__ */ jsxRuntime.jsx(
+            "div",
+            {
+              className: "mg-stack-bars",
+              role: "group",
+              "aria-label": ariaLabel,
+              "data-marks": true,
+              children: rows.map((c) => /* @__PURE__ */ jsxRuntime.jsx(
+                Column,
+                {
+                  column: c,
+                  max,
+                  palette,
+                  activeSeries,
+                  formatValue,
+                  source: columnSource
+                },
+                c.key
+              ))
+            }
+          )
+        ] }) }),
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-sr-table", children: /* @__PURE__ */ jsxRuntime.jsxs("table", { children: [
+          /* @__PURE__ */ jsxRuntime.jsx("caption", { children: ariaLabel }),
+          /* @__PURE__ */ jsxRuntime.jsx("thead", { children: /* @__PURE__ */ jsxRuntime.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "col", children: "Period" }),
+            /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "col", children: "Total" }),
+            seriesKeys.map((k) => /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "col", children: k === OTHER_KEY ? other : rows.flatMap((r) => r.segments).find((s) => s.key === k)?.label ?? k }, k))
+          ] }) }),
+          /* @__PURE__ */ jsxRuntime.jsx("tbody", { children: rows.map((c) => /* @__PURE__ */ jsxRuntime.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "row", children: c.label }),
+            /* @__PURE__ */ jsxRuntime.jsx("td", { children: formatValue(c.total) }),
+            seriesKeys.map((k) => /* @__PURE__ */ jsxRuntime.jsx("td", { children: formatValue(
+              c.segments.find((s) => s.key === k)?.value ?? 0
+            ) }, k))
+          ] }, c.key)) })
+        ] }) })
+      ]
+    }
+  );
+}
+function Column({
+  column: c,
+  max,
+  palette,
+  activeSeries,
+  formatValue,
+  source
+}) {
+  const { set } = useActiveEntity();
+  const [focusedSeries, setFocusedSeries] = React3.useState(-1);
+  const data = React3.useMemo(
+    () => ({
+      title: c.label,
+      total: `${formatValue(c.total)} total`,
+      rows: c.segments.map((s) => ({
+        key: s.key,
+        label: s.label,
+        value: formatValue(s.value),
+        swatch: palette.colorOf(s.key)
+      }))
+    }),
+    [c, formatValue, palette]
+  );
+  const mark = useEntityMark(c.key, {
+    source,
+    label: markAriaLabel(c.label, formatValue(c.total)),
+    data
+  });
+  const elRef = React3.useRef(null);
+  const ref = React3.useCallback(
+    (el) => {
+      elRef.current = el;
+      mark.ref(el);
+    },
+    [mark]
+  );
+  const onKeyDown = (event) => {
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      const n = c.segments.length;
+      if (n === 0) return;
+      const next = event.key === "ArrowUp" ? (focusedSeries + 1) % n : (focusedSeries - 1 + n) % n;
+      setFocusedSeries(next);
+      const s = c.segments[next];
+      set({ key: s.key, source, element: elRef.current, data });
+      return;
+    }
+    mark.onKeyDown(event);
+  };
+  const onBlur = (event) => {
+    setFocusedSeries(-1);
+    mark.onBlur(event);
+  };
+  const height = `${c.total / max * 100}%`;
+  const rowsTemplate = c.segments.map((s) => `${c.total > 0 ? s.value / c.total * 100 : 0}%`).join(" ");
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "button",
+    {
+      type: "button",
+      ...mark,
+      ref,
+      onKeyDown,
+      onBlur,
+      className: "mg-stack-col",
+      style: {
+        "--mg-stack-h": height,
+        "--mg-stack-rows": rowsTemplate
+      },
+      children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-stack-stack", "aria-hidden": "true", children: c.segments.map((s) => /* @__PURE__ */ jsxRuntime.jsx(
+        "i",
+        {
+          "data-entity": s.key,
+          "data-active": activeSeries === s.key ? "true" : void 0,
+          "data-dim": activeSeries && activeSeries !== s.key ? "true" : void 0,
+          style: { "--swatch": palette.colorOf(s.key) },
+          onPointerEnter: (event) => {
+            if (event.pointerType === "touch") return;
+            set({ key: s.key, source, element: elRef.current, data });
+          }
+        },
+        s.key
+      )) })
+    }
+  );
+}
+function stackedSpecimen() {
+  const series = [
+    "Apex",
+    "Targon",
+    "Chutes",
+    "Affine",
+    "Score",
+    "Nineteen",
+    "Bitmind",
+    "Gradients",
+    "Macrocosmos",
+    "Omron",
+    "Vidaio",
+    "Dippy"
+  ];
+  const columns = Array.from({ length: 56 }, (_, i) => {
+    const segments = series.map((name, j) => ({
+      key: name,
+      label: name,
+      value: Math.round(40 + 30 * Math.sin((i + j * 3) / 5) + j * 4)
+    }));
+    const total = segments.reduce((a, s) => a + s.value, 0);
+    const d = new Date(Date.UTC(2026, 5, 28) + i * 864e5);
+    const label = d.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC"
+    }).toUpperCase();
+    return { key: `d${i}`, label, axisLabel: label, total, segments };
+  });
+  return { columns, seriesOrder: series.slice(0, 8) };
+}
+
+// src/components/metagraphed/charts/line-geometry.ts
+var LINE_VIEWBOX = { width: 1200, height: 370 };
+var PAD_Y = 8;
+var PLOT_RIGHT = 0.94;
+function placePoints(points, box = LINE_VIEWBOX) {
+  if (points.length === 0) return [];
+  const t0 = points[0].t;
+  const t1 = points[points.length - 1].t;
+  const span = Math.max(1, t1 - t0);
+  let min = Infinity;
+  let max = -Infinity;
+  for (const p of points) {
+    if (p.v < min) min = p.v;
+    if (p.v > max) max = p.v;
+  }
+  const range = max - min || 1;
+  return points.map((p) => ({
+    ...p,
+    x: points.length === 1 ? box.width * PLOT_RIGHT / 2 : (p.t - t0) / span * box.width * PLOT_RIGHT,
+    y: box.height - PAD_Y - (p.v - min) / range * (box.height - PAD_Y * 2)
+  }));
+}
+function smoothPath(points) {
+  if (points.length === 0) return "";
+  const f = (n) => (Math.round(n * 100) / 100).toString();
+  if (points.length === 1) return `M${f(points[0].x)} ${f(points[0].y)}`;
+  let d = `M${f(points[0].x)} ${f(points[0].y)}`;
+  const k = 0.2;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+    const c1x = p1.x + (p2.x - p0.x) * k;
+    const c1y = p1.y + (p2.y - p0.y) * k;
+    const c2x = p2.x - (p3.x - p1.x) * k;
+    const c2y = p2.y - (p3.y - p1.y) * k;
+    d += ` C${f(c1x)} ${f(c1y)} ${f(c2x)} ${f(c2y)} ${f(p2.x)} ${f(p2.y)}`;
+  }
+  return d;
+}
+function windowPoints(points, window2) {
+  return points.filter((p) => p.t >= window2.from && p.t <= window2.to);
+}
+function windowDelta(points, window2) {
+  const inside = windowPoints(points, window2);
+  if (inside.length === 0)
+    return { start: 0, end: 0, ratio: null, label: "\u2014", state: "empty" };
+  const start = inside[0].v;
+  const end = inside[inside.length - 1].v;
+  if (start === 0)
+    return {
+      start,
+      end,
+      ratio: null,
+      label: "\u2014",
+      state: end > 0 ? "positive" : "flat"
+    };
+  const ratio = (end - start) / Math.abs(start);
+  const pct = Math.round(ratio * 100);
+  const label = pct === 0 ? "0%" : pct > 0 ? `+${pct}%` : `\u2212${Math.abs(pct)}%`;
+  return {
+    start,
+    end,
+    ratio,
+    label,
+    state: pct > 0 ? "positive" : pct < 0 ? "negative" : "flat"
+  };
+}
+function monthTicks(points) {
+  if (points.length < 2) return [];
+  const t0 = points[0].t;
+  const t1 = points[points.length - 1].t;
+  const span = t1 - t0 || 1;
+  const out = [];
+  const d = new Date(t0);
+  d.setUTCDate(1);
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  while (d.getTime() <= t1) {
+    out.push({
+      label: d.toLocaleString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase(),
+      pct: (d.getTime() - t0) / span * 100 * PLOT_RIGHT
+    });
+    d.setUTCMonth(d.getUTCMonth() + 1);
+  }
+  return out;
+}
+var defaultFormat3 = (v) => String(v);
+var dateFormat = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC"
+});
+var formatLineDate = (t) => dateFormat.format(new Date(t)).toUpperCase();
+var rangeFormat = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC"
+});
+function LineWithWindow({
+  id,
+  points,
+  window: window2,
+  unit,
+  formatValue = defaultFormat3,
+  formatDate = formatLineDate,
+  ariaLabel,
+  keyOf,
+  source = "line",
+  compact = false,
+  className
+}) {
+  const placed = React3.useMemo(() => placePoints(points), [points]);
+  const inside = React3.useMemo(() => windowPoints(placed, window2), [placed, window2]);
+  const delta = React3.useMemo(() => windowDelta(points, window2), [points, window2]);
+  const months = React3.useMemo(() => monthTicks(points), [points]);
+  const keyFor = keyOf ?? ((p) => `${source}:${p.t}`);
+  const { active } = useActiveEntity();
+  const activePoint = active ? placed.find((p) => keyFor(p) === active.key) : void 0;
+  const first = placed[0];
+  const wStart = inside[0];
+  const wEnd = inside[inside.length - 1];
+  const pct = (n, of) => `${(n / of * 100).toFixed(2)}%`;
+  const rangeLabel = wStart && wEnd ? `${rangeFormat.format(new Date(wStart.t)).toUpperCase()} \u2192 ${rangeFormat.format(new Date(wEnd.t)).toUpperCase()}` : "";
+  const summary = momentumAriaLabel(
+    unit,
+    wEnd ? formatValue(wEnd.v) : null,
+    delta.label,
+    rangeLabel
+  );
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
+    {
+      id,
+      className: classNames("mg-line", className),
+      "data-mg-line": "",
+      "data-compact": compact ? "true" : void 0,
+      "data-state": delta.state,
+      children: [
+        compact ? null : /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-line-summary", children: [
+          /* @__PURE__ */ jsxRuntime.jsxs("p", { className: "mg-line-total", children: [
+            /* @__PURE__ */ jsxRuntime.jsx("strong", { children: wEnd ? formatValue(wEnd.v) : "\u2014" }),
+            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-line-delta", "data-state": delta.state, children: delta.label })
+          ] }),
+          /* @__PURE__ */ jsxRuntime.jsxs("p", { className: "mg-line-range", children: [
+            rangeLabel,
+            " \xB7 ",
+            unit
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntime.jsxs(
+          "div",
+          {
+            className: "mg-line-plot",
+            role: "group",
+            "aria-label": summary,
+            "data-marks": true,
+            children: [
+              /* @__PURE__ */ jsxRuntime.jsx(ChartTooltip, { top: compact ? 16 : 110 }),
+              /* @__PURE__ */ jsxRuntime.jsxs(
+                "svg",
+                {
+                  viewBox: `0 0 ${LINE_VIEWBOX.width} ${LINE_VIEWBOX.height}`,
+                  preserveAspectRatio: "none",
+                  "aria-hidden": "true",
+                  focusable: "false",
+                  children: [
+                    /* @__PURE__ */ jsxRuntime.jsx("path", { className: "mg-line-muted", d: smoothPath(placed) }),
+                    /* @__PURE__ */ jsxRuntime.jsx("path", { className: "mg-line-active", d: smoothPath(inside) }),
+                    activePoint ? /* @__PURE__ */ jsxRuntime.jsx(
+                      "line",
+                      {
+                        className: "mg-line-cursor",
+                        x1: activePoint.x,
+                        x2: activePoint.x,
+                        y1: 0,
+                        y2: LINE_VIEWBOX.height
+                      }
+                    ) : null
+                  ]
+                }
+              ),
+              [first, wStart, wEnd].filter((p) => Boolean(p)).map((p, i) => /* @__PURE__ */ jsxRuntime.jsx(
+                "i",
+                {
+                  className: "mg-line-marker",
+                  "data-window": i > 0 ? "true" : void 0,
+                  style: {
+                    "--mg-line-x": pct(p.x, LINE_VIEWBOX.width),
+                    "--mg-line-y": pct(p.y, LINE_VIEWBOX.height)
+                  }
+                },
+                `${i}-${p.t}`
+              )),
+              activePoint ? /* @__PURE__ */ jsxRuntime.jsx(
+                "i",
+                {
+                  className: "mg-line-marker mg-line-marker-cursor",
+                  style: {
+                    "--mg-line-x": pct(activePoint.x, LINE_VIEWBOX.width),
+                    "--mg-line-y": pct(activePoint.y, LINE_VIEWBOX.height)
+                  }
+                }
+              ) : null,
+              wEnd && delta.state !== "empty" ? /* @__PURE__ */ jsxRuntime.jsxs(
+                "span",
+                {
+                  className: "mg-line-end",
+                  "data-state": delta.state,
+                  "aria-hidden": "true",
+                  style: {
+                    "--mg-line-x": pct(wEnd.x, LINE_VIEWBOX.width),
+                    "--mg-line-y": pct(wEnd.y, LINE_VIEWBOX.height)
+                  },
+                  children: [
+                    delta.label,
+                    /* @__PURE__ */ jsxRuntime.jsx("i", {})
+                  ]
+                }
+              ) : null,
+              /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-line-hits", children: placed.map((p, i) => {
+                const left = i === 0 ? 0 : (placed[i - 1].x + p.x) / 2;
+                const right = i === placed.length - 1 ? LINE_VIEWBOX.width : (p.x + placed[i + 1].x) / 2;
+                return /* @__PURE__ */ jsxRuntime.jsx(
+                  Hit,
+                  {
+                    entityKey: keyFor(p),
+                    label: formatDate(p.t),
+                    value: formatValue(p.v),
+                    source,
+                    left: pct(left, LINE_VIEWBOX.width),
+                    width: pct(right - left, LINE_VIEWBOX.width)
+                  },
+                  p.t
+                );
+              }) })
+            ]
+          }
+        ),
+        compact ? null : /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-line-months", "aria-hidden": "true", children: months.map((m) => /* @__PURE__ */ jsxRuntime.jsx("span", { style: { left: `${m.pct}%` }, children: m.label }, m.pct)) }),
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-sr-table", children: /* @__PURE__ */ jsxRuntime.jsxs("table", { children: [
+          /* @__PURE__ */ jsxRuntime.jsx("caption", { children: ariaLabel }),
+          /* @__PURE__ */ jsxRuntime.jsx("thead", { children: /* @__PURE__ */ jsxRuntime.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "col", children: "Date" }),
+            /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "col", children: unit })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntime.jsx("tbody", { children: points.map((p) => /* @__PURE__ */ jsxRuntime.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "row", children: formatDate(p.t) }),
+            /* @__PURE__ */ jsxRuntime.jsx("td", { children: formatValue(p.v) })
+          ] }, p.t)) })
+        ] }) })
+      ]
+    }
+  );
+}
+function Hit({
+  entityKey,
+  label,
+  value,
+  source,
+  left,
+  width
+}) {
+  const elRef = React3.useRef(null);
+  const mark = useEntityMark(entityKey, {
+    source,
+    label: markAriaLabel(label, value),
+    data: { title: label, total: value }
+  });
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "button",
+    {
+      type: "button",
+      ...mark,
+      ref: (el) => {
+        elRef.current = el;
+        mark.ref(el);
+      },
+      className: "mg-line-hit",
+      style: { left, width }
+    }
+  );
+}
+function lineSpecimen(days = 120) {
+  const day = 864e5;
+  const t0 = Date.UTC(2026, 3, 24);
+  const points = [];
+  let v = 40;
+  for (let i = 0; i < days; i++) {
+    v = Math.max(5, v + Math.sin(i / 9) * 6 + (i % 7 === 0 ? 9 : 1.2));
+    points.push({ t: t0 + i * day, v: Math.round(v * 10) / 10 });
+  }
+  return {
+    points,
+    window: { from: t0 + (days - 56) * day, to: t0 + (days - 1) * day }
+  };
+}
+function trendDeltaOf(values) {
+  const points = values.filter((v) => typeof v === "number" && Number.isFinite(v)).map((v, i) => ({ t: i, v }));
+  return windowDelta(points, {
+    from: 0,
+    to: Math.max(0, points.length - 1)
+  });
+}
+function TrendDelta({ values, label, className }) {
+  const delta = trendDeltaOf(values);
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "span",
+    {
+      className: classNames("mg-line-delta", className),
+      "data-state": delta.state,
+      "aria-label": `${label} ${delta.label}`,
+      children: delta.label
+    }
+  );
+}
+
 exports.Accordion = Accordion;
 exports.AccordionContent = AccordionContent;
 exports.AccordionItem = AccordionItem;
@@ -5861,9 +5868,8 @@ exports.AnimatedNumber = AnimatedNumber;
 exports.BackToTop = BackToTop;
 exports.BarMini = BarMini;
 exports.BrandIcon = BrandIcon;
+exports.CHART_RAMP_SIZE = CHART_RAMP_SIZE;
 exports.CandidateChip = CandidateChip;
-exports.CandlestickMini = CandlestickMini;
-exports.ChartSkeleton = ChartSkeleton;
 exports.ChartTooltip = ChartTooltip;
 exports.Chip = Chip;
 exports.ClaudeIcon = ClaudeIcon;
@@ -5919,6 +5925,8 @@ exports.HealthPill = HealthPill;
 exports.Indicator = Indicator;
 exports.Kbd = Kbd;
 exports.KeyChip = KeyChip;
+exports.LINE_VIEWBOX = LINE_VIEWBOX;
+exports.LineWithWindow = LineWithWindow;
 exports.ListShell = ListShell;
 exports.LiveMeta = LiveMeta;
 exports.LiveTickerProvider = LiveTickerProvider;
@@ -5926,6 +5934,8 @@ exports.LoadMore = LoadMore;
 exports.LoadingPill = LoadingPill;
 exports.MAX_SECTIONS = MAX_SECTIONS;
 exports.McpToolsList = McpToolsList;
+exports.OTHER_COLOR = OTHER_COLOR;
+exports.OTHER_KEY = OTHER_KEY;
 exports.OpenAIIcon = OpenAIIcon;
 exports.PagerBar = PagerBar;
 exports.PagerFooter = PagerFooter;
@@ -5937,6 +5947,7 @@ exports.Popover = Popover;
 exports.PopoverAnchor = PopoverAnchor;
 exports.PopoverContent = PopoverContent;
 exports.PopoverTrigger = PopoverTrigger;
+exports.Provenance = Provenance;
 exports.ProvenanceChip = ProvenanceChip;
 exports.QueryBar = QueryBar;
 exports.QueryProgress = QueryProgress;
@@ -5953,6 +5964,7 @@ exports.SankeyMini = SankeyMini;
 exports.ScrollShadow = ScrollShadow;
 exports.SectionHead = SectionHead;
 exports.SectionNav = SectionNav;
+exports.SeriesPaletteRegistry = SeriesPaletteRegistry;
 exports.ShareButton = ShareButton;
 exports.Sheet = Sheet;
 exports.SheetClose = SheetClose;
@@ -5965,9 +5977,7 @@ exports.SheetPortal = SheetPortal;
 exports.SheetTitle = SheetTitle;
 exports.SheetTrigger = SheetTrigger;
 exports.Skeleton = Skeleton;
-exports.SparkLegend = SparkLegend;
-exports.Sparkline = Sparkline;
-exports.StackedAreaMini = StackedAreaMini;
+exports.StackedColumns = StackedColumns;
 exports.StatusBadge = StatusBadge;
 exports.TableColGroup = TableColGroup;
 exports.TableSkeleton = TableSkeleton;
@@ -5975,25 +5985,35 @@ exports.TableState = TableState;
 exports.TimeAgo = TimeAgo;
 exports.Toaster = Toaster;
 exports.TreemapMini = TreemapMini;
+exports.TrendDelta = TrendDelta;
 exports.ViewModeToggle = ViewModeToggle;
 exports.Wordmark = Wordmark;
 exports.YieldPercentileStrip = YieldPercentileStrip;
 exports.buildCsvDownloadUrl = buildCsvDownloadUrl;
 exports.classNames = classNames;
 exports.cn = cn;
+exports.collapseOther = collapseOther;
 exports.columnWidths = columnWidths;
 exports.defaultVisible = defaultVisible;
 exports.fmtYield = fmtYield;
+exports.formatLineDate = formatLineDate;
 exports.isScrolledPast = isScrolledPast;
 exports.layoutSankey = layoutSankey;
-exports.layoutStackedArea = layoutStackedArea;
+exports.lineSpecimen = lineSpecimen;
 exports.markAriaLabel = markAriaLabel;
+exports.momentumAriaLabel = momentumAriaLabel;
+exports.monthTicks = monthTicks;
 exports.nextTabIndex = nextTabIndex;
 exports.pickActiveSection = pickActiveSection;
+exports.placePoints = placePoints;
 exports.prefetchBrandIcon = prefetchBrandIcon;
+exports.provenanceSentence = provenanceSentence;
 exports.rovingTabIndex = rovingTabIndex;
 exports.safeExternalUrl = safeExternalUrl;
 exports.sectionItems = sectionItems;
+exports.smoothPath = smoothPath;
+exports.stackedSpecimen = stackedSpecimen;
+exports.trendDeltaOf = trendDeltaOf;
 exports.useActiveEntity = useActiveEntity;
 exports.useActiveSection = useActiveSection;
 exports.useColumnVisibility = useColumnVisibility;
@@ -6004,3 +6024,5 @@ exports.useLiveTicker = useLiveTicker;
 exports.useQueryBarContext = useQueryBarContext;
 exports.useRovingGroup = useRovingGroup;
 exports.useScrolled = useScrolled;
+exports.windowDelta = windowDelta;
+exports.windowPoints = windowPoints;

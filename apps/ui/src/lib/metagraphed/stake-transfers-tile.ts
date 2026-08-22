@@ -11,7 +11,7 @@ export interface StakeTransfersTileModel {
   perSender: number | null;
   /** MiniStack composition: unique senders vs repeat transfers. */
   segments: Array<{ label: string; value: number; color: string }>;
-  /** Short human summary for the SparkLegend tooltip. */
+  /** Short human summary for the Provenance tooltip. */
   summary: string;
 }
 

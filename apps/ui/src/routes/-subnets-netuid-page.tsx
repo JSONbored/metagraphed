@@ -28,12 +28,12 @@ import {
   HealthPill,
   CopyableCode,
   BackToTop,
-  Sparkline,
   AnalyticsSection,
   FactStrip,
   FactCell,
   SectionNav,
   RangeControl,
+  LineWithWindow,
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
@@ -132,6 +132,7 @@ import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { WatchSubnetAlert } from "@/components/metagraphed/watch-subnet-alert";
 import { SubnetWindowProvider, SubnetWindowToggle } from "@/lib/metagraphed/subnet-window";
 import type { SearchParams } from "./subnets.$netuid";
+import { toLinePoints } from "@/components/metagraphed/metric-history";
 
 // #8247: 14 tabs -> 7. "Validators" folds into Metagraph (both are neuron-set
 // views over the same live snapshot); Identity history/Hyperparameters/
@@ -449,11 +450,13 @@ function SubnetUptime90dStrip({ netuid }: { netuid: number }) {
     const cur = byDay.get(d.day) ?? { sum: 0, n: 0 };
     byDay.set(d.day, { sum: cur.sum + d.uptime_ratio * 100, n: cur.n + 1 });
   }
-  const series = Array.from(byDay.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([, v]) => v.sum / v.n);
-  const mean = series.length ? series.reduce((a, b) => a + b, 0) / series.length : null;
-  if (series.length === 0) return null;
+  const points = toLinePoints(
+    Array.from(byDay.entries()).map(([day, v]) => ({ day, v: v.sum / v.n })),
+    (r) => r.day,
+    (r) => r.v,
+  );
+  const mean = points.length ? points.reduce((a, p) => a + p.v, 0) / points.length : null;
+  if (points.length === 0) return null;
   return (
     <Panel bodyClassName="flex items-center gap-4">
       <div className="shrink-0">
@@ -462,13 +465,15 @@ function SubnetUptime90dStrip({ netuid }: { netuid: number }) {
           {mean != null ? `${mean.toFixed(2)}%` : "—"}
         </div>
       </div>
-      <div className="h-8 min-w-0 flex-1">
-        <Sparkline
-          values={series}
-          color="var(--health-ok)"
-          height={32}
-          ariaLabel={`${window} uptime trend`}
+      <div className="min-w-0 flex-1">
+        <LineWithWindow
+          compact
+          points={points}
+          window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
+          unit="uptime"
           formatValue={(v) => `${v.toFixed(2)}%`}
+          ariaLabel={`${window} uptime trend`}
+          source="subnet-uptime"
         />
       </div>
     </Panel>

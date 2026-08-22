@@ -134,19 +134,10 @@ export {
   BarMini,
 } from "@/components/metagraphed/charts/bar-mini";
 export {
-  type CandlestickDatum,
-  CandlestickMini,
-} from "@/components/metagraphed/charts/candlestick-mini";
-export {
   type DonutSegment,
   Donut,
   DonutLegend,
 } from "@/components/metagraphed/charts/donut";
-export { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
-export {
-  type SparklinePoint,
-  Sparkline,
-} from "@/components/metagraphed/charts/sparkline";
 export {
   type TreemapMiniDatum,
   TreemapMini,
@@ -157,11 +148,6 @@ export {
   layoutSankey,
   SankeyMini,
 } from "@/components/metagraphed/charts/sankey-mini";
-export {
-  type StackedAreaSeries,
-  layoutStackedArea,
-  StackedAreaMini,
-} from "@/components/metagraphed/charts/stacked-area-mini";
 
 // Relocated from apps/ui/.../primitives (2026-07-23): dependency-free design-
 // system primitives, moved here so ui-kit's own components can use them too
@@ -267,10 +253,6 @@ export {
   type QueryBarMetaRowProps,
 } from "@/components/metagraphed/query-bar";
 export {
-  ChartSkeleton,
-  type ChartSkeletonProps,
-} from "@/components/metagraphed/chart-skeleton";
-export {
   PanelError,
   type PanelErrorProps,
 } from "@/components/metagraphed/panel-error";
@@ -293,3 +275,46 @@ export {
   useRovingGroup,
 } from "@/hooks/use-roving-group";
 export { isScrolledPast, useScrolled } from "@/hooks/use-scrolled";
+export {
+  StackedColumns,
+  stackedSpecimen,
+  type StackedColumn,
+  type StackedColumnsProps,
+  type StackedSegment,
+} from "@/components/metagraphed/charts/stacked-columns";
+export {
+  LineWithWindow,
+  formatLineDate,
+  lineSpecimen,
+  type LineWithWindowProps,
+} from "@/components/metagraphed/charts/line-with-window";
+export {
+  CHART_RAMP_SIZE,
+  OTHER_COLOR,
+  OTHER_KEY,
+  SeriesPaletteRegistry,
+  collapseOther,
+  type SeriesPalette,
+} from "@/components/metagraphed/charts/series-palette";
+export {
+  LINE_VIEWBOX,
+  monthTicks,
+  placePoints,
+  smoothPath,
+  windowDelta,
+  windowPoints,
+  type LinePoint,
+  type LineWindow,
+  type WindowDelta,
+} from "@/components/metagraphed/charts/line-geometry";
+export { momentumAriaLabel } from "@/components/metagraphed/charts/chart-aria";
+export {
+  TrendDelta,
+  trendDeltaOf,
+  type TrendDeltaProps,
+} from "@/components/metagraphed/charts/trend-delta";
+export {
+  Provenance,
+  provenanceSentence,
+  type ProvenanceProps,
+} from "@/components/metagraphed/interaction/provenance";

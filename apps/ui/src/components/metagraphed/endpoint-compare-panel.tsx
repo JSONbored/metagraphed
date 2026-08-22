@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { BrandIcon, Sparkline, TimeAgo } from "@jsonbored/ui-kit";
+import { BrandIcon, TimeAgo, TrendDelta } from "@jsonbored/ui-kit";
 import { Chip } from "@/components/metagraphed/primitives";
 import { EndpointUptimeBar } from "./endpoint-uptime-bar";
 import { EndpointChipCluster } from "./endpoint-chip-cluster";
@@ -215,24 +215,11 @@ function CompareColumn({
 
       <div>
         <div className="text-10 text-ink-muted mb-1">Latency trend (observed)</div>
-        <div className="h-[36px] border-y border-border">
-          {values.length > 1 ? (
-            <Sparkline
-              values={values}
-              points={series.map((p) => ({ t: new Date(p.t).toLocaleTimeString("en-US"), v: p.v }))}
-              width={240}
-              height={36}
-              color={healthColor(endpoint.health)}
-              fill={false}
-              ariaLabel={`Latency trend for ${endpoint.url ?? endpoint.id}`}
-              formatValue={(v) => `${Math.round(v)}ms`}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-13 text-ink-muted">
-              Collecting samples…
-            </div>
-          )}
-        </div>
+        {values.length > 1 ? (
+          <TrendDelta values={values} label="Observed latency" />
+        ) : (
+          <span className="text-13 text-ink-muted">Collecting samples…</span>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-1">

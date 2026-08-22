@@ -110,20 +110,7 @@
   }
 }
 
-/* Loading / progress (ChartSkeleton, QueryProgress). Both respect
-   prefers-reduced-motion. */
-@keyframes mg-shimmer-sweep {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(400%);
-  }
-}
-.mg-shimmer-sweep {
-  background: linear-gradient(90deg, transparent, var(--layer), transparent);
-  animation: mg-shimmer-sweep 1.6s ease-in-out infinite;
-}
+/* Loading / progress (QueryProgress). Respects prefers-reduced-motion. */
 @keyframes mg-query-progress-track {
   0% {
     transform: translateX(-100%);
@@ -136,7 +123,6 @@
   animation: mg-query-progress-track 1.2s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .mg-shimmer-sweep,
   .mg-query-progress-track {
     animation: none;
   }

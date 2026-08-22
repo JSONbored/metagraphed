@@ -1,5 +1,6 @@
 import { BarMini } from "@jsonbored/ui-kit";
-import { ChartCard } from "@/components/metagraphed/primitives";
+import { Panel } from "@/components/metagraphed/primitives";
+import { EmptyState } from "@/components/metagraphed/states";
 import { formatTao } from "@/lib/metagraphed/format";
 import type { ChainIdleStake } from "@/lib/metagraphed/types";
 
@@ -13,22 +14,23 @@ export function ChainIdleStakeSnapshot({ idleStake }: { idleStake: ChainIdleStak
     .slice(0, MAX_SHOWN);
 
   return (
-    <ChartCard
+    <Panel
       title="Idle stake by subnet"
       caption={
         idleStake.total_idle_stake_alpha != null
           ? `${formatTao(idleStake.total_idle_stake_alpha)} idle network-wide — current snapshot, top ${top.length} subnets shown.`
           : "Current snapshot — stake registered to a subnet with no corresponding active neuron."
       }
-      height={140}
-      empty={top.length === 0}
-      emptyLabel="No idle stake"
     >
-      <BarMini
-        data={top.map((s) => ({ label: `SN${s.netuid}`, value: s.idle_stake_alpha ?? 0 }))}
-        formatValue={formatTao}
-        ariaLabel="Idle stake by subnet"
-      />
-    </ChartCard>
+      {top.length === 0 ? (
+        <EmptyState title="No idle stake" />
+      ) : (
+        <BarMini
+          data={top.map((s) => ({ label: `SN${s.netuid}`, value: s.idle_stake_alpha ?? 0 }))}
+          formatValue={formatTao}
+          ariaLabel="Idle stake by subnet"
+        />
+      )}
+    </Panel>
   );
 }

@@ -48,8 +48,7 @@ import {
   DownloadCsvButton,
   ListShell,
   LoadMore,
-  SparkLegend,
-  Sparkline,
+  Provenance,
   BackToTop,
   type ViewMode,
 } from "@jsonbored/ui-kit";
@@ -1978,12 +1977,6 @@ function FinancialTrendCell({
     series.length < 2 || Math.abs(delta) < 0.0005 ? "flat" : delta > 0 ? "up" : "down";
   const toneClass =
     tone === "up" ? "text-health-ok" : tone === "down" ? "text-health-down" : "text-ink";
-  const strokeVar =
-    tone === "up"
-      ? "var(--health-ok)"
-      : tone === "down"
-        ? "var(--health-down)"
-        : "var(--ink-muted)";
   const displayValue = last ?? current;
   const usd = displayValue != null && usdPerTao != null ? displayValue * usdPerTao : undefined;
   const fmtUsd = (n: number) =>
@@ -2014,17 +2007,6 @@ function FinancialTrendCell({
       )}
     >
       <div className="flex items-center justify-end gap-2">
-        {series.length > 1 ? (
-          <Sparkline
-            values={series}
-            width={compact ? 44 : 56}
-            height={compact ? 14 : 18}
-            color={strokeVar}
-            fill={false}
-            interactive={false}
-            ariaLabel={`${field} ${win} trend`}
-          />
-        ) : null}
         <div className="min-w-0">
           <div className={toneClass}>{displayValue == null ? "—" : fmtVal(displayValue)}</div>
           {usd != null || pct ? (
@@ -2073,7 +2055,7 @@ function SurfacesCell({ subnet }: { subnet: Subnet }) {
     .join(", ");
 
   return (
-    <SparkLegend
+    <Provenance
       metric={byKind ? "Surface kinds" : "Surface trust"}
       source={`Verified public surfaces for SN${subnet.netuid}${byKind ? ", grouped by kind" : ", by trust tier (official / registry-observed)"}.${summary ? ` — ${summary}` : ""}`}
       windowLabel="latest snapshot"
@@ -2092,7 +2074,7 @@ function SurfacesCell({ subnet }: { subnet: Subnet }) {
           {count || "—"}
         </span>
       </span>
-    </SparkLegend>
+    </Provenance>
   );
 }
 

@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Kbd, Sparkline, Definition } from "@jsonbored/ui-kit";
+import { Kbd, LineWithWindow, Definition } from "@jsonbored/ui-kit";
 import { blocksQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds, classNames } from "@/lib/metagraphed/format";
-import { ChartSkeleton, Panel } from "@/components/metagraphed/primitives";
+import { Panel } from "@/components/metagraphed/primitives";
+import { Skeleton } from "@/components/metagraphed/states";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Block } from "@/lib/metagraphed/types";
 
@@ -47,15 +48,14 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
 
   // Per-block gap (ms) between consecutive observed blocks — the visible
   // heartbeat of chain cadence. Missing observed_at collapses to null.
-  const gaps: number[] = [];
+  const gapPoints: Array<{ t: number; v: number }> = [];
   for (let i = 1; i < asc.length; i++) {
     const prev = asc[i - 1]?.observed_at ? Date.parse(asc[i - 1]!.observed_at!) : NaN;
     const cur = asc[i]?.observed_at ? Date.parse(asc[i]!.observed_at!) : NaN;
     if (Number.isFinite(prev) && Number.isFinite(cur)) {
-      gaps.push(Math.max(0, cur - prev));
+      gapPoints.push({ t: asc[i]!.block_number, v: Math.max(0, cur - prev) });
     }
   }
-  const gapPoints = gaps.map((v, i) => ({ t: `Δ${i}`, v }));
 
   const prev = current.prev_block_number;
   const next = current.next_block_number;
@@ -146,15 +146,17 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
           </span>
           <div className="flex-1 min-w-0">
             {surroundingQuery.isPending ? (
-              <ChartSkeleton height={28} className="w-full" />
-            ) : gaps.length > 0 ? (
-              <Sparkline
-                values={gaps}
+              <Skeleton className="h-28 w-full" />
+            ) : gapPoints.length > 0 ? (
+              <LineWithWindow
+                compact
                 points={gapPoints}
-                width={9999}
-                height={28}
-                ariaLabel="Inter-block gap around this block, older to newer"
+                window={{ from: gapPoints[0]!.t, to: gapPoints[gapPoints.length - 1]!.t }}
+                unit="block gap"
                 formatValue={(v) => humaniseSeconds(v / 1000)}
+                formatDate={(t) => `#${formatNumber(t)}`}
+                ariaLabel="Inter-block gap around this block, older to newer"
+                source="chain-walk"
               />
             ) : (
               <span className="text-11 text-ink-muted">—</span>

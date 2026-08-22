@@ -4,7 +4,7 @@ import { Chip } from "@/components/metagraphed/primitives";
 import { CopyLinkButton } from "@/components/metagraphed/primitives/copy-link-button";
 import { EndpointUptimeBar } from "./endpoint-uptime-bar";
 import { EndpointChipCluster } from "./endpoint-chip-cluster";
-import { Sparkline } from "@jsonbored/ui-kit";
+import { LineWithWindow } from "@jsonbored/ui-kit";
 import { useLatencyHistory, type LatencyPoint } from "@/hooks/use-latency-history";
 import { classNames } from "@/lib/metagraphed/format";
 import type { Endpoint, EndpointIncident, RpcPool } from "@/lib/metagraphed/types";
@@ -91,7 +91,10 @@ export function EndpointDetailDrawer({
   }, [endpoint]);
 
   const series = useLatencyHistory(endpoint.id, serverSamples);
-  const latencyValues = series.map((p) => p.v);
+  const latencyPoints = series
+    .map((p) => ({ t: new Date(p.t).getTime(), v: p.v }))
+    .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v))
+    .sort((a, b) => a.t - b.t);
 
   const stateCounts = useMemo(() => {
     const counts = { down: 0, warn: 0, other: 0 } as Record<string, number>;
@@ -154,16 +157,27 @@ export function EndpointDetailDrawer({
             </span>
           </div>
           <div className="mt-3 border-y border-border py-3">
-            {latencyValues.length > 1 ? (
-              <Sparkline
-                values={latencyValues}
-                points={series.map((p) => ({ t: new Date(p.t).toLocaleString("en-US"), v: p.v }))}
-                width={560}
-                height={88}
-                color="var(--accent)"
-                fill={false}
-                ariaLabel="Endpoint latency probe history"
+            {latencyPoints.length > 1 ? (
+              <LineWithWindow
+                compact
+                points={latencyPoints}
+                window={{
+                  from: latencyPoints[0]!.t,
+                  to: latencyPoints[latencyPoints.length - 1]!.t,
+                }}
+                unit="ms"
                 formatValue={(value) => `${Math.round(value)}ms`}
+                formatDate={(t) =>
+                  new Date(t).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: "UTC",
+                  })
+                }
+                ariaLabel="Endpoint latency probe history"
+                source={`endpoint-${endpoint.id}-latency`}
               />
             ) : (
               <div className="flex h-[88px] items-center justify-center border border-dashed border-border text-13 text-ink-muted">

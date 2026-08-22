@@ -10,13 +10,13 @@ import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
   ShareButton,
   TimeAgo,
-  Sparkline,
   BarMini,
   Donut,
   SectionHead,
   FactStrip,
   FactCell,
   RangeControl,
+  LineWithWindow,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
@@ -57,6 +57,7 @@ import {
   economicsTrendsQuery,
   recentChainEventsQuery,
 } from "@/lib/metagraphed/queries";
+import { toLinePoints } from "@/components/metagraphed/metric-history";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { ChainTabActions } from "./-chain-hub";
@@ -379,16 +380,19 @@ function MiniSeries({
   label,
   days,
   values,
-  color,
   formatValue,
 }: {
   label: string;
   days: string[];
   values: number[];
-  color: string;
   formatValue: (v: number) => string;
 }) {
   const latest = values.length > 0 ? values[values.length - 1]! : null;
+  const points = toLinePoints(
+    values.map((v, i) => ({ day: days[i] ?? "", v })),
+    (r) => r.day,
+    (r) => r.v,
+  );
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
@@ -397,15 +401,17 @@ function MiniSeries({
           {latest == null ? "—" : formatValue(latest)}
         </span>
       </div>
-      <Sparkline
-        values={values}
-        points={values.map((v, i) => ({ t: days[i] ?? "", v }))}
-        width={320}
-        height={48}
-        color={color}
-        ariaLabel={`Daily ${label.toLowerCase()}`}
-        formatValue={formatValue}
-      />
+      {points.length > 1 ? (
+        <LineWithWindow
+          compact
+          points={points}
+          window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
+          unit={label.toLowerCase()}
+          formatValue={formatValue}
+          ariaLabel={`Daily ${label.toLowerCase()}`}
+          source={`chain-${label.toLowerCase().replace(/\s+/g, "-")}`}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1264,35 +1270,30 @@ function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
             label="Total stake"
             days={chrono.map((d) => d.snapshot_date)}
             values={chrono.map((d) => d.total_stake_alpha ?? 0)}
-            color="var(--accent)"
             formatValue={formatTao}
           />
           <MiniSeries
             label="Alpha price"
             days={chrono.map((d) => d.snapshot_date)}
             values={chrono.map((d) => d.alpha_price_tao_weighted ?? 0)}
-            color="var(--chart-1)"
             formatValue={formatTao}
           />
           <MiniSeries
             label="Emission share"
             days={chrono.map((d) => d.snapshot_date)}
             values={chrono.map((d) => (d.mean_emission_share ?? 0) * 100)}
-            color="var(--chart-6)"
             formatValue={(v) => `${v.toFixed(3)}%`}
           />
           <MiniSeries
             label="Validators"
             days={chrono.map((d) => d.snapshot_date)}
             values={chrono.map((d) => d.validator_count ?? 0)}
-            color="var(--chart-3)"
             formatValue={(v) => formatNumber(v)}
           />
           <MiniSeries
             label="Miners"
             days={chrono.map((d) => d.snapshot_date)}
             values={chrono.map((d) => d.miner_count ?? 0)}
-            color="var(--chart-1)"
             formatValue={(v) => formatNumber(v)}
           />
         </div>
@@ -1588,21 +1589,18 @@ function ExplorerDashboard({
               label="Extrinsics"
               days={chrono.map((d) => d.day)}
               values={chrono.map((d) => d.extrinsic_count)}
-              color="var(--accent)"
               formatValue={(v) => formatNumber(v)}
             />
             <MiniSeries
               label="Events"
               days={chrono.map((d) => d.day)}
               values={chrono.map((d) => d.event_count)}
-              color="var(--chart-3)"
               formatValue={(v) => formatNumber(v)}
             />
             <MiniSeries
               label="Unique signers"
               days={chrono.map((d) => d.day)}
               values={chrono.map((d) => d.unique_signers)}
-              color="var(--chart-1)"
               formatValue={(v) => formatNumber(v)}
             />
           </div>
@@ -1735,28 +1733,24 @@ function ExplorerDashboard({
                       label="Total fees"
                       days={feeChrono.map((d) => d.day)}
                       values={feeChrono.map((d) => d.total_fee_tao)}
-                      color="var(--accent)"
                       formatValue={formatTao}
                     />
                     <MiniSeries
                       label="Avg fee"
                       days={feeChrono.map((d) => d.day)}
                       values={feeChrono.map((d) => d.avg_fee_tao ?? 0)}
-                      color="var(--chart-3)"
                       formatValue={formatTao}
                     />
                     <MiniSeries
                       label="Total tips"
                       days={feeChrono.map((d) => d.day)}
                       values={feeChrono.map((d) => d.total_tip_tao)}
-                      color="var(--chart-6)"
                       formatValue={formatTao}
                     />
                     <MiniSeries
                       label="Avg tip"
                       days={feeChrono.map((d) => d.day)}
                       values={feeChrono.map((d) => d.avg_tip_tao ?? 0)}
-                      color="var(--chart-1)"
                       formatValue={formatTao}
                     />
                   </div>

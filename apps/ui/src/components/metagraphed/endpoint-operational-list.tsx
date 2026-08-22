@@ -1,7 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo } from "react";
-import { BrandIcon, CopyButton, ExternalLink, Sparkline, TimeAgo } from "@jsonbored/ui-kit";
+import { BrandIcon, CopyButton, ExternalLink, TimeAgo, TrendDelta } from "@jsonbored/ui-kit";
 import { EndpointDetailDrawer } from "./endpoint-detail-drawer";
 import { EndpointUptimeBar } from "./endpoint-uptime-bar";
 import { recordLatencyObservations } from "@/hooks/use-latency-history";
@@ -42,13 +42,6 @@ function latencySeries(endpoint: Endpoint): number[] {
     })
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
     .slice(-24);
-}
-
-function healthColor(health: Endpoint["health"]): string {
-  if (health === "ok") return "var(--health-ok)";
-  if (health === "warn") return "var(--health-warn)";
-  if (health === "down") return "var(--health-down)";
-  return "var(--health-unknown)";
 }
 
 function railClass(health: Endpoint["health"]): string {
@@ -352,15 +345,7 @@ export function EndpointOperationalList({
                             </div>
                             <div className="mt-1.5 h-[18px]">
                               {series.length > 1 ? (
-                                <Sparkline
-                                  values={series}
-                                  width={132}
-                                  height={18}
-                                  color={healthColor(endpoint.health)}
-                                  fill={false}
-                                  interactive={false}
-                                  ariaLabel="Recent endpoint latency"
-                                />
+                                <TrendDelta values={series} label="Recent endpoint latency" />
                               ) : (
                                 <div className="h-full border-b border-dashed border-border/60" />
                               )}
