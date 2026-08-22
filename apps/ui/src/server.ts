@@ -10,9 +10,13 @@ import {
   siteGraphNodes,
   stringifyJsonLd,
 } from "./lib/metagraphed/json-ld";
-import { categoryPath, MIN_CATEGORY_SUBNETS } from "./lib/metagraphed/subnet-categories";
+import {
+  categoryPath,
+  MIN_CATEGORY_SUBNETS,
+  SUBNETS_ALL_LIMIT,
+} from "./lib/metagraphed/subnet-categories";
 import { isoTimestamp } from "./lib/metagraphed/freshness";
-import { API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
+import { API_DATA_ORIGIN, API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
 import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
 
 type ServerEntry = {
@@ -364,7 +368,11 @@ async function buildSitemap(): Promise<Response> {
     // News source unavailable — omit rather than fail the whole sitemap.
   }
   try {
-    const res = await fetch(`${API_ORIGIN}/api/v1/subnets?limit=500`, {
+    // The SAME limit the hub uses, so both derive their category set from one
+    // page of subnets. A hard-coded 500 here made the sitemap and the hub two
+    // different requests, which the e2e stub answers with two different
+    // recordings.
+    const res = await fetch(`${API_DATA_ORIGIN}/api/v1/subnets?limit=${SUBNETS_ALL_LIMIT}`, {
       headers: { accept: "application/json" },
     });
     if (res.ok) {
@@ -414,7 +422,7 @@ async function buildSitemap(): Promise<Response> {
   // Stamping that would be the "lastmod is really just now" antipattern the helper above exists
   // to avoid, on 1029 URLs at once.
   try {
-    const res = await fetch(`${API_ORIGIN}/api/v1/validators?limit=2000`, {
+    const res = await fetch(`${API_DATA_ORIGIN}/api/v1/validators?limit=2000`, {
       headers: { accept: "application/json" },
     });
     if (res.ok) {
@@ -433,7 +441,7 @@ async function buildSitemap(): Promise<Response> {
     // Network hiccup — validators are omitted; the sitemap stays valid XML.
   }
   try {
-    const res = await fetch(`${API_ORIGIN}/api/v1/providers?limit=500`, {
+    const res = await fetch(`${API_DATA_ORIGIN}/api/v1/providers?limit=500`, {
       headers: { accept: "application/json" },
     });
     if (res.ok) {
@@ -837,6 +845,16 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
     title: "About",
     subtitle: "What Metagraphed is, and how the data is produced",
     eyebrow: "About",
+  },
+  "/privacy": {
+    title: "Privacy policy",
+    subtitle: "What we collect, how long it is kept, and who else processes it",
+    eyebrow: "Legal",
+  },
+  "/terms": {
+    title: "Terms of use",
+    subtitle: "What you can rely on, what you cannot, and fair use",
+    eyebrow: "Legal",
   },
 };
 

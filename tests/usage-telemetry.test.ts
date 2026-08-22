@@ -3931,3 +3931,59 @@ describe("recordUsageEvent — the two person namespaces agree", () => {
     assert.equal(await personFor("ip:account:acct_1"), false);
   });
 });
+
+// #11565: a first-party probe rides the SHARED attribution, so a breakdown
+// that excludes our own sweeps behaves identically whichever $mcp_* event it
+// starts from. The nightly conformance run was 4,990 tool calls in 30 days
+// against ~1,600 of real interactive traffic, and it touches every tool every
+// night -- so unlabelled it dominates exactly the per-tool caller counts the
+// paid boundary is meant to be chosen from.
+describe("$mcp_probe", () => {
+  const CONFIGURED_PROBE = {
+    [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+  } as unknown as Env;
+
+  test("is stamped on a tool call when the request declared one", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED_PROBE,
+      {
+        toolName: "get_subnet",
+        isError: false,
+        durationMs: 5,
+        probe: "mcp-conformance",
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(
+      (calls[0].body.properties as Row).$mcp_probe,
+      "mcp-conformance",
+    );
+  });
+
+  test("is absent for ordinary traffic, which is what makes the filter mean anything", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED_PROBE,
+      { toolName: "get_subnet", isError: false, durationMs: 5 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.ok(
+      !("$mcp_probe" in (calls[0].body.properties as Row)),
+      "a real caller must carry no probe label at all",
+    );
+  });
+
+  test("rides the shared attribution, so initialize carries it too", async () => {
+    const calls: Row[] = [];
+    await recordMcpInitializeEvent(
+      CONFIGURED_PROBE,
+      { probe: "mcp-conformance" } as Row,
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(
+      (calls[0].body.properties as Row).$mcp_probe,
+      "mcp-conformance",
+    );
+  });
+});

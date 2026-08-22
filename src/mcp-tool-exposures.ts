@@ -410,6 +410,11 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
     reason:
       "Calls a catalogued third-party surface and returns ITS body; the shape is the subnet's, not ours.",
   },
+  write_subnet_surface: {
+    operation: null,
+    reason:
+      "The write half of call_subnet_surface (#11568): same third-party surface, same absence of a route of ours to mirror.",
+  },
   store_surface_credential: {
     operation: null,
     reason:

@@ -69,9 +69,13 @@ function splitOperationSummaries(spec: { paths?: Record<string, Record<string, u
     for (const op of Object.values(methods)) {
       const operation = op as OpenAPIOperationLike;
       if (!operation || typeof operation !== "object" || !operation.operationId) continue;
+      // No early return on an absent summary -- see the twin of this loop in
+      // scripts/generate-openapi-docs.ts. Since metagraphed#11592 the spec
+      // carries prose in `description` and a `summary` on only 18 of 296
+      // operations, so skipping the rest would leave their titles to
+      // fumadocs-openapi's own `idToTitle`.
       const summary = operation.summary ?? "";
-      if (!summary) continue;
-      if (!operation.description) operation.description = summary;
+      if (!operation.description && summary) operation.description = summary;
       operation.summary = humanizeOperationId(operation.operationId);
     }
   }

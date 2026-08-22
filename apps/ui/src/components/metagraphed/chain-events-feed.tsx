@@ -2,7 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { API_BASE } from "@/lib/metagraphed/config";
+import { ExternalLink } from "@jsonbored/ui-kit";
+import { API_BASE, PAID_EXPORT_ENDPOINTS } from "@/lib/metagraphed/config";
 import { ResetFiltersButton, SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo, ListShell, LoadMore, LiveTickerProvider } from "@jsonbored/ui-kit";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
@@ -353,16 +354,35 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
         isStale={isFetching && !isPending && !isFetchingNextPage}
         footer={
           events.length > 0 ? (
-            <LoadMore
-              hasMore={!!hasNextPage}
-              isLoading={isFetchingNextPage}
-              onLoadMore={() => {
-                void fetchNextPage();
-              }}
-              shown={events.length}
-              error={isFetchNextPageError ? error : null}
-              cursorInvalid={cursorInvalid}
-            />
+            <>
+              <LoadMore
+                hasMore={!!hasNextPage}
+                isLoading={isFetchingNextPage}
+                onLoadMore={() => {
+                  void fetchNextPage();
+                }}
+                shown={events.length}
+                error={isFetchNextPageError ? error : null}
+                cursorInvalid={cursorInvalid}
+              />
+              {/* Paging this feed 100 rows at a time is the free path and
+                  stays the free path. A reader who has just clicked "load
+                  more" is the one person who benefits from knowing a
+                  single-call export exists, so it is named HERE rather than
+                  on a pricing page nobody visits. Rendered as a link, never
+                  fetched: this route answers 402 without a payment. */}
+              {PAID_EXPORT_ENDPOINTS.map((endpoint) => (
+                <p key={endpoint.path} className="mg-type-data text-ink-muted mt-3">
+                  <ExternalLink
+                    href={`${API_BASE}${endpoint.path}`}
+                    className="hover:text-ink-strong"
+                  >
+                    {endpoint.label}
+                  </ExternalLink>{" "}
+                  — {endpoint.note}
+                </p>
+              ))}
+            </>
           ) : undefined
         }
       />

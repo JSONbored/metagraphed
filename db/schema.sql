@@ -132,7 +132,9 @@ CREATE TABLE public.api_key_blocks (
     blocked_at bigint NOT NULL,
     blocked_by text,
     unblocked_at bigint,
-    unblocked_note text
+    unblocked_note text,
+    account_kind text DEFAULT 'rpc'::text NOT NULL,
+    CONSTRAINT api_key_blocks_account_kind_check CHECK ((account_kind = ANY (ARRAY['rpc'::text, 'github'::text])))
 );
 
 --
@@ -157,7 +159,9 @@ CREATE TABLE public.api_key_usage_daily (
     day text NOT NULL,
     route text NOT NULL,
     request_count integer DEFAULT 0 NOT NULL,
-    rejected_count integer DEFAULT 0 NOT NULL
+    rejected_count integer DEFAULT 0 NOT NULL,
+    account_kind text DEFAULT 'rpc'::text NOT NULL,
+    CONSTRAINT api_key_usage_daily_account_kind_check CHECK ((account_kind = ANY (ARRAY['rpc'::text, 'github'::text])))
 );
 
 --
@@ -198,7 +202,9 @@ CREATE TABLE public.api_quota_daily (
     account_id integer NOT NULL,
     day text NOT NULL,
     units_spent bigint DEFAULT 0 NOT NULL,
-    updated_at bigint NOT NULL
+    updated_at bigint NOT NULL,
+    account_kind text DEFAULT 'rpc'::text NOT NULL,
+    CONSTRAINT api_quota_daily_account_kind_check CHECK ((account_kind = ANY (ARRAY['rpc'::text, 'github'::text])))
 );
 
 --
@@ -1373,7 +1379,7 @@ ALTER TABLE ONLY public.api_key_blocks
 --
 
 ALTER TABLE ONLY public.api_key_usage_daily
-    ADD CONSTRAINT api_key_usage_daily_pkey PRIMARY KEY (account_id, day, route);
+    ADD CONSTRAINT api_key_usage_daily_pkey PRIMARY KEY (account_kind, account_id, day, route);
 
 --
 -- Name: api_keys api_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -1394,7 +1400,7 @@ ALTER TABLE ONLY public.api_keys
 --
 
 ALTER TABLE ONLY public.api_quota_daily
-    ADD CONSTRAINT api_quota_daily_pkey PRIMARY KEY (account_id, day);
+    ADD CONSTRAINT api_quota_daily_pkey PRIMARY KEY (account_kind, account_id, day);
 
 --
 -- Name: api_usage_rollup api_usage_rollup_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -1863,13 +1869,13 @@ CREATE INDEX idx_account_position_daily_account_date ON public.account_position_
 -- Name: idx_api_key_blocks_one_active_per_account; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_api_key_blocks_one_active_per_account ON public.api_key_blocks USING btree (account_id) WHERE (unblocked_at IS NULL);
+CREATE UNIQUE INDEX idx_api_key_blocks_one_active_per_account ON public.api_key_blocks USING btree (account_kind, account_id) WHERE (unblocked_at IS NULL);
 
 --
 -- Name: idx_api_key_usage_daily_account_day; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_api_key_usage_daily_account_day ON public.api_key_usage_daily USING btree (account_id, day DESC);
+CREATE INDEX idx_api_key_usage_daily_account_day ON public.api_key_usage_daily USING btree (account_kind, account_id, day DESC);
 
 --
 -- Name: idx_api_keys_account_id; Type: INDEX; Schema: public; Owner: -

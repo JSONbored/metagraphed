@@ -68,6 +68,13 @@ jobs:
       # to mean anything.
       - name: Validate live MCP responses against their published outputSchemas
         shell: bash
+        # #11565: proves this sweep is FIRST-PARTY, so its 4,990 monthly tool
+        # calls are excluded from product metrics instead of dominating the
+        # per-tool caller counts pricing is chosen from. Absent or wrong, the
+        # sweep still runs and simply counts as ordinary traffic -- the marker
+        # never gates the request, only its analytics label.
+        env:
+          MCP_PROBE_TOKEN: ${{ secrets.MCP_PROBE_TOKEN }}
         run: |
           node scripts/check-mcp-conformance.ts | tee mcp-conformance.log
           {

@@ -766,6 +766,7 @@ describe("daily quotas (#8608)", () => {
     assert.equal(result.quota, undefined);
     assert.deepEqual(result.quotaPending, {
       accountId: "42",
+      accountKind: "rpc",
       dailyUnits: 1000,
     });
   });
@@ -784,7 +785,7 @@ describe("daily quotas (#8608)", () => {
     const verdict = await spendDeferredDailyQuota(
       req(),
       env,
-      { accountId: "42", dailyUnits: 1000 },
+      { accountId: "42", accountKind: "rpc" as const, dailyUnits: 1000 },
       50,
     );
     // The store answered, so the verdict is not the fail-open null. Asserting
@@ -812,7 +813,7 @@ describe("daily quotas (#8608)", () => {
     const verdict = await spendDeferredDailyQuota(
       req(),
       env,
-      { accountId: "42", dailyUnits: 1000 },
+      { accountId: "42", accountKind: "rpc" as const, dailyUnits: 1000 },
       25,
     );
     assert.ok(verdict, "a REFUSAL is still an answer, not a fail-open null");
@@ -848,7 +849,9 @@ describe("daily quotas (#8608)", () => {
         // an unauthenticated spend would let anything reachable on the service
         // binding zero an account's day.
         token: "test-lookup-token",
-        body: { account_id: 42, cost: 25, limit: 1000 },
+        // #11573: the kind travels with the id -- a quota row is keyed on
+        // (kind, id), so a bare id would debit whichever account matched first.
+        body: { account_id: 42, account_kind: "rpc", cost: 25, limit: 1000 },
       },
     ]);
   });
@@ -1373,6 +1376,7 @@ describe("key-level blocklist (#8611)", () => {
         policy: CONFIG.keyed,
         tier: "",
         accountId: "42",
+        accountKind: "rpc" as const,
         block: {
           blocked: true,
           reasonCode: null,
@@ -1537,5 +1541,396 @@ describe("tier lookup must not walk the prototype chain (#8687 review)", () => {
       CONFIG,
     );
     assert.equal(result.policy.limit, 5000);
+  });
+});
+
+// infra#629: a caller who paid per-call over x402. The wallet IS the identity
+// here -- there is no account row to point at -- so the payer address keys the
+// bucket directly, namespaced so it can never collide with an account id.
+describe("applyTieredRateLimit — paidIdentity", () => {
+  const TIERS = {
+    free: { envVar: "TEST_FREE_LIMITER", limit: 300, windowSeconds: 60 },
+    paid: {
+      envVar: "TEST_PAID_LIMITER",
+      limit: 3000,
+      windowSeconds: 60,
+      dailyUnits: 2_000_000,
+    },
+  };
+  const TIERED_CONFIG = { ...CONFIG, tiers: TIERS };
+  const PAYER = "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f";
+
+  function anonRequest() {
+    return new Request("https://api.metagraph.sh/api/v1/ask", {
+      method: "POST",
+      headers: { "cf-connecting-ip": "203.0.113.9" },
+    });
+  }
+
+  function envWithLimiter(calls: unknown[]) {
+    return {
+      METAGRAPH_CONTROL: createFakeKv(),
+      TEST_PAID_LIMITER: {
+        limit: async (args: unknown) => {
+          calls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+  }
+
+  test("a settled payment buys the paid tier, keyed to the wallet", async () => {
+    // Without this the payment settles and changes nothing, which is worse
+    // than not taking it: the caller is charged and still metered as anonymous.
+    const calls: unknown[] = [];
+    const result = await applyTieredRateLimit(
+      anonRequest(),
+      envWithLimiter(calls),
+      TIERED_CONFIG,
+      { paidIdentity: { payer: PAYER, tier: "paid" } },
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.tier, "paid");
+    assert.deepEqual(calls, [{ key: `test:paid:x402:${PAYER}` }]);
+  });
+
+  test("the payer is NOT reported as an account id", async () => {
+    // A wallet address belongs to no account table. Leaking it into
+    // `accountId` -- which every consumer reads as an rpc_accounts id -- would
+    // have the quota stores writing rows keyed by a hex string.
+    const result = await applyTieredRateLimit(
+      anonRequest(),
+      envWithLimiter([]),
+      TIERED_CONFIG,
+      { paidIdentity: { payer: PAYER, tier: "paid" } },
+    );
+    assert.equal(result.accountId, null);
+  });
+
+  test("a key outranks a payment, because a key is a durable identity", async () => {
+    // Precedence, stated: a caller presenting BOTH has deliberately asserted
+    // an account, and that account's tier and budget are the ones that apply.
+    const calls: unknown[] = [];
+    const env = {
+      ...envWithLimiter(calls),
+      TEST_FREE_LIMITER: {
+        limit: async (args: unknown) => {
+          calls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    const result = await applyTieredRateLimit(
+      anonRequest(),
+      env,
+      TIERED_CONFIG,
+      {
+        oauthIdentity: { accountId: 7, tier: "free" },
+        paidIdentity: { payer: PAYER, tier: "paid" },
+      },
+    );
+    assert.equal(result.tier, "free");
+    assert.deepEqual(calls, [{ key: "test:free:github:7" }]);
+  });
+});
+
+// #11562: an OAuth-authenticated caller. Before this, tier resolved ONLY from
+// an `mg_` key, so a caller who completed the whole GitHub authorization flow
+// was rate-limited, quota'd and priced as anonymous -- measured in production
+// as 460 tool calls across 5 authenticated identities, every one "anonymous".
+describe("applyTieredRateLimit — oauthIdentity", () => {
+  const TIERS = {
+    free: { envVar: "TEST_FREE_LIMITER", limit: 300, windowSeconds: 60 },
+    paid: {
+      envVar: "TEST_PAID_LIMITER",
+      limit: 3000,
+      windowSeconds: 60,
+      dailyUnits: 2_000_000,
+    },
+  };
+  const TIERED_CONFIG = { ...CONFIG, tiers: TIERS };
+
+  function anonRequest() {
+    return new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+      headers: { "cf-connecting-ip": "203.0.113.9" },
+    });
+  }
+
+  test("resolves the account's own tier, keyed by tier and a namespaced id", async () => {
+    const calls: unknown[] = [];
+    const env = {
+      METAGRAPH_CONTROL: createFakeKv(),
+      TEST_PAID_LIMITER: {
+        limit: async (args: unknown) => {
+          calls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    const result = await applyTieredRateLimit(
+      anonRequest(),
+      env,
+      TIERED_CONFIG,
+      { oauthIdentity: { accountId: 7, tier: "paid" } },
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.tier, "paid");
+    assert.equal(result.policy, TIERS.paid);
+    // The id is namespaced: `github_accounts.id` 7 and `rpc_accounts` id 7 are
+    // different accounts and must never share a rate-limit bucket.
+    assert.deepEqual(calls, [{ key: "test:paid:github:7" }]);
+    assert.equal(result.accountKind, "github");
+  });
+
+  test("the account is reported as (github, id) and the quota is scoped to it", async () => {
+    // #11573: the three stores now key on (kind, id), so an OAuth caller is
+    // metered against its OWN row rather than being skipped or -- worse --
+    // debiting the rpc account of the same number.
+    const env = {
+      METAGRAPH_CONTROL: createFakeKv(),
+      TEST_PAID_LIMITER: { limit: async () => ({ success: true }) },
+    } as unknown as Env;
+    const result = await applyTieredRateLimit(
+      anonRequest(),
+      env,
+      TIERED_CONFIG,
+      { oauthIdentity: { accountId: 7, tier: "paid" }, deferQuota: true },
+    );
+    assert.equal(result.accountId, "7");
+    assert.equal(result.accountKind, "github");
+    assert.deepEqual(result.quotaPending, {
+      accountId: "7",
+      accountKind: "github",
+      dailyUnits: 2_000_000,
+    });
+  });
+
+  test("an OAuth caller is subject to the blocklist, scoped by kind", async () => {
+    // The workaround this replaced skipped the blocklist for OAuth callers
+    // entirely, which would have shipped a tier that could not be enforced.
+    const kv = createFakeKv();
+    await kv.put(
+      "api-key-blocklist",
+      JSON.stringify({
+        blocks: [
+          {
+            accountId: 7,
+            accountKind: "github",
+            reasonCode: "abuse_manual",
+          },
+        ],
+      }),
+    );
+    const env = {
+      METAGRAPH_CONTROL: kv,
+      TEST_PAID_LIMITER: { limit: async () => ({ success: true }) },
+    } as unknown as Env;
+    const blocked = await applyTieredRateLimit(
+      anonRequest(),
+      env,
+      TIERED_CONFIG,
+      { oauthIdentity: { accountId: 7, tier: "paid" } },
+    );
+    assert.equal(blocked.allowed, false);
+    assert.equal(blocked.block?.blocked, true);
+    // ...and the SAME id under the other kind is a different account, which is
+    // the entire point of the discriminator.
+    const other = await applyTieredRateLimit(
+      new Request("https://api.metagraph.sh/mcp", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${VALID_KEY}`,
+          "cf-connecting-ip": "203.0.113.9",
+        },
+      }),
+      {
+        ...envWithTier("free", { METAGRAPH_CONTROL: kv }),
+        TEST_KEYED_LIMITER: { limit: async () => ({ success: true }) },
+      } as unknown as Env,
+      { ...CONFIG, tiers: { free: KEYED } },
+    );
+    assert.equal(other.allowed, true, "an rpc account of the same number");
+    assert.equal(other.block, undefined);
+  });
+
+  test("the limiter's refusal is honoured", async () => {
+    const env = {
+      METAGRAPH_CONTROL: createFakeKv(),
+      TEST_PAID_LIMITER: { limit: async () => ({ success: false }) },
+    } as unknown as Env;
+    const result = await applyTieredRateLimit(
+      anonRequest(),
+      env,
+      TIERED_CONFIG,
+      { oauthIdentity: { accountId: 7, tier: "paid" } },
+    );
+    assert.equal(result.allowed, false);
+    assert.equal(result.tier, "paid");
+  });
+
+  test("an unrecognised tier falls back to the keyed policy, never a bypass", async () => {
+    // Same reasoning as the keyed branch's own-property guard: a tier name we
+    // do not price must not resolve to an inherited Object member and end up
+    // with no binding at all.
+    const calls: unknown[] = [];
+    const env = {
+      METAGRAPH_CONTROL: createFakeKv(),
+      TEST_KEYED_LIMITER: {
+        limit: async (args: unknown) => {
+          calls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    for (const tier of ["constructor", "__proto__", "enterprise"]) {
+      const result = await applyTieredRateLimit(
+        anonRequest(),
+        env,
+        TIERED_CONFIG,
+        { oauthIdentity: { accountId: 7, tier } },
+      );
+      assert.equal(result.policy, KEYED, tier);
+      assert.equal(result.allowed, true, tier);
+    }
+    assert.equal(calls.length, 3, "the keyed limiter must have been consulted");
+  });
+
+  test("a missing binding fails open, like every other limiter here", async () => {
+    const env = { METAGRAPH_CONTROL: createFakeKv() } as unknown as Env;
+    const result = await applyTieredRateLimit(
+      anonRequest(),
+      env,
+      TIERED_CONFIG,
+      { oauthIdentity: { accountId: 7, tier: "paid" } },
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.tier, "paid");
+  });
+
+  test("a valid key OUTRANKS an OAuth identity", async () => {
+    // A caller presenting a key is asserting that identity deliberately --
+    // the same precedence mcpDistinctId applies when both are present.
+    const calls: unknown[] = [];
+    const env = {
+      ...envWithTier("free"),
+      TEST_KEYED_LIMITER: {
+        limit: async (args: unknown) => {
+          calls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    const result = await applyTieredRateLimit(
+      new Request("https://api.metagraph.sh/mcp", {
+        method: "POST",
+        headers: { authorization: `Bearer ${VALID_KEY}` },
+      }),
+      env,
+      { ...CONFIG, tiers: { free: KEYED } },
+      { oauthIdentity: { accountId: 7, tier: "paid" } },
+    );
+    assert.equal(result.tier, "free");
+    assert.equal(result.accountId, "42");
+    assert.equal(result.accountKind, "rpc");
+    // `rpc` keeps its historical key shape, so no existing caller's window is
+    // reset by the discriminator landing.
+    assert.deepEqual(calls, [{ key: "test:free:42" }]);
+  });
+
+  test("no identity at all still resolves anonymous", async () => {
+    // The regression this whole branch must not cause: anonymous stays exactly
+    // where it was. This grants a tier to authenticated callers; it takes
+    // nothing from anyone.
+    const calls: unknown[] = [];
+    const env = {
+      METAGRAPH_CONTROL: createFakeKv(),
+      TEST_ANON_LIMITER: {
+        limit: async (args: unknown) => {
+          calls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    for (const oauthIdentity of [null, undefined]) {
+      const result = await applyTieredRateLimit(
+        anonRequest(),
+        env,
+        TIERED_CONFIG,
+        { oauthIdentity },
+      );
+      assert.equal(result.tier, "anonymous");
+      assert.equal(result.policy, ANONYMOUS);
+    }
+    assert.deepEqual(calls, [
+      { key: "test:203.0.113.9" },
+      { key: "test:203.0.113.9" },
+    ]);
+  });
+});
+
+// #11573: the two remaining shapes of the limiter key, pinned so the
+// discriminator cannot quietly change a bucket it was not meant to touch.
+describe("applyTieredRateLimit — limiter key shapes", () => {
+  test("an unattributable key keeps its client-IP bucket and reports rpc", async () => {
+    // verifyUnkeyKey returns a null accountId while `valid` stays true, so a
+    // key minted without an Unkey identity lands here. It still gets its
+    // tier's ceiling -- it does hold a valid key -- but it must never share a
+    // bucket with an unrelated caller.
+    const calls: unknown[] = [];
+    const env = {
+      METAGRAPH_CONTROL: createFakeKv(),
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+      DATA_API: {
+        fetch: async () =>
+          new Response(
+            JSON.stringify({
+              valid: true,
+              code: "VALID",
+              tier: "free",
+              accountId: null,
+            }),
+            { status: 200 },
+          ),
+      },
+      TEST_KEYED_LIMITER: {
+        limit: async (args: unknown) => {
+          calls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    const result = await applyTieredRateLimit(
+      new Request("https://api.metagraph.sh/x", {
+        headers: {
+          authorization: `Bearer ${VALID_KEY}`,
+          "cf-connecting-ip": "203.0.113.9",
+        },
+      }),
+      env,
+      { ...CONFIG, tiers: { free: KEYED } },
+    );
+    assert.equal(result.accountId, null);
+    assert.equal(result.accountKind, "rpc");
+    assert.deepEqual(calls, [{ key: "test:free:ip:203.0.113.9" }]);
+  });
+
+  test("an anonymous caller reports rpc rather than leaving the kind unsaid", async () => {
+    // `accountId: null` already carries the absence; a consumer must never
+    // have to distinguish "anonymous" from "we forgot to say".
+    const env = {
+      METAGRAPH_CONTROL: createFakeKv(),
+      TEST_ANON_LIMITER: { limit: async () => ({ success: true }) },
+    } as unknown as Env;
+    const result = await applyTieredRateLimit(
+      new Request("https://api.metagraph.sh/x", {
+        headers: { "cf-connecting-ip": "203.0.113.9" },
+      }),
+      env,
+      CONFIG,
+    );
+    assert.equal(result.tier, "anonymous");
+    assert.equal(result.accountId, null);
+    assert.equal(result.accountKind, "rpc");
   });
 });

@@ -22,11 +22,13 @@ import { Route as GapsRouteImport } from './routes/gaps'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RevenueRouteImport } from './routes/revenue'
 import { Route as SchemasRouteImport } from './routes/schemas'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as SurfacesRouteImport } from './routes/surfaces'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AccountsIndexRouteImport } from './routes/accounts.index'
 import { Route as AccountsSs58RouteImport } from './routes/accounts.$ss58'
 import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.index'
@@ -137,6 +139,11 @@ const PortfolioRoute = PortfolioRouteImport.update({
   path: '/portfolio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RevenueRoute = RevenueRouteImport.update({
   id: '/revenue',
   path: '/revenue',
@@ -160,6 +167,11 @@ const StatusRoute = StatusRouteImport.update({
 const SurfacesRoute = SurfacesRouteImport.update({
   id: '/surfaces',
   path: '/surfaces',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountsIndexRoute = AccountsIndexRouteImport.update({
@@ -397,11 +409,13 @@ export interface FileRoutesByFullPath {
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/portfolio': typeof PortfolioRoute
+  '/privacy': typeof PrivacyRoute
   '/revenue': typeof RevenueRoute
   '/schemas': typeof SchemasRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
+  '/terms': typeof TermsRoute
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/apis/endpoints': typeof ApisEndpointsRoute
@@ -459,11 +473,13 @@ export interface FileRoutesByTo {
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/portfolio': typeof PortfolioRoute
+  '/privacy': typeof PrivacyRoute
   '/revenue': typeof RevenueRoute
   '/schemas': typeof SchemasRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
+  '/terms': typeof TermsRoute
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/apis/endpoints': typeof ApisEndpointsRoute
@@ -524,11 +540,13 @@ export interface FileRoutesById {
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/portfolio': typeof PortfolioRoute
+  '/privacy': typeof PrivacyRoute
   '/revenue': typeof RevenueRoute
   '/schemas': typeof SchemasRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
+  '/terms': typeof TermsRoute
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/apis/endpoints': typeof ApisEndpointsRoute
@@ -590,11 +608,13 @@ export interface FileRouteTypes {
     | '/health'
     | '/leaderboards'
     | '/portfolio'
+    | '/privacy'
     | '/revenue'
     | '/schemas'
     | '/settings'
     | '/status'
     | '/surfaces'
+    | '/terms'
     | '/accounts/$ss58'
     | '/api/search'
     | '/apis/endpoints'
@@ -652,11 +672,13 @@ export interface FileRouteTypes {
     | '/health'
     | '/leaderboards'
     | '/portfolio'
+    | '/privacy'
     | '/revenue'
     | '/schemas'
     | '/settings'
     | '/status'
     | '/surfaces'
+    | '/terms'
     | '/accounts/$ss58'
     | '/api/search'
     | '/apis/endpoints'
@@ -716,11 +738,13 @@ export interface FileRouteTypes {
     | '/health'
     | '/leaderboards'
     | '/portfolio'
+    | '/privacy'
     | '/revenue'
     | '/schemas'
     | '/settings'
     | '/status'
     | '/surfaces'
+    | '/terms'
     | '/accounts/$ss58'
     | '/api/search'
     | '/apis/endpoints'
@@ -781,11 +805,13 @@ export interface RootRouteChildren {
   HealthRoute: typeof HealthRoute
   LeaderboardsRoute: typeof LeaderboardsRoute
   PortfolioRoute: typeof PortfolioRoute
+  PrivacyRoute: typeof PrivacyRoute
   RevenueRoute: typeof RevenueRoute
   SchemasRoute: typeof SchemasRoute
   SettingsRoute: typeof SettingsRoute
   StatusRoute: typeof StatusRoute
   SurfacesRoute: typeof SurfacesRoute
+  TermsRoute: typeof TermsRoute
   AccountsSs58Route: typeof AccountsSs58Route
   ApiSearchRoute: typeof ApiSearchRoute
   BlocksRefRoute: typeof BlocksRefRoute
@@ -913,6 +939,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortfolioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/revenue': {
       id: '/revenue'
       path: '/revenue'
@@ -946,6 +979,13 @@ declare module '@tanstack/react-router' {
       path: '/surfaces'
       fullPath: '/surfaces'
       preLoaderRoute: typeof SurfacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accounts/': {
@@ -1313,11 +1353,13 @@ const rootRouteChildren: RootRouteChildren = {
   HealthRoute: HealthRoute,
   LeaderboardsRoute: LeaderboardsRoute,
   PortfolioRoute: PortfolioRoute,
+  PrivacyRoute: PrivacyRoute,
   RevenueRoute: RevenueRoute,
   SchemasRoute: SchemasRoute,
   SettingsRoute: SettingsRoute,
   StatusRoute: StatusRoute,
   SurfacesRoute: SurfacesRoute,
+  TermsRoute: TermsRoute,
   AccountsSs58Route: AccountsSs58Route,
   ApiSearchRoute: ApiSearchRoute,
   BlocksRefRoute: BlocksRefRoute,

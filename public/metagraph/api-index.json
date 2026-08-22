@@ -1517,6 +1517,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "export-chain-events",
+      "path": "/metagraph/export/chain-events.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainEventsFeedArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-events-feed",
       "path": "/metagraph/chain-events.json",
       "retirement": null,
@@ -10918,6 +10927,58 @@
               "csv"
             ],
             "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/export/chain-events.json",
+      "cache": "short",
+      "description": "Fetch up to 25,000 chain events in one call -- the same rows, filters and ordering as /api/v1/chain-events, without the 100-row page ceiling or the cursor bookkeeping that comes with it. ?pallet / ?method narrow by event id; ?before reads down from a block number, which is how a caller walks a large range in deliberate chunks; ?limit caps the call (<=25000, default 5000). REQUIRES PAYMENT: this route answers 402 with an x402 quote when no payment is presented, on Base or Solana -- see /.well-known/x402. It is the one family that does; every other route on this API serves an unpaid caller normally. Served live, no static file.",
+      "id": "export-chain-events",
+      "mainnet_only": false,
+      "method": "GET",
+      "networks": [
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
+      ],
+      "path": "/api/v1/export/chain-events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "pallet",
+          "schema": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        {
+          "name": "method",
+          "schema": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
+          "name": "before",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "default": 5000,
+            "maximum": 25000,
+            "minimum": 1,
+            "type": "integer",
+            "x-serving-bound": true
           }
         }
       ]

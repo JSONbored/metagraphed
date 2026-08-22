@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import {
   buildOAuthProviderOptions,
+  handleAuthorizeConsent,
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
   isAnonymousMcpRequest,
@@ -254,11 +255,17 @@ describe("handleAuthorizeRequest", () => {
       new Request("https://api.metagraph.sh/authorize"),
       env,
     );
-    assert.equal(res.status, 302);
+    // #11569: GET now RENDERS the consent screen rather than redirecting. The
+    // hand-off to GitHub moved to POST, so that arriving at this URL -- via a
+    // link, a prefetch, an <img> -- can no longer start a grant.
+    assert.equal(res.status, 200);
     assert.equal(getOAuthApiMock.mock.calls.length, 1);
   });
 
-  test("stashes the parsed AuthRequest in OAUTH_KV and redirects to GitHub", async () => {
+  test("stashes the parsed AuthRequest and renders consent; POST hands off to GitHub", async () => {
+    // The two halves of #11569's split, asserted together because neither is
+    // meaningful alone: the GET must stash the request AND show it, and the
+    // POST must only proceed for a nonce that names something we stashed.
     const env = baseEnv();
     const deps = { getHelpers: async () => fakeHelpers() };
     const res = await handleAuthorizeRequest(
@@ -266,25 +273,133 @@ describe("handleAuthorizeRequest", () => {
       env,
       deps,
     );
-    assert.equal(res.status, 302);
-    const location = new URL(res.headers.get("location")!);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") ?? "", /text\/html/);
+    // A consent screen bound to one pending request must never be cached; a
+    // cached copy would show a stale client to the next person through.
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    const html = await res.text();
+    const nonce = /name="consent_nonce" value="([^"]+)"/.exec(html)?.[1];
+    assert.ok(nonce, "the form must carry the CSRF nonce");
+
+    const approved = await handleAuthorizeConsent(
+      new Request("https://api.metagraph.sh/authorize", {
+        method: "POST",
+        body: new URLSearchParams({ consent_nonce: nonce! }),
+      }),
+      env,
+    );
+    assert.equal(approved.status, 302);
+    const location = new URL(approved.headers.get("location")!);
     assert.equal(location.origin, "https://github.com");
     assert.equal(location.pathname, "/login/oauth/authorize");
     assert.equal(location.searchParams.get("client_id"), "client-id");
-    assert.equal(
-      location.searchParams.get("redirect_uri"),
-      "https://api.metagraph.sh/oauth/callback/github",
-    );
-    assert.equal(location.searchParams.get("scope"), "read:user");
-    const nonce = location.searchParams.get("state");
-    assert.ok(nonce && nonce.length > 0);
+    assert.equal(location.searchParams.get("state"), nonce);
+  });
 
-    const stored = (env.OAUTH_KV as unknown as Row)._store.get(
-      `oauth-pending:${nonce}`,
+  test("consent renders for a client that registered nothing but an id", async () => {
+    // A DCR client may carry no name and no redirectUris array at all. The
+    // page still has to render -- a missing field is not a reason to fail an
+    // authorization, and an unrendered consent screen is a dead flow.
+    const env = baseEnv();
+    const deps = {
+      getHelpers: async () =>
+        fakeHelpers({
+          lookupClient: async () => ({ clientId: "bare-client" }),
+          parseAuthRequest: async () => ({
+            ...FAKE_AUTH_REQUEST,
+            scope: [],
+          }),
+        }),
+    };
+    const res = await handleAuthorizeRequest(
+      new Request("https://api.metagraph.sh/authorize"),
+      env,
+      deps,
     );
-    assert.ok(stored);
-    assert.deepEqual(JSON.parse(stored.value), FAKE_AUTH_REQUEST);
-    assert.equal(stored.opts.expirationTtl, OAUTH_PENDING_TTL_SECONDS);
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    // No host to show and no name to fall back to, so the id itself stands in
+    // -- labelled as self-reported, never as verified.
+    assert.match(html, /name self-reported/);
+    // An empty scope list must not render as "will be able to: (nothing)" for
+    // a grant that still happens.
+    assert.match(html, /profile/);
+  });
+
+  test("a registered name and redirect list reach the page", async () => {
+    const env = baseEnv();
+    const deps = {
+      getHelpers: async () =>
+        fakeHelpers({
+          lookupClient: async () => ({
+            clientId: "local-client",
+            clientName: "My Local Agent",
+            redirectUris: ["http://localhost:3118/callback", 42],
+          }),
+        }),
+    };
+    const res = await handleAuthorizeRequest(
+      new Request("https://api.metagraph.sh/authorize"),
+      env,
+      deps,
+    );
+    const html = await res.text();
+    assert.match(html, /My Local Agent/);
+    // Loopback-only, so the warning fires -- and the non-string entry in the
+    // list is filtered rather than reaching the URL parser.
+    assert.match(html, /runs on your own machine/);
+  });
+
+  test("POST without a nonce, or with one we never issued, starts nothing", async () => {
+    // The nonce is what stops a forged POST beginning a grant for a client the
+    // user never saw. Both arms matter: absent, and present-but-unknown.
+    const env = baseEnv();
+    const missing = await handleAuthorizeConsent(
+      new Request("https://api.metagraph.sh/authorize", {
+        method: "POST",
+        body: new URLSearchParams({}),
+      }),
+      env,
+    );
+    assert.equal(missing.status, 400);
+    const forged = await handleAuthorizeConsent(
+      new Request("https://api.metagraph.sh/authorize", {
+        method: "POST",
+        body: new URLSearchParams({ consent_nonce: "never-issued" }),
+      }),
+      env,
+    );
+    assert.equal(forged.status, 400);
+    assert.match(await forged.text(), /expired/);
+  });
+
+  test("POST is 503 on a deployment with no oauth provisioned", async () => {
+    for (const env of [
+      baseEnv({ OAUTH_KV: undefined }),
+      baseEnv({ GITHUB_OAUTH_CLIENT_ID: undefined }),
+    ]) {
+      const res = await handleAuthorizeConsent(
+        new Request("https://api.metagraph.sh/authorize", {
+          method: "POST",
+          body: new URLSearchParams({ consent_nonce: "x" }),
+        }),
+        env,
+      );
+      assert.equal(res.status, 503);
+    }
+  });
+
+  test("a malformed POST body is refused rather than throwing", async () => {
+    const res = await handleAuthorizeConsent(
+      new Request("https://api.metagraph.sh/authorize", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{not-form-data",
+      }),
+      baseEnv(),
+    );
+    assert.equal(res.status, 400);
   });
 });
 

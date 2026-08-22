@@ -73,6 +73,8 @@ import {
   CHAIN_EVENTS_LIMIT_DEFAULT,
   CHAIN_EVENTS_LIMIT_MAX,
   CHAIN_EVENT_NAME_MAX_LENGTH,
+  EXPORT_CHAIN_EVENTS_LIMIT_DEFAULT,
+  EXPORT_CHAIN_EVENTS_LIMIT_MAX,
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
@@ -437,6 +439,19 @@ export const ROUTE_QUERY_SCHEMAS = {
       "health",
     ]).optional(),
   }),
+  // The export tier (#11600). Same feed as /api/v1/chain-events, same filters,
+  // a far higher ceiling -- and no cursor, because an export that needs paging
+  // is the paginated route with extra steps. `before` stays: it is how a
+  // caller walks a large range in deliberate, priced chunks.
+  "/api/v1/export/chain-events": z.object({
+    pallet: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
+    method: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
+    before: blockBoundSchema("first").optional(),
+    limit: limitSchema(
+      EXPORT_CHAIN_EVENTS_LIMIT_MAX,
+      EXPORT_CHAIN_EVENTS_LIMIT_DEFAULT,
+    ).optional(),
+  }),
   "/api/v1/search/semantic": z.object({
     // Both were wrong before #10075: `q` published no ceiling though the
     // handler rejects one over SEMANTIC_QUERY_MAX_LENGTH, and `limit`
@@ -446,7 +461,18 @@ export const ROUTE_QUERY_SCHEMAS = {
     // The bounds come FROM src/route-limits.ts rather than being restated
     // here -- that module is the owner, and schemas-src/mcp-tools/ has read it
     // directly since #9127.
-    q: querySchema(SEMANTIC_QUERY_MAX_LENGTH).optional(),
+    // REQUIRED, and published that way (#11599). The handler has always
+    // rejected a call without it -- `GET /api/v1/search/semantic` returns 400
+    // `invalid_query`, "Query parameter `q` is required.", verified against
+    // production -- while this schema said `.optional()`, so the spec told a
+    // client the one mandatory input was optional. That is the third time this
+    // route published something it does not do (see #10075 and #10065 above);
+    // the derivation in isRequiredQueryParameter reads THIS, so the fix
+    // belongs here rather than in a hand-written `required: true`.
+    //
+    // /api/v1/search is genuinely different and stays optional: it returns 200
+    // with no `q`. The two routes are not the same contract.
+    q: querySchema(SEMANTIC_QUERY_MAX_LENGTH),
     limit: limitSchema(SEMANTIC_LIMIT_MAX, SEMANTIC_LIMIT_DEFAULT).optional(),
     // #10065: the handler has scoped on this since semantic search shipped --
     // it filters the results and rejects an unknown value by name ("Unknown

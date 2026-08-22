@@ -35,7 +35,11 @@
 // `listToolDefinitions()`, so a tool registered tomorrow is covered tonight.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleMcpRequest, listToolDefinitions } from "../src/mcp-server.ts";
+import {
+  AUTH_REQUIRED_TOOL_NAMES,
+  handleMcpRequest,
+  listToolDefinitions,
+} from "../src/mcp-server.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -60,7 +64,18 @@ async function errorCode(
       }),
     }),
     env,
-    {},
+    // #11563: a tool that needs an identity now gets a transport-level 401
+    // BEFORE argument validation runs. Probing those anonymously would report
+    // "silently accepted" for arguments that are in fact enforced -- a false
+    // negative that would quietly stop this gate checking three tools.
+    //
+    // So the probe carries an identity when, and only when, the tool declares
+    // it needs one. That reaches the argument guards rather than weakening the
+    // gate to treat 401 as a pass, which would have been the easy fix and the
+    // wrong one.
+    AUTH_REQUIRED_TOOL_NAMES.has(name)
+      ? { executionCtx: { waitUntil() {}, props: { accountId: 7 } } }
+      : {},
   );
   const body = (await response.json()) as Row;
   return ((body?.result?.structuredContent as Row)?.error as Row)?.code ?? null;

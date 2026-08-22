@@ -423,10 +423,24 @@ assert.equal(
   MCP_SERVER_INFO.title,
   "server.json title must match MCP_SERVER_INFO.title (the title the server card renders)",
 );
+// THE CORE PROFILE, not the full one (#11164).
+//
+// A registry install is somebody meeting this server for the first time, and
+// `remotes[0]` is what the installer connects them to. Measured against
+// production on 2026-08-22: `/mcp` lists 243 tools at ~396,000 tokens,
+// `/mcp/core` lists 23 at ~44,500. Most clients hold tool definitions in
+// model context, so the full list spends nine tenths of a large context
+// window before the caller asks anything -- and Anthropic's directory
+// criteria require a server to be "frugal with their use of tokens".
+//
+// This is not a reduced install. The profile filters `tools/list` and NEVER
+// dispatch: a core session can `tools/call` all 243, with `ask` and
+// `get_more_tools` as escape hatches. `/mcp` stays served, documented, and is
+// still what `endpoint` on the server card reports as this server's identity.
 assert.equal(
   (serverManifest.remotes as Row[])?.[0]?.url,
-  `https://${PRIMARY_DOMAIN}/mcp`,
-  "server.json must point registry consumers at the endpoint the server actually serves",
+  `https://${PRIMARY_DOMAIN}/mcp/core`,
+  "server.json must point registry consumers at the core profile, which is the endpoint a first-time installer should get",
 );
 assert.equal(
   (serverManifest.remotes as Row[])?.[0]?.type,
@@ -1936,6 +1950,20 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
   [
     "call_rpc",
     "read-only RPC proxying is intentionally disabled until endpoint scoring and abuse controls land (rpc_proxy_disabled)",
+  ],
+  [
+    "write_subnet_surface",
+    // #11568. Its READ sibling call_subnet_surface is swept here and validated
+    // against this exact same outputSchema, so the envelope is proven -- the
+    // two tools are one implementation and differ only in which verbs they
+    // will issue.
+    //
+    // The write half cannot be swept, and deliberately so. Succeeding would
+    // mean this gate issuing a real POST/PUT/PATCH/DELETE against a third
+    // party's host on every CI run, which is not a thing a validation sweep
+    // should do at any frequency. The hermetic fixture declares no write
+    // operation either, so the call is refused before a response exists.
+    "issuing real writes to third-party subnet hosts is not something a sweep may do; the identical response envelope is validated via its read sibling call_subnet_surface",
   ],
   [
     "get_deregistration_ranking",

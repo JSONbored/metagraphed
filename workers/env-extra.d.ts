@@ -46,6 +46,29 @@ interface RuntimeSecretEnv {
   ALERT_TRIGGER_CREATE_TOKEN?: string;
   ALERT_TRIGGERS_INTERNAL_TOKEN?: string;
   API_KEY_LOOKUP_INTERNAL_TOKEN?: string;
+  /**
+   * infra#629: where x402 payments settle. A PUBLIC value kept in
+   * wrangler.jsonc rather than a secret, deliberately -- it is the address a
+   * payer's funds move to, so it must not be changeable without a reviewable
+   * diff. Absent means this deployment takes no payments at all.
+   */
+  X402_PAY_TO?: string;
+  /** CAIP-2 network id. Defaults to Base Sepolia. */
+  X402_NETWORK?: string;
+  /**
+   * Where Solana payments settle, base58. A SEPARATE address because the
+   * chains have separate formats -- one payTo cannot serve both legs. Absent
+   * means this deployment offers no Solana leg.
+   */
+  X402_PAY_TO_SOLANA?: string;
+  /** CAIP-2 network id for the SVM leg. Defaults to Solana MAINNET. */
+  X402_NETWORK_SOLANA?: string;
+  /** Facilitator base URL. Defaults to the public Coinbase one. */
+  X402_FACILITATOR_URL?: string;
+  /** #11565: proves a `x-metagraph-probe` marker came from one of our own
+   * scheduled sweeps. Absent on a deployment that has not provisioned it, in
+   * which case no probe marker is ever honoured -- see mcpProbeName. */
+  MCP_PROBE_TOKEN?: string;
   /** #9208: gates POST /api/v1/internal/chain-detail-sync and its head GET --
    * the live-follow decode lane's write path into the chain-detail hot tier.
    * Set via `wrangler secret put` on BOTH Workers (api.ts proxies, data-api.ts

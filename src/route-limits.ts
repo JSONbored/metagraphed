@@ -463,6 +463,21 @@ export const CHAIN_EVENTS_LIMIT_DEFAULT = 50;
 export const CHAIN_EVENTS_LIMIT_MAX = 100;
 
 /**
+ * The export tier's ceiling on the same feed (#11600).
+ *
+ * 25,000 rows against the free tier's 100. That ratio IS the product: one
+ * paid call returns what 250 free ones do, over a window the paginated route
+ * does not offer, and the caller keeps no cursor state across them.
+ *
+ * Capped rather than unbounded, and capped HERE rather than left to the
+ * caller. The lakehouse bills per byte SCANNED, so a request with no ceiling
+ * is a request whose cost we cannot quote -- and x402 requires a fixed price
+ * before the work runs. A bound we choose is what makes the quote honest.
+ */
+export const EXPORT_CHAIN_EVENTS_LIMIT_DEFAULT = 5_000;
+export const EXPORT_CHAIN_EVENTS_LIMIT_MAX = 25_000;
+
+/**
  * The ceiling on a Substrate runtime NAME in a query filter (#10096).
  *
  * `call_module` on the three chain-analytics feeds, and `pallet`/`method` on

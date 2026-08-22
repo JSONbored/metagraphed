@@ -3,7 +3,7 @@ title: Chain
 description: Every Chain endpoint in the metagraphed API, with its method and path.
 ---
 
-57 endpoints.
+59 endpoints.
 
 - [Chain Activity](/docs/api-reference/chain/chain-activity) — `GET /api/v1/chain/activity`\
   Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first.
@@ -117,5 +117,9 @@ description: Every Chain endpoint in the metagraphed API, with its method and pa
   Network-scoped form of /api/v1/crowdloans — prefix the route with a network to choose which chain answers it.
 - [Emission Gate Changes](/docs/api-reference/chain/emission-gate-changes) — `GET /api/v1/chain/governance/emission-changes`\
   Fetch the emission-gate change log.
+- [Export Chain Events](/docs/api-reference/chain/export-chain-events) — `GET /api/v1/export/chain-events`\
+  Fetch up to 25,000 chain events in one call -- the same rows, filters and ordering as /api/v1/chain-events, without the 100-row page ceiling or the cursor bookkeeping that comes with it.
+- [Export Chain Events By Network](/docs/api-reference/chain/export-chain-events-by-network) — `GET /api/v1/{network}/export/chain-events`\
+  Network-scoped form of /api/v1/export/chain-events — prefix the route with a network to choose which chain answers it.
 - [Indexer Lag](/docs/api-reference/chain/indexer-lag) — `GET /api/v1/chain/indexer-lag`\
   Fetch the block-indexing latency card.
