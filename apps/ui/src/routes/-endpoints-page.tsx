@@ -30,7 +30,7 @@ import { EndpointOperationalList } from "@/components/metagraphed/endpoint-opera
 import { EndpointComparePanel } from "@/components/metagraphed/endpoint-compare-panel";
 
 import { IncidentsTimeline } from "@/components/metagraphed/analytics/incidents-timeline";
-import { LatencyHeatmap } from "@/components/metagraphed/charts/latency-heatmap";
+import { LatencyRanking } from "@/components/metagraphed/charts/latency-ranking";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
 import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
@@ -189,10 +189,10 @@ export function EndpointsPage() {
                 </div>
                 <AsyncPanel
                   height="lg"
-                  context="latency heatmap"
+                  context="latency ranking"
                   retryQueryKeys={[metagraphedQueryKey("endpoints")]}
                 >
-                  <LatencyHeatmapSection />
+                  <LatencyRankingSection />
                 </AsyncPanel>
               </section>
             </TimeRangeProvider>
@@ -297,16 +297,16 @@ function EndpointsStatStrip() {
   );
 }
 
-function LatencyHeatmapSection() {
+function LatencyRankingSection() {
   const { data } = useSuspenseQuery(endpointsQuery());
   // The callable-endpoints table below is scoped to callable kinds (rpc/wss/api/
-  // sse/data — i.e. not "other" directory links). Feed the heatmap the same
+  // sse/data — i.e. not "other" directory links). Feed the ranking the same
   // callable-scoped population so both describe the same set of endpoints.
   const callable = useMemo(() => {
     const rows = (data.data ?? []) as Endpoint[];
     return rows.filter((e) => endpointCategory(e.kind) !== "other");
   }, [data]);
-  return <LatencyHeatmap endpoints={callable} />;
+  return <LatencyRanking endpoints={callable} />;
 }
 
 function PoolsTable() {

@@ -23,12 +23,17 @@ test.describe("StackedColumns", () => {
     await segment.hover();
     await expect(chart).toHaveAttribute("data-series-active", "true");
     // Every Targon segment keeps its colour; every other segment is idle.
-    const counts = await chart.evaluate((el) => ({
-      targonDim: el.querySelectorAll('i[data-entity="Targon"][data-dim="true"]').length,
-      targonActive: el.querySelectorAll('i[data-entity="Targon"][data-active="true"]').length,
-      otherDim: el.querySelectorAll('i:not([data-entity="Targon"])[data-dim="true"]').length,
-      otherLit: el.querySelectorAll('i:not([data-entity="Targon"]):not([data-dim="true"])').length,
-    }));
+    // Scoped to the stacks: the tooltip lives in the same root and its swatches
+    // are <i> too.
+    const counts = await chart.evaluate((el) => {
+      const seg = (s: string) => el.querySelectorAll(`.mg-stack-stack ${s}`).length;
+      return {
+        targonDim: seg('i[data-entity="Targon"][data-dim="true"]'),
+        targonActive: seg('i[data-entity="Targon"][data-active="true"]'),
+        otherDim: seg('i:not([data-entity="Targon"])[data-dim="true"]'),
+        otherLit: seg('i:not([data-entity="Targon"]):not([data-dim="true"])'),
+      };
+    });
     expect(counts.targonDim).toBe(0);
     expect(counts.targonActive).toBe(56);
     expect(counts.otherLit).toBe(0);

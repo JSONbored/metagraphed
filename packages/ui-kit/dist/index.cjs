@@ -1898,6 +1898,7 @@ function useIsMobile() {
 }
 function ChartTooltip({
   top = 110,
+  offsetLeft,
   fallback,
   className
 }) {
@@ -1905,6 +1906,7 @@ function ChartTooltip({
   const ref = React3.useRef(null);
   const mobile = useIsMobile();
   const [left, setLeft] = React3.useState(null);
+  const [markTop, setMarkTop] = React3.useState(0);
   const [, mounted2] = React3.useState(false);
   React3.useLayoutEffect(() => mounted2(true), []);
   const host = React3.useRef(null);
@@ -1915,14 +1917,13 @@ function ChartTooltip({
       setLeft(null);
       return;
     }
+    const markRect = active.element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    setMarkTop(markRect.bottom - containerRect.top + 4);
     setLeft(
-      placeTooltip(
-        active.element.getBoundingClientRect(),
-        container.getBoundingClientRect(),
-        ref.current.offsetWidth
-      )
+      offsetLeft ?? placeTooltip(markRect, containerRect, ref.current.offsetWidth)
     );
-  }, [anchored, mobile, active, container]);
+  }, [anchored, mobile, active, container, offsetLeft]);
   const data = active ? active.data ?? fallback?.(active.key) ?? null : null;
   const show = anchored && data !== null;
   return /* @__PURE__ */ jsxRuntime.jsx("div", { ref: host, style: { display: "contents" }, "data-mg-tooltip-host": "", children: show && data ? /* @__PURE__ */ jsxRuntime.jsxs(
@@ -1936,7 +1937,7 @@ function ChartTooltip({
       role: "status",
       "aria-live": "polite",
       style: mobile ? void 0 : {
-        top,
+        top: top === "mark" ? markTop : top,
         left: left ?? 0,
         visibility: left === null ? "hidden" : void 0
       },
@@ -1954,14 +1955,14 @@ function ChartTooltip({
             "data-muted": active && data.rows?.some((r) => r.key === active.key) && row.key !== active.key ? "true" : void 0,
             children: [
               /* @__PURE__ */ jsxRuntime.jsxs("span", { children: [
-                row.swatch ? /* @__PURE__ */ jsxRuntime.jsx(
-                  "span",
+                /* @__PURE__ */ jsxRuntime.jsx(
+                  "i",
                   {
                     className: "mg-chart-tooltip-swatch",
-                    style: { "--swatch": row.swatch },
-                    "aria-hidden": true
+                    "data-empty": row.swatch ? void 0 : "true",
+                    style: row.swatch ? { "--swatch": row.swatch } : void 0
                   }
-                ) : null,
+                ),
                 /* @__PURE__ */ jsxRuntime.jsx("span", { children: row.label })
               ] }),
               /* @__PURE__ */ jsxRuntime.jsx("b", { children: row.value })
@@ -2463,28 +2464,15 @@ function EntityHero({
 }
 
 // src/components/metagraphed/charts/chart-aria.ts
-function chartSegmentsAriaLabel(segments) {
-  return segments.map((s) => `${s.label} ${s.value}`).join(", ");
-}
-function synthesizeBarMiniAriaLabel(data) {
-  if (data.length === 0) return "Bar chart with no data";
-  return chartSegmentsAriaLabel(data);
-}
-function synthesizeDonutAriaLabel(segments) {
-  if (segments.length === 0) return "Donut chart with no data";
-  const total = segments.reduce((sum3, s) => sum3 + Math.max(0, s.value), 0);
-  if (total <= 0) return "Donut chart with no data";
-  return chartSegmentsAriaLabel(segments);
-}
 function markAriaLabel(domain, total) {
   if (total === void 0 || total === null || total === "") return domain;
   return `${domain} \xB7 ${total} total`;
 }
-function momentumAriaLabel(unit, endValue, deltaLabel, rangeLabel) {
+function momentumAriaLabel(unit, endValue, deltaLabel2, rangeLabel) {
   const noun = unit.charAt(0).toUpperCase() + unit.slice(1);
   if (endValue === null) return `${noun}: no data in the window`;
   const range = rangeLabel ? ` over ${rangeLabel}` : "";
-  return `${noun}: ${endValue}, ${deltaLabel}${range}`;
+  return `${noun}: ${endValue}, ${deltaLabel2}${range}`;
 }
 function Kbd({
   children,
@@ -3113,515 +3101,6 @@ function fmtYield(v) {
   if (Math.abs(pct) >= 1e-3) return `${pct.toPrecision(5)}%`;
   return `${pct.toExponential(2)}%`;
 }
-
-// src/components/metagraphed/yield-percentile-layout.ts
-var YIELD_PERCENTILE_STRIP_CONTAINER_CLASS = "@container rounded border border-border bg-card p-4";
-var YIELD_PERCENTILE_STRIP_GRID_CLASS = "grid grid-cols-2 gap-3 @min-[28rem]:grid-cols-4";
-var YIELD_PERCENTILE_LABEL_CLASS = "text-10 text-ink-muted";
-var YIELD_PERCENTILE_VALUE_CLASS = "mt-1 min-w-0 truncate font-display text-13 font-semibold tabular-nums text-ink-strong leading-none @min-[20rem]:text-16 @min-[28rem]:text-16";
-var PERCENTILE_LABELS = {
-  p25: "p25",
-  median: "Median",
-  p75: "p75",
-  p90: "p90"
-};
-function buildYieldPercentileData(input) {
-  const { formatYield } = input;
-  return ["p25", "median", "p75", "p90"].map((key) => ({
-    key,
-    label: PERCENTILE_LABELS[key],
-    value: formatYield(
-      key === "p25" ? input.p25_yield : key === "median" ? input.median_yield : key === "p75" ? input.p75_yield : input.p90_yield
-    )
-  }));
-}
-function PercentileFact({ label, value }) {
-  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-    /* @__PURE__ */ jsxRuntime.jsx("div", { className: YIELD_PERCENTILE_LABEL_CLASS, children: label }),
-    /* @__PURE__ */ jsxRuntime.jsx("div", { className: YIELD_PERCENTILE_VALUE_CLASS, children: value })
-  ] });
-}
-function YieldPercentileStrip({
-  p25_yield,
-  median_yield,
-  p75_yield,
-  p90_yield,
-  data
-}) {
-  const tiles = data ?? buildYieldPercentileData({
-    p25_yield,
-    median_yield,
-    p75_yield,
-    p90_yield,
-    formatYield: fmtYield
-  });
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "section",
-    {
-      className: YIELD_PERCENTILE_STRIP_CONTAINER_CLASS,
-      "aria-label": "Yield percentile distribution",
-      children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: YIELD_PERCENTILE_STRIP_GRID_CLASS, children: tiles.map((tile) => /* @__PURE__ */ jsxRuntime.jsx(
-        PercentileFact,
-        {
-          label: tile.label,
-          value: tile.value
-        },
-        tile.key
-      )) })
-    }
-  );
-}
-function BarMini({
-  data,
-  max,
-  className,
-  showValue = true,
-  formatValue,
-  ariaLabel
-}) {
-  const cap = max ?? Math.max(1, ...data.map((d) => d.value));
-  const label = ariaLabel ?? synthesizeBarMiniAriaLabel(data);
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "ul",
-    {
-      role: "img",
-      "aria-label": label,
-      className: classNames("space-y-1.5", className),
-      children: data.map((d) => {
-        const pct = cap > 0 ? Math.max(2, Math.round(d.value / cap * 100)) : 0;
-        return /* @__PURE__ */ jsxRuntime.jsxs(
-          "li",
-          {
-            className: "grid grid-cols-[5.5rem_1fr_auto] items-center gap-2",
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-13 text-ink-muted truncate", children: d.label }),
-              /* @__PURE__ */ jsxRuntime.jsx("span", { className: "relative h-1.5 rounded bg-surface overflow-hidden", children: /* @__PURE__ */ jsxRuntime.jsx(
-                "span",
-                {
-                  className: "absolute inset-y-0 left-0 rounded",
-                  style: {
-                    width: `${pct}%`,
-                    background: d.color ?? "var(--accent)"
-                  }
-                }
-              ) }),
-              showValue ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-10 tabular-nums text-ink-strong", children: formatValue ? formatValue(d.value) : d.value }) : null
-            ]
-          },
-          d.label
-        );
-      })
-    }
-  );
-}
-function Donut({
-  segments,
-  size = 96,
-  strokeWidth = 12,
-  centerLabel,
-  centerSub,
-  className,
-  ariaLabel
-}) {
-  const id = React3.useId();
-  const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0);
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  let offset = 0;
-  const label = ariaLabel ?? synthesizeDonutAriaLabel(segments);
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      role: "img",
-      "aria-label": label,
-      className,
-      style: { width: size, height: size, position: "relative", flexShrink: 0 },
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(
-          "svg",
-          {
-            width: size,
-            height: size,
-            viewBox: `0 0 ${size} ${size}`,
-            "aria-hidden": true,
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsx(
-                "circle",
-                {
-                  cx: size / 2,
-                  cy: size / 2,
-                  r: radius,
-                  fill: "none",
-                  stroke: "var(--border)",
-                  strokeWidth,
-                  opacity: 0.4
-                }
-              ),
-              total > 0 ? segments.map((s, i) => {
-                const len = Math.max(0, s.value) / total * circumference;
-                const dasharray = `${len} ${circumference - len}`;
-                const dashoffset = -offset;
-                offset += len;
-                return /* @__PURE__ */ jsxRuntime.jsx(
-                  "circle",
-                  {
-                    cx: size / 2,
-                    cy: size / 2,
-                    r: radius,
-                    fill: "none",
-                    stroke: s.color,
-                    strokeWidth,
-                    strokeDasharray: dasharray,
-                    strokeDashoffset: dashoffset,
-                    strokeLinecap: "butt",
-                    transform: `rotate(-90 ${size / 2} ${size / 2})`
-                  },
-                  `${id}-${i}`
-                );
-              }) : null
-            ]
-          }
-        ),
-        centerLabel || centerSub ? /* @__PURE__ */ jsxRuntime.jsxs(
-          "div",
-          {
-            style: {
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              // Constrain to the ring's unstroked hole (not the full size×size
-              // box) so long labels wrap within it instead of rendering on top
-              // of the ring, where they read as illegible against its color
-              // (#8112).
-              width: Math.max(0, size - strokeWidth * 2),
-              transform: "translate(-50%, -50%)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center",
-              pointerEvents: "none"
-            },
-            children: [
-              centerLabel ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "font-display text-16 font-semibold tabular-nums text-ink-strong leading-none", children: centerLabel }) : null,
-              centerSub ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-13 text-ink-muted mt-0.5", children: centerSub }) : null
-            ]
-          }
-        ) : null
-      ]
-    }
-  );
-}
-function DonutLegend({ segments }) {
-  return /* @__PURE__ */ jsxRuntime.jsx("ul", { className: "space-y-1", children: segments.map((s) => /* @__PURE__ */ jsxRuntime.jsxs(
-    "li",
-    {
-      className: "flex items-center gap-2 text-10 text-ink-muted",
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsx(
-          "span",
-          {
-            "aria-hidden": true,
-            className: "inline-block size-2 rounded",
-            style: { background: s.color }
-          }
-        ),
-        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink", children: s.label }),
-        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "ml-auto tabular-nums text-ink-strong", children: s.value })
-      ]
-    },
-    s.label
-  )) });
-}
-var sum = (ns) => ns.reduce((a, b) => a + b, 0);
-var MIN_TILE_W_FOR_LABEL = 16;
-var MIN_TILE_H_FOR_LABEL = 12;
-var MIN_TILE_W_FOR_VALUE = 16;
-var MIN_TILE_H_FOR_VALUE = 22;
-function worstRatio(areas, side) {
-  if (areas.length === 0 || side <= 0) return Infinity;
-  const s = sum(areas);
-  if (s <= 0) return Infinity;
-  const max = Math.max(...areas);
-  const min = Math.min(...areas);
-  const s2 = s * s;
-  const side2 = side * side;
-  return Math.max(side2 * max / s2, s2 / (side2 * min));
-}
-function squarify(data) {
-  const positive = data.filter((d) => d.value > 0);
-  const total = sum(positive.map((d) => d.value));
-  if (total <= 0) return [];
-  const items = positive.map((d) => ({
-    datum: d,
-    area: d.value / total * 1e4,
-    share: d.value / total
-  })).sort((a, b) => b.area - a.area);
-  const tiles = [];
-  let rect = { x: 0, y: 0, w: 100, h: 100 };
-  let row = [];
-  const layoutRow = (rowItems, r) => {
-    const rowArea = sum(rowItems.map((i) => i.area));
-    if (rowArea <= 0) return r;
-    if (r.w >= r.h) {
-      const dw = rowArea / r.h;
-      let y = r.y;
-      for (const it of rowItems) {
-        const h = it.area / dw;
-        tiles.push({ ...it.datum, share: it.share, x: r.x, y, w: dw, h });
-        y += h;
-      }
-      return { x: r.x + dw, y: r.y, w: r.w - dw, h: r.h };
-    }
-    const dh = rowArea / r.w;
-    let x = r.x;
-    for (const it of rowItems) {
-      const w = it.area / dh;
-      tiles.push({ ...it.datum, share: it.share, x, y: r.y, w, h: dh });
-      x += w;
-    }
-    return { x: r.x, y: r.y + dh, w: r.w, h: r.h - dh };
-  };
-  for (const item of items) {
-    const side = Math.min(rect.w, rect.h);
-    const current = row.map((i) => i.area);
-    const withItem = [...current, item.area];
-    if (row.length === 0 || worstRatio(withItem, side) <= worstRatio(current, side)) {
-      row.push(item);
-    } else {
-      rect = layoutRow(row, rect);
-      row = [item];
-    }
-  }
-  if (row.length > 0) layoutRow(row, rect);
-  return tiles;
-}
-function TreemapMini({
-  data,
-  className,
-  formatValue = String,
-  ariaLabel
-}) {
-  const tiles = squarify(data);
-  if (tiles.length === 0) return null;
-  const label = ariaLabel ?? `Treemap of ${tiles.length} items sized by share:` + tiles.map((t) => `${t.label} ${(t.share * 100).toFixed(1)}%`).join(", ");
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      role: "img",
-      "aria-label": label,
-      className: classNames(
-        "relative aspect-[16/9] w-full overflow-hidden rounded",
-        className
-      ),
-      children: tiles.map((t) => /* @__PURE__ */ jsxRuntime.jsx(
-        "div",
-        {
-          className: "absolute overflow-hidden p-1",
-          style: {
-            left: `${t.x}%`,
-            top: `${t.y}%`,
-            width: `${t.w}%`,
-            height: `${t.h}%`
-          },
-          children: /* @__PURE__ */ jsxRuntime.jsx(
-            "div",
-            {
-              className: "flex h-full w-full flex-col justify-between rounded border border-background/40 p-1.5",
-              style: { background: t.color ?? "var(--surface-2)" },
-              children: t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate text-10 font-medium leading-none text-ink-strong", children: t.label }),
-                t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate text-10 leading-none text-ink-muted", children: formatValue(t.value) }) : null
-              ] }) : null
-            }
-          )
-        },
-        t.label
-      ))
-    }
-  );
-}
-var sum2 = (ns) => ns.reduce((a, b) => a + b, 0);
-var NODE_THICKNESS = 10;
-var NODE_GAP = 6;
-var MIN_LABEL_STACK_SIZE = 14;
-function layoutSankey(nodes, links, columnExtent, stackExtent) {
-  const columns = [...new Set(nodes.map((n) => n.column))].sort(
-    (a, b) => a - b
-  );
-  const colPos = (column) => columns.length <= 1 ? 0 : columns.indexOf(column) / (columns.length - 1) * (columnExtent - NODE_THICKNESS);
-  const nodeRects = /* @__PURE__ */ new Map();
-  for (const column of columns) {
-    const colNodes = nodes.filter((n) => n.column === column);
-    const total = sum2(colNodes.map((n) => Math.max(0, n.value))) || 1;
-    const totalGap = NODE_GAP * Math.max(0, colNodes.length - 1);
-    const usable = Math.max(0, stackExtent - totalGap);
-    let cursor = 0;
-    for (const node of colNodes) {
-      const size = Math.max(2, Math.max(0, node.value) / total * usable);
-      nodeRects.set(node.id, {
-        node,
-        colPos: colPos(column),
-        stackPos: cursor,
-        stackSize: size
-      });
-      cursor += size + NODE_GAP;
-    }
-  }
-  const outgoingBy = /* @__PURE__ */ new Map();
-  const incomingBy = /* @__PURE__ */ new Map();
-  for (const link of links) {
-    if (!nodeRects.has(link.source) || !nodeRects.has(link.target) || link.value <= 0)
-      continue;
-    (outgoingBy.get(link.source) ?? outgoingBy.set(link.source, []).get(link.source)).push(link);
-    (incomingBy.get(link.target) ?? incomingBy.set(link.target, []).get(link.target)).push(link);
-  }
-  const outCursor = /* @__PURE__ */ new Map();
-  const inCursor = /* @__PURE__ */ new Map();
-  const linkPaths = [];
-  for (const link of links) {
-    const src = nodeRects.get(link.source);
-    const tgt = nodeRects.get(link.target);
-    if (!src || !tgt || link.value <= 0) continue;
-    const srcTotal = sum2((outgoingBy.get(link.source) ?? []).map((l) => l.value)) || 1;
-    const srcOff = outCursor.get(link.source) ?? 0;
-    const srcBand = link.value / srcTotal * src.stackSize;
-    outCursor.set(link.source, srcOff + srcBand);
-    const tgtTotal = sum2((incomingBy.get(link.target) ?? []).map((l) => l.value)) || 1;
-    const tgtOff = inCursor.get(link.target) ?? 0;
-    const tgtBand = link.value / tgtTotal * tgt.stackSize;
-    inCursor.set(link.target, tgtOff + tgtBand);
-    linkPaths.push({
-      link,
-      colStart: src.colPos + NODE_THICKNESS,
-      stackStart: src.stackPos + srcOff + srcBand / 2,
-      colEnd: tgt.colPos,
-      stackEnd: tgt.stackPos + tgtOff + tgtBand / 2,
-      thickness: Math.max(1, Math.min(srcBand, tgtBand))
-    });
-  }
-  return { columnCount: columns.length, nodeRects, linkPaths };
-}
-function SankeyMini({
-  nodes,
-  links,
-  columnExtent = 560,
-  stackExtent = 280,
-  orientation = "horizontal",
-  formatValue = String,
-  className,
-  ariaLabel,
-  onNodeSelect
-}) {
-  if (nodes.length === 0 || links.length === 0) return null;
-  const { nodeRects, linkPaths } = layoutSankey(
-    nodes,
-    links,
-    columnExtent,
-    stackExtent
-  );
-  const vertical = orientation === "vertical";
-  const viewW = vertical ? stackExtent : columnExtent;
-  const viewH = vertical ? columnExtent : stackExtent;
-  const px = (col, stack) => vertical ? stack : col;
-  const py = (col, stack) => vertical ? col : stack;
-  const lastColumn = Math.max(...nodes.map((n) => n.column));
-  const label = ariaLabel ?? `Stake flow diagram: ${links.map((l) => `${l.source} to ${l.target} ${formatValue(l.value)}`).join(", ")}`;
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "svg",
-    {
-      viewBox: `0 0 ${viewW} ${viewH}`,
-      role: "img",
-      "aria-label": label,
-      className: classNames("block w-full", className),
-      style: { maxWidth: "100%" },
-      children: [
-        linkPaths.map((lp, i) => {
-          const x0 = px(lp.colStart, lp.stackStart);
-          const y0 = py(lp.colStart, lp.stackStart);
-          const x1 = px(lp.colEnd, lp.stackEnd);
-          const y1 = py(lp.colEnd, lp.stackEnd);
-          const midX = vertical ? x0 : (x0 + x1) / 2;
-          const midY = vertical ? (y0 + y1) / 2 : y0;
-          const midX2 = vertical ? x1 : (x0 + x1) / 2;
-          const midY2 = vertical ? (y0 + y1) / 2 : y1;
-          const path = `M${x0},${y0} C${midX},${midY} ${midX2},${midY2} ${x1},${y1}`;
-          return /* @__PURE__ */ jsxRuntime.jsx(
-            "path",
-            {
-              d: path,
-              fill: "none",
-              stroke: lp.link.color ?? "var(--accent)",
-              strokeOpacity: 0.32,
-              strokeWidth: lp.thickness,
-              children: /* @__PURE__ */ jsxRuntime.jsxs("title", { children: [
-                lp.link.source,
-                " \u2192 ",
-                lp.link.target,
-                ": ",
-                formatValue(lp.link.value)
-              ] })
-            },
-            `${lp.link.source}->${lp.link.target}-${i}`
-          );
-        }),
-        [...nodeRects.values()].map(({ node, colPos, stackPos, stackSize }) => {
-          const x = px(colPos, stackPos);
-          const y = py(colPos, stackPos);
-          const w = vertical ? stackSize : NODE_THICKNESS;
-          const h = vertical ? NODE_THICKNESS : stackSize;
-          const interactive = Boolean(onNodeSelect);
-          return /* @__PURE__ */ jsxRuntime.jsxs(
-            "g",
-            {
-              onClick: interactive ? () => onNodeSelect?.(node.id) : void 0,
-              role: interactive ? "button" : void 0,
-              tabIndex: interactive ? 0 : void 0,
-              onKeyDown: interactive ? (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onNodeSelect?.(node.id);
-                }
-              } : void 0,
-              className: interactive ? "cursor-pointer" : void 0,
-              children: [
-                /* @__PURE__ */ jsxRuntime.jsx(
-                  "rect",
-                  {
-                    x,
-                    y,
-                    width: w,
-                    height: h,
-                    rx: 2,
-                    fill: node.color ?? "var(--ink-muted)",
-                    children: /* @__PURE__ */ jsxRuntime.jsxs("title", { children: [
-                      node.label,
-                      ": ",
-                      formatValue(node.value)
-                    ] })
-                  }
-                ),
-                stackSize >= MIN_LABEL_STACK_SIZE ? /* @__PURE__ */ jsxRuntime.jsx(
-                  "text",
-                  {
-                    x: vertical ? x + w / 2 : node.column === lastColumn ? x - 4 : x + NODE_THICKNESS + 4,
-                    y: vertical ? y - 4 : y + h / 2,
-                    textAnchor: vertical ? "middle" : node.column === lastColumn ? "end" : "start",
-                    dominantBaseline: vertical ? "auto" : "middle",
-                    fill: "var(--ink-strong)",
-                    className: "text-10",
-                    children: node.label
-                  }
-                ) : null
-              ]
-            },
-            node.id
-          );
-        })
-      ]
-    }
-  );
-}
 var TONE_CLASSES = {
   default: "border-border bg-paper text-ink",
   ok: "border-health-ok/40 bg-health-ok/10 text-health-ok",
@@ -3983,7 +3462,7 @@ function useColumnVisibility(pageKey, columns) {
   return { visible, isVisible, toggle, reset, setVisible };
 }
 function TableColGroup({ widths }) {
-  const total = widths.reduce((sum3, w) => sum3 + w, 0);
+  const total = widths.reduce((sum, w) => sum + w, 0);
   return /* @__PURE__ */ jsxRuntime.jsx("colgroup", { children: widths.map((w, i) => (
     // Positional by definition: a <col> IS its index in the row.
     /* @__PURE__ */ jsxRuntime.jsx(
@@ -4561,57 +4040,6 @@ function PanelSkeleton({
         className
       ),
       children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "sr-only", children: label })
-    }
-  );
-}
-var tierLabels = {
-  buildable: "Buildable",
-  emerging: "Emerging",
-  "identity-only": "Identity only",
-  dormant: "Dormant"
-};
-function ReadinessGauge({
-  score,
-  tier,
-  details,
-  compact = false,
-  className
-}) {
-  if (score == null && !tier) {
-    return /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-11 text-ink-muted", children: "\u2014" });
-  }
-  const value = Math.max(0, Math.min(100, score ?? 0));
-  const label = tierLabels[tier ?? ""] ?? tier ?? "Not classified";
-  const fill = value >= 75 ? "bg-health-ok" : value >= 45 ? "bg-health-warn" : value > 0 ? "bg-health-down" : "bg-health-unknown";
-  const detail = details?.length ? ` Services: ${details.join(", ")}.` : "";
-  const description = `Integration readiness ${value} out of 100. ${label}.${detail}`;
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "span",
-    {
-      tabIndex: 0,
-      "aria-label": description,
-      className: classNames(
-        "mg-focus-ring inline-grid items-center gap-2",
-        compact ? "min-w-[78px] grid-cols-[minmax(0,1fr)_1.75rem]" : "min-w-[96px] grid-cols-[minmax(0,1fr)_2rem]",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsx(
-          "span",
-          {
-            className: "relative h-1.5 overflow-hidden rounded bg-surface-2",
-            "aria-hidden": true,
-            children: /* @__PURE__ */ jsxRuntime.jsx(
-              "span",
-              {
-                className: classNames("absolute inset-y-0 left-0 rounded", fill),
-                style: { width: `${value}%` }
-              }
-            )
-          }
-        ),
-        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-right text-11 tabular-nums text-ink-strong", children: value })
-      ]
     }
   );
 }
@@ -5646,6 +5074,7 @@ function LineWithWindow({
   unit,
   formatValue = defaultFormat3,
   formatDate = formatLineDate,
+  formatRange,
   ariaLabel,
   keyOf,
   source = "line",
@@ -5663,7 +5092,7 @@ function LineWithWindow({
   const wStart = inside[0];
   const wEnd = inside[inside.length - 1];
   const pct = (n, of) => `${(n / of * 100).toFixed(2)}%`;
-  const rangeLabel = wStart && wEnd ? `${rangeFormat.format(new Date(wStart.t)).toUpperCase()} \u2192 ${rangeFormat.format(new Date(wEnd.t)).toUpperCase()}` : "";
+  const rangeLabel = wStart && wEnd ? formatRange ? formatRange(wStart.t, wEnd.t) : `${rangeFormat.format(new Date(wStart.t)).toUpperCase()} \u2192 ${rangeFormat.format(new Date(wEnd.t)).toUpperCase()}` : "";
   const summary = momentumAriaLabel(
     unit,
     wEnd ? formatValue(wEnd.v) : null,
@@ -5856,6 +5285,504 @@ function TrendDelta({ values, label, className }) {
     }
   );
 }
+function railFill(value, max, scale = "linear") {
+  if (!(max > 0) || !(value > 0)) return 0;
+  const ratio = Math.min(1, value / max);
+  return Math.round((scale === "sqrt" ? Math.sqrt(ratio) : ratio) * 1e3) / 10;
+}
+function RankedRails({
+  items,
+  formatValue,
+  formatSecondary,
+  scale = "linear",
+  max,
+  columns,
+  limit = 10,
+  ariaLabel,
+  source = "ranked-rails",
+  onActivate,
+  className
+}) {
+  const [expanded, setExpanded] = React3.useState(false);
+  const cap = max ?? Math.max(0, ...items.map((i) => Math.max(i.value, i.secondary ?? 0)));
+  const shown = expanded ? items : items.slice(0, limit);
+  const hasSecondary = items.some((i) => i.secondary !== void 0);
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
+    {
+      className: classNames("mg-rails", className),
+      "data-mg-rails": "",
+      "data-secondary": hasSecondary ? "true" : void 0,
+      children: [
+        columns ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-rails-head", "aria-hidden": "true", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("span", { children: columns.value }),
+          /* @__PURE__ */ jsxRuntime.jsx("span", { children: columns.name }),
+          /* @__PURE__ */ jsxRuntime.jsx("span", { children: columns.track }),
+          hasSecondary ? /* @__PURE__ */ jsxRuntime.jsx("span", { children: columns.secondary ?? "" }) : null
+        ] }) : null,
+        /* @__PURE__ */ jsxRuntime.jsxs(
+          "div",
+          {
+            className: "mg-rails-rows",
+            role: "group",
+            "aria-label": ariaLabel,
+            "data-marks": true,
+            children: [
+              /* @__PURE__ */ jsxRuntime.jsx(ChartTooltip, { top: "mark", offsetLeft: 268 }),
+              shown.map((item) => /* @__PURE__ */ jsxRuntime.jsx(
+                Rail,
+                {
+                  item,
+                  cap,
+                  scale,
+                  formatValue,
+                  formatSecondary: formatSecondary ?? formatValue,
+                  hasSecondary,
+                  source,
+                  onActivate
+                },
+                item.key
+              ))
+            ]
+          }
+        ),
+        items.length > limit && !expanded ? /* @__PURE__ */ jsxRuntime.jsxs(
+          "button",
+          {
+            type: "button",
+            className: "mg-rails-more",
+            onClick: () => setExpanded(true),
+            children: [
+              "Show all ",
+              items.length
+            ]
+          }
+        ) : null
+      ]
+    }
+  );
+}
+function Rail({
+  item,
+  cap,
+  scale,
+  formatValue,
+  formatSecondary,
+  hasSecondary,
+  source,
+  onActivate
+}) {
+  const mark = useEntityMark(item.key, {
+    source,
+    label: markAriaLabel(item.label, formatValue(item.value)),
+    data: item.detail ? { title: item.label, total: formatValue(item.value), rows: item.detail } : { title: item.label, total: formatValue(item.value) },
+    onActivate: item.href ? void 0 : onActivate ? () => onActivate(item) : void 0
+  });
+  const body = /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rails-value", children: formatValue(item.value) }),
+    /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-rails-name", children: [
+      item.avatar ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rails-avatar", children: item.avatar }) : null,
+      /* @__PURE__ */ jsxRuntime.jsx("span", { children: item.label })
+    ] }),
+    /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rails-track", children: /* @__PURE__ */ jsxRuntime.jsx(
+      "b",
+      {
+        style: {
+          "--fill": `${railFill(item.value, cap, scale)}%`
+        }
+      }
+    ) }),
+    hasSecondary ? /* @__PURE__ */ jsxRuntime.jsx(
+      "span",
+      {
+        className: "mg-rails-track",
+        "data-secondary": true,
+        title: item.secondary === void 0 ? void 0 : formatSecondary(item.secondary),
+        children: /* @__PURE__ */ jsxRuntime.jsx(
+          "b",
+          {
+            style: {
+              "--fill": `${railFill(item.secondary ?? 0, cap, scale)}%`
+            }
+          }
+        )
+      }
+    ) : null
+  ] });
+  const { role: _role, ...linkMark } = mark;
+  return item.href ? /* @__PURE__ */ jsxRuntime.jsx("a", { ...linkMark, href: item.href, className: "mg-rails-row", children: body }) : /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", ...mark, className: "mg-rails-row", children: body });
+}
+function markerPosition(value, max) {
+  if (value === null || !Number.isFinite(value) || !(max > 0)) return null;
+  return Math.round(Math.min(1, Math.max(0, value / max)) * 1e3) / 10;
+}
+function MarkerRail({
+  items,
+  max = 100,
+  formatValue,
+  columns,
+  ariaLabel,
+  source = "marker-rail",
+  onActivate,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
+    {
+      className: classNames("mg-marker-rail", className),
+      "data-mg-marker-rail": "",
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-rails-head", "aria-hidden": "true", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("span", { children: columns.ratio }),
+          /* @__PURE__ */ jsxRuntime.jsx("span", { children: columns.name }),
+          /* @__PURE__ */ jsxRuntime.jsx("span", { children: columns.scale })
+        ] }),
+        /* @__PURE__ */ jsxRuntime.jsx(
+          "div",
+          {
+            className: "mg-rails-rows",
+            role: "group",
+            "aria-label": ariaLabel,
+            "data-marks": true,
+            children: items.map((item) => /* @__PURE__ */ jsxRuntime.jsx(
+              MarkerRow,
+              {
+                item,
+                max,
+                formatValue,
+                source,
+                onActivate
+              },
+              item.key
+            ))
+          }
+        )
+      ]
+    }
+  );
+}
+function MarkerRow({
+  item,
+  max,
+  formatValue,
+  source,
+  onActivate
+}) {
+  const pos = markerPosition(item.value, max);
+  const shown = item.value === null || pos === null ? "\u2014" : formatValue(item.value);
+  const mark = useEntityMark(item.key, {
+    source,
+    label: markAriaLabel(item.label, shown === "\u2014" ? null : shown),
+    onActivate: item.href ? void 0 : onActivate ? () => onActivate(item) : void 0
+  });
+  const body = /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rails-value", children: shown }),
+    /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-rails-name", children: [
+      item.avatar ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rails-avatar", children: item.avatar }) : null,
+      item.tag ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rails-tag", children: item.tag }) : null,
+      /* @__PURE__ */ jsxRuntime.jsx("span", { children: item.label })
+    ] }),
+    /* @__PURE__ */ jsxRuntime.jsx(
+      "span",
+      {
+        className: "mg-marker-rail-track",
+        "data-empty": pos === null ? "true" : void 0,
+        children: pos === null ? null : /* @__PURE__ */ jsxRuntime.jsx("i", { style: { "--pos": `${pos}%` } })
+      }
+    )
+  ] });
+  const { role: _role, ...linkMark } = mark;
+  return item.href ? /* @__PURE__ */ jsxRuntime.jsx("a", { ...linkMark, href: item.href, className: "mg-rails-row", children: body }) : /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", ...mark, className: "mg-rails-row", children: body });
+}
+function RankGrid({
+  items,
+  cols = 4,
+  ariaLabel,
+  source = "rank-grid",
+  start = 1,
+  onActivate,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "ol",
+    {
+      className: classNames("mg-rank-grid", className),
+      style: { "--cols": cols },
+      role: "group",
+      "aria-label": ariaLabel,
+      "data-marks": true,
+      "data-mg-rank-grid": "",
+      children: items.map((item, i) => /* @__PURE__ */ jsxRuntime.jsx(
+        RankRow,
+        {
+          item,
+          rank: start + i,
+          source,
+          onActivate
+        },
+        item.key
+      ))
+    }
+  );
+}
+function RankRow({
+  item,
+  rank,
+  source,
+  onActivate
+}) {
+  const mark = useEntityMark(item.key, {
+    source,
+    label: markAriaLabel(item.label, item.value),
+    onActivate: item.href ? void 0 : onActivate ? () => onActivate(item) : void 0
+  });
+  const body = /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rank-grid-rank", children: String(rank).padStart(2, "0") }),
+    item.avatar ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rank-grid-avatar", children: item.avatar }) : /* @__PURE__ */ jsxRuntime.jsx(
+      "i",
+      {
+        className: "mg-swatch",
+        style: { "--swatch": item.swatch ?? "var(--faint)" }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rank-grid-name", children: item.label }),
+    item.value ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rank-grid-value", children: item.value }) : null,
+    item.share ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-rank-grid-share", children: item.share }) : null
+  ] });
+  const { role: _role, ...linkMark } = mark;
+  return /* @__PURE__ */ jsxRuntime.jsx("li", { "data-current": item.current ? "true" : void 0, children: item.href ? /* @__PURE__ */ jsxRuntime.jsx("a", { ...linkMark, href: item.href, className: "mg-rank-grid-row", children: body }) : /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", ...mark, className: "mg-rank-grid-row", children: body }) });
+}
+function deltaLabel(delta) {
+  if (delta === void 0) return { text: "", state: "none" };
+  if (delta === "new") return { text: "New", state: "new" };
+  const pct = Math.round(delta * 100);
+  if (pct === 0) return { text: "0%", state: "flat" };
+  return pct > 0 ? { text: `+${pct}%`, state: "positive" } : { text: `\u2212${Math.abs(pct)}%`, state: "negative" };
+}
+function LeaderCards({
+  items,
+  featured = 3,
+  ariaLabel,
+  source = "leader-cards",
+  className
+}) {
+  const lead = items.slice(0, featured);
+  const rest = items.slice(featured);
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
+    {
+      className: classNames("mg-leaders", className),
+      role: "group",
+      "aria-label": ariaLabel,
+      "data-marks": true,
+      "data-mg-leaders": "",
+      children: [
+        lead.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("ol", { className: "mg-leaders-featured", start: 1, children: lead.map((item, i) => /* @__PURE__ */ jsxRuntime.jsx(
+          LeaderCard,
+          {
+            item,
+            rank: i + 1,
+            variant: "featured",
+            source
+          },
+          item.key
+        )) }) : null,
+        rest.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("ol", { className: "mg-leaders-compact", start: lead.length + 1, children: rest.map((item, i) => /* @__PURE__ */ jsxRuntime.jsx(
+          LeaderCard,
+          {
+            item,
+            rank: lead.length + i + 1,
+            variant: "compact",
+            source
+          },
+          item.key
+        )) }) : null
+      ]
+    }
+  );
+}
+function LeaderCard({
+  item,
+  rank,
+  variant,
+  source
+}) {
+  const mark = useEntityMark(item.key, {
+    source,
+    label: markAriaLabel(`#${rank} ${item.name}`, item.value)
+  });
+  const { role: _role, ...linkMark } = mark;
+  const delta = deltaLabel(item.delta);
+  const initials = item.initials ?? item.name.slice(0, 2).toUpperCase();
+  return /* @__PURE__ */ jsxRuntime.jsx("li", { children: /* @__PURE__ */ jsxRuntime.jsxs(
+    "a",
+    {
+      ...linkMark,
+      href: item.href,
+      className: "mg-leader",
+      "data-variant": variant,
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-leader-rank", children: String(rank).padStart(2, "0") }),
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-leader-avatar", "aria-hidden": "true", children: item.avatar ?? initials }),
+        /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-leader-copy", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("strong", { children: item.name }),
+          item.sub ? /* @__PURE__ */ jsxRuntime.jsx("span", { children: item.sub }) : null
+        ] }),
+        /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-leader-figures", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-leader-value", children: item.value }),
+          delta.state !== "none" ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-leader-delta", "data-state": delta.state, children: delta.text }) : null
+        ] }),
+        variant === "featured" ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-leader-watermark", "aria-hidden": "true", children: initials }) : null
+      ]
+    }
+  ) });
+}
+function CompositionBreakdown({
+  segments,
+  registry,
+  formatValue,
+  limit,
+  other = OTHER_KEY,
+  legendCols = 4,
+  ariaLabel,
+  source = "composition",
+  onActivate,
+  className
+}) {
+  const own = React3.useRef(null);
+  if (!registry && !own.current) own.current = new SeriesPaletteRegistry();
+  const reg = registry ?? own.current;
+  const ordered = [...segments].sort((a, b) => b.value - a.value);
+  const keep = limit === void 0 ? ordered : ordered.slice(0, limit);
+  reg.assign(keep.map((s) => s.key));
+  const palette = reg.palette();
+  const shown = collapseOther(ordered, reg, other).filter((s) => s.value > 0);
+  const total = shown.reduce((sum, s) => sum + s.value, 0);
+  const { active, set, clear } = useActiveEntity();
+  const barRef = React3.useRef(null);
+  const activeKey = active && shown.some((s) => s.key === active.key) ? active.key : null;
+  const legend = shown.map((s) => ({
+    key: s.key,
+    label: s.key === OTHER_KEY ? other : s.label,
+    value: formatValue(s.value),
+    share: total > 0 ? `${Math.round(s.value / total * 1e3) / 10}%` : void 0,
+    swatch: palette.colorOf(s.key),
+    href: segments.find((o) => o.key === s.key)?.href
+  }));
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
+    {
+      className: classNames("mg-composition", className),
+      "data-mg-composition": "",
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsx(
+          "div",
+          {
+            ref: barRef,
+            className: "mg-composition-bar",
+            role: "img",
+            "aria-label": `${ariaLabel}: ${legend.map((l) => `${l.label} ${l.share ?? l.value}`).join(", ")}`,
+            "data-series-active": activeKey ? "true" : void 0,
+            children: shown.map((s) => /* @__PURE__ */ jsxRuntime.jsx(
+              "i",
+              {
+                "data-entity": s.key,
+                "data-active": activeKey === s.key ? "true" : void 0,
+                "data-dim": activeKey && activeKey !== s.key ? "true" : void 0,
+                onPointerEnter: (event) => {
+                  if (event.pointerType === "touch") return;
+                  set({
+                    key: s.key,
+                    source,
+                    element: barRef.current,
+                    data: {
+                      title: s.key === OTHER_KEY ? other : s.label,
+                      total: formatValue(s.value)
+                    }
+                  });
+                },
+                onPointerLeave: (event) => {
+                  if (event.pointerType === "touch") return;
+                  clear();
+                },
+                style: {
+                  "--share": total > 0 ? `${s.value / total * 100}%` : "0%",
+                  "--swatch": palette.colorOf(s.key)
+                }
+              },
+              s.key
+            ))
+          }
+        ),
+        /* @__PURE__ */ jsxRuntime.jsx(
+          RankGrid,
+          {
+            items: legend,
+            cols: legendCols,
+            ariaLabel,
+            source,
+            onActivate: onActivate ? (item) => onActivate(item.key) : void 0
+          }
+        )
+      ]
+    }
+  );
+}
+
+// src/components/metagraphed/charts/rank-specimens.ts
+var RAIL_SPECIMEN = [
+  ["Targon", 189e4, 412e3],
+  ["Chutes", 121e4, 38e4],
+  ["Affine", 64e4, 12e4],
+  ["Score", 512e3, 98e3],
+  ["Nineteen", 33e4, 61e3],
+  ["Bitmind", 28e4, 44e3],
+  ["Gradients", 19e4, 39e3],
+  ["Apex", 14e4, 3e4],
+  ["Macrocosmos", 12e4, 22e3],
+  ["Omron", 95e3, 18e3],
+  ["Vidaio", 61e3, 9e3],
+  ["Dippy", 42e3, 6e3]
+].map(([label, value, secondary]) => ({
+  key: String(label),
+  label: String(label),
+  value: Number(value),
+  secondary: Number(secondary),
+  detail: [
+    { key: "take", label: "Take", value: "9%" },
+    { key: "apy", label: "APY", value: "0.46%" },
+    { key: "nominators", label: "Nominators", value: "1,204" }
+  ]
+}));
+var MARKER_SPECIMEN = [
+  ["OpenAPI", "openapi", 99.8],
+  ["Validator API", "subnet-api", 97.2],
+  ["Docs", "docs", 100],
+  ["Dashboard", "dashboard", 91.4],
+  ["SSE feed", "sse", null]
+].map(([label, tag, value]) => ({
+  key: String(label),
+  label: String(label),
+  tag: String(tag),
+  value
+}));
+var COMPOSITION_SPECIMEN = [
+  ["Targon", 41],
+  ["Chutes", 41],
+  ["Affine", 18]
+].map(([label, value]) => ({
+  key: String(label),
+  label: String(label),
+  value: Number(value)
+}));
+var LEADER_SPECIMEN = RAIL_SPECIMEN.map((r, i) => ({
+  key: r.key,
+  name: r.label,
+  sub: i % 2 ? "Macrocosmos" : "Rayon Labs",
+  value: `${(r.value / 1e6).toFixed(2)}M \u03C4`,
+  delta: i === 3 ? "new" : i * 7 % 11 / 10 - 0.3,
+  href: `/subnets/${i + 1}`
+}));
 
 exports.Accordion = Accordion;
 exports.AccordionContent = AccordionContent;
@@ -5866,9 +5793,9 @@ exports.AnalyticsPage = AnalyticsPage;
 exports.AnalyticsSection = AnalyticsSection;
 exports.AnimatedNumber = AnimatedNumber;
 exports.BackToTop = BackToTop;
-exports.BarMini = BarMini;
 exports.BrandIcon = BrandIcon;
 exports.CHART_RAMP_SIZE = CHART_RAMP_SIZE;
+exports.COMPOSITION_SPECIMEN = COMPOSITION_SPECIMEN;
 exports.CandidateChip = CandidateChip;
 exports.ChartTooltip = ChartTooltip;
 exports.Chip = Chip;
@@ -5883,6 +5810,7 @@ exports.CommandItem = CommandItem;
 exports.CommandList = CommandList;
 exports.CommandSeparator = CommandSeparator;
 exports.CommandShortcut = CommandShortcut;
+exports.CompositionBreakdown = CompositionBreakdown;
 exports.CopyButton = CopyButton;
 exports.CopyIconToggle = CopyIconToggle;
 exports.CopyableCode = CopyableCode;
@@ -5902,8 +5830,6 @@ exports.DialogTitle = DialogTitle;
 exports.DialogTrigger = DialogTrigger;
 exports.DiscordIcon = DiscordIcon;
 exports.Divider = Divider;
-exports.Donut = Donut;
-exports.DonutLegend = DonutLegend;
 exports.DownloadCsvButton = DownloadCsvButton;
 exports.EligibilityChip = EligibilityChip;
 exports.EmptyState = EmptyState;
@@ -5925,14 +5851,18 @@ exports.HealthPill = HealthPill;
 exports.Indicator = Indicator;
 exports.Kbd = Kbd;
 exports.KeyChip = KeyChip;
+exports.LEADER_SPECIMEN = LEADER_SPECIMEN;
 exports.LINE_VIEWBOX = LINE_VIEWBOX;
+exports.LeaderCards = LeaderCards;
 exports.LineWithWindow = LineWithWindow;
 exports.ListShell = ListShell;
 exports.LiveMeta = LiveMeta;
 exports.LiveTickerProvider = LiveTickerProvider;
 exports.LoadMore = LoadMore;
 exports.LoadingPill = LoadingPill;
+exports.MARKER_SPECIMEN = MARKER_SPECIMEN;
 exports.MAX_SECTIONS = MAX_SECTIONS;
+exports.MarkerRail = MarkerRail;
 exports.McpToolsList = McpToolsList;
 exports.OTHER_COLOR = OTHER_COLOR;
 exports.OTHER_KEY = OTHER_KEY;
@@ -5951,16 +5881,17 @@ exports.Provenance = Provenance;
 exports.ProvenanceChip = ProvenanceChip;
 exports.QueryBar = QueryBar;
 exports.QueryProgress = QueryProgress;
+exports.RAIL_SPECIMEN = RAIL_SPECIMEN;
 exports.RangeControl = RangeControl;
+exports.RankGrid = RankGrid;
+exports.RankedRails = RankedRails;
 exports.Raw = Raw;
 exports.RawCode = RawCode;
-exports.ReadinessGauge = ReadinessGauge;
 exports.ResponsiveTable = ResponsiveTable;
 exports.ReviewChip = ReviewChip;
 exports.RoutePending = RoutePending;
 exports.SCOPES = SCOPES;
 exports.SHARE_COPIED_EVENT = SHARE_COPIED_EVENT;
-exports.SankeyMini = SankeyMini;
 exports.ScrollShadow = ScrollShadow;
 exports.SectionHead = SectionHead;
 exports.SectionNav = SectionNav;
@@ -5984,23 +5915,22 @@ exports.TableSkeleton = TableSkeleton;
 exports.TableState = TableState;
 exports.TimeAgo = TimeAgo;
 exports.Toaster = Toaster;
-exports.TreemapMini = TreemapMini;
 exports.TrendDelta = TrendDelta;
 exports.ViewModeToggle = ViewModeToggle;
 exports.Wordmark = Wordmark;
-exports.YieldPercentileStrip = YieldPercentileStrip;
 exports.buildCsvDownloadUrl = buildCsvDownloadUrl;
 exports.classNames = classNames;
 exports.cn = cn;
 exports.collapseOther = collapseOther;
 exports.columnWidths = columnWidths;
 exports.defaultVisible = defaultVisible;
+exports.deltaLabel = deltaLabel;
 exports.fmtYield = fmtYield;
 exports.formatLineDate = formatLineDate;
 exports.isScrolledPast = isScrolledPast;
-exports.layoutSankey = layoutSankey;
 exports.lineSpecimen = lineSpecimen;
 exports.markAriaLabel = markAriaLabel;
+exports.markerPosition = markerPosition;
 exports.momentumAriaLabel = momentumAriaLabel;
 exports.monthTicks = monthTicks;
 exports.nextTabIndex = nextTabIndex;
@@ -6008,6 +5938,7 @@ exports.pickActiveSection = pickActiveSection;
 exports.placePoints = placePoints;
 exports.prefetchBrandIcon = prefetchBrandIcon;
 exports.provenanceSentence = provenanceSentence;
+exports.railFill = railFill;
 exports.rovingTabIndex = rovingTabIndex;
 exports.safeExternalUrl = safeExternalUrl;
 exports.sectionItems = sectionItems;

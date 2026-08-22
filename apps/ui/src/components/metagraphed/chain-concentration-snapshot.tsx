@@ -1,9 +1,7 @@
-import { BarMini } from "@jsonbored/ui-kit";
+import { MarkerRail } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { EmptyState } from "@/components/metagraphed/states";
 import type { ChainConcentration } from "@/lib/metagraphed/types";
-
-const formatShare = (v: number) => `${(v * 100).toFixed(1)}%`;
 
 /**
  * A CURRENT snapshot, not a trend — /api/v1/chain/concentration has no
@@ -28,13 +26,18 @@ export function ChainConcentrationSnapshot({
       {!hasData ? (
         <EmptyState title="Not enough data yet" />
       ) : (
-        <BarMini
-          data={[
-            { label: "Stake", value: stakeShare ?? 0 },
-            { label: "Emission", value: emissionShare ?? 0 },
+        <MarkerRail
+          items={[
+            { key: "stake", label: "Stake", value: stakeShare == null ? null : stakeShare * 100 },
+            {
+              key: "emission",
+              label: "Emission",
+              value: emissionShare == null ? null : emissionShare * 100,
+            },
           ]}
-          max={1}
-          formatValue={formatShare}
+          max={100}
+          formatValue={(v) => `${v.toFixed(1)}%`}
+          columns={{ ratio: "Top 10%", name: "Of", scale: "0–100%" }}
           ariaLabel="Top-10% holder share of stake and emission"
         />
       )}

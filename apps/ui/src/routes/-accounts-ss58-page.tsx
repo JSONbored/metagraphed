@@ -33,7 +33,6 @@ import {
   TimeAgo,
   TableState,
   ShareButton,
-  BarMini,
   Chip,
   DownloadCsvButton,
   ExternalLink,
@@ -45,6 +44,7 @@ import {
   EntityHero,
   FactSentence,
   SectionNav,
+  RankedRails,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
@@ -113,6 +113,7 @@ import type {
 } from "@/lib/metagraphed/types";
 import { DEFAULT_EVENTS_LIMIT } from "./accounts.$ss58";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
+import { railItems } from "@/lib/metagraphed/rails";
 
 // #8358: detail-page template tabs. Overview carries the KPI band's context
 // plus a bounded recent-activity preview; everything else is a full,
@@ -1861,7 +1862,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
   const netFlow = f?.net_flow_tao ?? null;
   const netStr =
     netFlow == null ? "—" : `${netFlow >= 0 ? "+" : "−"}${fmtTaoCompact(Math.abs(netFlow))}`;
-  // BarMini widths are unsigned (value / cap), so bar the always-≥0 gross flow
+  // Rail widths are unsigned (value / cap), so bar the always-≥0 gross flow
   // and surface each row's direction as a label in the table alongside.
   const bars = [...subnets]
     .filter((s) => (s.gross_flow_tao ?? 0) > 0)
@@ -1929,9 +1930,13 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
       </FactStrip>
 
       {bars.length > 0 ? (
-        <div className="mb-4 rounded border border-border/80 px-4 py-4">
+        <div className="mb-4">
           <div className="mb-3 text-13 text-ink-muted">gross flow by subnet (τ)</div>
-          <BarMini data={bars} showValue={false} />
+          <RankedRails
+            items={railItems(bars)}
+            formatValue={formatTao}
+            ariaLabel="Gross stake flow by subnet"
+          />
         </div>
       ) : null}
 
@@ -2742,7 +2747,7 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
 
 /**
  * Cross-subnet footprint (#266) — the dedicated netuid-ordered /subnets feed
- * plus a stake-by-subnet BarMini. Non-blocking: while the dedicated query loads
+ * plus stake-by-subnet rails. Non-blocking: while the dedicated query loads
  * (or if it fails), the already-fetched summary registrations are the fallback,
  * so the section never stalls or disappears.
  */
@@ -2809,9 +2814,13 @@ function AccountFootprintSection({
       controls={<SectionBadge>{formatNumber(rows.length)} subnets</SectionBadge>}
     >
       {staked.length > 0 ? (
-        <div className="mb-4 rounded border border-border/80 px-4 py-4">
+        <div className="mb-4">
           <div className="mb-3 text-13 text-ink-muted">stake by subnet (τ)</div>
-          <BarMini data={staked} showValue={false} />
+          <RankedRails
+            items={railItems(staked)}
+            formatValue={formatTao}
+            ariaLabel="Stake by subnet"
+          />
         </div>
       ) : null}
       {/* #6428: five columns at `px-5` do not fit a 375px viewport, so Permit

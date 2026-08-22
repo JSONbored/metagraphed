@@ -5,7 +5,7 @@ import { Skeleton, RangeControl } from "@jsonbored/ui-kit";
 import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ChainTabActions } from "./-chain-hub";
-import { ChainStakeFlowSankey } from "@/components/metagraphed/chain-stake-flow-sankey";
+import { ChainStakeFlowRails } from "@/components/metagraphed/chain-stake-flow-rails";
 import { ChainConcentrationSnapshot } from "@/components/metagraphed/chain-concentration-snapshot";
 import { ChainIdleStakeSnapshot } from "@/components/metagraphed/chain-idle-stake-snapshot";
 import { ChainEmissionTrend } from "@/components/metagraphed/chain-emission-trend";
@@ -29,7 +29,7 @@ const WINDOWS: Window[] = ["7d", "30d"];
  * is what makes "only fetch when this tab is activated" free: the six
  * queries below only run once this route mounts.
  *
- * Deliberately six requests, not the sankey's full theoretical data need:
+ * Deliberately six requests, not the rails' full theoretical data need:
  * root->subnet uses windowed stake-flow (real flow); subnet->validator uses
  * the global validator leaderboard's CURRENT per-subnet stake (no endpoint
  * gives windowed flow at validator granularity — see chain-analytics.ts).
@@ -63,7 +63,7 @@ function AnalyticsBody() {
 
   return (
     <>
-      <ChainStakeFlowSankey
+      <ChainStakeFlowRails
         stakeFlow={stakeFlowRes.data}
         validators={validatorsRes.data}
         window={win}
@@ -122,7 +122,7 @@ export function ChainAnalyticsPage() {
           nowhere. Deliberately BELOW the suspense boundary above rather than
           inside it — the body's six-request budget is a documented property of
           that section, and these four fetch independently so a slow one cannot
-          hold the sankey back. */}
+          hold the rails back. */}
       <section className="mt-8">
         <h3 className="text-13 font-semibold text-ink-strong">
           Network concentration & entry cost

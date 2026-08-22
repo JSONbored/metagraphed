@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildStakeFlowSankeyData,
+  buildStakeFlowRails,
   computeRegistrationCostStats,
-  MAX_SANKEY_SUBNETS,
-  MAX_SANKEY_VALIDATORS,
+  MAX_FLOW_SUBNETS,
+  MAX_FLOW_VALIDATORS,
 } from "./chain-analytics";
 import type { ChainStakeFlow, GlobalValidators } from "./types";
 
@@ -74,46 +74,47 @@ function validator(
   };
 }
 
-describe("buildStakeFlowSankeyData", () => {
-  it("builds a root node plus one node per shown subnet, linked with matching flow values", () => {
-    const flow = stakeFlow([subnetFlow(1, 100), subnetFlow(2, 50)]);
-    const vs = validators([]);
-    const { nodes, links, shownNetuids } = buildStakeFlowSankeyData(flow, vs);
+describe("buildStakeFlowRails", () => {
+  it("ranks the shown subnets by gross flow, largest first, and carries their flow fields", () => {
+    const flow = stakeFlow([subnetFlow(2, 50, "losing"), subnetFlow(1, 100)]);
+    const { subnets, shownNetuids } = buildStakeFlowRails(flow, validators([]));
     expect(shownNetuids).toEqual([1, 2]);
-    expect(nodes.find((n) => n.id === "root")?.value).toBe(150);
-    expect(links.filter((l) => l.source === "root")).toHaveLength(2);
+    expect(subnets.map((s) => s.grossFlowTao)).toEqual([100, 50]);
+    expect(subnets[1]).toMatchObject({ netuid: 2, direction: "losing", netFlowTao: 50 });
   });
 
-  it("collapses subnets beyond maxSubnets into one 'Other subnets' node", () => {
+  it("drops subnets beyond maxSubnets instead of collapsing them", () => {
     const flow = stakeFlow([subnetFlow(1, 100), subnetFlow(2, 50), subnetFlow(3, 10)]);
-    const { nodes, links, shownNetuids } = buildStakeFlowSankeyData(
+    const { subnets, shownNetuids } = buildStakeFlowRails(
       flow,
       validators([]),
       2,
-      MAX_SANKEY_VALIDATORS,
+      MAX_FLOW_VALIDATORS,
     );
     expect(shownNetuids).toEqual([1, 2]);
-    const other = nodes.find((n) => n.id === "subnet:other");
-    expect(other?.value).toBe(10);
-    expect(links.some((l) => l.target === "subnet:other" && l.value === 10)).toBe(true);
+    expect(subnets).toHaveLength(2);
   });
 
   it("omits subnets with zero flow entirely (nothing to show)", () => {
     const flow = stakeFlow([subnetFlow(1, 100), subnetFlow(2, 0)]);
-    const { shownNetuids } = buildStakeFlowSankeyData(flow, validators([]));
+    const { shownNetuids } = buildStakeFlowRails(flow, validators([]));
     expect(shownNetuids).toEqual([1]);
   });
 
-  it("adds a validator node per top validator, sized by stake in shown subnets only", () => {
-    const flow = stakeFlow([subnetFlow(1, 100)]);
+  it("ranks validators by stake in the shown subnets only, with the subnet count", () => {
+    const flow = stakeFlow([subnetFlow(1, 100), subnetFlow(2, 80)]);
     const vs = validators([
-      validator("5AAA", [{ netuid: 1, stake_tao: 40 }]),
       validator("5BBB", [{ netuid: 1, stake_tao: 20 }]),
+      validator("5AAA", [
+        { netuid: 1, stake_tao: 40 },
+        { netuid: 2, stake_tao: 5 },
+      ]),
     ]);
-    const { nodes, links } = buildStakeFlowSankeyData(flow, vs);
-    const va = nodes.find((n) => n.id === "validator:5AAA");
-    expect(va?.value).toBe(40);
-    expect(links.some((l) => l.source === "subnet:1" && l.target === "validator:5AAA")).toBe(true);
+    const { validators: ranked } = buildStakeFlowRails(flow, vs);
+    expect(ranked).toEqual([
+      { hotkey: "5AAA", stakeInShownTao: 45, subnetCount: 2 },
+      { hotkey: "5BBB", stakeInShownTao: 20, subnetCount: 1 },
+    ]);
   });
 
   it("ignores a validator's stake in a subnet that wasn't shown", () => {
@@ -124,30 +125,24 @@ describe("buildStakeFlowSankeyData", () => {
         { netuid: 99, stake_tao: 999 },
       ]),
     ]);
-    const { nodes } = buildStakeFlowSankeyData(flow, vs);
-    expect(nodes.find((n) => n.id === "validator:5AAA")?.value).toBe(40);
+    const { validators: ranked } = buildStakeFlowRails(flow, vs);
+    expect(ranked[0]).toEqual({ hotkey: "5AAA", stakeInShownTao: 40, subnetCount: 1 });
   });
 
-  it("collapses validators beyond maxValidators into 'Other validators', still split per subnet", () => {
+  it("caps the validator rail at maxValidators", () => {
     const flow = stakeFlow([subnetFlow(1, 100)]);
     const vs = validators([
       validator("5AAA", [{ netuid: 1, stake_tao: 40 }]),
       validator("5BBB", [{ netuid: 1, stake_tao: 20 }]),
     ]);
-    const { nodes, links } = buildStakeFlowSankeyData(flow, vs, MAX_SANKEY_SUBNETS, 1);
-    expect(nodes.some((n) => n.id === "validator:other")).toBe(true);
-    expect(
-      links.some(
-        (l) => l.source === "subnet:1" && l.target === "validator:other" && l.value === 20,
-      ),
-    ).toBe(true);
+    const { validators: ranked } = buildStakeFlowRails(flow, vs, MAX_FLOW_SUBNETS, 1);
+    expect(ranked.map((v) => v.hotkey)).toEqual(["5AAA"]);
   });
 
-  it("returns no validator nodes when no validator has stake in any shown subnet", () => {
+  it("returns no validators when none has stake in a shown subnet", () => {
     const flow = stakeFlow([subnetFlow(1, 100)]);
     const vs = validators([validator("5AAA", [{ netuid: 99, stake_tao: 40 }])]);
-    const { nodes } = buildStakeFlowSankeyData(flow, vs);
-    expect(nodes.some((n) => n.column === 2)).toBe(false);
+    expect(buildStakeFlowRails(flow, vs).validators).toEqual([]);
   });
 });
 

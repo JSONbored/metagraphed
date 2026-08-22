@@ -1,7 +1,7 @@
-import { Definition } from "@jsonbored/ui-kit";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { RankedRails, type RankedRailItem } from "@jsonbored/ui-kit";
 import { coverageQuery } from "@/lib/metagraphed/queries";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber } from "@/lib/metagraphed/format";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { Coverage } from "@/lib/metagraphed/types";
 
@@ -10,14 +10,13 @@ interface Step {
   label: string;
   value: number;
   hint: string;
-  tone: "default" | "accent" | "warn";
 }
 
 /**
- * Curation funnel: Active subnets → Manifested → Endpoints probed → Adapter-backed.
- * Renders bars sized relative to the largest step, with a conversion %
- * relative to the previous step. Coverage shape is forgiving — missing
- * fields just collapse the corresponding step.
+ * Curation funnel: Active subnets → Manifested → Endpoints probed → Adapter-backed,
+ * as ranked rails scaled to the first step, each row carrying its conversion
+ * against the previous step. Coverage shape is forgiving — missing fields just
+ * collapse the corresponding step.
  */
 export function CoverageFunnel({ className }: { className?: string }) {
   const { data: res } = useSuspenseQuery(coverageQuery());
@@ -41,98 +40,44 @@ export function CoverageFunnel({ className }: { className?: string }) {
   const adapter = cc["adapter-backed"] ?? (c.adapter_backed as number | undefined) ?? 0;
 
   const steps: Step[] = [
-    {
-      key: "active",
-      label: "Active subnets",
-      value: active,
-      hint: "native chain",
-      tone: "default",
-    },
-    {
-      key: "manifested",
-      label: "Manifested",
-      value: manifested,
-      hint: "with curated overlay",
-      tone: "default",
-    },
-    { key: "probed", label: "Probed", value: probed, hint: "endpoints monitored", tone: "default" },
-    {
-      key: "adapter",
-      label: "Adapter-backed",
-      value: adapter,
-      hint: "live machine-verified",
-      tone: "accent",
-    },
+    { key: "active", label: "Active subnets", value: active, hint: "native chain" },
+    { key: "manifested", label: "Manifested", value: manifested, hint: "with curated overlay" },
+    { key: "probed", label: "Probed", value: probed, hint: "endpoints monitored" },
+    { key: "adapter", label: "Adapter-backed", value: adapter, hint: "live machine-verified" },
   ];
 
-  const max = Math.max(1, ...steps.map((s) => s.value));
+  const items: RankedRailItem[] = steps.map((s, i) => {
+    const prev = i === 0 ? null : steps[i - 1]!.value;
+    const conversion = prev && prev > 0 ? Math.round((s.value / prev) * 100) : null;
+    return {
+      key: s.key,
+      label: s.label,
+      value: s.value,
+      detail: [
+        { key: "hint", label: "what counts", value: s.hint },
+        ...(conversion === null
+          ? []
+          : [{ key: "conversion", label: "of previous step", value: `${conversion}%` }]),
+      ],
+    };
+  });
+  const first = steps[0]!.value;
 
   return (
-    <Panel flush className={className}>
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-13 text-ink-muted">Curation funnel</div>
-            <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
-              Registry depth
-            </h3>
-          </div>
-          <Definition term="Coverage funnel" />
-        </div>
-        <ol className="space-y-3">
-          {steps.map((s, i) => {
-            const prev = i === 0 ? null : steps[i - 1]!.value;
-            const conv = prev && prev > 0 ? (s.value / prev) * 100 : null;
-            const width = (s.value / max) * 100;
-            return (
-              <li key={s.key} className="space-y-1">
-                <div className="flex items-baseline justify-between text-13">
-                  <div className="flex items-baseline gap-2 min-w-0">
-                    <span className="text-13 text-ink-muted shrink-0">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <span className="font-display font-medium text-ink-strong truncate">
-                      {s.label}
-                    </span>
-                    <span className="text-10 text-ink-muted truncate">{s.hint}</span>
-                  </div>
-                  <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
-                    {conv != null ? (
-                      <span
-                        className={classNames(
-                          "text-10",
-                          conv >= 90
-                            ? "text-health-ok"
-                            : conv >= 50
-                              ? "text-ink-muted"
-                              : "text-health-warn",
-                        )}
-                        title={`${conv.toFixed(1)}% of previous step`}
-                      >
-                        {conv.toFixed(0)}%
-                      </span>
-                    ) : null}
-                    <span className="font-display text-13 font-semibold text-ink-strong">
-                      {formatNumber(s.value)}
-                    </span>
-                  </div>
-                </div>
-                <div className="h-1.5 rounded bg-border/40 overflow-hidden" aria-hidden>
-                  <div
-                    className={classNames(
-                      "h-full rounded transition-all duration-500",
-                      s.tone === "accent" && "bg-accent",
-                      s.tone === "warn" && "bg-health-warn",
-                      s.tone === "default" && "bg-ink-muted/60",
-                    )}
-                    style={{ width: `${width}%` }}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
+    <Panel
+      title="Curation funnel"
+      caption="Active subnets → manifested → probed → adapter-backed."
+      className={className}
+    >
+      <RankedRails
+        items={items}
+        formatValue={(v) => formatNumber(v)}
+        max={first > 0 ? first : undefined}
+        columns={{ value: "Subnets", name: "Step", track: "0–100%" }}
+        limit={steps.length}
+        ariaLabel="Curation funnel, active subnets down to adapter-backed"
+        source="coverage-funnel"
+      />
     </Panel>
   );
 }

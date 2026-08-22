@@ -54,8 +54,6 @@ export {
   PanelSkeleton,
   type PanelSkeletonProps,
   type PanelSkeletonHeight,
-  ReadinessGauge,
-  type ReadinessGaugeProps,
   ProvenanceChip,
   QueryBar,
   useQueryBarContext,

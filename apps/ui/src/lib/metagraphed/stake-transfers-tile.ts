@@ -9,7 +9,7 @@ export interface StakeTransfersTileModel {
   repeats: number;
   /** Average transfers per sender, or null on a cold / junk store. */
   perSender: number | null;
-  /** MiniStack composition: unique senders vs repeat transfers. */
+  /** Composition hint: unique senders vs repeat transfers. */
   segments: Array<{ label: string; value: number; color: string }>;
   /** Short human summary for the Provenance tooltip. */
   summary: string;
@@ -17,7 +17,7 @@ export interface StakeTransfersTileModel {
 
 /**
  * #3484: derive the economics-panel stake-transfers tile model from the flat
- * stake-transfer window summary. `transfers` is the headline count; the MiniStack
+ * stake-transfer window summary. `transfers` is the headline count; the hint
  * splits it into unique senders (`distinct_senders`) vs repeat transfers so a
  * single-snapshot aggregate still reads as a composition rather than a lone
  * number. Everything coerces defensively — a cold / undefined card degrades to a

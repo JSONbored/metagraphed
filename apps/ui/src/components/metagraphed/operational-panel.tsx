@@ -231,7 +231,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                 <div>
                   <div className="text-13 text-ink-strong">Health trend</div>
                   <div className="text-10 text-ink-muted/80">
-                    uptime &amp; latency over the selected window, with incident markers
+                    uptime &amp; latency over the selected window
                     {healthRes?.meta?.generated_at
                       ? ` · ${formatFreshness(healthRes.meta.generated_at) ?? ""}`
                       : ""}

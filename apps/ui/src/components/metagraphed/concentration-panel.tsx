@@ -6,7 +6,7 @@ import {
   subnetPerformanceQuery,
   subnetPerformanceHistoryQuery,
 } from "@/lib/metagraphed/queries";
-import { BarMini, FactStrip, FactCell, RangeControl } from "@jsonbored/ui-kit";
+import { FactStrip, FactCell, RangeControl, MarkerRail } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import {
   MetricHistory,
@@ -77,8 +77,8 @@ export function ConcentrationLoader({ netuid }: { netuid: number }) {
 
       {/* Top-percentile share — stake vs emission side by side. */}
       <div className="grid gap-4 md:grid-cols-2">
-        <SharePanel title="Stake held by top %" metrics={stake} accent="var(--accent)" />
-        <SharePanel title="Emission to top %" metrics={emission} accent="var(--health-warn)" />
+        <SharePanel title="Stake held by top %" metrics={stake} />
+        <SharePanel title="Emission to top %" metrics={emission} />
       </div>
 
       {/* Holders / entity context strip. */}
@@ -98,38 +98,35 @@ export function ConcentrationLoader({ netuid }: { netuid: number }) {
   );
 }
 
-function SharePanel({
-  title,
-  metrics,
-  accent,
-}: {
-  title: string;
-  metrics?: ConcentrationMetrics;
-  accent: string;
-}) {
-  const bars = [
-    { label: "Top 1%", value: pctToBar(metrics?.top_1pct_share), color: accent },
-    { label: "Top 5%", value: pctToBar(metrics?.top_5pct_share), color: accent },
-    { label: "Top 10%", value: pctToBar(metrics?.top_10pct_share), color: accent },
-    { label: "Top 20%", value: pctToBar(metrics?.top_20pct_share), color: accent },
+function SharePanel({ title, metrics }: { title: string; metrics?: ConcentrationMetrics }) {
+  const rows = [
+    { key: `${title}:1`, label: "Top 1%", value: pctOrNull(metrics?.top_1pct_share) },
+    { key: `${title}:5`, label: "Top 5%", value: pctOrNull(metrics?.top_5pct_share) },
+    { key: `${title}:10`, label: "Top 10%", value: pctOrNull(metrics?.top_10pct_share) },
+    { key: `${title}:20`, label: "Top 20%", value: pctOrNull(metrics?.top_20pct_share) },
   ];
-  const allEmpty = bars.every((b) => b.value === 0);
+  const allEmpty = rows.every((r) => r.value === null);
   return (
-    <Panel>
-      <div className="mb-3 text-13 text-ink-muted">{title}</div>
+    <Panel title={title}>
       {allEmpty ? (
         <p className="text-11 text-ink-muted">Not enough data yet.</p>
       ) : (
-        <BarMini data={bars} max={100} />
+        <MarkerRail
+          items={rows}
+          max={100}
+          formatValue={(v) => `${Math.round(v)}%`}
+          columns={{ ratio: "Share", name: "Holders", scale: "0–100%" }}
+          ariaLabel={title}
+        />
       )}
     </Panel>
   );
 }
 
-// BarMini renders integer values; convert a 0..1 share to a 0..100 percentage.
-function pctToBar(v?: number | null): number {
-  if (v == null || !Number.isFinite(v)) return 0;
-  return Math.round(v * 100);
+/** A 0..1 share as a 0..100 percentage, or null when unknown. */
+function pctOrNull(v?: number | null): number | null {
+  if (v == null || !Number.isFinite(v)) return null;
+  return v * 100;
 }
 
 function Fact({ label, value }: { label: string; value: ReactNode }) {
@@ -287,8 +284,8 @@ function PerformanceLoader({ netuid }: { netuid: number }) {
 
       {/* Top-percentile reward share — incentive vs dividends side by side. */}
       <div className="grid gap-4 md:grid-cols-2">
-        <SharePanel title="Incentive to top %" metrics={incentive} accent="var(--accent)" />
-        <SharePanel title="Dividends to top %" metrics={dividends} accent="var(--health-warn)" />
+        <SharePanel title="Incentive to top %" metrics={incentive} />
+        <SharePanel title="Dividends to top %" metrics={dividends} />
       </div>
 
       {/* Score spread — 0-1 trust / consensus / validator-trust medians. */}

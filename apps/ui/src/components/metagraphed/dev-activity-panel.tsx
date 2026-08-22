@@ -1,5 +1,6 @@
 import { Star } from "lucide-react";
-import { BarMini, TimeAgo, AnalyticsSection } from "@jsonbored/ui-kit";
+import { LineWithWindow, TimeAgo, AnalyticsSection } from "@jsonbored/ui-kit";
+import { toLinePoints } from "@/components/metagraphed/metric-history";
 import type { SubnetProfile } from "@/lib/metagraphed/types";
 
 /**
@@ -14,6 +15,11 @@ export function DevActivityPanel({ profile }: { profile?: SubnetProfile }) {
 
   const weeks = profile.github_commits_weekly ?? [];
   const hasCommits = weeks.some((w) => w.count > 0);
+  const points = toLinePoints(
+    weeks,
+    (w) => w.week,
+    (w) => w.count,
+  );
 
   return (
     <AnalyticsSection
@@ -40,17 +46,16 @@ export function DevActivityPanel({ profile }: { profile?: SubnetProfile }) {
           </span>
         ) : null}
       </div>
-      {hasCommits ? (
+      {hasCommits && points.length > 1 ? (
         <div className="mt-4">
-          <BarMini
-            data={weeks.map((w) => ({
-              label: new Date(w.week).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              }),
-              value: w.count,
-            }))}
+          <LineWithWindow
+            compact
+            points={points}
+            window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
+            unit="commits per week"
+            formatValue={(v) => String(Math.round(v))}
             ariaLabel="Weekly commits, last 90 days"
+            source="dev-activity"
           />
         </div>
       ) : null}

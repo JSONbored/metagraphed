@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { CopyButton, ExternalLink } from "@jsonbored/ui-kit";
 import { Chip } from "@/components/metagraphed/primitives";
 import { CopyLinkButton } from "@/components/metagraphed/primitives/copy-link-button";
-import { EndpointUptimeBar } from "./endpoint-uptime-bar";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { formatUptime, sevenDayUptime, uptimeToneClass } from "@/lib/metagraphed/endpoint-uptime";
 import { EndpointChipCluster } from "./endpoint-chip-cluster";
 import { LineWithWindow } from "@jsonbored/ui-kit";
 import { useLatencyHistory, type LatencyPoint } from "@/hooks/use-latency-history";
@@ -33,6 +34,9 @@ export function EndpointDetailDrawer({
         .sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? ""))),
     [incidents, endpoint.id],
   );
+  // Live time only after hydration, so the SSR and first client render agree.
+  const hydrated = useHydrated();
+  const uptime = hydrated ? sevenDayUptime(endpoint.id, incidents) : null;
 
   // Filter: state (down/warn/other), and pool membership (this endpoint's pool).
   const [stateFilter, setStateFilter] = useState<"all" | "down" | "warn" | "other">("all");
@@ -136,7 +140,9 @@ export function EndpointDetailDrawer({
         </div>
         <div className="shrink-0">
           <div className="text-10 text-ink-muted mb-1">Uptime 7d</div>
-          <EndpointUptimeBar endpointId={endpoint.id} incidents={incidents} />
+          <span className={classNames("text-13 tabular-nums", uptimeToneClass(uptime))}>
+            {formatUptime(uptime)}
+          </span>
         </div>
       </div>
 
