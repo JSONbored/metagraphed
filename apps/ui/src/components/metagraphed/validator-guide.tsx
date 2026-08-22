@@ -65,7 +65,11 @@ export function ValidatorGuide() {
   const [open, setOpen] = useState(false);
 
   return (
-    <aside aria-label={HEADING} className="mb-6 rounded-md border border-border mg-glass-soft">
+    // Flat, like every other grouping on the site. This was the last glass-backed
+    // container rendering as a large block on /validators — a bordered, filled
+    // card wrapped around a disclosure that already announces itself with a
+    // summary row.
+    <aside aria-label={HEADING} className="mb-6 border-t border-border pt-3">
       {/* Desktop / tablet: collapsible callout with the full grid. */}
       <div className="hidden sm:block">
         {/*

@@ -71,7 +71,7 @@
 :root {
   --mg-surface-raised: color-mix(in oklab, var(--ink-strong) 6%, var(--paper));
   --mg-surface-raised-hover: color-mix( in oklab, var(--ink-strong) 11%, var(--paper) );
-  --mg-composition-residual: color-mix( in oklab, var(--ink-strong) 20%, transparent );
+  --mg-composition-residual: color-mix( in oklab, var(--ink-strong) 9%, transparent );
   --radius: 0.25rem;
   --brand-green: #30ffc0;
   --paper: #f8f8f5;
@@ -260,7 +260,7 @@
 .dark {
   --mg-surface-raised: color-mix(in oklab, var(--ink-strong) 6%, var(--paper));
   --mg-surface-raised-hover: color-mix( in oklab, var(--ink-strong) 11%, var(--paper) );
-  --mg-composition-residual: color-mix( in oklab, var(--ink-strong) 20%, transparent );
+  --mg-composition-residual: color-mix( in oklab, var(--ink-strong) 9%, transparent );
   --paper: #161616;
   --surface: #1e1e1e;
   --surface-2: #303030;

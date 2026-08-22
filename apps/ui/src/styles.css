@@ -689,7 +689,7 @@
   );
   --mg-composition-residual: color-mix(
     in oklab,
-    var(--ink-strong) 20%,
+    var(--ink-strong) 9%,
     transparent
   );
   --popover-foreground: var(--ink-strong);
