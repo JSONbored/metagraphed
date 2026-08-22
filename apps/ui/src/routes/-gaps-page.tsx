@@ -816,8 +816,7 @@ function GapRow({
           as="div"
           flush
           interactive={!matchedKind}
-          tone={matchedKind ? "accent" : "default"}
-          tintBorderOnly={!!matchedKind}
+          selected={!!matchedKind}
           className={classNames(
             matchedKind ? "ring-1 ring-inset ring-accent/30" : null,
             "md:border-0 md:rounded-none md:bg-transparent md:p-0 md:ring-0",

@@ -675,6 +675,23 @@
   --card: var(--surface);
   --card-foreground: var(--ink-strong);
   --popover: var(--surface-2);
+
+  /* Re-declared here, not inherited. A custom property substitutes its
+     `var()` references where it is DECLARED — inheriting the :root copy would
+     bring the light palette's resolved value into this graphite scope, which
+     is exactly how the landing's search field rendered near-white under a
+     light system theme. */
+  --mg-surface-raised: color-mix(in oklab, var(--ink-strong) 6%, var(--paper));
+  --mg-surface-raised-hover: color-mix(
+    in oklab,
+    var(--ink-strong) 11%,
+    var(--paper)
+  );
+  --mg-composition-residual: color-mix(
+    in oklab,
+    var(--ink-strong) 20%,
+    transparent
+  );
   --popover-foreground: var(--ink-strong);
   --primary: var(--brand-green);
   --primary-foreground: #07110d;

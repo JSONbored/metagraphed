@@ -288,13 +288,7 @@ function DiffRow({
   highlight?: boolean;
 }) {
   return (
-    <Panel
-      as="div"
-      flush
-      tintBorderOnly
-      tone={highlight ? "accent" : "default"}
-      bodyClassName="px-3 py-2.5"
-    >
+    <Panel as="div" flush selected={highlight} bodyClassName="px-3 py-2.5">
       <div className="mg-type-caption text-ink-muted">{title}</div>
       <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
         <span className="font-display text-sm font-semibold tabular-nums text-ink-strong">

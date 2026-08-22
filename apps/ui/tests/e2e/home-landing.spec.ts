@@ -157,12 +157,23 @@ test.describe("#11544 homepage landing quality contract", () => {
       .evaluate((element) => getComputedStyle(element).backgroundColor);
     expect(shellBackground).toBe("rgb(8, 11, 10)");
 
-    const searchSurface = await page
-      .getByPlaceholder("Search blocks, accounts, and subnets…")
-      .evaluate(
-        (input) => getComputedStyle(input.parentElement?.parentElement ?? input).backgroundColor,
-      );
-    expect(searchSurface).toBe("rgb(16, 22, 20)");
+    // Targets the field itself rather than counting parents. The omnibox used
+    // to borrow the grouping primitive for its surface, so this walked up two
+    // levels to find it; a search input is its own kind of surface now and
+    // `.mg-field` owns it. Asserted as a LUMINANCE, because the value is
+    // derived from the landing's palette rather than written as a hex — which
+    // is the point: it has to follow the scope, and a fixed :root value silently
+    // did not (the field rendered near-white here).
+    const searchLuminance = await page
+      .locator(".mg-field")
+      .first()
+      .evaluate((element) => {
+        const [r, g, b] = getComputedStyle(element)
+          .backgroundColor.match(/[\d.]+/g)!
+          .map(Number);
+        return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      });
+    expect(searchLuminance).toBeLessThan(0.2);
 
     // The chart's own surfaces must follow the landing's graphite scope, not a
     // `.dark` class the landing never sets. Assert the RENDERED colour rather

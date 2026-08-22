@@ -132,36 +132,15 @@ export function StatTile({
     </>
   );
 
-  if (variant === "bare") {
-    return (
-      <div
-        className={classNames(
-          "mg-stat-measure flex flex-wrap items-center gap-x-3 gap-y-2",
-          className,
-        )}
-        data-tone={tone === "default" ? undefined : tone}
-      >
-        {body}
-      </div>
-    );
-  }
-
   return (
-    <Panel
-      as="div"
-      dense
-      tintBorderOnly
-      tone={tone}
-      className={className}
-      // `flex-wrap` + a text-column floor: a `chart` (e.g. the APY window
-      // SegmentedToggle) is shrink-0, so in a 2-column 375px grid it took the
-      // whole row and squeezed the label/value column to *2px* — the eyebrow
-      // rendered as a vertical sliver of punctuation. Wrapping drops the chart
-      // onto its own line instead, and gap-x-3 buys back a few more pixels of
-      // an already tight column.
-      bodyClassName="flex flex-wrap items-center gap-x-3 gap-y-2"
+    <div
+      className={classNames(
+        "mg-stat-measure flex flex-wrap items-center gap-x-3 gap-y-2",
+        className,
+      )}
+      data-tone={tone === "default" ? undefined : tone}
     >
       {body}
-    </Panel>
+    </div>
   );
 }

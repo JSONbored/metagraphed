@@ -69,9 +69,10 @@
 @custom-variant dark (&:is(.dark *));
 @theme inline { --radius-sm: calc(var(--radius) - 4px); --radius-md: calc(var(--radius) - 2px); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) + 4px); --color-background: var(--background); --color-foreground: var(--foreground); --color-paper: var(--paper); --color-surface: var(--surface); --color-surface-2: var(--surface-2); --color-ink: var(--ink); --color-ink-strong: var(--ink-strong); --color-ink-muted: var(--ink-muted); --color-ink-subtle: var(--ink-subtle); --color-ink-subtle-text: var(--ink-subtle-text); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-primary-soft: var(--primary-soft); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-accent-text: var(--accent-text); --color-destructive: var(--destructive); --color-destructive-foreground: var(--destructive-foreground); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-health-ok: var(--health-ok); --color-health-warn: var(--health-warn); --color-health-warn-text: var(--health-warn-text); --color-health-bad: var(--health-bad); --color-health-down: var(--health-down); --color-health-unknown: var(--health-unknown); --color-curation-native: var(--curation-native); --color-curation-verified: var(--curation-verified); --color-curation-pilot: var(--curation-pilot); --color-curation-candidate: var(--curation-candidate); --color-curation-seeded: var(--curation-seeded); --color-curation-machine: var(--curation-machine); --color-curation-adapter: var(--curation-adapter); --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5); --color-chart-6: var(--chart-6); --color-chart-7: var(--chart-7); --color-chart-8: var(--chart-8); --color-chart-9: var(--chart-9); --color-chart-10: var(--chart-10); --color-chart-11: var(--chart-11); --font-display: "IBM Plex Mono", "Space Grotesk", ui-monospace, monospace; --font-sans: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace; --font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace; --font-prose: "DM Sans", ui-sans-serif, system-ui, sans-serif; --spacing-section: 3rem; --color-accent-surface: color-mix(in oklab, var(--accent) 6%, transparent); --spacing-nav: 3.25rem; --spacing-section-gap: 4rem; --spacing-shell-max: 1400px; }
 :root {
-  --radius: 0.25rem;
   --mg-surface-raised: color-mix(in oklab, var(--ink-strong) 6%, var(--paper));
   --mg-surface-raised-hover: color-mix( in oklab, var(--ink-strong) 11%, var(--paper) );
+  --mg-composition-residual: color-mix( in oklab, var(--ink-strong) 20%, transparent );
+  --radius: 0.25rem;
   --brand-green: #30ffc0;
   --paper: #f8f8f5;
   --surface: #ffffff;
@@ -257,6 +258,9 @@
   background: color-mix(in oklab, var(--card) 95%, transparent);
 }
 .dark {
+  --mg-surface-raised: color-mix(in oklab, var(--ink-strong) 6%, var(--paper));
+  --mg-surface-raised-hover: color-mix( in oklab, var(--ink-strong) 11%, var(--paper) );
+  --mg-composition-residual: color-mix( in oklab, var(--ink-strong) 20%, transparent );
   --paper: #161616;
   --surface: #1e1e1e;
   --surface-2: #303030;
@@ -1330,12 +1334,8 @@ html[data-density=compact] .bg-card > table td {
   right: -1rem;
   width: min(66%, 39rem);
   height: min(12rem, 65%);
-  background-image:
-    radial-gradient(
-      circle at 1px 1px,
-      var(--mg-page-field-dot) 1px,
-      transparent 0);
-  background-size: 4px 4px;
+  background-image: radial-gradient(var(--mg-page-field-dot) 1px, transparent 0);
+  background-size: 6px 6px;
   mask-image:
     linear-gradient(
       90deg,
@@ -2434,7 +2434,6 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-composition-timeline {
   --mg-composition-graphite: color-mix( in srgb, var(--paper) 82%, var(--ink-strong) );
-  --mg-composition-residual: color-mix( in oklab, var(--ink-strong) 20%, transparent );
   --mg-composition-surface: color-mix( in srgb, var(--paper) 94%, var(--ink-strong) );
   --mg-composition-rail: color-mix(in srgb, var(--ink-strong) 5%, transparent);
   --mg-composition-gap: 0.4rem;
@@ -4451,4 +4450,127 @@ html[data-density=compact] .bg-card > table td {
   .mg-statement-body {
     font-size: var(--mg-type-h4);
   }
+}
+.mg-panel {
+  min-width: 0;
+}
+.mg-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mg-space-sm);
+  border-bottom: 1px solid var(--border);
+  padding-top: var(--mg-space-sm);
+  padding-bottom: var(--mg-space-sm);
+}
+.mg-panel--interactive {
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ink-strong) 4%, transparent),
+      transparent),
+    var(--mg-surface-raised);
+  box-shadow:
+    0 0 0 0.5px color-mix(in oklab, var(--ink-strong) 12%, transparent),
+    0 1px 2px -1px rgb(0 0 0 / 0.32),
+    0 2px 4px rgb(0 0 0 / 0.24);
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
+}
+@media (hover: hover) {
+  .mg-panel--interactive:hover,
+  .mg-panel--interactive:focus-within {
+    border-color: color-mix(in oklab, var(--ink-strong) 24%, transparent);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--ink-strong) 5%, transparent),
+        transparent),
+      var(--mg-surface-raised-hover);
+    box-shadow:
+      0 0 0 0.5px color-mix(in oklab, var(--ink-strong) 18%, transparent),
+      0 6px 16px rgb(0 0 0 / 0.34),
+      0 2px 6px rgb(0 0 0 / 0.26);
+    transform: translateY(-1px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-panel--interactive {
+    transition: none;
+  }
+  .mg-panel--interactive:hover,
+  .mg-panel--interactive:focus-within {
+    transform: none;
+  }
+}
+.mg-panel[data-selected=true] {
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--accent) 6%, transparent);
+}
+.mg-callout {
+  display: grid;
+  gap: var(--mg-space-xs);
+  border: 1px solid var(--mg-callout-rule);
+  border-radius: var(--radius);
+  background: var(--mg-callout-fill);
+  padding: var(--mg-space-md);
+  --mg-callout-rule: color-mix(in oklab, var(--ink-strong) 16%, transparent);
+  --mg-callout-fill: color-mix(in oklab, var(--ink-strong) 4%, transparent);
+  --mg-callout-ink: var(--ink-muted);
+}
+.mg-callout[data-tone=accent] {
+  --mg-callout-rule: color-mix(in oklab, var(--accent) 40%, transparent);
+  --mg-callout-fill: color-mix(in oklab, var(--accent) 8%, transparent);
+  --mg-callout-ink: var(--accent-text);
+}
+.mg-callout[data-tone=warn] {
+  --mg-callout-rule: color-mix(in oklab, var(--health-warn) 40%, transparent);
+  --mg-callout-fill: color-mix(in oklab, var(--health-warn) 8%, transparent);
+  --mg-callout-ink: var(--health-warn);
+}
+.mg-callout[data-tone=down] {
+  --mg-callout-rule: color-mix(in oklab, var(--health-down) 40%, transparent);
+  --mg-callout-fill: color-mix(in oklab, var(--health-down) 8%, transparent);
+  --mg-callout-ink: var(--health-down);
+}
+.mg-callout[data-tone=ok] {
+  --mg-callout-rule: color-mix(in oklab, var(--health-ok) 40%, transparent);
+  --mg-callout-fill: color-mix(in oklab, var(--health-ok) 8%, transparent);
+  --mg-callout-ink: var(--health-ok);
+}
+.mg-callout-title {
+  margin: 0;
+  color: var(--mg-callout-ink);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  font-weight: 600;
+  letter-spacing: var(--mg-tracking-label);
+  text-transform: uppercase;
+}
+.mg-callout-body {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption);
+  line-height: 1.55;
+}
+.mg-field {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--mg-surface-raised);
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+@media (hover: hover) {
+  .mg-field:hover {
+    border-color: color-mix(in oklab, var(--ink-strong) 22%, transparent);
+  }
+}
+.mg-field:focus-within,
+.mg-field--open {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  background: var(--mg-surface-raised-hover);
 }

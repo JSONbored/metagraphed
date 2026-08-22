@@ -2,6 +2,7 @@ import { Activity, Layers, Radio, Server } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import {
   Breadcrumbs,
+  Callout,
   Chip,
   ColumnCustomizer,
   DefinitionList,
@@ -15,15 +16,15 @@ import {
   Indicator,
   LoadingPill,
   MetaStrip,
+  PageMasthead,
   PagerFooter,
   Panel,
-  PageMasthead,
   SectionLabel,
   StatusBadge,
   StickyToolbar,
   TableSkeleton,
-  useColumnVisibility,
   type ColumnDef,
+  useColumnVisibility,
 } from "@/components/metagraphed/primitives";
 import {
   Accordion,
@@ -689,11 +690,7 @@ function DataDisplaySection() {
               <Indicator icon={Server} label="surfaces" value="284" orientation="column" />
             </div>
           </Panel>
-          <Panel
-            title="Endpoint health"
-            tone="accent"
-            action={<FreshnessPill updatedAt={SAMPLE_UPDATED_AT} />}
-          >
+          <Panel title="Endpoint health" action={<FreshnessPill updatedAt={SAMPLE_UPDATED_AT} />}>
             <div className="flex flex-col gap-2">
               <SectionLabel size="label" tone="accent">
                 Live probes
@@ -717,28 +714,33 @@ function DataDisplaySection() {
             />
           </Panel>
           <Panel
-            title="Ok tone"
-            tone="ok"
+            title="Selected"
+            selected
             id="design-primitives-ok-tone-panel"
             aria-label="Healthy status summary"
           >
             <StatusBadge status="ok" live />
             <p className="mt-2 mg-type-caption text-ink-muted">
-              tone="ok" — tinted border + background. id/aria-label above land on the outer element
-              via rest-prop forwarding.
+              selected — the one emphasised sibling, drawn as an accent hairline and the faintest
+              wash. id/aria-label land on the outer element via rest-prop forwarding.
             </p>
           </Panel>
-          <Panel title="Border-only tint" tone="warn" tintBorderOnly>
-            <p className="mg-type-caption text-ink-muted">
-              tintBorderOnly keeps the warn border but skips the tinted fill — bg-card instead.
-            </p>
+          <Panel title="Interactive">
+            <Panel as="div" interactive dense>
+              <p className="mg-type-caption text-ink-muted">
+                interactive is the only Panel that keeps a container: a block you can click is an
+                object, so it takes the site&apos;s card treatment — raised surface, half-pixel
+                ring, one-pixel lift on hover.
+              </p>
+            </Panel>
           </Panel>
-          <Panel title="Glow" glow>
-            <p className="mg-type-caption text-ink-muted">
-              glow appends the existing --mg-card-glow soft-elevation shadow (accent tone picks
-              --mg-card-glow-accent automatically).
-            </p>
-          </Panel>
+          <Callout tone="warn" title="Callout">
+            Semantic state is a Callout, not a tinted Panel. It keeps a container precisely because
+            its neighbours no longer have one.
+          </Callout>
+          <Callout tone="ok" title="Healthy">
+            <StatusBadge status="ok" live />
+          </Callout>
         </div>
       </Section>
 

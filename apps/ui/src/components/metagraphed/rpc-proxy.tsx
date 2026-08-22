@@ -5,7 +5,7 @@ import { Zap, GitBranch, Database, ShieldCheck, Gauge, ArrowUpDown } from "lucid
 import { API_BASE } from "@/lib/metagraphed/config";
 import { useNetwork } from "@/hooks/use-api-base";
 import { rpcUsageQuery } from "@/lib/metagraphed/queries";
-import { CopyButton, TimeAgo } from "@jsonbored/ui-kit";
+import { CopyButton, StatTile, TimeAgo } from "@jsonbored/ui-kit";
 import { EmptyState, StaleBanner } from "./states";
 import { Panel } from "./primitives";
 import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
@@ -142,14 +142,10 @@ function UsageStat({
   tone?: "default" | "ok" | "warn";
 }) {
   return (
-    <Panel as="div" flush tintBorderOnly tone={tone} bodyClassName="px-3 py-2.5">
-      <div className="flex items-center gap-1.5 text-ink-muted">
-        <Icon className="size-3" aria-hidden />
-        <span className="mg-type-caption">{eyebrow}</span>
-      </div>
-      <div className="mt-1 font-mono text-lg font-semibold text-ink-strong">{value}</div>
-      {hint ? <div className="mg-type-data-sm text-ink-muted">{hint}</div> : null}
-    </Panel>
+    // A labelled figure with a state IS a StatTile — it was a hand-rolled one
+    // wearing a tinted Panel, which is why it drifted from every other measure
+    // on the site in size and weight.
+    <StatTile icon={Icon} eyebrow={eyebrow} value={value} hint={hint} tone={tone} />
   );
 }
 

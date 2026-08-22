@@ -2,22 +2,6 @@ import type { ReactNode, ElementType, ComponentPropsWithoutRef } from "react";
 import { classNames } from "@/lib/format";
 import { SectionLabel } from "./section-label";
 
-export type PanelTone = "default" | "accent" | "warn" | "down" | "ok" | "muted";
-
-interface ToneStyle {
-  border: string;
-  bg: string;
-}
-
-const TONE_STYLES: Record<PanelTone, ToneStyle> = {
-  default: { border: "border-border", bg: "bg-card" },
-  accent: { border: "border-accent/40", bg: "bg-primary-soft" },
-  warn: { border: "border-health-warn/40", bg: "bg-health-warn/5" },
-  down: { border: "border-health-down/40", bg: "bg-health-down/5" },
-  ok: { border: "border-health-ok/40", bg: "bg-health-ok/5" },
-  muted: { border: "border-border", bg: "bg-surface-2" },
-};
-
 interface PanelOwnProps {
   /** Optional uppercase-mono title, rendered via <SectionLabel>. */
   title?: ReactNode;
@@ -29,18 +13,26 @@ interface PanelOwnProps {
   dense?: boolean;
   /** Zero padding — use when children own their spacing (e.g. tables). */
   flush?: boolean;
-  /** Adds the standard hairline hover-lift interaction. */
+  /**
+   * The whole block is a target — a link or a button.
+   *
+   * This is the ONE case that still gets a container, because an interactive
+   * block has to look like something you can hit. It takes the site's card
+   * treatment: a raised surface, a half-pixel ring, and a one-pixel lift on
+   * hover. A Panel that is merely grouping does not get that, and does not
+   * need it.
+   */
   interactive?: boolean;
-  tone?: PanelTone;
-  /** Keep the tone's border but skip its tinted background (bg-card instead).
-   * Covers shells that deliberately want an ok/warn/down/accent border
-   * without the matching tinted fill (#7848). */
-  tintBorderOnly?: boolean;
-  /** Appends the existing --mg-card-glow(-accent) soft-elevation shadow
-   * class (#6398) — picks the accent variant automatically when
-   * tone="accent". Does not reimplement the CSS; that class stays
-   * canonical in styles.css. */
-  glow?: boolean;
+  /**
+   * This is the one currently emphasised among its siblings.
+   *
+   * Selection used to be expressed by passing `tone="accent"`, which tinted
+   * the whole card — so a selected panel looked like a semantic warning and a
+   * warning looked like a selection. They are different states and now have
+   * different names: this draws the brand accent as a hairline and the
+   * faintest wash, which is the one emphasis the accent is reserved for.
+   */
+  selected?: boolean;
   as?: ElementType;
   className?: string;
   bodyClassName?: string;
@@ -51,15 +43,23 @@ export type PanelProps = PanelOwnProps &
   Omit<ComponentPropsWithoutRef<"section">, keyof PanelOwnProps>;
 
 /**
- * Batch B primitive. Replaces the ~500 ad-hoc
- * `rounded border border-border bg-card p-4` shells scattered across
- * routes and panels. Reads --mg-panel-pad tokens so density stays
- * consistent site-wide and contributors stop reinventing card headers.
+ * A group of related content. Not a card.
  *
- * Forwards any other HTML/ARIA attribute (id, aria-label, aria-live,
- * role, data-*, …) to the outer element, so a shell that needs one no
- * longer has to hand-roll `rounded border bg-card` instead of using
- * this primitive (#7848).
+ * This drew `rounded-sm border` plus a filled background on all **284** of its
+ * uses, which is where most of the site's card-wall impression came from. Of
+ * those, ten passed a semantic tone and one a glow: the other ~273 were boxes
+ * around content that needed no box, only separation — and a rule and some
+ * space separate better than a border, because a border also implies the thing
+ * inside is a distinct object.
+ *
+ * What moved, rather than being hidden behind a flag:
+ *
+ * - semantic state (`tone`, `tintBorderOnly`) is a `<Callout>`, which is a
+ *   different component because it does a different job: it says "read this,
+ *   something is wrong" rather than "these things belong together".
+ * - `glow` is gone. Soft elevation on a flat system was decoration.
+ * - `interactive` stays and now means the card treatment, since a block you
+ *   can click is the one kind of panel that genuinely is an object.
  */
 export function Panel({
   title,
@@ -68,9 +68,7 @@ export function Panel({
   dense,
   flush,
   interactive,
-  tone = "default",
-  tintBorderOnly,
-  glow,
+  selected,
   as,
   className,
   bodyClassName,
@@ -84,40 +82,27 @@ export function Panel({
     : dense
       ? "mg-panel-pad-dense"
       : "mg-panel-pad";
-  const toneStyle = TONE_STYLES[tone];
   return (
     <Cmp
       {...rest}
+      data-selected={selected ? "true" : undefined}
       className={classNames(
-        "mg-panel rounded-sm border",
-        toneStyle.border,
-        tintBorderOnly ? "bg-card" : toneStyle.bg,
-        interactive ? "mg-hover-lift" : null,
-        glow
-          ? tone === "accent"
-            ? "mg-card-glow-accent"
-            : "mg-card-glow"
-          : null,
+        "mg-panel",
+        interactive && "mg-panel--interactive",
         className,
       )}
     >
       {hasHeader ? (
         <header
           className={classNames(
-            "flex items-start justify-between gap-3 border-b border-border/70",
+            "mg-panel-header",
             dense ? "mg-panel-pad-dense" : "mg-panel-pad",
           )}
-          style={{
-            paddingTop: "var(--mg-space-sm)",
-            paddingBottom: "var(--mg-space-sm)",
-          }}
         >
           <div className="min-w-0">
             {title != null ? <SectionLabel>{title}</SectionLabel> : null}
             {caption != null ? (
-              <p className="mt-1 mg-type-caption-lg text-ink-muted">
-                {caption}
-              </p>
+              <p className="mt-1 mg-type-caption text-ink-muted">{caption}</p>
             ) : null}
           </div>
           {action != null ? (

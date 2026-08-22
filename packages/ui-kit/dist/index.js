@@ -474,14 +474,6 @@ function SectionLabel({
     }
   );
 }
-var TONE_STYLES = {
-  default: { border: "border-border", bg: "bg-card" },
-  accent: { border: "border-accent/40", bg: "bg-primary-soft" },
-  warn: { border: "border-health-warn/40", bg: "bg-health-warn/5" },
-  down: { border: "border-health-down/40", bg: "bg-health-down/5" },
-  ok: { border: "border-health-ok/40", bg: "bg-health-ok/5" },
-  muted: { border: "border-border", bg: "bg-surface-2" }
-};
 function Panel({
   title,
   action,
@@ -489,9 +481,7 @@ function Panel({
   dense,
   flush,
   interactive,
-  tone = "default",
-  tintBorderOnly,
-  glow,
+  selected,
   as,
   className,
   bodyClassName,
@@ -501,17 +491,14 @@ function Panel({
   const Cmp = as ?? "section";
   const hasHeader = title != null || action != null || caption != null;
   const padClass = flush ? "mg-panel-pad-flush" : dense ? "mg-panel-pad-dense" : "mg-panel-pad";
-  const toneStyle = TONE_STYLES[tone];
   return /* @__PURE__ */ jsxs(
     Cmp,
     {
       ...rest,
+      "data-selected": selected ? "true" : void 0,
       className: classNames(
-        "mg-panel rounded-sm border",
-        toneStyle.border,
-        tintBorderOnly ? "bg-card" : toneStyle.bg,
-        interactive ? "mg-hover-lift" : null,
-        glow ? tone === "accent" ? "mg-card-glow-accent" : "mg-card-glow" : null,
+        "mg-panel",
+        interactive && "mg-panel--interactive",
         className
       ),
       children: [
@@ -519,17 +506,13 @@ function Panel({
           "header",
           {
             className: classNames(
-              "flex items-start justify-between gap-3 border-b border-border/70",
+              "mg-panel-header",
               dense ? "mg-panel-pad-dense" : "mg-panel-pad"
             ),
-            style: {
-              paddingTop: "var(--mg-space-sm)",
-              paddingBottom: "var(--mg-space-sm)"
-            },
             children: [
               /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
                 title != null ? /* @__PURE__ */ jsx(SectionLabel, { children: title }) : null,
-                caption != null ? /* @__PURE__ */ jsx("p", { className: "mt-1 mg-type-caption-lg text-ink-muted", children: caption }) : null
+                caption != null ? /* @__PURE__ */ jsx("p", { className: "mt-1 mg-type-caption text-ink-muted", children: caption }) : null
               ] }),
               action != null ? /* @__PURE__ */ jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
             ]
@@ -3221,6 +3204,17 @@ function Statement({
     ] })
   ] });
 }
+function Callout({
+  tone = "muted",
+  title,
+  children,
+  className
+}) {
+  return /* @__PURE__ */ jsxs("div", { className: classNames("mg-callout", className), "data-tone": tone, children: [
+    title != null ? /* @__PURE__ */ jsx("p", { className: "mg-callout-title", children: title }) : null,
+    /* @__PURE__ */ jsx("div", { className: "mg-callout-body", children })
+  ] });
+}
 function MeasureBand({
   measures,
   ariaLabel,
@@ -5076,28 +5070,14 @@ function StatTile({
     ] }),
     chart ? /* @__PURE__ */ jsx("div", { className: "shrink-0 opacity-80", children: chart }) : null
   ] });
-  if (variant === "bare") {
-    return /* @__PURE__ */ jsx(
-      "div",
-      {
-        className: classNames(
-          "mg-stat-measure flex flex-wrap items-center gap-x-3 gap-y-2",
-          className
-        ),
-        "data-tone": tone === "default" ? void 0 : tone,
-        children: body
-      }
-    );
-  }
   return /* @__PURE__ */ jsx(
-    Panel,
+    "div",
     {
-      as: "div",
-      dense: true,
-      tintBorderOnly: true,
-      tone,
-      className,
-      bodyClassName: "flex flex-wrap items-center gap-x-3 gap-y-2",
+      className: classNames(
+        "mg-stat-measure flex flex-wrap items-center gap-x-3 gap-y-2",
+        className
+      ),
+      "data-tone": tone === "default" ? void 0 : tone,
       children: body
     }
   );
@@ -7763,4 +7743,4 @@ function RoutePending({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnalyticsSection, AnimatedNumber, BackToTop, BarMini, BrandIcon, COMPOSITION_TIMELINE_TONES, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionBreakdown, CompositionTimeline, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DIRECTORY_MODES, DailyRollupFreshness, DataPageCanvas, DataPageDisclosure, DataPageHandoff, DataPageHero, DataPageHeroTitleLine, DataPageModule, DataPageSignalRail, DataPageStage, DataPageTaskPaths, DataPageWindowTabs, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DirectoryModeTabs, DirectoryRow, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityCard, EntityCardGrid, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, INTERACTIVE_DATA_FIELD_TONES, Indicator, InfoTooltip, InteractiveDataField, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MeasureBand, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, RankedRailList, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, ShareCell, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, Statement, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, compositionToneAt, defaultVisible, fmtYield, formatCompositionShare, isDirectoryMode, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, resolveColumnEmphasis, resolveSegmentEmphasis, rovingTabIndex, safeExternalUrl, segmentRows, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnalyticsSection, AnimatedNumber, BackToTop, BarMini, BrandIcon, COMPOSITION_TIMELINE_TONES, Callout, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionBreakdown, CompositionTimeline, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DIRECTORY_MODES, DailyRollupFreshness, DataPageCanvas, DataPageDisclosure, DataPageHandoff, DataPageHero, DataPageHeroTitleLine, DataPageModule, DataPageSignalRail, DataPageStage, DataPageTaskPaths, DataPageWindowTabs, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DirectoryModeTabs, DirectoryRow, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityCard, EntityCardGrid, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, INTERACTIVE_DATA_FIELD_TONES, Indicator, InfoTooltip, InteractiveDataField, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MeasureBand, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, RankedRailList, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, ShareCell, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, Statement, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, compositionToneAt, defaultVisible, fmtYield, formatCompositionShare, isDirectoryMode, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, resolveColumnEmphasis, resolveSegmentEmphasis, rovingTabIndex, safeExternalUrl, segmentRows, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };

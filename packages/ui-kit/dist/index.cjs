@@ -503,14 +503,6 @@ function SectionLabel({
     }
   );
 }
-var TONE_STYLES = {
-  default: { border: "border-border", bg: "bg-card" },
-  accent: { border: "border-accent/40", bg: "bg-primary-soft" },
-  warn: { border: "border-health-warn/40", bg: "bg-health-warn/5" },
-  down: { border: "border-health-down/40", bg: "bg-health-down/5" },
-  ok: { border: "border-health-ok/40", bg: "bg-health-ok/5" },
-  muted: { border: "border-border", bg: "bg-surface-2" }
-};
 function Panel({
   title,
   action,
@@ -518,9 +510,7 @@ function Panel({
   dense,
   flush,
   interactive,
-  tone = "default",
-  tintBorderOnly,
-  glow,
+  selected,
   as,
   className,
   bodyClassName,
@@ -530,17 +520,14 @@ function Panel({
   const Cmp = as ?? "section";
   const hasHeader = title != null || action != null || caption != null;
   const padClass = flush ? "mg-panel-pad-flush" : dense ? "mg-panel-pad-dense" : "mg-panel-pad";
-  const toneStyle = TONE_STYLES[tone];
   return /* @__PURE__ */ jsxRuntime.jsxs(
     Cmp,
     {
       ...rest,
+      "data-selected": selected ? "true" : void 0,
       className: classNames(
-        "mg-panel rounded-sm border",
-        toneStyle.border,
-        tintBorderOnly ? "bg-card" : toneStyle.bg,
-        interactive ? "mg-hover-lift" : null,
-        glow ? tone === "accent" ? "mg-card-glow-accent" : "mg-card-glow" : null,
+        "mg-panel",
+        interactive && "mg-panel--interactive",
         className
       ),
       children: [
@@ -548,17 +535,13 @@ function Panel({
           "header",
           {
             className: classNames(
-              "flex items-start justify-between gap-3 border-b border-border/70",
+              "mg-panel-header",
               dense ? "mg-panel-pad-dense" : "mg-panel-pad"
             ),
-            style: {
-              paddingTop: "var(--mg-space-sm)",
-              paddingBottom: "var(--mg-space-sm)"
-            },
             children: [
               /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
                 title != null ? /* @__PURE__ */ jsxRuntime.jsx(SectionLabel, { children: title }) : null,
-                caption != null ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1 mg-type-caption-lg text-ink-muted", children: caption }) : null
+                caption != null ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1 mg-type-caption text-ink-muted", children: caption }) : null
               ] }),
               action != null ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
             ]
@@ -3250,6 +3233,17 @@ function Statement({
     ] })
   ] });
 }
+function Callout({
+  tone = "muted",
+  title,
+  children,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: classNames("mg-callout", className), "data-tone": tone, children: [
+    title != null ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-callout-title", children: title }) : null,
+    /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-callout-body", children })
+  ] });
+}
 function MeasureBand({
   measures,
   ariaLabel,
@@ -5105,28 +5099,14 @@ function StatTile({
     ] }),
     chart ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 opacity-80", children: chart }) : null
   ] });
-  if (variant === "bare") {
-    return /* @__PURE__ */ jsxRuntime.jsx(
-      "div",
-      {
-        className: classNames(
-          "mg-stat-measure flex flex-wrap items-center gap-x-3 gap-y-2",
-          className
-        ),
-        "data-tone": tone === "default" ? void 0 : tone,
-        children: body
-      }
-    );
-  }
   return /* @__PURE__ */ jsxRuntime.jsx(
-    Panel,
+    "div",
     {
-      as: "div",
-      dense: true,
-      tintBorderOnly: true,
-      tone,
-      className,
-      bodyClassName: "flex flex-wrap items-center gap-x-3 gap-y-2",
+      className: classNames(
+        "mg-stat-measure flex flex-wrap items-center gap-x-3 gap-y-2",
+        className
+      ),
+      "data-tone": tone === "default" ? void 0 : tone,
       children: body
     }
   );
@@ -7804,6 +7784,7 @@ exports.BackToTop = BackToTop;
 exports.BarMini = BarMini;
 exports.BrandIcon = BrandIcon;
 exports.COMPOSITION_TIMELINE_TONES = COMPOSITION_TIMELINE_TONES;
+exports.Callout = Callout;
 exports.CandidateChip = CandidateChip;
 exports.CandlestickMini = CandlestickMini;
 exports.ChartSkeleton = ChartSkeleton;

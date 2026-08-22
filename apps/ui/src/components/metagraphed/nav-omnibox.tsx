@@ -18,7 +18,6 @@ import {
 import { searchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { Kbd, safeExternalUrl } from "@jsonbored/ui-kit";
-import { Panel } from "@/components/metagraphed/primitives";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
 import { isChecksumValidSs58, isValidH160, normalizeH160 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -406,15 +405,17 @@ export function NavOmnibox({ onOpenPalette }: Props) {
       ref={wrapRef}
       className="hidden lg:block relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0"
     >
-      {/* Input */}
-      <Panel
-        as="div"
-        flush
+      {/* A field, not a Panel.
+          This used the grouping primitive for its surface and inherited a
+          border and fill from it — so when Panel became unboxed, the search
+          input silently lost the one thing that made it look typeable. A field
+          is its own kind of surface: `.mg-field` owns it, once, for every
+          input on the site. */}
+      <div
         className={classNames(
-          "w-full !rounded-none text-left text-sm transition-all",
-          open ? "!border-accent/60 ring-2 ring-accent/20" : "hover:border-accent/40",
+          "mg-field inline-flex w-full items-center gap-2 pl-3 pr-2 py-2 min-h-10 text-left text-sm",
+          open && "mg-field--open",
         )}
-        bodyClassName="inline-flex w-full items-center gap-2 !pl-3 !pr-2 !py-2 min-h-10"
       >
         <Search className="size-3.5 shrink-0 text-ink-muted" />
         <input
@@ -435,7 +436,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
           aria-activedescendant={activeOptionId}
           className="flex-1 min-w-0 bg-transparent outline-none text-ink-strong placeholder:text-ink-muted text-sm"
         />
-      </Panel>
+      </div>
 
       {/* Dropdown — wider than the input, right-aligned. Width is
           min(600px,60vw), not a flat 600px: the panel is anchored `right-0`

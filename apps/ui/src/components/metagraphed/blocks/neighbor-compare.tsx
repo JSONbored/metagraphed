@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { Panel } from "@/components/metagraphed/primitives";
+import { Callout, Panel } from "@/components/metagraphed/primitives";
 import { blockQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { Block } from "@/lib/metagraphed/types";
@@ -38,7 +38,7 @@ function NeighborCard({
 
   if (!ref) {
     return (
-      <Panel dense tone="muted">
+      <Callout tone="muted">
         <div className="flex items-center justify-between gap-2 text-ink-muted">
           <span className="inline-flex items-center gap-1.5">
             <Icon className="size-3.5" />
@@ -46,7 +46,7 @@ function NeighborCard({
           </span>
           <span className="mg-type-data">{direction === "prev" ? "genesis" : "chain tip"}</span>
         </div>
-      </Panel>
+      </Callout>
     );
   }
 

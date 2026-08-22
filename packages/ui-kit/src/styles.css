@@ -199,21 +199,33 @@
 
 /* ============ LIGHT — paper inverse of the terminal ============ */
 :root {
-  /* Keep Tailwind's derived radius ladder non-negative: rounded-sm resolves
-     to a square terminal edge, while rounded/md/lg remain subtle fallbacks
-     for legacy components during the route-by-route migration. */
-  --radius: 0.25rem;
-
   /* Surface layers, measured from the reference's dark palette: the page sits
      on #161616 and a raised object on #242424, with #303030 under the pointer.
      Named rather than inlined because "how far above the page does a card
-     sit" is one decision the whole site should share. */
+     sit" is one decision the whole site should share.
+
+     DECLARED IN EVERY PALETTE SCOPE ON PURPOSE. A custom property substitutes
+     its `var()` references at the element where it is DECLARED, not where it
+     is used — so a single `:root` definition baked in the light palette and
+     every scoped theme inherited that fixed value. The landing, which is
+     graphite in either app theme, rendered a near-white search field because
+     of it. */
   --mg-surface-raised: color-mix(in oklab, var(--ink-strong) 6%, var(--paper));
   --mg-surface-raised-hover: color-mix(
     in oklab,
     var(--ink-strong) 11%,
     var(--paper)
   );
+  --mg-composition-residual: color-mix(
+    in oklab,
+    var(--ink-strong) 20%,
+    transparent
+  );
+
+  /* Keep Tailwind's derived radius ladder non-negative: rounded-sm resolves
+     to a square terminal edge, while rounded/md/lg remain subtle fallbacks
+     for legacy components during the route-by-route migration. */
+  --radius: 0.25rem;
 
   /* `--brand-green` is the exact fill from the shipped Metagraphed M mark
      (wordmark.tsx / favicon.svg). Keep it literal: it is the visual anchor
@@ -568,6 +580,29 @@
 
 /* ============ DARK — carbon terminal ============ */
 .dark {
+  /* Surface layers, measured from the reference's dark palette: the page sits
+     on #161616 and a raised object on #242424, with #303030 under the pointer.
+     Named rather than inlined because "how far above the page does a card
+     sit" is one decision the whole site should share.
+
+     DECLARED IN EVERY PALETTE SCOPE ON PURPOSE. A custom property substitutes
+     its `var()` references at the element where it is DECLARED, not where it
+     is used — so a single `:root` definition baked in the light palette and
+     every scoped theme inherited that fixed value. The landing, which is
+     graphite in either app theme, rendered a near-white search field because
+     of it. */
+  --mg-surface-raised: color-mix(in oklab, var(--ink-strong) 6%, var(--paper));
+  --mg-surface-raised-hover: color-mix(
+    in oklab,
+    var(--ink-strong) 11%,
+    var(--paper)
+  );
+  --mg-composition-residual: color-mix(
+    in oklab,
+    var(--ink-strong) 20%,
+    transparent
+  );
+
   --paper: #161616;
   --surface: #1e1e1e;
   --surface-2: #303030;
@@ -1904,12 +1939,15 @@ html[data-density="compact"] .bg-card > table td {
      load. It also fought the edge-fade mask directly below, which exists to
      make this dissolve rather than terminate. Ambient means ambient: the
      lattice is a spatial counterweight to the title, not a frame. */
+  /* 2px SQUARES on a 6px grid, per the reference grammar — not 1px circles on
+     a 4px one. The tighter circular grid read as a soft grey wash rather than
+     as an information texture; squares on a wider pitch keep the individual
+     dot legible, which is the whole point of the field. */
   background-image: radial-gradient(
-    circle at 1px 1px,
     var(--mg-page-field-dot) 1px,
     transparent 0
   );
-  background-size: 4px 4px;
+  background-size: 6px 6px;
   /* Faded on BOTH axes. A horizontal-only fade still terminated the texture in
      two hard horizontal edges, which is most of what made it read as a panel
      even after the border came off — an edge is an edge whichever way it runs.
@@ -3107,11 +3145,6 @@ html[data-density="compact"] .bg-card > table td {
   /* "Everything else" is not a category and must not spend a categorical
      tone. The last ramp entry is a red, which read as an alert state on a
      segment that only means "the rest of the normalised unit". */
-  --mg-composition-residual: color-mix(
-    in oklab,
-    var(--ink-strong) 20%,
-    transparent
-  );
   --mg-composition-surface: color-mix(
     in srgb,
     var(--paper) 94%,
@@ -5465,4 +5498,161 @@ html[data-density="compact"] .bg-card > table td {
   .mg-statement-body {
     font-size: var(--mg-type-h4);
   }
+}
+
+/* ============================================================
+ * Panel — a group, not a card.
+ *
+ * No border, no fill, no radius. Separation comes from the header rule and
+ * from space. 284 of these carried a box; ~273 of them were grouping content
+ * that needed no object boundary, and a page of boxes cannot emphasise
+ * anything because everything is already emphasised.
+ * ============================================================ */
+.mg-panel {
+  min-width: 0;
+}
+.mg-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mg-space-sm);
+  border-bottom: 1px solid var(--border);
+  padding-top: var(--mg-space-sm);
+  padding-bottom: var(--mg-space-sm);
+}
+/* The one panel that keeps a container: a block you can click is an object,
+   and takes the same treatment as every other object on the site. */
+.mg-panel--interactive {
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ink-strong) 4%, transparent),
+      transparent
+    ),
+    var(--mg-surface-raised);
+  box-shadow:
+    0 0 0 0.5px color-mix(in oklab, var(--ink-strong) 12%, transparent),
+    0 1px 2px -1px rgb(0 0 0 / 0.32),
+    0 2px 4px rgb(0 0 0 / 0.24);
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
+}
+@media (hover: hover) {
+  .mg-panel--interactive:hover,
+  .mg-panel--interactive:focus-within {
+    border-color: color-mix(in oklab, var(--ink-strong) 24%, transparent);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--ink-strong) 5%, transparent),
+        transparent
+      ),
+      var(--mg-surface-raised-hover);
+    box-shadow:
+      0 0 0 0.5px color-mix(in oklab, var(--ink-strong) 18%, transparent),
+      0 6px 16px rgb(0 0 0 / 0.34),
+      0 2px 6px rgb(0 0 0 / 0.26);
+    transform: translateY(-1px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-panel--interactive {
+    transition: none;
+  }
+  .mg-panel--interactive:hover,
+  .mg-panel--interactive:focus-within {
+    transform: none;
+  }
+}
+
+/* The one emphasised sibling. An accent hairline and the faintest wash — the
+   single selected emphasis the brand accent is reserved for, and deliberately
+   NOT the same treatment as a semantic Callout, which means something else. */
+.mg-panel[data-selected="true"] {
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--accent) 6%, transparent);
+}
+
+/* ============================================================
+ * Callout — something to notice, and why.
+ * Keeps a container precisely because its neighbours no longer have one.
+ * ============================================================ */
+.mg-callout {
+  display: grid;
+  gap: var(--mg-space-xs);
+  border: 1px solid var(--mg-callout-rule);
+  border-radius: var(--radius);
+  background: var(--mg-callout-fill);
+  padding: var(--mg-space-md);
+  --mg-callout-rule: color-mix(in oklab, var(--ink-strong) 16%, transparent);
+  --mg-callout-fill: color-mix(in oklab, var(--ink-strong) 4%, transparent);
+  --mg-callout-ink: var(--ink-muted);
+}
+.mg-callout[data-tone="accent"] {
+  --mg-callout-rule: color-mix(in oklab, var(--accent) 40%, transparent);
+  --mg-callout-fill: color-mix(in oklab, var(--accent) 8%, transparent);
+  --mg-callout-ink: var(--accent-text);
+}
+.mg-callout[data-tone="warn"] {
+  --mg-callout-rule: color-mix(in oklab, var(--health-warn) 40%, transparent);
+  --mg-callout-fill: color-mix(in oklab, var(--health-warn) 8%, transparent);
+  --mg-callout-ink: var(--health-warn);
+}
+.mg-callout[data-tone="down"] {
+  --mg-callout-rule: color-mix(in oklab, var(--health-down) 40%, transparent);
+  --mg-callout-fill: color-mix(in oklab, var(--health-down) 8%, transparent);
+  --mg-callout-ink: var(--health-down);
+}
+.mg-callout[data-tone="ok"] {
+  --mg-callout-rule: color-mix(in oklab, var(--health-ok) 40%, transparent);
+  --mg-callout-fill: color-mix(in oklab, var(--health-ok) 8%, transparent);
+  --mg-callout-ink: var(--health-ok);
+}
+.mg-callout-title {
+  margin: 0;
+  color: var(--mg-callout-ink);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  font-weight: 600;
+  letter-spacing: var(--mg-tracking-label);
+  text-transform: uppercase;
+}
+.mg-callout-body {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption);
+  line-height: 1.55;
+}
+
+/* ============================================================
+ * Field — a surface you can type on.
+ *
+ * Its own primitive because an input is not a group. The omnibox used to
+ * borrow `Panel` for this, so the moment grouping stopped drawing a box the
+ * search field stopped looking typeable — a real affordance regression that
+ * a colour assertion caught. One hairline, a quiet raised fill, and the
+ * accent on focus.
+ * ============================================================ */
+.mg-field {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--mg-surface-raised);
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+@media (hover: hover) {
+  .mg-field:hover {
+    border-color: color-mix(in oklab, var(--ink-strong) 22%, transparent);
+  }
+}
+.mg-field:focus-within,
+.mg-field--open {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  background: var(--mg-surface-raised-hover);
 }

@@ -167,6 +167,7 @@ export {
 export { AnalyticsSection } from "@/components/metagraphed/analytics-section";
 export { ShareCell } from "@/components/metagraphed/share-cell";
 export { Statement } from "@/components/metagraphed/statement";
+export { Callout, type CalloutTone } from "@/components/metagraphed/callout";
 export {
   MeasureBand,
   type Measure,
@@ -326,11 +327,7 @@ export {
   TableColGroup,
   columnWidths,
 } from "@/components/metagraphed/table-colgroup";
-export {
-  Panel,
-  type PanelProps,
-  type PanelTone,
-} from "@/components/metagraphed/panel";
+export { Panel, type PanelProps } from "@/components/metagraphed/panel";
 export {
   SectionLabel,
   type SectionLabelProps,

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Play, Lock, Loader2 } from "lucide-react";
 import { CopyableCode, ExternalLink } from "@jsonbored/ui-kit";
-import { Panel } from "@/components/metagraphed/primitives";
+import { Callout, Panel } from "@/components/metagraphed/primitives";
 import { SectionAnchor } from "@jsonbored/ui-kit";
 import { subnetSurfacesQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
@@ -165,10 +165,10 @@ function SurfaceRunner({ surface }: { surface: Surface }) {
 function ResponseView({ outcome }: { outcome: SurfaceCallOutcome }) {
   if (!outcome.ok) {
     return (
-      <Panel as="div" dense tone="warn">
+      <Callout tone="warn">
         <p className="mg-type-caption text-ink-strong">{outcome.error.message}</p>
         <p className="mt-1 mg-type-data-sm text-ink-muted">{outcome.error.code}</p>
-      </Panel>
+      </Callout>
     );
   }
   const r = outcome.result;

@@ -1,7 +1,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { SectionLabel, Skeleton } from "@jsonbored/ui-kit";
-import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Callout, Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmissionNetworkSummary } from "@/components/metagraphed/emission-network-summary";
 import {
@@ -66,8 +66,7 @@ function VerificationNotice({ pipeline }: { pipeline: EmissionPipeline }) {
   if (pipeline.verification.verified) return null;
   const failed = pipeline.verification.checks.filter((check) => !check.ok);
   return (
-    <Panel as="section" tone="warn" className="mb-4">
-      <h2 className="mg-type-label text-ink-strong">These figures did not reproduce the chain</h2>
+    <Callout tone="warn" title="These figures did not reproduce the chain" className="mb-4">
       <p className="mt-1 text-sm text-ink">
         Every share below is reconstructed from chain storage, and this capture&apos;s identity
         checks did not pass. Treat the numbers as unverified — do not cite them.
@@ -82,7 +81,7 @@ function VerificationNotice({ pipeline }: { pipeline: EmissionPipeline }) {
           ))}
         </ul>
       ) : null}
-    </Panel>
+    </Callout>
   );
 }
 
