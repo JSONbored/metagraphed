@@ -1,21 +1,17 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQueries, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
-import { Boxes, Coins, Gauge, Percent, TriangleAlert, Users, Zap } from "lucide-react";
+import { Coins, Percent, TriangleAlert } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
+import { ShareButton, SectionAnchor, ActionBar, SegmentedToggle, Chip } from "@jsonbored/ui-kit";
 import {
-  ShareButton,
-  SectionAnchor,
-  StatTile,
-  ActionBar,
-  SegmentedToggle,
-  Chip,
-} from "@jsonbored/ui-kit";
-import {
+  CompositionBreakdown,
+  MeasureBand,
+  type Measure,
   AsyncPanel,
   DataPageCanvas,
   DataPageModule,
@@ -302,7 +298,8 @@ const APY_WINDOWS: ValidatorApyWindow[] = ["7d", "30d", "90d"];
 // ValidatorApyPanel: points are newest-first, latest finite value wins);
 // falls back to the latest-snapshot estimate — labeled as such — while
 // history is loading or absent.
-function ApyKpiTile({
+/** Returns a Measure rather than a tile — it is one entry in the band. */
+function useApyMeasure({
   hotkey,
   take,
   snapshotApy,
@@ -310,7 +307,7 @@ function ApyKpiTile({
   hotkey: string;
   take: number | null;
   snapshotApy: number | null;
-}) {
+}): Measure {
   const [window, setWindow] = useState<ValidatorApyWindow>("30d");
   const results = useQueries({
     queries: APY_WINDOWS.map((w) => ({
@@ -331,15 +328,11 @@ function ApyKpiTile({
   const windowedApy = apyFromRewardsPer1000(rewards, take);
   const value = windowedApy ?? snapshotApy;
   const usingSnapshot = windowedApy == null;
-  return (
-    <StatTile
-      icon={Zap}
-      eyebrow="Est. APY"
-      value={formatApyPct(value)}
-      hint={usingSnapshot ? "latest snapshot · net of take" : `${window} history · net of take`}
-      truncate={false}
-      className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
-      chart={
+  return {
+    label: "Est. APY",
+    value: (
+      <span className="mg-measure-with-control">
+        {formatApyPct(value)}
         <SegmentedToggle<ValidatorApyWindow>
           options={APY_WINDOWS.map((w) => ({ value: w, label: w }))}
           value={window}
@@ -347,9 +340,12 @@ function ApyKpiTile({
           ariaLabel="APY window"
           className="border-0 bg-transparent"
         />
-      }
-    />
-  );
+      </span>
+    ),
+    // The control sits WITH the number it changes, which is the whole reason
+    // this measure keeps a control at all.
+    hint: usingSnapshot ? "latest snapshot · net of take" : `${window} history · net of take`,
+  } satisfies Measure;
 }
 
 function ValidatorDetail({ hotkey }: { hotkey: string }) {
@@ -375,6 +371,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
     detail.total_stake_tao,
     detail.take,
   );
+  const apyMeasure = useApyMeasure({ hotkey, take: detail.take, snapshotApy });
   const tab = useActiveTab("subnets");
   // Take is network-wide, not subnet-scoped, so unlike the per-subnet Stake
   // action this belongs at the page level. Hidden entirely (not just
@@ -411,8 +408,11 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             {/* Hotkey + coldkey (#6427) get identical, symmetric AddressDisplay
                 rows -- the operator name is already the page title, so it
                 isn't repeated here. */}
-            {/* eslint-disable-next-line no-restricted-syntax -- genuinely 80% (#8554): this tier is 95%; .mg-glass would add blur(8px), a real visual change */}
-            <dl className="max-w-2xl divide-y divide-border/80 rounded-2xl border border-border/80 bg-card/80 mg-card-glow-accent">
+            {}
+            {/* #11522: flat and hairline-ruled. It was a rounded, glowing,
+                tinted card holding two copyable addresses — the frame was
+                louder than the identifiers inside it. */}
+            <dl className="max-w-2xl divide-y divide-border border-y border-border">
               <FieldRow label="Hotkey">
                 <span className="flex w-full min-w-0 items-center">
                   <AddressDisplay
@@ -503,7 +503,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           {isUnrecognizedValidator(detail) ? (
             <div
               role="status"
-              className="mb-8 flex items-start gap-3 rounded-2xl border border-health-warn/40 bg-health-warn/5 px-4 py-3"
+              className="mb-8 flex items-start gap-3 border-l-2 border-health-warn bg-health-warn/5 px-4 py-3"
             >
               <TriangleAlert className="mt-0.5 size-4 shrink-0 text-health-warn" aria-hidden />
               <div className="min-w-0">
@@ -519,55 +519,80 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             </div>
           ) : null}
 
-          {/* #8251: KPI band of exactly six — Total stake · Est. APY (one tile
-          with a 7/30/90 toggle) · Take · Active subnets · Nominators · Avg
-          val-trust. Total emission and Max trust left the band (emission is a
-          per-subnet story now told in the performance tab; max-trust
-          duplicated avg-trust's signal); the old separate three-card APY
-          section is gone — this tile IS the one APY block on the page.
-          Mobile is the required 2×3 grid. */}
-          <div className="mb-12 grid grid-cols-2 gap-4 xl:grid-cols-3 2xl:grid-cols-6">
-            <StatTile
-              icon={Coins}
-              eyebrow="Total stake"
-              value={taoCompact(detail.total_stake_tao)}
-              // Root (netuid 0) is TAO-denominated with no price exposure; alpha
-              // is the sum across every other subnet's own alpha token (#2550).
-              hint={`Root ${taoCompact(detail.root_stake_tao)} · Alpha ${taoCompact(detail.alpha_stake_tao)}`}
-              truncate={false}
-              tone="accent"
-              className="rounded-2xl border-accent/25 mg-glass-opaque p-4 mg-card-glow-accent"
-            />
-            <ApyKpiTile hotkey={hotkey} take={detail.take} snapshotApy={snapshotApy} />
-            <StatTile
-              icon={Percent}
-              eyebrow="Take rate"
-              value={formatTakePct(detail.take)}
-              hint="commission kept from delegators"
-              className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
-            />
-            <StatTile
-              icon={Boxes}
-              eyebrow="Active subnets"
-              value={formatNumber(detail.subnet_count)}
-              hint="validator memberships"
-              className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
-            />
-            <StatTile
-              icon={Users}
-              eyebrow="Nominators"
-              value={detail.nominator_count != null ? formatNumber(detail.nominator_count) : "—"}
-              hint="distinct coldkeys delegated"
-              className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
-            />
-            <StatTile
-              icon={Gauge}
-              eyebrow="Avg validator trust"
-              value={scoreStr(detail.avg_validator_trust)}
-              hint="mean across subnets"
-              className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
-            />
-          </div>
+          {/* #11522: one flat band, not six glass cards.
+              The old treatment gave every number the same rounded, glowing
+              frame, so nothing led and the eye had six equal places to land —
+              the generic-dashboard look this redesign exists to remove. Same
+              six measures, hairline separators, no radius or shadow. */}
+          <MeasureBand
+            ariaLabel="Validator summary"
+            measures={[
+              {
+                label: "Total stake",
+                value: taoCompact(detail.total_stake_tao),
+                // Root (netuid 0) is TAO-denominated with no price exposure;
+                // alpha is the sum across every other subnet's own token (#2550).
+                hint: `Root ${taoCompact(detail.root_stake_tao)} · Alpha ${taoCompact(detail.alpha_stake_tao)}`,
+              },
+              apyMeasure,
+              {
+                label: "Take rate",
+                value: formatTakePct(detail.take),
+                hint: "commission kept from delegators",
+              },
+              {
+                label: "Active subnets",
+                value: formatNumber(detail.subnet_count),
+                hint: "validator memberships",
+              },
+              {
+                label: "Nominators",
+                value: detail.nominator_count != null ? formatNumber(detail.nominator_count) : "—",
+                hint: "distinct coldkeys delegated",
+              },
+              {
+                label: "Avg trust",
+                value: scoreStr(detail.avg_validator_trust),
+                hint: "mean across subnets",
+              },
+            ]}
+          />
+
+          {/* #11522: the one composition this page can honestly draw.
+              Root is TAO-denominated; alpha is the TAO value of stake held
+              across subnets. Both are TAO, so they divide one whole.
+
+              There is deliberately NO cross-subnet stake or emission chart
+              here: alpha is denominated independently by every subnet, so
+              summing or ranking it across netuids compares different tokens
+              and produces a chart that looks right and means nothing (the same
+              trap #11550 documents). The per-subnet table below keeps those
+              figures where they belong — beside their own subnet. */}
+          {detail.root_stake_tao != null && detail.alpha_stake_tao != null ? (
+            <div className="mb-10">
+              <h2 className="mg-profile-section-title">
+                <b>Stake split.</b> Where this validator&apos;s TAO sits.
+              </h2>
+              <CompositionBreakdown
+                ariaLabel="Share of this validator's stake held on root versus across subnets"
+                slices={[
+                  {
+                    id: "root",
+                    label: "Root (netuid 0)",
+                    value: detail.root_stake_tao,
+                    valueLabel: taoCompact(detail.root_stake_tao),
+                  },
+                  {
+                    id: "alpha",
+                    label: "Across subnets",
+                    value: detail.alpha_stake_tao,
+                    valueLabel: taoCompact(detail.alpha_stake_tao),
+                  },
+                ]}
+                footnote={`${formatNumber(detail.subnet_count)} validator memberships`}
+              />
+            </div>
+          ) : null}
 
           <ProfileTabs tabs={[...TABS]} defaultTab="subnets" />
 

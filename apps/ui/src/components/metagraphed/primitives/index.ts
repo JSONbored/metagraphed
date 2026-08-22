@@ -4,6 +4,8 @@
 // every existing "@/components/metagraphed/primitives" import site is
 // unaffected. The handful still defined locally (below the re-exports)
 // genuinely need apps/ui's router/query/hooks and can't move.
+export { CompositionBreakdown, type CompositionSlice } from "@jsonbored/ui-kit";
+export { MeasureBand, type Measure } from "@jsonbored/ui-kit";
 export { RankedRailList, type RankedRailItem } from "@jsonbored/ui-kit";
 export { DirectoryRow } from "@jsonbored/ui-kit";
 export {

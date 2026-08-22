@@ -544,6 +544,23 @@
   text-align: right;
 }
 
+/* A profile section heading: bold claim, muted explanation, one line — the
+   same grammar the data modules use elsewhere. */
+.mg-profile-section-title {
+  max-width: 46rem;
+  margin: 0 0 var(--mg-space-md);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption-lg);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+}
+.mg-profile-section-title b {
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+
 .mg-home-route-rail {
   border-top: 1px solid var(--border);
 }

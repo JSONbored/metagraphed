@@ -3440,6 +3440,220 @@ html[data-density="compact"] .bg-card > table td {
 }
 
 /* ============================================================
+ * Composition breakdown
+ *
+ * One stacked bar plus the swatched rank grid that decodes it. The grid is the
+ * legend, so the two are one component: a colour with no name is decoration,
+ * and a name with no colour cannot be found in the bar.
+ * ============================================================ */
+.mg-composition-breakdown {
+  margin: 0;
+}
+.mg-composition-breakdown-bar {
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+  height: 3.25rem;
+  background: color-mix(in oklab, var(--ink-strong) 5%, transparent);
+}
+.mg-composition-breakdown-slice {
+  display: block;
+  height: 100%;
+  background: var(--mg-composition-residual, #9a9a9a);
+}
+.mg-composition-breakdown-slice[data-tone="chart-1"],
+.mg-composition-breakdown-swatch[data-tone="chart-1"] {
+  background: var(--chart-1);
+}
+.mg-composition-breakdown-slice[data-tone="chart-2"],
+.mg-composition-breakdown-swatch[data-tone="chart-2"] {
+  background: var(--chart-2);
+}
+.mg-composition-breakdown-slice[data-tone="chart-3"],
+.mg-composition-breakdown-swatch[data-tone="chart-3"] {
+  background: var(--chart-3);
+}
+.mg-composition-breakdown-slice[data-tone="chart-4"],
+.mg-composition-breakdown-swatch[data-tone="chart-4"] {
+  background: var(--chart-4);
+}
+.mg-composition-breakdown-slice[data-tone="chart-5"],
+.mg-composition-breakdown-swatch[data-tone="chart-5"] {
+  background: var(--chart-5);
+}
+.mg-composition-breakdown-slice[data-tone="chart-6"],
+.mg-composition-breakdown-swatch[data-tone="chart-6"] {
+  background: var(--chart-6);
+}
+.mg-composition-breakdown-slice[data-tone="chart-7"],
+.mg-composition-breakdown-swatch[data-tone="chart-7"] {
+  background: var(--chart-7);
+}
+.mg-composition-breakdown-slice[data-tone="chart-8"],
+.mg-composition-breakdown-swatch[data-tone="chart-8"] {
+  background: var(--chart-8);
+}
+.mg-composition-breakdown-slice[data-tone="chart-9"],
+.mg-composition-breakdown-swatch[data-tone="chart-9"] {
+  background: var(--chart-9);
+}
+.mg-composition-breakdown-slice[data-tone="chart-10"],
+.mg-composition-breakdown-swatch[data-tone="chart-10"] {
+  background: var(--chart-10);
+}
+.mg-composition-breakdown-slice[data-tone="chart-11"],
+.mg-composition-breakdown-swatch[data-tone="chart-11"] {
+  background: var(--chart-11);
+}
+.mg-composition-breakdown-slice[data-tone="residual"],
+.mg-composition-breakdown-swatch[data-tone="residual"] {
+  background: var(--mg-composition-residual, #9a9a9a);
+}
+.mg-composition-breakdown-grid {
+  display: grid;
+  margin: var(--mg-space-md) 0 0;
+  padding: 0;
+  gap: 0;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  list-style: none;
+}
+.mg-composition-breakdown-grid > li {
+  display: grid;
+  align-items: center;
+  gap: var(--mg-space-xs);
+  grid-template-columns: 1.5rem 0.5rem minmax(0, 1fr) auto auto;
+  border: 1px solid var(--border);
+  /* Cells share edges rather than each drawing a full box, so a wrapped grid
+     reads as one table instead of a scatter of chips. */
+  margin: -0.5px;
+  padding: 0.45rem var(--mg-space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+}
+.mg-composition-breakdown-rank {
+  color: var(--ink-subtle, var(--ink-muted));
+  font-variant-numeric: tabular-nums;
+}
+.mg-composition-breakdown-swatch {
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+}
+.mg-composition-breakdown-label {
+  overflow: hidden;
+  color: var(--ink-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-composition-breakdown-value,
+.mg-composition-breakdown-share {
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.mg-composition-breakdown-share {
+  min-width: 3.2rem;
+  color: var(--ink-strong);
+}
+.mg-composition-breakdown-note {
+  margin: var(--mg-space-md) 0 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  letter-spacing: var(--mg-tracking-label);
+  text-transform: uppercase;
+}
+
+@media (max-width: 47.99rem) {
+  .mg-composition-breakdown-bar {
+    height: 2.5rem;
+  }
+  .mg-composition-breakdown-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============================================================
+ * Measure band
+ *
+ * The entity's few decision-critical numbers, separated by hairlines rather
+ * than boxed into a row of glowing cards. One flat plane: no radius, no
+ * shadow, no glass — the label/value pairing and the rules carry the grouping.
+ * ============================================================ */
+.mg-measure-band {
+  display: grid;
+  margin: 0 0 var(--mg-space-xl);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+}
+.mg-measure {
+  min-width: 0;
+  padding: var(--mg-space-md) var(--mg-space-md) var(--mg-space-md) 0;
+}
+/* A vertical hairline between neighbours, drawn on the element rather than as
+   a border so the first column never gets an orphan rule at the page edge. */
+.mg-measure + .mg-measure {
+  border-left: 1px solid var(--border);
+  padding-left: var(--mg-space-md);
+}
+.mg-measure-label {
+  margin: 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  font-weight: 600;
+  letter-spacing: var(--mg-tracking-label);
+  text-transform: uppercase;
+}
+.mg-measure-value {
+  margin: 0.35rem 0 0;
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+/* A control that belongs to one measure sits with it, not in a toolbar far
+   from the number it changes. */
+.mg-measure-with-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mg-space-xs);
+}
+.mg-measure-hint {
+  margin: 0.3rem 0 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  line-height: 1.4;
+}
+
+/* Two per row on a phone, and the vertical rule becomes a horizontal one at
+   the wrap so the band never shows a rule hanging off a row end. */
+@media (max-width: 47.99rem) {
+  .mg-measure-band {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mg-measure {
+    padding: var(--mg-space-sm) var(--mg-space-sm) var(--mg-space-sm) 0;
+  }
+  .mg-measure:nth-child(odd) {
+    border-left: 0;
+    padding-left: 0;
+  }
+  .mg-measure:nth-child(even) {
+    border-left: 1px solid var(--border);
+    padding-left: var(--mg-space-sm);
+  }
+  .mg-measure:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* ============================================================
  * Ranked rail
  *
  * Value, name, then a bar proportional to the leader. Borrowed geometry from

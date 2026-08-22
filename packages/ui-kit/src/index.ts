@@ -157,6 +157,14 @@ export {
   type InteractiveDataFieldTone,
 } from "@/components/metagraphed/interactive-data-field";
 export {
+  CompositionBreakdown,
+  type CompositionSlice,
+} from "@/components/metagraphed/composition-breakdown";
+export {
+  MeasureBand,
+  type Measure,
+} from "@/components/metagraphed/measure-band";
+export {
   RankedRailList,
   type RankedRailItem,
 } from "@/components/metagraphed/ranked-rail";

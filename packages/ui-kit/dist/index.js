@@ -2722,151 +2722,6 @@ function InteractiveDataField({
     }
   );
 }
-function RankedRailList({
-  items,
-  ariaLabel,
-  max,
-  emptyLabel = "Nothing to rank yet.",
-  className
-}) {
-  if (items.length === 0) {
-    return /* @__PURE__ */ jsx("p", { className: "mg-ranked-rail-empty", role: "status", children: emptyLabel });
-  }
-  const scale = max ?? Math.max(
-    0,
-    ...items.map((item) => Number.isFinite(item.value) ? item.value : 0)
-  );
-  return /* @__PURE__ */ jsx(
-    "ul",
-    {
-      className: classNames("mg-ranked-rail", className),
-      "aria-label": ariaLabel,
-      children: items.map((item, index) => {
-        const value = Number.isFinite(item.value) ? Math.max(0, item.value) : 0;
-        const fraction = scale > 0 ? value / scale : 0;
-        const body = /* @__PURE__ */ jsxs(Fragment, { children: [
-          /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-rank", "aria-hidden": "true", children: String(index + 1).padStart(2, "0") }),
-          /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-value", children: item.valueLabel }),
-          item.media ? /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-media", "aria-hidden": "true", children: item.media }) : null,
-          /* @__PURE__ */ jsxs("span", { className: "mg-ranked-rail-body", children: [
-            /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-label", children: item.label }),
-            item.meta ? /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-meta", children: item.meta }) : null
-          ] }),
-          /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-track", "aria-hidden": "true", children: /* @__PURE__ */ jsx(
-            "span",
-            {
-              className: "mg-ranked-rail-fill",
-              style: { width: `${Math.min(100, fraction * 100)}%` }
-            }
-          ) })
-        ] });
-        return /* @__PURE__ */ jsx("li", { className: "mg-ranked-rail-item", children: item.detail ? (
-          // A native <details>, not a React-state toggle. The contents stay
-          // in the server-rendered DOM whether or not anyone opens them,
-          // which is what keeps every one of an operator's keys reachable
-          // by a crawler — the exact regression #11231 was filed for.
-          // Browsers skip layout for closed details, so the collapsed cost
-          // is bytes only.
-          /* @__PURE__ */ jsxs("details", { className: "mg-ranked-rail-details", children: [
-            /* @__PURE__ */ jsxs("summary", { className: "mg-ranked-rail-row mg-focus-ring", children: [
-              body,
-              /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-caret", "aria-hidden": "true" })
-            ] }),
-            /* @__PURE__ */ jsx("div", { className: "mg-ranked-rail-detail", children: item.detail })
-          ] })
-        ) : /* @__PURE__ */ jsx("div", { className: "mg-ranked-rail-row", children: body }) }, item.id);
-      })
-    }
-  );
-}
-function DirectoryRow({
-  media,
-  title,
-  identifier,
-  purpose,
-  facts,
-  value,
-  valueMeta,
-  className
-}) {
-  const shownFacts = (facts ?? []).filter(
-    (fact) => fact !== null && fact !== void 0
-  );
-  return /* @__PURE__ */ jsxs("div", { className: classNames("mg-directory-row", className), children: [
-    media ? /* @__PURE__ */ jsx("div", { className: "mg-directory-row-media", "aria-hidden": "true", children: media }) : null,
-    /* @__PURE__ */ jsxs("div", { className: "mg-directory-row-body", children: [
-      /* @__PURE__ */ jsxs("div", { className: "mg-directory-row-head", children: [
-        /* @__PURE__ */ jsx("span", { className: "mg-directory-row-title", children: title }),
-        identifier ? /* @__PURE__ */ jsx("span", { className: "mg-directory-row-id", children: identifier }) : null
-      ] }),
-      purpose ? /* @__PURE__ */ jsx("p", { className: "mg-directory-row-purpose", children: purpose }) : null,
-      shownFacts.length > 0 ? /* @__PURE__ */ jsx("ul", { className: "mg-directory-row-facts", children: shownFacts.map((fact, index) => (
-        // Facts are caller-ordered and often not otherwise keyable
-        // (a health verdict, a count, a date); position is their identity.
-        /* @__PURE__ */ jsx("li", { children: fact }, index)
-      )) }) : null
-    ] }),
-    value !== void 0 && value !== null ? /* @__PURE__ */ jsxs("div", { className: "mg-directory-row-value", children: [
-      /* @__PURE__ */ jsx("span", { className: "mg-directory-row-measure", children: value }),
-      valueMeta ? /* @__PURE__ */ jsx("span", { className: "mg-directory-row-meta", children: valueMeta }) : null
-    ] }) : null
-  ] });
-}
-var DIRECTORY_MODES = [
-  {
-    value: "browse",
-    label: "Browse",
-    hint: "What each one does, whether it is healthy, and what it exposes."
-  },
-  {
-    value: "research",
-    label: "Research",
-    hint: "Every metric, sortable and exportable, with columns you choose."
-  },
-  {
-    value: "compare",
-    label: "Compare",
-    hint: "Select rows and read them side by side."
-  }
-];
-function isDirectoryMode(value) {
-  return DIRECTORY_MODES.some((mode) => mode.value === value);
-}
-function DirectoryModeTabs({
-  mode,
-  onChange,
-  modes = DIRECTORY_MODES,
-  ariaLabel = "Directory mode",
-  className
-}) {
-  const active = modes.find((entry) => entry.value === mode) ?? modes[0];
-  return /* @__PURE__ */ jsxs("div", { className: classNames("mg-directory-mode", className), children: [
-    /* @__PURE__ */ jsx(
-      "div",
-      {
-        role: "tablist",
-        "aria-label": ariaLabel,
-        className: "mg-directory-mode-strip",
-        children: modes.map(({ value, label }) => {
-          const selected = value === mode;
-          return /* @__PURE__ */ jsx(
-            "button",
-            {
-              type: "button",
-              role: "tab",
-              "aria-selected": selected,
-              className: "mg-directory-mode-tab mg-focus-ring",
-              onClick: () => onChange(value),
-              children: label
-            },
-            value
-          );
-        })
-      }
-    ),
-    active ? /* @__PURE__ */ jsx("p", { className: "mg-directory-mode-hint", "aria-live": "polite", children: active.hint }) : null
-  ] });
-}
 var COMPOSITION_TIMELINE_TONES = [
   "chart-1",
   "chart-2",
@@ -3173,6 +3028,227 @@ function CompositionTimeline({
       ]
     }
   );
+}
+function CompositionBreakdown({
+  slices,
+  ariaLabel,
+  footnote,
+  className
+}) {
+  const usable = slices.filter(
+    (slice) => Number.isFinite(slice.value) && slice.value > 0
+  );
+  const total = usable.reduce((sum3, slice) => sum3 + slice.value, 0);
+  if (usable.length === 0 || total <= 0) return null;
+  let toneIndex = 0;
+  const toned = usable.map((slice) => ({
+    slice,
+    share: slice.value / total,
+    tone: slice.residual ? "residual" : compositionToneAt(toneIndex++)
+  }));
+  return /* @__PURE__ */ jsxs("figure", { className: classNames("mg-composition-breakdown", className), children: [
+    /* @__PURE__ */ jsx(
+      "div",
+      {
+        className: "mg-composition-breakdown-bar",
+        role: "img",
+        "aria-label": ariaLabel,
+        children: toned.map(({ slice, share, tone }) => /* @__PURE__ */ jsx(
+          "span",
+          {
+            className: "mg-composition-breakdown-slice",
+            "data-tone": tone,
+            style: { width: `${share * 100}%` }
+          },
+          slice.id
+        ))
+      }
+    ),
+    /* @__PURE__ */ jsx("ol", { className: "mg-composition-breakdown-grid", children: toned.map(({ slice, share, tone }, index) => /* @__PURE__ */ jsxs("li", { children: [
+      /* @__PURE__ */ jsx("span", { className: "mg-composition-breakdown-rank", "aria-hidden": "true", children: String(index + 1).padStart(2, "0") }),
+      /* @__PURE__ */ jsx(
+        "i",
+        {
+          "aria-hidden": "true",
+          className: "mg-composition-breakdown-swatch",
+          "data-tone": tone
+        }
+      ),
+      /* @__PURE__ */ jsx("span", { className: "mg-composition-breakdown-label", children: slice.label }),
+      /* @__PURE__ */ jsx("span", { className: "mg-composition-breakdown-value", children: slice.valueLabel }),
+      /* @__PURE__ */ jsx("span", { className: "mg-composition-breakdown-share", children: formatShare(share) })
+    ] }, slice.id)) }),
+    footnote ? /* @__PURE__ */ jsx("figcaption", { className: "mg-composition-breakdown-note", children: footnote }) : null
+  ] });
+}
+function formatShare(share) {
+  const percentage = share * 100;
+  return percentage >= 1 ? `${percentage.toFixed(1)}%` : `${percentage.toFixed(2)}%`;
+}
+function MeasureBand({
+  measures,
+  ariaLabel,
+  className
+}) {
+  if (measures.length === 0) return null;
+  return /* @__PURE__ */ jsx(
+    "dl",
+    {
+      className: classNames("mg-measure-band", className),
+      "aria-label": ariaLabel,
+      "data-count": measures.length,
+      children: measures.map((measure) => /* @__PURE__ */ jsxs("div", { className: "mg-measure", children: [
+        /* @__PURE__ */ jsx("dt", { className: "mg-measure-label", children: measure.label }),
+        /* @__PURE__ */ jsx("dd", { className: "mg-measure-value", children: measure.value }),
+        measure.hint ? /* @__PURE__ */ jsx("p", { className: "mg-measure-hint", children: measure.hint }) : null
+      ] }, measure.label))
+    }
+  );
+}
+function RankedRailList({
+  items,
+  ariaLabel,
+  max,
+  emptyLabel = "Nothing to rank yet.",
+  className
+}) {
+  if (items.length === 0) {
+    return /* @__PURE__ */ jsx("p", { className: "mg-ranked-rail-empty", role: "status", children: emptyLabel });
+  }
+  const scale = max ?? Math.max(
+    0,
+    ...items.map((item) => Number.isFinite(item.value) ? item.value : 0)
+  );
+  return /* @__PURE__ */ jsx(
+    "ul",
+    {
+      className: classNames("mg-ranked-rail", className),
+      "aria-label": ariaLabel,
+      children: items.map((item, index) => {
+        const value = Number.isFinite(item.value) ? Math.max(0, item.value) : 0;
+        const fraction = scale > 0 ? value / scale : 0;
+        const body = /* @__PURE__ */ jsxs(Fragment, { children: [
+          /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-rank", "aria-hidden": "true", children: String(index + 1).padStart(2, "0") }),
+          /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-value", children: item.valueLabel }),
+          item.media ? /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-media", "aria-hidden": "true", children: item.media }) : null,
+          /* @__PURE__ */ jsxs("span", { className: "mg-ranked-rail-body", children: [
+            /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-label", children: item.label }),
+            item.meta ? /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-meta", children: item.meta }) : null
+          ] }),
+          /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-track", "aria-hidden": "true", children: /* @__PURE__ */ jsx(
+            "span",
+            {
+              className: "mg-ranked-rail-fill",
+              style: { width: `${Math.min(100, fraction * 100)}%` }
+            }
+          ) })
+        ] });
+        return /* @__PURE__ */ jsx("li", { className: "mg-ranked-rail-item", children: item.detail ? (
+          // A native <details>, not a React-state toggle. The contents stay
+          // in the server-rendered DOM whether or not anyone opens them,
+          // which is what keeps every one of an operator's keys reachable
+          // by a crawler — the exact regression #11231 was filed for.
+          // Browsers skip layout for closed details, so the collapsed cost
+          // is bytes only.
+          /* @__PURE__ */ jsxs("details", { className: "mg-ranked-rail-details", children: [
+            /* @__PURE__ */ jsxs("summary", { className: "mg-ranked-rail-row mg-focus-ring", children: [
+              body,
+              /* @__PURE__ */ jsx("span", { className: "mg-ranked-rail-caret", "aria-hidden": "true" })
+            ] }),
+            /* @__PURE__ */ jsx("div", { className: "mg-ranked-rail-detail", children: item.detail })
+          ] })
+        ) : /* @__PURE__ */ jsx("div", { className: "mg-ranked-rail-row", children: body }) }, item.id);
+      })
+    }
+  );
+}
+function DirectoryRow({
+  media,
+  title,
+  identifier,
+  purpose,
+  facts,
+  value,
+  valueMeta,
+  className
+}) {
+  const shownFacts = (facts ?? []).filter(
+    (fact) => fact !== null && fact !== void 0
+  );
+  return /* @__PURE__ */ jsxs("div", { className: classNames("mg-directory-row", className), children: [
+    media ? /* @__PURE__ */ jsx("div", { className: "mg-directory-row-media", "aria-hidden": "true", children: media }) : null,
+    /* @__PURE__ */ jsxs("div", { className: "mg-directory-row-body", children: [
+      /* @__PURE__ */ jsxs("div", { className: "mg-directory-row-head", children: [
+        /* @__PURE__ */ jsx("span", { className: "mg-directory-row-title", children: title }),
+        identifier ? /* @__PURE__ */ jsx("span", { className: "mg-directory-row-id", children: identifier }) : null
+      ] }),
+      purpose ? /* @__PURE__ */ jsx("p", { className: "mg-directory-row-purpose", children: purpose }) : null,
+      shownFacts.length > 0 ? /* @__PURE__ */ jsx("ul", { className: "mg-directory-row-facts", children: shownFacts.map((fact, index) => (
+        // Facts are caller-ordered and often not otherwise keyable
+        // (a health verdict, a count, a date); position is their identity.
+        /* @__PURE__ */ jsx("li", { children: fact }, index)
+      )) }) : null
+    ] }),
+    value !== void 0 && value !== null ? /* @__PURE__ */ jsxs("div", { className: "mg-directory-row-value", children: [
+      /* @__PURE__ */ jsx("span", { className: "mg-directory-row-measure", children: value }),
+      valueMeta ? /* @__PURE__ */ jsx("span", { className: "mg-directory-row-meta", children: valueMeta }) : null
+    ] }) : null
+  ] });
+}
+var DIRECTORY_MODES = [
+  {
+    value: "browse",
+    label: "Browse",
+    hint: "What each one does, whether it is healthy, and what it exposes."
+  },
+  {
+    value: "research",
+    label: "Research",
+    hint: "Every metric, sortable and exportable, with columns you choose."
+  },
+  {
+    value: "compare",
+    label: "Compare",
+    hint: "Select rows and read them side by side."
+  }
+];
+function isDirectoryMode(value) {
+  return DIRECTORY_MODES.some((mode) => mode.value === value);
+}
+function DirectoryModeTabs({
+  mode,
+  onChange,
+  modes = DIRECTORY_MODES,
+  ariaLabel = "Directory mode",
+  className
+}) {
+  const active = modes.find((entry) => entry.value === mode) ?? modes[0];
+  return /* @__PURE__ */ jsxs("div", { className: classNames("mg-directory-mode", className), children: [
+    /* @__PURE__ */ jsx(
+      "div",
+      {
+        role: "tablist",
+        "aria-label": ariaLabel,
+        className: "mg-directory-mode-strip",
+        children: modes.map(({ value, label }) => {
+          const selected = value === mode;
+          return /* @__PURE__ */ jsx(
+            "button",
+            {
+              type: "button",
+              role: "tab",
+              "aria-selected": selected,
+              className: "mg-directory-mode-tab mg-focus-ring",
+              onClick: () => onChange(value),
+              children: label
+            },
+            value
+          );
+        })
+      }
+    ),
+    active ? /* @__PURE__ */ jsx("p", { className: "mg-directory-mode-hint", "aria-live": "polite", children: active.hint }) : null
+  ] });
 }
 function EntityHero({
   eyebrow,
@@ -7548,4 +7624,4 @@ function RoutePending({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, COMPOSITION_TIMELINE_TONES, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionTimeline, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DIRECTORY_MODES, DailyRollupFreshness, DataPageCanvas, DataPageDisclosure, DataPageHandoff, DataPageHero, DataPageHeroTitleLine, DataPageModule, DataPageSignalRail, DataPageStage, DataPageTaskPaths, DataPageWindowTabs, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DirectoryModeTabs, DirectoryRow, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, INTERACTIVE_DATA_FIELD_TONES, Indicator, InfoTooltip, InteractiveDataField, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, RankedRailList, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, compositionToneAt, defaultVisible, fmtYield, formatCompositionShare, isDirectoryMode, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, resolveColumnEmphasis, resolveSegmentEmphasis, rovingTabIndex, safeExternalUrl, segmentRows, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, COMPOSITION_TIMELINE_TONES, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionBreakdown, CompositionTimeline, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DIRECTORY_MODES, DailyRollupFreshness, DataPageCanvas, DataPageDisclosure, DataPageHandoff, DataPageHero, DataPageHeroTitleLine, DataPageModule, DataPageSignalRail, DataPageStage, DataPageTaskPaths, DataPageWindowTabs, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DirectoryModeTabs, DirectoryRow, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, INTERACTIVE_DATA_FIELD_TONES, Indicator, InfoTooltip, InteractiveDataField, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MeasureBand, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, RankedRailList, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, compositionToneAt, defaultVisible, fmtYield, formatCompositionShare, isDirectoryMode, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, resolveColumnEmphasis, resolveSegmentEmphasis, rovingTabIndex, safeExternalUrl, segmentRows, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };
