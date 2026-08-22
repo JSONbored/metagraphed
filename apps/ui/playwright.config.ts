@@ -113,7 +113,7 @@ export default defineConfig({
       // peak.
       name: "interaction",
       testMatch:
-        /(crawlable-subnet-index|evidence-deep-link|home-landing|indexable-routes|multisig-related-error|offline|sticky-table-header|subnet-dossier-navigation|subnets-directory-controls|subnets-discovery-modes|subnet-profile-trust|validator-profile)\.spec\.ts$/,
+        /(accounts-leaders|crawlable-subnet-index|evidence-deep-link|home-landing|indexable-routes|multisig-related-error|offline|sticky-table-header|subnet-dossier-navigation|subnets-directory-controls|subnets-discovery-modes|subnet-profile-trust|validator-profile)\.spec\.ts$/,
       dependencies: ["overflow"],
       // Serial within the phase costs a few seconds and removes the last
       // source of self-contention for exactly the tests that proved sensitive

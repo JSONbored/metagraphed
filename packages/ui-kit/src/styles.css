@@ -1872,27 +1872,31 @@ html[data-density="compact"] .bg-card > table td {
   right: -1rem;
   width: min(66%, 39rem);
   height: min(12rem, 65%);
-  border: 1px solid var(--mg-page-rule);
+  /* No border. A hard 1px rectangle around a texture reads as a CONTAINER, and
+     on every one of these routes that container is empty — no hero passes an
+     `aside`, so a bordered box sat in the first viewport of all 15 data pages
+     holding at most one Share button, looking like a panel that failed to
+     load. It also fought the edge-fade mask directly below, which exists to
+     make this dissolve rather than terminate. Ambient means ambient: the
+     lattice is a spatial counterweight to the title, not a frame. */
   background-image: radial-gradient(
     circle at 1px 1px,
     var(--mg-page-field-dot) 1px,
     transparent 0
   );
   background-size: 4px 4px;
-  mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 20%,
-    #000 84%,
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 20%,
-    #000 84%,
-    transparent 100%
-  );
+  /* Faded on BOTH axes. A horizontal-only fade still terminated the texture in
+     two hard horizontal edges, which is most of what made it read as a panel
+     even after the border came off — an edge is an edge whichever way it runs.
+     Intersecting the two gradients dissolves the field on every side. */
+  mask-image:
+    linear-gradient(90deg, transparent 0, #000 20%, #000 84%, transparent 100%),
+    linear-gradient(180deg, transparent 0, #000 26%, #000 74%, transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-image:
+    linear-gradient(90deg, transparent 0, #000 20%, #000 84%, transparent 100%),
+    linear-gradient(180deg, transparent 0, #000 26%, #000 74%, transparent 100%);
+  -webkit-mask-composite: source-in;
 }
 .mg-page-hero-content {
   position: relative;
@@ -3722,6 +3726,30 @@ html[data-density="compact"] .bg-card > table td {
   cursor: pointer;
   text-align: left;
   transition: background-color 140ms ease-out;
+}
+/* A list with no logos drops the media column; a list with no disclosures
+   drops the caret. Decided per list, so every row still shares one template
+   and one left edge.
+   Bounded to the desktop composition deliberately: these selectors outrank the
+   phone override below on SPECIFICITY, not source order, so unbounded they
+   would re-impose a desktop template at 375px where the rail is dropped on
+   purpose. A rule that wins by accident is not a rule. */
+@media (min-width: 48rem) {
+  .mg-ranked-rail[data-media="none"] .mg-ranked-rail-row {
+    grid-template-columns:
+      1.75rem 5.25rem minmax(0, 30rem)
+      minmax(5rem, 1fr) 0.9rem;
+  }
+  .mg-ranked-rail[data-detail="none"] .mg-ranked-rail-row {
+    grid-template-columns:
+      1.75rem 5.25rem 1.5rem minmax(0, 30rem)
+      minmax(5rem, 1fr);
+  }
+  .mg-ranked-rail[data-media="none"][data-detail="none"] .mg-ranked-rail-row {
+    grid-template-columns:
+      1.75rem 5.25rem minmax(0, 30rem)
+      minmax(5rem, 1fr);
+  }
 }
 .mg-ranked-rail-row:not(button) {
   cursor: default;

@@ -3148,18 +3148,22 @@ function RankedRailList({
     0,
     ...items.map((item) => Number.isFinite(item.value) ? item.value : 0)
   );
+  const hasMedia = items.some((item) => item.media != null);
+  const hasDetail = items.some((item) => item.detail != null);
   return /* @__PURE__ */ jsxRuntime.jsx(
     "ul",
     {
       className: classNames("mg-ranked-rail", className),
       "aria-label": ariaLabel,
+      "data-media": hasMedia ? void 0 : "none",
+      "data-detail": hasDetail ? void 0 : "none",
       children: items.map((item, index) => {
         const value = Number.isFinite(item.value) ? Math.max(0, item.value) : 0;
         const fraction = scale > 0 ? value / scale : 0;
         const body = /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
           /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-rank", "aria-hidden": "true", children: String(index + 1).padStart(2, "0") }),
           /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-value", children: item.valueLabel }),
-          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-media", "aria-hidden": "true", children: item.media }),
+          hasMedia ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-media", "aria-hidden": "true", children: item.media }) : null,
           /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-ranked-rail-body", children: [
             /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-label", children: item.label }),
             item.meta ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-ranked-rail-meta", children: item.meta }) : null

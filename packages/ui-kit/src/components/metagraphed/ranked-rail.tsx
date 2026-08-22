@@ -61,10 +61,23 @@ export function RankedRailList({
       ...items.map((item) => (Number.isFinite(item.value) ? item.value : 0)),
     );
 
+  // Column presence is decided ONCE for the list, never per row. Per-row
+  // omission was the earlier bug: it slid every following column left and
+  // destroyed the shared left edge the rails are compared against. Deciding
+  // per list keeps every row in the list identical while letting a list with
+  // no logos and no disclosures — an account leaderboard — stop reserving
+  // ~62px per row for two cells that are empty in all of them. In a
+  // half-width board that reclaimed space is the difference between a legible
+  // supporting fact and "119 subn…".
+  const hasMedia = items.some((item) => item.media != null);
+  const hasDetail = items.some((item) => item.detail != null);
+
   return (
     <ul
       className={classNames("mg-ranked-rail", className)}
       aria-label={ariaLabel}
+      data-media={hasMedia ? undefined : "none"}
+      data-detail={hasDetail ? undefined : "none"}
     >
       {items.map((item, index) => {
         const value = Number.isFinite(item.value) ? Math.max(0, item.value) : 0;
@@ -76,12 +89,15 @@ export function RankedRailList({
               {String(index + 1).padStart(2, "0")}
             </span>
             <span className="mg-ranked-rail-value">{item.valueLabel}</span>
-            {/* ALWAYS rendered, even when empty. The row is a fixed grid, so
-                a conditionally-omitted cell slid every following column left
-                and broke the shared left edge the rails depend on. */}
-            <span className="mg-ranked-rail-media" aria-hidden="true">
-              {item.media}
-            </span>
+            {/* Rendered for every row of a list that has ANY media, even the
+                rows without it — the row is a fixed grid, and omitting a cell
+                per row slid the following columns left and broke the shared
+                left edge the rails depend on. */}
+            {hasMedia ? (
+              <span className="mg-ranked-rail-media" aria-hidden="true">
+                {item.media}
+              </span>
+            ) : null}
             <span className="mg-ranked-rail-body">
               <span className="mg-ranked-rail-label">{item.label}</span>
               {item.meta ? (
