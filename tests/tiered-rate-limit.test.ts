@@ -1544,6 +1544,96 @@ describe("tier lookup must not walk the prototype chain (#8687 review)", () => {
   });
 });
 
+// infra#629: a caller who paid per-call over x402. The wallet IS the identity
+// here -- there is no account row to point at -- so the payer address keys the
+// bucket directly, namespaced so it can never collide with an account id.
+describe("applyTieredRateLimit — paidIdentity", () => {
+  const TIERS = {
+    free: { envVar: "TEST_FREE_LIMITER", limit: 300, windowSeconds: 60 },
+    paid: {
+      envVar: "TEST_PAID_LIMITER",
+      limit: 3000,
+      windowSeconds: 60,
+      dailyUnits: 2_000_000,
+    },
+  };
+  const TIERED_CONFIG = { ...CONFIG, tiers: TIERS };
+  const PAYER = "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f";
+
+  function anonRequest() {
+    return new Request("https://api.metagraph.sh/api/v1/ask", {
+      method: "POST",
+      headers: { "cf-connecting-ip": "203.0.113.9" },
+    });
+  }
+
+  function envWithLimiter(calls: unknown[]) {
+    return {
+      METAGRAPH_CONTROL: createFakeKv(),
+      TEST_PAID_LIMITER: {
+        limit: async (args: unknown) => {
+          calls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+  }
+
+  test("a settled payment buys the paid tier, keyed to the wallet", async () => {
+    // Without this the payment settles and changes nothing, which is worse
+    // than not taking it: the caller is charged and still metered as anonymous.
+    const calls: unknown[] = [];
+    const result = await applyTieredRateLimit(
+      anonRequest(),
+      envWithLimiter(calls),
+      TIERED_CONFIG,
+      { paidIdentity: { payer: PAYER, tier: "paid" } },
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.tier, "paid");
+    assert.deepEqual(calls, [{ key: `test:paid:x402:${PAYER}` }]);
+  });
+
+  test("the payer is NOT reported as an account id", async () => {
+    // A wallet address belongs to no account table. Leaking it into
+    // `accountId` -- which every consumer reads as an rpc_accounts id -- would
+    // have the quota stores writing rows keyed by a hex string.
+    const result = await applyTieredRateLimit(
+      anonRequest(),
+      envWithLimiter([]),
+      TIERED_CONFIG,
+      { paidIdentity: { payer: PAYER, tier: "paid" } },
+    );
+    assert.equal(result.accountId, null);
+  });
+
+  test("a key outranks a payment, because a key is a durable identity", async () => {
+    // Precedence, stated: a caller presenting BOTH has deliberately asserted
+    // an account, and that account's tier and budget are the ones that apply.
+    const calls: unknown[] = [];
+    const env = {
+      ...envWithLimiter(calls),
+      TEST_FREE_LIMITER: {
+        limit: async (args: unknown) => {
+          calls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    const result = await applyTieredRateLimit(
+      anonRequest(),
+      env,
+      TIERED_CONFIG,
+      {
+        oauthIdentity: { accountId: 7, tier: "free" },
+        paidIdentity: { payer: PAYER, tier: "paid" },
+      },
+    );
+    assert.equal(result.tier, "free");
+    assert.deepEqual(calls, [{ key: "test:free:github:7" }]);
+  });
+});
+
 // #11562: an OAuth-authenticated caller. Before this, tier resolved ONLY from
 // an `mg_` key, so a caller who completed the whole GitHub authorization flow
 // was rate-limited, quota'd and priced as anonymous -- measured in production

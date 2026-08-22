@@ -24,6 +24,7 @@ import { routeCost } from "../src/route-cost-weights.ts";
 import { evaluateBlock, type BlockVerdict } from "../src/api-key-abuse.ts";
 import { DEFAULT_ACCOUNT_KIND, type AccountKind } from "../src/account-kind.ts";
 import { recordOrNull } from "../src/read-store.ts";
+import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { QuotaSpendResponseSchema } from "../schemas-src/internal-wire.ts";
 
 /**
@@ -275,6 +276,51 @@ async function spendDailyQuota(
  * to the anonymous tier rather than rejecting the request outright (a bad
  * key is not itself abuse; the anonymous ceiling still applies to it).
  */
+/**
+ * A settled x402 payment, attached to the request it paid for (infra#629).
+ *
+ * A WeakMap keyed by Request, mirroring workers/api.ts's own
+ * requestAuthTier/requestAccountId markers -- the payment is verified at the
+ * router, but the limiter that must honour it runs several frames deeper
+ * inside each handler, and threading an option through every one of them would
+ * mean every future handler remembering to.
+ *
+ * Weak on purpose: the entry dies with the request, so a settled payment can
+ * never be replayed onto a later one.
+ */
+let paidCalls = new WeakMap<Request, { payer: string; tier: string }>();
+
+// See src/module-state-registry.ts. A WeakMap cannot be cleared, so the reset
+// replaces it -- which is the honest restoration to the post-load baseline, and
+// the reason the binding above is `let`.
+//
+// Under `isolate: false` this module's registry is shared by every test file in
+// a worker. The entries here are keyed by Request objects that die with the
+// file that made them, so nothing observable leaks; registering anyway is the
+// point of the gate, which asks each module to say what its baseline IS rather
+// than to argue case by case that its particular state is harmless.
+registerModuleStateReset("workers/tiered-rate-limit.ts", () => {
+  paidCalls = new WeakMap();
+});
+
+/**
+ * Record that this request's payment settled, and what it bought.
+ *
+ * An empty payer is dropped rather than bucketed: a facilitator that settles
+ * without naming one leaves a payment that genuinely moved money and genuinely
+ * cannot be attributed. Giving every such call the same key would put unrelated
+ * payers in one shared budget, where the first to exhaust it throttles the
+ * rest -- so the call proceeds on the anonymous bucket instead. This rule lives
+ * here, with the bucket, and not at the call site.
+ */
+export function markPaidCall(
+  request: Request,
+  payer: string,
+  tier: string,
+): void {
+  if (payer && tier) paidCalls.set(request, { payer, tier });
+}
+
 export async function applyTieredRateLimit(
   request: Request,
   env: Env,
@@ -287,6 +333,7 @@ export async function applyTieredRateLimit(
     costUnits,
     deferQuota,
     oauthIdentity,
+    paidIdentity,
   }: {
     costUnits?: number;
     /**
@@ -300,6 +347,18 @@ export async function applyTieredRateLimit(
      */
     oauthIdentity?: { accountId: number; tier: string } | null;
     /**
+     * A SETTLED x402 payment (infra#629): the payer's address, which x402
+     * treats as the agent's identity -- "the wallet replaces the API key".
+     *
+     * Ranked below both credential systems: a caller who also presents a key
+     * or an OAuth token has asserted a durable identity, and that account's
+     * tier is the one their traffic should be measured against.
+     *
+     * This is what a payment BUYS. Without it the payment would settle and
+     * change nothing, which is worse than not taking it.
+     */
+    paidIdentity?: { payer: string; tier: string } | null;
+    /**
      * Skip the daily-quota spend and hand back `quotaPending` instead.
      *
      * The per-minute limiter MUST stay ahead of body parsing -- a caller over
@@ -311,6 +370,9 @@ export async function applyTieredRateLimit(
     deferQuota?: boolean;
   } = {},
 ): Promise<TieredRateLimitResult> {
+  // An explicitly-passed identity wins; otherwise honour a payment the router
+  // already settled for this exact request.
+  const settledPayment = paidIdentity ?? paidCalls.get(request) ?? null;
   const authHeader = request.headers.get("authorization");
   const auth = authHeader
     ? await validateApiKey(env, authHeader)
@@ -350,7 +412,18 @@ export async function applyTieredRateLimit(
           accountKind: "github" as const,
           tier: oauthIdentity.tier,
         }
-      : null;
+      : settledPayment
+        ? {
+            // NOT an account id: a payer address belongs to no account table,
+            // so it stays out of `accountId` -- which every consumer reads as
+            // an rpc_accounts id -- and is carried only in the limiter key
+            // below. A settled payment buys headroom for this call; it does
+            // not mint an account.
+            accountId: null,
+            accountKind: DEFAULT_ACCOUNT_KIND,
+            tier: settledPayment.tier,
+          }
+        : null;
 
   if (identity) {
     const { accountId, accountKind, tier } = identity;
@@ -415,7 +488,12 @@ export async function applyTieredRateLimit(
             ? accountKind === DEFAULT_ACCOUNT_KIND
               ? accountId
               : `${accountKind}:${accountId}`
-            : `ip:${resolveClientIp(request)}`
+            : settledPayment
+              ? // The wallet IS the identity for a paying caller, so their
+                // budget follows the payer rather than the address they
+                // happen to call from.
+                `x402:${settledPayment.payer}`
+              : `ip:${resolveClientIp(request)}`
         }`,
       });
       if (!success) return { allowed: false, ...result };
