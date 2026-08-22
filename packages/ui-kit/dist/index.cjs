@@ -3171,6 +3171,40 @@ function EntityCardGrid({
     }
   );
 }
+function AnalyticsSection({
+  id,
+  name,
+  question,
+  actions,
+  children,
+  legend,
+  footnote,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "section",
+    {
+      id,
+      className: classNames("mg-analytics-section", className),
+      "aria-labelledby": id ? `${id}-heading` : void 0,
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsxs("header", { className: "mg-analytics-section-header", children: [
+          /* @__PURE__ */ jsxRuntime.jsxs("h2", { id: id ? `${id}-heading` : void 0, children: [
+            /* @__PURE__ */ jsxRuntime.jsx("strong", { children: name }),
+            question ? /* @__PURE__ */ jsxRuntime.jsxs("span", { children: [
+              " ",
+              question
+            ] }) : null
+          ] }),
+          actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-analytics-section-actions", children: actions }) : null
+        ] }),
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-analytics-section-visual", children }),
+        legend ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-analytics-section-legend", children: legend }) : null,
+        footnote ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-analytics-section-note", children: footnote }) : null
+      ]
+    }
+  );
+}
 function MeasureBand({
   measures,
   ariaLabel,
@@ -3549,12 +3583,6 @@ function ScrollReveal({
   }, [delay]);
   return /* @__PURE__ */ jsxRuntime.jsx("div", { ref, className: `mg-reveal ${className}`, children });
 }
-var TONE_CLASS = {
-  accent: "before:bg-accent",
-  warn: "before:bg-health-warn",
-  ink: "before:bg-ink-strong",
-  muted: "before:bg-border"
-};
 function SectionAnchor({
   id,
   title,
@@ -3584,13 +3612,7 @@ function SectionAnchor({
     {
       id,
       "data-section-anchor": true,
-      className: classNames(
-        "mg-section mg-detail-section scroll-mt-32",
-        tone && classNames(
-          "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:opacity-70",
-          TONE_CLASS[tone]
-        )
-      ),
+      className: classNames("mg-section mg-detail-section scroll-mt-32"),
       children: [
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mb-3 flex items-center gap-3", children: [
           /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0 flex-1", children: [
@@ -3598,7 +3620,10 @@ function SectionAnchor({
               /* @__PURE__ */ jsxRuntime.jsx(
                 "h2",
                 {
-                  className: "min-w-0 truncate font-display text-sm font-semibold uppercase tracking-wider text-ink-strong",
+                  className: classNames(
+                    "min-w-0 truncate font-mono mg-type-micro font-semibold uppercase",
+                    tone === "accent" ? "text-accent-text" : "text-ink-muted"
+                  ),
                   title: typeof title === "string" ? title : void 0,
                   children: title
                 }
@@ -7728,6 +7753,7 @@ exports.AccordionContent = AccordionContent;
 exports.AccordionItem = AccordionItem;
 exports.AccordionTrigger = AccordionTrigger;
 exports.ActionBar = ActionBar;
+exports.AnalyticsSection = AnalyticsSection;
 exports.AnimatedNumber = AnimatedNumber;
 exports.BackToTop = BackToTop;
 exports.BarMini = BarMini;

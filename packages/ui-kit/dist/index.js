@@ -3142,6 +3142,40 @@ function EntityCardGrid({
     }
   );
 }
+function AnalyticsSection({
+  id,
+  name,
+  question,
+  actions,
+  children,
+  legend,
+  footnote,
+  className
+}) {
+  return /* @__PURE__ */ jsxs(
+    "section",
+    {
+      id,
+      className: classNames("mg-analytics-section", className),
+      "aria-labelledby": id ? `${id}-heading` : void 0,
+      children: [
+        /* @__PURE__ */ jsxs("header", { className: "mg-analytics-section-header", children: [
+          /* @__PURE__ */ jsxs("h2", { id: id ? `${id}-heading` : void 0, children: [
+            /* @__PURE__ */ jsx("strong", { children: name }),
+            question ? /* @__PURE__ */ jsxs("span", { children: [
+              " ",
+              question
+            ] }) : null
+          ] }),
+          actions ? /* @__PURE__ */ jsx("div", { className: "mg-analytics-section-actions", children: actions }) : null
+        ] }),
+        /* @__PURE__ */ jsx("div", { className: "mg-analytics-section-visual", children }),
+        legend ? /* @__PURE__ */ jsx("div", { className: "mg-analytics-section-legend", children: legend }) : null,
+        footnote ? /* @__PURE__ */ jsx("p", { className: "mg-analytics-section-note", children: footnote }) : null
+      ]
+    }
+  );
+}
 function MeasureBand({
   measures,
   ariaLabel,
@@ -3520,12 +3554,6 @@ function ScrollReveal({
   }, [delay]);
   return /* @__PURE__ */ jsx("div", { ref, className: `mg-reveal ${className}`, children });
 }
-var TONE_CLASS = {
-  accent: "before:bg-accent",
-  warn: "before:bg-health-warn",
-  ink: "before:bg-ink-strong",
-  muted: "before:bg-border"
-};
 function SectionAnchor({
   id,
   title,
@@ -3555,13 +3583,7 @@ function SectionAnchor({
     {
       id,
       "data-section-anchor": true,
-      className: classNames(
-        "mg-section mg-detail-section scroll-mt-32",
-        tone && classNames(
-          "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:opacity-70",
-          TONE_CLASS[tone]
-        )
-      ),
+      className: classNames("mg-section mg-detail-section scroll-mt-32"),
       children: [
         /* @__PURE__ */ jsxs("div", { className: "mb-3 flex items-center gap-3", children: [
           /* @__PURE__ */ jsxs("div", { className: "min-w-0 flex-1", children: [
@@ -3569,7 +3591,10 @@ function SectionAnchor({
               /* @__PURE__ */ jsx(
                 "h2",
                 {
-                  className: "min-w-0 truncate font-display text-sm font-semibold uppercase tracking-wider text-ink-strong",
+                  className: classNames(
+                    "min-w-0 truncate font-mono mg-type-micro font-semibold uppercase",
+                    tone === "accent" ? "text-accent-text" : "text-ink-muted"
+                  ),
                   title: typeof title === "string" ? title : void 0,
                   children: title
                 }
@@ -7693,4 +7718,4 @@ function RoutePending({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, COMPOSITION_TIMELINE_TONES, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionBreakdown, CompositionTimeline, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DIRECTORY_MODES, DailyRollupFreshness, DataPageCanvas, DataPageDisclosure, DataPageHandoff, DataPageHero, DataPageHeroTitleLine, DataPageModule, DataPageSignalRail, DataPageStage, DataPageTaskPaths, DataPageWindowTabs, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DirectoryModeTabs, DirectoryRow, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityCard, EntityCardGrid, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, INTERACTIVE_DATA_FIELD_TONES, Indicator, InfoTooltip, InteractiveDataField, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MeasureBand, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, RankedRailList, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, compositionToneAt, defaultVisible, fmtYield, formatCompositionShare, isDirectoryMode, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, resolveColumnEmphasis, resolveSegmentEmphasis, rovingTabIndex, safeExternalUrl, segmentRows, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnalyticsSection, AnimatedNumber, BackToTop, BarMini, BrandIcon, COMPOSITION_TIMELINE_TONES, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionBreakdown, CompositionTimeline, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DIRECTORY_MODES, DailyRollupFreshness, DataPageCanvas, DataPageDisclosure, DataPageHandoff, DataPageHero, DataPageHeroTitleLine, DataPageModule, DataPageSignalRail, DataPageStage, DataPageTaskPaths, DataPageWindowTabs, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DirectoryModeTabs, DirectoryRow, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityCard, EntityCardGrid, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, INTERACTIVE_DATA_FIELD_TONES, Indicator, InfoTooltip, InteractiveDataField, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MeasureBand, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, RankedRailList, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, SankeyMini, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StackedAreaMini, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableColGroup, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, columnWidths, compositionToneAt, defaultVisible, fmtYield, formatCompositionShare, isDirectoryMode, isScrolledPast, layoutSankey, layoutStackedArea, nextTabIndex, prefetchBrandIcon, resolveColumnEmphasis, resolveSegmentEmphasis, rovingTabIndex, safeExternalUrl, segmentRows, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };

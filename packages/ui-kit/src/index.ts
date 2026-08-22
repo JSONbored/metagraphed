@@ -164,6 +164,7 @@ export {
   EntityCard,
   EntityCardGrid,
 } from "@/components/metagraphed/entity-card";
+export { AnalyticsSection } from "@/components/metagraphed/analytics-section";
 export {
   MeasureBand,
   type Measure,

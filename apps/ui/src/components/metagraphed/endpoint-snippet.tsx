@@ -96,7 +96,12 @@ export function EndpointSnippet({ rows }: { rows: EndpointSnippetRow[] }) {
           dead — ESLint reports it as unused, so the rule no longer matches this
           class list and the directive was only suppressing itself. */}
       <div
-        className="mb-3 inline-flex rounded border border-border bg-card p-0.5"
+        // Scrolls rather than overflows. `inline-flex` sized itself to its
+        // content, so a strip of language tabs was simply wider than a 375px
+        // viewport and pushed the page out with it. It never showed up before
+        // because every consumer had it behind a tab that a phone-width layout
+        // pass never rendered.
+        className="mb-3 flex max-w-full shrink-0 overflow-x-auto rounded border border-border bg-card p-0.5 [&>button]:shrink-0"
         role="tablist"
         aria-label="Snippet language"
       >

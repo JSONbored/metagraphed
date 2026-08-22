@@ -57,14 +57,13 @@ export function SectionAnchor({
     <section
       id={id}
       data-section-anchor
-      className={classNames(
-        "mg-section mg-detail-section scroll-mt-32",
-        tone &&
-          classNames(
-            "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:opacity-70",
-            TONE_CLASS[tone],
-          ),
-      )}
+      // No tone bar. A 2px coloured rail down the left of a section is
+      // decoration that says "this one matters" — and it was set on so many of
+      // the 86 sections using this component that it stopped distinguishing
+      // anything and just added a coloured edge to most of the page. `tone` is
+      // still accepted so call sites need not change, and it still tints the
+      // heading, which is where an emphasis belongs.
+      className={classNames("mg-section mg-detail-section scroll-mt-32")}
     >
       <div className="mb-3 flex items-center gap-3">
         <div className="min-w-0 flex-1">
@@ -76,7 +75,10 @@ export function SectionAnchor({
               the full value on `title` when it's a string. */}
           <div className="flex min-w-0 max-w-full items-center gap-1.5">
             <h2
-              className="min-w-0 truncate font-display text-sm font-semibold uppercase tracking-wider text-ink-strong"
+              className={classNames(
+                "min-w-0 truncate font-mono mg-type-micro font-semibold uppercase",
+                tone === "accent" ? "text-accent-text" : "text-ink-muted",
+              )}
               title={typeof title === "string" ? title : undefined}
             >
               {title}

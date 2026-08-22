@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -63,6 +63,7 @@ import {
   DataPageStage,
   PageMasthead,
 } from "@/components/metagraphed/primitives";
+import { AnalyticsSection, CompositionBreakdown, type CompositionSlice } from "@jsonbored/ui-kit";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import { AccountPositionHistoryChart } from "@/components/metagraphed/account-position-history-chart";
 import { AccountHoldingsHistory } from "@/components/metagraphed/account-holdings-history";
@@ -201,6 +202,36 @@ const SECTION_TO_TAB: Record<string, string> = {
   call: "advanced",
 };
 
+/**
+ * The account's event mix, as a composition.
+ *
+ * This was a responsive grid of bordered glass cards, one per event kind, each
+ * repeating the words "event kind" above a name and a count. Counts of events
+ * share one unit and genuinely sum, so the thing it was describing is a
+ * part-to-whole — which one stacked bar says at a glance and twenty boxes do
+ * not say at all.
+ */
+function AccountEventKindMix({ kinds }: { kinds: ReadonlyArray<{ kind: string; count: number }> }) {
+  const slices: CompositionSlice[] = kinds
+    .filter((entry) => Number.isFinite(entry.count) && entry.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .map((entry) => ({
+      id: entry.kind,
+      label: entry.kind,
+      value: entry.count,
+      valueLabel: formatNumber(entry.count),
+    }));
+  if (slices.length === 0) return null;
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+  return (
+    <CompositionBreakdown
+      ariaLabel={`Indexed events for this account by kind, across ${total} events`}
+      slices={slices}
+      footnote={`${formatNumber(total)} indexed event${total === 1 ? "" : "s"} across ${formatNumber(slices.length)} kind${slices.length === 1 ? "" : "s"}.`}
+    />
+  );
+}
+
 export function AccountDetailPage() {
   const { ss58 } = useParams({ from: "/accounts/$ss58" });
   return (
@@ -320,6 +351,15 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const aliased = TAB_ALIASES[rawTab] ?? rawTab;
   const tab = TABS.some((t) => t.id === aliased) ? aliased : TABS[0].id;
   useHashScroll(tab, SECTION_TO_TAB);
+  // Every section is on the page now, so the strip navigates rather than
+  // gates: selecting a name scrolls to it. `?tab=` still identifies the
+  // section, so the five names stay shareable links.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const target = document.getElementById(tab);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [tab]);
 
   const tabsWithCounts = TABS.map((t) => {
     if (t.id === "portfolio") return { ...t, count: portfolio?.position_count || undefined };
@@ -410,6 +450,18 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         </DataPageModule>
 
         <DataPageModule kind="profile">
+          {/* #11523 asks for Summary / Portfolio / Activity / Validator role /
+              Advanced. They are SECTIONS on one page rather than tabbed panels:
+              a data page is read by scrolling through findings, and gating each
+              one behind a tab meant the page opened with a band of text and no
+              visual at all. The nav anchors to them, so the five names still
+              name the hierarchy and every one is a shareable link.
+
+              Each section leads with its chart. The long tail of per-event-type
+              panels — teardown, registration, deregistration, weight-setting,
+              endpoint announcements, raw events, extrinsics — is eleven panels
+              of the same shape, and it lives under Advanced now instead of
+              being the middle of the page. */}
           <ProfileTabs tabs={tabsWithCounts} defaultTab="summary" activeTab={tab} />
 
           {!hasActivity ? (
@@ -420,61 +472,54 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             />
           ) : null}
 
-          {tab === "summary" && (
-            <>
-              {identity?.has_identity ? <AccountIdentitySection ss58={ss58} /> : null}
+          <AnalyticsSection
+            id="summary"
+            name="Stake by subnet."
+            question="Staked τ across every subnet this account holds, day by day."
+            footnote="Daily position snapshots. Free balance is a live read and is not in this series."
+          >
+            <AccountHoldingsHistory ss58={ss58} />
+          </AnalyticsSection>
+
+          <AnalyticsSection
+            id="portfolio"
+            name="Portfolio."
+            question="Where the stake sits right now, and how it has been moving."
+            legend={
+              <>
+                <AccountStakeFlowSection ss58={ss58} />
+                <AccountStakeMovesSection ss58={ss58} />
+                <AccountRootClaim ss58={ss58} />
+              </>
+            }
+          >
+            <AccountPortfolioSection ss58={ss58} />
+          </AnalyticsSection>
+
+          <AnalyticsSection
+            id="activity"
+            name="Activity."
+            question="First-party chain events for this account, per day."
+            legend={
+              account.event_kinds.length > 0 ? (
+                <AccountEventKindMix kinds={account.event_kinds} />
+              ) : null
+            }
+          >
+            {/* Hotkey-keyed rollup by construction: rendering it for a coldkey
+                guarantees an empty panel explaining itself. */}
+            {detectedRole === "hotkey" ? (
+              <AccountHistoryChart ss58={ss58} />
+            ) : (
               <AccountRecentActivityPreview events={account.recent_events} />
-              <AccountEntitiesSection ss58={ss58} />
-            </>
-          )}
+            )}
+          </AnalyticsSection>
 
-          {tab === "portfolio" && (
-            <>
-              <AccountPortfolioSection ss58={ss58} />
-              <AccountStakeFlowSection ss58={ss58} />
-              <AccountStakeMovesSection ss58={ss58} />
-            </>
-          )}
-
-          {/* #8252 ordered these by role — a coldkey led with what it holds, a
-              hotkey with its registrations — because both lived in one tab and
-              only the order could say which mattered. They are separate
-              sections now, so each leads its own, and the role decides which
-              tab is worth opening rather than which half of one to read
-              first. */}
-          {tab === "validator" && (
-            <>
-              <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
-              {/* #6723: live child/parent-hotkey stake-weight delegation graph. */}
-              <AccountDelegationSection ss58={ss58} />
-            </>
-          )}
-
-          {tab === "portfolio" && (
-            <SectionAnchor
-              id="holdings-history"
-              title="Holdings over time"
-              subtitle="Staked τ by subnet from daily position snapshots — free balance stays a live read in the band above."
-              tone="accent"
-              info="Depth is limited by how far back daily snapshots reach; it grows as the genesis backfill (#8368) lands."
-            >
-              <AccountHoldingsHistory ss58={ss58} />
-            </SectionAnchor>
-          )}
-
-          {tab === "portfolio" && (
-            <SectionAnchor
-              id="root-claim"
-              title="Root claim"
-              subtitle="What this account's root stake would do in a swap, and which hotkeys it reaches."
-              info="GET /api/v1/accounts/{ss58}/root-claim — the payload's own `field_sources` marks the claim type as MEASURED (read from SubtensorModule.RootClaimType) and the hotkey list as RECONSTRUCTED (inferred from other state). The panel shows that provenance beside the figure it qualifies rather than rendering an inference with the authority of a reading."
-            >
-              <AccountRootClaim ss58={ss58} />
-            </SectionAnchor>
-          )}
-
-          {tab === "activity" && (
-            <>
+          <AnalyticsSection
+            id="counterparties"
+            name="Counterparties."
+            question="Who this account moves value with, and how much."
+            legend={
               <AccountTransfersSection
                 ss58={ss58}
                 rows={transfers}
@@ -483,85 +528,44 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                 error={transfersResult.error}
                 onRetry={() => void transfersResult.refetch()}
               />
-              {/* #3340: the aggregated fund-flow view over the same transfer data. */}
-              <AccountCounterpartiesSection ss58={ss58} />
-            </>
-          )}
+            }
+          >
+            <AccountCounterpartiesSection ss58={ss58} />
+          </AnalyticsSection>
 
-          {tab === "activity" && (
-            <>
-              {/* Daily activity is a hotkey-keyed rollup -- rendering it for a
-              coldkey guarantees the framed "No daily hotkey activity yet"
-              panel the redesign removes, so it's hotkey-only by construction
-              rather than relying on an empty state to explain itself. */}
-              {detectedRole === "hotkey" ? (
-                <SectionAnchor
-                  id="history"
-                  title="Daily activity"
-                  subtitle="Per-day first-party account events, newest rollups from the chain-direct explorer."
-                  tone="accent"
-                  info="History is keyed by hotkey activity only."
-                  right={<SectionBadge tone="accent">hotkey rollup</SectionBadge>}
-                >
-                  <AccountHistoryChart ss58={ss58} />
-                </SectionAnchor>
-              ) : null}
+          <AnalyticsSection
+            id="validator"
+            name="Validator role."
+            question="What this account runs, and which hotkeys it delegates through."
+            legend={<AccountDelegationSection ss58={ss58} />}
+          >
+            <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+          </AnalyticsSection>
+
+          <AnalyticsSection
+            id="advanced"
+            name="Advanced."
+            question="Per-event-type detail, identity history, and the raw API."
+          >
+            <DataPageDisclosure label="Every indexed event type">
+              {identity?.has_identity ? <AccountIdentitySection ss58={ss58} /> : null}
+              <AccountEntitiesSection ss58={ss58} />
               <AccountTeardownActivitySection ss58={ss58} />
               <AccountRegistrationActivitySection ss58={ss58} />
               <AccountDeregistrationActivitySection ss58={ss58} />
               <AccountWeightSettingSection ss58={ss58} />
               <AccountEndpointAnnouncementSection ss58={ss58} />
-              {account.event_kinds.length > 0 ? (
-                <SectionAnchor
-                  id="kinds"
-                  title="Activity by kind"
-                  subtitle="Relative event mix across the indexed sample for this account."
-                  tone="accent"
-                  right={
-                    <SectionBadge>{formatNumber(account.event_kinds.length)} kinds</SectionBadge>
-                  }
-                >
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {account.event_kinds.map((entry) => (
-                      <div
-                        key={entry.kind}
-                        className="rounded border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
-                      >
-                        <div className="mg-type-caption text-ink-muted">event kind</div>
-                        <div className="mt-2 flex items-end justify-between gap-3">
-                          <span className="min-w-0 truncate font-mono mg-type-caption text-ink-strong">
-                            {entry.kind}
-                          </span>
-                          <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
-                            {formatNumber(entry.count)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </SectionAnchor>
-              ) : null}
               <AccountEventsSection ss58={ss58} kindOptions={account.event_kinds} />
-            </>
-          )}
-
-          {tab === "activity" && (
-            <AccountExtrinsicsSection
-              ss58={ss58}
-              rows={signedExtrinsics}
-              isPending={extrinsicsResult.isPending}
-              isError={extrinsicsResult.isError}
-              error={extrinsicsResult.error}
-              onRetry={() => void extrinsicsResult.refetch()}
-            />
-          )}
-
-          {tab === "advanced" && (
-            <SectionAnchor
-              id="call"
-              title="Call this endpoint"
-              subtitle="Copy a ready-to-run request for this account."
-            >
+              <AccountExtrinsicsSection
+                ss58={ss58}
+                rows={signedExtrinsics}
+                isPending={extrinsicsResult.isPending}
+                isError={extrinsicsResult.isError}
+                error={extrinsicsResult.error}
+                onRetry={() => void extrinsicsResult.refetch()}
+              />
+            </DataPageDisclosure>
+            <DataPageDisclosure label="Call this endpoint">
               <EndpointSnippet
                 rows={[
                   { label: "summary", path: `/api/v1/accounts/${sourceRef}` },
@@ -579,18 +583,17 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                   { label: "prometheus", path: `/api/v1/accounts/${sourceRef}/prometheus` },
                 ]}
               />
-            </SectionAnchor>
-          )}
+            </DataPageDisclosure>
+          </AnalyticsSection>
 
           {/* #6432: deliberately NOT "← All accounts" like the other detail pages'
           back-links. /accounts is a lookup form, not an index -- there is no
           list of every chain account to go back to -- so the label names what
-          the destination actually is. Sibling pages (blocks, extrinsics,
-          validators, subnets) do point at real directories and use "← All X". */}
+          the destination actually is. */}
           <div className="mt-6">
             <Link
               to="/accounts"
-              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-data font-medium hover:border-ink/30"
+              className="inline-flex items-center gap-1.5 mg-type-caption text-ink-muted hover:text-ink-strong"
             >
               ← Account lookup
             </Link>

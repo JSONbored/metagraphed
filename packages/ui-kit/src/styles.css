@@ -2784,8 +2784,20 @@ html[data-density="compact"] .bg-card > table td {
 }
 .mg-page-disclosure-content {
   display: grid;
+  /* A closed <details> in Chromium uses `content-visibility`, and its children
+     still report layout boxes — sized as if unconstrained. So content that is
+     genuinely too wide for a phone escapes the viewport while invisible, which
+     the overflow gate correctly flags. Constraining the grid and its children
+     makes the hidden layout match the visible one. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--mg-space-xl);
+  min-width: 0;
   padding: var(--mg-space-xs) 0 var(--mg-space-md);
+}
+.mg-page-disclosure-content > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* ============================================================
@@ -5292,4 +5304,77 @@ html[data-density="compact"] .bg-card > table td {
    subordinate without breaking the shared size. */
 .mg-stat-value .text-ink-muted {
   color: var(--ink-muted);
+}
+
+/* ============================================================
+ * Analytics section
+ *
+ * Rhythm measured from the reference: 80px of padding above and below each
+ * section, a hairline between them, a 28px heading with 40px beneath it. Our
+ * modules ran ~24px of separation, which is why nine of them read as a list of
+ * blocks rather than as a sequence of findings.
+ * ============================================================ */
+.mg-analytics-section {
+  padding-block: var(--mg-space-3xl);
+  /* A grid/flex child defaults to `min-width: auto`, which refuses to shrink
+     below its content — so a wide table or a toggle strip inside a section
+     pushes the section past the viewport instead of scrolling inside it.
+     These sections now hold content that used to be tab-gated and therefore
+     never laid out at 375px at all, which is how three elements started
+     escaping the moment everything rendered together. */
+  min-width: 0;
+}
+.mg-analytics-section > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.mg-analytics-section + .mg-analytics-section {
+  border-top: 1px solid var(--border);
+}
+.mg-analytics-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mg-space-sm) var(--mg-space-lg);
+  margin-bottom: var(--mg-space-xl);
+}
+.mg-analytics-section-header h2 {
+  margin: 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  /* One line, two weights. A title stacked over a caption reads as
+     documentation; a bold subject followed by a plain sentence reads as a
+     statement, which is what a finding is. */
+  font-size: var(--mg-type-h2);
+  font-weight: 400;
+  letter-spacing: var(--mg-tracking-display);
+  line-height: 1.25;
+}
+.mg-analytics-section-header h2 strong {
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+.mg-analytics-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mg-space-sm);
+}
+.mg-analytics-section-legend {
+  margin-top: var(--mg-space-lg);
+}
+.mg-analytics-section-note {
+  margin: var(--mg-space-md) 0 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+}
+@media (max-width: 47.99rem) {
+  .mg-analytics-section {
+    padding-block: var(--mg-space-2xl);
+  }
+  .mg-analytics-section-header h2 {
+    font-size: var(--mg-type-h3);
+  }
 }
