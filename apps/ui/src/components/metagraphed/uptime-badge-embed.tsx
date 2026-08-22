@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CopyableCode, SectionAnchor } from "@jsonbored/ui-kit";
+import { CopyableCode, AnalyticsSection } from "@jsonbored/ui-kit";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
 import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
@@ -77,11 +77,11 @@ export function UptimeBadgeEmbed({
         : badgeUrl;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="badge"
-      title="Embeddable badge"
-      subtitle="A live status badge for this subnet's README."
-      info="Probe-derived only — the value comes from the same 2-minute prober that backs this page's uptime figures, and there is no way to supply your own number. Cached for an hour at the edge; GitHub re-fetches through its own image proxy."
+      name="Embeddable badge"
+      question="A live status badge for this subnet's README."
+      footnote="Probe-derived only — the value comes from the same 2-minute prober that backs this page's uptime figures, and there is no way to supply your own number. Cached for an hour at the edge; GitHub re-fetches through its own image proxy."
     >
       <div className="space-y-3">
         <img
@@ -137,6 +137,6 @@ export function UptimeBadgeEmbed({
           <CopyableCode label={format} value={snippet} className="min-w-0 max-w-full" />
         </div>
       </div>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }

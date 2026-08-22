@@ -59,14 +59,9 @@ export {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-export {
-  SegmentedToggle,
-  type SegmentedToggleOption,
-} from "@/components/ui/segmented-toggle";
 export { Toaster } from "@/components/ui/sonner";
 
 export { Skeleton } from "@/components/metagraphed/skeleton";
-export { AccentBand } from "@/components/metagraphed/accent-band";
 export { AnimatedNumber } from "@/components/metagraphed/animated-number";
 export { BackToTop } from "@/components/metagraphed/back-to-top";
 export {
@@ -96,35 +91,16 @@ export {
   safeExternalUrl,
   ExternalLink,
 } from "@/components/metagraphed/external-link";
-export {
-  type FreshnessTier,
-  FreshnessIndicator,
-  DailyRollupFreshness,
-  RealtimeFreshness,
-  tierFreshnessLabel,
-} from "@/components/metagraphed/freshness";
 export * from "./components/metagraphed/interaction";
+export * from "./components/metagraphed/document";
 export { markAriaLabel } from "./components/metagraphed/charts/chart-aria";
 export { Kbd } from "@/components/metagraphed/kbd";
 export { KeyChip } from "@/components/metagraphed/key-chip";
 export { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
-export { PageHero } from "@/components/metagraphed/page-hero";
-export {
-  type EntityHeroProps,
-  type EntityHeroStat,
-  EntityHero,
-} from "@/components/metagraphed/entity-hero";
-export { PageSection } from "@/components/metagraphed/page-section";
-export {
-  type SectionTone,
-  SectionAnchor,
-} from "@/components/metagraphed/section-anchor";
-export { SectionHeading } from "@/components/metagraphed/section-heading";
 export {
   ShareButton,
   SHARE_COPIED_EVENT,
 } from "@/components/metagraphed/share-button";
-export { ActionBar } from "@/components/metagraphed/action-bar";
 export {
   PagerBar,
   type PagerBarProps,
@@ -154,11 +130,6 @@ export {
   YieldPercentileStrip,
 } from "@/components/metagraphed/yield-percentile-strip";
 export {
-  type PrimaryLinksRailProps,
-  PrimaryLinksRail,
-} from "@/components/metagraphed/primary-links-rail";
-export { MethodologyCallout } from "@/components/metagraphed/methodology-callout";
-export {
   type BarMiniDatum,
   BarMini,
 } from "@/components/metagraphed/charts/bar-mini";
@@ -176,14 +147,6 @@ export {
   type SparklinePoint,
   Sparkline,
 } from "@/components/metagraphed/charts/sparkline";
-export { StatTile } from "@/components/metagraphed/charts/stat-tile";
-export {
-  StatWithSpark,
-  MiniStack,
-  MiniRadial,
-  DotRow,
-  NoDataSpark,
-} from "@/components/metagraphed/charts/stat-with-spark";
 export {
   type TreemapMiniDatum,
   TreemapMini,
@@ -237,17 +200,7 @@ export {
   TableColGroup,
   columnWidths,
 } from "@/components/metagraphed/table-colgroup";
-export {
-  Panel,
-  type PanelProps,
-  type PanelTone,
-} from "@/components/metagraphed/panel";
-export {
-  SectionLabel,
-  type SectionLabelProps,
-  type SectionLabelSize,
-  type SectionLabelTone,
-} from "@/components/metagraphed/section-label";
+export { Panel, type PanelProps } from "@/components/metagraphed/panel";
 export {
   EmptyState,
   type EmptyStateProps,
@@ -259,23 +212,10 @@ export {
   type TableSkeletonDensity,
 } from "@/components/metagraphed/table-skeleton";
 export {
-  MetricGrid,
-  type MetricGridProps,
-} from "@/components/metagraphed/metric-grid";
-export {
   PanelHeader,
   type PanelHeaderProps,
 } from "@/components/metagraphed/panel-header";
 export { Divider, type DividerProps } from "@/components/metagraphed/divider";
-export {
-  TabStrip,
-  type TabStripProps,
-  type TabStripItem,
-} from "@/components/metagraphed/tab-strip";
-export {
-  StickyToolbar,
-  type StickyToolbarProps,
-} from "@/components/metagraphed/sticky-toolbar";
 export {
   DefinitionList,
   type DefinitionListProps,
@@ -296,11 +236,6 @@ export {
   type PagerFooterProps,
 } from "@/components/metagraphed/pager-footer";
 export {
-  MetaStrip,
-  type MetaStripProps,
-  type MetaStripItem,
-} from "@/components/metagraphed/meta-strip";
-export {
   ScrollShadow,
   type ScrollShadowProps,
 } from "@/components/metagraphed/scroll-shadow";
@@ -313,18 +248,10 @@ export {
   type FilterSheetProps,
 } from "@/components/metagraphed/filter-sheet";
 export {
-  PageActions,
-  type PageActionsProps,
-} from "@/components/metagraphed/page-actions";
-export {
   PanelSkeleton,
   type PanelSkeletonProps,
   type PanelSkeletonHeight,
 } from "@/components/metagraphed/panel-skeleton";
-export {
-  MobileCollapse,
-  type MobileCollapseProps,
-} from "@/components/metagraphed/mobile-collapse";
 export {
   ReadinessGauge,
   type ReadinessGaugeProps,
@@ -363,6 +290,6 @@ export {
 export {
   nextTabIndex,
   rovingTabIndex,
-  useRovingTablist,
-} from "@/hooks/use-roving-tablist";
+  useRovingGroup,
+} from "@/hooks/use-roving-group";
 export { isScrolledPast, useScrolled } from "@/hooks/use-scrolled";

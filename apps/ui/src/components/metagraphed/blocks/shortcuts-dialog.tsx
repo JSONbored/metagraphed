@@ -74,7 +74,7 @@ export function ShortcutsDialog({ blockRef }: { blockRef: string }) {
         if (e.target === e.currentTarget) setOpen(false);
       }}
     >
-      <Panel as="div" flush className="w-full max-w-md">
+      <Panel flush className="w-full max-w-md">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 id="mg-shortcut-title" className="text-13 text-ink-muted">
             Keyboard shortcuts

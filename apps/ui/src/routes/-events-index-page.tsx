@@ -2,7 +2,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { EventsSearch } from "./chain.events";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ChainEventsFeed, chainEventsBaseParams } from "@/components/metagraphed/chain-events-feed";
-import { ShareButton, DownloadCsvButton, ActionBar } from "@jsonbored/ui-kit";
+import { ShareButton, DownloadCsvButton } from "@jsonbored/ui-kit";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { ChainTabActions } from "./-chain-hub";
 
@@ -23,10 +23,10 @@ export function EventsPage() {
   return (
     <>
       <ChainTabActions>
-        <ActionBar>
+        <div className="mg-actions">
           <DownloadCsvButton url={eventsCsvUrl} bare />
           <ShareButton bare />
-        </ActionBar>
+        </div>
       </ChainTabActions>
       <ChainEventsFeed
         pallet={search.pallet}

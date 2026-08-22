@@ -51,7 +51,7 @@ export function ValidatorDominanceChart() {
   const coveredPct = rows.reduce((sum, r) => sum + r.share, 0) * 100;
 
   return (
-    <Panel as="div">
+    <Panel>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className="text-13 text-ink-muted">Stake dominance · top {rows.length}</span>
         <span className="text-10 text-ink-muted">{coveredPct.toFixed(1)}% of network stake</span>

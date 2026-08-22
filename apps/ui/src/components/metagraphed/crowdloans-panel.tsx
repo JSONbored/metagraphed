@@ -38,7 +38,7 @@ export function CrowdloansPanel() {
   }
 
   return (
-    <Panel as="section">
+    <Panel>
       <p className="mb-3 text-10 text-ink-muted">
         {formatNumber(c.crowdloan_count)} crowdloan{c.crowdloan_count === 1 ? "" : "s"}
       </p>

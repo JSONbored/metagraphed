@@ -17,7 +17,6 @@ import {
   TimeAgo,
   ListShell,
   ShareButton,
-  ActionBar,
   CopyableCode,
   CopyButton,
   DownloadCsvButton,
@@ -58,10 +57,10 @@ export function ExtrinsicsPage() {
           beside the tab strip: a shrink-0 sibling there is what starved the
           profile tabs to 196px on mobile (#8254). */}
       <ChainTabActions>
-        <ActionBar>
+        <div className="mg-actions">
           <DownloadCsvButton url={extrinsicsCsvUrl} bare />
           <ShareButton bare />
-        </ActionBar>
+        </div>
       </ChainTabActions>
       <AsyncPanel
         context="fees trend"
@@ -92,7 +91,7 @@ function FeesTrendCard() {
   const latest = values.length > 0 ? values[values.length - 1]! : null;
 
   return (
-    <Panel as="section" flush className="mb-6">
+    <Panel flush className="mb-6">
       <div className="p-4 sm:p-6">
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <div className="flex items-baseline gap-2">

@@ -110,7 +110,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
 
   if (isError) {
     return (
-      <Panel as="div">
+      <Panel>
         <ErrorState error={error} onRetry={() => refetch()} context="uptime timeline" />
       </Panel>
     );
@@ -118,7 +118,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
 
   if (surfaces.length === 0) {
     return (
-      <Panel as="div">
+      <Panel>
         <EmptyState
           title="No trend data"
           description="Per-surface uptime &amp; latency will appear here once the prober has collected enough samples for this subnet."
@@ -140,7 +140,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
   const hasIncidents = incidents.length > 0;
 
   return (
-    <Panel as="div" flush className={classNames("overflow-hidden", className)}>
+    <Panel flush className={classNames("overflow-hidden", className)}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 border-b border-border bg-paper">
         <div className="text-13 text-ink-muted">
           Uptime by surface · {RANGE_LABEL[range]}

@@ -64,6 +64,17 @@ than defaulting to `text-base`.
   grepping every `font-weight` utility class in `apps/ui/src`; `font-bold`/700
   never appears anywhere in the app, so it isn't shipped).
 
+## Document layer
+
+A route is `EntityHero + ≤7 AnalyticsSection` inside an `AnalyticsPage` — nothing
+else (#11607). `AnalyticsSection` takes `{ id, name, question, visual, legend?,
+footnote?, controls? }` and renders the one-line `Name. One sentence.` heading;
+`AnalyticsPage` mounts the active-entity store and renders the section nav from
+its children, refusing an eighth section. Facts go in `FactStrip` (2–6 cells) or a
+`FactSentence` of `Fact` chips; the page's one liveness line is `LiveMeta`; the one
+segmented control is `RangeControl`. There is no panel, card, stat tile, tab strip
+or masthead to reach for.
+
 ## Example composition
 
 A stat tile with a trend line, in this system's real idiom:

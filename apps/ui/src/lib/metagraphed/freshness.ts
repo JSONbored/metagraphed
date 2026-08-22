@@ -1,7 +1,7 @@
 import { relativeFromDiff } from "./format";
 
 /**
- * Centralized freshness formatter — used by StatWithSpark, NoDataSpark,
+ * Centralized freshness formatter — used by the fact cells,
  * MethodologyCallout and OperationalPanel so every "last-updated" stamp
  * across the app reads the same way.
  */

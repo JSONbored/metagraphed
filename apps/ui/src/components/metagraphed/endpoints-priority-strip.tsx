@@ -97,7 +97,7 @@ export function EndpointsPriorityStrip() {
 function PriorityCard({ item }: { item: Item }) {
   const Icon = item.icon;
   const body = (
-    <Panel as="div" interactive className="h-full">
+    <Panel className="h-full">
       <div className="flex items-center justify-between gap-2">
         <span className="text-10 text-ink-muted inline-flex items-center gap-1.5">
           <Icon className="size-3" aria-hidden />

@@ -1,35 +1,25 @@
-import { LayoutGrid, List, Grid3x3 } from "lucide-react";
-import {
-  SegmentedToggle,
-  type SegmentedToggleOption,
-} from "@/components/ui/segmented-toggle";
+import { RangeControl, type RangeOption } from "./document/range-control";
 
 export type ViewMode = "table" | "grid" | "matrix";
 
-const OPTIONS: Array<SegmentedToggleOption<ViewMode>> = [
+const OPTIONS: Array<RangeOption<ViewMode>> = [
   {
     value: "table",
     label: "Table",
-    Icon: List,
-    ariaLabel: "Switch to table view",
   },
   {
     value: "grid",
     label: "Grid",
-    Icon: LayoutGrid,
-    ariaLabel: "Switch to grid view",
   },
   {
     value: "matrix",
     label: "Matrix",
-    Icon: Grid3x3,
-    ariaLabel: "Switch to matrix view",
   },
 ];
 
 /**
  * Segmented toggle for list routes that support multiple layouts.
- * Compact, icon-first; falls back to icon-only on narrow viewports.
+ * The one segmented control, with the three layout names as labels.
  */
 export function ViewModeToggle({
   value,
@@ -44,11 +34,11 @@ export function ViewModeToggle({
 }) {
   const available = OPTIONS.filter((o) => options.includes(o.value));
   return (
-    <SegmentedToggle
+    <RangeControl
       options={available}
       value={value}
       onChange={onChange}
-      ariaLabel="View mode"
+      label="View mode"
       className={className}
     />
   );

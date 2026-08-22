@@ -99,25 +99,25 @@ describe("it reads as a leaderboard, not a list of labelled fields", () => {
 });
 
 describe("the summary is labelled stats, not a run-on strip", () => {
-  it("gives each headline figure its own labelled tile", () => {
+  it("gives each headline figure its own labelled cell", () => {
     // It was `520 holders · 152.3k α held · top 5 shown` with the ranks tacked
     // underneath as `TOP 5 31.4% 10 44.1% 20 58.7%` -- three different KINDS of
     // fact in one sentence, and a rank row that read as unpaired digits.
-    expect(component).toContain("StatTile");
-    for (const eyebrow of ['eyebrow="Holders"', 'eyebrow="Alpha held"', 'eyebrow="Top 10 share"']) {
-      expect(component).toContain(eyebrow);
+    expect(component).toContain("FactCell");
+    for (const label of ['label="Holders"', 'label="Alpha held"', 'label="Top 10 share"']) {
+      expect(component).toContain(label);
     }
   });
 
-  it("explains each stat in a tooltip rather than a clipped hint", () => {
+  it("explains each stat in a Definition rather than a clipped hint", () => {
     // The two hints that did exist truncated to "coldkeys with …" at 375px in a
-    // two-column grid, which is worse than no hint at all.
-    expect(component.match(/tooltip=/g) ?? []).toHaveLength(3);
+    // two-column grid, which is worse than no hint at all. A FactCell `hint`
+    // is a Definition beside the label (#11606/#11607), never clipped.
+    expect(component.match(/hint=/g) ?? []).toHaveLength(3);
   });
 
   it("says the aggregates are whole-subnet, not the rows shown", () => {
     expect(component).toMatch(/rather than the rows shown below/);
-    expect(component).toMatch(/never over the rows shown below/);
   });
 
   it("moves list-scoped facts out of the tiles and under the list", () => {
@@ -137,12 +137,6 @@ describe("the section is wired into the page", () => {
     // Without the boundary, one failing section takes the whole tab down.
     const at = page.indexOf('id="holders"');
     expect(page.slice(at, at + 900)).toContain("QueryErrorBoundary");
-  });
-
-  it("registers the anchor in SECTION_TO_TAB", () => {
-    // Missing here, a cross-tab deep link to /subnets/7#holders silently lands
-    // on the wrong tab and scrolls nowhere -- useHashScroll reads this map.
-    expect(page).toMatch(/holders: "metagraph"/);
   });
 
   it("declares the endpoint in the API drawer", () => {

@@ -257,7 +257,7 @@ function EmissionRow({ subnet }: { subnet: EmissionPipelineSubnet }) {
 
 function EmissionCard({ subnet }: { subnet: EmissionPipelineSubnet }) {
   return (
-    <Panel as="div" className="block min-h-11">
+    <Panel className="block min-h-11">
       <div className="flex items-center justify-between gap-2">
         <Link
           to="/subnets/$netuid"

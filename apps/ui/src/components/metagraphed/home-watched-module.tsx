@@ -243,7 +243,7 @@ function WatchedSubnets({ netuids }: { netuids: string[] }) {
   const missing = netuids.length - rows.length;
 
   return (
-    <Panel as="section" title={`Watched subnets · ${netuids.length}`}>
+    <Panel title={`Watched subnets · ${netuids.length}`}>
       <ul className="divide-y divide-border">
         {rows.map((s) => {
           const e = econByNetuid.get(s.netuid);
@@ -298,7 +298,7 @@ function WatchedValidators({ hotkeys }: { hotkeys: string[] }) {
   const missing = hotkeys.length - rows.length;
 
   return (
-    <Panel as="section" title={`Watched validators · ${hotkeys.length}`}>
+    <Panel title={`Watched validators · ${hotkeys.length}`}>
       <ul className="divide-y divide-border">
         {rows.map((v) => (
           <li key={v.hotkey} className={classNames(flashed.has(v.hotkey) && "")}>

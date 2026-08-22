@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { SegmentedToggle } from "@jsonbored/ui-kit";
+import { RangeControl } from "@jsonbored/ui-kit";
 import { SUBNET_WINDOWS, isSubnetWindow, type SubnetWindow } from "./subnet-window-helpers";
 
 /**
@@ -72,16 +72,12 @@ export function useSubnetWindow(): Ctx {
 export function SubnetWindowToggle({ className }: { className?: string }) {
   const { window, setWindow } = useSubnetWindow();
   return (
-    <SegmentedToggle<SubnetWindow>
+    <RangeControl
       className={className}
-      ariaLabel="Trend window"
+      label="Trend window"
       value={window}
       onChange={setWindow}
-      options={SUBNET_WINDOWS.map((w) => ({
-        value: w,
-        label: w,
-        title: `Show ${w} trends`,
-      }))}
+      options={SUBNET_WINDOWS.map((w) => ({ value: w, label: w }))}
     />
   );
 }

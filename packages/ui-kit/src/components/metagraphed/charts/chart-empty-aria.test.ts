@@ -11,7 +11,7 @@ import {
 // #6375: both primitives' empty-data branch rendered an <svg> with no
 // role="img" and, when ariaLabel was omitted, no accessible name at all -- while
 // their own populated branches set both, and every sibling primitive
-// (BarMini/Donut via chart-aria, NoDataSpark, MiniStack) has a safety net. A
+// (BarMini/Donut via chart-aria) has a safety net. A
 // screen-reader user hit an unlabeled graphic.
 const html = (element: React.ReactElement) => renderToStaticMarkup(element);
 

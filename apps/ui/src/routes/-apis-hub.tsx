@@ -1,9 +1,4 @@
-import {
-  HubTabActions,
-  HubTabs,
-  activeHubTab,
-  type HubTab,
-} from "@/components/metagraphed/hub-tabs";
+import { HubTabActions, HubNav, activeHubTab, type HubTab } from "@/components/metagraphed/hub-nav";
 
 /**
  * The APIs hub's tab set (#8302, part of #8245).
@@ -50,7 +45,7 @@ export function activeApisTab(pathname: string): ApisTab {
 }
 
 export function ApisTabs() {
-  return <HubTabs tabs={APIS_TABS} ariaLabel="API sections" />;
+  return <HubNav tabs={APIS_TABS} />;
 }
 
 export const ApisTabActions = HubTabActions;

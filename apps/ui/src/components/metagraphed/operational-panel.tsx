@@ -80,7 +80,6 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
       subtitle="Uptime, latency, and incidents across all tracked endpoints. Click a segment to filter the resource list."
       info="GET /api/v1/subnets/{netuid}/health · /health/trends · /health/incidents"
       right={<TimeRangeScrub />}
-      tone="warn"
       meta={{
         generatedAt: healthRes?.meta?.generated_at ?? h?.generated_at,
         stale: healthRes?.meta?.stale,
@@ -95,7 +94,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
       {healthQ.error ? (
         <ErrorState error={healthQ.error} onRetry={retryOperational} context="operational status" />
       ) : (
-        <Panel as="div" flush className="overflow-hidden">
+        <Panel flush className="overflow-hidden">
           {/* Status ribbon */}
           <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border border-b border-border">
             <Stat

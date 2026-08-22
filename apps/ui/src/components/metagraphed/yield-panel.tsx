@@ -1,21 +1,21 @@
 import { useMemo, useState } from "react";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
-import { Percent, Activity, Users, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { subnetYieldQuery, subnetYieldHistoryQuery } from "@/lib/metagraphed/queries";
 import {
   TableState,
   YieldPercentileStrip,
   fmtYield,
-  StatTile,
   BarMini,
   Sparkline,
+  FactStrip,
+  FactCell,
+  RangeControl,
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { classNames } from "@/lib/metagraphed/format";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
-import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
 import type { SubnetYieldNeuron, YieldHistoryPoint } from "@/lib/metagraphed/types";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
@@ -52,7 +52,7 @@ function VsMedian({ vs }: { vs: SubnetYieldNeuron["vs_median"] }) {
  * Concentration panel. Distribution summary (subnet aggregate, mean, median,
  * p25/p75/p90), a validator/miner split, the ranked per-UID leaderboard (top
  * yielders), and the daily yield-distribution drift. Mirrors the concentration/
- * metagraph render primitives (StatTile / BarMini / Sparkline / table).
+ * metagraph render primitives (FactCell / BarMini / Sparkline / table).
  */
 export function YieldLoader({ netuid }: { netuid: number }) {
   const { data } = useSuspenseQuery(subnetYieldQuery(netuid));
@@ -87,32 +87,23 @@ export function YieldLoader({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-4">
       {/* KPI tiles — the headline return + central tendency. */}
-      <div className={PROFILE_KPI_GRID_CLASS}>
-        <StatTile
-          icon={Percent}
-          eyebrow="Subnet yield"
-          value={fmtYield(y.subnet_yield)}
-          hint="emission ÷ stake"
-          tone="accent"
-        />
-        <StatTile
-          icon={Activity}
-          eyebrow="Median yield"
+      <FactStrip>
+        <FactCell label="Subnet yield" value={fmtYield(y.subnet_yield)} hint="emission ÷ stake" />
+        <FactCell
+          label="Median yield"
           value={fmtYield(y.median_yield)}
           hint={y.mean_yield != null ? `mean ${fmtYield(y.mean_yield)}` : undefined}
         />
-        <StatTile
-          icon={Users}
-          eyebrow="Validators / miners"
+        <FactCell
+          label="Validators / miners"
           value={`${y.validator_count ?? "—"} / ${y.miner_count ?? "—"}`}
           hint={`${y.neuron_count ?? neurons.length} UIDs`}
-          truncate={false}
         />
-      </div>
+      </FactStrip>
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Validator vs miner split. */}
-        <Panel as="div">
+        <Panel>
           <div className="mb-3 text-13 text-ink-muted">Validator / miner split</div>
           {splitBars.length ? (
             <BarMini data={splitBars} />
@@ -131,7 +122,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
       </div>
 
       {/* Per-UID yield leaderboard (top yielders). */}
-      <Panel as="div" flush className="overflow-hidden">
+      <Panel flush className="overflow-hidden">
         {/* < md: a 7-column table squeezes Yield/vs-median off an undiscoverable
             horizontal scroll, so narrow viewports get a stacked card per UID
             instead — mirrors the cards/table split the explorer stake-transfer
@@ -261,27 +252,12 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
   const hasData = series.subnet.length + series.median.length + series.p90.length > 0;
 
   const toggle = (
-    <div
-      role="tablist"
-      aria-label="Yield window"
-      className="inline-flex rounded border border-border bg-surface p-0.5"
-    >
-      {WINDOWS.map((w) => (
-        <button
-          key={w}
-          type="button"
-          role="tab"
-          aria-selected={w === win}
-          onClick={() => setWin(w)}
-          className={classNames(
-            "px-2.5 py-1 text-11 rounded transition-colors",
-            w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
-          )}
-        >
-          {w}
-        </button>
-      ))}
-    </div>
+    <RangeControl
+      label="Yield window"
+      options={WINDOWS.map((w) => ({ value: w, label: String(w) }))}
+      value={win}
+      onChange={setWin}
+    />
   );
 
   return (
@@ -300,7 +276,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
           description="Daily yield-distribution snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel as="div" bodyClassName="space-y-3">
+        <Panel bodyClassName="space-y-3">
           {series.subnet.length > 0 ? (
             <DriftRow label="Subnet yield" series={series.subnet} color="var(--accent)" />
           ) : null}

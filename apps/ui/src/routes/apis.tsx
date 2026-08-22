@@ -1,6 +1,6 @@
+import { EntityHero, FactSentence } from "@jsonbored/ui-kit";
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageMasthead } from "@/components/metagraphed/primitives";
 import { ApisTabs, activeApisTab } from "./-apis-hub";
 
 /**
@@ -20,7 +20,7 @@ function ApisHubLayout() {
 
   return (
     <AppShell>
-      <PageMasthead title="APIs" description={tab.blurb} pathname={pathname} live />
+      <EntityHero name="APIs" sentence={<FactSentence>{tab.blurb}</FactSentence>} />
       <ApisTabs />
       <Outlet />
     </AppShell>

@@ -59,23 +59,17 @@ async function openWithHar(page: import("@playwright/test").Page, url: string) {
   }
 }
 
-test.describe("#6434 evidence deep links (updated for #8247's 7-tab consolidation)", () => {
-  test("#evidence resolves to the About tab", async ({ page }) => {
+test.describe("#6434 evidence deep links (every section on one page since #11607)", () => {
+  test("#evidence scrolls to the evidence section; there is no tab to switch", async ({ page }) => {
     await openWithHar(page, `${ROUTE}#evidence`);
 
-    // useHashScroll rewrites the tab search param when the hash's owning tab
-    // isn't active -- Evidence now lives inside the broader About tab rather
-    // than a dedicated tab of its own.
-    //
-    // The rewrite runs in a useEffect, so it waits on HYDRATION, not on a
-    // network round-trip -- which is what openWithHar's networkidle wait
-    // covers. On a loaded CI runner (4 parallel workers, cold cache) hydrating
-    // this page can outlast the 5s default expect timeout, and the assertion
-    // then reports the un-rewritten "#evidence" URL. 15s waits for the thing
-    // actually being waited on; the assertion is unchanged, so a rewrite that
-    // never happens still fails.
-    await expect(page).toHaveURL(/[?&]tab=about/, { timeout: 15_000 });
-    await expect(page.locator("section#evidence")).toBeVisible();
+    // The subnet profile renders all of its sections on one page under a
+    // SectionNav (#11607), so a hash deep link is a plain in-page anchor: the
+    // URL keeps its hash, no `tab` search param is written, and the section
+    // the hash names is on the page.
+    await expect(page).toHaveURL(/#evidence$/);
+    await expect(page).not.toHaveURL(/[?&]tab=/);
+    await expect(page.locator("section#evidence")).toBeVisible({ timeout: 15_000 });
   });
 
   test("#evidence-preview lands on Overview without erroring (the preview embed itself was retired)", async ({
@@ -83,10 +77,8 @@ test.describe("#6434 evidence deep links (updated for #8247's 7-tab consolidatio
   }) => {
     await openWithHar(page, `${ROUTE}#evidence-preview`);
 
-    // SECTION_TO_TAB still maps this legacy id to "overview" so an old
-    // bookmarked link degrades gracefully instead of dragging the reader onto
-    // a tab that doesn't own it -- but the Overview preview section itself no
-    // longer exists (retired as a duplicate of About's full EvidencePanel).
+    // An old bookmarked link to the retired preview section degrades to the
+    // page top: nothing rewrites the URL and no such section exists.
     await expect(page).not.toHaveURL(/[?&]tab=(about|evidence)/);
     await expect(page.locator("section#evidence-preview")).toHaveCount(0);
   });

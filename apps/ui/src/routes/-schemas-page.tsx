@@ -7,10 +7,9 @@ import {
   TimeAgo,
   CopyableCode,
   ExternalLink,
-  PageSection,
   AnimatedNumber,
-  MethodologyCallout,
   LoadMore,
+  AnalyticsSection,
 } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { DownloadOpenApiButton } from "@/components/metagraphed/download-openapi-button";
@@ -60,18 +59,10 @@ export function SchemasPage() {
       </AsyncPanel>
 
       <main className="space-y-section">
-        <AsyncPanel
-          context="schemas methodology"
-          fallback={<Skeleton className="h-10 w-full" />}
-          retryQueryKeys={[schemasQuery().queryKey]}
-        >
-          <SchemasMethodology />
-        </AsyncPanel>
-
-        <PageSection
-          eyebrow="Activity"
-          title="Drift activity"
-          description="Per-schema change weight. Stable schemas are dim; drifting schemas surface on top — click a drifting row for change details, or a stable row to open it in the explorer below."
+        <AnalyticsSection
+          id="drift-activity"
+          name="Drift activity"
+          question="Per-schema change weight. Stable schemas are dim; drifting schemas surface on top — click a drifting row for change details, or a stable row to open it in the explorer below."
         >
           <AsyncPanel
             context="drift activity"
@@ -80,12 +71,12 @@ export function SchemasPage() {
           >
             <DriftActivityRibbon />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
-          eyebrow="Drift"
-          title="Schema drift matrix"
-          description="Every tracked schema classified by change type, with one-click access to source evidence."
+        <AnalyticsSection
+          id="schema-drift-matrix"
+          name="Schema drift matrix"
+          question="Every tracked schema classified by change type, with one-click access to source evidence."
         >
           <AsyncPanel
             context="schema drift matrix"
@@ -94,13 +85,12 @@ export function SchemasPage() {
           >
             <SchemaDriftMatrix />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="contracts"
-          eyebrow="Contracts"
-          title="Published contracts"
-          description="Versioned envelope contracts that govern API responses."
+          name="Published contracts"
+          question="Versioned envelope contracts that govern API responses."
         >
           <AsyncPanel
             context="published contracts"
@@ -109,13 +99,12 @@ export function SchemasPage() {
           >
             <ContractsList />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="schema-index"
-          eyebrow="Explorer"
-          title="Schema index"
-          description="Browse every tracked JSON Schema. Select one to inspect the latest snapshot and recent drift."
+          name="Schema index"
+          question="Browse every tracked JSON Schema. Select one to inspect the latest snapshot and recent drift."
         >
           <AsyncPanel
             context="schema index"
@@ -124,7 +113,7 @@ export function SchemasPage() {
           >
             <SchemaExplorer />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
       </main>
 
       <ApiSourceFooter
@@ -207,7 +196,7 @@ function SchemasHero() {
           { label: "Contracts", value: contractsCount },
           { label: "Subnets covered", value: subnets },
         ].map((k) => (
-          <Panel key={k.label} as="div" flush className="px-3 py-2.5">
+          <Panel key={k.label} flush className="px-3 py-2.5">
             <div className="text-10 text-ink-muted">{k.label}</div>
             <div className="mt-0.5 text-11 text-ink-strong">
               <AnimatedNumber value={k.value} />
@@ -220,11 +209,6 @@ function SchemasHero() {
 }
 
 /* --------------------------- Methodology --------------------------- */
-
-function SchemasMethodology() {
-  const { data } = useSuspenseQuery(schemasQuery());
-  return <MethodologyCallout generatedAt={data.meta?.generated_at} windowLabel="snapshot" />;
-}
 
 /* --------------------------- Drift activity --------------------------- */
 
@@ -257,7 +241,7 @@ function ContractsList() {
         {visible.map((c) => {
           const artifactUrl = sameOriginApiUrl(c.path);
           return (
-            <Panel key={c.id} interactive className="min-w-0">
+            <Panel key={c.id} className="min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="font-display text-13 font-semibold text-ink-strong">{c.id}</div>
@@ -479,7 +463,7 @@ function SchemaExplorer() {
         </aside>
 
         {/* Right viewer */}
-        <Panel as="section" flush className="overflow-hidden min-h-[480px]">
+        <Panel flush className="overflow-hidden min-h-[480px]">
           {selected ? (
             <SchemaViewer schema={selected} />
           ) : (

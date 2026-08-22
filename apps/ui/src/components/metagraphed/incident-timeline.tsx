@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertOctagon, AlertTriangle, Info } from "lucide-react";
 import { subnetHealthIncidentsQuery, flattenSurfaceIncidents } from "@/lib/metagraphed/queries";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
-import { TimeAgo, SectionAnchor } from "@jsonbored/ui-kit";
+import { TimeAgo, AnalyticsSection } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import { incidentDurationLabel } from "@/lib/metagraphed/incident-duration";
 
@@ -22,11 +22,11 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
   const incidents = flattenSurfaceIncidents(data?.data ?? []);
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="incidents"
-      title="Incident history"
-      subtitle="Recorded health regressions and SLA breaks for this subnet."
-      info="GET /api/v1/subnets/{netuid}/health/incidents"
+      name="Incident history"
+      question="Recorded health regressions and SLA breaks for this subnet."
+      footnote="GET /api/v1/subnets/{netuid}/health/incidents"
     >
       {isLoading ? (
         <Skeleton className="h-24 w-full" />
@@ -77,6 +77,6 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
           })}
         </ol>
       )}
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }

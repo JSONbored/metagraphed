@@ -1,13 +1,10 @@
 import type { ReactNode } from "react";
 import { Panel } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
-import { FreshnessPill } from "./freshness-pill";
 
 export interface ChartCardProps {
   title: ReactNode;
   caption?: ReactNode;
-  /** ISO timestamp — renders a FreshnessPill in the header. */
-  updatedAt?: string | null;
   /** Additional header controls (range toggle, filter, etc). */
   action?: ReactNode;
   /** Footer legend / methodology row. */
@@ -30,7 +27,6 @@ export interface ChartCardProps {
 export function ChartCard({
   title,
   caption,
-  updatedAt,
   action,
   footer,
   height = 200,
@@ -40,12 +36,7 @@ export function ChartCard({
   children,
   className,
 }: ChartCardProps) {
-  const headerAction = (
-    <>
-      {updatedAt ? <FreshnessPill updatedAt={updatedAt} /> : null}
-      {action}
-    </>
-  );
+  const headerAction = <>{action}</>;
   return (
     <Panel title={title} caption={caption} action={headerAction} className={className}>
       <div className="relative w-full" style={{ height }} aria-busy={loading || undefined}>

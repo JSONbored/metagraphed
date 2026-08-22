@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { ExternalLink } from "@jsonbored/ui-kit";
-import { PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { ExternalLink, EntityHero, FactSentence } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import { API_BASE } from "@/lib/metagraphed/config";
 
 /**
@@ -17,10 +17,14 @@ const CREDENTIAL_MAX_TTL_DAYS = 90;
 export function PrivacyPage() {
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="Privacy"
-        title="Privacy policy"
-        description="What Metagraphed collects, why, how long it is kept, and who else processes it. Written to be checkable against the code rather than to be reassuring."
+      <EntityHero
+        name="Privacy policy"
+        sentence={
+          <FactSentence>
+            What Metagraphed collects, why, how long it is kept, and who else processes it. Written
+            to be checkable against the code rather than to be reassuring.
+          </FactSentence>
+        }
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-8 min-w-0">

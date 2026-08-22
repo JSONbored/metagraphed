@@ -3,8 +3,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Panel, type PanelProps } from "@/components/metagraphed/panel";
 
-// #7848: Panel gained rest-prop forwarding, a new "ok" tone, tintBorderOnly,
-// and glow so the 31 documented #7817 skips (ids/aria-*/role, tone
+// #7848: Panel gained rest-prop forwarding so the 31 documented #7817 skips
+// (ids/aria-*/role
 // mismatches, shells) could finally convert to it instead of a
 // hand-rolled `rounded border bg-card` shell. Rendered via react-dom/server:
 // this package's suite is node-environment with no jsdom.
@@ -62,31 +62,5 @@ describe("Panel rest-prop forwarding (#7848)", () => {
     );
     expect(markup).toContain("custom-class");
     expect(markup).toContain('id="x"');
-  });
-});
-
-describe("Panel tone + tintBorderOnly (#7848)", () => {
-  it("adds the ok tone's tinted border and background", () => {
-    const markup = html(React.createElement(Panel, { tone: "ok" }, "x"));
-    expect(markup).toContain("border-health-ok/40");
-    expect(markup).toContain("bg-health-ok/5");
-  });
-
-  it("tintBorderOnly keeps the tone's border but swaps the tinted bg for bg-card", () => {
-    const markup = html(
-      React.createElement(Panel, { tone: "warn", tintBorderOnly: true }, "x"),
-    );
-    expect(markup).toContain("border-health-warn/40");
-    expect(markup).toContain("bg-card");
-    expect(markup).not.toContain("bg-health-warn/5");
-  });
-
-  it("tintBorderOnly works with the accent tone too", () => {
-    const markup = html(
-      React.createElement(Panel, { tone: "accent", tintBorderOnly: true }, "x"),
-    );
-    expect(markup).toContain("border-accent/40");
-    expect(markup).toContain("bg-card");
-    expect(markup).not.toContain("bg-primary-soft");
   });
 });

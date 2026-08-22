@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Play, Lock, Loader2 } from "lucide-react";
-import { CopyableCode, ExternalLink } from "@jsonbored/ui-kit";
+import { CopyableCode, ExternalLink, AnalyticsSection } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
-import { SectionAnchor } from "@jsonbored/ui-kit";
 import { subnetSurfacesQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import {
@@ -53,11 +52,11 @@ export function SurfacePlayground({ netuid }: { netuid: number }) {
   if (callable.length === 0) return null;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="try-it"
-      title="Try it"
-      subtitle="Call this subnet's public API from here and see the real response."
-      info="Requests go through the registry's own guarded path: only catalogued surfaces are reachable, there is no way to pass an arbitrary URL, and timeouts, response-size caps and rate limits are enforced server-side. Credentials are never handled here."
+      name="Try it"
+      question="Call this subnet's public API from here and see the real response."
+      footnote="Requests go through the registry's own guarded path: only catalogued surfaces are reachable, there is no way to pass an arbitrary URL, and timeouts, response-size caps and rate limits are enforced server-side. Credentials are never handled here."
     >
       <div className="space-y-3">
         <label className="block">
@@ -77,7 +76,7 @@ export function SurfacePlayground({ netuid }: { netuid: number }) {
         </label>
         {selected ? <SurfaceRunner key={selected.id} surface={selected} /> : null}
       </div>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -165,7 +164,7 @@ function SurfaceRunner({ surface }: { surface: Surface }) {
 function ResponseView({ outcome }: { outcome: SurfaceCallOutcome }) {
   if (!outcome.ok) {
     return (
-      <Panel as="div" tone="warn">
+      <Panel>
         <p className="text-13 text-ink-strong">{outcome.error.message}</p>
         <p className="mt-1 text-10 text-ink-muted">{outcome.error.code}</p>
       </Panel>
@@ -174,7 +173,7 @@ function ResponseView({ outcome }: { outcome: SurfaceCallOutcome }) {
   const r = outcome.result;
   const ok = r.status_code >= 200 && r.status_code < 300;
   return (
-    <Panel as="div">
+    <Panel>
       <div className="mb-2 flex flex-wrap items-center gap-3 text-10">
         <span className={ok ? "text-health-ok" : "text-health-warn"}>HTTP {r.status_code}</span>
         <span className="text-ink-muted tabular-nums">{r.latency_ms} ms</span>

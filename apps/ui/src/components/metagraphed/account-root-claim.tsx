@@ -29,14 +29,14 @@ export function AccountRootClaim({ ss58 }: { ss58: string }) {
   // a plain statement rather than an error or an empty-state alarm.
   if (!c || !c.claim_kind) {
     return (
-      <Panel as="section">
+      <Panel>
         <p className="text-10 text-ink-muted">This account has no root-claim state recorded.</p>
       </Panel>
     );
   }
 
   return (
-    <Panel as="section">
+    <Panel>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         <div>
           <div className="text-11 text-ink-muted">claim type</div>

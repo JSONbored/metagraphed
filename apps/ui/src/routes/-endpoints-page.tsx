@@ -7,10 +7,12 @@ import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
 import {
   HealthDot,
-  SectionHeading,
   DownloadCsvButton,
-  StatTile,
   ShareButton,
+  SectionHead,
+  FactStrip,
+  FactCell,
+  RangeControl,
 } from "@jsonbored/ui-kit";
 import {
   AsyncPanel,
@@ -21,16 +23,14 @@ import {
   QueryBar,
   QueryProgress,
   ResponsiveTable,
-  TabStrip,
   type FilterChipItem,
 } from "@/components/metagraphed/primitives";
 import { EndpointsPriorityStrip } from "@/components/metagraphed/endpoints-priority-strip";
 import { EndpointOperationalList } from "@/components/metagraphed/endpoint-operational-list";
 import { EndpointComparePanel } from "@/components/metagraphed/endpoint-compare-panel";
 
-import { Radio, Server, ShieldCheck, Activity } from "lucide-react";
-import { LatencyHeatmap } from "@/components/metagraphed/charts/latency-heatmap";
 import { IncidentsTimeline } from "@/components/metagraphed/analytics/incidents-timeline";
+import { LatencyHeatmap } from "@/components/metagraphed/charts/latency-heatmap";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
 import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
@@ -122,11 +122,11 @@ export function EndpointsPage() {
         >
           <EndpointsStatStrip />
         </AsyncPanel>
-        <TabStrip
-          items={ENDPOINTS_TABS}
+        <RangeControl
+          options={ENDPOINTS_TABS.map((t) => ({ value: t.id, label: String(t.label) }))}
           value={tab}
           onChange={(v: EndpointsTab) => setTab(v)}
-          ariaLabel="Endpoints sections"
+          label="Endpoints sections"
         />
 
         {tab === "proxy" && (
@@ -135,7 +135,7 @@ export function EndpointsPage() {
               <ProxyHero />
             </section>
             <section>
-              <SectionHeading title="Proxy usage" />
+              <SectionHead name="Proxy usage" />
               <AsyncPanel
                 height="md"
                 context="proxy usage"
@@ -166,7 +166,7 @@ export function EndpointsPage() {
               <EndpointsPriorityStrip />
             </AsyncPanel>
             <section>
-              <SectionHeading title="Endpoint directory" />
+              <SectionHead name="Endpoint directory" />
               <AsyncPanel
                 height="lg"
                 context="endpoints"
@@ -184,7 +184,7 @@ export function EndpointsPage() {
             <TimeRangeProvider>
               <section>
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
-                  <SectionHeading title="Latency diagnostics" />
+                  <SectionHead name="Latency diagnostics" />
                   <TimeRangeScrub />
                 </div>
                 <AsyncPanel
@@ -202,7 +202,7 @@ export function EndpointsPage() {
         {tab === "advanced" && (
           <>
             <section>
-              <SectionHeading title="RPC pools" />
+              <SectionHead name="RPC pools" />
               <AsyncPanel
                 height="sm"
                 context="RPC pools"
@@ -212,7 +212,7 @@ export function EndpointsPage() {
               </AsyncPanel>
             </section>
             <section>
-              <SectionHeading title="Endpoint pools" />
+              <SectionHead name="Endpoint pools" />
               <AsyncPanel
                 height="sm"
                 context="endpoint pools"
@@ -222,7 +222,7 @@ export function EndpointsPage() {
               </AsyncPanel>
             </section>
             <section>
-              <SectionHeading title="Root RPC/WSS endpoints" />
+              <SectionHead name="Root RPC/WSS endpoints" />
               <AsyncPanel
                 height="sm"
                 context="root RPC/WSS endpoints"
@@ -237,7 +237,7 @@ export function EndpointsPage() {
         {tab === "incidents" && (
           <>
             <section>
-              <SectionHeading title="Incidents timeline" />
+              <SectionHead name="Incidents timeline" />
               <AsyncPanel
                 height="md"
                 context="incidents"
@@ -280,24 +280,20 @@ function EndpointsStatStrip() {
   const ok = probed.filter((e) => e.health === "ok").length;
   const okPct = probed.length > 0 ? Math.round((ok / probed.length) * 100) : null;
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <StatTile icon={Radio} eyebrow="Endpoints" value={total} hint="tracked" />
-      <StatTile
-        icon={Server}
-        eyebrow="RPC pools"
+    <FactStrip variant="grid">
+      <FactCell label="Endpoints" value={total} hint="tracked" />
+      <FactCell
+        label="RPC pools"
         value={pools.length}
         hint={proxy ? `${proxy} proxy` : undefined}
-        tone="accent"
       />
-      <StatTile icon={ShieldCheck} eyebrow="Archive-capable" value={archive} />
-      <StatTile
-        icon={Activity}
-        eyebrow="Healthy"
+      <FactCell label="Archive-capable" value={archive} />
+      <FactCell
+        label="Healthy"
         value={okPct != null ? `${okPct}%` : "—"}
         hint={`${ok}/${probed.length} probed`}
-        tone={okPct != null && okPct > 90 ? "ok" : okPct != null && okPct < 70 ? "warn" : "default"}
       />
-    </div>
+    </FactStrip>
   );
 }
 

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { SectionLabel } from "./section-label";
 
 export type PanelHeaderProps = {
   title: ReactNode;
@@ -34,7 +33,7 @@ export function PanelHeader({
     >
       <div className="min-w-0">
         {variant === "micro" ? (
-          <SectionLabel>{title}</SectionLabel>
+          <h3 className="text-13 font-semibold text-ink-strong">{title}</h3>
         ) : (
           <h2 className="font-display text-16 font-medium leading-tight text-ink-strong">
             {title}

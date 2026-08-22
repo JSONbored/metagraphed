@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { CopyableCode } from "@jsonbored/ui-kit";
+import { CopyableCode, RangeControl } from "@jsonbored/ui-kit";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { classNames } from "@/lib/metagraphed/format";
 
 // Copy-paste "how do I call this" snippets for a GET against a metagraphed
 // endpoint. Mirrors the backend generateServiceSnippets forms (#351) — curl /
@@ -90,32 +89,13 @@ export function EndpointSnippet({ rows }: { rows: EndpointSnippetRow[] }) {
   const [lang, setLang] = useState<ApiSnippetLang>("url");
   return (
     <>
-      {/* Deliberately not <Panel>: this is a segmented language switcher
-          (role="tablist"), and Panel would impose card padding and semantics on
-          it. The no-restricted-syntax suppression that used to sit here went
-          dead — ESLint reports it as unused, so the rule no longer matches this
-          class list and the directive was only suppressing itself. */}
-      <div
-        className="mb-3 inline-flex rounded border border-border bg-card p-0.5"
-        role="tablist"
-        aria-label="Snippet language"
-      >
-        {API_SNIPPET_LANGS.map((l) => (
-          <button
-            key={l.id}
-            type="button"
-            role="tab"
-            aria-selected={lang === l.id}
-            onClick={() => setLang(l.id)}
-            className={classNames(
-              "rounded px-2.5 py-1 text-11 transition-colors",
-              lang === l.id ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
-            )}
-          >
-            {l.label}
-          </button>
-        ))}
-      </div>
+      <RangeControl
+        label="Snippet language"
+        options={API_SNIPPET_LANGS.map((l) => ({ value: l.id, label: l.label }))}
+        value={lang}
+        onChange={setLang}
+        className="mb-3"
+      />
       <div className="space-y-2">
         {rows.map((r) => (
           <CopyableCode

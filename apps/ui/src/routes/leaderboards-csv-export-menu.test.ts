@@ -33,9 +33,12 @@ function csvMenuSource() {
   );
 }
 
-describe("leaderboards ActionBar CSV export", () => {
-  it("renders exactly one CSV-export trigger in the rankings ActionBar, not one per board", () => {
-    const actionBar = host.slice(host.indexOf("<ActionBar>"), host.indexOf("</ActionBar>"));
+describe("leaderboards hero CSV export", () => {
+  it("renders exactly one CSV-export trigger in the rankings action row, not one per board", () => {
+    // The hero's action row is the former ActionBar (#11607): slice the EntityHero
+    // up to its `sentence` prop, which follows `action`.
+    const start = host.indexOf("<EntityHero");
+    const actionBar = host.slice(start, host.indexOf("sentence={", start));
     expect(actionBar).toContain("<LeaderboardsCsvExportMenu");
     // Exactly one menu element -- not one per board.
     expect(actionBar.match(/<LeaderboardsCsvExportMenu/g)?.length).toBe(1);

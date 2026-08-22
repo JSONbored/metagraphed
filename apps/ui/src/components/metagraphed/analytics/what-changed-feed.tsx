@@ -142,7 +142,7 @@ export function WhatChangedFeed({
   }
 
   return (
-    <Panel as="div" flush className={className}>
+    <Panel flush className={className}>
       <div className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <div>

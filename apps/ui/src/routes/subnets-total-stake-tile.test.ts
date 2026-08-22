@@ -4,11 +4,11 @@ import { describe, expect, it } from "vitest";
 
 // #6271 (historical): /subnets showed no stake figure at all. Six prior PR
 // attempts were closed by the maintainer -- the recurring mistakes: (1) a
-// static latest value instead of an actual trend, (2) cramming a 5th StatTile
+// static latest value instead of an actual trend, (2) cramming a 5th tile
 // into a fixed-column grid producing an orphaned single tile at mobile/tablet
 // widths, and (3) an out-of-sync Suspense fallback skeleton count causing a
 // layout shift when data loads. The original fix (`SubnetsStatStrip`) reused
-// economics-panel.tsx's StatTile+Sparkline+flex-wrap pattern.
+// economics-panel.tsx's tile+sparkline+flex-wrap pattern.
 //
 // #8248 replaced that whole 5-tile card strip (plus the separate
 // SubnetsHighlights ops-card row above it) with `SubnetsCompactStats` -- a
@@ -73,7 +73,7 @@ describe("subnets.index.tsx compact masthead stats (post-#8248)", () => {
 
   it("renders as an inline text row, not a card/grid layout that could produce an orphaned tile", () => {
     expect(strip).not.toMatch(/grid grid-cols-\d/);
-    expect(strip).not.toContain("<StatTile");
+    expect(strip).not.toContain("<FactStrip");
   });
 
   it("the Suspense fallback for the compact-stats AsyncPanel is a single skeleton, not a per-tile count that can drift out of sync", () => {

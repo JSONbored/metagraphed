@@ -2,29 +2,15 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Fragment, useState, type ReactNode } from "react";
 import {
-  Activity,
   AlertCircle,
-  Boxes,
-  TrendingUp,
-  Sparkles,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  Coins,
-  Gauge,
   Github,
   Globe,
   MessageCircle,
-  Network,
-  Radar,
   RefreshCw,
-  Scale,
   Tag,
-  Unplug,
-  UserMinus,
-  UserPlus,
-  Users,
 } from "lucide-react";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { PriceAtTx } from "@/components/metagraphed/price-at-tx";
@@ -47,22 +33,23 @@ import {
   TimeAgo,
   TableState,
   ShareButton,
-  ActionBar,
-  SectionAnchor,
-  StatTile,
   BarMini,
   Chip,
   DownloadCsvButton,
   ExternalLink,
   BackToTop,
   Definition,
+  AnalyticsSection,
+  FactStrip,
+  FactCell,
+  EntityHero,
+  FactSentence,
+  SectionNav,
 } from "@jsonbored/ui-kit";
-import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
+import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import { AccountPositionHistoryChart } from "@/components/metagraphed/account-position-history-chart";
 import { AccountHoldingsHistory } from "@/components/metagraphed/account-holdings-history";
-import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
-import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   accountAxonRemovalsQuery,
   accountChildrenQuery,
@@ -130,7 +117,7 @@ import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 // #8358: detail-page template tabs. Overview carries the KPI band's context
 // plus a bounded recent-activity preview; everything else is a full,
 // unbounded view one tap away. Mirrors -subnets-netuid-page.tsx's TABS/
-// SECTION_TO_TAB pair so cross-tab hash deep links keep working.
+// every section renders on one page, so hash deep links just work.
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "positions", label: "Positions" },
@@ -143,29 +130,6 @@ const TABS = [
   { id: "extrinsics", label: "Extrinsics" },
   { id: "api", label: "API" },
 ] as const;
-
-const SECTION_TO_TAB: Record<string, string> = {
-  identity: "overview",
-  entities: "overview",
-  "holdings-history": "holdings",
-  portfolio: "positions",
-  "stake-flow": "positions",
-  "stake-moves": "positions",
-  footprint: "positions",
-  delegation: "positions",
-  history: "activity",
-  teardown: "activity",
-  registrations: "activity",
-  deregistrations: "activity",
-  "weight-setting": "activity",
-  "endpoint-announcements": "activity",
-  kinds: "activity",
-  events: "activity",
-  extrinsics: "extrinsics",
-  transfers: "transfers",
-  counterparties: "transfers",
-  call: "api",
-};
 
 export function AccountDetailPage() {
   const { ss58 } = useParams({ from: "/accounts/$ss58" });
@@ -276,49 +240,16 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const dualRole = isDualRoleAccount(account, balance?.balance_tao);
   const [roleView, setRoleView] = useState<AccountRole>(detectedRole);
 
-  const tab = useActiveTab("overview");
-  useHashScroll(tab, SECTION_TO_TAB);
-
-  const tabsWithCounts = TABS.map((t) => {
-    if (t.id === "positions") return { ...t, count: portfolio?.position_count || undefined };
-    if (t.id === "transfers") return { ...t, count: transfers.length || undefined };
-    if (t.id === "activity") return { ...t, count: account.event_count || undefined };
-    if (t.id === "extrinsics") return { ...t, count: signedExtrinsics.length || undefined };
-    return { ...t };
-  });
-
   return (
     <>
-      <PageMasthead
-        eyebrow="Explorer · account"
-        live
-        title={resolvedTitle.display}
-        description={
-          <div className="space-y-4">
-            <p className="max-w-2xl">
-              {identity?.has_identity && identity.description
-                ? identity.description
-                : "Cross-subnet registrations, first-party chain events, and daily activity rollups for one Bittensor account."}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="max-w-full sm:max-w-fit rounded border border-border/80 bg-card px-3 py-2">
-                <CopyableCode value={ss58} truncate={false} className="max-w-full" />
-              </div>
-              <RoleChip role={detectedRole} dual={dualRole} />
-              {resolvedTitle.source === "nametag" && resolvedTitle.category ? (
-                <Chip tone="muted" title={`Curated nametag · ${resolvedTitle.category}`}>
-                  {resolvedTitle.category}
-                </Chip>
-              ) : null}
-            </div>
-          </div>
-        }
-        actions={
+      <EntityHero
+        name={resolvedTitle.display}
+        action={
           <>
-            <ActionBar>
+            <div className="mg-actions">
               <WatchStarButton kind="account" id={ss58} label="this account" iconOnly />
               <ShareButton bare iconOnly />
-            </ActionBar>
+            </div>
             {/* #8484: outside the ActionBar (its children need their own
                 `bare` variant for the segmented look) but still in `actions`
                 -- unlike `description`, this row isn't `line-clamp`-collapsed,
@@ -334,7 +265,30 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             ) : null}
           </>
         }
-        caption="explorer / v1"
+        sentence={
+          <FactSentence>
+            {
+              <div className="space-y-4">
+                <p className="max-w-2xl">
+                  {identity?.has_identity && identity.description
+                    ? identity.description
+                    : "Cross-subnet registrations, first-party chain events, and daily activity rollups for one Bittensor account."}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="max-w-full sm:max-w-fit rounded border border-border/80 bg-card px-3 py-2">
+                    <CopyableCode value={ss58} truncate={false} className="max-w-full" />
+                  </div>
+                  <RoleChip role={detectedRole} dual={dualRole} />
+                  {resolvedTitle.source === "nametag" && resolvedTitle.category ? (
+                    <Chip tone="muted" title={`Curated nametag · ${resolvedTitle.category}`}>
+                      {resolvedTitle.category}
+                    </Chip>
+                  ) : null}
+                </div>
+              </div>
+            }
+          </FactSentence>
+        }
       />
 
       <AccountKpiBand
@@ -354,7 +308,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         lastAnnouncedAt={lastAnnouncedAt}
       />
 
-      <ProfileTabs tabs={tabsWithCounts} defaultTab="overview" />
+      <SectionNav items={TABS.map((t) => ({ id: t.id, name: t.label }))} />
 
       {!hasActivity ? (
         <EmptyState
@@ -364,15 +318,15 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         />
       ) : null}
 
-      {tab === "overview" && (
+      <div id="overview" data-tab="overview">
         <>
           {identity?.has_identity ? <AccountIdentitySection ss58={ss58} /> : null}
           <AccountRecentActivityPreview events={account.recent_events} />
           <AccountEntitiesSection ss58={ss58} />
         </>
-      )}
+      </div>
 
-      {tab === "positions" && (
+      <div id="positions" data-tab="positions">
         <>
           {/* #8252: coldkey leads with what it holds; hotkey leads with its
               registrations. Both render the same section set within this tab. */}
@@ -394,32 +348,31 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           {/* #6723: live child/parent-hotkey stake-weight delegation graph. */}
           <AccountDelegationSection ss58={ss58} />
         </>
-      )}
+      </div>
 
-      {tab === "holdings" && (
-        <SectionAnchor
+      <div id="holdings" data-tab="holdings">
+        <AnalyticsSection
           id="holdings-history"
-          title="Holdings over time"
-          subtitle="Staked τ by subnet from daily position snapshots — free balance stays a live read in the band above."
-          tone="accent"
-          info="Depth is limited by how far back daily snapshots reach; it grows as the genesis backfill (#8368) lands."
+          name="Holdings over time"
+          question="Staked τ by subnet from daily position snapshots — free balance stays a live read in the band above."
+          footnote="Depth is limited by how far back daily snapshots reach; it grows as the genesis backfill (#8368) lands."
         >
           <AccountHoldingsHistory ss58={ss58} />
-        </SectionAnchor>
-      )}
+        </AnalyticsSection>
+      </div>
 
-      {tab === "holdings" && (
-        <SectionAnchor
+      <div data-tab="holdings">
+        <AnalyticsSection
           id="root-claim"
-          title="Root claim"
-          subtitle="What this account's root stake would do in a swap, and which hotkeys it reaches."
-          info="GET /api/v1/accounts/{ss58}/root-claim — the payload's own `field_sources` marks the claim type as MEASURED (read from SubtensorModule.RootClaimType) and the hotkey list as RECONSTRUCTED (inferred from other state). The panel shows that provenance beside the figure it qualifies rather than rendering an inference with the authority of a reading."
+          name="Root claim"
+          question="What this account's root stake would do in a swap, and which hotkeys it reaches."
+          footnote="GET /api/v1/accounts/{ss58}/root-claim — the payload's own `field_sources` marks the claim type as MEASURED (read from SubtensorModule.RootClaimType) and the hotkey list as RECONSTRUCTED (inferred from other state). The panel shows that provenance beside the figure it qualifies rather than rendering an inference with the authority of a reading."
         >
           <AccountRootClaim ss58={ss58} />
-        </SectionAnchor>
-      )}
+        </AnalyticsSection>
+      </div>
 
-      {tab === "transfers" && (
+      <div id="transfers" data-tab="transfers">
         <>
           <AccountTransfersSection
             ss58={ss58}
@@ -432,25 +385,24 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           {/* #3340: the aggregated fund-flow view over the same transfer data. */}
           <AccountCounterpartiesSection ss58={ss58} />
         </>
-      )}
+      </div>
 
-      {tab === "activity" && (
+      <div id="activity" data-tab="activity">
         <>
           {/* Daily activity is a hotkey-keyed rollup -- rendering it for a
               coldkey guarantees the framed "No daily hotkey activity yet"
               panel the redesign removes, so it's hotkey-only by construction
               rather than relying on an empty state to explain itself. */}
           {detectedRole === "hotkey" ? (
-            <SectionAnchor
+            <AnalyticsSection
               id="history"
-              title="Daily activity"
-              subtitle="Per-day first-party account events, newest rollups from the chain-direct explorer."
-              tone="accent"
-              info="History is keyed by hotkey activity only."
-              right={<SectionBadge tone="accent">hotkey rollup</SectionBadge>}
+              name="Daily activity"
+              question="Per-day first-party account events, newest rollups from the chain-direct explorer."
+              footnote="History is keyed by hotkey activity only."
+              controls={<SectionBadge tone="accent">hotkey rollup</SectionBadge>}
             >
               <AccountHistoryChart ss58={ss58} />
-            </SectionAnchor>
+            </AnalyticsSection>
           ) : null}
           <AccountTeardownActivitySection ss58={ss58} />
           <AccountRegistrationActivitySection ss58={ss58} />
@@ -458,12 +410,13 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           <AccountWeightSettingSection ss58={ss58} />
           <AccountEndpointAnnouncementSection ss58={ss58} />
           {account.event_kinds.length > 0 ? (
-            <SectionAnchor
+            <AnalyticsSection
               id="kinds"
-              title="Activity by kind"
-              subtitle="Relative event mix across the indexed sample for this account."
-              tone="accent"
-              right={<SectionBadge>{formatNumber(account.event_kinds.length)} kinds</SectionBadge>}
+              name="Activity by kind"
+              question="Relative event mix across the indexed sample for this account."
+              controls={
+                <SectionBadge>{formatNumber(account.event_kinds.length)} kinds</SectionBadge>
+              }
             >
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {account.event_kinds.map((entry) => (
@@ -480,13 +433,13 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                   </div>
                 ))}
               </div>
-            </SectionAnchor>
+            </AnalyticsSection>
           ) : null}
           <AccountEventsSection ss58={ss58} kindOptions={account.event_kinds} />
         </>
-      )}
+      </div>
 
-      {tab === "extrinsics" && (
+      <div id="extrinsics" data-tab="extrinsics">
         <AccountExtrinsicsSection
           ss58={ss58}
           rows={signedExtrinsics}
@@ -495,13 +448,13 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           error={extrinsicsResult.error}
           onRetry={() => void extrinsicsResult.refetch()}
         />
-      )}
+      </div>
 
-      {tab === "api" && (
-        <SectionAnchor
+      <div id="api" data-tab="api">
+        <AnalyticsSection
           id="call"
-          title="Call this endpoint"
-          subtitle="Copy a ready-to-run request for this account."
+          name="Call this endpoint"
+          question="Copy a ready-to-run request for this account."
         >
           <EndpointSnippet
             rows={[
@@ -520,8 +473,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
               { label: "prometheus", path: `/api/v1/accounts/${sourceRef}/prometheus` },
             ]}
           />
-        </SectionAnchor>
-      )}
+        </AnalyticsSection>
+      </div>
 
       {/* #6432: deliberately NOT "← All accounts" like the other detail pages'
           back-links. /accounts is a lookup form, not an index -- there is no
@@ -681,17 +634,14 @@ function AccountKpiBand({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {role === "coldkey" ? (
           <>
-            <StatTile
-              icon={balanceError ? AlertCircle : Coins}
-              eyebrow="Total balance"
+            <FactCell
+              label="Total balance"
               value={total != null ? fmtTaoCompact(total) : freeValue}
               hint="free + staked · live RPC"
-              tone={balanceError ? "down" : "accent"}
               className="rounded p-4"
             />
-            <StatTile
-              icon={Scale}
-              eyebrow="Free / staked"
+            <FactCell
+              label="Free / staked"
               value={
                 <span className="text-11">
                   {freeValue} <span className="text-ink-muted">/</span>{" "}
@@ -701,9 +651,8 @@ function AccountKpiBand({
               hint="wallet · positions"
               className={KPI_TILE}
             />
-            <StatTile
-              icon={Boxes}
-              eyebrow="Positions"
+            <FactCell
+              label="Positions"
               value={(() => {
                 if (portfolioPhase === "pending") return <Skeleton className="h-5 w-10" />;
                 if (portfolioPhase === "error") return <StatUnavailable />;
@@ -717,23 +666,20 @@ function AccountKpiBand({
               })()}
               className={KPI_TILE}
             />
-            <StatTile
-              icon={Clock}
-              eyebrow="First seen"
+            <FactCell
+              label="First seen"
               value={<TimeAgo at={account.first_seen_at ?? undefined} />}
               hint="chain-direct index"
               className={KPI_TILE}
             />
-            <StatTile
-              icon={Clock}
-              eyebrow="Last active"
+            <FactCell
+              label="Last active"
               value={<TimeAgo at={account.last_seen_at ?? undefined} />}
               hint="near-realtime"
               className={KPI_TILE}
             />
-            <StatTile
-              icon={TrendingUp}
-              eyebrow="Net stake flow"
+            <FactCell
+              label="Net stake flow"
               value={
                 <span
                   className={
@@ -749,47 +695,40 @@ function AccountKpiBand({
           </>
         ) : (
           <>
-            <StatTile
-              icon={Coins}
-              eyebrow="Stake"
+            <FactCell
+              label="Stake"
               value={fmtTaoCompact(validator?.total_stake_tao)}
               hint="validator detail · cross-subnet"
-              tone="accent"
               className="rounded p-4"
             />
-            <StatTile
-              icon={Users}
-              eyebrow="Nominators"
+            <FactCell
+              label="Nominators"
               value={
                 validator?.nominator_count != null ? formatNumber(validator.nominator_count) : "—"
               }
               hint="delegating coldkeys"
               className={KPI_TILE}
             />
-            <StatTile
-              icon={Scale}
-              eyebrow="Take"
+            <FactCell
+              label="Take"
               value={formatTakePct(validator?.take)}
               hint="validator cut"
               className={KPI_TILE}
             />
-            <StatTile
-              icon={Sparkles}
-              eyebrow="Est. APY"
+            <FactCell
+              label="Est. APY"
               value={formatApyPct(estApyPct)}
               hint="net of take · 30d rewards"
               className={KPI_TILE}
             />
-            <StatTile
-              icon={Radar}
-              eyebrow="Serving"
+            <FactCell
+              label="Serving"
               value={lastAnnouncedAt ? <TimeAgo at={lastAnnouncedAt} /> : "—"}
               hint="last endpoint announcement"
               className={KPI_TILE}
             />
-            <StatTile
-              icon={Clock}
-              eyebrow="Last active"
+            <FactCell
+              label="Last active"
               value={<TimeAgo at={account.last_seen_at ?? undefined} />}
               hint="near-realtime"
               className={KPI_TILE}
@@ -808,12 +747,11 @@ function AccountRecentActivityPreview({ events }: { events: AccountEvent[] }) {
   const rows = events.slice(0, 10);
   if (rows.length === 0) return null;
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="recent-activity"
-      title="Recent activity"
-      subtitle="The newest first-party events for this account."
-      tone="accent"
-      right={
+      name="Recent activity"
+      question="The newest first-party events for this account."
+      controls={
         <Link
           to="."
           search={(prev: Record<string, unknown>) => ({ ...prev, tab: "activity" })}
@@ -865,7 +803,7 @@ function AccountRecentActivityPreview({ events }: { events: AccountEvent[] }) {
           </div>
         ))}
       </div>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -919,9 +857,9 @@ function AccountFeedSectionSkeleton({
   info?: string;
 }) {
   return (
-    <SectionAnchor id={id} title={title} subtitle={subtitle} info={info} tone="accent">
+    <AnalyticsSection id={id} name={title} question={subtitle} footnote={info}>
       <Skeleton className="h-64 w-full" />
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -956,11 +894,10 @@ function AccountExtrinsicsSection({
   }
   if (phase === "error") {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="extrinsics"
-        title="Signed extrinsics"
-        info="The newest transactions this account signed, from the chain-direct extrinsics tier."
-        tone="accent"
+        name="Signed extrinsics"
+        footnote="The newest transactions this account signed, from the chain-direct extrinsics tier."
       >
         <TableState
           variant="error"
@@ -969,17 +906,16 @@ function AccountExtrinsicsSection({
           error={error}
           onRetry={onRetry}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
   if (phase === "empty") return null;
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="extrinsics"
-      title="Signed extrinsics"
-      info="The newest transactions this account signed, from the chain-direct extrinsics tier."
-      tone="accent"
-      right={
+      name="Signed extrinsics"
+      footnote="The newest transactions this account signed, from the chain-direct extrinsics tier."
+      controls={
         <div className="flex items-center gap-2">
           <SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>
           <DownloadCsvButton url={buildUrl(`/api/v1/accounts/${ss58}/extrinsics`)} />
@@ -1057,7 +993,7 @@ function AccountExtrinsicsSection({
           </tbody>
         </table>
       </DataPanel>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -1092,11 +1028,10 @@ function AccountTransfersSection({
   }
   if (phase === "error") {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="transfers"
-        title="Transfers"
-        info="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
-        tone="accent"
+        name="Transfers"
+        footnote="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
       >
         <TableState
           variant="error"
@@ -1105,17 +1040,16 @@ function AccountTransfersSection({
           error={error}
           onRetry={onRetry}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
   if (phase === "empty") return null;
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="transfers"
-      title="Transfers"
-      info="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
-      tone="accent"
-      right={
+      name="Transfers"
+      footnote="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
+      controls={
         <div className="flex items-center gap-2">
           <SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>
           <DownloadCsvButton url={buildUrl(`/api/v1/accounts/${ss58}/transfers`)} />
@@ -1182,7 +1116,7 @@ function AccountTransfersSection({
           </tbody>
         </table>
       </DataPanel>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -1213,7 +1147,7 @@ function fmtAlphaPrice(v: number | null | undefined): string {
 const KPI_TILE = "rounded border-border/80 p-4";
 
 // Compact TAO formatter for the portfolio KPI tiles — a long raw value like
-// "338,030.153 τ" wraps + overflows a narrow StatTile, so summarise it (338.0k τ).
+// "338,030.153 τ" wraps + overflows a narrow FactCell, so summarise it (338.0k τ).
 function fmtTaoCompact(v?: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   if (v === 0) return "0 τ";
@@ -1243,11 +1177,10 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
   }
   if (result.isError) {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="stake-moves"
-        title="Stake moves"
-        subtitle="Where this account re-delegated stake over the window: total movements, the subnets it moved across, and the per-subnet breakdown."
-        tone="accent"
+        name="Stake moves"
+        question="Where this account re-delegated stake over the window: total movements, the subnets it moved across, and the per-subnet breakdown."
       >
         <TableState
           variant="error"
@@ -1256,7 +1189,7 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
   const subnets = m?.subnets ?? [];
@@ -1264,45 +1197,39 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
   const rows = [...subnets].sort((a, b) => b.movements - a.movements).slice(0, 20);
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="stake-moves"
-      title="Stake moves"
-      subtitle="Where this account re-delegated stake over the window: total movements, the subnets it moved across, and the per-subnet breakdown."
-      tone="accent"
-      info="Re-delegation activity for this account, from /api/v1/accounts/{ss58}/stake-moves — total movements over the window, how concentrated they are, the dominant subnet, and the per-subnet breakdown."
-      right={<SectionBadge tone="accent">{formatNumber(m.subnet_count)} subnets</SectionBadge>}
+      name="Stake moves"
+      question="Where this account re-delegated stake over the window: total movements, the subnets it moved across, and the per-subnet breakdown."
+      footnote="Re-delegation activity for this account, from /api/v1/accounts/{ss58}/stake-moves — total movements over the window, how concentrated they are, the dominant subnet, and the per-subnet breakdown."
+      controls={<SectionBadge tone="accent">{formatNumber(m.subnet_count)} subnets</SectionBadge>}
     >
-      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          icon={Activity}
-          eyebrow="Movements"
-          tone="accent"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Movements"
           value={formatNumber(m.total_movements)}
           hint={`over ${m.window}`}
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Boxes}
-          eyebrow="Subnets moved"
+        <FactCell
+          label="Subnets moved"
           value={formatNumber(m.subnet_count)}
           hint="distinct subnets"
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Scale}
-          eyebrow="Concentration"
+        <FactCell
+          label="Concentration"
           value={m.concentration != null ? m.concentration.toFixed(4) : "—"}
           hint="0 = spread, 1 = single"
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Sparkles}
-          eyebrow="Dominant subnet"
+        <FactCell
+          label="Dominant subnet"
           value={m.dominant_netuid != null ? `SN${m.dominant_netuid}` : "—"}
           hint="most-moved"
           className={KPI_TILE}
         />
-      </div>
+      </FactStrip>
       <DataPanel>
         <table className="w-full text-left text-13">
           <thead className="bg-surface">
@@ -1344,7 +1271,7 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
           Showing the {rows.length} most-active of {formatNumber(subnets.length)} subnets.
         </p>
       ) : null}
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -1365,7 +1292,7 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
   }
   if (result.isError) {
     return (
-      <SectionAnchor id="counterparties" title="Counterparties" subtitle={SUBTITLE} tone="accent">
+      <AnalyticsSection id="counterparties" name="Counterparties" question={SUBTITLE}>
         <TableState
           variant="error"
           title="Couldn't load counterparties"
@@ -1373,7 +1300,7 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
   const parties = c?.counterparties ?? [];
@@ -1382,47 +1309,41 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
   const rows = [...parties].sort((a, b) => volume(b) - volume(a)).slice(0, 20);
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="counterparties"
-      title="Counterparties"
-      subtitle={SUBTITLE}
-      tone="accent"
-      info="Fund-flow leaderboard from /api/v1/accounts/{ss58}/counterparties — the top addresses by transfer volume, with sent/received/net totals and the last block each was active in."
-      right={
+      name="Counterparties"
+      question={SUBTITLE}
+      footnote="Fund-flow leaderboard from /api/v1/accounts/{ss58}/counterparties — the top addresses by transfer volume, with sent/received/net totals and the last block each was active in."
+      controls={
         <SectionBadge tone="accent">{formatNumber(c.counterparty_count)} addresses</SectionBadge>
       }
     >
-      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          icon={Users}
-          eyebrow="Counterparties"
-          tone="accent"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Counterparties"
           value={formatNumber(c.counterparty_count)}
           hint="distinct addresses"
           className={KPI_TILE}
         />
-        <StatTile
-          icon={TrendingUp}
-          eyebrow="Total sent"
+        <FactCell
+          label="Total sent"
           value={fmtTaoCompact(c.total_sent_tao)}
           hint="outflow"
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Coins}
-          eyebrow="Total received"
+        <FactCell
+          label="Total received"
           value={fmtTaoCompact(c.total_received_tao)}
           hint="inflow"
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Activity}
-          eyebrow="Transfers scanned"
+        <FactCell
+          label="Transfers scanned"
           value={formatNumber(c.transfers_scanned ?? 0)}
           hint={c.scan_capped ? "scan capped" : "in window"}
           className={KPI_TILE}
         />
-      </div>
+      </FactStrip>
       <DataPanel>
         <table className="w-full text-left text-13">
           <thead className="bg-surface">
@@ -1487,7 +1408,7 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
           Showing the {rows.length} highest-volume of {formatNumber(parties.length)} counterparties.
         </p>
       ) : null}
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -1666,41 +1587,36 @@ function AccountDelegationSection({ ss58 }: { ss58: string }) {
   const edgeCount = childRows.length + parentRows.length;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="delegation"
-      title="Delegation"
-      tone="accent"
-      info="Live child/parent-hotkey stake-weight edges from /api/v1/accounts/{ss58}/children and /parents (ChildKeys/ParentKeys, KV-cached). Each row is one edge and its share on that subnet."
-      right={
+      name="Delegation"
+      footnote="Live child/parent-hotkey stake-weight edges from /api/v1/accounts/{ss58}/children and /parents (ChildKeys/ParentKeys, KV-cached). Each row is one edge and its share on that subnet."
+      controls={
         edgeCount > 0 ? (
           <SectionBadge tone="accent">{formatNumber(edgeCount)} edges</SectionBadge>
         ) : null
       }
     >
-      <div className="mb-4 grid gap-4 sm:grid-cols-3">
-        <StatTile
-          icon={Network}
-          eyebrow="Children"
-          tone="accent"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Children"
           value={childUnavailable ? "—" : formatNumber(childRows.length)}
           hint="delegated to"
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Users}
-          eyebrow="Parents"
+        <FactCell
+          label="Parents"
           value={parentUnavailable ? "—" : formatNumber(parentRows.length)}
           hint="delegating in"
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Boxes}
-          eyebrow="Subnets"
+        <FactCell
+          label="Subnets"
           value={formatNumber(new Set([...childRows, ...parentRows].map((r) => r.netuid)).size)}
           hint="with an edge"
           className={KPI_TILE}
         />
-      </div>
+      </FactStrip>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <DelegationSide
@@ -1726,7 +1642,7 @@ function AccountDelegationSection({ ss58 }: { ss58: string }) {
           unavailableTitle="Parents unavailable"
         />
       </div>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -1777,7 +1693,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
   }
   if (result.isError) {
     return (
-      <SectionAnchor id="entities" title="Entity" tone="accent">
+      <AnalyticsSection id="entities" name="Entity">
         <TableState
           variant="error"
           title="Couldn't load entity labels"
@@ -1785,7 +1701,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
   const labels: AccountEntityLabel[] = e?.labels ?? [];
@@ -1793,12 +1709,13 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
   if (!e || (labels.length === 0 && ties.length === 0)) return null;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="entities"
-      title="Entity"
-      tone="accent"
-      info="Community labels and subnet-ownership ties from /api/v1/accounts/{ss58}/entities. Ownership ties are automatic SubnetOwnerChanged transfers only (not genesis ownership)."
-      right={<SectionBadge tone="accent">{formatNumber(labels.length + ties.length)}</SectionBadge>}
+      name="Entity"
+      footnote="Community labels and subnet-ownership ties from /api/v1/accounts/{ss58}/entities. Ownership ties are automatic SubnetOwnerChanged transfers only (not genesis ownership)."
+      controls={
+        <SectionBadge tone="accent">{formatNumber(labels.length + ties.length)}</SectionBadge>
+      }
     >
       {labels.length > 0 ? (
         <div className="mb-6 grid gap-4 sm:grid-cols-2">
@@ -1873,7 +1790,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
           </DataPanel>
         </>
       ) : null}
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -1923,12 +1840,11 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
   }
   if (result.isError) {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="stake-flow"
-        title="Stake flow"
-        subtitle={SUBTITLE}
-        tone="accent"
-        right={windowControl}
+        name="Stake flow"
+        question={SUBTITLE}
+        controls={windowControl}
       >
         <TableState
           variant="error"
@@ -1937,7 +1853,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
 
@@ -1954,19 +1870,16 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
     .map((s) => ({ label: `SN${s.netuid}`, value: s.gross_flow_tao ?? 0 }));
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="stake-flow"
-      title="Stake flow"
-      subtitle={SUBTITLE}
-      tone="accent"
-      info="Per-account staking behavior from /api/v1/accounts/{ss58}/stake-flow — net vs gross TAO flow, a direction label (accumulating / exiting / churning / idle), concentration, and the per-subnet stake / unstake breakdown over the window."
-      right={windowControl}
+      name="Stake flow"
+      question={SUBTITLE}
+      footnote="Per-account staking behavior from /api/v1/accounts/{ss58}/stake-flow — net vs gross TAO flow, a direction label (accumulating / exiting / churning / idle), concentration, and the per-subnet stake / unstake breakdown over the window."
+      controls={windowControl}
     >
-      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          icon={TrendingUp}
-          eyebrow="Net flow"
-          tone="accent"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Net flow"
           value={
             <span
               className={
@@ -1979,16 +1892,14 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
           hint={`over ${f?.window ?? window}`}
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Activity}
-          eyebrow="Gross flow"
+        <FactCell
+          label="Gross flow"
           value={fmtTaoCompact(f?.gross_flow_tao)}
           hint="staked + unstaked"
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Gauge}
-          eyebrow="Direction"
+        <FactCell
+          label="Direction"
           value={<span className={stakeFlowDirClass(f?.direction)}>{f?.direction ?? "—"}</span>}
           hint={
             f?.concentration != null
@@ -1997,9 +1908,8 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
           }
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Boxes}
-          eyebrow="Dominant subnet"
+        <FactCell
+          label="Dominant subnet"
           value={
             f?.dominant_netuid != null ? (
               <Link
@@ -2016,7 +1926,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
           hint={`${formatNumber(f?.subnet_count ?? 0)} subnets`}
           className={KPI_TILE}
         />
-      </div>
+      </FactStrip>
 
       {bars.length > 0 ? (
         <div className="mb-4 rounded border border-border/80 px-4 py-4">
@@ -2085,7 +1995,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
           No stake or unstake flow recorded for this account over the {f?.window ?? window} window.
         </p>
       )}
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -2116,11 +2026,10 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
   }
   if (result.isError) {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="portfolio"
-        title="Portfolio"
-        subtitle="Cross-subnet neuron positions for this account: per-subnet stake, emission, and role, with an aggregate stake and yield summary."
-        tone="accent"
+        name="Portfolio"
+        question="Cross-subnet neuron positions for this account: per-subnet stake, emission, and role, with an aggregate stake and yield summary."
       >
         <TableState
           variant="error"
@@ -2129,52 +2038,46 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
   const positions = p?.positions ?? [];
   if (!p || positions.length === 0) return null;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="portfolio"
-      title="Portfolio"
-      subtitle="Cross-subnet neuron positions for this account: per-subnet stake, emission, and role, with an aggregate stake and yield summary."
-      tone="accent"
-      info="The account's registered neurons across every subnet, from /api/v1/accounts/{ss58}/portfolio — total stake and emission, the validator / miner split, and the per-subnet breakdown."
-      right={<SectionBadge tone="accent">{formatNumber(p.subnet_count)} subnets</SectionBadge>}
+      name="Portfolio"
+      question="Cross-subnet neuron positions for this account: per-subnet stake, emission, and role, with an aggregate stake and yield summary."
+      footnote="The account's registered neurons across every subnet, from /api/v1/accounts/{ss58}/portfolio — total stake and emission, the validator / miner split, and the per-subnet breakdown."
+      controls={<SectionBadge tone="accent">{formatNumber(p.subnet_count)} subnets</SectionBadge>}
     >
-      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          icon={Boxes}
-          eyebrow="Positions"
-          tone="accent"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Positions"
           value={formatNumber(p.position_count)}
           hint={`across ${formatNumber(p.subnet_count)} subnets`}
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Coins}
-          eyebrow="Total stake"
+        <FactCell
+          label="Total stake"
           value={fmtTaoCompact(p.total_stake_tao)}
           hint={`${formatNumber(p.validator_count)} val / ${formatNumber(p.miner_count)} min`}
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Sparkles}
-          eyebrow="Total emission"
+        <FactCell
+          label="Total emission"
           value={fmtTaoCompact(p.total_emission_tao)}
           hint="summed across positions"
           className={KPI_TILE}
         />
-        <StatTile
-          icon={TrendingUp}
-          eyebrow="Overall yield"
+        <FactCell
+          label="Overall yield"
           value={p.overall_yield != null ? p.overall_yield.toExponential(2) : "—"}
           hint="return rate"
           className={KPI_TILE}
         />
-      </div>
+      </FactStrip>
       <DataPanel>
         <table className="w-full text-left text-13">
           <thead className="bg-surface">
@@ -2261,7 +2164,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
           </div>
         ) : null}
       </DataPanel>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -2281,7 +2184,7 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
   }
   if (result.isError) {
     return (
-      <SectionAnchor id="identity" title="Identity" subtitle={SUBTITLE} tone="accent">
+      <AnalyticsSection id="identity" name="Identity" question={SUBTITLE}>
         <TableState
           variant="error"
           title="Could not load identity"
@@ -2289,18 +2192,17 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
   if (!identity || !identity.has_identity) return null;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="identity"
-      title="Identity"
-      subtitle={SUBTITLE}
-      tone="accent"
-      info="GET /api/v1/accounts/{ss58}/identity — the coldkey's own on-chain identity, distinct from subnet identity and the validator directory's coldkey-identity join."
+      name="Identity"
+      question={SUBTITLE}
+      footnote="GET /api/v1/accounts/{ss58}/identity — the coldkey's own on-chain identity, distinct from subnet identity and the validator directory's coldkey-identity join."
     >
       <div className="rounded border border-border/80 p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -2346,7 +2248,7 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
         ) : null}
       </div>
       <AccountIdentityTimeline ss58={ss58} />
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -2443,11 +2345,10 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
 
   if (result.isError) {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="teardown"
-        title="Teardown activity"
-        subtitle={`Axon endpoint removals (AxonInfoRemoved) for this account over the trailing ${windowLabel} window.`}
-        tone="accent"
+        name="Teardown activity"
+        question={`Axon endpoint removals (AxonInfoRemoved) for this account over the trailing ${windowLabel} window.`}
       >
         <TableState
           variant="error"
@@ -2456,7 +2357,7 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
 
@@ -2465,32 +2366,28 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
   if (removals === 0 && distinctSubnets === 0) return null;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="teardown"
-      title="Teardown activity"
-      subtitle={`Axon endpoint removals (AxonInfoRemoved) for this account over the trailing ${windowLabel} window.`}
-      tone="accent"
-      info="The account-level companion to subnet axon-removal activity — counts how often this hotkey removed an announced axon endpoint, and on how many distinct subnets."
-      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+      name="Teardown activity"
+      question={`Axon endpoint removals (AxonInfoRemoved) for this account over the trailing ${windowLabel} window.`}
+      footnote="The account-level companion to subnet axon-removal activity — counts how often this hotkey removed an announced axon endpoint, and on how many distinct subnets."
+      controls={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
     >
-      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
-        <StatTile
-          icon={Unplug}
-          eyebrow="Removals"
-          tone="accent"
+      <FactStrip>
+        <FactCell
+          label="Removals"
           value={formatNumber(removals)}
           hint={`AxonInfoRemoved · ${windowLabel}`}
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Boxes}
-          eyebrow="Distinct subnets"
+        <FactCell
+          label="Distinct subnets"
           value={formatNumber(distinctSubnets)}
           hint="subnets with teardown"
           className={KPI_TILE}
         />
-      </div>
-    </SectionAnchor>
+      </FactStrip>
+    </AnalyticsSection>
   );
 }
 
@@ -2516,11 +2413,10 @@ function AccountRegistrationActivitySection({ ss58 }: { ss58: string }) {
 
   if (result.isError) {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="registrations"
-        title="Registration activity"
-        subtitle={`Neuron registrations (NeuronRegistered) for this account over the trailing ${windowLabel} window.`}
-        tone="accent"
+        name="Registration activity"
+        question={`Neuron registrations (NeuronRegistered) for this account over the trailing ${windowLabel} window.`}
       >
         <TableState
           variant="error"
@@ -2529,7 +2425,7 @@ function AccountRegistrationActivitySection({ ss58 }: { ss58: string }) {
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
 
@@ -2538,32 +2434,28 @@ function AccountRegistrationActivitySection({ ss58 }: { ss58: string }) {
   if (registrations === 0 && distinctSubnets === 0) return null;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="registrations"
-      title="Registration activity"
-      subtitle={`Neuron registrations (NeuronRegistered) for this account over the trailing ${windowLabel} window.`}
-      tone="accent"
-      info="The account-level companion to subnet registration activity — counts how often this hotkey was registered into a subnet, and on how many distinct subnets."
-      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+      name="Registration activity"
+      question={`Neuron registrations (NeuronRegistered) for this account over the trailing ${windowLabel} window.`}
+      footnote="The account-level companion to subnet registration activity — counts how often this hotkey was registered into a subnet, and on how many distinct subnets."
+      controls={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
     >
-      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
-        <StatTile
-          icon={UserPlus}
-          eyebrow="Registrations"
-          tone="accent"
+      <FactStrip>
+        <FactCell
+          label="Registrations"
           value={formatNumber(registrations)}
           hint={`NeuronRegistered · ${windowLabel}`}
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Boxes}
-          eyebrow="Distinct subnets"
+        <FactCell
+          label="Distinct subnets"
           value={formatNumber(distinctSubnets)}
           hint="subnets with registration"
           className={KPI_TILE}
         />
-      </div>
-    </SectionAnchor>
+      </FactStrip>
+    </AnalyticsSection>
   );
 }
 
@@ -2584,11 +2476,10 @@ function AccountDeregistrationActivitySection({ ss58 }: { ss58: string }) {
 
   if (result.isError) {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="deregistrations"
-        title="Deregistration activity"
-        subtitle={`Neuron deregistrations (NeuronDeregistered) for this account over the trailing ${windowLabel} window.`}
-        tone="accent"
+        name="Deregistration activity"
+        question={`Neuron deregistrations (NeuronDeregistered) for this account over the trailing ${windowLabel} window.`}
       >
         <TableState
           variant="error"
@@ -2597,7 +2488,7 @@ function AccountDeregistrationActivitySection({ ss58 }: { ss58: string }) {
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
 
@@ -2606,32 +2497,28 @@ function AccountDeregistrationActivitySection({ ss58 }: { ss58: string }) {
   if (deregistrations === 0 && distinctSubnets === 0) return null;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="deregistrations"
-      title="Deregistration activity"
-      subtitle={`Neuron deregistrations (NeuronDeregistered) for this account over the trailing ${windowLabel} window.`}
-      tone="accent"
-      info="The account-level companion to subnet deregistration activity — counts how often this hotkey was deregistered (evicted) from a subnet, and on how many distinct subnets."
-      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+      name="Deregistration activity"
+      question={`Neuron deregistrations (NeuronDeregistered) for this account over the trailing ${windowLabel} window.`}
+      footnote="The account-level companion to subnet deregistration activity — counts how often this hotkey was deregistered (evicted) from a subnet, and on how many distinct subnets."
+      controls={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
     >
-      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
-        <StatTile
-          icon={UserMinus}
-          eyebrow="Deregistrations"
-          tone="accent"
+      <FactStrip>
+        <FactCell
+          label="Deregistrations"
           value={formatNumber(deregistrations)}
           hint={`NeuronDeregistered · ${windowLabel}`}
           className={KPI_TILE}
         />
-        <StatTile
-          icon={Boxes}
-          eyebrow="Distinct subnets"
+        <FactCell
+          label="Distinct subnets"
           value={formatNumber(distinctSubnets)}
           hint="subnets with deregistration"
           className={KPI_TILE}
         />
-      </div>
-    </SectionAnchor>
+      </FactStrip>
+    </AnalyticsSection>
   );
 }
 
@@ -2660,11 +2547,10 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
 
   if (result.isError) {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="weight-setting"
-        title="Weight-setting activity"
-        subtitle={`Validator WeightsSet events for this account over the trailing ${windowLabel} window.`}
-        tone="accent"
+        name="Weight-setting activity"
+        question={`Validator WeightsSet events for this account over the trailing ${windowLabel} window.`}
       >
         <TableState
           variant="error"
@@ -2673,7 +2559,7 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
 
@@ -2685,33 +2571,29 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
   if (totalSets === 0 && subnets.length === 0) return null;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="weight-setting"
-      title="Weight-setting activity"
-      subtitle={`Validator WeightsSet events for this account over the trailing ${windowLabel} window — per-subnet breakdown when this hotkey submits weights.`}
-      tone="accent"
-      info="The account-level companion to subnet weight-setter leaderboards — keyed on the validator hotkey submitting its weight vector."
-      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+      name="Weight-setting activity"
+      question={`Validator WeightsSet events for this account over the trailing ${windowLabel} window — per-subnet breakdown when this hotkey submits weights.`}
+      footnote="The account-level companion to subnet weight-setter leaderboards — keyed on the validator hotkey submitting its weight vector."
+      controls={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
     >
       {
         <>
-          <div className="mb-4 grid max-w-2xl gap-4 sm:grid-cols-2">
-            <StatTile
-              icon={Scale}
-              eyebrow="Weight sets"
-              tone="accent"
+          <FactStrip>
+            <FactCell
+              label="Weight sets"
               value={formatNumber(totalSets)}
               hint={`WeightsSet · ${windowLabel}`}
               className={KPI_TILE}
             />
-            <StatTile
-              icon={Boxes}
-              eyebrow="Distinct subnets"
+            <FactCell
+              label="Distinct subnets"
               value={formatNumber(card?.subnet_count ?? subnets.length)}
               hint="subnets with weight sets"
               className={KPI_TILE}
             />
-          </div>
+          </FactStrip>
           <DataPanel>
             <table className="w-full text-left text-13">
               <thead className="bg-surface">
@@ -2746,7 +2628,7 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
           </DataPanel>
         </>
       }
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -2786,11 +2668,10 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
 
   if (bothError) {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="endpoint-announcements"
-        title={endpointAnnouncementsTitle}
-        subtitle={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
-        tone="accent"
+        name={endpointAnnouncementsTitle}
+        question={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
       >
         <TableState
           variant="error"
@@ -2802,7 +2683,7 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
             void prometheusResult.refetch();
           }}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
 
@@ -2824,20 +2705,17 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
   if (isEmpty) return null;
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="endpoint-announcements"
-      title={endpointAnnouncementsTitle}
-      subtitle={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
-      tone="accent"
-      info="The account-level companion to subnet serving + prometheus activity — counts how often this hotkey announced axon and Prometheus endpoints."
-      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+      name={endpointAnnouncementsTitle}
+      question={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
+      footnote="The account-level companion to subnet serving + prometheus activity — counts how often this hotkey announced axon and Prometheus endpoints."
+      controls={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
     >
       {
-        <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
-          <StatTile
-            icon={Radar}
-            eyebrow="Axon serving"
-            tone={servingFailed ? "warn" : "accent"}
+        <FactStrip>
+          <FactCell
+            label="Axon serving"
             value={servingFailed ? "—" : formatNumber(servingCount)}
             hint={
               servingFailed
@@ -2846,10 +2724,8 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
             }
             className={KPI_TILE}
           />
-          <StatTile
-            icon={Gauge}
-            eyebrow="Prometheus"
-            tone={prometheusFailed ? "warn" : "default"}
+          <FactCell
+            label="Prometheus"
             value={prometheusFailed ? "—" : formatNumber(prometheusCount)}
             hint={
               prometheusFailed
@@ -2858,9 +2734,9 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
             }
             className={KPI_TILE}
           />
-        </div>
+        </FactStrip>
       }
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -2903,11 +2779,10 @@ function AccountFootprintSection({
   }
   if (phase === "error") {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="footprint"
-        title="Subnet footprint"
-        subtitle="Current registrations across the indexed network, netuid-ordered, with stake distribution."
-        tone="accent"
+        name="Subnet footprint"
+        question="Current registrations across the indexed network, netuid-ordered, with stake distribution."
       >
         <TableState
           variant="error"
@@ -2916,7 +2791,7 @@ function AccountFootprintSection({
           error={subnetsResult.error}
           onRetry={() => void subnetsResult.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
   if (rows.length === 0) return null;
@@ -2927,12 +2802,11 @@ function AccountFootprintSection({
     .map((r) => ({ label: `SN${r.netuid}`, value: r.stake_tao ?? 0 }));
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="footprint"
-      title="Subnet footprint"
-      subtitle="Current registrations across the indexed network, netuid-ordered, with stake distribution."
-      tone="accent"
-      right={<SectionBadge>{formatNumber(rows.length)} subnets</SectionBadge>}
+      name="Subnet footprint"
+      question="Current registrations across the indexed network, netuid-ordered, with stake distribution."
+      controls={<SectionBadge>{formatNumber(rows.length)} subnets</SectionBadge>}
     >
       {staked.length > 0 ? (
         <div className="mb-4 rounded border border-border/80 px-4 py-4">
@@ -3058,7 +2932,7 @@ function AccountFootprintSection({
           </button>
         </div>
       ) : null}
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -3139,11 +3013,10 @@ function AccountEventsSection({
 
   if (result.isError) {
     return (
-      <SectionAnchor
+      <AnalyticsSection
         id="events"
-        title="Chain events"
-        info="Full first-party event feed for this account, newest first — filter by kind, page through history."
-        tone="accent"
+        name="Chain events"
+        footnote="Full first-party event feed for this account, newest first — filter by kind, page through history."
       >
         <TableState
           variant="error"
@@ -3152,17 +3025,16 @@ function AccountEventsSection({
           error={result.error}
           onRetry={() => void result.refetch()}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
     );
   }
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="events"
-      title="Chain events"
-      info="Full first-party event feed for this account, newest first — filter by kind, page through history."
-      tone="accent"
-      right={
+      name="Chain events"
+      footnote="Full first-party event feed for this account, newest first — filter by kind, page through history."
+      controls={
         <div className="flex items-center gap-2">
           {kindOptions.length > 0 ? (
             <FilterChip
@@ -3293,7 +3165,7 @@ function AccountEventsSection({
           ) : null}
         </div>
       )}
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 

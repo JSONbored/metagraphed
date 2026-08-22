@@ -5,14 +5,20 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getTaoMarket } from "@/lib/metagraphed/market.functions";
 import { ChevronDown, Coins, Layers, Server, Star } from "lucide-react";
-import { TableColGroup, columnWidths } from "@jsonbored/ui-kit";
+import {
+  TableColGroup,
+  columnWidths,
+  RangeControl,
+  type RangeOption,
+  EntityHero,
+  FactSentence,
+} from "@jsonbored/ui-kit";
 import {
   AsyncPanel,
   Chip,
   ColumnCustomizer,
   FilterChipRow,
   FilterSheet,
-  FreshnessPill,
   Indicator,
   PanelSkeleton,
   ProvenanceChip,
@@ -21,13 +27,11 @@ import {
   Panel,
   ReadinessGauge,
   StatusBadge,
-  StickyToolbar,
   TableSkeleton,
   useColumnVisibility,
   type ColumnDef,
   type FilterChipItem,
   type HealthStatus,
-  PageMasthead,
 } from "@/components/metagraphed/primitives";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -42,15 +46,11 @@ import {
   ViewModeToggle,
   ShareButton,
   DownloadCsvButton,
-  ActionBar,
   ListShell,
   LoadMore,
   SparkLegend,
-  MiniStack,
   Sparkline,
   BackToTop,
-  SegmentedToggle,
-  type SegmentedToggleOption,
   type ViewMode,
 } from "@jsonbored/ui-kit";
 import { useInView } from "@/hooks/use-in-view";
@@ -224,22 +224,16 @@ export function SubnetsPage() {
   const subnetsCsvUrl = buildUrl("/api/v1/subnets", { limit: SUBNETS_ALL_LIMIT });
   return (
     <AppShell>
-      <PageMasthead
-        live
-        title="Subnets"
-        // #11320: from HUB_COPY, not a second hand-written string. This slot
-        // and <meta name="description"> were separately authored copies of the
-        // same fact -- the shape that let /apis ship a title and an og:title
-        // naming the page differently.
-        description={hubLede("/subnets")}
-        actions={
+      <EntityHero
+        name="Subnets"
+        action={
           <>
             {search.section === "registry" ? (
               <>
                 <ViewModeToggle value={search.view} onChange={setView} />
               </>
             ) : null}
-            <ActionBar>
+            <div className="mg-actions">
               {search.section === "rankings" ? (
                 <LeaderboardsCsvExportMenu win={search.window} />
               ) : (
@@ -249,9 +243,10 @@ export function SubnetsPage() {
                 </>
               )}
               <ShareButton bare />
-            </ActionBar>
+            </div>
           </>
         }
+        sentence={<FactSentence>{hubLede("/subnets")}</FactSentence>}
       />
       {/* #8248: masthead trim -- the old nine meta-cards (SubnetsHighlights +
           a 5-tile SubnetsStatStrip) pushed the table ~1,700px down on mobile
@@ -444,7 +439,7 @@ function SubnetsDomainsRollup() {
   if (domains.length === 0) return null;
   const sorted = [...domains].sort((a, b) => (b.subnet_count ?? 0) - (a.subnet_count ?? 0));
   return (
-    <Panel as="div" className="mt-6">
+    <Panel className="mt-6">
       <div className="mb-2 text-13 text-ink-muted">Domains</div>
       <div className="flex flex-wrap gap-2">
         {sorted.map((d) => {
@@ -853,7 +848,7 @@ function SubnetsTable({ view }: { view: ViewMode }) {
         : search.health === "unknown"
           ? "new"
           : "";
-  const quickTabOptions: SegmentedToggleOption<QuickTab>[] = [
+  const quickTabOptions: RangeOption<QuickTab>[] = [
     { value: "", label: "All" },
     { value: "watched", label: watchlist.count > 0 ? `Watched · ${watchlist.count}` : "Watched" },
     { value: "api", label: "Has API" },
@@ -946,11 +941,11 @@ function SubnetsTable({ view }: { view: ViewMode }) {
 
           <QueryBar.Divider />
           <div className="hidden sm:flex items-center">
-            <SegmentedToggle
+            <RangeControl
               options={quickTabOptions}
               value={quickTab}
               onChange={(v: QuickTab) => onQuickTab(v)}
-              ariaLabel="Quick filter"
+              label="Quick filter"
               className="border-0 bg-transparent"
             />
           </div>
@@ -963,7 +958,7 @@ function SubnetsTable({ view }: { view: ViewMode }) {
             />
             {view === "table" ? (
               <>
-                <SegmentedToggle<"7d" | "30d" | "90d">
+                <RangeControl
                   options={[
                     { value: "7d", label: "7d" },
                     { value: "30d", label: "30d" },
@@ -971,7 +966,7 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                   ]}
                   value={trendWindow}
                   onChange={(v: "7d" | "30d" | "90d") => setTrendWindow(v)}
-                  ariaLabel="Trend window for row sparklines"
+                  label="Trend window for row sparklines"
                   className="border-0 bg-transparent"
                 />
                 <ColumnCustomizer
@@ -1127,7 +1122,7 @@ function SubnetsTable({ view }: { view: ViewMode }) {
   if (view === "grid" || view === "matrix") {
     return (
       <div>
-        <StickyToolbar className="mb-3">{filters}</StickyToolbar>
+        <div className={classNames("flex flex-wrap items-center gap-2", "mb-3")}>{filters}</div>
         {rows.length === 0 ? (
           emptyNode
         ) : view === "grid" ? (
@@ -1833,7 +1828,6 @@ function SubnetGrid({
                 value={s.surfaces_count ?? 0}
                 title="Verified public surfaces"
               />
-              <FreshnessPill updatedAt={s.updated_at ?? s.freshness} />
             </div>
           </div>
         </Link>
@@ -1875,7 +1869,7 @@ const HEALTH_TEXT: Record<string, string> = {
 
 function SubnetMatrix({ rows }: { rows: Subnet[] }) {
   return (
-    <Panel as="div">
+    <Panel>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-13 text-ink-muted">Health matrix · {rows.length} subnets</div>
         <div className="flex items-center gap-3 text-10 text-ink-muted">
@@ -1920,19 +1914,6 @@ function Legend({ color, label }: { color: string; label: string }) {
 }
 
 /* ---------- Row visualization cells ---------- */
-
-const SURFACE_KIND_COLORS: Record<string, string> = {
-  api: "var(--accent)",
-  openapi: "var(--accent)",
-  docs: "var(--health-ok)",
-  repo: "var(--ink-strong)",
-  dashboard: "var(--health-warn)",
-  data: "var(--ink-muted)",
-  sdk: "var(--accent)",
-  example: "var(--health-ok)",
-  sse: "var(--health-warn)",
-  rpc: "var(--ink-strong)",
-};
 
 const ALPHA_MAX_SUPPLY = 21_000_000;
 
@@ -2059,7 +2040,7 @@ function FinancialTrendCell({
 }
 
 // #3363: live emission share as a percentage, matching EconomicsPanel's
-// per-subnet StatTile formatting exactly (economics-panel.tsx) for visual
+// per-subnet FactCell formatting exactly (economics-panel.tsx) for visual
 // consistency between the profile tile and this table column.
 function EmissionCell({ share }: { share?: number }) {
   return (
@@ -2076,11 +2057,6 @@ function SurfacesCell({ subnet }: { subnet: Subnet }) {
   // show the surface-trust composition (official / registry-observed / other) —
   // the list API always carries these counts, so the bar is a meaningful
   // breakdown instead of a flat single-segment placeholder.
-  const TRUST_COLORS: Record<string, string> = {
-    official: "var(--accent)",
-    observed: "var(--ink-muted)",
-    other: "var(--border)",
-  };
   const official = num("official_surface_count");
   const observed = num("registry_observed_count");
   const trust = [
@@ -2088,15 +2064,6 @@ function SurfacesCell({ subnet }: { subnet: Subnet }) {
     { label: "observed", value: observed },
     { label: "other", value: Math.max(0, count - official - observed) },
   ];
-  const segments = (
-    byKind
-      ? Object.entries(byKind).map(([k, v]) => ({
-          label: k,
-          value: typeof v === "number" ? v : 0,
-          color: SURFACE_KIND_COLORS[k.toLowerCase()] ?? "var(--ink-muted)",
-        }))
-      : trust.map((t) => ({ ...t, color: TRUST_COLORS[t.label] }))
-  ).filter((s) => s.value > 0);
   const compact = false;
   const summary = (
     byKind ? Object.entries(byKind) : (trust.map((t) => [t.label, t.value]) as [string, number][])
@@ -2124,9 +2091,6 @@ function SurfacesCell({ subnet }: { subnet: Subnet }) {
         >
           {count || "—"}
         </span>
-        <span className={classNames("flex-1", compact ? "max-w-[64px]" : "max-w-[80px]")}>
-          <MiniStack segments={segments} height={compact ? 4 : 6} />
-        </span>
       </span>
     </SparkLegend>
   );
@@ -2134,7 +2098,7 @@ function SurfacesCell({ subnet }: { subnet: Subnet }) {
 
 /**
  * Registry / Rankings switch (#8311). Two sections, so a plain two-button
- * strip rather than the ProfileTabs machinery -- there's no overflow to
+ * strip rather than a section nav -- there's no overflow to
  * manage and no per-tab URL segment.
  */
 function SectionTabs({
@@ -2145,37 +2109,16 @@ function SectionTabs({
   onChange: (s: "registry" | "rankings") => void;
 }) {
   return (
-    <div
-      role="tablist"
-      aria-label="Subnets sections"
-      className="mb-4 flex items-center gap-1 border-b border-border"
-    >
-      {(
-        [
-          ["registry", "Registry"],
-          ["rankings", "Rankings"],
-        ] as const
-      ).map(([id, label]) => {
-        const active = section === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(id)}
-            className={classNames(
-              "relative min-h-11 px-3 py-2 text-13 font-medium transition-colors mg-focus-ring",
-              active
-                ? "text-ink-strong after:absolute after:inset-x-2 after:-bottom-px after:h-[1.5px] after:rounded after:bg-accent after:content-['']"
-                : "text-ink-muted hover:text-ink-strong",
-            )}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
+    <RangeControl
+      label="Subnets sections"
+      options={[
+        { value: "registry", label: "Registry" },
+        { value: "rankings", label: "Rankings" },
+      ]}
+      value={section}
+      onChange={onChange}
+      className="mb-4"
+    />
   );
 }
 

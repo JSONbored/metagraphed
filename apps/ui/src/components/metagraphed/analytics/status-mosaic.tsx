@@ -47,7 +47,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
     filter === "all" ? endpoints : endpoints.filter((e) => (e.health ?? "unknown") === filter);
 
   return (
-    <Panel as="div" flush className={className}>
+    <Panel flush className={className}>
       <div className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div>

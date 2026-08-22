@@ -159,7 +159,7 @@ export function ValidatorNominatorsTable({ queryOptions, search, setSearch }: Pr
 
 function NominatorCard({ n }: { n: ValidatorNominatorEntry }) {
   return (
-    <Panel as="div" className="block min-h-11">
+    <Panel className="block min-h-11">
       <div className="flex items-center justify-between gap-2">
         <CopyableCode value={n.coldkey} className="max-w-[70%]" />
         <span className="text-11 text-ink-muted shrink-0">

@@ -1,6 +1,6 @@
+import { EntityHero, FactSentence } from "@jsonbored/ui-kit";
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageMasthead } from "@/components/metagraphed/primitives";
 import { ChainTabs, activeChainTab } from "./-chain-hub";
 
 /**
@@ -22,7 +22,7 @@ function ChainHubLayout() {
 
   return (
     <AppShell>
-      <PageMasthead title="Chain" description={tab.blurb} pathname={pathname} live />
+      <EntityHero name="Chain" sentence={<FactSentence>{tab.blurb}</FactSentence>} />
       <ChainTabs />
       <Outlet />
     </AppShell>

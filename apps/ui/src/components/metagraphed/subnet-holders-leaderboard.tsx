@@ -1,10 +1,10 @@
+import { FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { useQuery } from "@tanstack/react-query";
 import { Database } from "lucide-react";
 import { subnetHoldersQuery } from "@/lib/metagraphed/queries";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { RealtimeFreshness, StatTile } from "@jsonbored/ui-kit";
 import { formatNumber } from "@/lib/metagraphed/format";
 
 /**
@@ -146,21 +146,19 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
           how many rows are on screen, and how fresh the pool pass is -- are
           about the LIST rather than about the subnet, so they moved to a
           caption under it. */}
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-        <StatTile
-          eyebrow="Holders"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Holders"
           value={data?.holder_count == null ? "—" : formatNumber(data.holder_count)}
-          tooltip="Distinct coldkeys holding alpha on this subnet through a stake position, across the whole subnet rather than the rows shown below."
+          hint="Distinct coldkeys holding alpha on this subnet through a stake position, across the whole subnet rather than the rows shown below."
         />
-        <StatTile
-          eyebrow="Alpha held"
+        <FactCell
+          label="Alpha held"
           value={data?.total_alpha == null ? "—" : fmtAlpha(data.total_alpha)}
-          tooltip="The alpha these positions account for on this subnet. It is the denominator every share below is taken over, not the subnet's SubnetAlphaOut."
+          hint="The alpha these positions account for on this subnet. It is the denominator every share below is taken over, not the subnet's SubnetAlphaOut."
         />
-        <StatTile
-          className="col-span-2 md:col-span-1"
-          eyebrow="Top 10 share"
-          tone={conc?.top10_share != null && conc.top10_share >= 0.5 ? "warn" : "default"}
+        <FactCell
+          label="Top 10 share"
           value={pctStr(conc?.top10_share ?? null)}
           hint={
             conc?.top5_share == null && conc?.top20_share == null
@@ -172,11 +170,10 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
                   .filter(Boolean)
                   .join(" · ")
           }
-          truncate={false}
-          tooltip="Share of the subnet's measured alpha held by its ten largest holders. Each rank is summed over the full holder set, never over the rows shown below."
+          className="col-span-2 md:col-span-1"
         />
-      </div>
-      <Panel as="div" flush className="overflow-hidden">
+      </FactStrip>
+      <Panel flush className="overflow-hidden">
         {/* MOBILE IS A RANKED LIST, NOT A TABLE OF LABELLED FIELDS.
             
             The first attempt rendered the four columns as `Alpha 41.2k α Share
@@ -298,9 +295,7 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
             : `Showing all ${formatNumber(shown)}`}
         </span>
         {data?.captured_at ? (
-          <span className="inline-flex items-center gap-1.5">
-            Pool totals <RealtimeFreshness at={data.captured_at} />
-          </span>
+          <span className="inline-flex items-center gap-1.5">Pool totals</span>
         ) : null}
       </div>
     </div>

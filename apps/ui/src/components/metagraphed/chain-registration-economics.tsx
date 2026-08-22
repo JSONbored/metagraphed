@@ -1,4 +1,4 @@
-import { StatTile } from "@jsonbored/ui-kit";
+import { FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { computeRegistrationCostStats } from "@/lib/metagraphed/chain-analytics";
 import { formatTao } from "@/lib/metagraphed/format";
 import type { SubnetEconomics } from "@/lib/metagraphed/types";
@@ -16,10 +16,10 @@ export function ChainRegistrationEconomics({ subnets }: { subnets: SubnetEconomi
   if (stats.count === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <StatTile eyebrow="Lowest registration cost" value={formatTao(stats.minTao)} />
-      <StatTile eyebrow="Median registration cost" value={formatTao(stats.medianTao)} />
-      <StatTile eyebrow="Highest registration cost" value={formatTao(stats.maxTao)} />
-    </div>
+    <FactStrip variant="grid">
+      <FactCell label="Lowest registration cost" value={formatTao(stats.minTao)} />
+      <FactCell label="Median registration cost" value={formatTao(stats.medianTao)} />
+      <FactCell label="Highest registration cost" value={formatTao(stats.maxTao)} />
+    </FactStrip>
   );
 }

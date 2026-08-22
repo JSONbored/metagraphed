@@ -7,8 +7,8 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
 import { TopActiveAccounts } from "@/components/metagraphed/top-active-accounts";
 import { TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS } from "@/components/metagraphed/top-active-accounts-ranking";
-import { ActionBar, ShareButton } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { ShareButton, EntityHero, FactSentence } from "@jsonbored/ui-kit";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { Ss58Inspector } from "@/components/metagraphed/ss58-inspector";
 import { TopHoldersPanel } from "@/components/metagraphed/top-holders-panel";
 import { YourPositionsPanel } from "@/components/metagraphed/your-positions-panel";
@@ -50,15 +50,18 @@ export function AccountsPage() {
 
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="Explorer"
-        live
-        title="Accounts"
-        description="Look up a Bittensor account by ss58 address (hotkey or coldkey) — its balance, staked positions, cross-subnet activity, and first-party chain-event history."
-        actions={
-          <ActionBar>
+      <EntityHero
+        name="Accounts"
+        action={
+          <div className="mg-actions">
             <ShareButton bare />
-          </ActionBar>
+          </div>
+        }
+        sentence={
+          <FactSentence>
+            Look up a Bittensor account by ss58 address (hotkey or coldkey) — its balance, staked
+            positions, cross-subnet activity, and first-party chain-event history.
+          </FactSentence>
         }
       />
       <EvmAddressRedirect />

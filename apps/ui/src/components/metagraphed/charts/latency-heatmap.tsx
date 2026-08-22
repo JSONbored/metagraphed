@@ -127,15 +127,11 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
   }, [endpoints, minEndpoints, maxProviders]);
 
   if (providers.length === 0) {
-    return (
-      <Panel as="div" bodyClassName="text-13 text-ink-muted">
-        No endpoint latency data yet.
-      </Panel>
-    );
+    return <Panel bodyClassName="text-13 text-ink-muted">No endpoint latency data yet.</Panel>;
   }
 
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justify-between gap-2">
         <div className="text-13 text-ink-muted">Latency heatmap · provider × kind</div>
         <div

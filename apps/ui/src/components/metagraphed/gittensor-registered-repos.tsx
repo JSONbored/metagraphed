@@ -48,7 +48,7 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
   const total = master?.repository_count;
 
   return (
-    <Panel as="div" id="registered-repos">
+    <Panel id="registered-repos">
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="text-13 text-ink-muted">Registered repositories</span>
         {total ? (

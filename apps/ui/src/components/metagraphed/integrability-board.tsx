@@ -1,6 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Gauge, Layers, CheckCircle2 } from "lucide-react";
-import { StatTile, BarMini, type BarMiniDatum } from "@jsonbored/ui-kit";
+import { BarMini, type BarMiniDatum, FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { coverageQuery } from "@/lib/metagraphed/queries";
 import type { Coverage } from "@/lib/metagraphed/types";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -46,31 +45,27 @@ export function IntegrabilityBoard() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <StatTile
-          icon={Gauge}
-          eyebrow="Average score"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Average score"
           value={avg != null ? `${Math.round(avg)}` : "—"}
           hint="/ 100"
         />
-        <StatTile
-          icon={Layers}
-          eyebrow="Median score"
+        <FactCell
+          label="Median score"
           value={median != null ? `${Math.round(median)}` : "—"}
           hint="/ 100"
         />
-        <StatTile
-          icon={CheckCircle2}
-          eyebrow="Fully complete"
+        <FactCell
+          label="Fully complete"
           value={fullyPct != null ? `${Math.round(fullyPct)}%` : "—"}
           hint={fullyCount != null ? `${fullyCount} subnets` : undefined}
-          tone="ok"
         />
-      </div>
+      </FactStrip>
 
       <div className="grid gap-6 md:grid-cols-2">
         {dimensionData.length > 0 ? (
-          <Panel as="div">
+          <Panel>
             <div className="mb-2 flex items-baseline justify-between">
               <h3 className="font-display text-13 font-semibold text-ink-strong">
                 Coverage by dimension
@@ -85,7 +80,7 @@ export function IntegrabilityBoard() {
         ) : null}
 
         {distribution.length > 0 ? (
-          <Panel as="div">
+          <Panel>
             <div className="mb-2 flex items-baseline justify-between">
               <h3 className="font-display text-13 font-semibold text-ink-strong">
                 Completeness scores

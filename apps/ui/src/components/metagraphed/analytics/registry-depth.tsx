@@ -40,7 +40,7 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
   const scored = cov.scored_subnet_count;
 
   return (
-    <Panel as="div" flush className={className}>
+    <Panel flush className={className}>
       <div className="p-4">
         <header className="mb-2 flex items-center justify-between">
           <div>
@@ -165,7 +165,7 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
   const subnetCount = res.data.subnet_count;
 
   return (
-    <Panel as="div" flush className={className}>
+    <Panel flush className={className}>
       <div className="p-4">
         <header className="mb-4 flex items-center justify-between">
           <div>
@@ -249,7 +249,7 @@ export function EnrichmentQueueTable({ limit = 12 }: { limit?: number }) {
   }
 
   return (
-    <Panel as="div" flush className="overflow-x-auto">
+    <Panel flush className="overflow-x-auto">
       <table className="w-full text-left text-13">
         <thead className="bg-surface text-10 text-ink-muted">
           <tr>

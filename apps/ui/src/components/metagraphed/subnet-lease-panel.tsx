@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { subnetLeaseHistoryQuery, subnetLeaseQuery } from "@/lib/metagraphed/queries";
 import type { SubnetLeaseEvent, SubnetLeaseTerms } from "@/lib/metagraphed/types";
-import { CopyableCode, StatTile, TimeAgo } from "@jsonbored/ui-kit";
+import { CopyableCode, TimeAgo, FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -126,7 +126,7 @@ function LeaseStatusCard({
   }
 
   return (
-    <Panel as="div" bodyClassName="space-y-3">
+    <Panel bodyClassName="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="rounded border border-accent/40 bg-accent/10 px-2 py-0.5 text-10 text-accent-text">
@@ -141,19 +141,15 @@ function LeaseStatusCard({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-3 [&>*]:grow [&>*]:basis-[160px]">
-        <StatTile
-          eyebrow="Emissions share"
-          tone="accent"
-          value={`${lease.emissions_share_percent}%`}
-        />
-        <StatTile eyebrow="Cost" value={formatTao(lease.cost_tao)} />
-        <StatTile
-          eyebrow="End block"
+      <FactStrip>
+        <FactCell label="Emissions share" value={`${lease.emissions_share_percent}%`} />
+        <FactCell label="Cost" value={formatTao(lease.cost_tao)} />
+        <FactCell
+          label="End block"
           value={lease.end_block != null ? `#${formatNumber(lease.end_block)}` : "perpetual"}
         />
-        <StatTile
-          eyebrow="Accumulated α"
+        <FactCell
+          label="Accumulated α"
           value={
             lease.accumulated_dividends_alpha == null
               ? "—"
@@ -161,7 +157,7 @@ function LeaseStatusCard({
           }
           hint="undistributed"
         />
-      </div>
+      </FactStrip>
 
       <dl className="grid gap-2 border-t border-border pt-3 sm:grid-cols-3">
         <KeySs58 label="Beneficiary" value={lease.beneficiary} />

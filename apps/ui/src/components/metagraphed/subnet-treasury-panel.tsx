@@ -38,7 +38,7 @@ export function SubnetTreasuryPanel({ netuid }: { netuid: number }) {
   }
 
   return (
-    <Panel as="section">
+    <Panel>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
         <Figure
           label="repos read"

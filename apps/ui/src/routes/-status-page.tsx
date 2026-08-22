@@ -13,9 +13,9 @@ import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/stat
 import {
   CopyableCode,
   ExternalLink,
-  SectionHeading,
   TimeAgo,
   AnimatedNumber,
+  SectionHead,
 } from "@jsonbored/ui-kit";
 import { healthQuery, globalIncidentsQuery, incidentsFeedQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -75,9 +75,9 @@ export function StatusPage() {
         </AsyncPanel>
 
         <section>
-          <SectionHeading
-            title="Recent incidents"
-            intro="Probe-detected downtime across the subnet surfaces we track, newest first."
+          <SectionHead
+            name="Recent incidents"
+            question="Probe-detected downtime across the subnet surfaces we track, newest first."
           />
           <AsyncPanel context="recent incidents" fallback={<Skeleton className="h-32 w-full" />}>
             <RecentIncidents />
@@ -85,9 +85,9 @@ export function StatusPage() {
         </section>
 
         <section>
-          <SectionHeading
-            title="Subscribe"
-            intro="The same downtime stream as a feed — RSS, Atom, or JSON Feed."
+          <SectionHead
+            name="Subscribe"
+            question="The same downtime stream as a feed — RSS, Atom, or JSON Feed."
           />
           <AsyncPanel
             context="incidents feed"
@@ -105,9 +105,9 @@ export function StatusPage() {
             they were always duplicating. The per-subnet view lives on each
             subnet's own API tab. */}
         <section>
-          <SectionHeading
-            title="Go deeper"
-            intro="Per-day probe results, per-provider verification, the live mosaic and the full surface ledger are operational views — they live on the ops console."
+          <SectionHead
+            name="Go deeper"
+            question="Per-day probe results, per-provider verification, the live mosaic and the full surface ledger are operational views — they live on the ops console."
           />
           <div className="flex flex-wrap gap-2">
             <Link
@@ -188,7 +188,7 @@ function RecentIncidents() {
 
   return (
     <div className="space-y-3">
-      <Panel as="div" bodyClassName="flex flex-wrap items-center gap-3">
+      <Panel bodyClassName="flex flex-wrap items-center gap-3">
         <div>
           <div className="text-10 text-ink-muted">
             {ongoingCount > 0 ? "Active now" : "Downtime events · " + window}

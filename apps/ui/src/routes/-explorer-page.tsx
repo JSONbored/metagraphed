@@ -2,20 +2,21 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import type { ChainOverviewSearch } from "./chain.index";
 import { useQuery, useSuspenseQueries } from "@tanstack/react-query";
 import { useState } from "react";
-import { Activity, Boxes, ChevronDown, Coins, Layers, UserPlus, Zap } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CrowdloansPanel } from "@/components/metagraphed/crowdloans-panel";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
-  SectionHeading,
   ShareButton,
-  ActionBar,
   TimeAgo,
-  StatTile,
   Sparkline,
   BarMini,
   Donut,
+  SectionHead,
+  FactStrip,
+  FactCell,
+  RangeControl,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
@@ -57,7 +58,6 @@ import {
   recentChainEventsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
-import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { ChainTabActions } from "./-chain-hub";
 import { BlockCard } from "./-blocks-index-page";
@@ -247,9 +247,9 @@ export function ExplorerPage() {
     <>
       <ChainTabActions>
         <ChainHeadTip />
-        <ActionBar>
+        <div className="mg-actions">
           <ShareButton bare />
-        </ActionBar>
+        </div>
       </ChainTabActions>
       <AsyncPanel context="explorer dashboard" fallback={<Skeleton className="h-[40rem] w-full" />}>
         <ExplorerDashboard
@@ -308,9 +308,9 @@ export function ExplorerPage() {
               per-kind filter chips. Chain Overview rather than /subnets Rankings:
               runtime upgrades and incidents aren't subnet rankings. */}
           <section className="mt-10">
-            <SectionHeading
-              title="What changed"
-              intro="Registry updates, incidents, on-chain identity edits and runtime upgrades — grouped by day, newest first."
+            <SectionHead
+              name="What changed"
+              question="Registry updates, incidents, on-chain identity edits and runtime upgrades — grouped by day, newest first."
             />
             <TimeRangeProvider>
               <AsyncPanel context="what changed" fallback={<Skeleton className="h-64 w-full" />}>
@@ -329,9 +329,9 @@ export function ExplorerPage() {
           Crowdloans are chain state, not analytics, so they belong in the
           always-rendered body. */}
       <section className="mt-10">
-        <SectionHeading
-          title="Crowdloans"
-          intro="On-chain crowdloans — raised against cap, and whether they have actually settled."
+        <SectionHead
+          name="Crowdloans"
+          question="On-chain crowdloans — raised against cap, and whether they have actually settled."
         />
         <CrowdloansPanel />
       </section>
@@ -1007,27 +1007,23 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
         </span>
       </div>
 
-      <div className="mb-4 grid gap-4 sm:grid-cols-3">
-        <StatTile
-          icon={Coins}
-          eyebrow="Total idle stake"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Total idle stake"
           value={formatTao(idleStake.total_idle_stake_alpha)}
           hint="network-wide, zero-dividend"
-          tone="accent"
         />
-        <StatTile
-          icon={Coins}
-          eyebrow="Idle subnets"
+        <FactCell
+          label="Idle subnets"
           value={formatNumber(idleStake.subnet_count)}
           hint="with idle stake"
         />
-        <StatTile
-          icon={Coins}
-          eyebrow="Idle hotkeys"
+        <FactCell
+          label="Idle hotkeys"
           value={formatNumber(totalIdleHotkeys)}
           hint="earning zero dividends"
         />
-      </div>
+      </FactStrip>
 
       {idleStake.subnets.length > 0 ? (
         <div className="overflow-x-auto">
@@ -1089,23 +1085,19 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
         </span>
       </div>
 
-      <div className="mb-4 grid gap-4 sm:grid-cols-3">
-        <StatTile
-          icon={UserPlus}
-          eyebrow="Registrations"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Registrations"
           value={formatNumber(net.registrations)}
           hint={`${registrations.window ?? "window"} total`}
-          tone="accent"
         />
-        <StatTile
-          icon={UserPlus}
-          eyebrow="Distinct registrants"
+        <FactCell
+          label="Distinct registrants"
           value={formatNumber(net.distinct_registrants)}
           hint="network-wide hotkeys"
         />
-        <StatTile
-          icon={UserPlus}
-          eyebrow="Per registrant"
+        <FactCell
+          label="Per registrant"
           value={
             net.registrations_per_registrant != null
               ? net.registrations_per_registrant.toFixed(2)
@@ -1113,7 +1105,7 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
           }
           hint="avg registrations"
         />
-      </div>
+      </FactStrip>
 
       {registrations.subnets.length > 0 ? (
         <div className="overflow-x-auto">
@@ -1558,71 +1550,31 @@ function ExplorerDashboard({
   // longer one ~24,000px vertical feed. Only the active tab's panels mount; the
   // queries above are batched once, so switching tabs never re-suspends.
   const [tab, setTab] = useState<ExplorerTab>("activity");
-  // #6391: arrow-key navigation for the role="tablist" section switcher.
-  const tabActiveIndex = Math.max(
-    0,
-    EXPLORER_TABS.findIndex((t) => t.id === tab),
-  );
-  const { tabRef: explorerTabRef, onKeyDown: explorerTabKeyDown } = useRovingTablist(
-    EXPLORER_TABS.length,
-    (i) => setTab(EXPLORER_TABS[i].id),
-  );
   return (
     <div className="space-y-10">
-      {/* window toggle */}
-      <div className="flex items-center gap-2">
-        {(["7d", "30d"] as const).map((w) => (
-          <button
-            key={w}
-            type="button"
-            onClick={() => navigate({ search: { window: w } })}
-            className={
-              w === win
-                ? "rounded border border-accent/40 bg-accent/10 px-3 py-1 text-11 text-accent-text"
-                : "rounded border border-border bg-card px-3 py-1 text-11 text-ink-muted hover:border-ink/30"
-            }
-          >
-            {w}
-          </button>
-        ))}
-      </div>
+      <RangeControl
+        label="Window"
+        options={[
+          { value: "7d", label: "7d" },
+          { value: "30d", label: "30d" },
+        ]}
+        value={win}
+        onChange={(w) => navigate({ search: { window: w } })}
+      />
 
       {/* KPI tiles */}
-      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
-        <StatTile
-          icon={Zap}
-          eyebrow="Extrinsics"
-          value={formatNumber(totalExtrinsics)}
-          hint={`${win} total`}
-          tone="accent"
-        />
-        <StatTile
-          icon={Boxes}
-          eyebrow="Blocks"
-          value={formatNumber(totalBlocks)}
-          hint={`${win} total`}
-        />
-        <StatTile
-          icon={Activity}
-          eyebrow="Events"
-          value={formatNumber(totalEvents)}
-          hint={`${win} total`}
-        />
-        <StatTile icon={Coins} eyebrow="Fees" value={formatTao(totalFees)} hint={`${win} total`} />
-        <StatTile
-          icon={Coins}
-          eyebrow="Tips"
-          value={formatTao(totalTips)}
-          hint={`${win} total`}
-          tone={totalTips > 0 ? "ok" : "default"}
-        />
-        <StatTile
-          icon={Layers}
-          eyebrow="Success rate"
+      <FactStrip variant="grid">
+        <FactCell label="Extrinsics" value={formatNumber(totalExtrinsics)} hint={`${win} total`} />
+        <FactCell label="Blocks" value={formatNumber(totalBlocks)} hint={`${win} total`} />
+        <FactCell label="Events" value={formatNumber(totalEvents)} hint={`${win} total`} />
+        <FactCell label="Fees" value={formatTao(totalFees)} hint={`${win} total`} />
+        <FactCell label="Tips" value={formatTao(totalTips)} hint={`${win} total`} />
+        <FactCell
+          label="Success rate"
           value={successRate == null ? "—" : `${(successRate * 100).toFixed(2)}%`}
           hint="successful / total"
         />
-      </div>
+      </FactStrip>
 
       {/* one activity viz, always visible (#8359) */}
       <Panel className="min-w-0">
@@ -1682,31 +1634,12 @@ function ExplorerDashboard({
 
       {showAnalytics && (
         <>
-          <div
-            className="flex flex-wrap gap-2 border-b border-border pb-3"
-            role="tablist"
-            aria-label="Explorer sections"
-          >
-            {EXPLORER_TABS.map((t, i) => (
-              <button
-                key={t.id}
-                ref={explorerTabRef(i)}
-                type="button"
-                role="tab"
-                aria-selected={tab === t.id}
-                tabIndex={rovingTabIndex(i, tabActiveIndex)}
-                onClick={() => setTab(t.id)}
-                onKeyDown={explorerTabKeyDown(i)}
-                className={
-                  tab === t.id
-                    ? "rounded border border-accent/40 bg-accent/10 px-3.5 py-1.5 text-11 text-accent-text"
-                    : "rounded border border-border bg-card px-3.5 py-1.5 text-11 text-ink-muted hover:border-ink/30 hover:text-ink-strong"
-                }
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <RangeControl
+            label="Explorer sections"
+            options={EXPLORER_TABS.map((t) => ({ value: t.id, label: t.label }))}
+            value={tab}
+            onChange={setTab}
+          />
 
           {tab === "activity" && (
             <>
@@ -1914,7 +1847,7 @@ function ExplorerDashboard({
                 cards/table split ListShell uses for paginated lists). */}
                     <div className="md:hidden space-y-2">
                       {stakeTransfers.subnets.map((s) => (
-                        <Panel as="div" key={s.netuid}>
+                        <Panel key={s.netuid}>
                           <div className="flex items-center justify-between gap-2">
                             <Link
                               to="/subnets/$netuid"

@@ -1,7 +1,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { AnalyticsSearch } from "./chain.analytics";
 import { useSuspenseQueries } from "@tanstack/react-query";
-import { SectionLabel, Skeleton } from "@jsonbored/ui-kit";
+import { Skeleton, RangeControl } from "@jsonbored/ui-kit";
 import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ChainTabActions } from "./-chain-hub";
@@ -11,7 +11,6 @@ import { ChainIdleStakeSnapshot } from "@/components/metagraphed/chain-idle-stak
 import { ChainEmissionTrend } from "@/components/metagraphed/chain-emission-trend";
 import { ChainRegistrationEconomics } from "@/components/metagraphed/chain-registration-economics";
 import { ChainNetworkConcentration } from "@/components/metagraphed/chain-network-concentration";
-import { classNames } from "@/lib/metagraphed/format";
 import {
   chainStakeFlowQuery,
   validatorsQuery,
@@ -71,7 +70,7 @@ function AnalyticsBody() {
       />
 
       <div id="analytics-trends" className="mt-6">
-        <SectionLabel as="h2">Trends</SectionLabel>
+        <h3 className="text-13 font-semibold text-ink-strong">Trends</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
           <ChainConcentrationSnapshot concentration={concentrationRes.data} />
           <ChainIdleStakeSnapshot idleStake={idleStakeRes.data} />
@@ -80,7 +79,7 @@ function AnalyticsBody() {
       </div>
 
       <div id="analytics-registration" className="mt-6">
-        <SectionLabel as="h2">Registration economics</SectionLabel>
+        <h3 className="text-13 font-semibold text-ink-strong">Registration economics</h3>
         <div className="mt-3">
           <ChainRegistrationEconomics subnets={economicsRes.data} />
         </div>
@@ -96,34 +95,18 @@ export function ChainAnalyticsPage() {
   return (
     <>
       <ChainTabActions>
-        <div
-          role="tablist"
-          aria-label="Window"
-          className="mr-auto inline-flex items-center gap-1 rounded border border-border bg-surface p-0.5"
-        >
-          {WINDOWS.map((w) => (
-            <button
-              key={w}
-              type="button"
-              role="tab"
-              aria-selected={w === search.window}
-              onClick={() =>
-                navigate({
-                  search: (prev: Record<string, unknown>) => ({ ...prev, window: w }),
-                  resetScroll: false,
-                })
-              }
-              className={classNames(
-                "rounded px-2.5 py-1 text-13 font-medium transition-colors mg-focus-ring",
-                w === search.window
-                  ? "bg-card text-ink-strong"
-                  : "text-ink-muted hover:text-ink-strong",
-              )}
-            >
-              {w}
-            </button>
-          ))}
-        </div>
+        <RangeControl
+          label="Window"
+          options={WINDOWS.map((w) => ({ value: w, label: w }))}
+          value={search.window}
+          onChange={(w) =>
+            navigate({
+              search: (prev: Record<string, unknown>) => ({ ...prev, window: w }),
+              resetScroll: false,
+            })
+          }
+          className="mr-auto"
+        />
       </ChainTabActions>
 
       <p className="mb-6 max-w-3xl text-13 text-ink-muted">
@@ -141,7 +124,9 @@ export function ChainAnalyticsPage() {
           that section, and these four fetch independently so a slow one cannot
           hold the sankey back. */}
       <section className="mt-8">
-        <SectionLabel>Network concentration & entry cost</SectionLabel>
+        <h3 className="text-13 font-semibold text-ink-strong">
+          Network concentration & entry cost
+        </h3>
         <p className="mb-4 mt-1 max-w-3xl text-13 text-ink-muted">
           What it costs to register, who holds the alpha, and how evenly — each computed over the
           subnets that were actually read, which these panels state rather than assume.

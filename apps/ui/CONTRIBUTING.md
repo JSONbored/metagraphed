@@ -98,6 +98,12 @@ budget — keep new dependencies/imports lean.
   - External links: `<ExternalLink>` from `@jsonbored/ui-kit`, never a raw `<a target="_blank">`.
   - See `docs/ssr-safety.md` for the hydration-safety rules (also ESLint-enforced).
 
+  **Pages are documents.** A route is `EntityHero + ≤7 AnalyticsSection` inside an
+  `AnalyticsPage` (#11607): each section is `Name. One sentence.` + one visual + an
+  optional legend + one footnote, with an optional `RangeControl` on the heading row.
+  Facts live in a `FactStrip` or a `FactSentence`; the page has exactly one `LiveMeta`.
+  `Panel`, `StatTile`, `SectionAnchor`, `PageMasthead`, tab strips and segmented
+  toggles are gone — do not reintroduce them.
   **The contract is also measured in the rendered page.** `tests/e2e/token-inventory.spec.ts` sweeps
   `<main>` on every route in `tests/e2e/overflow-check.config.ts` at 1280×800 in both themes and fails
   if it finds a font family, font size, letter-spacing, radius, pill or resting shadow outside the

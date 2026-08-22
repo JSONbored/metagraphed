@@ -206,7 +206,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
                   g.label
                 )}
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex min-w-0 flex-wrap gap-1.5">
                 {g.items.map(({ schema, kind }) => {
                   const tone = KIND_TONE[kind];
                   const ev = evidenceFor(schema);
@@ -267,12 +267,12 @@ function DriftTile({
   const evidenceHref = safeExternalUrl(evidence?.url);
 
   return (
-    <span className="group/tile relative inline-flex items-stretch">
+    <span className="group/tile relative inline-flex max-w-full items-stretch">
       <button
         type="button"
         onClick={onOpen}
         className={classNames(
-          "flex items-center gap-1.5 rounded border px-2 py-1 transition-all",
+          "flex min-w-0 max-w-full items-center gap-1.5 rounded border px-2 py-1 transition-all",
           tone.fill,
           "hover:ring-2",
           tone.ring,
@@ -288,7 +288,7 @@ function DriftTile({
           )}
           aria-hidden
         />
-        <span className="text-11 text-ink-strong truncate max-w-[180px]">{label}</span>
+        <span className="min-w-0 max-w-[180px] truncate text-11 text-ink-strong">{label}</span>
         {schema.updated_at ? (
           <span className="text-10 text-ink-muted shrink-0">
             <TimeAgo at={schema.updated_at} />

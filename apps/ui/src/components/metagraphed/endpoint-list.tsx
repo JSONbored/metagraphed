@@ -65,7 +65,7 @@ export function EndpointList({
   return (
     <>
       {/* Desktop */}
-      <Panel as="div" flush className="hidden md:block overflow-hidden">
+      <Panel flush className="hidden md:block overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-13">
             <thead className="bg-surface text-10 text-ink-muted">

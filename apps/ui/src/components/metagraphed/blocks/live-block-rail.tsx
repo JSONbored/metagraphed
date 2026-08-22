@@ -63,7 +63,6 @@ export function LiveBlockRail() {
 
   return (
     <Panel
-      as="div"
       className="mb-3"
       bodyClassName="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)]"
       role="status"

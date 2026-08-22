@@ -1,3 +1,4 @@
+import { RangeControl } from "@jsonbored/ui-kit";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -89,28 +90,17 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
   const errorObj = pctErrorObj ?? slaErrorObj;
 
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="text-13 text-ink-muted">
           Per-surface reliability · uptime · latency percentiles
         </div>
-        <div role="tablist" aria-label="Reliability window" className="flex items-center gap-1">
-          {WINDOWS.map((w) => (
-            <button
-              key={w}
-              type="button"
-              role="tab"
-              aria-selected={w === window}
-              onClick={() => setWindow(w)}
-              className={classNames(
-                "rounded px-2 py-0.5 text-11 transition-colors",
-                w === window ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink-strong",
-              )}
-            >
-              {w}
-            </button>
-          ))}
-        </div>
+        <RangeControl
+          label="Reliability window"
+          options={WINDOWS.map((w) => ({ value: w, label: String(w) }))}
+          value={window}
+          onChange={setWindow}
+        />
       </div>
       {loading && rows.length === 0 ? (
         <div className="p-4 text-13 text-ink-muted">Loading reliability…</div>

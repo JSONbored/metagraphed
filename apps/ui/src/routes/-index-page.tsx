@@ -9,7 +9,6 @@ import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import {
-  AccentBand,
   BrandIcon,
   TimeAgo,
   CurationChip,
@@ -287,7 +286,7 @@ export function OverviewPage() {
               title="Public, read-only, JSON-Schema canonical."
               description="Every list and detail view in this app is also a documented API route. Same data, same envelope."
             />
-            <Panel as="div" className="max-w-2xl">
+            <Panel className="max-w-2xl">
               <div className="text-13 text-ink-muted mb-2">Try it</div>
               <CopyableCode
                 value={`curl ${API_BASE}/api/v1/subnets`}
@@ -322,23 +321,22 @@ export function OverviewPage() {
         </>
       )}
 
-      <AccentBand pattern className="mt-20">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-          <div className="max-w-xl">
-            <div className="text-13 text-ink-strong/70 mb-2">All registry data is public</div>
-            <h2 className="font-display text-28 md:text-28 font-semibold text-ink-strong">
-              Browse the full Bittensor registry.
-            </h2>
-          </div>
-          <Link
-            to="/subnets"
-            className="inline-flex items-center gap-1.5 rounded bg-ink-strong px-4 py-2.5 text-13 font-medium text-paper hover:opacity-90 transition-opacity self-start md:self-auto"
-          >
-            Open subnets
-            <ArrowUpRight className="size-3.5" />
-          </Link>
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+        <div className="max-w-xl">
+          <div className="text-13 text-ink-strong/70 mb-2">All registry data is public</div>
+          <h2 className="font-display text-28 md:text-28 font-semibold text-ink-strong">
+            Browse the full Bittensor registry.
+          </h2>
         </div>
-      </AccentBand>
+        <Link
+          to="/subnets"
+          className="inline-flex items-center gap-1.5 rounded bg-ink-strong px-4 py-2.5 text-13 font-medium text-paper hover:opacity-90 transition-opacity self-start md:self-auto"
+        >
+          Open subnets
+          <ArrowUpRight className="size-3.5" />
+        </Link>
+      </div>
+
       {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
       <HubSections path="/" />
     </AppShell>
@@ -517,7 +515,7 @@ function HomeForAgentsModule() {
   const { data } = useSuspenseQuery(agentResourcesQuery());
   const mcp = data.data.mcp;
   return (
-    <Panel as="div" className="max-w-2xl">
+    <Panel className="max-w-2xl">
       <div className="flex items-center gap-3 rounded border border-accent/30 bg-accent-surface px-4 py-3.5">
         <Terminal className="size-4 shrink-0 text-accent" aria-hidden />
         <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-13 text-ink-strong">
@@ -673,7 +671,7 @@ function LivePerformance() {
   const okPct = total > 0 ? Math.round(((health?.ok ?? 0) / total) * 100) : 0;
 
   return (
-    <AccentBand className="mt-20">
+    <>
       <div className="mb-8 flex items-end justify-between">
         <div>
           <div className="text-13 text-ink-strong/70 inline-flex items-center gap-2">
@@ -706,7 +704,7 @@ function LivePerformance() {
           accent
         />
       </div>
-    </AccentBand>
+    </>
   );
 }
 
@@ -729,7 +727,7 @@ function PerfCard({
 }) {
   const hasSeries = phase === "ready" && !!series && series.length > 1;
   return (
-    <Panel as="div" flush>
+    <Panel flush>
       <div className="p-4">
         <div className="flex items-baseline justify-between mb-3">
           <div className="text-13 text-ink-muted">{label}</div>
@@ -764,7 +762,7 @@ function PerfCard({
 
 function TableSkeleton() {
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="border-b border-border last:border-b-0 px-4 py-3">
           <Skeleton className="h-4 w-full" />
@@ -807,7 +805,7 @@ function SubnetPreviewTable() {
   const total = coverage?.netuids_active ?? coverage?.netuids_total;
 
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-13">
           <thead className="bg-surface text-10 text-ink-muted">

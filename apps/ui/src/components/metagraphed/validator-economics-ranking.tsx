@@ -39,7 +39,7 @@ export function ValidatorEconomicsRanking() {
   const grouped = groupExclusions(e.excluded);
 
   return (
-    <Panel as="section">
+    <Panel>
       <p className="mb-3 text-10 text-ink-muted">
         What it costs to start validating — cheapest {formatNumber(Math.min(SHOWN, e.rows.length))}{" "}
         of {formatNumber(e.total)} ranked subnets

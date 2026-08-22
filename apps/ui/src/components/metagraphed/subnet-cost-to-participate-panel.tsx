@@ -38,7 +38,7 @@ export function SubnetCostToParticipatePanel({ netuid }: { netuid: number }) {
   const miner = card.declared_compute.miner;
 
   return (
-    <Panel as="section">
+    <Panel>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure
           label="registration"

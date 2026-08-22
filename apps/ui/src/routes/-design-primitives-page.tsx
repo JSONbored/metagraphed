@@ -4,23 +4,16 @@ import {
   Breadcrumbs,
   Chip,
   ColumnCustomizer,
-  DefinitionList,
   EmptyState,
   FilterField,
   FilterInput,
   FilterSelect,
   FilterToolbar,
-  FreshnessPill,
   GhostButton,
   Indicator,
   LoadingPill,
-  MetaStrip,
-  PagerFooter,
   Panel,
-  PageMasthead,
-  SectionLabel,
   StatusBadge,
-  StickyToolbar,
   TableSkeleton,
   useColumnVisibility,
   type ColumnDef,
@@ -30,8 +23,6 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  AccentBand,
-  ActionBar,
   AnimatedNumber,
   BarMini,
   BrandIcon,
@@ -48,7 +39,6 @@ import {
   CopyIconToggle,
   CopyableCode,
   CurationChip,
-  DailyRollupFreshness,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -60,17 +50,21 @@ import {
   DiscordIcon,
   Donut,
   DonutLegend,
-  DotRow,
   DownloadCsvButton,
   EligibilityChip,
   EntityHero,
   ExternalLink,
   FilterChipRow,
   FilterSheet,
-  FreshnessIndicator,
   HealthDot,
   HealthPill,
   Kbd,
+  SectionHead,
+  AnalyticsPage,
+  AnalyticsSection,
+  Fact,
+  FactSentence,
+  RangeControl,
   ActiveEntityProvider,
   ChartTooltip,
   Definition,
@@ -84,35 +78,20 @@ import {
   ListShell,
   LoadMore,
   McpToolsList,
-  MethodologyCallout,
-  MetricGrid,
-  MiniRadial,
-  MiniStack,
-  MobileCollapse,
-  NoDataSpark,
-  PageActions,
-  PageHero,
-  PagerBar,
-  PageSection,
   PanelError,
   PanelHeader,
   PanelSkeleton,
   Popover,
   PopoverContent,
   PopoverTrigger,
-  PrimaryLinksRail,
   ProvenanceChip,
   QueryBar,
   QueryProgress,
-  RealtimeFreshness,
   ReadinessGauge,
   ResponsiveTable,
   ReviewChip,
   RoutePending,
   ScrollShadow,
-  SectionAnchor,
-  SectionHeading,
-  SegmentedToggle,
   ShareButton,
   Sheet,
   SheetContent,
@@ -124,10 +103,7 @@ import {
   Skeleton,
   SparkLegend,
   Sparkline,
-  StatTile,
-  StatWithSpark,
   TableState,
-  TabStrip,
   TimeAgo,
   TreemapMini,
   ViewModeToggle,
@@ -169,15 +145,14 @@ export function PrimitivesPreview() {
           ]}
         />
       </div>
-      <PageMasthead
-        eyebrow="Design system"
-        title="Design primitives"
-        description="The complete Bone & Ink vocabulary — every value exported from @jsonbored/ui-kit's public barrel, plus apps/ui's own router/query-coupled wrappers. Static sample data only; this page renders with zero network dependencies."
+      <SectionHead
+        name="Design primitives"
+        question="Every component in the kit, in both themes, with the import to copy."
       />
 
       <TabNav />
 
-      <TokensSection cols={cols} updated={updated} />
+      <TokensSection cols={cols} />
       <LayoutSection updated={updated} />
       <DataDisplaySection />
       <DefinitionsProvider definitions={DEFINITIONS}>
@@ -303,13 +278,7 @@ const RADIUS_TOKENS = [
   ["rounded", "hero tiles, panels"],
 ] as const;
 
-function TokensSection({
-  cols,
-  updated,
-}: {
-  cols: ReturnType<typeof useColumnVisibility>;
-  updated: string;
-}) {
+function TokensSection({ cols }: { cols: ReturnType<typeof useColumnVisibility> }) {
   return (
     <Section id="tokens" title="Tokens">
       <div className="grid gap-4 md:grid-cols-2">
@@ -419,7 +388,6 @@ function TokensSection({
           <FilterToolbar
             trailing={
               <>
-                <FreshnessPill updatedAt={updated} windowLabel="24h" />
                 <ColumnCustomizer
                   columns={COLUMNS}
                   isVisible={cols.isVisible}
@@ -460,66 +428,54 @@ function LayoutSection({ updated }: { updated: string }) {
   return (
     <Section id="layout" title="Layout">
       <div className="space-y-4">
-        <Show name="PageHero">
-          <PageHero
-            eyebrow="Explorer"
-            live
-            title="PageHero sample"
-            description="Blockmachine-style hero with a hairline KPI strip and a top-right mono caption."
-            kpis={[
-              { label: "subnets", value: "129" },
-              { label: "surfaces", value: "3,101" },
-            ]}
-            className="!mb-0 !pt-6 !pb-6"
-          />
+        <Show name="EntityHero, FactSentence, Fact, FactStrip, LiveMeta">
+          <div data-testid="hero-demo">
+            <EntityHero
+              crumbs={[{ label: "Subnets", href: "/subnets" }, { label: "SN19" }]}
+              name="Nineteen"
+              avatar={<BrandIcon size={40} name="Nineteen" fallback={19} netuid={19} />}
+              action={
+                <a className="mg-hero-action" href="/subnets/19">
+                  Open subnet
+                </a>
+              }
+              sentence={
+                <FactSentence>
+                  Ranked <Fact>#04</Fact> by emission with <Fact>4.3%</Fact> of daily emission ·{" "}
+                  <Fact>247/256</Fact> UIDs · <Fact>OK</Fact> for <Fact>75d</Fact> ·{" "}
+                  <Fact>application</Fact>
+                </FactSentence>
+              }
+              cells={[
+                { label: "Emission", value: "4.3%", delta: { text: "+0.2", tone: "good" } },
+                { label: "Alpha price", value: "0.0722 τ", delta: { text: "−1.4%", tone: "bad" } },
+                { label: "Total stake", value: "3.58M τ" },
+                { label: "UIDs", value: "247/256" },
+              ]}
+              live={{ updatedAt: updated, source: "chain", onRefresh: () => {} }}
+            />
+          </div>
         </Show>
-        <Show name="EntityHero">
-          <EntityHero
-            eyebrow="Account"
-            title="5Grw…tQY"
-            subtitle="ss58 address"
-            description="Compact-size entity hero used on account/validator detail pages."
-            stats={[
-              { label: "events", value: "1,204" },
-              { label: "subnets", value: "6" },
-            ]}
-            size="compact"
-          />
-        </Show>
-        <Show name="PageSection">
-          <PageSection
-            id="ds-page-section"
-            eyebrow="Coverage"
-            title="PageSection sample"
-            description="Canonical section header — hairline, eyebrow, oversized H2, optional description/actions/toolbar."
-          >
-            <p className="text-13 text-ink-muted">Section body content goes here.</p>
-          </PageSection>
-        </Show>
-        <Show name="AccentBand">
-          <AccentBand pattern>
-            <p className="text-13 text-ink">Mint-accent band, optional dot pattern overlay.</p>
-          </AccentBand>
-        </Show>
-        <Show name="SectionAnchor">
-          <SectionAnchor
-            id="ds-section-anchor"
-            title="SectionAnchor sample"
-            subtitle="Copyable #hash link, optional accent rail and info tooltip."
-            info="Explains what this section shows."
-            tone="accent"
-          >
-            <p className="text-13 text-ink-muted">
-              Section content, deep-linkable via #ds-section-anchor.
-            </p>
-          </SectionAnchor>
-        </Show>
-        <Show name="SectionHeading">
-          <SectionHeading
-            title="SectionHeading sample"
-            intro="Lighter-weight heading than PageSection — no hairline, no toolbar row."
-            right={<FreshnessPill updatedAt={updated} />}
-          />
+        <Show name="AnalyticsPage, AnalyticsSection, SectionNav, RangeControl">
+          <div data-testid="analytics-demo">
+            <AnalyticsPage>
+              <AnalyticsSection
+                id="demo-emission"
+                name="Emission"
+                question="Which subnets the chain pays, per block."
+                controls={<RangeDemo />}
+                visual={<div className="h-24 rounded bg-layer" aria-hidden />}
+                footnote="7d · chain"
+              />
+              <AnalyticsSection
+                id="demo-stake"
+                name="Stake"
+                question="Where the TAO sits."
+                visual={<div className="h-24 rounded bg-layer" aria-hidden />}
+                footnote="latest snapshot · registry"
+              />
+            </AnalyticsPage>
+          </div>
         </Show>
       </div>
     </Section>
@@ -560,41 +516,6 @@ function DataDisplaySection() {
   return (
     <Section id="data-display" title="Data display">
       <div className="grid gap-4 md:grid-cols-2">
-        <Show name="StatTile">
-          <div className="grid grid-cols-2 gap-3">
-            <StatTile icon={Activity} eyebrow="Uptime" value="99.4%" hint="30d" tone="ok" />
-            <StatTile icon={Layers} eyebrow="Surfaces" value="3,101" tone="accent" />
-          </div>
-        </Show>
-        <Show name="StatWithSpark, MiniStack, MiniRadial, DotRow, NoDataSpark">
-          <div className="space-y-3">
-            <StatWithSpark
-              label="Total stake"
-              value="344.36M τ"
-              hint="network-wide"
-              tone="ok"
-              viz={<Sparkline values={SPARK_POINTS.map((p) => p.v)} width={64} height={24} />}
-            />
-            <MiniStack
-              segments={[
-                { label: "ok", value: 558, color: "var(--health-ok)" },
-                { label: "warn", value: 41, color: "var(--health-warn)" },
-                { label: "down", value: 18, color: "var(--health-down)" },
-              ]}
-            />
-            <div className="flex items-center gap-3">
-              <MiniRadial value={0.72} />
-              <DotRow
-                dots={[
-                  { label: "api", on: true },
-                  { label: "sse", on: false },
-                  { label: "docs", on: true },
-                ]}
-              />
-            </div>
-            <NoDataSpark />
-          </div>
-        </Show>
         <Show name="BarMini">
           <BarMini data={BAR_DATA} showValue formatValue={(v) => v.toLocaleString("en-US")} />
         </Show>
@@ -627,13 +548,7 @@ function DataDisplaySection() {
         <Show name="TreemapMini">
           <TreemapMini data={TREEMAP_DATA} className="h-32" />
         </Show>
-        <Show name="MetricGrid">
-          <MetricGrid cols={{ base: 2, md: 3 }} gap="sm">
-            <StatTile icon={Server} eyebrow="Endpoints" value="47" />
-            <StatTile icon={Radio} eyebrow="Live" value="44" tone="ok" />
-            <StatTile icon={Layers} eyebrow="Kinds" value="8" />
-          </MetricGrid>
-        </Show>
+
         <Show name="TableState">
           <div className="space-y-3">
             <TableState variant="empty" title="No rows match this filter" />
@@ -654,7 +569,7 @@ function DataDisplaySection() {
         </Show>
       </div>
 
-      <Section title="Panel + SectionLabel">
+      <Section title="Panel">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Panel title="Coverage" caption="Verified public surfaces across all active netuids.">
             <div className="grid grid-cols-2 gap-3">
@@ -662,15 +577,9 @@ function DataDisplaySection() {
               <Indicator icon={Server} label="surfaces" value="284" orientation="column" />
             </div>
           </Panel>
-          <Panel
-            title="Endpoint health"
-            tone="accent"
-            action={<FreshnessPill updatedAt={SAMPLE_UPDATED_AT} />}
-          >
+          <Panel title="Endpoint health">
             <div className="flex flex-col gap-2">
-              <SectionLabel size="label" tone="accent">
-                Live probes
-              </SectionLabel>
+              <h3 className="text-13 font-semibold text-ink-strong">Live probes</h3>
               <div className="flex flex-wrap gap-2">
                 <StatusBadge status="ok" live />
                 <StatusBadge status="warn" />
@@ -688,29 +597,6 @@ function DataDisplaySection() {
               hint="Widen the kind filter or clear the provider constraint to see more results."
               evidenceHref={GITHUB_REPO_URL}
             />
-          </Panel>
-          <Panel
-            title="Ok tone"
-            tone="ok"
-            id="design-primitives-ok-tone-panel"
-            aria-label="Healthy status summary"
-          >
-            <StatusBadge status="ok" live />
-            <p className="mt-2 text-13 text-ink-muted">
-              tone="ok" — tinted border + background. id/aria-label above land on the outer element
-              via rest-prop forwarding.
-            </p>
-          </Panel>
-          <Panel title="Border-only tint" tone="warn" tintBorderOnly>
-            <p className="text-13 text-ink-muted">
-              tintBorderOnly keeps the warn border but skips the tinted fill — bg-card instead.
-            </p>
-          </Panel>
-          <Panel title="Glow">
-            <p className="text-13 text-ink-muted">
-              glow appends the existing --mg-card-glow soft-elevation shadow (accent tone picks
-              --mg-card-glow-accent automatically).
-            </p>
           </Panel>
         </div>
       </Section>
@@ -732,8 +618,6 @@ function DataDisplaySection() {
 
 function InteractionSection() {
   const [viewMode, setViewMode] = useState<"table" | "grid" | "matrix">("table");
-  const [tab, setTab] = useState<"overview" | "activity">("overview");
-  const [seg, setSeg] = useState<"7d" | "30d">("7d");
   const [q, setQ] = useState("");
   const [chips, setChips] = useState([
     { id: "kind", label: "Kind", value: "REST" },
@@ -761,37 +645,16 @@ function InteractionSection() {
             </QueryBar.Utility>
           </QueryBar>
         </Show>
-        <Show name="SegmentedToggle">
-          <SegmentedToggle
-            options={[
-              { value: "7d", label: "7d" },
-              { value: "30d", label: "30d" },
-            ]}
-            value={seg}
-            onChange={setSeg}
-            ariaLabel="Window"
-          />
-        </Show>
-        <Show name="TabStrip">
-          <TabStrip
-            items={[
-              { id: "overview", label: "Overview" },
-              { id: "activity", label: "Activity", meta: 12 },
-            ]}
-            value={tab}
-            onChange={setTab}
-            ariaLabel="Design primitives tabs"
-          />
-        </Show>
+
         <Show name="ViewModeToggle">
           <ViewModeToggle value={viewMode} onChange={setViewMode} />
         </Show>
         <Show name="ShareButton">
           <div className="flex flex-wrap gap-2">
             <ShareButton />
-            <ActionBar>
+            <div className="mg-actions">
               <ShareButton bare connected />
-            </ActionBar>
+            </div>
           </div>
         </Show>
         <Show name="DownloadCsvButton">
@@ -816,22 +679,7 @@ function InteractionSection() {
             </ExternalLink>
           </div>
         </Show>
-        <Show name="ActionBar, PagerBar, PagerFooter">
-          <div className="space-y-3">
-            <ActionBar>
-              <GhostButton size="sm">A</GhostButton>
-              <GhostButton size="sm">B</GhostButton>
-            </ActionBar>
-            <PagerBar hasPrev={false} hasNext onPrev={() => undefined} onNext={() => undefined} />
-            <PagerFooter
-              summary="Showing 1–50 of 129"
-              hasPrev={false}
-              hasNext
-              onPrev={() => undefined}
-              onNext={() => undefined}
-            />
-          </div>
-        </Show>
+
         <Show name="FilterChipRow">
           <FilterChipRow
             items={chips}
@@ -847,17 +695,7 @@ function InteractionSection() {
             </label>
           </FilterSheet>
         </Show>
-        <Show name="PageActions">
-          <PageActions
-            primary={<GhostButton tone="accent">Primary</GhostButton>}
-            secondary={
-              <>
-                <GhostButton>Secondary A</GhostButton>
-                <GhostButton>Secondary B</GhostButton>
-              </>
-            }
-          />
-        </Show>
+
         <Show name="ScrollShadow, ResponsiveTable">
           <ResponsiveTable minWidth={480}>
             <table className="w-full text-left text-13">
@@ -1017,53 +855,6 @@ function InteractionSection() {
           </Accordion>
         </Show>
       </div>
-
-      <Section title="Batch D — toolbars, metadata, actions">
-        <div className="grid gap-4 md:grid-cols-2">
-          <Panel title="Sticky toolbar" flush>
-            <StickyToolbar offset={0} hairline={false} className="!static">
-              <FilterInput value="" onChange={() => undefined} placeholder="Filter…" />
-              <GhostButton>Reset</GhostButton>
-              <LoadingPill>Refreshing</LoadingPill>
-            </StickyToolbar>
-          </Panel>
-          <Panel title="Ghost buttons">
-            <div className="flex flex-wrap gap-2">
-              <GhostButton>Default</GhostButton>
-              <GhostButton tone="accent">Accent</GhostButton>
-              <GhostButton tone="warn">Warn</GhostButton>
-              <GhostButton tone="down">Down</GhostButton>
-              <GhostButton size="md">Medium</GhostButton>
-            </div>
-          </Panel>
-          <Panel title="Definition list">
-            <DefinitionList
-              items={[
-                { term: "Netuid", detail: "7" },
-                { term: "Provider", detail: "Allways" },
-                { term: "Endpoints", detail: "12" },
-                { term: "Health", detail: "OK" },
-              ]}
-            />
-          </Panel>
-          <Panel title="Meta strip · Pager footer">
-            <MetaStrip
-              items={[
-                { label: "Rows", value: "129" },
-                { label: "Kinds", value: "6" },
-                { label: "Updated", value: "2m ago" },
-              ]}
-            />
-          </Panel>
-          <Panel title="PrimaryLinksRail">
-            <PrimaryLinksRail
-              website="https://taostats.io"
-              docs="https://taostats.io"
-              repo="https://github.com"
-            />
-          </Panel>
-        </div>
-      </Section>
     </Section>
   );
 }
@@ -1103,14 +894,7 @@ function FeedbackSection({ updated }: { updated: string }) {
         <Show name="LoadingPill">
           <LoadingPill>Refreshing…</LoadingPill>
         </Show>
-        <Show name="FreshnessIndicator, DailyRollupFreshness, RealtimeFreshness, FreshnessPill">
-          <div className="flex flex-wrap items-center gap-3">
-            <FreshnessIndicator at={updated} />
-            <DailyRollupFreshness at={updated} />
-            <RealtimeFreshness at={updated} />
-            <FreshnessPill updatedAt={updated} />
-          </div>
-        </Show>
+
         <Show name="AnimatedNumber">
           <AnimatedNumber value={12_456} className="font-mono text-16 text-ink-strong" />
         </Show>
@@ -1150,19 +934,13 @@ function FeedbackSection({ updated }: { updated: string }) {
             <HealthPill state="down" />
           </div>
         </Show>
-        <Show name="MethodologyCallout">
-          <MethodologyCallout generatedAt={updated} windowLabel="7d" />
-        </Show>
+
         <Show name="RoutePending">
           <div className="max-h-40 overflow-hidden rounded border border-border">
             <RoutePending panels={2} panelHeight="sm" />
           </div>
         </Show>
-        <Show name="MobileCollapse">
-          <MobileCollapse label="Sample section" hint="tap to expand">
-            <p className="text-13 text-ink-muted">Collapsed content, mobile-only trigger.</p>
-          </MobileCollapse>
-        </Show>
+
         <Show name="BrandIcon">
           <div className="flex items-center gap-3">
             <BrandIcon name="Apex" fallback={1} netuid={1} size={32} />
@@ -1269,5 +1047,21 @@ function DemoRow({ index }: { index: number }) {
       </span>
       <span className="tabular-nums">{DEMO_VALUES[index]}%</span>
     </li>
+  );
+}
+
+function RangeDemo() {
+  const [range, setRange] = useState<"7d" | "30d" | "90d">("7d");
+  return (
+    <RangeControl
+      label="Window"
+      options={[
+        { value: "7d", label: "7d" },
+        { value: "30d", label: "30d" },
+        { value: "90d", label: "90d" },
+      ]}
+      value={range}
+      onChange={setRange}
+    />
   );
 }

@@ -1,7 +1,7 @@
+import { RangeControl } from "@jsonbored/ui-kit";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/metagraphed/table-controls";
-import { Panel } from "@/components/metagraphed/primitives";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber } from "@/lib/metagraphed/format";
 import { raoToTao, type Rao } from "@/lib/metagraphed/units";
 import type { SubnetStakeQuote } from "@/lib/metagraphed/types";
 import type { StakeFlowAction, StakeFlowUnit } from "@/hooks/use-stake-flow";
@@ -118,32 +118,12 @@ export function StakeAmountInput({
 
   return (
     <div className="space-y-4">
-      <Panel
-        as="div"
-        role="tablist"
-        aria-label="Stake or unstake"
-        flush
-        bodyClassName="inline-flex items-center !p-0.5"
-      >
-        {STAKE_FLOW_ACTIONS.map((a) => {
-          const active = a === action;
-          return (
-            <button
-              key={a}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => onActionChange(a)}
-              className={classNames(
-                "min-h-8 rounded px-4 py-1.5 text-11 transition-colors",
-                active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
-              )}
-            >
-              {a}
-            </button>
-          );
-        })}
-      </Panel>
+      <RangeControl
+        label="Stake or unstake"
+        options={STAKE_FLOW_ACTIONS.map((a) => ({ value: a, label: a }))}
+        value={action}
+        onChange={onActionChange}
+      />
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
@@ -162,34 +142,12 @@ export function StakeAmountInput({
         {showUnitToggle ? (
           <div className="flex flex-col gap-1">
             <span className="text-13 text-ink-muted">Unit</span>
-            <Panel
-              as="div"
-              role="tablist"
-              aria-label="TAO or alpha"
-              flush
-              bodyClassName="inline-flex items-center !p-0.5"
-            >
-              {(["tao", "alpha"] as const).map((u) => {
-                const active = u === unit;
-                return (
-                  <button
-                    key={u}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => onUnitChange(u)}
-                    className={classNames(
-                      "min-h-8 rounded px-3 py-1.5 text-11 transition-colors",
-                      active
-                        ? "bg-surface text-ink-strong"
-                        : "text-ink-muted hover:text-ink-strong",
-                    )}
-                  >
-                    {unitSymbol(u)}
-                  </button>
-                );
-              })}
-            </Panel>
+            <RangeControl
+              label="TAO or alpha"
+              options={(["tao", "alpha"] as const).map((u) => ({ value: u, label: unitSymbol(u) }))}
+              value={unit}
+              onChange={onUnitChange}
+            />
           </div>
         ) : null}
 

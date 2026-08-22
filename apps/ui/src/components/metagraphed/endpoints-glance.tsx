@@ -106,7 +106,7 @@ export function EndpointsGlance({
   };
 
   return (
-    <Panel as="div" flush>
+    <Panel flush>
       <ul className="divide-y divide-border">
         {BUCKETS.map((b) => {
           const items = endpoints.filter(b.match);

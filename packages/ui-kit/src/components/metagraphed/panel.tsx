@@ -1,40 +1,15 @@
-import type { ReactNode, ElementType, ComponentPropsWithoutRef } from "react";
+import type { ReactNode, ComponentPropsWithoutRef } from "react";
 import { classNames } from "@/lib/format";
-import { SectionLabel } from "./section-label";
-
-export type PanelTone = "default" | "accent" | "warn" | "down" | "ok" | "muted";
-
-interface ToneStyle {
-  border: string;
-  bg: string;
-}
-
-const TONE_STYLES: Record<PanelTone, ToneStyle> = {
-  default: { border: "border-border", bg: "bg-card" },
-  accent: { border: "border-accent/40", bg: "bg-primary-soft" },
-  warn: { border: "border-health-warn/40", bg: "bg-health-warn/5" },
-  down: { border: "border-health-down/40", bg: "bg-health-down/5" },
-  ok: { border: "border-health-ok/40", bg: "bg-health-ok/5" },
-  muted: { border: "border-border", bg: "bg-surface-2" },
-};
 
 interface PanelOwnProps {
-  /** Optional mono title, rendered via <SectionLabel>. */
+  /** Heading text (13px, 600). */
   title?: ReactNode;
-  /** Right-aligned header slot (buttons, toggles, freshness pill). */
+  /** Controls right of the heading. */
   action?: ReactNode;
-  /** Secondary caption under the title. */
+  /** One line under the heading. */
   caption?: ReactNode;
-  /** Zero padding — use when children own their spacing (e.g. tables). */
+  /** Body without padding (tables, lists that pad their own rows). */
   flush?: boolean;
-  /** Adds the standard hairline hover interaction. */
-  interactive?: boolean;
-  tone?: PanelTone;
-  /** Keep the tone's border but skip its tinted background (bg-card instead).
-   * Covers shells that deliberately want an ok/warn/down/accent border
-   * without the matching tinted fill (#7848). */
-  tintBorderOnly?: boolean;
-  as?: ElementType;
   className?: string;
   bodyClassName?: string;
   children?: ReactNode;
@@ -44,52 +19,33 @@ export type PanelProps = PanelOwnProps &
   Omit<ComponentPropsWithoutRef<"section">, keyof PanelOwnProps>;
 
 /**
- * The bordered content shell. One padding, one radius, one hairline; no
- * density variant and no elevation (#11605). Replaced by AnalyticsSection's
- * hairline framing in #11607 and deleted in #11628.
+ * A plain `min-width: 0` block with an optional heading row (#11607). No
+ * border, no background, no tone, no hover lift -- the hairline framing is
+ * `AnalyticsSection`'s. Deleted for good in #11628; until then it is only a
+ * grouping element for content a C issue has not rewritten yet.
  *
- * Forwards any other HTML/ARIA attribute (id, aria-label, aria-live,
- * role, data-*, …) to the outer element (#7848).
+ * Forwards any other HTML/ARIA attribute (id, aria-label, aria-live, role,
+ * data-*, …) to the outer element (#7848).
  */
 export function Panel({
   title,
   action,
   caption,
   flush,
-  interactive,
-  tone = "default",
-  tintBorderOnly,
-  as,
   className,
   bodyClassName,
   children,
   ...rest
 }: PanelProps) {
-  const Cmp: ElementType = as ?? "section";
   const hasHeader = title != null || action != null || caption != null;
-  const padClass = flush ? "mg-panel-pad-flush" : "mg-panel-pad";
-  const toneStyle = TONE_STYLES[tone];
   return (
-    <Cmp
-      {...rest}
-      className={classNames(
-        "rounded border",
-        toneStyle.border,
-        tintBorderOnly ? "bg-card" : toneStyle.bg,
-        interactive ? "mg-hover-lift" : null,
-        className,
-      )}
-    >
+    <section {...rest} className={classNames("min-w-0", className)}>
       {hasHeader ? (
-        <header
-          className="flex items-start justify-between gap-3 border-b border-border mg-panel-pad"
-          style={{
-            paddingTop: "var(--mg-space-sm)",
-            paddingBottom: "var(--mg-space-sm)",
-          }}
-        >
+        <header className="flex items-start justify-between gap-3 mg-panel-pad pb-2">
           <div className="min-w-0">
-            {title != null ? <SectionLabel>{title}</SectionLabel> : null}
+            {title != null ? (
+              <h3 className="text-13 font-semibold text-ink-strong">{title}</h3>
+            ) : null}
             {caption != null ? (
               <p className="mt-1 text-13 text-ink-muted">{caption}</p>
             ) : null}
@@ -99,7 +55,14 @@ export function Panel({
           ) : null}
         </header>
       ) : null}
-      <div className={classNames(padClass, bodyClassName)}>{children}</div>
-    </Cmp>
+      <div
+        className={classNames(
+          flush ? "mg-panel-pad-flush" : "mg-panel-pad",
+          bodyClassName,
+        )}
+      >
+        {children}
+      </div>
+    </section>
   );
 }

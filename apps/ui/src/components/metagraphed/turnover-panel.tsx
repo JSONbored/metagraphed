@@ -1,7 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { UserPlus, UserMinus, RefreshCw, Users, ShieldCheck } from "lucide-react";
 import { subnetTurnoverQuery } from "@/lib/metagraphed/queries";
-import { TableState, StatTile } from "@jsonbored/ui-kit";
+import { TableState, FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { formatNumber } from "@/lib/metagraphed/format";
 
 function pctStr(v?: number | null): string {
@@ -10,20 +9,6 @@ function pctStr(v?: number | null): string {
 }
 
 // Higher retention/stability is better; a churned-away set reads as "down".
-function retentionTone(v?: number | null): "ok" | "warn" | "down" | "default" {
-  if (v == null) return "default";
-  if (v >= 0.9) return "ok";
-  if (v >= 0.7) return "warn";
-  return "down";
-}
-
-function stabilityTone(score?: number | null): "ok" | "warn" | "down" | "default" {
-  if (score == null) return "default";
-  if (score >= 90) return "ok";
-  if (score >= 70) return "warn";
-  return "down";
-}
-
 /**
  * Validator-set & registration turnover scorecard for one subnet (#3343): how
  * much the validator set and neuron population rotated across the selected
@@ -49,44 +34,22 @@ export function TurnoverLoader({ netuid }: { netuid: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatTile
-          icon={ShieldCheck}
-          eyebrow="Stability score"
-          value={t.stability_score ?? "—"}
-          hint="/ 100"
-          tone={stabilityTone(t.stability_score)}
-        />
-        <StatTile
-          icon={RefreshCw}
-          eyebrow="Validator retention"
+      <FactStrip variant="grid">
+        <FactCell label="Stability score" value={t.stability_score ?? "—"} hint="/ 100" />
+        <FactCell
+          label="Validator retention"
           value={pctStr(t.validator_retention)}
           hint={`${formatNumber(t.validators_start)} → ${formatNumber(t.validators_end)}`}
-          tone={retentionTone(t.validator_retention)}
         />
-        <StatTile
-          icon={RefreshCw}
-          eyebrow="Neuron retention"
+        <FactCell
+          label="Neuron retention"
           value={pctStr(t.neuron_retention)}
           hint={`${formatNumber(t.neurons_start)} → ${formatNumber(t.neurons_end)}`}
-          tone={retentionTone(t.neuron_retention)}
         />
-        <StatTile
-          icon={UserPlus}
-          eyebrow="Validators entered"
-          value={formatNumber(t.validators_entered)}
-        />
-        <StatTile
-          icon={UserMinus}
-          eyebrow="Validators exited"
-          value={formatNumber(t.validators_exited)}
-        />
-        <StatTile
-          icon={Users}
-          eyebrow="UIDs deregistered"
-          value={formatNumber(t.uids_deregistered)}
-        />
-      </div>
+        <FactCell label="Validators entered" value={formatNumber(t.validators_entered)} />
+        <FactCell label="Validators exited" value={formatNumber(t.validators_exited)} />
+        <FactCell label="UIDs deregistered" value={formatNumber(t.uids_deregistered)} />
+      </FactStrip>
       {t.start_date && t.end_date ? (
         <p className="text-11 text-ink-muted">
           Compared {t.start_date} → {t.end_date}

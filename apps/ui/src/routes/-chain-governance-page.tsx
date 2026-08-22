@@ -1,16 +1,15 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { GovernanceSearch } from "./chain.governance";
 import {
-  ActionBar,
   DownloadCsvButton,
   ShareButton,
   Skeleton,
   TableSkeleton,
+  RangeControl,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { classNames } from "@/lib/metagraphed/format";
 import { ChainTabActions } from "./-chain-hub";
 import { EmissionGateChanges } from "@/components/metagraphed/emission-gate-changes";
 import { SudoKeyCard, SudoTable, sudoQueryParams } from "./-sudo-index-page";
@@ -70,31 +69,17 @@ export function ChainGovernancePage() {
   return (
     <>
       <ChainTabActions>
-        <div
-          role="tablist"
-          aria-label="Governance source"
-          className="mr-auto inline-flex items-center gap-1 rounded border border-border bg-surface p-0.5"
-        >
-          {VIEWS.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              role="tab"
-              aria-selected={v.id === view}
-              onClick={() => setView(v.id)}
-              className={classNames(
-                "rounded px-2.5 py-1 text-13 font-medium transition-colors mg-focus-ring",
-                v.id === view ? "bg-card text-ink-strong" : "text-ink-muted hover:text-ink-strong",
-              )}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
-        <ActionBar>
+        <RangeControl
+          label="Governance source"
+          options={VIEWS.map((v) => ({ value: v.id, label: v.label }))}
+          value={view}
+          onChange={setView}
+          className="mr-auto"
+        />
+        <div className="mg-actions">
           <DownloadCsvButton url={csvUrl} bare />
           <ShareButton bare />
-        </ActionBar>
+        </div>
       </ChainTabActions>
 
       <p className="mb-6 max-w-3xl text-13 text-ink-muted">{active.blurb}</p>

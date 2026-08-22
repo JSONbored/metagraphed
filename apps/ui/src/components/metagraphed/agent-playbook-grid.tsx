@@ -43,7 +43,7 @@ export function AgentPlaybookGrid() {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {PLAYBOOKS.map((p) => (
-        <Panel key={p.slug} interactive flush className="relative min-w-0">
+        <Panel key={p.slug} flush className="relative min-w-0">
           <div className="flex items-start gap-3 p-4">
             <div className="min-w-0 flex-1">
               {/* `before:absolute before:inset-0` stretches the link's hit

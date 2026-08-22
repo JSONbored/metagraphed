@@ -3,7 +3,7 @@
  *
  * There is no subscription list API and no account model — the strip reports
  * the self-service webhook surface (actions / kinds / auth) so `/settings`
- * opens with the same KPI/StatTile visual weight as sibling utility pages.
+ * opens with the same KPI/FactStrip visual weight as sibling utility pages.
  * KPI values are kept short and numeric on purpose: a prior attempt used the
  * literal endpoint path ("/webhooks/subscriptions") as a hero KPI value,
  * which has no whitespace to wrap on and overflowed the KPI grid cell at
@@ -88,7 +88,7 @@ export function buildSettingsHeroKpis(
   ];
 }
 
-/** Compact StatTile row between the hero and the subscription forms. */
+/** Compact fact row between the hero and the subscription forms. */
 export function buildSettingsSummaryTiles(
   actions: readonly SettingsSummaryActionInput[] = SETTINGS_SUMMARY_ACTIONS,
 ): SettingsSummaryTile[] {

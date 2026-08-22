@@ -34,7 +34,7 @@ export function NetworkSubnetLifecycle() {
   }
 
   return (
-    <Panel as="section">
+    <Panel>
       <p className="mb-3 text-10 text-ink-muted">
         {formatNumber(l.entry_count)} recorded transition
         {l.entry_count === 1 ? "" : "s"}
@@ -86,7 +86,7 @@ export function DomainSummaryCard({ tag }: { tag: string }) {
   }
 
   return (
-    <Panel as="section">
+    <Panel>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure
           label="subnets"

@@ -10,18 +10,21 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CaptureCurrencyPanel } from "@/components/metagraphed/capture-currency-panel";
 import { StaleBanner } from "@/components/metagraphed/states";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import {
   HealthPill,
   TableState,
-  ActionBar,
-  PageSection,
   TimeAgo,
   AnimatedNumber,
   Donut,
   DonutLegend,
   Sparkline,
+  AnalyticsSection,
+  EntityHero,
+  FactSentence,
+  FactStrip,
+  FactCell,
 } from "@jsonbored/ui-kit";
 import { SubnetHealthMatrix } from "@/components/metagraphed/subnet-health-matrix";
 import { StatusMosaic } from "@/components/metagraphed/analytics/status-mosaic";
@@ -93,7 +96,7 @@ export function HealthPage() {
           interval={effectiveInterval}
           controls={
             <>
-              <ActionBar>
+              <div className="mg-actions">
                 <Link
                   to="/status"
                   className="inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
@@ -101,7 +104,7 @@ export function HealthPage() {
                   Public status
                   <ArrowUpRight className="size-3" aria-hidden="true" />
                 </Link>
-              </ActionBar>
+              </div>
               <AutoRefreshControl
                 enabled={enabled}
                 visible={visible}
@@ -116,91 +119,84 @@ export function HealthPage() {
 
       <main className="space-y-20 md:space-y-24">
         <TimeRangeProvider>
-          <PageSection
+          <AnalyticsSection
             id="status-board"
-            eyebrow="Status board"
-            title="Global health, at a glance"
-            description="Probe-derived state across every monitored surface."
-            toolbar={<TimeRangeScrub />}
+            name="Global health, at a glance"
+            question="Probe-derived state across every monitored surface."
+            controls={<TimeRangeScrub />}
             className={sectionRing("status-board")}
           >
             <AsyncPanel height="lg">
               <StatusBoard interval={effectiveInterval} />
             </AsyncPanel>
-          </PageSection>
+          </AnalyticsSection>
 
-          <PageSection
+          <AnalyticsSection
             id="network-pulse"
-            eyebrow="Network pulse"
-            title="ok / warn / down distribution"
-            description="Aggregate status over the selected range, with incident markers per bucket."
+            name="ok / warn / down distribution"
+            question="Aggregate status over the selected range, with incident markers per bucket."
           >
             <AsyncPanel height="lg">
               <NetworkPulseBand />
             </AsyncPanel>
-          </PageSection>
+          </AnalyticsSection>
 
-          <PageSection
+          <AnalyticsSection
             id="status-mosaic"
-            eyebrow="Endpoints"
-            title="Live status mosaic"
-            description="Every monitored endpoint, colored by latest probe state. Filter by state; click a tile to open."
+            name="Live status mosaic"
+            question="Every monitored endpoint, colored by latest probe state. Filter by state; click a tile to open."
           >
             <AsyncPanel height="lg">
               <StatusMosaic />
             </AsyncPanel>
-          </PageSection>
+          </AnalyticsSection>
         </TimeRangeProvider>
 
-        <PageSection
+        <AnalyticsSection
           id="subnet-matrix"
-          eyebrow="Coverage"
-          title="Subnet health matrix"
-          description="Every active subnet, colored by latest probe state. Click a cell to open."
+          name="Subnet health matrix"
+          question="Every active subnet, colored by latest probe state. Click a cell to open."
           className={sectionRing("subnet-matrix")}
         >
           <SubnetHealthMatrix />
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="source-health"
-          eyebrow="Sources"
-          title="Source freshness"
-          description="Where the registry pulls evidence from and how fresh each source is."
+          name="Source freshness"
+          question="Where the registry pulls evidence from and how fresh each source is."
           className={sectionRing("source-health")}
         >
           <AsyncPanel height="md">
             <SourceHealth interval={effectiveInterval} />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
         {/* #10300: /chain/indexer-lag and /health/failure-reasons were both
             published and rendered nowhere. The ops console is their home --
             "how current is our capture, and what is failing behind it" is the
             question this page exists to answer. */}
-        <PageSection
+        <AnalyticsSection
           id="capture-currency"
-          eyebrow="Capture"
-          title="Capture currency & failure mix"
-          description="How far behind the chain head our indexing is, and what is actually going wrong with the probes."
+          name="Capture currency & failure mix"
+          question="How far behind the chain head our indexing is, and what is actually going wrong with the probes."
           className={sectionRing("capture-currency")}
         >
           <AsyncPanel height="md">
             <CaptureCurrencyPanel />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="incidents"
-          eyebrow="Incidents"
-          title="Live & recent incidents"
-          description="Grouped by host. Ongoing incidents bubble to the top."
+          name="Live & recent incidents"
+          question="Grouped by host. Ongoing incidents bubble to the top."
           className={sectionRing("incidents")}
         >
           <AsyncPanel height="md">
             <Incidents interval={effectiveInterval} />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
       </main>
 
       <ApiSourceFooter
@@ -243,41 +239,53 @@ function HealthHero({
   const ongoing = incidents.filter((i) => !i.ended_at).length;
 
   return (
-    <PageMasthead
-      eyebrow="Operations"
-      live
-      title="Health & freshness"
-      description={
-        <>
-          Operational drill-down for maintainers — subnet matrix, endpoint mosaic, source freshness,
-          and live incidents. Probe-derived only; submissions cannot set uptime or incident state.
-          For plain-language uptime, see{" "}
-          <Link to="/status" className="text-accent-text underline-offset-2 hover:underline">
-            System status
-          </Link>
-          .
-        </>
+    <EntityHero
+      name="Health & freshness"
+      action={controls}
+      sentence={
+        <FactSentence>
+          {
+            <>
+              Operational drill-down for maintainers — subnet matrix, endpoint mosaic, source
+              freshness, and live incidents. Probe-derived only; submissions cannot set uptime or
+              incident state. For plain-language uptime, see{" "}
+              <Link to="/status" className="text-accent-text underline-offset-2 hover:underline">
+                System status
+              </Link>
+              .
+            </>
+          }
+        </FactSentence>
       }
-      actions={controls}
-      caption={<>health · {h?.total ?? "—"} surfaces</>}
-      kpis={[
-        {
-          label: "Uptime · 24h",
-          value: uptimePct != null ? uptimePct.toFixed(2) + "%" : "—",
-        },
-        { label: "OK", value: <AnimatedNumber value={h?.ok} />, hint: "surfaces" },
-        { label: "Warn", value: <AnimatedNumber value={h?.warn} /> },
-        { label: "Down", value: <AnimatedNumber value={h?.down} /> },
-        {
-          label: "Stale sources",
-          value: <AnimatedNumber value={f?.stale_count} />,
-          hint: f?.sources ? `of ${f.sources.length}` : undefined,
-        },
-        {
-          label: "Ongoing incidents",
-          value: <AnimatedNumber value={ongoing} />,
-        },
-      ]}
+      facts={
+        <FactStrip>
+          {[
+            {
+              label: "Uptime · 24h",
+              value: uptimePct != null ? uptimePct.toFixed(2) + "%" : "—",
+            },
+            { label: "OK", value: <AnimatedNumber value={h?.ok} />, hint: "surfaces" },
+            { label: "Warn", value: <AnimatedNumber value={h?.warn} /> },
+            { label: "Down", value: <AnimatedNumber value={h?.down} /> },
+            {
+              label: "Stale sources",
+              value: <AnimatedNumber value={f?.stale_count} />,
+              hint: f?.sources ? `of ${f.sources.length}` : undefined,
+            },
+            {
+              label: "Ongoing incidents",
+              value: <AnimatedNumber value={ongoing} />,
+            },
+          ].map((k) => (
+            <FactCell
+              key={k.label}
+              label={k.label}
+              value={k.value}
+              hint={typeof k.hint === "string" ? k.hint : undefined}
+            />
+          ))}
+        </FactStrip>
+      }
     />
   );
 }
@@ -481,7 +489,7 @@ function StatusBoard({ interval }: { interval: number | false }) {
 
 function BoardCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Panel as="div" flush>
+    <Panel flush>
       <div className="p-4">
         <div className="text-13 text-ink-muted mb-3">{title}</div>
         {children}
@@ -528,7 +536,7 @@ function SourceHealth({ interval }: { interval: number | false }) {
     );
   }
   return (
-    <Panel as="div" flush className="overflow-x-auto">
+    <Panel flush className="overflow-x-auto">
       <table className="w-full text-13">
         <thead className="text-10 bg-surface-2/60 text-ink-muted">
           <tr>
@@ -682,7 +690,7 @@ function Incidents({ interval }: { interval: number | false }) {
 
   return (
     <div className="space-y-4">
-      <Panel as="div" bodyClassName="flex items-center gap-4">
+      <Panel bodyClassName="flex items-center gap-4">
         <div>
           <div className="text-13 text-ink-muted">Incidents · 14d</div>
           <div className="font-display text-28 font-semibold text-ink-strong tabular-nums leading-none mt-1">

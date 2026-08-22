@@ -20,7 +20,6 @@ export function ChainIdleStakeSnapshot({ idleStake }: { idleStake: ChainIdleStak
           ? `${formatTao(idleStake.total_idle_stake_alpha)} idle network-wide — current snapshot, top ${top.length} subnets shown.`
           : "Current snapshot — stake registered to a subnet with no corresponding active neuron."
       }
-      updatedAt={idleStake.captured_at}
       height={140}
       empty={top.length === 0}
       emptyLabel="No idle stake"

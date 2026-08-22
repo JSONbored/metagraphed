@@ -1,16 +1,7 @@
+import { FactCell } from "@jsonbored/ui-kit";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, type QueryKey } from "@tanstack/react-query";
-import {
-  BookOpen,
-  ChevronDown,
-  Code2,
-  Github,
-  Globe,
-  LayoutDashboard,
-  ArrowDownRight,
-  ArrowUpRight,
-  Minus,
-} from "lucide-react";
+import { BookOpen, ChevronDown, Code2, Github, Globe, LayoutDashboard } from "lucide-react";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { useRegisterApiSource, useApiSourceCtx } from "@/lib/metagraphed/api-source-context";
 import {
@@ -19,15 +10,8 @@ import {
   safeExternalUrl,
   CurationChip,
   HealthPill,
-  StatWithSpark,
-  MiniStack,
-  MiniRadial,
-  DotRow,
-  NoDataSpark,
   ShareButton,
-  Sparkline,
   TimeAgo,
-  type SparklinePoint,
 } from "@jsonbored/ui-kit";
 import { StaleBanner } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -38,7 +22,6 @@ import {
   subnetEventSummaryQuery,
   subnetHealthPercentilesQuery,
   subnetRegistrationsQuery,
-  subnetTrajectoryQuery,
   subnetUptimeQuery,
 } from "@/lib/metagraphed/queries";
 import { useSubnetProbeHealth } from "@/hooks/use-subnet-probe-health";
@@ -138,7 +121,6 @@ function ReviewProvenanceChip({
       </button>
       {open ? (
         <Panel
-          as="div"
           role="dialog"
           aria-label="Review provenance"
           title="Review provenance"
@@ -204,14 +186,6 @@ function classifyKind(k: unknown): string {
 
 // On-token palette for the event-summary category stack — cycled across the
 // top event categories (registration, stake, serving, …) in count order.
-const CATEGORY_COLORS = [
-  "var(--accent)",
-  "var(--ink-strong)",
-  "var(--health-ok)",
-  "var(--health-warn)",
-  "var(--border)",
-] as const;
-
 // Collapse the per-surface daily uptime history into a single subnet-wide
 // time-series: for each day, the mean uptime % and mean p50 latency across all
 // tracked surfaces that reported that day. Returns chronologically-ordered
@@ -316,7 +290,6 @@ export function SubnetMasthead({
   // long-range daily uptime history. We source the sparks from those and fall
   // back to an honest no-data state when a series is absent — never a fabricated
   // shape.
-  const { data: trajRes } = useQuery(subnetTrajectoryQuery(netuid));
   const { data: uptimeRes } = useQuery(subnetUptimeQuery(netuid));
   const { data: endpointsRes } = useQuery(subnetEndpointsQuery(netuid));
   // #8247: source for the new 6-tile KPI band (price/emission/stake/miners-
@@ -328,12 +301,6 @@ export function SubnetMasthead({
   const [showMoreStats, setShowMoreStats] = useState(false);
   // Same extraction as economics-panel.tsx's Alpha price tile -- one shared
   // shape, not a second definition that could quietly diverge from it.
-  const pricePoints: SparklinePoint[] = (trajRes?.data.points ?? []).flatMap((p) =>
-    typeof p.alpha_price_tao === "number" && Number.isFinite(p.alpha_price_tao)
-      ? [{ t: p.date, v: p.alpha_price_tao }]
-      : [],
-  );
-  const priceValues = pricePoints.map((p) => p.v);
   const { data: pctRes } = useQuery(subnetHealthPercentilesQuery(netuid));
   const { data: regRes } = useQuery(subnetRegistrationsQuery(netuid));
   const { data: deregRes } = useQuery(subnetDeregistrationsQuery(netuid));
@@ -348,48 +315,21 @@ export function SubnetMasthead({
   // consolidated call in place of several per-kind queries. Top categories by
   // event volume drive the mini-stack; days with no events degrade to a dash.
   const eventSummary = eventsRes?.data;
-  const topCategories = [...(eventSummary?.categories ?? [])]
-    .sort((a, b) => b.event_count - a.event_count)
-    .slice(0, CATEGORY_COLORS.length);
-  const categorySegments = topCategories
-    .map((c, i) => ({
-      label: c.category,
-      value: c.event_count,
-      color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
-    }))
-    .filter((s) => s.value > 0);
-  const activityHint = categorySegments.length
-    ? categorySegments
-        .slice(0, 3)
-        .map((s) => `${formatNumber(s.value)} ${s.label}`)
-        .join(" · ")
-    : "on-chain events";
-  const activityAt = eventSummary?.observed_at ?? eventsRes?.meta?.generated_at ?? generatedAt;
 
   // Subnet-wide daily uptime % + median latency, meaned across tracked surfaces.
-  const trendWindowKey = uptimeRes?.data?.window ?? "90d";
   const { uptimeSeries, latencySeries } = dailyHealthSeries(uptimeRes?.data?.surfaces);
 
   // Structural growth series for the participation-proxy spark — real weekly
   // surface counts from the trajectory snapshots (no participant time-series is
   // exposed, so we plot the closest honest structural signal instead).
-  const trajPoints = trajRes?.data?.points ?? [];
-  const surfaceCountSeries = trajPoints
-    .map((p) => (typeof p.surface_count === "number" ? p.surface_count : null))
-    .filter((v): v is number => v != null);
 
-  const firstUptime = uptimeSeries[0];
   const lastUptime = uptimeSeries[uptimeSeries.length - 1];
-  const uptimeDelta = firstUptime != null && lastUptime != null ? lastUptime - firstUptime : null;
   // Prefer the live 24h uptime passed in; fall back to the freshest daily point.
   const liveUptime =
     uptimePct ??
     (uptimeRes?.data?.reliability?.uptime_ratio != null
       ? uptimeRes.data.reliability.uptime_ratio * 100
       : (lastUptime ?? null));
-  const trendsAt = uptimeRes?.meta?.generated_at ?? generatedAt;
-  const trajAt = trajRes?.meta?.generated_at ?? generatedAt;
-  const endpointsAt = endpointsRes?.meta?.generated_at ?? generatedAt;
 
   // Latency p50 tile: prefer the live per-surface percentiles (7d) — the daily
   // uptime series is often empty even when probes are flowing, which silently
@@ -397,8 +337,6 @@ export function SubnetMasthead({
   const surfaceP50 = aggregateSurfaceP50(pctRes?.data);
   const latP50 =
     surfaceP50 ?? (latencySeries.length ? latencySeries[latencySeries.length - 1] : null);
-  const latAt = pctRes?.meta?.generated_at ?? trendsAt;
-  const latWindow = surfaceP50 != null ? "7d" : trendWindowKey;
 
   const endpoints = (endpointsRes?.data ?? []) as Endpoint[];
   const kindCounts = new Map<string, number>();
@@ -406,11 +344,6 @@ export function SubnetMasthead({
     const id = classifyKind(e.kind);
     kindCounts.set(id, (kindCounts.get(id) ?? 0) + 1);
   }
-  const stackSegments = KIND_BUCKETS.map((b) => ({
-    label: b.label,
-    value: kindCounts.get(b.id) ?? 0,
-    color: b.color,
-  })).filter((s) => s.value > 0);
 
   const links: LinkChip[] = [
     { label: "Website", href: profile?.website ?? profile?.homepage, icon: Globe },
@@ -434,35 +367,6 @@ export function SubnetMasthead({
     profile?.completeness != null ? Math.round(profile.completeness * 100) : null;
 
   // Coverage of expected resource link kinds.
-  const sourceKinds: Array<{ label: string; on: boolean }> = [
-    { label: "Site", on: !!(profile?.website ?? profile?.homepage) },
-    { label: "Docs", on: !!profile?.docs },
-    { label: "Repo", on: !!profile?.repo },
-    { label: "Dashboard", on: !!profile?.dashboard },
-  ];
-
-  const uptimeTone: "ok" | "warn" | "down" | "default" =
-    liveUptime == null ? "default" : liveUptime > 99 ? "ok" : liveUptime < 95 ? "down" : "warn";
-
-  const deltaChip =
-    uptimeDelta != null && Math.abs(uptimeDelta) > 0.01 ? (
-      <span
-        className={
-          "inline-flex items-center gap-0.5 text-10" +
-          (uptimeDelta > 0 ? "text-health-ok" : "text-health-down")
-        }
-        title={`${uptimeDelta > 0 ? "+" : ""}${uptimeDelta.toFixed(2)}% over window`}
-      >
-        {uptimeDelta > 0 ? (
-          <ArrowUpRight className="size-3" />
-        ) : uptimeDelta < 0 ? (
-          <ArrowDownRight className="size-3" />
-        ) : (
-          <Minus className="size-3" />
-        )}
-        {Math.abs(uptimeDelta).toFixed(1)}
-      </span>
-    ) : null;
 
   return (
     <header className="mb-6">
@@ -561,7 +465,6 @@ export function SubnetMasthead({
             // too (a resource/link action, not a status readout), so the
             // bar itself is unconditional even when there are no links yet.
             <Panel
-              as="div"
               flush
               className="mt-3"
               bodyClassName="inline-flex items-center divide-x divide-border overflow-hidden"
@@ -618,105 +521,45 @@ export function SubnetMasthead({
           after it: real information, just not headline-of-the-page
           information, and nothing here is deleted. */}
       <Panel
-        as="div"
         flush
         className="mt-4"
         bodyClassName="grid grid-cols-2 divide-x divide-y divide-border overflow-hidden sm:grid-cols-3 sm:divide-y-0 xl:grid-cols-6"
       >
-        <StatWithSpark
+        <FactCell
           label="Price"
           value={econ?.alpha_price_tao != null ? `${econ.alpha_price_tao.toFixed(4)} τ` : "—"}
-          hint="alpha price"
-          full="Current alpha price against TAO, from the live chain economics tier."
-          updatedAt={econRes?.meta?.generated_at}
-          windowLabel="7d"
-          viz={
-            <div className="h-[18px]">
-              {priceValues.length > 1 ? (
-                <Sparkline
-                  values={priceValues}
-                  color="var(--accent)"
-                  height={18}
-                  ariaLabel="Alpha price trend"
-                  formatValue={(v) => `${v.toFixed(4)} τ`}
-                />
-              ) : (
-                <NoDataSpark updatedAt={econRes?.meta?.generated_at} windowLabel="7d" />
-              )}
-            </div>
-          }
+          hint="Current alpha price against TAO, from the live chain economics tier."
         />
-        <StatWithSpark
+        <FactCell
           label="Emission share"
           value={econ?.emission_share != null ? `${(econ.emission_share * 100).toFixed(3)}%` : "—"}
-          hint="stage-1 price share"
-          full="Stage 1 of the v440 emission pipeline: this subnet's share of alpha price (alpha_price / total), NOT the share of TAO it receives. Spec 440 separates the two by miner-burn reweighting, the Hill emission gate, the enabled filter, and the alpha injection cap."
-          updatedAt={econRes?.meta?.generated_at}
+          hint="Stage 1 of the v440 emission pipeline: this subnet's share of alpha price (alpha_price / total), NOT the share of TAO it receives. Spec 440 separates the two by miner-burn reweighting, the Hill emission gate, the enabled filter, and the alpha injection cap."
         />
-        <StatWithSpark
+        <FactCell
           label="Total stake"
           value={formatTao(econ?.total_stake_alpha)}
-          hint="staked alpha"
-          full="Total alpha staked into this subnet."
-          updatedAt={econRes?.meta?.generated_at}
+          hint="Total alpha staked into this subnet."
         />
-        <StatWithSpark
+        <FactCell
           label="Miners / Validators"
           value={
             econ?.miner_count != null && econ?.validator_count != null
               ? `${formatNumber(econ.miner_count)} / ${formatNumber(econ.validator_count)}`
               : "—"
           }
-          hint={econ?.max_uids ? `of ${econ.max_uids} max UIDs` : undefined}
-          full="Active miner and validator counts against this subnet's registered UID cap."
-          updatedAt={econRes?.meta?.generated_at}
+          hint="Active miner and validator counts against this subnet's registered UID cap."
         />
-        <StatWithSpark
+        <FactCell
           label="Uptime"
           value={liveUptime != null ? `${liveUptime.toFixed(2)}%` : "—"}
-          tone={uptimeTone}
-          hint="24h"
-          full="Mean uptime across all tracked endpoints, trailing 24h."
-          delta={deltaChip}
-          updatedAt={trendsAt}
-          windowLabel={trendWindowKey}
-          viz={
-            <div className="h-[18px]">
-              {uptimeSeries.length > 1 ? (
-                <Sparkline
-                  values={uptimeSeries}
-                  color={
-                    uptimeTone === "ok"
-                      ? "var(--health-ok)"
-                      : uptimeTone === "warn"
-                        ? "var(--health-warn)"
-                        : uptimeTone === "down"
-                          ? "var(--health-down)"
-                          : "var(--accent)"
-                  }
-                  height={18}
-                  ariaLabel="Uptime sparkline"
-                  formatValue={(v) => `${v.toFixed(2)}%`}
-                />
-              ) : (
-                <NoDataSpark updatedAt={trendsAt} windowLabel={trendWindowKey} />
-              )}
-            </div>
-          }
+          hint="Mean uptime across all tracked endpoints, trailing 24h."
         />
-        <StatWithSpark
+        <FactCell
           label="Integration readiness"
           value={
             profile?.integration_readiness != null ? `${profile.integration_readiness}/100` : "—"
           }
-          hint="ready to integrate"
-          full="Objective integration-readiness score: callable API, documented, auth clarity, active lifecycle, profile completeness."
-          updatedAt={generatedAt}
-          viz={
-            profile?.integration_readiness != null ? (
-              <MiniRadial value={profile.integration_readiness / 100} size={22} stroke={3} />
-            ) : undefined
-          }
+          hint="Objective integration-readiness score: callable API, documented, auth clarity, active lifecycle, profile completeness."
         />
       </Panel>
 
@@ -747,186 +590,73 @@ export function SubnetMasthead({
         </button>
         {showMoreStats ? (
           <Panel
-            as="div"
             flush
             id={`masthead-more-stats-${netuid}`}
             className="mt-2"
             bodyClassName="flex flex-wrap divide-x divide-border overflow-hidden [&>*]:grow [&>*]:basis-[150px] [&>*]:min-w-[150px]"
           >
-            <StatWithSpark
+            <FactCell
               label="Netuid"
               value={String(netuid).padStart(3, "0")}
-              hint="Native chain id"
-              full="Native Bittensor metagraph identifier"
-              updatedAt={generatedAt}
+              hint="Native Bittensor metagraph identifier"
             />
-            <StatWithSpark
+            <FactCell
               label="Registrations"
               value={formatNumber(reg?.registrations)}
-              hint={`${formatNumber(reg?.distinct_registrants ?? 0)} registrants`}
-              full={`Neuron-registration events on this subnet over the trailing ${reg?.window ?? "30d"} window.`}
-              updatedAt={reg?.observed_at ?? null}
-              windowLabel={reg?.window ?? "30d"}
+              hint={`Neuron-registration events on this subnet over the trailing ${reg?.window ?? "30d"} window.`}
             />
-            <StatWithSpark
+            <FactCell
               label="Deregistrations"
               value={formatNumber(dereg?.deregistrations)}
-              hint={`${formatNumber(dereg?.distinct_deregistered_hotkeys ?? 0)} hotkeys`}
-              full={`Neuron-deregistration (eviction) events on this subnet over the trailing ${dereg?.window ?? "30d"} window.`}
-              updatedAt={dereg?.observed_at ?? null}
-              windowLabel={dereg?.window ?? "30d"}
+              hint={`Neuron-deregistration (eviction) events on this subnet over the trailing ${dereg?.window ?? "30d"} window.`}
             />
-            <StatWithSpark
+            <FactCell
               label="Activity"
               value={formatNumber(eventSummary?.total_events)}
-              hint={activityHint}
-              full="Windowed on-chain event rollup for this subnet (registrations, stake, serving, transfers, etc.)"
-              updatedAt={activityAt}
-              windowLabel={eventSummary?.window ?? "7d"}
-              viz={<MiniStack segments={categorySegments} />}
+              hint="Windowed on-chain event rollup for this subnet (registrations, stake, serving, transfers, etc.)"
             />
-            <StatWithSpark
+            <FactCell
               label="Participants"
               value={formatNumber(profile?.participants)}
-              hint="Active UIDs"
-              full="UIDs registered in this subnet's metagraph. Spark plots verified-surface growth from weekly registry snapshots (no participant time-series is exposed)."
-              updatedAt={trajAt}
-              windowLabel="weekly"
-              viz={
-                <div className="h-[18px]">
-                  {surfaceCountSeries.length > 1 ? (
-                    <Sparkline
-                      values={surfaceCountSeries}
-                      color="var(--ink-muted)"
-                      fill={false}
-                      height={18}
-                      ariaLabel="Verified surface count trend"
-                    />
-                  ) : (
-                    <NoDataSpark updatedAt={trajAt} windowLabel="weekly" />
-                  )}
-                </div>
-              }
+              hint="UIDs registered in this subnet's metagraph. Spark plots verified-surface growth from weekly registry snapshots (no participant time-series is exposed)."
             />
-            <StatWithSpark
+            <FactCell
               label="Endpoints"
               value={formatNumber(profile?.endpoint_count ?? endpoints.length)}
-              hint={
-                stackSegments.length
-                  ? stackSegments.map((s) => `${s.value} ${s.label}`).join(" · ")
-                  : "tracked"
-              }
-              full="Tracked public endpoints, by kind"
-              updatedAt={endpointsAt}
-              viz={<MiniStack segments={stackSegments} />}
+              hint="Tracked public endpoints, by kind"
             />
-            <StatWithSpark
+            <FactCell
               label="Surfaces"
               value={formatNumber(profile?.surface_count)}
-              hint={`${profile?.supported_interface_kinds?.length ?? 0} kinds supported`}
-              full="Verified curated public interfaces"
-              updatedAt={generatedAt}
-              viz={
-                <MiniStack
-                  segments={[
-                    {
-                      label: "verified",
-                      value: profile?.surface_count ?? 0,
-                      color: "var(--accent)",
-                    },
-                    {
-                      label: "missing",
-                      value: profile?.missing_kinds?.length ?? 0,
-                      color: "var(--health-warn)",
-                    },
-                  ]}
-                />
-              }
+              hint="Verified curated public interfaces"
             />
-            <StatWithSpark
+            <FactCell
               label="Uptime"
               value={liveUptime != null ? `${liveUptime.toFixed(2)}%` : "—"}
-              tone={uptimeTone}
-              hint="current window"
-              full="Mean uptime across all tracked endpoints"
-              delta={deltaChip}
-              updatedAt={trendsAt}
-              windowLabel={trendWindowKey}
-              viz={
-                <div className="h-[18px]">
-                  {uptimeSeries.length > 1 ? (
-                    <Sparkline
-                      values={uptimeSeries}
-                      color={
-                        uptimeTone === "ok"
-                          ? "var(--health-ok)"
-                          : uptimeTone === "warn"
-                            ? "var(--health-warn)"
-                            : uptimeTone === "down"
-                              ? "var(--health-down)"
-                              : "var(--accent)"
-                      }
-                      height={18}
-                      ariaLabel="Uptime sparkline"
-                      formatValue={(v) => `${v.toFixed(2)}%`}
-                    />
-                  ) : (
-                    <NoDataSpark updatedAt={trendsAt} windowLabel={trendWindowKey} />
-                  )}
-                </div>
-              }
+              hint="Mean uptime across all tracked endpoints"
             />
-            <StatWithSpark
+            <FactCell
               label="Latency p50"
-              value={latP50 != null ? `${Math.round(latP50)}` : "—"}
-              unit={latP50 != null ? "ms" : undefined}
-              hint="median probe latency"
-              full="Median request latency across probed surfaces (p50)"
-              updatedAt={latAt}
-              windowLabel={latWindow}
-              viz={
-                <div className="h-[18px]">
-                  {latencySeries.length > 1 ? (
-                    <Sparkline
-                      values={latencySeries}
-                      color="var(--ink-muted)"
-                      height={18}
-                      ariaLabel="Latency sparkline"
-                      formatValue={(v) => `${Math.round(v)}ms`}
-                    />
-                  ) : (
-                    <NoDataSpark updatedAt={trendsAt} windowLabel={trendWindowKey} />
-                  )}
-                </div>
+              value={
+                <>
+                  {latP50 != null ? `${Math.round(latP50)}` : "—"}{" "}
+                  <span className="text-11 text-ink-muted">
+                    {latP50 != null ? "ms" : undefined}
+                  </span>
+                </>
               }
+              hint="Median request latency across probed surfaces (p50)"
             />
 
-            <StatWithSpark
+            <FactCell
               label="Completeness"
               value={completenessPct != null ? `${completenessPct}%` : "—"}
-              hint="registry profile"
-              full="Registry profile completeness across expected fields"
-              updatedAt={generatedAt}
-              viz={
-                <div className="flex items-center gap-2">
-                  <MiniRadial
-                    value={completenessPct != null ? completenessPct / 100 : 0}
-                    size={22}
-                    stroke={3}
-                  />
-                  <span className="text-10 text-ink-muted truncate">
-                    {profile?.curation_level ?? "—"}
-                  </span>
-                </div>
-              }
+              hint="Registry profile completeness across expected fields"
             />
-            <StatWithSpark
+            <FactCell
               label="Evidence"
               value={evidenceCount != null ? String(evidenceCount) : "—"}
-              hint="primary sources"
-              full="Number of primary source links recorded"
-              updatedAt={generatedAt}
-              viz={<DotRow dots={sourceKinds} />}
+              hint="Number of primary source links recorded"
             />
           </Panel>
         ) : null}

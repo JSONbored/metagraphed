@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRightLeft, Coins } from "lucide-react";
 import { useQueries, useSuspenseQuery } from "@tanstack/react-query";
-import { CopyButton, StatTile } from "@jsonbored/ui-kit";
+import { CopyButton, FactStrip, FactCell } from "@jsonbored/ui-kit";
 import {
   accountPortfolioQuery,
   accountPositionsQuery,
@@ -168,17 +168,14 @@ export function YourPositionsPanel({ address }: { address: string }) {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatTile
-          icon={Coins}
-          eyebrow="Total value (spot)"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Total value (spot)"
           value={`${taoCompact(totals.spot)} τ`}
           hint={`${positions.length} position${positions.length === 1 ? "" : "s"}`}
-          tone="accent"
         />
-        <StatTile
-          icon={Coins}
-          eyebrow="Simulated exit"
+        <FactCell
+          label="Simulated exit"
           value={
             exitPhase === "pending" ? (
               <Skeleton className="h-6 w-20" />
@@ -190,16 +187,15 @@ export function YourPositionsPanel({ address }: { address: string }) {
           }
           hint="after fee + slippage"
         />
-        <StatTile
-          icon={Coins}
-          eyebrow="Root / Alpha split"
+        <FactCell
+          label="Root / Alpha split"
           value={`${taoCompact(totals.root)} / ${taoCompact(totals.alpha)} τ`}
           hint={rootPct != null ? `${(rootPct * 100).toFixed(1)}% root` : "—"}
         />
-      </div>
+      </FactStrip>
 
       {/* Desktop table */}
-      <Panel as="div" flush className="hidden overflow-x-auto md:block">
+      <Panel flush className="hidden overflow-x-auto md:block">
         <table className="w-full text-13">
           <thead className="bg-surface text-10 text-ink-muted">
             <tr>
@@ -259,7 +255,7 @@ export function YourPositionsPanel({ address }: { address: string }) {
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {positions.map((p, i) => (
-          <Panel as="div" bodyClassName="space-y-2" key={p.key}>
+          <Panel bodyClassName="space-y-2" key={p.key}>
             <div className="flex items-center justify-between gap-2">
               <Link
                 to="/subnets/$netuid"

@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import { ShareButton, DownloadCsvButton, ActionBar, TableState, TimeAgo } from "@jsonbored/ui-kit";
+import { ShareButton, DownloadCsvButton, TableState, TimeAgo } from "@jsonbored/ui-kit";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { NetworkParametersPanel } from "@/components/metagraphed/network-parameters-panel";
 import {
@@ -21,13 +21,13 @@ export function RuntimePage() {
   return (
     <>
       <ChainTabActions>
-        <ActionBar>
+        <div className="mg-actions">
           {/* /api/v1/runtime is a single whole-window aggregate with no
               filters to carry, so the export needs no query params beyond
               format -- unlike the filtered feeds' <page>QueryParams(search). */}
           <DownloadCsvButton url={runtimeCsvUrl} bare />
           <ShareButton bare />
-        </ActionBar>
+        </div>
       </ChainTabActions>
       <AsyncPanel
         context="network parameters"
@@ -68,7 +68,7 @@ function RuntimeContent() {
         />
       ) : (
         <>
-          <Panel as="div" flush className="hidden md:block overflow-hidden">
+          <Panel flush className="hidden md:block overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-13">
                 <thead className="text-10 bg-surface text-ink-muted">
@@ -144,7 +144,7 @@ function PageHeroKpis({ history }: { history: RuntimeVersionHistory }) {
 
 function KpiTile({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
   return (
-    <Panel as="div" flush>
+    <Panel flush>
       <div className="px-4 py-3">
         <div className="text-13 text-ink-muted">{label}</div>
         <div className="mt-1 font-mono text-16 text-ink-strong tabular-nums">{value}</div>

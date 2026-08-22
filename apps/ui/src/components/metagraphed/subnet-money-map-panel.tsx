@@ -4,7 +4,7 @@ import {
   subnetRevenueQuery,
   subnetWalletsQuery,
 } from "@/lib/metagraphed/queries";
-import { Chip, ExternalLink, StatTile } from "@jsonbored/ui-kit";
+import { Chip, ExternalLink, FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { Skeleton, ErrorState } from "@/components/metagraphed/states";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
@@ -96,14 +96,14 @@ export function SubnetMoneyMapPanel({ netuid }: { netuid: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile
-          eyebrow="Emission in"
+      <FactStrip>
+        <FactCell
+          label="Emission in"
           value={formatTao(finite(emission.tao))}
           hint="TAO the network emits to this subnet"
         />
-        <StatTile
-          eyebrow="Owner cut accrued"
+        <FactCell
+          label="Owner cut accrued"
           value={alphaLabel(accrual.alpha)}
           hint={
             finite(accrual.owner_cut) == null
@@ -111,17 +111,17 @@ export function SubnetMoneyMapPanel({ netuid }: { netuid: number }) {
               : `${((finite(accrual.owner_cut) ?? 0) * 100).toFixed(2)}% of alpha emission`
           }
         />
-        <StatTile
-          eyebrow="Owner cut, priced"
+        <FactCell
+          label="Owner cut, priced"
           value={taoLabel(accrual.tao)}
           hint={usdLabel(accrual.usd) ?? "TAO/USD not read"}
         />
-        <StatTile
-          eyebrow="Revenue in"
+        <FactCell
+          label="Revenue in"
           value={usdLabel(revenue?.revenue_usd) ?? "Not observed"}
           hint="External revenue, if published"
         />
-      </div>
+      </FactStrip>
 
       <div className="space-y-2">
         <div className="text-13 text-ink-muted">Where the owner cut went</div>
@@ -137,9 +137,7 @@ export function SubnetMoneyMapPanel({ netuid }: { netuid: number }) {
             </div>
           ))}
         </div>
-        <Panel as="div" bodyClassName="text-13 text-ink-muted">
-          {summary.note}
-        </Panel>
+        <Panel bodyClassName="text-13 text-ink-muted">{summary.note}</Panel>
         {/* Reported, never balanced away. A negative residual means the parts
             exceed the whole and is shown as such. */}
         {finite(disposition.residual_alpha) != null ? (
@@ -153,7 +151,7 @@ export function SubnetMoneyMapPanel({ netuid }: { netuid: number }) {
       <div className="space-y-2">
         <div className="text-13 text-ink-muted">Declared wallets ({wallets.length})</div>
         {wallets.length === 0 ? (
-          <Panel as="div" bodyClassName="text-13 text-ink-muted">
+          <Panel bodyClassName="text-13 text-ink-muted">
             Nothing has been attributed for this subnet. That is a statement about what has been
             disclosed and evidenced, not about what exists.
           </Panel>

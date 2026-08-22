@@ -27,7 +27,7 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
       {validators.map((v) => {
         const f = resolveValidatorCard(v);
         return (
-          <Panel as="div" key={v.hotkey} className="min-w-0" bodyClassName="space-y-2">
+          <Panel key={v.hotkey} className="min-w-0" bodyClassName="space-y-2">
             <div className="flex min-w-0 items-center gap-1.5">
               {v.featured ? <SponsoredBadge /> : null}
               <Link

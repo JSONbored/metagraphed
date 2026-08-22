@@ -4,7 +4,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 
-// #6391: several `role="tablist"` widgets (endpoints' EndpointKindTabs, explorer's
+// #6391: several segmented widgets (endpoints' EndpointKindTabs, explorer's
 // section tabs, the subnet stake/unstake toggle) render `role="tab"`/`aria-selected`
 // on plain `<button onClick>` elements with no keyboard handler — so they advertise
 // the WAI-ARIA APG tabs pattern via `role` but never implement its arrow-key contract.
@@ -42,9 +42,9 @@ export function nextTabIndex(
   }
 }
 
-interface RovingTablist {
-  /** Ref callback to attach to each tab button, in list order (call with the item's index). */
-  tabRef: (index: number) => (el: HTMLElement | null) => void;
+interface RovingGroup {
+  /** Ref callback to attach to each item, in order (call with the item's index). */
+  itemRef: (index: number) => (el: HTMLElement | null) => void;
   /** `onKeyDown` for a tab button at `index`: moves DOM focus (and selection) per the APG contract. */
   onKeyDown: (index: number) => (e: ReactKeyboardEvent<HTMLElement>) => void;
 }
@@ -56,21 +56,21 @@ export function rovingTabIndex(index: number, activeIndex: number): 0 | -1 {
 }
 
 /**
- * Wire the WAI-ARIA tabs keyboard contract onto a horizontal `role="tablist"`.
+ * Wire the roving-tabindex keyboard contract onto a horizontal group -- a
+ * `role="radiogroup"` (`RangeControl`, #11607) or a tablist.
  *
- * `count` is the number of rendered tabs; `onSelect(index)` selects the tab (the
- * same effect as the button's existing onClick) — arrow navigation moves focus AND
- * selects, matching the "automatic activation" tablists these components already are.
- * Pair with `rovingTabIndex(i, activeIndex)` on each button so only the active tab
- * is in the Tab order and arrow keys move within.
+ * `count` is the number of rendered items; `onSelect(index)` selects the item
+ * (the same effect as its onClick) — arrow navigation moves focus AND selects.
+ * Pair with `rovingTabIndex(i, activeIndex)` on each item so only the active
+ * one is in the Tab order and arrow keys move within.
  */
-export function useRovingTablist(
+export function useRovingGroup(
   count: number,
   onSelect: (index: number) => void,
-): RovingTablist {
+): RovingGroup {
   const refs = useRef<(HTMLElement | null)[]>([]);
 
-  const tabRef = useCallback(
+  const itemRef = useCallback(
     (index: number) => (el: HTMLElement | null) => {
       refs.current[index] = el;
     },
@@ -88,5 +88,5 @@ export function useRovingTablist(
     [count, onSelect],
   );
 
-  return { tabRef, onKeyDown };
+  return { itemRef, onKeyDown };
 }

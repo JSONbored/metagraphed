@@ -1,7 +1,6 @@
+import { FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Scale, Coins, Timer } from "lucide-react";
-import { StatTile } from "@jsonbored/ui-kit";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { governanceConfigChangesQuery, networkParametersQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -26,26 +25,19 @@ export function NetworkParametersCard() {
   return (
     <div className="mb-6">
       <div className="text-13 mb-2 text-ink-muted">Current network parameters</div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatTile
-          icon={Scale}
-          eyebrow="TaoWeight"
-          value={taoWeightPct}
-          hint="root-weight ratio in consensus"
-        />
-        <StatTile
-          icon={Coins}
-          eyebrow="StakeThreshold"
+      <FactStrip variant="grid">
+        <FactCell label="TaoWeight" value={taoWeightPct} hint="root-weight ratio in consensus" />
+        <FactCell
+          label="StakeThreshold"
           value={formatTao(p.stake_threshold_tao)}
           hint="min stake to register a hotkey"
         />
-        <StatTile
-          icon={Timer}
-          eyebrow="PendingChildKeyCooldown"
+        <FactCell
+          label="PendingChildKeyCooldown"
           value={formatNumber(p.pending_childkey_cooldown_blocks)}
           hint="blocks before a pending child key activates"
         />
-      </div>
+      </FactStrip>
     </div>
   );
 }

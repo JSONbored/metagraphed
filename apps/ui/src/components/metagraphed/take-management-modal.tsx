@@ -16,10 +16,10 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  RangeControl,
 } from "@jsonbored/ui-kit";
 import { WalletConnectPanel } from "@/components/metagraphed/wallet-connect";
 import { SearchInput } from "@/components/metagraphed/table-controls";
-import { Panel } from "@/components/metagraphed/primitives";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { classNames } from "@/lib/metagraphed/format";
@@ -209,32 +209,12 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-4">
-        <Panel
-          as="div"
-          role="tablist"
-          aria-label="Increase or decrease take"
-          flush
-          bodyClassName="inline-flex items-center !p-0.5"
-        >
-          {DIRECTIONS.map((d) => {
-            const active = d === flow.direction;
-            return (
-              <button
-                key={d}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => flow.setDirection(d)}
-                className={classNames(
-                  "min-h-8 rounded px-4 py-1.5 text-11 transition-colors",
-                  active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
-                )}
-              >
-                {d}
-              </button>
-            );
-          })}
-        </Panel>
+        <RangeControl
+          label="Increase or decrease take"
+          options={DIRECTIONS.map((d) => ({ value: d, label: d }))}
+          value={flow.direction}
+          onChange={flow.setDirection}
+        />
 
         <div className="flex flex-col gap-1">
           <span aria-hidden="true" className="text-13 text-ink-muted">

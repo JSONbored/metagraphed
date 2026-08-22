@@ -1,4 +1,4 @@
-import { SectionHeading } from "@jsonbored/ui-kit";
+import { SectionHead } from "@jsonbored/ui-kit";
 import { HUB_COPY, type HubPath } from "@/lib/metagraphed/hub-copy";
 
 /**
@@ -49,7 +49,7 @@ export function HubSections({ path }: { path: HubPath }) {
     <div className="mt-10 space-y-section">
       {sections.map((section) => (
         <section key={section.heading}>
-          <SectionHeading title={section.heading} intro={section.body} />
+          <SectionHead name={section.heading} question={section.body} />
         </section>
       ))}
     </div>

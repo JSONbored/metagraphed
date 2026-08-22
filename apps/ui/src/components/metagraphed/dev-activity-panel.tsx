@@ -1,5 +1,5 @@
 import { Star } from "lucide-react";
-import { BarMini, SectionAnchor, TimeAgo } from "@jsonbored/ui-kit";
+import { BarMini, TimeAgo, AnalyticsSection } from "@jsonbored/ui-kit";
 import type { SubnetProfile } from "@/lib/metagraphed/types";
 
 /**
@@ -16,11 +16,11 @@ export function DevActivityPanel({ profile }: { profile?: SubnetProfile }) {
   const hasCommits = weeks.some((w) => w.count > 0);
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="dev-activity"
-      title="Dev activity"
-      subtitle="Commits, stars, and last push on the resolved source repo."
-      info="Captured from the GitHub API against this subnet's resolved source repo (curated, or chain-declared as a fallback). Refreshed daily; a repo that fails to load keeps its last-known values, marked unreachable, for up to 30 days."
+      name="Dev activity"
+      question="Commits, stars, and last push on the resolved source repo."
+      footnote="Captured from the GitHub API against this subnet's resolved source repo (curated, or chain-declared as a fallback). Refreshed daily; a repo that fails to load keeps its last-known values, marked unreachable, for up to 30 days."
     >
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-13 text-ink-muted">
         {profile.github_stars != null ? (
@@ -54,6 +54,6 @@ export function DevActivityPanel({ profile }: { profile?: SubnetProfile }) {
           />
         </div>
       ) : null}
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }

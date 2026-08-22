@@ -59,7 +59,7 @@ export function AlertTriggerLookup() {
   const t = lookup.data;
 
   return (
-    <Panel as="section">
+    <Panel>
       <h3 className="mb-1 text-11 text-ink-muted">Look up a trigger</h3>
       <p className="mb-3 max-w-2xl text-13 text-ink-muted">
         Check whether an alert you created is still active and whether it has ever fired. Needs the

@@ -169,7 +169,7 @@ function HealthHistoryBody({ date }: { date: string }) {
   return (
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
-        <Panel as="div">
+        <Panel>
           <div className="text-10 text-ink-muted mb-1">Status counts</div>
           <div className="flex items-center gap-4 font-mono text-13 tabular-nums">
             <span className="text-health-ok">{okCount} ok</span>
@@ -178,7 +178,7 @@ function HealthHistoryBody({ date }: { date: string }) {
             <span className="text-ink-muted">{summary.surface_count ?? rows.length} probed</span>
           </div>
         </Panel>
-        <Panel as="div">
+        <Panel>
           <div className="text-10 text-ink-muted mb-1.5">Classification mix</div>
           <BarMini data={classData} showValue />
         </Panel>

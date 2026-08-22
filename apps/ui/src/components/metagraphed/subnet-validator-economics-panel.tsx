@@ -57,7 +57,7 @@ export function SubnetValidatorEconomicsPanel({ netuid }: { netuid: number }) {
   const tao = (v: number | null) => (v == null ? "—" : `${formatNumber(v)} τ`);
 
   return (
-    <Panel as="section">
+    <Panel>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure
           label="permit floor"

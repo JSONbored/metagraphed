@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CopyableCode, ExternalLink } from "@jsonbored/ui-kit";
-import { PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { CopyableCode, ExternalLink, EntityHero, FactSentence } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
 import { coverageQuery, freshnessQuery, healthQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
@@ -21,11 +21,9 @@ import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 export function AboutPage() {
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="About"
-        title="Methodology & scope"
-        description="An unofficial, public explorer and integration registry for Bittensor — blocks, subnets, validators, and accounts alongside the public interfaces each subnet exposes, all machine-readable for developers and AI agents."
-        actions={
+      <EntityHero
+        name="Methodology & scope"
+        action={
           <ExternalLink
             href={GITHUB_REPO}
             bare
@@ -34,6 +32,13 @@ export function AboutPage() {
             <Github className="size-3.5" /> View on GitHub
             <ArrowUpRight className="size-3.5" />
           </ExternalLink>
+        }
+        sentence={
+          <FactSentence>
+            An unofficial, public explorer and integration registry for Bittensor — blocks, subnets,
+            validators, and accounts alongside the public interfaces each subnet exposes, all
+            machine-readable for developers and AI agents.
+          </FactSentence>
         }
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -222,7 +227,7 @@ function AtAGlance() {
     },
   ];
   return (
-    <Panel as="div">
+    <Panel>
       <div className="text-10 text-ink-muted mb-3 inline-flex items-center gap-2">
         <span className="mg-live-dot" /> At a glance
       </div>

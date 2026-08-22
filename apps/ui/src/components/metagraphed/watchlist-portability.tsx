@@ -64,7 +64,6 @@ export function WatchlistPortability() {
 
   return (
     <Panel
-      as="section"
       title="Watchlist"
       caption={
         total > 0

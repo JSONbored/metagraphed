@@ -39,7 +39,6 @@ import {
   ShareButton,
   DownloadCsvButton,
   TimeAgo,
-  ActionBar,
 } from "@jsonbored/ui-kit";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { ProvidersPulseRail } from "@/components/metagraphed/providers-pulse-rail";
@@ -93,11 +92,11 @@ export function ProvidersPage() {
             });
           }}
         />
-        <ActionBar>
+        <div className="mg-actions">
           <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
           <DownloadCsvButton url={providersCsvUrl} bare />
           <ShareButton bare />
-        </ActionBar>
+        </div>
       </ApisTabActions>
       <AsyncPanel
         height="sm"
@@ -141,7 +140,7 @@ function ProvidersSkeleton() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <Panel as="div" className="animate-pulse h-[180px]" key={i}>
+        <Panel className="animate-pulse h-[180px]" key={i}>
           <div className="flex items-start gap-3">
             <div className="size-9 rounded bg-surface" />
             <div className="flex-1 space-y-2">
@@ -746,7 +745,6 @@ function SourceHealthRollup() {
   const status = summary.status_counts;
   return (
     <Panel
-      as="div"
       className="mt-3"
       bodyClassName="flex flex-wrap items-center gap-4 font-mono text-13 tabular-nums"
     >

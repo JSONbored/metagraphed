@@ -171,7 +171,7 @@ function BoardCard({
   metric: (row: LeaderboardRow) => string | null;
 }) {
   return (
-    <Panel as="div">
+    <Panel>
       <div className="mb-1 text-13 text-ink-muted">{label}</div>
       <p className="mb-3 text-13 text-ink-subtle leading-relaxed">{blurb}</p>
       {rows.length === 0 ? (

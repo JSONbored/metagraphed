@@ -49,7 +49,7 @@ export function SubnetEmissionSplitPanel({ netuid }: { netuid: number }) {
   const latest = history.points[0];
 
   return (
-    <Panel as="section">
+    <Panel>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Share
           label="owner"

@@ -44,7 +44,7 @@ export function EndpointCardList({
           subnetById,
         );
         return (
-          <Panel as="div" key={e.id} className="min-w-0" bodyClassName="space-y-2">
+          <Panel key={e.id} className="min-w-0" bodyClassName="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-13 text-ink-muted">{kindLabel}</span>
               <SparkLegend

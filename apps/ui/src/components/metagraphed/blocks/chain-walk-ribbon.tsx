@@ -61,7 +61,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
   const next = current.next_block_number;
 
   return (
-    <Panel as="div">
+    <Panel>
       <div className="flex items-stretch gap-2">
         {/* Prev arrow */}
         <ArrowBtn

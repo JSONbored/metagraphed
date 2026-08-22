@@ -1,11 +1,9 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Timer, Activity, Users } from "lucide-react";
 import {
   AsyncPanel,
   TableSkeleton,
   PagerFooter,
-  MetricGrid,
   PanelSkeleton,
   QueryBar,
   FilterSheet,
@@ -21,11 +19,11 @@ import {
   ListShell,
   ShareButton,
   DownloadCsvButton,
-  ActionBar,
-  StatTile,
   CopyButton,
   CopyableCode,
   BackToTop,
+  FactStrip,
+  FactCell,
 } from "@jsonbored/ui-kit";
 import { PageSizeSelect } from "@/components/metagraphed/table-controls";
 import { LiveBlockRail } from "@/components/metagraphed/blocks/live-block-rail";
@@ -34,7 +32,6 @@ import { AuthorSharePanel } from "@/components/metagraphed/blocks/author-share-p
 import { blocksQuery, blocksSummaryQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { nakamotoTone } from "@/lib/metagraphed/network-decentralization";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { ChainTabActions } from "./-chain-hub";
@@ -66,10 +63,10 @@ export function BlocksPage() {
           content rather than beside the tab strip — a shrink-0 sibling there is
           exactly what starved the profile tabs to 196px on mobile (#8254). */}
       <ChainTabActions>
-        <ActionBar>
+        <div className="mg-actions">
           <DownloadCsvButton url={blocksCsvUrl} bare />
           <ShareButton bare />
-        </ActionBar>
+        </div>
       </ChainTabActions>
       <AsyncPanel
         context="Live block rail"
@@ -116,18 +113,15 @@ function BlockProductionHeader() {
   const blockTime = summary.block_time;
   const throughput = summary.throughput;
   const nakamoto = summary.author_concentration?.nakamoto_coefficient;
-  const nakamotoStatTone = nakamotoTone(nakamoto);
   return (
-    <MetricGrid cols={{ base: 1, sm: 2, md: 3 }} gap="md" className="mb-8">
-      <StatTile
-        icon={Timer}
-        eyebrow="Inter-block time"
+    <FactStrip variant="grid">
+      <FactCell
+        label="Inter-block time"
         value={blockTime ? humaniseSeconds(blockTime.mean_ms / 1000) : "—"}
         hint={blockTime ? `p90 ${humaniseSeconds(blockTime.p90_ms / 1000)}` : undefined}
       />
-      <StatTile
-        icon={Activity}
-        eyebrow="Throughput"
+      <FactCell
+        label="Throughput"
         value={throughput ? formatNumber(throughput.mean_extrinsics_per_block) : "—"}
         hint={
           throughput
@@ -135,14 +129,12 @@ function BlockProductionHeader() {
             : undefined
         }
       />
-      <StatTile
-        icon={Users}
-        eyebrow="Author decentralization"
+      <FactCell
+        label="Author decentralization"
         value={nakamoto != null ? formatNumber(nakamoto) : "—"}
         hint="Nakamoto coefficient"
-        tone={nakamotoStatTone}
       />
-    </MetricGrid>
+    </FactStrip>
   );
 }
 

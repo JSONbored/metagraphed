@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQueries, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
-import { Boxes, Coins, Gauge, Percent, TriangleAlert, Users, Zap } from "lucide-react";
+import { Coins, Percent, TriangleAlert } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -9,14 +9,14 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import {
   ShareButton,
-  SectionAnchor,
-  StatTile,
-  ActionBar,
-  SegmentedToggle,
   Chip,
+  AnalyticsSection,
+  FactCell,
+  EntityHero,
+  FactSentence,
+  SectionNav,
 } from "@jsonbored/ui-kit";
-import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
-import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
+import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
@@ -52,7 +52,7 @@ import {
 import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
 import { subnetPositionSearch } from "@/lib/metagraphed/subnet-position-link";
 
-// #8251: tabs replace the old single 11,000px+ stacked page — same ProfileTabs
+// #8251: tabs replace the old single 11,000px+ stacked page — same section nav
 // convention as subnets.$netuid.tsx.
 const TABS = [
   { id: "subnets", label: "Per-subnet performance" },
@@ -302,7 +302,7 @@ function ApyKpiTile({
   take: number | null;
   snapshotApy: number | null;
 }) {
-  const [window, setWindow] = useState<ValidatorApyWindow>("30d");
+  const window: ValidatorApyWindow = "30d";
   const results = useQueries({
     queries: APY_WINDOWS.map((w) => ({
       ...validatorHistoryQuery(hotkey, w),
@@ -323,22 +323,11 @@ function ApyKpiTile({
   const value = windowedApy ?? snapshotApy;
   const usingSnapshot = windowedApy == null;
   return (
-    <StatTile
-      icon={Zap}
-      eyebrow="Est. APY"
+    <FactCell
+      label="Est. APY"
       value={formatApyPct(value)}
       hint={usingSnapshot ? "latest snapshot · net of take" : `${window} history · net of take`}
-      truncate={false}
       className="rounded border-border/80 p-4"
-      chart={
-        <SegmentedToggle<ValidatorApyWindow>
-          options={APY_WINDOWS.map((w) => ({ value: w, label: w }))}
-          value={window}
-          onChange={setWindow}
-          ariaLabel="APY window"
-          className="border-0 bg-transparent"
-        />
-      }
     />
   );
 }
@@ -366,7 +355,6 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
     detail.total_stake_tao,
     detail.take,
   );
-  const tab = useActiveTab("subnets");
   // Take is network-wide, not subnet-scoped, so unlike the per-subnet Stake
   // action this belongs at the page level. Hidden entirely (not just
   // internally blocked) until the connected wallet is confirmed to be this
@@ -384,51 +372,9 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
 
   return (
     <>
-      <PageMasthead
-        eyebrow="Explorer · validator"
-        live
-        title={displayName}
-        description={
-          <span className="block space-y-4">
-            <span className="block max-w-2xl text-13 text-ink-muted">
-              Cross-subnet performance, nominators, and staking history for one Bittensor validator
-              hotkey.
-            </span>
-            {resolvedTitle.source === "nametag" && resolvedTitle.category ? (
-              <Chip tone="muted" title={`Curated nametag · ${resolvedTitle.category}`}>
-                {resolvedTitle.category}
-              </Chip>
-            ) : null}
-            {/* Hotkey + coldkey (#6427) get identical, symmetric AddressDisplay
-                rows -- the operator name is already the page title, so it
-                isn't repeated here. */}
-            <dl className="max-w-2xl divide-y divide-border/80 rounded border border-border/80 bg-card">
-              <FieldRow label="Hotkey">
-                <span className="flex w-full min-w-0 items-center">
-                  <AddressDisplay
-                    ss58={hotkey}
-                    truncate={false}
-                    valueClassName="truncate min-w-0"
-                    fallback={<>—</>}
-                    editable
-                  />
-                </span>
-              </FieldRow>
-              <FieldRow label="Coldkey">
-                <span className="flex w-full min-w-0 items-center">
-                  <AddressDisplay
-                    ss58={detail.coldkey}
-                    truncate={false}
-                    valueClassName="truncate min-w-0"
-                    fallback={<span className="text-ink-muted">Not reported</span>}
-                    editable
-                  />
-                </span>
-              </FieldRow>
-            </dl>
-          </span>
-        }
-        actions={
+      <EntityHero
+        name={displayName}
+        action={
           <div className="flex flex-wrap items-center gap-2">
             {topSubnet ? (
               <StakeUnstakeModal
@@ -447,7 +393,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
                 )}
               />
             ) : null}
-            <ActionBar>
+            <div className="mg-actions">
               {isOwner ? (
                 <TakeManagementModal
                   hotkey={hotkey}
@@ -472,7 +418,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
                 iconOnly
               />
               <ShareButton bare iconOnly />
-            </ActionBar>
+            </div>
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner
                 compact
@@ -482,7 +428,50 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             ) : null}
           </div>
         }
-        caption="explorer / v1"
+        sentence={
+          <FactSentence>
+            {
+              <span className="block space-y-4">
+                <span className="block max-w-2xl text-13 text-ink-muted">
+                  Cross-subnet performance, nominators, and staking history for one Bittensor
+                  validator hotkey.
+                </span>
+                {resolvedTitle.source === "nametag" && resolvedTitle.category ? (
+                  <Chip tone="muted" title={`Curated nametag · ${resolvedTitle.category}`}>
+                    {resolvedTitle.category}
+                  </Chip>
+                ) : null}
+                {/* Hotkey + coldkey (#6427) get identical, symmetric AddressDisplay
+                rows -- the operator name is already the page title, so it
+                isn't repeated here. */}
+                <dl className="max-w-2xl divide-y divide-border/80 rounded border border-border/80 bg-card">
+                  <FieldRow label="Hotkey">
+                    <span className="flex w-full min-w-0 items-center">
+                      <AddressDisplay
+                        ss58={hotkey}
+                        truncate={false}
+                        valueClassName="truncate min-w-0"
+                        fallback={<>—</>}
+                        editable
+                      />
+                    </span>
+                  </FieldRow>
+                  <FieldRow label="Coldkey">
+                    <span className="flex w-full min-w-0 items-center">
+                      <AddressDisplay
+                        ss58={detail.coldkey}
+                        truncate={false}
+                        valueClassName="truncate min-w-0"
+                        fallback={<span className="text-ink-muted">Not reported</span>}
+                        editable
+                      />
+                    </span>
+                  </FieldRow>
+                </dl>
+              </span>
+            }
+          </FactSentence>
+        }
       />
 
       {/* #6430: the endpoint is schema-stable, so a mistyped or never-registered
@@ -515,62 +504,52 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           section is gone — this tile IS the one APY block on the page.
           Mobile is the required 2×3 grid. */}
       <div className="mb-12 grid grid-cols-2 gap-4 xl:grid-cols-3 2xl:grid-cols-6">
-        <StatTile
-          icon={Coins}
-          eyebrow="Total stake"
+        <FactCell
+          label="Total stake"
           value={taoCompact(detail.total_stake_tao)}
-          // Root (netuid 0) is TAO-denominated with no price exposure; alpha
-          // is the sum across every other subnet's own alpha token (#2550).
           hint={`Root ${taoCompact(detail.root_stake_tao)} · Alpha ${taoCompact(detail.alpha_stake_tao)}`}
-          truncate={false}
-          tone="accent"
           className="rounded border-accent/25 p-4"
         />
         <ApyKpiTile hotkey={hotkey} take={detail.take} snapshotApy={snapshotApy} />
-        <StatTile
-          icon={Percent}
-          eyebrow="Take rate"
+        <FactCell
+          label="Take rate"
           value={formatTakePct(detail.take)}
           hint="commission kept from delegators"
           className="rounded border-border/80 p-4"
         />
-        <StatTile
-          icon={Boxes}
-          eyebrow="Active subnets"
+        <FactCell
+          label="Active subnets"
           value={formatNumber(detail.subnet_count)}
           hint="validator memberships"
           className="rounded border-border/80 p-4"
         />
-        <StatTile
-          icon={Users}
-          eyebrow="Nominators"
+        <FactCell
+          label="Nominators"
           value={detail.nominator_count != null ? formatNumber(detail.nominator_count) : "—"}
           hint="distinct coldkeys delegated"
           className="rounded border-border/80 p-4"
         />
-        <StatTile
-          icon={Gauge}
-          eyebrow="Avg validator trust"
+        <FactCell
+          label="Avg validator trust"
           value={scoreStr(detail.avg_validator_trust)}
           hint="mean across subnets"
           className="rounded border-border/80 p-4"
         />
       </div>
 
-      <ProfileTabs tabs={[...TABS]} defaultTab="subnets" />
+      <SectionNav items={TABS.map((t) => ({ id: t.id, name: t.label }))} />
 
       <div className="mt-6 min-w-0 space-y-8">
-        {tab === "subnets" ? (
-          <SectionAnchor id="subnets" title="Per-subnet performance" tone="accent">
+        <div id="subnets" data-tab="subnets">
+          <AnalyticsSection id="subnets" name="Per-subnet performance">
             <SubnetPerformanceTab subnets={detail.subnets} />
-          </SectionAnchor>
-        ) : null}
-        {tab === "nominators" ? (
-          <SectionAnchor
+          </AnalyticsSection>
+        </div>
+        <div id="nominators" data-tab="nominators">
+          <AnalyticsSection
             id="nominators"
-            title="Nominators"
-            subtitle="Derived from stake-delegation events"
-            tone="muted"
+            name="Nominators"
+            question="Derived from stake-delegation events"
           >
             <AsyncPanel
               context="nominators"
@@ -579,29 +558,27 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             >
               <NominatorsSection hotkey={hotkey} />
             </AsyncPanel>
-          </SectionAnchor>
-        ) : null}
-        {tab === "history" ? (
-          <SectionAnchor
+          </AnalyticsSection>
+        </div>
+        <div id="history" data-tab="history">
+          <AnalyticsSection
             id="history"
-            title="Stake & rewards over time"
-            subtitle="Daily snapshots"
-            tone="ink"
+            name="Stake & rewards over time"
+            question="Daily snapshots"
           >
             <ValidatorHistoryChart hotkey={hotkey} />
-          </SectionAnchor>
-        ) : null}
+          </AnalyticsSection>
+        </div>
       </div>
 
       <div className="mt-8">
-        <SectionAnchor
+        <AnalyticsSection
           id="watch"
-          title="Watch this validator"
-          subtitle="Alert on new delegations or stake, via the existing chain alert-triggers API."
-          tone="accent"
+          name="Watch this validator"
+          question="Alert on new delegations or stake, via the existing chain alert-triggers API."
         >
           <WatchValidatorAlert hotkey={hotkey} />
-        </SectionAnchor>
+        </AnalyticsSection>
       </div>
 
       {/* #6432: same placement blocks.$ref.tsx and extrinsics.$hash.tsx use. */}
@@ -614,10 +591,10 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
         </Link>
       </div>
 
-      <SectionAnchor
+      <AnalyticsSection
         id="call"
-        title="Call this endpoint"
-        subtitle="Copy a ready-to-run request for this validator."
+        name="Call this endpoint"
+        question="Copy a ready-to-run request for this validator."
       >
         <EndpointSnippet
           rows={[
@@ -626,7 +603,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             { label: "history", path: `/api/v1/validators/${sourceRef}/history` },
           ]}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
 
       <ApiSourceFooter
         paths={[

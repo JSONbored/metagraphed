@@ -95,7 +95,7 @@ function BoardCard({
   metric: (row: LeaderboardRow) => string | null;
 }) {
   return (
-    <Panel as="div">
+    <Panel>
       <div className="mb-3 text-13 text-ink-muted">{label}</div>
       <ol className="space-y-0.5">
         {rows.map((row, i) => (
