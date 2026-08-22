@@ -322,15 +322,19 @@ describe("MCP tool registry", () => {
       }
       assert.ok(def.name && def.title && def.description && def.inputSchema);
       // #8964: every tool except the known mutators is read-only with no side
-      // effects, so clients may auto-run it. call_subnet_surface proxies a
-      // caller-supplied method, body, and credential to a third-party host and
-      // is annotated accordingly — this assertion previously claimed otherwise
-      // for all 207 tools, which is the defect that issue fixed. #9009 added
-      // the two credential-store writers. Every mutator's full annotation block
-      // is pinned in tests/mcp-tool-annotations.test.ts.
+      // effects, so clients may auto-run it. This assertion previously claimed
+      // that for all 207 tools, which is the defect that issue fixed. #9009
+      // added the two credential-store writers.
+      //
+      // #11568 REMOVED call_subnet_surface from this list rather than adding
+      // to it: the catch-all was split, and the read half now issues only
+      // GET/HEAD, so it is genuinely auto-runnable. write_subnet_surface is
+      // the tool that proxies a caller-supplied method, body and credential to
+      // a third-party host. Every mutator's full annotation block is pinned in
+      // tests/mcp-tool-annotations.test.ts.
       if (
         ![
-          "call_subnet_surface",
+          "write_subnet_surface",
           "store_surface_credential",
           "delete_surface_credential",
         ].includes(def.name)

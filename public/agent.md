@@ -8,8 +8,14 @@ the live metagraphed registry, not training-data guesses.
 The fastest path is the MCP server (one line, no key):
 
 ```
-claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
+claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core
 ```
+
+That is the **core** profile: it lists 23 tools (~45k tokens) instead of 243
+(~400k), and can still call all 243 — the profile filters the tool _listing_,
+never dispatch, and `get_more_tools` reaches the rest. Use
+`https://api.metagraph.sh/mcp` instead only if you want every tool enumerated
+up front.
 
 No MCP host? Everything is also a plain `GET`/`POST` over HTTPS — see "REST
 fallback" at the bottom. For copyable REST/npm/Python/MCP examples, use

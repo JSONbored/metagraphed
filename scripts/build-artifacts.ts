@@ -1,3 +1,5 @@
+import { AUTH_REQUIRED_TOOL_NAMES } from "../src/mcp-server.ts";
+import { FREE_HISTORY_WINDOW_DAYS } from "../src/mcp-tier-gate.ts";
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { promisify } from "node:util";
@@ -2123,6 +2125,21 @@ await writeJson(artifactFile("coverage-depth.json"), coverageDepthArtifact);
 // The emerging standard for making a site/API legible to LLMs. Served from the
 // public/ root (and /.well-known) by the ASSETS handler at api.metagraph.sh.
 const llmsApiBase = `https://${PRIMARY_DOMAIN}`;
+const mcpEndpoint = `${llmsApiBase}/mcp`;
+/**
+ * The core listing profile, and the one an agent should install (#11164).
+ *
+ * MEASURED against production on 2026-08-22: `/mcp` lists 243 tools at
+ * ~396,000 tokens; `/mcp/core` lists 23 at ~44,500. Most clients hold tool
+ * definitions in model context, so the full list costs a caller nine tenths
+ * of a large context window BEFORE they ask anything.
+ *
+ * Recommending core is not a reduction. The profile filters `tools/list` and
+ * NEVER dispatch -- a core session can `tools/call` all 243, and carries
+ * `ask` and `get_more_tools` as escape hatches -- so the only thing a caller
+ * gives up is paying to read a catalogue they mostly will not use.
+ */
+const mcpCoreEndpoint = `${llmsApiBase}/mcp/core`;
 const llmsHeader = [
   "# metagraphed",
   "",
@@ -2138,7 +2155,7 @@ const llmsHeader = [
   `- [Coverage depth scorecard](${llmsApiBase}/api/v1/coverage-depth): one ranked view of which subnets are machine-usable, what is missing, and which enrichment actions should happen next`,
   `- [Copyable AI agent](${llmsApiBase}/agent.md): paste-ready system prompt that turns any agent into a metagraphed-powered Bittensor integration agent. Every AI resource indexed at [/api/v1/agent-resources](${llmsApiBase}/api/v1/agent-resources).`,
   `- [Agent workflows](${llmsApiBase}/agent-workflows.md): task-oriented REST, MCP, npm, and Python examples for finding and calling subnets`,
-  `- [MCP server](${llmsApiBase}/mcp): Model Context Protocol endpoint — agents query the registry as tools. Install: \`claude mcp add --transport http metagraphed ${llmsApiBase}/mcp\``,
+  `- [MCP server](${mcpCoreEndpoint}): Model Context Protocol endpoint — agents query the registry as tools. Install: \`claude mcp add --transport http metagraphed ${mcpCoreEndpoint}\`. This is the CORE profile: it lists 23 tools (~45k tokens) instead of 243 (~400k), and can still call all 243 — the profile filters listing, never dispatch. Use [${mcpEndpoint}](${mcpEndpoint}) only if you want every tool enumerated up front.`,
   `- [MCP server card](${llmsApiBase}/.well-known/mcp/server-card.json): machine-readable server descriptor (tools, transport, protocol versions)`,
   `- [Content feeds](${llmsApiBase}/api/v1/feeds/registry): RSS 2.0 / Atom 1.0 / JSON Feed 1.1 of registry changes + incidents (per-subnet at /api/v1/feeds/subnets/{netuid}; ranked coverage gaps at /api/v1/feeds/gaps). Content-negotiated via Accept, or append .rss/.atom/.json.`,
   `- Embeddable badges: \`${llmsApiBase}/api/v1/subnets/{netuid}/badge.svg\` and \`/api/v1/providers/{slug}/badge.svg\` — SVG badges for READMEs (\`?metric=readiness\` default, \`?metric=completeness\` for coverage score, \`?metric=uptime\` for reliability).`,
@@ -2215,7 +2232,7 @@ await fs.writeFile(
 // PulseMCP, mcp.so, the official registry) autodiscover the server via
 // /.well-known/mcp.json. The server card (SEP-1649) is worker-computed from the
 // live tool registry; only this pointer document is a committed artifact.
-const mcpEndpoint = `${llmsApiBase}/mcp`;
+
 await fs.mkdir(path.join(repoRoot, "public/.well-known/mcp"), {
   recursive: true,
 });
@@ -2362,9 +2379,14 @@ const agentResourcesContent = {
       "Paste-ready system prompt that turns any agent (Claude, Cursor, …) into a metagraphed-powered Bittensor integration agent.",
   },
   mcp: {
+    // `endpoint` stays the full profile: it is the identity of the server and
+    // what every existing consumer resolved. What changes is which one is
+    // RECOMMENDED, which is what `install` and `core_endpoint` now say.
     endpoint: mcpEndpoint,
+    core_endpoint: mcpCoreEndpoint,
+    recommended_endpoint: mcpCoreEndpoint,
     transport: "streamable-http",
-    install: `claude mcp add --transport http metagraphed ${mcpEndpoint}`,
+    install: `claude mcp add --transport http metagraphed ${mcpCoreEndpoint}`,
     server_card: `${llmsApiBase}/.well-known/mcp/server-card.json`,
     tools: listToolDefinitions().map((tool) => ({
       name: tool.name,
@@ -2597,14 +2619,27 @@ await fs.writeFile(
 // vague: an integrator reading this would conclude there is no way to raise
 // their rate limit, and an OAuth-aware MCP client author would conclude there
 // is nothing to discover. Both are the opposite of the truth.
+// #11566: the two facts below are DERIVED, not restated. auth.md is the document
+// an agent reads to decide whether authenticating is worth it, and it spent a
+// release telling them it unlocked nothing -- written before the depth gate
+// (#11179 phase 3) and never revisited. A number or a tool name copied into
+// prose here drifts silently the next time the code moves.
+const AUTH_REQUIRED_TOOL_LIST = [...AUTH_REQUIRED_TOOL_NAMES]
+  .sort()
+  .map((name) => `- \`${name}\``)
+  .join("\n");
+
 const authMarkdown = `# Authentication
 
 The metagraphed API at \`${PRIMARY_DOMAIN}\` is **public by default and
 read-only**. No authentication is _required_ for any endpoint — every tool and
 route is callable anonymously.
 
-Authentication is **optional and additive**: it raises rate limits. It does not
-currently unlock additional endpoints, tools, or data.
+Authentication is **optional and additive**. It raises rate limits, and it
+unlocks depth. History windows longer than ${FREE_HISTORY_WINDOW_DAYS} days need a
+paid tier, and a small number of tools need an identity at all (see below). Every
+tool stays listed and callable at every tier — what a tier buys is how far back
+you may read, not what you may see.
 
 - Auth scheme: none required; \`Authorization: Bearer\` accepted
 - Registration: not required, but self-serve keys are available
@@ -2626,8 +2661,25 @@ authorization with no manual configuration:
   ${llmsApiBase}/.well-known/oauth-authorization-server
 
 A Bearer token that cannot be validated gets \`401\` with a
-\`WWW-Authenticate\` challenge pointing at the metadata above. **An anonymous
-request is not challenged** — it is served.
+\`WWW-Authenticate\` challenge pointing at the metadata above.
+
+An anonymous request is **served, not challenged** — with one exception. Calling
+a tool that needs an identity returns \`401\` with the same challenge, so a
+spec-compliant client can offer to sign in and retry. Those tools are:
+
+${AUTH_REQUIRED_TOOL_LIST}
+
+They bind a stored secret to an account, which an anonymous request has none of.
+
+## What a tier buys
+
+- **Depth.** Windows up to ${FREE_HISTORY_WINDOW_DAYS} days are open to every caller.
+  Longer windows answer \`payment_required\`, naming the tier that clears them and
+  where to get one.
+- **Rate.** See below.
+- **Identity.** The credential store above.
+
+Nothing is hidden from an anonymous caller: a refused call says what it needs.
 
 ## Rate limits
 

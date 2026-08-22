@@ -1854,7 +1854,9 @@ export function normalizeSubnet(raw: unknown): Subnet {
  * directory, category, and crawlable-index views must derive from the same
  * complete response or they can disagree about which category URLs exist.
  */
-export const SUBNETS_ALL_LIMIT = 500;
+// Re-exported from its new home so every existing importer keeps working.
+// Moved because server.ts needs it too and cannot import this module.
+export { SUBNETS_ALL_LIMIT } from "./subnet-categories";
 
 export const subnetsQuery = (params?: QueryParams) =>
   queryOptions({

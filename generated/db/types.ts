@@ -77,6 +77,7 @@ export interface AccountPositionDaily {
 /** `public.api_key_blocks` */
 export interface ApiKeyBlocks {
   account_id: number;
+  account_kind: string;
   blocked_at: number | string;
   blocked_by: string | null;
   id: number;
@@ -89,6 +90,7 @@ export interface ApiKeyBlocks {
 /** `public.api_key_usage_daily` */
 export interface ApiKeyUsageDaily {
   account_id: number;
+  account_kind: string;
   day: string;
   rejected_count: number;
   request_count: number;
@@ -112,6 +114,7 @@ export interface ApiKeys {
 /** `public.api_quota_daily` */
 export interface ApiQuotaDaily {
   account_id: number;
+  account_kind: string;
   day: string;
   units_spent: number | string;
   updated_at: number | string;

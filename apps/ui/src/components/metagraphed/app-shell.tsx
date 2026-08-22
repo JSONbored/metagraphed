@@ -543,8 +543,16 @@ function SiteFooter({ compact = false }: { compact?: boolean }) {
       </div>
       <div className="border-t border-border/70">
         <div className="max-w-shell-max mx-auto px-4 md:px-10 py-4 flex flex-wrap items-center justify-between gap-2 mg-type-data text-ink-muted">
-          <span>
-            © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>
+              © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
+            </span>
+            {/* #11567: the only link to these anywhere on the site. A privacy
+                policy nothing links to is one a reader cannot find and a
+                directory reviewer cannot verify. */}
+            <span aria-hidden="true">·</span>
+            <FooterLink to="/privacy">Privacy</FooterLink>
+            <FooterLink to="/terms">Terms</FooterLink>
           </span>
           <EndpointHealthPill />
         </div>

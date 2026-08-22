@@ -1241,7 +1241,12 @@ test("internal quota: an allowed spend upserts atomically and reports the new ba
   assert.ok(call, "issued the upsert");
   // The spend is one guarded statement -- the reject rule lives in SQL, not
   // in a read-then-write race.
-  assert.ok(/ON CONFLICT \(account_id, day\) DO UPDATE/.test(call!.text));
+  // #11573: the conflict target is (kind, id, day). A bare (account_id, day)
+  // would let a github account and an rpc account of the same number collide
+  // onto one quota row -- one caller silently spending the other's day.
+  assert.ok(
+    /ON CONFLICT \(account_kind, account_id, day\) DO UPDATE/.test(call!.text),
+  );
   // `$n`, not `?`: the runner numbers every tagged-template hole via
   // pgStatementText. #9821 is what happens when a `?` reaches Postgres
   // unrewritten -- it is not a placeholder there, so the predicate matches
@@ -2484,4 +2489,125 @@ test("#8607 e2e: an account can hold MULTIPLE live keys, so rotation never locks
     2,
     "both rows were written",
   );
+});
+
+// --- #11573: account_kind on the four key-scoped write routes ----------------
+//
+// The three stores key on a bare integer that is an `rpc_accounts` id, with no
+// foreign key. `github_accounts` mints its own ids in the same range, so every
+// write route has to say WHICH id space it is writing. Absent stays `rpc` --
+// what every caller meant before the discriminator -- and an unrecognised
+// value is refused rather than defaulted, because silently filing a github id
+// under `rpc` is the collision the column exists to end.
+test("usage: an explicit account_kind reaches the upsert; an unknown one is a 400", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  mockQueue.current.push([]);
+  const ok = await fetchRoute(
+    req("/api/v1/internal/keys/usage", {
+      method: "POST",
+      headers: { "x-api-key-lookup-token": LOOKUP_TOKEN },
+      body: { account_id: 1, route: "mcp", account_kind: "github" },
+    }),
+    env,
+  );
+  assert.equal(ok.status, 200);
+  const call = sqlCalls.find((c) => /api_key_usage_daily/.test(c.text));
+  assert.ok(call, "issued the upsert");
+  assert.ok(
+    /ON CONFLICT \(account_kind, account_id, day, route\)/.test(call!.text),
+  );
+  assert.ok(
+    call!.values.includes("github"),
+    "the kind travelled into the statement",
+  );
+
+  sqlCalls.length = 0;
+  const bad = await fetchRoute(
+    req("/api/v1/internal/keys/usage", {
+      method: "POST",
+      headers: { "x-api-key-lookup-token": LOOKUP_TOKEN },
+      body: { account_id: 1, route: "mcp", account_kind: "stripe" },
+    }),
+    env,
+  );
+  assert.equal(bad.status, 400);
+  assert.equal(sqlCalls.length, 0, "an unknown kind never reaches the store");
+});
+
+test("quota: an explicit account_kind is spent against its own row; an unknown one is a 400", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  mockQueue.current.push([{ units_spent: 25 }]);
+  const ok = await fetchRoute(
+    quotaReq({
+      account_id: 7,
+      cost: 25,
+      limit: 1000,
+      account_kind: "github",
+    }),
+    env,
+  );
+  assert.equal(ok.status, 200);
+  const call = sqlCalls.find((c) => /api_quota_daily/.test(c.text));
+  assert.ok(call?.values.includes("github"), "scoped to the github id space");
+
+  sqlCalls.length = 0;
+  const bad = await fetchRoute(
+    quotaReq({ account_id: 7, cost: 25, limit: 1000, account_kind: "nope" }),
+    env,
+  );
+  assert.equal(bad.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("block/unblock: account_kind is carried, and an unknown one is a 400", async () => {
+  const env = blockEnv();
+  mockQueue.current.push([{ id: 1 }], []);
+  const blocked = await fetchRoute(
+    blockReq("/api/v1/internal/keys/block", {
+      account_id: 7,
+      reason_code: "abuse_manual",
+      account_kind: "github",
+    }),
+    env,
+  );
+  assert.equal(blocked.status, 200);
+  assert.equal(((await blocked.json()) as Row).account_kind, "github");
+
+  sqlCalls.length = 0;
+  const badBlock = await fetchRoute(
+    blockReq("/api/v1/internal/keys/block", {
+      account_id: 7,
+      reason_code: "abuse_manual",
+      account_kind: "stripe",
+    }),
+    env,
+  );
+  assert.equal(badBlock.status, 400);
+  assert.equal(sqlCalls.length, 0);
+
+  sqlCalls.length = 0;
+  mockQueue.current.push([{ id: 1 }], []);
+  const unblocked = await fetchRoute(
+    blockReq("/api/v1/internal/keys/unblock", {
+      account_id: 7,
+      note: "false positive",
+      account_kind: "github",
+    }),
+    env,
+  );
+  assert.equal(unblocked.status, 200);
+  const upd = sqlCalls.find((c) => /UPDATE api_key_blocks/.test(c.text));
+  assert.ok(upd?.values.includes("github"), "scoped the unblock by kind");
+
+  sqlCalls.length = 0;
+  const badUnblock = await fetchRoute(
+    blockReq("/api/v1/internal/keys/unblock", {
+      account_id: 7,
+      note: "x",
+      account_kind: "stripe",
+    }),
+    env,
+  );
+  assert.equal(badUnblock.status, 400);
+  assert.equal(sqlCalls.length, 0);
 });

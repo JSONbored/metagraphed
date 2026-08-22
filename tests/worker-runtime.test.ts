@@ -2741,9 +2741,28 @@ describe("GitHub OAuth route dispatch", () => {
     assert.match(await response.text(), /oauth is not provisioned/);
   });
 
-  test("POST /authorize is not routed (GET-only)", async () => {
+  test("POST /authorize reaches handleAuthorizeConsent", async () => {
+    // #11569 made /authorize a two-step: GET renders the consent screen, POST
+    // is the approval. This test previously asserted POST was NOT routed --
+    // true then, and deliberately false now. The split is what stops merely
+    // ARRIVING at the URL from starting a grant: a link, a prefetch or an
+    // <img> pointed here renders a page instead.
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/authorize", { method: "POST" }),
+      env as unknown as Env,
+      {},
+    );
+    // Same unprovisioned-deployment answer as the GET above, which is how we
+    // know it reached the OAuth handler rather than falling through to a 404.
+    assert.equal(response.status, 503);
+    assert.match(await response.text(), /oauth is not provisioned/);
+  });
+
+  test("another verb on /authorize is still not routed", async () => {
+    // The pair above widened the surface by exactly one verb. This holds the
+    // rest of it shut, so a future handler cannot quietly claim DELETE.
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/authorize", { method: "DELETE" }),
       env as unknown as Env,
       {},
     );

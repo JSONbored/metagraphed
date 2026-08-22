@@ -75,6 +75,20 @@ async function anonymousErrorCode(
     // => no mg_ key. This is exactly an anonymous caller.
     {},
   );
+  // #11563 moved the refusal from a tool error inside a 200 to a transport
+  // -level 401, because a 200 produces no sign-in prompt in any MCP client.
+  // This probe normalises BOTH shapes rather than switching to the new one, so
+  // the gate keeps proving what it was written to prove -- "this tool refuses
+  // an anonymous caller" -- and additionally proves the challenge is the kind a
+  // client can act on. A tool that regressed to a 200 tool error would still be
+  // "refusing", and would still be a defect; this way the test says which.
+  if (response.status === 401) {
+    assert.ok(
+      response.headers.get("www-authenticate"),
+      "a 401 without WWW-Authenticate is not a challenge a client can follow",
+    );
+    return "auth_required";
+  }
   const body = (await response.json()) as Row;
   return ((body?.result?.structuredContent as Row)?.error as Row)?.code ?? null;
 }

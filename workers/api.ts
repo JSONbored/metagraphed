@@ -1,3 +1,14 @@
+import {
+  X402_RESPONSE_HEADER,
+  x402Manifest,
+  paymentRequirements,
+  paymentRequiredResponse,
+  resolveX402Config,
+  verifyAndSettle,
+  x402PriceFor,
+  x402RequiresPayment,
+} from "../src/x402.ts";
+import { DEFAULT_ACCOUNT_KIND, type AccountKind } from "../src/account-kind.ts";
 import { economicsFieldSources } from "../src/economics-field-sources.ts";
 import {
   CHAIN_CONCENTRATION_DAILY_TABLE,
@@ -651,6 +662,7 @@ import {
 } from "../src/response-validation-tripwire.ts";
 import { urlProjects } from "../src/projection-signal.ts";
 import {
+  handleAuthorizeConsent,
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
   isMcpCorePath,
@@ -842,6 +854,7 @@ import {
 } from "../src/subnet-news.ts";
 import {
   applyTieredRateLimit,
+  markPaidCall,
   tieredRejectionResponse,
   type TieredRateLimitConfig,
   type TieredRateLimitResult,
@@ -1054,6 +1067,11 @@ export function recordApiKeyUsage(
   // request_count, so the tenant dashboard can show "you were throttled N
   // times" without those attempts inflating the usage they are billed against.
   rejected = false,
+  // #11573: WHICH identity system `accountId` belongs to. Defaulted so every
+  // existing caller keeps its exact meaning -- each one passes an
+  // `rpc_accounts` id -- while an OAuth caller can say so and stop having its
+  // usage filed against the rpc account of the same number.
+  accountKind: AccountKind = DEFAULT_ACCOUNT_KIND,
 ): void {
   if (!env.DATA_API?.fetch || !env.API_KEY_LOOKUP_INTERNAL_TOKEN) return;
   const pending = env.DATA_API.fetch(
@@ -1065,6 +1083,7 @@ export function recordApiKeyUsage(
       },
       body: JSON.stringify({
         account_id: Number(accountId),
+        account_kind: accountKind,
         route,
         rejected,
       }),
@@ -6131,27 +6150,44 @@ async function dispatchCached(request: Request, env: Env, ctx: Ctx = {}) {
   // The RESOLVED path, so `/api/v1/accounts/…` and `/finney/api/v1/accounts/…`
   // reach one entry instead of computing the same body under two keys.
   const { network, url: resolved } = resolveNetworkPrefix(url);
-  const eligible = accountEdgeCacheEligible({
-    method: request.method,
-    isDefaultNetwork: network.isDefault,
-    addressShaped: ACCOUNT_SS58_SEGMENT_PATH_PATTERN.test(resolved.pathname),
-    storeBacked: isMainnetOnlyApiPath(resolved.pathname),
-    search: resolved.searchParams,
+  // x402 (infra#629) is applied HERE, for the reason the limiter, the degraded
+  // label and the edge cache are: one dispatch point rather than a wrapper each
+  // handler's author has to remember. Two things follow that per-route wrapping
+  // got wrong, and both were caught by this file's own coverage:
+  //
+  //   - The RESOLVED pathname is what gets priced, so `/finney/api/v1/ask` is
+  //     the same priced resource as `/api/v1/ask` rather than a free alias.
+  //   - `/.well-known/x402` advertises the `ai` and `deep-history` families as
+  //     payable. With two hand-wrapped routes that was a claim about two of
+  //     them; here it is true of every route in both, and stays true when the
+  //     next one is added.
+  //
+  // OUTSIDE the edge cache, unlike the limiter. A caller who presents payment
+  // bought the ANSWER, and a hit is an answer; settling only on a miss would
+  // make the charge depend on cache residency, which they cannot see.
+  return withX402(request, env, resolved.pathname, async () => {
+    const eligible = accountEdgeCacheEligible({
+      method: request.method,
+      isDefaultNetwork: network.isDefault,
+      addressShaped: ACCOUNT_SS58_SEGMENT_PATH_PATTERN.test(resolved.pathname),
+      storeBacked: isMainnetOnlyApiPath(resolved.pathname),
+      search: resolved.searchParams,
+    });
+    if (!eligible) return dispatchRequest(request, env, ctx);
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      ACCOUNT_EDGE_CACHE_LABEL,
+      // Takes the argument on purpose: `withEdgeCache` only folds HEAD into the
+      // GET key when the builder accepts the normalized request, and a builder
+      // closing over the original HEAD would seed the GET entry with an empty
+      // body for every later caller.
+      (cacheRequest) => dispatchRequest(cacheRequest, env, ctx),
+      `${resolved.pathname}${resolved.search}`,
+      accountCacheStamp,
+    );
   });
-  if (!eligible) return dispatchRequest(request, env, ctx);
-  return withEdgeCache(
-    request,
-    ctx,
-    env,
-    ACCOUNT_EDGE_CACHE_LABEL,
-    // Takes the argument on purpose: `withEdgeCache` only folds HEAD into the
-    // GET key when the builder accepts the normalized request, and a builder
-    // closing over the original HEAD would seed the GET entry with an empty
-    // body for every later caller.
-    (cacheRequest) => dispatchRequest(cacheRequest, env, ctx),
-    `${resolved.pathname}${resolved.search}`,
-    accountCacheStamp,
-  );
 }
 
 async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
@@ -6287,6 +6323,11 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   // routes ungated -- see handleChainEventsFamily.
   if (
     url.pathname === "/api/v1/chain-events" ||
+    // The paid export tier (#11600). Routed into the SAME handler as its free
+    // twin so the limiter, usage accounting and network-prefix handling it
+    // already does apply unchanged -- the payment gate runs earlier, at
+    // dispatchCached, and is the only thing that differs.
+    url.pathname === "/api/v1/export/chain-events" ||
     url.pathname === "/api/v1/chain-events/stats" ||
     /^\/api\/v1\/blocks\/\d+\/chain-events$/.test(url.pathname) ||
     /^\/api\/v1\/subnets\/\d+\/ownership-history$/.test(url.pathname) ||
@@ -6350,13 +6391,19 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
     return handleAccountKeysProxy(request, env);
   }
 
-  // GitHub OAuth (metagraphed#7151): the two routes @cloudflare/workers-
+  // GitHub OAuth (metagraphed#7151): the routes @cloudflare/workers-
   // oauth-provider's own authorizeEndpoint deliberately leaves to
-  // application code (see src/github-oauth.ts's header). GET-only --
-  // both are browser-redirect targets, never called by a client library
-  // directly.
+  // application code (see src/github-oauth.ts's header). Browser-redirect
+  // targets, never called by a client library directly.
+  //
+  // #11569 made /authorize a two-step: GET renders the consent screen, POST is
+  // the approval. The split is what stops ARRIVING at the URL from starting a
+  // grant -- a link, a prefetch or an <img> pointed here now renders a page.
   if (request.method === "GET" && url.pathname === "/authorize") {
     return handleAuthorizeRequest(request, env);
+  }
+  if (request.method === "POST" && url.pathname === "/authorize") {
+    return handleAuthorizeConsent(request, env);
   }
   if (request.method === "GET" && url.pathname === "/oauth/callback/github") {
     return handleGithubOAuthCallback(request, env);
@@ -6730,6 +6777,32 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
     return await homepageResponse(request);
   }
 
+  // infra#629: the x402 discovery manifest. The EXTENSIONLESS path, which is
+  // what crawlers actually fetch -- over 14 days AgenstryBot and
+  // agent-tools.cloud asked for `/.well-known/x402` 41 times and
+  // `/.well-known/x402.json` 18, and both try this form first.
+  //
+  // 404s when unconfigured rather than serving an empty manifest: advertising
+  // payability a deployment cannot honour is the same dishonesty #11175
+  // refused for an A2A card with no endpoint behind it.
+  if (url.pathname === "/.well-known/x402") {
+    const manifest = x402Manifest(resolveX402Config(env), url.origin);
+    if (!manifest) {
+      return errorResponse(
+        "not_found",
+        "This deployment does not accept x402 payments.",
+        404,
+      );
+    }
+    return new Response(JSON.stringify(manifest), {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "public, max-age=300",
+        "access-control-allow-origin": "*",
+      },
+    });
+  }
   if (url.pathname === "/.well-known/api-catalog") {
     return await apiCatalogResponse(request);
   }
@@ -8949,6 +9022,135 @@ const PROJECTION_ROUTE_HANDLERS: Record<
  *
  * Returns the rejection to serve, or null when the caller may proceed.
  */
+/**
+ * The x402 gate: refuse-with-a-quote, or settle and let the work proceed
+ * (infra#629).
+ *
+ * Runs BEFORE the handler, and both facilitator calls happen before any work.
+ * Serve-then-settle would lose the money on any failure after the response is
+ * committed, and a Worker cannot retract a stream it has begun.
+ *
+ * Returns a Response to serve INSTEAD of the route (only when a caller TRIED
+ * to pay and could not), a settlement header to attach when payment succeeded,
+ * or null to proceed untouched.
+ *
+ * Null is the overwhelmingly common case and covers three situations that are
+ * deliberately indistinguishable to the caller: this deployment takes no
+ * payments, this route is not one a payment buys headroom on, or the caller
+ * simply did not present one. All three mean "serve it as you would today".
+ */
+/**
+ * Run `work` behind the x402 gate, attaching the settlement receipt.
+ *
+ * The receipt matters: `PAYMENT-RESPONSE` is how a payer reconciles what they
+ * were charged against what they got, and dropping it turns a settled payment
+ * into one the caller has no record of.
+ */
+/**
+ * GENERIC, and passthrough on purpose.
+ *
+ * `dispatchRequest` infers `any` (its handler union bottoms out in one), so
+ * `handleRequest` has always returned `any` and ~1,230 `(await
+ * handleRequest(...)).json()` reads across eight test files depend on it. An
+ * annotation of `Promise<Response>` here is more accurate AND propagates that
+ * accuracy up the whole dispatch chain, which surfaces every one of them at
+ * once -- a real finding, and not one a payments change should carry.
+ *
+ * So this returns what its work returns, plus the rejection it may substitute.
+ * That is the honest type for a transparent wrapper either way; tightening
+ * `dispatchRequest` is its own change, filed separately.
+ */
+async function withX402<T extends Response>(
+  request: Request,
+  env: Env,
+  pathname: string,
+  work: () => Promise<T>,
+): Promise<T | Response> {
+  const gate = await enforceX402(request, env, pathname);
+  if (gate && "reject" in gate) return gate.reject;
+  const response = await work();
+  if (!gate) return response;
+  const headers = new Headers(response.headers);
+  headers.set(X402_RESPONSE_HEADER, gate.settlementHeader);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+async function enforceX402(
+  request: Request,
+  env: Env,
+  pathname: string,
+): Promise<{ reject: Response } | { settlementHeader: string } | null> {
+  const config = resolveX402Config(env);
+  if (!config) return null;
+  const price = x402PriceFor(pathname);
+  if (!price) return null;
+
+  const requirements = paymentRequirements(config, price.atomicAmount);
+  const verdict = await verifyAndSettle(config, request, requirements);
+  switch (verdict.outcome) {
+    case "settled":
+      // What the payment BUYS: this request is measured against the paid tier
+      // instead of the anonymous one, keyed to the payer's wallet. Without
+      // this the payment would settle and change nothing, which is worse than
+      // not taking it.
+      //
+      // Called UNCONDITIONALLY, including for the empty payer a facilitator
+      // may return. `markPaidCall` owns the rule that an unattributable
+      // payment gets no bucket of its own, because it owns the bucket -- and a
+      // guard repeated at the call site is one the next call site omits.
+      markPaidCall(request, verdict.payer, "paid");
+      return { settlementHeader: verdict.responseHeader };
+    case "unpaid":
+      // THE INVARIANT, and its one deliberate exception (#11600).
+      //
+      // For every family that merely ACCEPTS payment, no payment presented
+      // means proceed exactly as today -- anonymous, rate-limited, free.
+      // Returning a 402 here is what would have broken our own site, which
+      // calls /api/v1/ask with no credential and /api/v1/blocks with a
+      // user-typed range.
+      //
+      // The `export` family is different, and it is different because it is
+      // NEW: nothing has ever been served from it for free, nothing in
+      // apps/ui calls it, and no free tier of it was withdrawn to create it.
+      // The invariant protects calls that would otherwise have succeeded;
+      // there are none here to protect.
+      return x402RequiresPayment(pathname)
+        ? {
+            reject: paymentRequiredResponse(
+              config,
+              request,
+              price.atomicAmount,
+              `metagraphed ${price.family} call`,
+            ),
+          }
+        : null;
+    case "malformed":
+      // 400, not 402: the caller DID present a payment and it was unreadable.
+      // Answering 402 would tell them to pay again for a request whose problem
+      // is its encoding, which is a loop they cannot exit.
+      return {
+        reject: errorResponse("x402_malformed_payment", verdict.reason, 400),
+      };
+    default:
+      // Rejected by the facilitator, or the facilitator could not answer.
+      // Both are 402 with the quote reattached, so a caller who retries has
+      // everything they need -- and neither is ever a pass. This control fails
+      // CLOSED; see verifyAndSettle for why it is the one that does.
+      return {
+        reject: paymentRequiredResponse(
+          config,
+          request,
+          price.atomicAmount,
+          `metagraphed ${price.family} call -- ${verdict.reason}`,
+        ),
+      };
+  }
+}
+
 async function dataRouteRateLimit(
   request: Request,
   env: Env,
@@ -9044,6 +9246,12 @@ async function dispatchChainHistoryRoute(
   // identical on both -- only the chain differs.
   if (
     pathname === "/api/v1/chain-events" ||
+    // The paid export tier (#11600). Listed HERE as well as in the unprefixed
+    // dispatch because this function is what the capability matrix measures:
+    // a path served on the bare route and absent here is reported as served on
+    // testnet and 404s there, which is the failure
+    // tests/network-capabilities.test.ts caught when it was missing.
+    pathname === "/api/v1/export/chain-events" ||
     pathname === "/api/v1/chain-events/stats" ||
     BLOCK_CHAIN_EVENTS_PATH_PATTERN.test(pathname)
   ) {

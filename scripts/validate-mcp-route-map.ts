@@ -34,6 +34,14 @@ const AGENT_UNREACHABLE: Record<string, string> = {
     "The contract document itself. get_api_schema serves a SUBNET's captured schema; this one is ours, and get_contracts describes it.",
   "/api/v1/search/resolve":
     "Identifier resolution (#9672). search_subnets and semantic_search are the agent-facing discovery paths; resolve is a UI affordance.",
+  "/api/v1/export/chain-events":
+    "The paid export tier (#11600). Deliberately HTTP-only: the x402 gate " +
+    "prices a request by its RESOLVED pathname, and every MCP call arrives on " +
+    "/mcp, which is the `edge` family at weight 1. A tool mirroring this route " +
+    "would therefore serve a 25,000-row export for free through the very " +
+    "surface the payment exists to bound -- a paywall with a documented way " +
+    "around it. The free, paginated twin (list_chain_events) is what agents " +
+    "get, and it is unchanged.",
   "/api/v1/chain/stream":
     "The realtime firehose (#11045). A request/response tool cannot hold an " +
     "event stream open; MCP sessions subscribe through the hub's own " +

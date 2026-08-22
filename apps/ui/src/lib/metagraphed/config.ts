@@ -1,4 +1,4 @@
-import { API_ORIGIN, GITHUB_REPO_URL } from "./identity";
+import { API_DATA_ORIGIN, GITHUB_REPO_URL } from "./identity";
 
 // Metagraphed API client config.
 //
@@ -16,11 +16,10 @@ const env = (import.meta as ImportMeta & { env?: Record<string, string | undefin
 const STORAGE_KEY = "metagraphed:api-base";
 const EVT = "metagraphed:api-base-changed";
 
-export const DEFAULT_API_BASE = (
-  env?.VITE_METAGRAPH_API_BASE ||
-  env?.VITE_METAGRAPHED_API_BASE ||
-  API_ORIGIN
-).replace(/\/$/, "");
+// One definition, in identity.ts, so the server half and the client half of the
+// app cannot resolve different data hosts -- see API_DATA_ORIGIN for the bug
+// that caused.
+export const DEFAULT_API_BASE = API_DATA_ORIGIN;
 
 let cached: string | null = null;
 
@@ -91,6 +90,26 @@ export function onApiBaseChange(cb: (next: string) => void): () => void {
  * `getApiBase()` or the `useApiBase()` hook.
  */
 export const API_BASE = getApiBase();
+
+/**
+ * The paid bulk-export endpoints (metagraphed#11600).
+ *
+ * NOT in queries.ts, and that is the point: these are the only routes on the
+ * API that answer 402 to an unpaid caller, so this app must never fetch one.
+ * They are named here so the UI can POINT at them -- a visitor reading a
+ * paginated feed should be able to find out that a single-call export exists
+ * -- without any code path that would call one and render a payment error.
+ */
+export const PAID_EXPORT_ENDPOINTS = [
+  {
+    path: "/api/v1/export/chain-events",
+    label: "Bulk export: chain events",
+    note: "Up to 25,000 events in one call. Requires an x402 payment.",
+  },
+] as const;
+
+/** Where a reader finds out what payment is accepted, and to which address. */
+export const X402_MANIFEST_PATH = "/.well-known/x402";
 
 // ─── Chain network (data partition on the API) ───────────────────────────────
 

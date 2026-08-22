@@ -58,6 +58,8 @@
     "crowdloans",
     "crowdloans-by-network",
     "emission-gate-changes",
+    "export-chain-events",
+    "export-chain-events-by-network",
     "indexer-lag"
   ]
 }

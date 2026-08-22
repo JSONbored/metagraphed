@@ -31,6 +31,36 @@
  */
 export const MIN_CATEGORY_SUBNETS = 3;
 
+/**
+ * One page size for "every subnet", shared by every surface that derives a set
+ * from the whole registry.
+ *
+ * It lives HERE, next to the threshold it is counted against, rather than in
+ * queries.ts where it started: `server.ts` needs it to build the sitemap and
+ * importing queries.ts would drag @tanstack/react-query into the server
+ * bundle for one number.
+ *
+ * The drift this prevents is not hypothetical. The sitemap fetched
+ * `?limit=500` while the hub fetched this constant, and the two agreed only by
+ * accident -- both exceeded the ~128 subnets that exist. Under the hermetic
+ * e2e stub they did NOT agree: the stub indexes recordings by exact URL with a
+ * bare-pathname fallback, so two different query strings resolve to two
+ * different recorded payloads, and a category sitting exactly on
+ * MIN_CATEGORY_SUBNETS landed on one side only. The sitemap listed
+ * `/subnets/category/privacy`; the hub did not link it.
+ *
+ * Sharing the constant makes the two fetches the SAME URL. If it is ever too
+ * small for the registry, both surfaces under-count together and visibly,
+ * rather than disagreeing quietly -- which is the property worth having.
+ */
+// 500, not 200. /api/v1/subnets has no server-side sort, so the page fetches
+// the whole set once and works over it client-side — and the directory,
+// category, and crawlable-index views must derive from the SAME complete
+// response or they disagree about which category URLs exist. Raised on the
+// frontend branch; main moved the constant here in parallel, so the merge
+// keeps main's home and the branch's value.
+export const SUBNETS_ALL_LIMIT = 500;
+
 export interface CategoryCopy {
   /** Human label, as a heading and in the title. */
   readonly label: string;

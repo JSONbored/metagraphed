@@ -1218,6 +1218,9 @@ var QUERY_PARAMETER_ENUMS = {
   "/api/v1/{network}/evm/address/{h160}": {
     "network": ["finney", "mainnet", "test", "testnet"]
   },
+  "/api/v1/{network}/export/chain-events": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
   "/api/v1/{network}/extrinsics": {
     "format": ["json", "csv"],
     "network": ["finney", "mainnet", "test", "testnet"],

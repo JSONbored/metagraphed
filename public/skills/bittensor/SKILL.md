@@ -26,12 +26,17 @@ them live from metagraphed.
 ## Connect (one line)
 
 ```
-claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
+claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core
 ```
 
 Cursor / other clients: add an MCP server with url
-`https://api.metagraph.sh/mcp`, transport `streamable-http`. Server descriptor:
-`https://api.metagraph.sh/.well-known/mcp/server-card.json`.
+`https://api.metagraph.sh/mcp/core`, transport `streamable-http`. Server
+descriptor: `https://api.metagraph.sh/.well-known/mcp/server-card.json`.
+
+`/mcp/core` lists the 23 tools of the workflow below (~45k tokens); `/mcp`
+lists all 243 (~400k). Either endpoint can **call** all 243 — the profile
+filters listing, never dispatch — so start with core and reach for
+`get_more_tools` when the workflow below runs out.
 
 ## The workflow
 

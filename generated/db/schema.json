@@ -277,6 +277,12 @@
   },
   {
     "table": "api_key_blocks",
+    "column": "account_kind",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "api_key_blocks",
     "column": "blocked_at",
     "udt": "int8",
     "nullable": false
@@ -321,6 +327,12 @@
     "table": "api_key_usage_daily",
     "column": "account_id",
     "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "api_key_usage_daily",
+    "column": "account_kind",
+    "udt": "text",
     "nullable": false
   },
   {
@@ -411,6 +423,12 @@
     "table": "api_quota_daily",
     "column": "account_id",
     "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "api_quota_daily",
+    "column": "account_kind",
+    "udt": "text",
     "nullable": false
   },
   {

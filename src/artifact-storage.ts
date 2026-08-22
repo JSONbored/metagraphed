@@ -438,6 +438,10 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // files. R2-only so the contract maps a schema without the build expecting a
   // committed/staged artifact (mirrors the sibling live D1 routes).
   /^chain-events\.json$/,
+  // The paid export tier (#11600). Same reader, same rows, same never-written
+  // status: computed per request from the lakehouse, so it tiers R2-only for
+  // exactly the reason its free twin above does.
+  /^export\/chain-events\.json$/,
   /^chain-events\/stats\.json$/,
   /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/chain-events\.json$/,
   // Network-wide economics time series (#1307): aggregated live per UTC day from

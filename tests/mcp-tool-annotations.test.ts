@@ -5,7 +5,8 @@
 // make credentialed writes it would never have made knowingly.
 //
 // These tests pin the three claims that matter:
-//   1. `call_subnet_surface` — the only true mutator — is never read-only.
+//   1. `write_subnet_surface` — the only true mutator — is never read-only,
+//      and its read sibling never claims to be one.
 //   2. Every tool that leaves metagraphed infrastructure declares open-world,
 //      and every tool that does not, does not.
 //   3. The open-world list cannot silently rot: a tool whose handler reaches a
@@ -44,17 +45,35 @@ describe("MCP tool annotations", () => {
     }
   });
 
-  // The specific defect #8964 was filed for. call_subnet_surface issues
-  // caller-supplied POST/PUT with a caller-supplied credential to third-party
-  // subnet hosts; every one of these four claims was previously wrong.
-  test("call_subnet_surface is not advertised as a safe read", () => {
-    const annotations = byName.get("call_subnet_surface")
+  // The specific defect #8964 was filed for, now carried by the tool that
+  // actually issues the writes. #11568 split the verbs: write_subnet_surface
+  // sends caller-supplied POST/PUT/PATCH/DELETE with a caller-supplied
+  // credential to third-party subnet hosts, and every one of these four claims
+  // was once wrong on the merged tool.
+  test("write_subnet_surface is not advertised as a safe read", () => {
+    const annotations = byName.get("write_subnet_surface")
       ?.annotations as Record<string, unknown>;
-    assert.ok(annotations, "call_subnet_surface must be registered");
+    assert.ok(annotations, "write_subnet_surface must be registered");
     assert.equal(annotations.readOnlyHint, false);
     assert.equal(annotations.destructiveHint, true);
     // A caller-supplied POST/PUT is not idempotent by construction.
     assert.equal(annotations.idempotentHint, false);
+    assert.equal(annotations.openWorldHint, true);
+  });
+
+  // The other half of the split, and the reason it was worth doing beyond the
+  // directory rule: a read that cannot write may run without a per-call
+  // confirmation. That claim is only safe because the handler enforces the
+  // verb set -- see the write-verb refusal test in the split suite.
+  test("call_subnet_surface is a truthful read after the split", () => {
+    const annotations = byName.get("call_subnet_surface")
+      ?.annotations as Record<string, unknown>;
+    assert.ok(annotations, "call_subnet_surface must be registered");
+    assert.equal(annotations.readOnlyHint, true);
+    assert.equal(annotations.destructiveHint, false);
+    // GET/HEAD are idempotent by definition (RFC 9110).
+    assert.equal(annotations.idempotentHint, true);
+    // Still somebody else's host.
     assert.equal(annotations.openWorldHint, true);
   });
 
@@ -83,7 +102,13 @@ describe("MCP tool annotations", () => {
     // subnets -- a closed-world annotation that was only true because the read
     // was broken. Widening the set here is the annotation catching up with a
     // tool that now genuinely leaves our infrastructure.
-    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 23);
+    //
+    // 24 since #11568 split call_subnet_surface into a read and a write tool.
+    // This is the one increment that adds NO new reach: both halves call the
+    // same catalogued third-party surfaces the merged tool already did, and
+    // both are open-world for that reason. The count moved because one tool
+    // became two, not because the set of things we touch grew.
+    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 24);
     assert.ok(
       definitions.length > 200,
       `expected the full catalogue, saw ${definitions.length}`,
@@ -105,7 +130,7 @@ describe("MCP tool annotations", () => {
   //
   // #9009 added two: the credential store's writer and its deleter. Both write
   // only to our own KV, under the authenticated caller's own identity — hence
-  // closed-world, unlike call_subnet_surface, which forwards a caller-supplied
+  // closed-world, unlike write_subnet_surface, which forwards a caller-supplied
   // write to somebody else's host.
   test("the non-read-only tools are exactly the known mutators", () => {
     const mutating = definitions
@@ -115,7 +140,9 @@ describe("MCP tool annotations", () => {
       )
       .map((def) => def.name);
     assert.deepEqual(mutating, [
-      "call_subnet_surface",
+      // #11568: the write half of the surface-call split. Its read sibling is
+      // deliberately absent from this list now -- that is the split working.
+      "write_subnet_surface",
       "store_surface_credential",
       "delete_surface_credential",
     ]);

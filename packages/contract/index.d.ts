@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List backend API routes and response envelope metadata. */
+        /** @description List backend API routes and response envelope metadata. */
         get: operations["apiIndex"];
         put?: never;
         post?: never;
@@ -28,10 +28,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss).
-         * @description Network-scoped form of /api/v1/accounts/{ss58}/balance — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/accounts/{ss58}/balance — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["accountBalanceByNetwork"];
         put?: never;
         post?: never;
@@ -48,10 +45,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.
-         * @description Network-scoped form of /api/v1/accounts/{ss58}/children — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/accounts/{ss58}/children — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["accountChildrenByNetwork"];
         put?: never;
         post?: never;
@@ -68,10 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.
-         * @description Network-scoped form of /api/v1/accounts/{ss58}/parents — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/accounts/{ss58}/parents — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["accountParentsByNetwork"];
         put?: never;
         post?: never;
@@ -88,10 +79,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the live root-claim current state for one Finney ss58 account (#7229) — RootClaimType setting, per-hotkey RootClaimable rates, RootClaimed cumulative watermarks, and RootClaimableThreshold — queried from the finney RPC at request time with 120s KV cache. Returns 400 on invalid ss58; claim_type/hotkeys are null on RPC failure. Read-only display only; never submits claim_root or any other extrinsic.
-         * @description Network-scoped form of /api/v1/accounts/{ss58}/root-claim — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/accounts/{ss58}/root-claim — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["accountRootClaimByNetwork"];
         put?: never;
         post?: never;
@@ -108,10 +96,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks tier (#1345).
-         * @description Network-scoped form of /api/v1/blocks — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/blocks — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["blocksFeedByNetwork"];
         put?: never;
         post?: never;
@@ -128,10 +113,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks tier (#1345); 200 with block:null when cold/unknown.
-         * @description Network-scoped form of /api/v1/blocks/{ref} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/blocks/{ref} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["blockDetailByNetwork"];
         put?: never;
         post?: never;
@@ -148,10 +130,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch EVERY raw pallet-level event in one block (by numeric block_number; event_index ascending), served live from the live-follow hot tier above the decode seam and the chain_events lakehouse at or below it (no static file). This is the complete stream, so its count matches the block header's own event_count; /api/v1/blocks/{ref}/events is deliberately a SUBSET of it -- the curated account-attributed projection, which is smaller by design and not a loss. A block neither tier can read declines with a typed 503 (block_detail_unavailable) rather than an empty list, because count:0 is indistinguishable from a block that emitted nothing.
-         * @description Network-scoped form of /api/v1/blocks/{ref}/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/blocks/{ref}/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["blockChainEventsByNetwork"];
         put?: never;
         post?: never;
@@ -168,10 +147,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the ACCOUNT-ATTRIBUTED events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. This is the curated account_events projection -- a deliberate SUBSET of /api/v1/blocks/{ref}/chain-events (the complete pallet-level stream the block header's event_count counts), narrower by design rather than by loss. 200 with events:[] when cold/unknown.
-         * @description Network-scoped form of /api/v1/blocks/{ref}/events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/blocks/{ref}/events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["blockEventsByNetwork"];
         put?: never;
         post?: never;
@@ -188,10 +164,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics tier (#1845); 200 with extrinsics:[] when cold/unknown.
-         * @description Network-scoped form of /api/v1/blocks/{ref}/extrinsics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/blocks/{ref}/extrinsics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["blockExtrinsicsByNetwork"];
         put?: never;
         post?: never;
@@ -208,10 +181,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Precomputed by a cron from that network's decoded blocks; schema-stable zeroed card when the projection is cold.
-         * @description Network-scoped form of /api/v1/blocks/summary — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/blocks/summary — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["blocksSummaryByNetwork"];
         put?: never;
         post?: never;
@@ -228,10 +198,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Each page reads one bounded block window below its ceiling, so a short page still carries a continuation rather than ending the feed. Served live, no static file.
-         * @description Network-scoped form of /api/v1/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainEventsFeedByNetwork"];
         put?: never;
         post?: never;
@@ -248,10 +215,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks the decode lane has published — from the chain_events lakehouse table. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live, no static file.
-         * @description Network-scoped form of /api/v1/chain-events/stats — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain-events/stats — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainEventsStatsByNetwork"];
         put?: never;
         post?: never;
@@ -268,10 +232,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.
-         * @description Network-scoped form of /api/v1/chain/activity — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/activity — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainActivityByNetwork"];
         put?: never;
         post?: never;
@@ -288,10 +249,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h (subnets with no volume are excluded) ranked by total_volume_tao (biggest market activity first, ?limit <=100), each with the same buy/sell/total volume + sentiment scorecard as GET /api/v1/subnets/{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet total volume. Computed live from the account_events stream; schema-stable zeros + empty leaderboard when cold. Fixed 24h window (no ?window= param), matching the per-subnet route's own framing.
-         * @description Network-scoped form of /api/v1/chain/alpha-volume — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/alpha-volume — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainAlphaVolumeByNetwork"];
         put?: never;
         post?: never;
@@ -308,10 +266,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch every subnet's live registration/burn cost in one response, ranked cheapest-first (#9399). Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). REGISTRATION ECONOMICS, NOT A TEAM BURN (#10482): this is what it costs to register a UID, and nothing here measures a team destroying tokens it said it would destroy. That separate concept is named `token_burn` and is carried by the entity `burn` role (schemas/entity.schema.json), which requires an `unspendable_proof`. The two share a word and nothing else. A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased.
-         * @description Network-scoped form of /api/v1/chain/burn — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/burn — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainBurnByNetwork"];
         put?: never;
         post?: never;
@@ -328,10 +283,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics tier (#1989); schema-stable call_count:0/calls:[] when cold.
-         * @description Network-scoped form of /api/v1/chain/calls — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/calls — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainCallsByNetwork"];
         put?: never;
         post?: never;
@@ -348,10 +300,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection (NeuronDeregistered has never been emitted by the runtime); the payload's `derivation` block states how many window registrations had no observable previous holder, and `degraded` marks an answer nothing derived. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-scoped form of /api/v1/chain/deregistrations — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/deregistrations — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainDeregistrationsByNetwork"];
         put?: never;
         post?: never;
@@ -368,10 +317,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics tier (#1988); schema-stable day_count:0 + empty lists when cold.
-         * @description Network-scoped form of /api/v1/chain/fees — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/fees — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainFeesByNetwork"];
         put?: never;
         post?: never;
@@ -388,10 +334,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). The telemetry-endpoint companion to the axon-endpoint GET /api/v1/chain/serving — which subnets run observability infrastructure. Read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-scoped form of /api/v1/chain/prometheus — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/prometheus — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainPrometheusByNetwork"];
         put?: never;
         post?: never;
@@ -408,10 +351,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-scoped form of /api/v1/chain/registrations — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/registrations — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainRegistrationsByNetwork"];
         put?: never;
         post?: never;
@@ -428,10 +368,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-scoped form of /api/v1/chain/serving — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/serving — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainServingByNetwork"];
         put?: never;
         post?: never;
@@ -448,10 +385,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics tier (#1990); schema-stable signer_count:0/signers:[] when cold.
-         * @description Network-scoped form of /api/v1/chain/signers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/signers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainSignersByNetwork"];
         put?: never;
         post?: never;
@@ -468,10 +402,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit <=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold.
-         * @description Network-scoped form of /api/v1/chain/stake-flow — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/stake-flow — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainStakeFlowByNetwork"];
         put?: never;
         post?: never;
@@ -488,10 +419,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch network-wide stake-movement (re-delegation) activity over a 7d or 30d window across the subnets with observed movement activity (subnets with no StakeMoved events are absent): a per-subnet leaderboard (StakeMoved event count, distinct movers, and average movements per mover) ranked by total movements, a network rollup with the true distinct mover count (an account moving stake out of several subnets counts once) and total movements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-move intensity. `limit` caps the leaderboard (default 20, max 100). The re-delegation-churn companion to the net-capital-flow GET /api/v1/chain/stake-flow — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Computed live from the account_events StakeMoved stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-scoped form of /api/v1/chain/stake-moves — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/stake-moves — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainStakeMovesByNetwork"];
         put?: never;
         post?: never;
@@ -508,10 +436,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch network-wide stake-transfer activity over a 7d or 30d window across the subnets with observed transfer activity (subnets with no StakeTransferred events are absent): a per-subnet leaderboard (StakeTransferred event count, distinct senders, and average transfers per sender) ranked by total transfers, a network rollup with the true distinct sender count (an account transferring stake out of several subnets counts once) and total transfers, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet transfer intensity. `limit` caps the leaderboard (default 20, max 100). The between-coldkeys companion to the within-account re-delegation churn of GET /api/v1/chain/stake-moves — transfer_stake relocates staked alpha from one account to another on the same hotkey (origin leg only), so it moves ownership, not net capital. Computed live from the account_events StakeTransferred stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-scoped form of /api/v1/chain/stake-transfers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/stake-transfers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainStakeTransfersByNetwork"];
         put?: never;
         post?: never;
@@ -528,10 +453,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold. Pass ?format=csv to download the ranked pairs as CSV (the totals + top_pair_share stay JSON-only).
-         * @description Network-scoped form of /api/v1/chain/transfer-pairs — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/transfer-pairs — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainTransferPairsByNetwork"];
         put?: never;
         post?: never;
@@ -548,10 +470,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold. Pass ?format=csv to download the top senders and receivers as one CSV tagged by a `direction` column (the totals + top_sender_share stay JSON-only).
-         * @description Network-scoped form of /api/v1/chain/transfers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/transfers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainTransfersByNetwork"];
         put?: never;
         post?: never;
@@ -568,10 +487,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch network-wide validator weight-setting activity over a 7d or 30d window across the subnets with observed weight-setting activity (subnets with no WeightsSet events are absent): a per-subnet leaderboard (distinct weight-setting validators, WeightsSet event count, and average updates per validator) ranked by total events, a network rollup with the true distinct setter count (a validator setting weights on several subnets counts once) and total events, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet update intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events WeightsSet stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-scoped form of /api/v1/chain/weights — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/weights — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainWeightsByNetwork"];
         put?: never;
         post?: never;
@@ -588,10 +504,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the network-wide weight-setter leaderboard over a 7d or 30d window: the individual validators driving consensus across every subnet ranked by activity, each with its total WeightsSet count (summed across every subnet it operates on), its share of the network total, and its first/last set time. `limit` caps the returned page (default 20, max 100); `distinct_setters` always reports the true network-wide total regardless of `limit`. The network-wide companion to GET /api/v1/subnets/{netuid}/weights/setters. Computed live from the account_events WeightsSet stream; schema-stable empty leaderboard when cold. Pass ?format=csv to download the leaderboard as CSV.
-         * @description Network-scoped form of /api/v1/chain/weights/setters — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/chain/weights/setters — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["chainWeightSettersByNetwork"];
         put?: never;
         post?: never;
@@ -609,7 +522,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch registry coverage summary.
+         * Fetch the registry coverage and completeness summary
          * @description Network-scoped form of /api/v1/coverage — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["coverageByNetwork"];
@@ -628,10 +541,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id; a failed chain read yields crowdloan_count null plus a `degraded` block rather than 0 (#9898). Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness.
-         * @description Network-scoped form of /api/v1/crowdloans — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/crowdloans — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["crowdloansByNetwork"];
         put?: never;
         post?: never;
@@ -648,10 +558,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch one crowdloan's live state (#8696) from the Crowdloan pallet's Crowdloans storage map at request time with 120s KV cache. exists is null (not false) on RPC failure, distinct from a confirmed-absent id (exists:false) — an id can be legitimately absent because dissolve removes the record while NextCrowdloanId keeps counting.
-         * @description Network-scoped form of /api/v1/crowdloans/{crowdloan_id} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/crowdloans/{crowdloan_id} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["crowdloanDetailByNetwork"];
         put?: never;
         post?: never;
@@ -669,7 +576,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.
+         * List per-subnet validator and economic metrics
          * @description Network-scoped form of /api/v1/economics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["economicsByNetwork"];
@@ -688,11 +595,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure.
-         * @description Network-scoped form of /api/v1/evm/address/{h160} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/evm/address/{h160} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["evmAddressMappingByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/{network}/export/chain-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch up to 25,000 chain events in one paid call
+         * @description Network-scoped form of /api/v1/export/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         */
+        get: operations["exportChainEventsByNetwork"];
         put?: never;
         post?: never;
         delete?: never;
@@ -708,10 +632,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics tier (#1345).
-         * @description Network-scoped form of /api/v1/extrinsics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/extrinsics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["extrinsicsFeedByNetwork"];
         put?: never;
         post?: never;
@@ -728,10 +649,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.
-         * @description Network-scoped form of /api/v1/extrinsics/{hash} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/extrinsics/{hash} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["extrinsicDetailByNetwork"];
         put?: never;
         post?: never;
@@ -748,10 +666,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure. READ `field_sources` BEFORE CITING ANY VALUE HERE: it labels every field measured (with the storage item behind it) or reconstructed (our arithmetic), and three are reconstructed. `block_emission_tao` and `block_emission_halvings` are derived from TotalIssuance, never read from the `BlockEmission` storage item, which is stale at 1.0 TAO (#8747). `emission_gate_exponent_effective` is the runtime default (3) whenever the storage item is unset, which is its current state on finney — that 3 comes from our source tree, not from chain.
-         * @description Network-scoped form of /api/v1/network/parameters — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/network/parameters — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["networkParametersByNetwork"];
         put?: never;
         post?: never;
@@ -768,10 +683,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache. A current-state snapshot, not a history feed. Each field is independently null on its own RPC failure. `field_sources` marks the two rounds measured (Drand.LastStoredRound / Drand.OldestStoredRound) and `stored_round_span` reconstructed — it is our subtraction of them, not a retention window the beacon publishes.
-         * @description Network-scoped form of /api/v1/network/randomness — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/network/randomness — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["randomnessByNetwork"];
         put?: never;
         post?: never;
@@ -788,10 +700,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List every addressable network and what it actually serves. For each network: its canonical id, chain name, every accepted alias, and the route families it serves, does not serve, or serves partially. Answers "can I get chain data on testnet?" without making a request that fails. Reachable under every network prefix (/api/v1/networks, /api/v1/testnet/networks, /api/v1/local/networks) and identical on all of them — it is the one route that never 404s on any network, because it is how you find out what does.
-         * @description Network-scoped form of /api/v1/networks — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/networks — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["networkCapabilitiesByNetwork"];
         put?: never;
         post?: never;
@@ -808,10 +717,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Resolve a pasted query to the chain entities it could name (metagraphed-infra#362). A block explorer's most common search is an IDENTIFIER, not a question -- an account, a block hash, an extrinsic hash, a netuid -- and every one is recognisable from its shape with no index lookup and no inference. Use this BEFORE /api/v1/search or /api/v1/search/semantic: it answers instantly when the query is an identifier, and returns an empty `matches` when it is not, which is the signal to fall through to corpus search. AMBIGUITY IS RETURNED, NOT GUESSED. `matches` is a list because two inputs have more than one correct reading: a 64-hex string is a block hash OR an extrinsic hash, and a small integer is a netuid AND a block height. Each candidate carries `exact`; `false` means another kind shares the shape, so present the alternatives rather than redirecting. `exact` is NOT an existence claim -- this route looks nothing up. `unambiguous` is true only for a single exact candidate, and is the one field a UI needs to decide between navigating and rendering a choice. An ss58 is checksum-verified, so a one-character typo resolves to NOTHING rather than to an empty account page that reads as 'no activity'. `?q=` is the query; whitespace is trimmed, hex is normalised to lowercase with an 0x prefix. Served live on every network.
-         * @description Network-scoped form of /api/v1/search/resolve — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/search/resolve — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["searchResolveByNetwork"];
         put?: never;
         post?: never;
@@ -829,7 +735,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List active Finney subnets. The screening fields ride the `fields=` projection: `gpu_required`/`min_vram_gb` are the MINER hardware floor from the subnet's own min_compute.yml (four-valued -- `required`, `not-required`, `declared-inconsistently`, and null for the subnets whose repo publishes no readable file -- a null is NOT a no), and `also_on` names the testnet twin. The whole declaration, both roles and the commit it was read at, is the `compute_requirements` section on /subnets/{netuid}/overview.
+         * List active Finney subnets
          * @description Network-scoped form of /api/v1/subnets — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetsByNetwork"];
@@ -849,7 +755,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch per-subnet detail.
+         * Fetch one subnet's full profile
          * @description Network-scoped form of /api/v1/subnets/{netuid} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetDetailByNetwork"];
@@ -868,10 +774,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache. burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0.
-         * @description Network-scoped form of /api/v1/subnets/{netuid}/burn — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/subnets/{netuid}/burn — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["subnetBurnByNetwork"];
         put?: never;
         post?: never;
@@ -888,10 +791,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms + accumulated-but-undistributed alpha dividends, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false).
-         * @description Network-scoped form of /api/v1/subnets/{netuid}/lease — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/subnets/{netuid}/lease — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["subnetLeaseByNetwork"];
         put?: never;
         post?: never;
@@ -908,10 +808,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0.
-         * @description Network-scoped form of /api/v1/subnets/{netuid}/recycled — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/subnets/{netuid}/recycled — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["subnetRecycledByNetwork"];
         put?: never;
         post?: never;
@@ -928,10 +825,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310). hotkey is null on RPC failure or an unset sudo key. `field_sources` marks hotkey measured and names the storage item behind it (Sudo.Key).
-         * @description Network-scoped form of /api/v1/sudo/key — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
-         */
+        /** @description Network-scoped form of /api/v1/sudo/key — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["sudoKeyByNetwork"];
         put?: never;
         post?: never;
@@ -948,7 +842,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons store. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons. */
+        /** @description Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons store. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons. */
         get: operations["accountsList"];
         put?: never;
         post?: never;
@@ -965,7 +859,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events lakehouse and the neurons tier -- the same rows /accounts/{ss58}/events and /accounts/{ss58}/subnets serve, so the three cannot disagree. A tier that exists and cannot answer declines with a typed 503 (account_summary_unavailable) rather than an all-zero card, which is indistinguishable from an account with no history. */
+        /**
+         * Fetch a cross-subnet activity summary for one account
+         * @description Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events lakehouse and the neurons tier -- the same rows /accounts/{ss58}/events and /accounts/{ss58}/subnets serve, so the three cannot disagree. A tier that exists and cannot answer declines with a typed 503 (account_summary_unavailable) rather than an all-zero card, which is indistinguishable from an account with no history.
+         */
         get: operations["accountSummary"];
         put?: never;
         post?: never;
@@ -982,7 +879,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's axon-removal footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonInfoRemoved count with the first and last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet — read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty footprint is marked `degraded` rather than published as a measured zero. The teardown-side complement to GET /api/v1/accounts/{ss58}/serving (axon announcements) and the account-level companion to GET /api/v1/chain/axon-removals, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state). */
+        /** @description Fetch one account's axon-removal footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonInfoRemoved count with the first and last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet — read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty footprint is marked `degraded` rather than published as a measured zero. The teardown-side complement to GET /api/v1/accounts/{ss58}/serving (axon announcements) and the account-level companion to GET /api/v1/chain/axon-removals, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state). */
         get: operations["accountAxonRemovals"];
         put?: never;
         post?: never;
@@ -999,7 +896,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss). */
+        /** @description Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss). */
         get: operations["accountBalance"];
         put?: never;
         post?: never;
@@ -1016,7 +913,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. */
+        /** @description Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. */
         get: operations["accountChildren"];
         put?: never;
         post?: never;
@@ -1033,7 +930,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events store. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. Pass ?format=csv to download the list-mode leaderboard as CSV; it's rejected alongside ?counterparty since the drilldown returns a single composite object, not rows. */
+        /** @description Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events store. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. Pass ?format=csv to download the list-mode leaderboard as CSV; it's rejected alongside ?counterparty since the drilldown returns a single composite object, not rows. */
         get: operations["accountCounterparties"];
         put?: never;
         post?: never;
@@ -1050,7 +947,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered eviction count with the first and last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — DERIVED from UID reuse (the slots where this account was the PREVIOUS holder); NeuronDeregistered has never been emitted by the runtime, the payload's `derivation` block states the lower bound, and `degraded` marks an answer nothing derived. The eviction-side complement to GET /api/v1/accounts/{ss58}/registrations and the account-level companion to GET /api/v1/chain/deregistrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state). */
+        /** @description Fetch one account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered eviction count with the first and last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — DERIVED from UID reuse (the slots where this account was the PREVIOUS holder); NeuronDeregistered has never been emitted by the runtime, the payload's `derivation` block states the lower bound, and `degraded` marks an answer nothing derived. The eviction-side complement to GET /api/v1/accounts/{ss58}/registrations and the account-level companion to GET /api/v1/chain/deregistrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state). */
         get: operations["accountDeregistrations"];
         put?: never;
         post?: never;
@@ -1067,7 +964,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one address's community-contributed entity labels plus every subnet-ownership tie it has via the chain_events SubnetOwnerChanged stream (#6737-#6740) — either side of an automatic conviction-contest transfer. Only tracks transfers, not genesis ownership. */
+        /** @description Fetch one address's community-contributed entity labels plus every subnet-ownership tie it has via the chain_events SubnetOwnerChanged stream (#6737-#6740) — either side of an automatic conviction-contest transfer. Only tracks transfers, not genesis ownership. */
         get: operations["accountEntities"];
         put?: never;
         post?: never;
@@ -1084,7 +981,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter, ?netuid= to scope to one subnet, and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851). Pass ?format=csv to download the page as CSV. */
+        /** @description Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter, ?netuid= to scope to one subnet, and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851). Pass ?format=csv to download the page as CSV. */
         get: operations["accountEvents"];
         put?: never;
         post?: never;
@@ -1101,7 +998,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
+        /** @description Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
         get: operations["accountExtrinsics"];
         put?: never;
         post?: never;
@@ -1118,7 +1015,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset. */
+        /** @description Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset. */
         get: operations["accountHistory"];
         put?: never;
         post?: never;
@@ -1135,7 +1032,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the latest-only personal chain identity for one account (epic #4301/5.4), computed live from the account_identity tier. has_identity is false for the common case of an account that never called set_identity. */
+        /** @description Fetch the latest-only personal chain identity for one account (epic #4301/5.4), computed live from the account_identity tier. has_identity is false for the common case of an account that never called set_identity. */
         get: operations["accountIdentity"];
         put?: never;
         post?: never;
@@ -1152,7 +1049,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
+        /** @description Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
         get: operations["accountIdentityHistory"];
         put?: never;
         post?: never;
@@ -1169,7 +1066,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. */
+        /** @description Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. */
         get: operations["accountParents"];
         put?: never;
         post?: never;
@@ -1186,7 +1083,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration). Richer than /subnets; computed live from the neurons store. */
+        /** @description Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration). Richer than /subnets; computed live from the neurons store. */
         get: operations["accountPortfolio"];
         put?: never;
         post?: never;
@@ -1203,7 +1100,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons store. Root (netuid 0) stake is not covered. */
+        /** @description Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons store. Root (netuid 0) stake is not covered. */
         get: operations["accountPositions"];
         put?: never;
         post?: never;
@@ -1220,7 +1117,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's Prometheus-endpoint serving footprint per subnet over a recent window (7d/30d/90d): each subnet's PrometheusServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet — read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty footprint is marked `degraded` rather than published as a measured zero. Operational activity (announcing a Prometheus telemetry endpoint); the telemetry sibling of GET /api/v1/accounts/{ss58}/serving and the account-level companion to GET /api/v1/chain/prometheus, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state). */
+        /** @description Fetch one account's Prometheus-endpoint serving footprint per subnet over a recent window (7d/30d/90d): each subnet's PrometheusServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet — read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty footprint is marked `degraded` rather than published as a measured zero. Operational activity (announcing a Prometheus telemetry endpoint); the telemetry sibling of GET /api/v1/accounts/{ss58}/serving and the account-level companion to GET /api/v1/chain/prometheus, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state). */
         get: operations["accountPrometheus"];
         put?: never;
         post?: never;
@@ -1237,7 +1134,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first and last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events store. Windowed registration events including re-registrations after a deregistration; the account-level companion to GET /api/v1/chain/registrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state). */
+        /** @description Fetch one account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first and last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events store. Windowed registration events including re-registrations after a deregistration; the account-level companion to GET /api/v1/chain/registrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state). */
         get: operations["accountRegistrations"];
         put?: never;
         post?: never;
@@ -1254,7 +1151,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live root-claim current state for one Finney ss58 account (#7229) — RootClaimType setting, per-hotkey RootClaimable rates, RootClaimed cumulative watermarks, and RootClaimableThreshold — queried from the finney RPC at request time with 120s KV cache. Returns 400 on invalid ss58; claim_type/hotkeys are null on RPC failure. Read-only display only; never submits claim_root or any other extrinsic. */
+        /** @description Fetch the live root-claim current state for one Finney ss58 account (#7229) — RootClaimType setting, per-hotkey RootClaimable rates, RootClaimed cumulative watermarks, and RootClaimableThreshold — queried from the finney RPC at request time with 120s KV cache. Returns 400 on invalid ss58; claim_type/hotkeys are null on RPC failure. Read-only display only; never submits claim_root or any other extrinsic. */
         get: operations["accountRootClaim"];
         put?: never;
         post?: never;
@@ -1271,7 +1168,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events store. Operational activity (announcing an axon endpoint); the account-level companion to GET /api/v1/chain/serving, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state) and GET /api/v1/accounts/{ss58}/registrations (registration events). */
+        /** @description Fetch one account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events store. Operational activity (announcing an axon endpoint); the account-level companion to GET /api/v1/chain/serving, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state) and GET /api/v1/accounts/{ss58}/registrations (registration events). */
         get: operations["accountServing"];
         put?: never;
         post?: never;
@@ -1288,7 +1185,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events store. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. */
+        /** @description Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events store. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. */
         get: operations["accountStakeFlow"];
         put?: never;
         post?: never;
@@ -1305,7 +1202,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events store. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow. */
+        /** @description Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events store. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow. */
         get: operations["accountStakeMoves"];
         put?: never;
         post?: never;
@@ -1322,7 +1219,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons store. */
+        /** @description Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons store. */
         get: operations["accountSubnets"];
         put?: never;
         post?: never;
@@ -1339,7 +1236,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the account_position_daily rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** @description Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the account_position_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["accountSubnetPositionHistory"];
         put?: never;
         post?: never;
@@ -1356,7 +1253,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events store. ?direction=all|sent|received; optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
+        /** @description Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events store. ?direction=all|sent|received; optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
         get: operations["accountTransfers"];
         put?: never;
         post?: never;
@@ -1373,7 +1270,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's (validator's) weight-setting footprint per subnet over a recent window (7d/30d): each subnet's WeightsSet count with the first and last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet — summed live from the account_events store. Keyed on the hotkey (the validator submitting weights); the account-level companion to GET /api/v1/chain/weights/setters and GET /api/v1/subnets/{netuid}/weights/setters. */
+        /** @description Fetch one account's (validator's) weight-setting footprint per subnet over a recent window (7d/30d): each subnet's WeightsSet count with the first and last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet — summed live from the account_events store. Keyed on the hotkey (the validator submitting weights); the account-level companion to GET /api/v1/chain/weights/setters and GET /api/v1/subnets/{netuid}/weights/setters. */
         get: operations["accountWeightSetters"];
         put?: never;
         post?: never;
@@ -1390,7 +1287,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window -- a negative value is a real net outflow, not a missing value -- and null-valued rows sort last on the net_flow_* keys. TWO TIERS, SELECTED BY SORT (#9469/#9502). The net_flow_* sorts are LIVE: the top-holders-flow projection lane recomputes all three windows daily from chain.account_events, so captured_at advances and the ranking is a real one. The same lane composes the three holdings sorts from the store -- free_tao from account_balances, delegated_tao by valuing each nominator_positions row as share_fraction x hotkey_alpha.total_alpha x that netuid's alpha_price_tao (#9502 captured the pool totals; neurons.stake_tao covers only hotkeys holding a UID on that exact subnet, 22.8% of position rows, so recomputing from it would drop real top holders out of the ranking), and total_tao as free + delegated ranked across the FULL tables rather than summed over the other two sorts' capped rows, since the top of a sum is not contained in the union of the tops of its addends. A holdings sort is served live ONLY while its producer's most recent pass is recorded COMPLETE: ranking over a partially-loaded ledger returns the largest values PRESENT rather than the largest that EXIST, which is a well-formed leaderboard quietly missing real top holders, and for the pool ledger a missing total silently UNDERPRICES rather than dropping a row. While an input is unproven that sort DECLINES and answers from a fixed materialization taken 2026-08-02 whose captured_at and last_updated do not advance -- an account that has moved TAO since is misreported and one first funded since is absent, so read that ranking as historical and use GET /api/v1/accounts/{ss58}/balance for the live per-account balance. Which sorts are currently live is a property of the artifact, not a fixed list. On a net_flow_*-sorted page the three holdings columns are null rather than zero, because a zero would assert an empty wallet. */
+        /** @description Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window -- a negative value is a real net outflow, not a missing value -- and null-valued rows sort last on the net_flow_* keys. TWO TIERS, SELECTED BY SORT (#9469/#9502). The net_flow_* sorts are LIVE: the top-holders-flow projection lane recomputes all three windows daily from chain.account_events, so captured_at advances and the ranking is a real one. The same lane composes the three holdings sorts from the store -- free_tao from account_balances, delegated_tao by valuing each nominator_positions row as share_fraction x hotkey_alpha.total_alpha x that netuid's alpha_price_tao (#9502 captured the pool totals; neurons.stake_tao covers only hotkeys holding a UID on that exact subnet, 22.8% of position rows, so recomputing from it would drop real top holders out of the ranking), and total_tao as free + delegated ranked across the FULL tables rather than summed over the other two sorts' capped rows, since the top of a sum is not contained in the union of the tops of its addends. A holdings sort is served live ONLY while its producer's most recent pass is recorded COMPLETE: ranking over a partially-loaded ledger returns the largest values PRESENT rather than the largest that EXIST, which is a well-formed leaderboard quietly missing real top holders, and for the pool ledger a missing total silently UNDERPRICES rather than dropping a row. While an input is unproven that sort DECLINES and answers from a fixed materialization taken 2026-08-02 whose captured_at and last_updated do not advance -- an account that has moved TAO since is misreported and one first funded since is absent, so read that ranking as historical and use GET /api/v1/accounts/{ss58}/balance for the live per-account balance. Which sorts are currently live is a property of the artifact, not a fixed list. On a net_flow_*-sorted page the three holdings columns are null rather than zero, because a zero would assert an empty wallet. */
         get: operations["topHolders"];
         put?: never;
         post?: never;
@@ -1407,7 +1304,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch adapter-backed public metrics. */
+        /** @description Fetch adapter-backed public metrics. */
         get: operations["adapter"];
         put?: never;
         post?: never;
@@ -1424,7 +1321,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List subnets exposing callable services for AI agents (compact capability index). */
+        /** @description List subnets exposing callable services for AI agents (compact capability index). */
         get: operations["agentCatalog"];
         put?: never;
         post?: never;
@@ -1441,7 +1338,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the callable-services catalog for one subnet (each service with its schema + health). */
+        /** @description Fetch the callable-services catalog for one subnet (each service with its schema + health). */
         get: operations["agentCatalogSubnet"];
         put?: never;
         post?: never;
@@ -1458,7 +1355,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the AI-resources index: the copyable agent (/agent.md), the MCP server + its tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs. */
+        /** @description Fetch the AI-resources index: the copyable agent (/agent.md), the MCP server + its tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs. */
         get: operations["agentResources"];
         put?: never;
         post?: never;
@@ -1475,7 +1372,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read back one alert trigger: what it watches (`table_filter` plus the four narrowing fields `netuid`, `event_kind`, `account`, `min_amount_tao` -- all nullable, so a trigger that sets none of them matches every event on its table), where it delivers (`channel`, `destination`), whether it is `active`, and its firing record. `last_matched_at` is null until the trigger has fired once, which is NOT the same as `match_count: 0` -- a trigger created and immediately disabled shows the latter too. Requires the owner token issued at creation; it is not recoverable if lost. Mirrored by the `get_alert_trigger` MCP tool. Served live (no static file). */
+        /** @description Read back one alert trigger: what it watches (`table_filter` plus the four narrowing fields `netuid`, `event_kind`, `account`, `min_amount_tao` -- all nullable, so a trigger that sets none of them matches every event on its table), where it delivers (`channel`, `destination`), whether it is `active`, and its firing record. `last_matched_at` is null until the trigger has fired once, which is NOT the same as `match_count: 0` -- a trigger created and immediately disabled shows the latter too. Requires the owner token issued at creation; it is not recoverable if lost. Mirrored by the `get_alert_trigger` MCP tool. Served live (no static file). */
         get: operations["alertTrigger"];
         put?: never;
         post?: never;
@@ -1494,7 +1391,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ask a natural-language question about the registry and get a grounded answer with citations. POST a JSON body `{ question }`; the answer carries inline [n] markers resolved by `citations`, each naming the surface it came from, so every claim is traceable to a registered surface rather than to the model. Use this when the question is exploratory ("which subnets expose a public inference API?"); use /api/v1/search/semantic when you want the ranked matches themselves rather than prose. Mirrored by the `ask` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured. */
+        /**
+         * Generate a grounded answer with citations
+         * @description Ask a natural-language question about the registry and get a grounded answer with citations. POST a JSON body `{ question }`; the answer carries inline [n] markers resolved by `citations`, each naming the surface it came from, so every claim is traceable to a registered surface rather than to the model. Use this when the question is exploratory ("which subnets expose a public inference API?"); use /api/v1/search/semantic when you want the ranked matches themselves rather than prose. Mirrored by the `ask` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured.
+         */
         post: operations["ask"];
         delete?: never;
         options?: never;
@@ -1509,7 +1409,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks tier (#1345). */
+        /** @description Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks tier (#1345). */
         get: operations["blocksFeed"];
         put?: never;
         post?: never;
@@ -1526,7 +1426,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks tier (#1345); 200 with block:null when cold/unknown. */
+        /** @description Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks tier (#1345); 200 with block:null when cold/unknown. */
         get: operations["blockDetail"];
         put?: never;
         post?: never;
@@ -1543,7 +1443,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch EVERY raw pallet-level event in one block (by numeric block_number; event_index ascending), served live from the live-follow hot tier above the decode seam and the chain_events lakehouse at or below it (no static file). This is the complete stream, so its count matches the block header's own event_count; /api/v1/blocks/{ref}/events is deliberately a SUBSET of it -- the curated account-attributed projection, which is smaller by design and not a loss. A block neither tier can read declines with a typed 503 (block_detail_unavailable) rather than an empty list, because count:0 is indistinguishable from a block that emitted nothing. */
+        /** @description Fetch EVERY raw pallet-level event in one block (by numeric block_number; event_index ascending), served live from the live-follow hot tier above the decode seam and the chain_events lakehouse at or below it (no static file). This is the complete stream, so its count matches the block header's own event_count; /api/v1/blocks/{ref}/events is deliberately a SUBSET of it -- the curated account-attributed projection, which is smaller by design and not a loss. A block neither tier can read declines with a typed 503 (block_detail_unavailable) rather than an empty list, because count:0 is indistinguishable from a block that emitted nothing. */
         get: operations["blockChainEvents"];
         put?: never;
         post?: never;
@@ -1560,7 +1460,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the ACCOUNT-ATTRIBUTED events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. This is the curated account_events projection -- a deliberate SUBSET of /api/v1/blocks/{ref}/chain-events (the complete pallet-level stream the block header's event_count counts), narrower by design rather than by loss. 200 with events:[] when cold/unknown. */
+        /** @description Fetch the ACCOUNT-ATTRIBUTED events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. This is the curated account_events projection -- a deliberate SUBSET of /api/v1/blocks/{ref}/chain-events (the complete pallet-level stream the block header's event_count counts), narrower by design rather than by loss. 200 with events:[] when cold/unknown. */
         get: operations["blockEvents"];
         put?: never;
         post?: never;
@@ -1577,7 +1477,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics tier (#1845); 200 with extrinsics:[] when cold/unknown. */
+        /** @description Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics tier (#1845); 200 with extrinsics:[] when cold/unknown. */
         get: operations["blockExtrinsics"];
         put?: never;
         post?: never;
@@ -1594,7 +1494,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Precomputed by a cron from that network's decoded blocks; schema-stable zeroed card when the projection is cold. */
+        /** @description Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Precomputed by a cron from that network's decoded blocks; schema-stable zeroed card when the projection is cold. */
         get: operations["blocksSummary"];
         put?: never;
         post?: never;
@@ -1611,7 +1511,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch generated build summary. */
+        /** @description Fetch generated build summary. */
         get: operations["build"];
         put?: never;
         post?: never;
@@ -1628,7 +1528,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List unpromoted candidate surfaces. */
+        /** @description List unpromoted candidate surfaces. */
         get: operations["candidates"];
         put?: never;
         post?: never;
@@ -1645,7 +1545,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Each page reads one bounded block window below its ceiling, so a short page still carries a continuation rather than ending the feed. Served live, no static file. */
+        /** @description Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Each page reads one bounded block window below its ceiling, so a short page still carries a continuation rather than ending the feed. Served live, no static file. */
         get: operations["chainEventsFeed"];
         put?: never;
         post?: never;
@@ -1662,7 +1562,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks the decode lane has published — from the chain_events lakehouse table. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live, no static file. */
+        /** @description Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks the decode lane has published — from the chain_events lakehouse table. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live, no static file. */
         get: operations["chainEventsStats"];
         put?: never;
         post?: never;
@@ -1679,7 +1579,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain tiers (#1987); schema-stable day_count:0/days:[] when the store is cold. */
+        /** @description Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain tiers (#1987); schema-stable day_count:0/days:[] when the store is cold. */
         get: operations["chainActivity"];
         put?: never;
         post?: never;
@@ -1696,7 +1596,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h (subnets with no volume are excluded) ranked by total_volume_tao (biggest market activity first, ?limit <=100), each with the same buy/sell/total volume + sentiment scorecard as GET /api/v1/subnets/{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet total volume. Computed live from the account_events stream; schema-stable zeros + empty leaderboard when cold. Fixed 24h window (no ?window= param), matching the per-subnet route's own framing. */
+        /** @description Fetch the network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h (subnets with no volume are excluded) ranked by total_volume_tao (biggest market activity first, ?limit <=100), each with the same buy/sell/total volume + sentiment scorecard as GET /api/v1/subnets/{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet total volume. Computed live from the account_events stream; schema-stable zeros + empty leaderboard when cold. Fixed 24h window (no ?window= param), matching the per-subnet route's own framing. */
         get: operations["chainAlphaVolume"];
         put?: never;
         post?: never;
@@ -1713,7 +1613,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity. `limit` caps the leaderboard (default 20, max 100). The teardown-side companion to the axon-announcement GET /api/v1/chain/serving and the network-wide companion to GET /api/v1/subnets/{netuid}/axon-removals. Read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** @description Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity. `limit` caps the leaderboard (default 20, max 100). The teardown-side companion to the axon-announcement GET /api/v1/chain/serving and the network-wide companion to GET /api/v1/subnets/{netuid}/axon-removals. Read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainAxonRemovals"];
         put?: never;
         post?: never;
@@ -1730,7 +1630,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch every subnet's live registration/burn cost in one response, ranked cheapest-first (#9399). Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). REGISTRATION ECONOMICS, NOT A TEAM BURN (#10482): this is what it costs to register a UID, and nothing here measures a team destroying tokens it said it would destroy. That separate concept is named `token_burn` and is carried by the entity `burn` role (schemas/entity.schema.json), which requires an `unspendable_proof`. The two share a word and nothing else. A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased. */
+        /** @description Fetch every subnet's live registration/burn cost in one response, ranked cheapest-first (#9399). Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). REGISTRATION ECONOMICS, NOT A TEAM BURN (#10482): this is what it costs to register a UID, and nothing here measures a team destroying tokens it said it would destroy. That separate concept is named `token_burn` and is carried by the entity `burn` role (schemas/entity.schema.json), which requires an `unspendable_proof`. The two share a word and nothing else. A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased. */
         get: operations["chainBurn"];
         put?: never;
         post?: never;
@@ -1747,7 +1647,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics tier (#1989); schema-stable call_count:0/calls:[] when cold. */
+        /** @description Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics tier (#1989); schema-stable call_count:0/calls:[] when cold. */
         get: operations["chainCalls"];
         put?: never;
         post?: never;
@@ -1764,7 +1664,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons store; schema-stable nulls when cold. */
+        /** @description Fetch network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons store; schema-stable nulls when cold. */
         get: operations["chainConcentration"];
         put?: never;
         post?: never;
@@ -1781,7 +1681,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide concentration series. Is the NETWORK getting more concentrated (#9628) -- the network-wide concentration card as a per-day series. /subnets/{netuid}/concentration/history has answered that one subnet at a time since it shipped; /chain/concentration had no series at all, so 'is subnet 74 concentrating?' was one request and 'is Bittensor concentrating?' was unanswerable. Each point carries the same five lenses the live card does -- stake, emission, entity_stake, entity_emission, validator_stake, each with holders/total/gini/hhi/hhi_normalized/nakamoto_coefficient/top-K shares/entropy -- plus uids_per_entity and the shape of the day it was computed over (neuron_count, subnet_count, entity_count). THIS READS A ROLLUP, AND THE ROLLUP RAN THE SERVING BUILDER. The per-subnet route computes Gini/HHI/Nakamoto in JS from raw per-UID rows, which works because a netuid slice is about 256 of them; network-wide it is not a slice -- neuron_daily holds 816,803 rows across 27 days, ~30,100 a day (measured 2026-08-06), so a 30-day series computed that way would pull ~900,000 rows into one request. An hourly cron instead computes each COMPLETE day once with buildChainConcentration, the same function /chain/concentration serves, so a historical point and the live card are the same computation by construction rather than a SQL reimplementation that agrees until it quietly does not. The rollup BACKFILLS ITSELF, bounded to a few days a tick, so the history that already exists fills in without a separate recovery path. A STORED COMPUTATION FREEZES THE CODE THAT PRODUCED IT, and that is published rather than hidden: if the builder changes, points computed before and after disagree BY CONSTRUCTION, not because the network moved. Every point carries the builder_version it was computed under and the series reports builder_versions -- more than one means the series changes DEFINITION partway along, and a trend drawn across that boundary is not a trend. THE DEPTH IS THE ROLLUP'S, NOT THE WINDOW'S. neuron_daily is itself only ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS; oldest_day/newest_day and point_count come from the rows, and a day the capture did not run is ABSENT rather than a zero-concentration point, which would read as a perfectly distributed network on a day nothing was measured. Today is never rolled up: neuron_daily gains rows as the capture proceeds, so a mid-day card would be computed over a partial network and then never revisited. A NULL scorecard means no measurable distribution, not a missing one -- computeConcentration returns null when a distribution has no positive values, and substituting zeros would invent a perfectly equal one. ?window= is 7d, 30d (default) or 90d. An EMPTY window is a measurement, not an error. Mainnet-only: neuron_daily carries no network dimension. */
+        /** @description Fetch the network-wide concentration series. Is the NETWORK getting more concentrated (#9628) -- the network-wide concentration card as a per-day series. /subnets/{netuid}/concentration/history has answered that one subnet at a time since it shipped; /chain/concentration had no series at all, so 'is subnet 74 concentrating?' was one request and 'is Bittensor concentrating?' was unanswerable. Each point carries the same five lenses the live card does -- stake, emission, entity_stake, entity_emission, validator_stake, each with holders/total/gini/hhi/hhi_normalized/nakamoto_coefficient/top-K shares/entropy -- plus uids_per_entity and the shape of the day it was computed over (neuron_count, subnet_count, entity_count). THIS READS A ROLLUP, AND THE ROLLUP RAN THE SERVING BUILDER. The per-subnet route computes Gini/HHI/Nakamoto in JS from raw per-UID rows, which works because a netuid slice is about 256 of them; network-wide it is not a slice -- neuron_daily holds 816,803 rows across 27 days, ~30,100 a day (measured 2026-08-06), so a 30-day series computed that way would pull ~900,000 rows into one request. An hourly cron instead computes each COMPLETE day once with buildChainConcentration, the same function /chain/concentration serves, so a historical point and the live card are the same computation by construction rather than a SQL reimplementation that agrees until it quietly does not. The rollup BACKFILLS ITSELF, bounded to a few days a tick, so the history that already exists fills in without a separate recovery path. A STORED COMPUTATION FREEZES THE CODE THAT PRODUCED IT, and that is published rather than hidden: if the builder changes, points computed before and after disagree BY CONSTRUCTION, not because the network moved. Every point carries the builder_version it was computed under and the series reports builder_versions -- more than one means the series changes DEFINITION partway along, and a trend drawn across that boundary is not a trend. THE DEPTH IS THE ROLLUP'S, NOT THE WINDOW'S. neuron_daily is itself only ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS; oldest_day/newest_day and point_count come from the rows, and a day the capture did not run is ABSENT rather than a zero-concentration point, which would read as a perfectly distributed network on a day nothing was measured. Today is never rolled up: neuron_daily gains rows as the capture proceeds, so a mid-day card would be computed over a partial network and then never revisited. A NULL scorecard means no measurable distribution, not a missing one -- computeConcentration returns null when a distribution has no positive values, and substituting zeros would invent a perfectly equal one. ?window= is 7d, 30d (default) or 90d. An EMPTY window is a measurement, not an error. Mainnet-only: neuron_daily carries no network dimension. */
         get: operations["chainConcentrationHistory"];
         put?: never;
         post?: never;
@@ -1798,7 +1698,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch every subnet ranked by distribution spread. Every subnet ranked by how widely one lens of its distribution is SPREAD (#9717) — the screening question a prospective miner actually asks, and the one that used to cost 129 requests. Per subnet: holders, the measured total, gini, hhi, hhi_normalized, nakamoto_coefficient, top1/top5/top10/top20 shares, entropy, plus neuron_count/entity_count/uids_per_entity. THE SAME COMPUTATION /subnets/{netuid}/concentration SERVES: this groups the neurons read by netuid and runs buildConcentration on each group, so a subnet's row here and its own detail route agree BY CONSTRUCTION rather than by two implementations staying in step — a SQL reimplementation of gini/nakamoto would agree until it quietly did not. DISTINCT FROM /chain/concentration, which performs this same read and then collapses every subnet into ONE network aggregate, discarding the per-subnet structure. DISTINCT FROM /chain/holders, which ranks alpha OWNERSHIP off the position ledger: who owns the token is a different question from who receives the emissions, and for "should I work here" it is the wrong one. ?lens= is emission, stake, entity_emission, entity_stake, validator_stake (default emission, the reward question) — ONE lens per response, because five scorecards across ~129 subnets is a payload nobody asked for and a flat row is what a sort can act on. ?sort= is nakamoto_coefficient, gini, holders, top_1pct_share, total, netuid (default nakamoto_coefficient). EACH SORT KEY HAS ITS OWN "WIDEST FIRST" DIRECTION and that is the default, because getting it wrong inverts the answer: a HIGH nakamoto coefficient means widely shared while a HIGH gini means the opposite. ?order= overrides. A subnet whose lens has no positive distribution sorts LAST in EITHER direction and is flagged unmeasured — riding its nulls up an ascending gini ranking would read as the most perfectly equal subnet on the network when in fact nothing was measured. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count on purpose, so ranking the whole network is one request. The network rollup carries dimension-free facts only — MEDIAN gini/nakamoto/top-1 share and how many subnets have a single holder taking the lens — because each subnet's alpha is a different token and a cross-subnet sum of it means nothing. Mainnet-only: the neurons tier carries no network dimension. */
+        /** @description Fetch every subnet ranked by distribution spread. Every subnet ranked by how widely one lens of its distribution is SPREAD (#9717) — the screening question a prospective miner actually asks, and the one that used to cost 129 requests. Per subnet: holders, the measured total, gini, hhi, hhi_normalized, nakamoto_coefficient, top1/top5/top10/top20 shares, entropy, plus neuron_count/entity_count/uids_per_entity. THE SAME COMPUTATION /subnets/{netuid}/concentration SERVES: this groups the neurons read by netuid and runs buildConcentration on each group, so a subnet's row here and its own detail route agree BY CONSTRUCTION rather than by two implementations staying in step — a SQL reimplementation of gini/nakamoto would agree until it quietly did not. DISTINCT FROM /chain/concentration, which performs this same read and then collapses every subnet into ONE network aggregate, discarding the per-subnet structure. DISTINCT FROM /chain/holders, which ranks alpha OWNERSHIP off the position ledger: who owns the token is a different question from who receives the emissions, and for "should I work here" it is the wrong one. ?lens= is emission, stake, entity_emission, entity_stake, validator_stake (default emission, the reward question) — ONE lens per response, because five scorecards across ~129 subnets is a payload nobody asked for and a flat row is what a sort can act on. ?sort= is nakamoto_coefficient, gini, holders, top_1pct_share, total, netuid (default nakamoto_coefficient). EACH SORT KEY HAS ITS OWN "WIDEST FIRST" DIRECTION and that is the default, because getting it wrong inverts the answer: a HIGH nakamoto coefficient means widely shared while a HIGH gini means the opposite. ?order= overrides. A subnet whose lens has no positive distribution sorts LAST in EITHER direction and is flagged unmeasured — riding its nulls up an ascending gini ranking would read as the most perfectly equal subnet on the network when in fact nothing was measured. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count on purpose, so ranking the whole network is one request. The network rollup carries dimension-free facts only — MEDIAN gini/nakamoto/top-1 share and how many subnets have a single holder taking the lens — because each subnet's alpha is a different token and a cross-subnet sum of it means nothing. Mainnet-only: the neurons tier carries no network dimension. */
         get: operations["chainConcentrationSubnets"];
         put?: never;
         post?: never;
@@ -1815,7 +1715,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it. `Subtensor::get_network_to_prune()` skips root, skips every subnet still inside `NetworkRegisteredAt + NetworkImmunityPeriod`, compares `get_moving_alpha_price`, and breaks a tie on the EARLIER registration. TWO THINGS MAKE THIS NOT A PRICE SORT. First, immunity: measured at block 8,808,300, sixteen of 128 subnets were inside their window, and a price-only order puts netuid 86 at position one — it reads a moving price of exactly 0 but cannot be deregistered at all, while the chain's answer is netuid 70. Second, `get_moving_alpha_price` substitutes a FLAT 1.0 for a Stable subnet (`SubnetMechanism` 0) instead of reading `SubnetMovingPrice`, which moves it from the top of a price order to near the bottom; every mainnet subnet reads mechanism 1 today, so the clause is invisible until one sudo call makes it decisive. `ranked` holds only prunable subnets, rank 1 first. `immune` holds the protected ones ordered by how soon protection lapses — the order in which they join the ranking — carrying `immune_until_block` and `blocks_until_prunable`; ordering them by price would imply a pruning position they do not have. Each entry publishes `comparison_price` (what the pallet compares) beside `moving_price` (the raw read), so the Stable substitution is visible. Served live (no static file); 503 when the capture carries no pinned block or no immunity period, because an ordering computed without the immunity window is not an approximation — it is a different ordering that looks the same and would be believed. */
+        /** @description Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it. `Subtensor::get_network_to_prune()` skips root, skips every subnet still inside `NetworkRegisteredAt + NetworkImmunityPeriod`, compares `get_moving_alpha_price`, and breaks a tie on the EARLIER registration. TWO THINGS MAKE THIS NOT A PRICE SORT. First, immunity: measured at block 8,808,300, sixteen of 128 subnets were inside their window, and a price-only order puts netuid 86 at position one — it reads a moving price of exactly 0 but cannot be deregistered at all, while the chain's answer is netuid 70. Second, `get_moving_alpha_price` substitutes a FLAT 1.0 for a Stable subnet (`SubnetMechanism` 0) instead of reading `SubnetMovingPrice`, which moves it from the top of a price order to near the bottom; every mainnet subnet reads mechanism 1 today, so the clause is invisible until one sudo call makes it decisive. `ranked` holds only prunable subnets, rank 1 first. `immune` holds the protected ones ordered by how soon protection lapses — the order in which they join the ranking — carrying `immune_until_block` and `blocks_until_prunable`; ordering them by price would imply a pruning position they do not have. Each entry publishes `comparison_price` (what the pallet compares) beside `moving_price` (the raw read), so the Stable substitution is visible. Served live (no static file); 503 when the capture carries no pinned block or no immunity period, because an ordering computed without the immunity window is not an approximation — it is a different ordering that looks the same and would be believed. */
         get: operations["deregistrationRanking"];
         put?: never;
         post?: never;
@@ -1832,7 +1732,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection (NeuronDeregistered has never been emitted by the runtime); the payload's `derivation` block states how many window registrations had no observable previous holder, and `degraded` marks an answer nothing derived. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** @description Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection (NeuronDeregistered has never been emitted by the runtime); the payload's `derivation` block states how many window registrations had no observable previous holder, and `degraded` marks an answer nothing derived. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainDeregistrations"];
         put?: never;
         post?: never;
@@ -1849,7 +1749,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition. `field_sources` gives each field its kind (measured|reconstructed) and, for measurements, the storage item behind it; every value is pinned to `chain_state.block`; and the four pipeline identities are evaluated on the rows being served, so `verification.verified: false` means the response is not defensible and must not be used. `emission_enabled` is published rather than inferred because a deeply gated ENABLED subnet and a disabled one both read `final_share: 0`. The two TAO channels are point samples at that block -- measured across 14 consecutive blocks they move a few rao and `liquidity_fraction` varies by ~1e-5, so no rollup exists or is needed. ?netuid filters the subnet list and deliberately leaves the aggregate network-wide. Served live (no static file); 503 when the capture carries no pinned block, because an unverifiable decomposition is worse than none. */
+        /** @description Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition. `field_sources` gives each field its kind (measured|reconstructed) and, for measurements, the storage item behind it; every value is pinned to `chain_state.block`; and the four pipeline identities are evaluated on the rows being served, so `verification.verified: false` means the response is not defensible and must not be used. `emission_enabled` is published rather than inferred because a deeply gated ENABLED subnet and a disabled one both read `final_share: 0`. The two TAO channels are point samples at that block -- measured across 14 consecutive blocks they move a few rao and `liquidity_fraction` varies by ~1e-5, so no rollup exists or is needed. ?netuid filters the subnet list and deliberately leaves the aggregate network-wide. Served live (no static file); 503 when the capture carries no pinned block, because an unverifiable decomposition is worse than none. */
         get: operations["emissionPipeline"];
         put?: never;
         post?: never;
@@ -1866,7 +1766,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics tier (#1988); schema-stable day_count:0 + empty lists when cold. */
+        /** @description Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics tier (#1988); schema-stable day_count:0 + empty lists when cold. */
         get: operations["chainFees"];
         put?: never;
         post?: never;
@@ -1883,7 +1783,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the emission-gate change log. Every recorded change to the emission gate (#9615) -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. Three append-on-change tables written only when a value actually MOVED, so the tables ARE the change log. /network/parameters serves these as CURRENT state; this answers when they became that and what they were before, which is the question behind 'did governance move the gate before that emission shift?'. ONE FEED, THREE SHAPES: each entry declares its kind (param, subnet or flow) and carries ONLY the fields that kind has -- a param entry has no netuid, a subnet entry has no numeric value -- with the rest ABSENT rather than null, because an absent field says 'this kind has no such thing' where a null would say 'it has one and we do not know it'. predates_capture IS PUBLISHED ON EVERY ENTRY and matters: the sampler records a row the first time it OBSERVES a value, not the first time that value changed, so on such a row previous_value is null and the flag is true -- it is NOT a governance event. predates_capture_count reports how many of the returned entries are first observations, because a reader counting governance events must subtract them. source separates a value governance SET from one the runtime RECOMPUTED, two different events a bare value cannot tell apart. ?kind= filters to one of the three; ?limit= caps the feed (default 50, max 200), newest first ACROSS all three tables -- the union is taken in SQL so the cap means 'the newest N changes' rather than the newest N of each. An empty feed is the steady state, never a 404: these tables only gain rows when something moves. Mainnet-only: the sampler that writes them reads finney. */
+        /** @description Fetch the emission-gate change log. Every recorded change to the emission gate (#9615) -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. Three append-on-change tables written only when a value actually MOVED, so the tables ARE the change log. /network/parameters serves these as CURRENT state; this answers when they became that and what they were before, which is the question behind 'did governance move the gate before that emission shift?'. ONE FEED, THREE SHAPES: each entry declares its kind (param, subnet or flow) and carries ONLY the fields that kind has -- a param entry has no netuid, a subnet entry has no numeric value -- with the rest ABSENT rather than null, because an absent field says 'this kind has no such thing' where a null would say 'it has one and we do not know it'. predates_capture IS PUBLISHED ON EVERY ENTRY and matters: the sampler records a row the first time it OBSERVES a value, not the first time that value changed, so on such a row previous_value is null and the flag is true -- it is NOT a governance event. predates_capture_count reports how many of the returned entries are first observations, because a reader counting governance events must subtract them. source separates a value governance SET from one the runtime RECOMPUTED, two different events a bare value cannot tell apart. ?kind= filters to one of the three; ?limit= caps the feed (default 50, max 200), newest first ACROSS all three tables -- the union is taken in SQL so the cap means 'the newest N changes' rather than the newest N of each. An empty feed is the steady state, never a 404: these tables only gain rows when something moves. Mainnet-only: the sampler that writes them reads finney. */
         get: operations["emissionGateChanges"];
         put?: never;
         post?: never;
@@ -1900,7 +1800,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch every subnet ranked by alpha-ownership concentration. Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. A cross-subnet total requires pricing each subnet's alpha through its own alpha_price_tao first, which is what /accounts/top-holders does. ?sort=top1_share (default), top5_share, top10_share, top20_share, holder_count or total_alpha; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while the hotkey_alpha pool ledger has no complete pass — an empty subnets array with degraded.reason pool_totals_unproven and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension. */
+        /** @description Fetch every subnet ranked by alpha-ownership concentration. Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. A cross-subnet total requires pricing each subnet's alpha through its own alpha_price_tao first, which is what /accounts/top-holders does. ?sort=top1_share (default), top5_share, top10_share, top20_share, holder_count or total_alpha; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while the hotkey_alpha pool ledger has no complete pass — an empty subnets array with degraded.reason pool_totals_unproven and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension. */
         get: operations["chainHolders"];
         put?: never;
         post?: never;
@@ -1917,7 +1817,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed from the frozen lakehouse export of subnet_identity_history; schema-stable empty feed when cold. */
+        /** @description Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed from the frozen lakehouse export of subnet_identity_history; schema-stable empty feed when cold. */
         get: operations["chainIdentityHistory"];
         put?: never;
         post?: never;
@@ -1934,7 +1834,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the neurons store; schema-stable empty ranking when cold. */
+        /** @description Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the neurons store; schema-stable empty ranking when cold. */
         get: operations["chainIdleStake"];
         put?: never;
         post?: never;
@@ -1951,7 +1851,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the block-indexing latency card. How long after a block is produced it becomes queryable here (#9620). chain_detail_blocks has carried two clocks since migration 0010 -- observed_at, the chain's own timestamp as the firehose poller read it, and synced_at, the wall clock of the sync handler that wrote the row -- and nothing had ever selected the second: the writer binds it on every row and no route, watchdog or artifact read it back. Their difference is the end-to-end age of a block at the moment it became answerable, which is the headline latency question for an API over a chain. TWO DIFFERENT NUMBERS, NAMED SEPARATELY: write_latency_ms is the distribution of synced_at - observed_at -- how long each block took to land, as min/p50/p95/p99/max/mean over the retained window (nearest-rank percentiles). head_age_ms is now - the newest observed_at: how far behind the lane is RIGHT NOW. They diverge exactly when it matters, because a stalled lane keeps a perfect write-latency distribution -- every block it did write, it wrote promptly -- while its head age climbs without bound, so serving either under the other's name would report a dead lane as healthy. THE WINDOW IS PUBLISHED because the table is pruned on a rolling basis (1,862 contiguous blocks, about 6.2 hours, measured 2026-08-05): the block range and the observed_at bounds ride on every response, so this reads as the RECENT distribution it is rather than a lifetime one. A NEGATIVE LATENCY IS SERVED AS MEASURED, never clamped to zero -- the two timestamps come from two clocks, so under block-author clock skew a block can appear to have been written before it was produced, and clamping would suppress that evidence on the one route whose whole subject is the difference between those clocks. DECLINES rather than answering on an empty table: degraded.reason no_retained_blocks with NULL measurements, because a zero-millisecond lag is the most flattering thing this route could say about a dead pipeline. Mainnet-only: the hot tier is written by the mainnet firehose poller and carries no network column, the same reason every off-mainnet block ref resolves against the lakehouse instead. */
+        /** @description Fetch the block-indexing latency card. How long after a block is produced it becomes queryable here (#9620). chain_detail_blocks has carried two clocks since migration 0010 -- observed_at, the chain's own timestamp as the firehose poller read it, and synced_at, the wall clock of the sync handler that wrote the row -- and nothing had ever selected the second: the writer binds it on every row and no route, watchdog or artifact read it back. Their difference is the end-to-end age of a block at the moment it became answerable, which is the headline latency question for an API over a chain. TWO DIFFERENT NUMBERS, NAMED SEPARATELY: write_latency_ms is the distribution of synced_at - observed_at -- how long each block took to land, as min/p50/p95/p99/max/mean over the retained window (nearest-rank percentiles). head_age_ms is now - the newest observed_at: how far behind the lane is RIGHT NOW. They diverge exactly when it matters, because a stalled lane keeps a perfect write-latency distribution -- every block it did write, it wrote promptly -- while its head age climbs without bound, so serving either under the other's name would report a dead lane as healthy. THE WINDOW IS PUBLISHED because the table is pruned on a rolling basis (1,862 contiguous blocks, about 6.2 hours, measured 2026-08-05): the block range and the observed_at bounds ride on every response, so this reads as the RECENT distribution it is rather than a lifetime one. A NEGATIVE LATENCY IS SERVED AS MEASURED, never clamped to zero -- the two timestamps come from two clocks, so under block-author clock skew a block can appear to have been written before it was produced, and clamping would suppress that evidence on the one route whose whole subject is the difference between those clocks. DECLINES rather than answering on an empty table: degraded.reason no_retained_blocks with NULL measurements, because a zero-millisecond lag is the most flattering thing this route could say about a dead pipeline. Mainnet-only: the hot tier is written by the mainnet firehose poller and carries no network column, the same reason every off-mainnet block ref resolves against the lakehouse instead. */
         get: operations["indexerLag"];
         put?: never;
         post?: never;
@@ -1968,7 +1868,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, computed live from the neurons store; schema-stable nulls when cold. */
+        /** @description Fetch network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, computed live from the neurons store; schema-stable nulls when cold. */
         get: operations["chainPerformance"];
         put?: never;
         post?: never;
@@ -1985,7 +1885,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). The telemetry-endpoint companion to the axon-endpoint GET /api/v1/chain/serving — which subnets run observability infrastructure. Read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** @description Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). The telemetry-endpoint companion to the axon-endpoint GET /api/v1/chain/serving — which subnets run observability infrastructure. Read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainPrometheus"];
         put?: never;
         post?: never;
@@ -2002,7 +1902,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** @description Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainRegistrations"];
         put?: never;
         post?: never;
@@ -2019,7 +1919,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch every subnet's revenue coverage in one response. observed_count against subnet_count states how much of the network has a readable revenue figure at all. Subnets with no observed revenue are included with null ratios rather than dropped. */
+        /** @description Fetch every subnet's revenue coverage in one response. observed_count against subnet_count states how much of the network has a readable revenue figure at all. Subnets with no observed revenue are included with null ratios rather than dropped. */
         get: operations["chainRevenueCoverage"];
         put?: never;
         post?: never;
@@ -2036,7 +1936,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** @description Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainServing"];
         put?: never;
         post?: never;
@@ -2053,7 +1953,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics tier (#1990); schema-stable signer_count:0/signers:[] when cold. */
+        /** @description Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics tier (#1990); schema-stable signer_count:0/signers:[] when cold. */
         get: operations["chainSigners"];
         put?: never;
         post?: never;
@@ -2070,7 +1970,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit <=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold. */
+        /** @description Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit <=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold. */
         get: operations["chainStakeFlow"];
         put?: never;
         post?: never;
@@ -2087,7 +1987,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide stake-movement (re-delegation) activity over a 7d or 30d window across the subnets with observed movement activity (subnets with no StakeMoved events are absent): a per-subnet leaderboard (StakeMoved event count, distinct movers, and average movements per mover) ranked by total movements, a network rollup with the true distinct mover count (an account moving stake out of several subnets counts once) and total movements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-move intensity. `limit` caps the leaderboard (default 20, max 100). The re-delegation-churn companion to the net-capital-flow GET /api/v1/chain/stake-flow — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Computed live from the account_events StakeMoved stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** @description Fetch network-wide stake-movement (re-delegation) activity over a 7d or 30d window across the subnets with observed movement activity (subnets with no StakeMoved events are absent): a per-subnet leaderboard (StakeMoved event count, distinct movers, and average movements per mover) ranked by total movements, a network rollup with the true distinct mover count (an account moving stake out of several subnets counts once) and total movements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-move intensity. `limit` caps the leaderboard (default 20, max 100). The re-delegation-churn companion to the net-capital-flow GET /api/v1/chain/stake-flow — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Computed live from the account_events StakeMoved stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainStakeMoves"];
         put?: never;
         post?: never;
@@ -2104,7 +2004,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide stake-transfer activity over a 7d or 30d window across the subnets with observed transfer activity (subnets with no StakeTransferred events are absent): a per-subnet leaderboard (StakeTransferred event count, distinct senders, and average transfers per sender) ranked by total transfers, a network rollup with the true distinct sender count (an account transferring stake out of several subnets counts once) and total transfers, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet transfer intensity. `limit` caps the leaderboard (default 20, max 100). The between-coldkeys companion to the within-account re-delegation churn of GET /api/v1/chain/stake-moves — transfer_stake relocates staked alpha from one account to another on the same hotkey (origin leg only), so it moves ownership, not net capital. Computed live from the account_events StakeTransferred stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** @description Fetch network-wide stake-transfer activity over a 7d or 30d window across the subnets with observed transfer activity (subnets with no StakeTransferred events are absent): a per-subnet leaderboard (StakeTransferred event count, distinct senders, and average transfers per sender) ranked by total transfers, a network rollup with the true distinct sender count (an account transferring stake out of several subnets counts once) and total transfers, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet transfer intensity. `limit` caps the leaderboard (default 20, max 100). The between-coldkeys companion to the within-account re-delegation churn of GET /api/v1/chain/stake-moves — transfer_stake relocates staked alpha from one account to another on the same hotkey (origin leg only), so it moves ownership, not net capital. Computed live from the account_events StakeTransferred stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainStakeTransfers"];
         put?: never;
         post?: never;
@@ -2141,7 +2041,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch every subnet's registrations and deregistrations across the network (#10263), newest first, from the subnet_lifecycle Neon table. ?window=7d|30d|90d|1y|all (default all — a subnet changes state a handful of times in its lifetime, so a short window is almost always empty). ?limit (<=1000). Pass ?format=csv to download the page as CSV. */
+        /** @description Fetch every subnet's registrations and deregistrations across the network (#10263), newest first, from the subnet_lifecycle Neon table. ?window=7d|30d|90d|1y|all (default all — a subnet changes state a handful of times in its lifetime, so a short window is almost always empty). ?limit (<=1000). Pass ?format=csv to download the page as CSV. */
         get: operations["chainSubnetLifecycle"];
         put?: never;
         post?: never;
@@ -2158,7 +2058,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a bounded daily artifact-normalized moving-price-share timeline for visual analysis: a fixed cohort of at most six netuids selected from the newest eligible recorded date, the same cohort across every returned day, and a six-decimal residual as `other`. This is deliberately neither a current leaderboard nor a zero-padded series. The route does not join identity history, so a reused netuid is not asserted to be one project throughout the series. `emission_share` is the legacy economics artifact's alpha price / reported-alpha-price sum, including Root when it reports a price; historic runtime eligibility inputs were not persisted, so it is deliberately not the runtime v440 Stage-1 share. A returned day has one persisted writer timestamp for numeric shares, unique priced netuids, and a stored price-share sum within the known six-decimal rounding envelope; a mixed, malformed, partial-normalization, or uncaptured date is omitted. The writer timestamp detects certain mixed writes but is not an upstream artifact identifier. The legacy daily rollup has no completed-pass manifest, so observation_basis is `estimated_observed_price_set`: it is neither total stake, final TAO emission, nor proof that every chain subnet was present in the upstream economics artifact. Served live (no static file); an unavailable/cold rollup is a schema-stable empty timeline. */
+        /** @description Fetch a bounded daily artifact-normalized moving-price-share timeline for visual analysis: a fixed cohort of at most six netuids selected from the newest eligible recorded date, the same cohort across every returned day, and a six-decimal residual as `other`. This is deliberately neither a current leaderboard nor a zero-padded series. The route does not join identity history, so a reused netuid is not asserted to be one project throughout the series. `emission_share` is the legacy economics artifact's alpha price / reported-alpha-price sum, including Root when it reports a price; historic runtime eligibility inputs were not persisted, so it is deliberately not the runtime v440 Stage-1 share. A returned day has one persisted writer timestamp for numeric shares, unique priced netuids, and a stored price-share sum within the known six-decimal rounding envelope; a mixed, malformed, partial-normalization, or uncaptured date is omitted. The writer timestamp detects certain mixed writes but is not an upstream artifact identifier. The legacy daily rollup has no completed-pass manifest, so observation_basis is `estimated_observed_price_set`: it is neither total stake, final TAO emission, nor proof that every chain subnet was present in the upstream economics artifact. Served live (no static file); an unavailable/cold rollup is a schema-stable empty timeline. */
         get: operations["subnetPriceShareComposition"];
         put?: never;
         post?: never;
@@ -2175,7 +2075,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold. Pass ?format=csv to download the ranked pairs as CSV (the totals + top_pair_share stay JSON-only). */
+        /** @description Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold. Pass ?format=csv to download the ranked pairs as CSV (the totals + top_pair_share stay JSON-only). */
         get: operations["chainTransferPairs"];
         put?: never;
         post?: never;
@@ -2192,7 +2092,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold. Pass ?format=csv to download the top senders and receivers as one CSV tagged by a `direction` column (the totals + top_sender_share stay JSON-only). */
+        /** @description Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold. Pass ?format=csv to download the top senders and receivers as one CSV tagged by a `direction` column (the totals + top_sender_share stay JSON-only). */
         get: operations["chainTransfers"];
         put?: never;
         post?: never;
@@ -2209,7 +2109,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the neuron_daily rollup; schema-stable zeros when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + stability distribution stay JSON-only). */
+        /** @description Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the neuron_daily rollup; schema-stable zeros when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + stability distribution stay JSON-only). */
         get: operations["chainTurnover"];
         put?: never;
         post?: never;
@@ -2226,7 +2126,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide validator weight-setting activity over a 7d or 30d window across the subnets with observed weight-setting activity (subnets with no WeightsSet events are absent): a per-subnet leaderboard (distinct weight-setting validators, WeightsSet event count, and average updates per validator) ranked by total events, a network rollup with the true distinct setter count (a validator setting weights on several subnets counts once) and total events, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet update intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events WeightsSet stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** @description Fetch network-wide validator weight-setting activity over a 7d or 30d window across the subnets with observed weight-setting activity (subnets with no WeightsSet events are absent): a per-subnet leaderboard (distinct weight-setting validators, WeightsSet event count, and average updates per validator) ranked by total events, a network rollup with the true distinct setter count (a validator setting weights on several subnets counts once) and total events, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet update intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events WeightsSet stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainWeights"];
         put?: never;
         post?: never;
@@ -2243,7 +2143,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide weight-setter leaderboard over a 7d or 30d window: the individual validators driving consensus across every subnet ranked by activity, each with its total WeightsSet count (summed across every subnet it operates on), its share of the network total, and its first/last set time. `limit` caps the returned page (default 20, max 100); `distinct_setters` always reports the true network-wide total regardless of `limit`. The network-wide companion to GET /api/v1/subnets/{netuid}/weights/setters. Computed live from the account_events WeightsSet stream; schema-stable empty leaderboard when cold. Pass ?format=csv to download the leaderboard as CSV. */
+        /** @description Fetch the network-wide weight-setter leaderboard over a 7d or 30d window: the individual validators driving consensus across every subnet ranked by activity, each with its total WeightsSet count (summed across every subnet it operates on), its share of the network total, and its first/last set time. `limit` caps the returned page (default 20, max 100); `distinct_setters` always reports the true network-wide total regardless of `limit`. The network-wide companion to GET /api/v1/subnets/{netuid}/weights/setters. Computed live from the account_events WeightsSet stream; schema-stable empty leaderboard when cold. Pass ?format=csv to download the leaderboard as CSV. */
         get: operations["chainWeightSetters"];
         put?: never;
         post?: never;
@@ -2260,7 +2160,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons store; schema-stable nulls when cold. */
+        /** @description Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons store; schema-stable nulls when cold. */
         get: operations["chainYield"];
         put?: never;
         post?: never;
@@ -2277,7 +2177,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch latest generated change summary. */
+        /** @description Fetch latest generated change summary. */
         get: operations["changelog"];
         put?: never;
         post?: never;
@@ -2294,7 +2194,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order. `netuids` is a required comma-separated list of 1-128 subnet ids; `dimensions` selects a subset of structure,economics,health (default all). Composed live (no static file); for choosing between subnets without N separate detail/economics/health fetches. */
+        /** @description Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order. `netuids` is a required comma-separated list of 1-128 subnet ids; `dimensions` selects a subset of structure,economics,health (default all). Composed live (no static file); for choosing between subnets without N separate detail/economics/health fetches. */
         get: operations["compare"];
         put?: never;
         post?: never;
@@ -2311,7 +2211,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Place several validators side by side for a stake/delegate decision: each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates. `hotkeys` is a required comma-separated list of 1-16 distinct SS58 validator addresses. `netuid` is an optional subnet context — when set, each validator also carries its membership row in that subnet (or null with no permit there). Composed live (no static file); the validator equivalent of /api/v1/compare. */
+        /** @description Place several validators side by side for a stake/delegate decision: each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates. `hotkeys` is a required comma-separated list of 1-16 distinct SS58 validator addresses. `netuid` is an optional subnet context — when set, each validator also carries its membership row in that subnet (or null with no permit there). Composed live (no static file); the validator equivalent of /api/v1/compare. */
         get: operations["compareValidators"];
         put?: never;
         post?: never;
@@ -2328,7 +2228,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch artifact contract metadata. */
+        /** @description Fetch artifact contract metadata. */
         get: operations["contracts"];
         put?: never;
         post?: never;
@@ -2345,7 +2245,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch registry coverage summary. */
+        /**
+         * Fetch the registry coverage and completeness summary
+         * @description Fetch registry coverage summary.
+         */
         get: operations["coverage"];
         put?: never;
         post?: never;
@@ -2362,7 +2265,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the machine-usable coverage depth scorecard and ranked enrichment queue. */
+        /** @description Fetch the machine-usable coverage depth scorecard and ranked enrichment queue. */
         get: operations["coverageDepth"];
         put?: never;
         post?: never;
@@ -2379,7 +2282,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id; a failed chain read yields crowdloan_count null plus a `degraded` block rather than 0 (#9898). Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness. */
+        /** @description List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id; a failed chain read yields crowdloan_count null plus a `degraded` block rather than 0 (#9898). Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness. */
         get: operations["crowdloans"];
         put?: never;
         post?: never;
@@ -2396,7 +2299,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one crowdloan's live state (#8696) from the Crowdloan pallet's Crowdloans storage map at request time with 120s KV cache. exists is null (not false) on RPC failure, distinct from a confirmed-absent id (exists:false) — an id can be legitimately absent because dissolve removes the record while NextCrowdloanId keeps counting. */
+        /** @description Fetch one crowdloan's live state (#8696) from the Crowdloan pallet's Crowdloans storage map at request time with 120s KV cache. exists is null (not false) on RPC failure, distinct from a confirmed-absent id (exists:false) — an id can be legitimately absent because dissolve removes the record while NextCrowdloanId keeps counting. */
         get: operations["crowdloanDetail"];
         put?: never;
         post?: never;
@@ -2413,7 +2316,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch curation states by subnet. */
+        /** @description Fetch curation states by subnet. */
         get: operations["curation"];
         put?: never;
         post?: never;
@@ -2430,7 +2333,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration. Computed live from the subnets index + economics tier (no static file). The aggregation layer over the existing ?domain= filter on /api/v1/subnets. */
+        /** @description Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration. Computed live from the subnets index + economics tier (no static file). The aggregation layer over the existing ?domain= filter on /api/v1/subnets. */
         get: operations["domains"];
         put?: never;
         post?: never;
@@ -2447,7 +2350,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration. `tag` must be one of the 14 fixed domain tags (the same enum ?domain= validates on /api/v1/subnets). Computed live from the subnets index + economics tier (no static file). */
+        /** @description Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration. `tag` must be one of the 14 fixed domain tags (the same enum ?domain= validates on /api/v1/subnets). Computed live from the subnets index + economics tier (no static file). */
         get: operations["domainSummary"];
         put?: never;
         post?: never;
@@ -2464,7 +2367,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required. */
+        /**
+         * List per-subnet validator and economic metrics
+         * @description List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.
+         */
         get: operations["economics"];
         put?: never;
         post?: never;
@@ -2481,7 +2387,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup. `mean_emission_share` averages the stage-1 price share, so it inherits the same caveat: `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. The rollup is the same source the per-subnet /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold. */
+        /** @description Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup. `mean_emission_share` averages the stage-1 price share, so it inherits the same caveat: `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. The rollup is the same source the per-subnet /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold. */
         get: operations["economicsTrends"];
         put?: never;
         post?: never;
@@ -2498,7 +2404,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch probe-derived endpoint incidents. */
+        /** @description Fetch probe-derived endpoint incidents. */
         get: operations["endpointIncidents"];
         put?: never;
         post?: never;
@@ -2515,7 +2421,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch generalized endpoint pool scores. */
+        /** @description Fetch generalized endpoint pool scores. */
         get: operations["endpointPools"];
         put?: never;
         post?: never;
@@ -2532,7 +2438,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List generalized endpoint resources and monitored public surfaces. */
+        /** @description List generalized endpoint resources and monitored public surfaces. */
         get: operations["endpoints"];
         put?: never;
         post?: never;
@@ -2549,7 +2455,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch public evidence ledger. */
+        /** @description Fetch public evidence ledger. */
         get: operations["evidence"];
         put?: never;
         post?: never;
@@ -2566,8 +2472,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure. */
+        /** @description Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure. */
         get: operations["evmAddressMapping"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/export/chain-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch up to 25,000 chain events in one paid call
+         * @description Fetch up to 25,000 chain events in one call -- the same rows, filters and ordering as /api/v1/chain-events, without the 100-row page ceiling or the cursor bookkeeping that comes with it. ?pallet / ?method narrow by event id; ?before reads down from a block number, which is how a caller walks a large range in deliberate chunks; ?limit caps the call (<=25000, default 5000). REQUIRES PAYMENT: this route answers 402 with an x402 quote when no payment is presented, on Base or Solana -- see /.well-known/x402. It is the one family that does; every other route on this API serves an unpaid caller normally. Served live, no static file.
+         */
+        get: operations["exportChainEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2583,7 +2509,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics tier (#1345). */
+        /** @description Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics tier (#1345). */
         get: operations["extrinsicsFeed"];
         put?: never;
         post?: never;
@@ -2600,7 +2526,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed. */
+        /** @description Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed. */
         get: operations["extrinsicDetail"];
         put?: never;
         post?: never;
@@ -2618,8 +2544,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.
-         * @description Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
+         * @description Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.
+         *
+         *     Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
          */
         get: operations["feedGaps"];
         put?: never;
@@ -2638,8 +2565,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.
-         * @description Always returns `application/atom+xml`, regardless of `Accept`.
+         * @description Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.
+         *
+         *     Always returns `application/atom+xml`, regardless of `Accept`.
          */
         get: operations["feedGapsAtom"];
         put?: never;
@@ -2658,8 +2586,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.
-         * @description Always returns `application/feed+json`, regardless of `Accept`.
+         * @description Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.
+         *
+         *     Always returns `application/feed+json`, regardless of `Accept`.
          */
         get: operations["feedGapsJson"];
         put?: never;
@@ -2678,8 +2607,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.
-         * @description Always returns `application/rss+xml`, regardless of `Accept`.
+         * @description Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.
+         *
+         *     Always returns `application/rss+xml`, regardless of `Accept`.
          */
         get: operations["feedGapsRss"];
         put?: never;
@@ -2698,8 +2628,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.
-         * @description Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
+         * @description Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.
+         *
+         *     Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
          */
         get: operations["feedIncidents"];
         put?: never;
@@ -2718,8 +2649,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.
-         * @description Always returns `application/atom+xml`, regardless of `Accept`.
+         * @description Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.
+         *
+         *     Always returns `application/atom+xml`, regardless of `Accept`.
          */
         get: operations["feedIncidentsAtom"];
         put?: never;
@@ -2738,8 +2670,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.
-         * @description Always returns `application/feed+json`, regardless of `Accept`.
+         * @description Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.
+         *
+         *     Always returns `application/feed+json`, regardless of `Accept`.
          */
         get: operations["feedIncidentsJson"];
         put?: never;
@@ -2758,8 +2691,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.
-         * @description Always returns `application/rss+xml`, regardless of `Accept`.
+         * @description Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.
+         *
+         *     Always returns `application/rss+xml`, regardless of `Accept`.
          */
         get: operations["feedIncidentsRss"];
         put?: never;
@@ -2778,8 +2712,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.
-         * @description Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
+         * @description The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.
+         *
+         *     Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
          */
         get: operations["feedRegistry"];
         put?: never;
@@ -2798,8 +2733,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.
-         * @description Always returns `application/atom+xml`, regardless of `Accept`.
+         * @description The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.
+         *
+         *     Always returns `application/atom+xml`, regardless of `Accept`.
          */
         get: operations["feedRegistryAtom"];
         put?: never;
@@ -2818,8 +2754,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.
-         * @description Always returns `application/feed+json`, regardless of `Accept`.
+         * @description The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.
+         *
+         *     Always returns `application/feed+json`, regardless of `Accept`.
          */
         get: operations["feedRegistryJson"];
         put?: never;
@@ -2838,8 +2775,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.
-         * @description Always returns `application/rss+xml`, regardless of `Accept`.
+         * @description The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.
+         *
+         *     Always returns `application/rss+xml`, regardless of `Accept`.
          */
         get: operations["feedRegistryRss"];
         put?: never;
@@ -2858,8 +2796,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.
-         * @description Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
+         * @description Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.
+         *
+         *     Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
          */
         get: operations["feedRevenue"];
         put?: never;
@@ -2878,8 +2817,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.
-         * @description Always returns `application/atom+xml`, regardless of `Accept`.
+         * @description Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.
+         *
+         *     Always returns `application/atom+xml`, regardless of `Accept`.
          */
         get: operations["feedRevenueAtom"];
         put?: never;
@@ -2898,8 +2838,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.
-         * @description Always returns `application/feed+json`, regardless of `Accept`.
+         * @description Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.
+         *
+         *     Always returns `application/feed+json`, regardless of `Accept`.
          */
         get: operations["feedRevenueJson"];
         put?: never;
@@ -2918,8 +2859,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.
-         * @description Always returns `application/rss+xml`, regardless of `Accept`.
+         * @description Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.
+         *
+         *     Always returns `application/rss+xml`, regardless of `Accept`.
          */
         get: operations["feedRevenueRss"];
         put?: never;
@@ -2938,8 +2880,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.
-         * @description Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
+         * @description One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.
+         *
+         *     Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
          */
         get: operations["feedSubnet"];
         put?: never;
@@ -2958,8 +2901,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.
-         * @description Always returns `application/atom+xml`, regardless of `Accept`.
+         * @description One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.
+         *
+         *     Always returns `application/atom+xml`, regardless of `Accept`.
          */
         get: operations["feedSubnetAtom"];
         put?: never;
@@ -2978,8 +2922,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.
-         * @description Always returns `application/feed+json`, regardless of `Accept`.
+         * @description One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.
+         *
+         *     Always returns `application/feed+json`, regardless of `Accept`.
          */
         get: operations["feedSubnetJson"];
         put?: never;
@@ -2998,8 +2943,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.
-         * @description Always returns `application/rss+xml`, regardless of `Accept`.
+         * @description One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.
+         *
+         *     Always returns `application/rss+xml`, regardless of `Accept`.
          */
         get: operations["feedSubnetRss"];
         put?: never;
@@ -3018,8 +2964,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.
-         * @description Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
+         * @description Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.
+         *
+         *     Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
          */
         get: operations["feedUpgrades"];
         put?: never;
@@ -3038,8 +2985,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.
-         * @description Always returns `application/atom+xml`, regardless of `Accept`.
+         * @description Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.
+         *
+         *     Always returns `application/atom+xml`, regardless of `Accept`.
          */
         get: operations["feedUpgradesAtom"];
         put?: never;
@@ -3058,8 +3006,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.
-         * @description Always returns `application/feed+json`, regardless of `Accept`.
+         * @description Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.
+         *
+         *     Always returns `application/feed+json`, regardless of `Accept`.
          */
         get: operations["feedUpgradesJson"];
         put?: never;
@@ -3078,8 +3027,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.
-         * @description Always returns `application/rss+xml`, regardless of `Accept`.
+         * @description Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.
+         *
+         *     Always returns `application/rss+xml`, regardless of `Accept`.
          */
         get: operations["feedUpgradesRss"];
         put?: never;
@@ -3098,8 +3048,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE. That last item is the highest-consequence thing this API emits: it states the published claim, the observed movement and the delta between them, names our own misattribution as a possible explanation, and asserts nothing about intent. Do not repeat one without its reading. Also folded into the registry feed, where `?tag=wallets` narrows to exactly these.
-         * @description Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
+         * @description Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE. That last item is the highest-consequence thing this API emits: it states the published claim, the observed movement and the delta between them, names our own misattribution as a possible explanation, and asserts nothing about intent. Do not repeat one without its reading. Also folded into the registry feed, where `?tag=wallets` narrows to exactly these.
+         *
+         *     Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
          */
         get: operations["feedWallets"];
         put?: never;
@@ -3118,8 +3069,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE. That last item is the highest-consequence thing this API emits: it states the published claim, the observed movement and the delta between them, names our own misattribution as a possible explanation, and asserts nothing about intent. Do not repeat one without its reading. Also folded into the registry feed, where `?tag=wallets` narrows to exactly these.
-         * @description Always returns `application/atom+xml`, regardless of `Accept`.
+         * @description Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE. That last item is the highest-consequence thing this API emits: it states the published claim, the observed movement and the delta between them, names our own misattribution as a possible explanation, and asserts nothing about intent. Do not repeat one without its reading. Also folded into the registry feed, where `?tag=wallets` narrows to exactly these.
+         *
+         *     Always returns `application/atom+xml`, regardless of `Accept`.
          */
         get: operations["feedWalletsAtom"];
         put?: never;
@@ -3138,8 +3090,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE. That last item is the highest-consequence thing this API emits: it states the published claim, the observed movement and the delta between them, names our own misattribution as a possible explanation, and asserts nothing about intent. Do not repeat one without its reading. Also folded into the registry feed, where `?tag=wallets` narrows to exactly these.
-         * @description Always returns `application/feed+json`, regardless of `Accept`.
+         * @description Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE. That last item is the highest-consequence thing this API emits: it states the published claim, the observed movement and the delta between them, names our own misattribution as a possible explanation, and asserts nothing about intent. Do not repeat one without its reading. Also folded into the registry feed, where `?tag=wallets` narrows to exactly these.
+         *
+         *     Always returns `application/feed+json`, regardless of `Accept`.
          */
         get: operations["feedWalletsJson"];
         put?: never;
@@ -3158,8 +3111,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE. That last item is the highest-consequence thing this API emits: it states the published claim, the observed movement and the delta between them, names our own misattribution as a possible explanation, and asserts nothing about intent. Do not repeat one without its reading. Also folded into the registry feed, where `?tag=wallets` narrows to exactly these.
-         * @description Always returns `application/rss+xml`, regardless of `Accept`.
+         * @description Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE. That last item is the highest-consequence thing this API emits: it states the published claim, the observed movement and the delta between them, names our own misattribution as a possible explanation, and asserts nothing about intent. Do not repeat one without its reading. Also folded into the registry feed, where `?tag=wallets` narrows to exactly these.
+         *
+         *     Always returns `application/rss+xml`, regardless of `Accept`.
          */
         get: operations["feedWalletsRss"];
         put?: never;
@@ -3178,8 +3132,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.
-         * @description Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
+         * @description A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.
+         *
+         *     Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.
          */
         get: operations["feedWatch"];
         put?: never;
@@ -3198,8 +3153,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.
-         * @description Always returns `application/atom+xml`, regardless of `Accept`.
+         * @description A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.
+         *
+         *     Always returns `application/atom+xml`, regardless of `Accept`.
          */
         get: operations["feedWatchAtom"];
         put?: never;
@@ -3218,8 +3174,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.
-         * @description Always returns `application/feed+json`, regardless of `Accept`.
+         * @description A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.
+         *
+         *     Always returns `application/feed+json`, regardless of `Accept`.
          */
         get: operations["feedWatchJson"];
         put?: never;
@@ -3238,8 +3195,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.
-         * @description Always returns `application/rss+xml`, regardless of `Accept`.
+         * @description A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.
+         *
+         *     Always returns `application/rss+xml`, regardless of `Accept`.
          */
         get: operations["feedWatchRss"];
         put?: never;
@@ -3257,7 +3215,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with GET /api/v1/fixtures/{surface_id}, get_fixture, or GET /metagraph/fixtures/{surface_id}.json. */
+        /** @description Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with GET /api/v1/fixtures/{surface_id}, get_fixture, or GET /metagraph/fixtures/{surface_id}.json. */
         get: operations["fixtures"];
         put?: never;
         post?: never;
@@ -3274,7 +3232,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one captured, sanitized live request/response fixture by surface id. */
+        /** @description Fetch one captured, sanitized live request/response fixture by surface id. */
         get: operations["fixtureDetail"];
         put?: never;
         post?: never;
@@ -3291,7 +3249,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch freshness and staleness state. */
+        /** @description Fetch freshness and staleness state. */
         get: operations["freshness"];
         put?: never;
         post?: never;
@@ -3308,7 +3266,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch interface gap report. */
+        /** @description Fetch interface gap report. */
         get: operations["gaps"];
         put?: never;
         post?: never;
@@ -3325,7 +3283,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch subtensor's own root-origin hyperparameter/network-config change feed, newest first — the extrinsics feed hardcoded to call_module='AdminUtils' (re-scoped from the original Council/Senate framing; subtensor has no such pallet). ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function= (e.g. sudo_set_tempo), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics tier (#4310/2.3). */
+        /** @description Fetch subtensor's own root-origin hyperparameter/network-config change feed, newest first — the extrinsics feed hardcoded to call_module='AdminUtils' (re-scoped from the original Council/Senate framing; subtensor has no such pallet). ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function= (e.g. sudo_set_tempo), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics tier (#4310/2.3). */
         get: operations["governanceConfigChanges"];
         put?: never;
         post?: never;
@@ -3342,7 +3300,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch global health summary. */
+        /**
+         * Fetch aggregate health across all probed surfaces
+         * @description Fetch global health summary.
+         */
         get: operations["health"];
         put?: never;
         post?: never;
@@ -3359,7 +3320,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the probe failure-reason mix. WHY surfaces fail, and whether the mix is changing (#9622). surface_checks.classification is the only record of why a probe failed -- live, redirected, transient, rate-limited, timeout, dead, content-mismatch, unsupported, auth-required, across 1,263,089 checks measured 2026-08-06 -- and nothing served that distribution. /health/history/{date} accepts ?classification= as a FILTER over a dated snapshot ('which surfaces were dead on day D'), which is a different question from 'why are surfaces failing'. THIS READS A ROLLUP, NOT THE RAW TABLE, and that is the point: the raw checks are pruned at 30 days, and the pre-existing daily rollup keeps samples/ok_count/uptime_ratio with NO classification -- it records the RATE of failure and discards the REASON, so every day the answer to 'why did this fail' was expiring. Migration 0025 adds surface_failure_daily, backfills it from everything the raw table still held, and the hourly rollup keeps it current under the same rolled-before-prune contract, so this route is both cheap (7,312 rows for 26 days, against a 7-day raw GROUP BY reading 955,783 rows in 1.14s) and no longer capped at the retention window. SUCCESSFUL PROBES ARE COUNTED TOO, because a rate needs its denominator: 400 timeouts is a different story against 500 checks than against 500,000. share is of every probe in the window and failure_share is of the failing ones only, so neither has to be reconstructed from the other, and failure_share is NULL on a succeeding classification rather than zero. redirected is NOT counted as a failure -- a surface answering from a new location is serving, and the probe's own status says so. THE DEPTH IS PUBLISHED: days_covered is counted from the ROWS rather than from the requested window, so a day the prober did not run is absent rather than reported as a day of perfect health, and oldest_day/newest_day say what was actually covered. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free hour count, because the source is a DAILY rollup and an arbitrary hour would imply a resolution it does not have; ?netuid= scopes to one subnet and ?kind= to one surface kind, both applied in SQL. An EMPTY window is a measurement, not a decline: it means the prober recorded nothing in that range. Mainnet-only: the registry whose surfaces are probed is mainnet's. */
+        /** @description Fetch the probe failure-reason mix. WHY surfaces fail, and whether the mix is changing (#9622). surface_checks.classification is the only record of why a probe failed -- live, redirected, transient, rate-limited, timeout, dead, content-mismatch, unsupported, auth-required, across 1,263,089 checks measured 2026-08-06 -- and nothing served that distribution. /health/history/{date} accepts ?classification= as a FILTER over a dated snapshot ('which surfaces were dead on day D'), which is a different question from 'why are surfaces failing'. THIS READS A ROLLUP, NOT THE RAW TABLE, and that is the point: the raw checks are pruned at 30 days, and the pre-existing daily rollup keeps samples/ok_count/uptime_ratio with NO classification -- it records the RATE of failure and discards the REASON, so every day the answer to 'why did this fail' was expiring. Migration 0025 adds surface_failure_daily, backfills it from everything the raw table still held, and the hourly rollup keeps it current under the same rolled-before-prune contract, so this route is both cheap (7,312 rows for 26 days, against a 7-day raw GROUP BY reading 955,783 rows in 1.14s) and no longer capped at the retention window. SUCCESSFUL PROBES ARE COUNTED TOO, because a rate needs its denominator: 400 timeouts is a different story against 500 checks than against 500,000. share is of every probe in the window and failure_share is of the failing ones only, so neither has to be reconstructed from the other, and failure_share is NULL on a succeeding classification rather than zero. redirected is NOT counted as a failure -- a surface answering from a new location is serving, and the probe's own status says so. THE DEPTH IS PUBLISHED: days_covered is counted from the ROWS rather than from the requested window, so a day the prober did not run is absent rather than reported as a day of perfect health, and oldest_day/newest_day say what was actually covered. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free hour count, because the source is a DAILY rollup and an arbitrary hour would imply a resolution it does not have; ?netuid= scopes to one subnet and ?kind= to one surface kind, both applied in SQL. An EMPTY window is a measurement, not a decline: it means the prober recorded nothing in that range. Mainnet-only: the registry whose surfaces are probed is mainnet's. */
         get: operations["failureReasons"];
         put?: never;
         post?: never;
@@ -3376,7 +3337,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch compact daily health history. */
+        /** @description Fetch compact daily health history. */
         get: operations["healthHistory"];
         put?: never;
         post?: never;
@@ -3393,7 +3354,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from the store). `?window=7d|30d` returns just that window and narrows the underlying scan to it rather than reading the widest one and discarding the rest; `?limit`/`?offset` page the `subnets` array within each window. All three are optional and omitting them returns every window and every subnet, which is what this route served before it had them. `subnet_count` always spans every subnet the window measured, not the page, so a paging caller keeps the denominator it is ranking against. */
+        /** @description Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from the store). `?window=7d|30d` returns just that window and narrows the underlying scan to it rather than reading the widest one and discarding the rest; `?limit`/`?offset` page the `subnets` array within each window. All three are optional and omitting them returns every window and every subnet, which is what this route served before it had them. `subnet_count` always spans every subnet the window measured, not the page, so a paging caller keeps the denominator it is ranking against. */
         get: operations["healthTrendsBulk"];
         put?: never;
         post?: never;
@@ -3410,7 +3371,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from the store). Pair with /api/v1/health for the overall status summary. */
+        /** @description Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from the store). Pair with /api/v1/health for the overall status summary. */
         get: operations["incidents"];
         put?: never;
         post?: never;
@@ -3427,7 +3388,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline). */
+        /** @description Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline). */
         get: operations["lineage"];
         put?: never;
         post?: never;
@@ -3444,7 +3405,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure. READ `field_sources` BEFORE CITING ANY VALUE HERE: it labels every field measured (with the storage item behind it) or reconstructed (our arithmetic), and three are reconstructed. `block_emission_tao` and `block_emission_halvings` are derived from TotalIssuance, never read from the `BlockEmission` storage item, which is stale at 1.0 TAO (#8747). `emission_gate_exponent_effective` is the runtime default (3) whenever the storage item is unset, which is its current state on finney — that 3 comes from our source tree, not from chain. */
+        /** @description Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure. READ `field_sources` BEFORE CITING ANY VALUE HERE: it labels every field measured (with the storage item behind it) or reconstructed (our arithmetic), and three are reconstructed. `block_emission_tao` and `block_emission_halvings` are derived from TotalIssuance, never read from the `BlockEmission` storage item, which is stale at 1.0 TAO (#8747). `emission_gate_exponent_effective` is the runtime default (3) whenever the storage item is unset, which is its current state on finney — that 3 comes from our source tree, not from chain. */
         get: operations["networkParameters"];
         put?: never;
         post?: never;
@@ -3461,7 +3422,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache. A current-state snapshot, not a history feed. Each field is independently null on its own RPC failure. `field_sources` marks the two rounds measured (Drand.LastStoredRound / Drand.OldestStoredRound) and `stored_round_span` reconstructed — it is our subtraction of them, not a retention window the beacon publishes. */
+        /** @description Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache. A current-state snapshot, not a history feed. Each field is independently null on its own RPC failure. `field_sources` marks the two rounds measured (Drand.LastStoredRound / Drand.OldestStoredRound) and `stored_round_span` reconstructed — it is our subtraction of them, not a retention window the beacon publishes. */
         get: operations["randomness"];
         put?: never;
         post?: never;
@@ -3478,7 +3439,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series. There is no TAO/USD pair on chain, so this is COMPOSED per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart. */
+        /** @description Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series. There is no TAO/USD pair on chain, so this is COMPOSED per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart. */
         get: operations["taoUsd"];
         put?: never;
         post?: never;
@@ -3495,7 +3456,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List every addressable network and what it actually serves. For each network: its canonical id, chain name, every accepted alias, and the route families it serves, does not serve, or serves partially. Answers "can I get chain data on testnet?" without making a request that fails. Reachable under every network prefix (/api/v1/networks, /api/v1/testnet/networks, /api/v1/local/networks) and identical on all of them — it is the one route that never 404s on any network, because it is how you find out what does. */
+        /** @description List every addressable network and what it actually serves. For each network: its canonical id, chain name, every accepted alias, and the route families it serves, does not serve, or serves partially. Answers "can I get chain data on testnet?" without making a request that fails. Reachable under every network prefix (/api/v1/networks, /api/v1/testnet/networks, /api/v1/local/networks) and identical on all of them — it is the one route that never 404s on any network, because it is how you find out what does. */
         get: operations["networkCapabilities"];
         put?: never;
         post?: never;
@@ -3512,7 +3473,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch OpenAPI 3.1 contract. */
+        /** @description Fetch OpenAPI 3.1 contract. */
         get: operations["openapi"];
         put?: never;
         post?: never;
@@ -3529,7 +3490,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List public-safe subnet profiles and completeness scores. */
+        /** @description List public-safe subnet profiles and completeness scores. */
         get: operations["profiles"];
         put?: never;
         post?: never;
@@ -3546,7 +3507,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List providers and sources. */
+        /** @description List providers and sources. */
         get: operations["providers"];
         put?: never;
         post?: never;
@@ -3563,7 +3524,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch per-provider detail. */
+        /** @description Fetch per-provider detail. */
         get: operations["providerDetail"];
         put?: never;
         post?: never;
@@ -3580,7 +3541,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List endpoint resources for one provider or operator. */
+        /** @description List endpoint resources for one provider or operator. */
         get: operations["providerEndpoints"];
         put?: never;
         post?: never;
@@ -3597,7 +3558,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch registry leaderboards computed live from the store + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d. Omit `board` for all boards. */
+        /** @description Fetch registry leaderboards computed live from the store + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d. Omit `board` for all boards. */
         get: operations["registryLeaderboards"];
         put?: never;
         post?: never;
@@ -3614,7 +3575,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes). */
+        /** @description Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes). */
         get: operations["registrySummary"];
         put?: never;
         post?: never;
@@ -3631,7 +3592,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch subnets worth deeper adapter work. */
+        /** @description Fetch subnets worth deeper adapter work. */
         get: operations["reviewAdapterCandidates"];
         put?: never;
         post?: never;
@@ -3648,7 +3609,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the attribution sweep's review queue. The attribution sweep's REVIEW QUEUE (#11227). src/attribution-sweep.ts looks at what each subnet publishes and records ss58 strings it finds; #10818 fixed that lane so it actually fetches sources, and the table it writes had no reader at all -- a candidate nobody can see is the same as no candidate. EVERY ROW IS A LEAD, NEVER AN ATTRIBUTION. An address appearing in the text of a page a subnet published does not make the address theirs: the common false positive is a hotkey belonging to a validator, appearing inside an API response that validator publishes -- somebody else's key, on their own page. Clearing docs/nametag-evidence-bar.md -- a public source tying THIS address to THIS entity -- is a human judgement, and this surface exists to put candidates in front of one rather than to skip it. source_url rides on every candidate because the review IS opening it. THE LISTING RULE IS RE-DERIVED AT READ TIME, over the table rather than trusted from the writer: a source yielding more than listing_address_cap distinct addresses is a metagraph dump or a holder list, and every address on it belongs to somebody else. The sweep enforces that cap when a row is WRITTEN, but rows outlive rules -- measured 2026-08-15 the table held 4,913 rows from 87 sources, of which 25 pre-cap sources (/allHolders, /api/miners, /snap/metagraph and their kin) accounted for 4,751 -- and the cap is an explicitly revisable judgement, so deriving it here moves the whole history when it moves. Applying it leaves 162 rows across 49 subnets from 62 sources. THE SUPPRESSION IS PUBLISHED, never silent: suppressed_count, suppressed_source_count and listing_address_cap ride on every response, so a filter a caller cannot see is not a filter they cannot check -- and if the suppressed share stops falling, the sweep's fan-out needs narrowing before a human is asked to read the result. COUNTS ARE UNBOUNDED AND THE LIST IS BOUNDED: reviewable_count is measured over the whole table beside a ?limit=-trimmed candidates array, so counting the array can never be mistaken for the population. ?netuid= narrows to one subnet; ?limit= defaults to 200 (max 500) because the whole queue in one fetch is what a reviewer wants. An EMPTY queue is a measurement -- every candidate adjudicated, every source a listing, or a subnet nobody has swept -- and only a failed read carries degraded.reason: unavailable. Mainnet-only: the sweep reads the registry's surfaces, and the registry is mainnet's. */
+        /** @description Fetch the attribution sweep's review queue. The attribution sweep's REVIEW QUEUE (#11227). src/attribution-sweep.ts looks at what each subnet publishes and records ss58 strings it finds; #10818 fixed that lane so it actually fetches sources, and the table it writes had no reader at all -- a candidate nobody can see is the same as no candidate. EVERY ROW IS A LEAD, NEVER AN ATTRIBUTION. An address appearing in the text of a page a subnet published does not make the address theirs: the common false positive is a hotkey belonging to a validator, appearing inside an API response that validator publishes -- somebody else's key, on their own page. Clearing docs/nametag-evidence-bar.md -- a public source tying THIS address to THIS entity -- is a human judgement, and this surface exists to put candidates in front of one rather than to skip it. source_url rides on every candidate because the review IS opening it. THE LISTING RULE IS RE-DERIVED AT READ TIME, over the table rather than trusted from the writer: a source yielding more than listing_address_cap distinct addresses is a metagraph dump or a holder list, and every address on it belongs to somebody else. The sweep enforces that cap when a row is WRITTEN, but rows outlive rules -- measured 2026-08-15 the table held 4,913 rows from 87 sources, of which 25 pre-cap sources (/allHolders, /api/miners, /snap/metagraph and their kin) accounted for 4,751 -- and the cap is an explicitly revisable judgement, so deriving it here moves the whole history when it moves. Applying it leaves 162 rows across 49 subnets from 62 sources. THE SUPPRESSION IS PUBLISHED, never silent: suppressed_count, suppressed_source_count and listing_address_cap ride on every response, so a filter a caller cannot see is not a filter they cannot check -- and if the suppressed share stops falling, the sweep's fan-out needs narrowing before a human is asked to read the result. COUNTS ARE UNBOUNDED AND THE LIST IS BOUNDED: reviewable_count is measured over the whole table beside a ?limit=-trimmed candidates array, so counting the array can never be mistaken for the population. ?netuid= narrows to one subnet; ?limit= defaults to 200 (max 500) because the whole queue in one fetch is what a reviewer wants. An EMPTY queue is a measurement -- every candidate adjudicated, every source a listing, or a subnet nobody has swept -- and only a failed read carries degraded.reason: unavailable. Mainnet-only: the sweep reads the registry's surfaces, and the registry is mainnet's. */
         get: operations["reviewAttributionCandidates"];
         put?: never;
         post?: never;
@@ -3665,7 +3626,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch detailed candidate evidence behind the enrichment queue. */
+        /** @description Fetch detailed candidate evidence behind the enrichment queue. */
         get: operations["reviewEnrichmentEvidence"];
         put?: never;
         post?: never;
@@ -3682,7 +3643,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the prioritized all-subnet enrichment queue. */
+        /** @description Fetch the prioritized all-subnet enrichment queue. */
         get: operations["reviewEnrichmentQueue"];
         put?: never;
         post?: never;
@@ -3699,7 +3660,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch contributor-ready enrichment targets grouped by missing surface kind and review route. */
+        /** @description Fetch contributor-ready enrichment targets grouped by missing surface kind and review route. */
         get: operations["reviewEnrichmentTargets"];
         put?: never;
         post?: never;
@@ -3716,7 +3677,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch contributor-targeted subnet gap priorities. */
+        /** @description Fetch contributor-targeted subnet gap priorities. */
         get: operations["reviewGaps"];
         put?: never;
         post?: never;
@@ -3733,7 +3694,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch profile completeness gaps for contributor targeting. */
+        /** @description Fetch profile completeness gaps for contributor targeting. */
         get: operations["reviewProfileCompleteness"];
         put?: never;
         post?: never;
@@ -3750,7 +3711,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch Bittensor RPC endpoint status. */
+        /** @description Fetch Bittensor RPC endpoint status. */
         get: operations["rpcEndpoints"];
         put?: never;
         post?: never;
@@ -3767,7 +3728,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch endpoint pool scores. */
+        /** @description Fetch endpoint pool scores. */
         get: operations["rpcPools"];
         put?: never;
         post?: never;
@@ -3784,7 +3745,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from the store telemetry). */
+        /** @description Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from the store telemetry). */
         get: operations["rpcUsage"];
         put?: never;
         post?: never;
@@ -3801,7 +3762,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the spec-version transition timeline — the earliest known block at each distinct runtime spec_version, ascending by block_number. A single aggregate over the whole retained blocks window, nothing to filter or paginate. Every block from genesis to head carries a spec_version reading, so coverage_from_block/coverage_from_at and coverage_gaps describe a complete timeline rather than bounding a partial one. Computed live from the first-party blocks tier (#4316/3.1, #9265). The `current` block (#8702) adds the forward-looking half: live mainnet/testnet spec versions, the latest subtensor release, and a derived pending_upgrade state of none / testnet_soaking / released_undeployed / unknown. Every field is independently null on its own upstream failure, and a missing reading yields "unknown" rather than "none" — the two are opposite answers. No deploy date is predicted anywhere in the payload: the foundation publishes no schedule. Pass ?format=csv to download the transition timeline as CSV (the current_spec_version + coverage_from_* rollup and the `current` block stay JSON-only). */
+        /** @description Fetch the spec-version transition timeline — the earliest known block at each distinct runtime spec_version, ascending by block_number. A single aggregate over the whole retained blocks window, nothing to filter or paginate. Every block from genesis to head carries a spec_version reading, so coverage_from_block/coverage_from_at and coverage_gaps describe a complete timeline rather than bounding a partial one. Computed live from the first-party blocks tier (#4316/3.1, #9265). The `current` block (#8702) adds the forward-looking half: live mainnet/testnet spec versions, the latest subtensor release, and a derived pending_upgrade state of none / testnet_soaking / released_undeployed / unknown. Every field is independently null on its own upstream failure, and a missing reading yields "unknown" rather than "none" — the two are opposite answers. No deploy date is predicted anywhere in the payload: the foundation publishes no schedule. Pass ?format=csv to download the transition timeline as CSV (the current_spec_version + coverage_from_* rollup and the `current` block stay JSON-only). */
         get: operations["runtimeVersions"];
         put?: never;
         post?: never;
@@ -3818,7 +3779,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch captured schema index. */
+        /** @description Fetch captured schema index. */
         get: operations["schemas"];
         put?: never;
         post?: never;
@@ -3835,7 +3796,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch compact search index. */
+        /**
+         * Search the registry by keyword
+         * @description Fetch compact search index.
+         */
         get: operations["search"];
         put?: never;
         post?: never;
@@ -3852,7 +3816,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the slim search index — the same documents as /search without the per-document token blobs, for fast browser typeahead and listing. */
+        /** @description Fetch the slim search index — the same documents as /search without the per-document token blobs, for fast browser typeahead and listing. */
         get: operations["searchIndex"];
         put?: never;
         post?: never;
@@ -3869,7 +3833,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Resolve a pasted query to the chain entities it could name (metagraphed-infra#362). A block explorer's most common search is an IDENTIFIER, not a question -- an account, a block hash, an extrinsic hash, a netuid -- and every one is recognisable from its shape with no index lookup and no inference. Use this BEFORE /api/v1/search or /api/v1/search/semantic: it answers instantly when the query is an identifier, and returns an empty `matches` when it is not, which is the signal to fall through to corpus search. AMBIGUITY IS RETURNED, NOT GUESSED. `matches` is a list because two inputs have more than one correct reading: a 64-hex string is a block hash OR an extrinsic hash, and a small integer is a netuid AND a block height. Each candidate carries `exact`; `false` means another kind shares the shape, so present the alternatives rather than redirecting. `exact` is NOT an existence claim -- this route looks nothing up. `unambiguous` is true only for a single exact candidate, and is the one field a UI needs to decide between navigating and rendering a choice. An ss58 is checksum-verified, so a one-character typo resolves to NOTHING rather than to an empty account page that reads as 'no activity'. `?q=` is the query; whitespace is trimmed, hex is normalised to lowercase with an 0x prefix. Served live on every network. */
+        /** @description Resolve a pasted query to the chain entities it could name (metagraphed-infra#362). A block explorer's most common search is an IDENTIFIER, not a question -- an account, a block hash, an extrinsic hash, a netuid -- and every one is recognisable from its shape with no index lookup and no inference. Use this BEFORE /api/v1/search or /api/v1/search/semantic: it answers instantly when the query is an identifier, and returns an empty `matches` when it is not, which is the signal to fall through to corpus search. AMBIGUITY IS RETURNED, NOT GUESSED. `matches` is a list because two inputs have more than one correct reading: a 64-hex string is a block hash OR an extrinsic hash, and a small integer is a netuid AND a block height. Each candidate carries `exact`; `false` means another kind shares the shape, so present the alternatives rather than redirecting. `exact` is NOT an existence claim -- this route looks nothing up. `unambiguous` is true only for a single exact candidate, and is the one field a UI needs to decide between navigating and rendering a choice. An ss58 is checksum-verified, so a one-character typo resolves to NOTHING rather than to an empty account page that reads as 'no activity'. `?q=` is the query; whitespace is trimmed, hex is normalised to lowercase with an 0x prefix. Served live on every network. */
         get: operations["searchResolve"];
         put?: never;
         post?: never;
@@ -3886,7 +3850,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Search the registry by MEANING rather than by keyword: ?q= is embedded and ranked by cosine similarity, so it finds surfaces whose text never contains your terms. The complement to /api/v1/search, which is lexical -- reach for that one when you know the exact name. Each result carries its score, type, netuid/slug, title/subtitle, URL, categories, and service kinds; `model` names the embedding model. ?limit caps the list. Mirrored by the `semantic_search` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured. */
+        /**
+         * Search the registry by meaning, not keyword
+         * @description Search the registry by MEANING rather than by keyword: ?q= is embedded and ranked by cosine similarity, so it finds surfaces whose text never contains your terms. The complement to /api/v1/search, which is lexical -- reach for that one when you know the exact name. Each result carries its score, type, netuid/slug, title/subtitle, URL, categories, and service kinds; `model` names the embedding model. ?limit caps the list. Mirrored by the `semantic_search` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured.
+         */
         get: operations["searchSemantic"];
         put?: never;
         post?: never;
@@ -3903,7 +3870,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, served from the self_health_daily lakehouse rollup at /api/v1/self-health (no static file). Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. The per-component current_ok/http_status/latency_ms/checked_at/note fields are NULL for now, and null here means UNMEASURED, not down: the per-check ticks were written by the indexer box's self-health poller, the box is decommissioned, and only the daily rollup survived it. Synthesizing a current reading from the last frozen tick would state a probe we did not take. */
+        /** @description metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, served from the self_health_daily lakehouse rollup at /api/v1/self-health (no static file). Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. The per-component current_ok/http_status/latency_ms/checked_at/note fields are NULL for now, and null here means UNMEASURED, not down: the per-check ticks were written by the indexer box's self-health poller, the box is decommissioned, and only the daily rollup survived it. Synthesizing a current reading from the last frozen tick would state a probe we did not take. */
         get: operations["selfHealth"];
         put?: never;
         post?: never;
@@ -3920,7 +3887,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch upstream source health. */
+        /** @description Fetch upstream source health. */
         get: operations["sourceHealth"];
         put?: never;
         post?: never;
@@ -3937,7 +3904,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch source input hashes and counts. */
+        /** @description Fetch source input hashes and counts. */
         get: operations["sourceSnapshots"];
         put?: never;
         post?: never;
@@ -3954,7 +3921,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List active Finney subnets. The screening fields ride the `fields=` projection: `gpu_required`/`min_vram_gb` are the MINER hardware floor from the subnet's own min_compute.yml (four-valued -- `required`, `not-required`, `declared-inconsistently`, and null for the subnets whose repo publishes no readable file -- a null is NOT a no), and `also_on` names the testnet twin. The whole declaration, both roles and the commit it was read at, is the `compute_requirements` section on /subnets/{netuid}/overview. */
+        /**
+         * List active Finney subnets
+         * @description List active Finney subnets. The screening fields ride the `fields=` projection: `gpu_required`/`min_vram_gb` are the MINER hardware floor from the subnet's own min_compute.yml (four-valued -- `required`, `not-required`, `declared-inconsistently`, and null for the subnets whose repo publishes no readable file -- a null is NOT a no), and `also_on` names the testnet twin. The whole declaration, both roles and the commit it was read at, is the `compute_requirements` section on /subnets/{netuid}/overview.
+         */
         get: operations["subnets"];
         put?: never;
         post?: never;
@@ -3971,7 +3941,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch per-subnet detail. */
+        /**
+         * Fetch one subnet's full profile
+         * @description Fetch per-subnet detail.
+         */
         get: operations["subnetDetail"];
         put?: never;
         post?: never;
@@ -3988,7 +3961,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch axon-removal activity for one subnet over a 7d or 30d window: the distinct removers (hotkeys), the AxonInfoRemoved event count, and the average removals per remover, read from the account_events AxonInfoRemoved stream, which the runtime has never populated — an empty card is marked `degraded` rather than published as a measured zero. Raw axon-teardown activity — the removal-side companion to the AxonServed announcements in GET /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns). The zeroed card carries a `degraded` block whenever it is empty. */
+        /** @description Fetch axon-removal activity for one subnet over a 7d or 30d window: the distinct removers (hotkeys), the AxonInfoRemoved event count, and the average removals per remover, read from the account_events AxonInfoRemoved stream, which the runtime has never populated — an empty card is marked `degraded` rather than published as a measured zero. Raw axon-teardown activity — the removal-side companion to the AxonServed announcements in GET /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns). The zeroed card carries a `degraded` block whenever it is empty. */
         get: operations["subnetAxonRemovals"];
         put?: never;
         post?: never;
@@ -4005,7 +3978,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache. burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0. */
+        /** @description Fetch the live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache. burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0. */
         get: operations["subnetBurn"];
         put?: never;
         post?: never;
@@ -4022,7 +3995,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's registration-cost series. One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into the store from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404. */
+        /** @description Fetch one subnet's registration-cost series. One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into the store from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404. */
         get: operations["subnetBurnHistory"];
         put?: never;
         post?: never;
@@ -4039,7 +4012,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List unpromoted candidate surfaces for one subnet. */
+        /** @description List unpromoted candidate surfaces for one subnet. */
         get: operations["subnetCandidates"];
         put?: never;
         post?: never;
@@ -4056,7 +4029,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons store). */
+        /** @description Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons store). */
         get: operations["subnetConcentration"];
         put?: never;
         post?: never;
@@ -4073,7 +4046,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily rollup). Pass ?format=csv to download the per-day series as CSV. */
+        /** @description Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily rollup). Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetConcentrationHistory"];
         put?: never;
         post?: never;
@@ -4090,7 +4063,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the current lock state forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Read from chain storage at request time, no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case. */
+        /** @description Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the current lock state forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Read from chain storage at request time, no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case. */
         get: operations["subnetConviction"];
         put?: never;
         post?: never;
@@ -4107,7 +4080,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read what one subnet says it takes to participate there, beside what the chain exactly charges to enter. THREE KINDS OF NUMBER, NOT INTERCHANGEABLE. entry_cost is MEASURED on chain and exact -- the registration burn from the burn tier and the validator permit and earning floors from validator-economics, re-served here rather than recomputed. declared_compute is what the subnet's own min_compute file SAYS, which is a declaration and not a measurement of anything: the file is an upstream template and it is filled in inconsistently across the fleet. earnings is what miners on this subnet actually earned, projected from miner-fairness, so a floor-to-run never appears on the page without the distribution that says whether running is worth it. NO COST PER DAY IS PUBLISHED. Of the 18 registered declarations 5 ask for a GPU, so crossing the fleet with a rental rate prices hardware most subnets never asked for. THE GPU ANSWER IS FOUR-VALUED: required, not-required, declared-inconsistently (a declared required:False sitting beside a non-zero minimum VRAM or CUDA-core count -- the shape an unedited template field takes, never coerced to either boolean), and null, which means no declaration has been read and is the state 111 of 129 subnets are in. A declared minimum is the floor to RUN, not the spec to EARN, and what the card does not model is served in the payload rather than left on a docs page. */
+        /** @description Read what one subnet says it takes to participate there, beside what the chain exactly charges to enter. THREE KINDS OF NUMBER, NOT INTERCHANGEABLE. entry_cost is MEASURED on chain and exact -- the registration burn from the burn tier and the validator permit and earning floors from validator-economics, re-served here rather than recomputed. declared_compute is what the subnet's own min_compute file SAYS, which is a declaration and not a measurement of anything: the file is an upstream template and it is filled in inconsistently across the fleet. earnings is what miners on this subnet actually earned, projected from miner-fairness, so a floor-to-run never appears on the page without the distribution that says whether running is worth it. NO COST PER DAY IS PUBLISHED. Of the 18 registered declarations 5 ask for a GPU, so crossing the fleet with a rental rate prices hardware most subnets never asked for. THE GPU ANSWER IS FOUR-VALUED: required, not-required, declared-inconsistently (a declared required:False sitting beside a non-zero minimum VRAM or CUDA-core count -- the shape an unedited template field takes, never coerced to either boolean), and null, which means no declaration has been read and is the state 111 of 129 subnets are in. A declared minimum is the floor to RUN, not the spec to EARN, and what the card does not model is served in the payload rather than left on a docs page. */
         get: operations["subnetCostToParticipate"];
         put?: never;
         post?: never;
@@ -4124,7 +4097,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's deregistration-rank trajectory. One subnet's trajectory toward or away from the deregistration bar (#10296). /chain/deregistration-ranking answers the pallet's pruning order AS OF ONE BLOCK; #10285's own argument is that 'a single day's rank is noise, a trend is a warning' -- a subnet owner reading rank 94 learns almost nothing, and reading '94, was 71 a month ago, and the price gap to rank 1 has halved' learns exactly what to act on. THE RANK IS NOT STORED AND MUST NOT BE. subnet_deregistration_daily persists the four MEASURED inputs (moving_price, registered_at_block, subnet_mechanism, network_immunity_period) plus the block they were pinned at, never the derived rank, so a later correction to the pallet rule reaches the whole series instead of leaving a record of the old rule's answers. The ranking is REPLAYED from those inputs on read. SO A ONE-SUBNET SERIES READS EVERY SUBNET'S ROWS: rank is RELATIVE and does not exist in one netuid's row, so each day is loaded whole, ranked, and only then narrowed -- 129 rows a day, ~23,000 at the widest window. rank is NULL while immune (an immune subnet holds no position in the prunable order and reporting one would invent a standing it does not have) with `immune` beside it to tell that from an unreadable rank; ranked_count rides with every rank because 94 means different things in a field of 100 and a field of 128; comparison_price is what the pallet compares -- a FLAT 1.0 for a Stable (SubnetMechanism 0) subnet -- published beside the raw moving_price so the substitution is visible rather than inferred. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED: pinned_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the honest denominator for any claim that a rank MOVED, because a rank that was not re-measured must not read as a rank that held steady. WHAT THE SERIES ALREADY SHOWS, replayed against production 2026-08-15 with six days written: netuid 70 sat at rank 1 on 2026-08-10 and 2026-08-11 with registered_at_block 7,787,562; on 2026-08-12 its registered_at_block is 8,825,571 -- 130 blocks before that day's pin -- its moving price is 4.0e-8 and it is immune for another 863,870 blocks. It was deregistered and re-registered, exactly as the ranking had it two days earlier, and its price has climbed back every day since. Netuid 36 inherited rank 1 and has fallen on every one of the six days. Neither fact is visible in a single day's answer. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily lane. oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day (2026-08-10) rides on every response so a caller receiving six points for a 90d window reads it as 'the series begins here' rather than '84 days were dropped'. An EMPTY series is a measurement, not an error: a subnet registered after the lane began returns one legitimately. Mainnet-only: subnet_deregistration_daily carries no network dimension. */
+        /** @description Fetch one subnet's deregistration-rank trajectory. One subnet's trajectory toward or away from the deregistration bar (#10296). /chain/deregistration-ranking answers the pallet's pruning order AS OF ONE BLOCK; #10285's own argument is that 'a single day's rank is noise, a trend is a warning' -- a subnet owner reading rank 94 learns almost nothing, and reading '94, was 71 a month ago, and the price gap to rank 1 has halved' learns exactly what to act on. THE RANK IS NOT STORED AND MUST NOT BE. subnet_deregistration_daily persists the four MEASURED inputs (moving_price, registered_at_block, subnet_mechanism, network_immunity_period) plus the block they were pinned at, never the derived rank, so a later correction to the pallet rule reaches the whole series instead of leaving a record of the old rule's answers. The ranking is REPLAYED from those inputs on read. SO A ONE-SUBNET SERIES READS EVERY SUBNET'S ROWS: rank is RELATIVE and does not exist in one netuid's row, so each day is loaded whole, ranked, and only then narrowed -- 129 rows a day, ~23,000 at the widest window. rank is NULL while immune (an immune subnet holds no position in the prunable order and reporting one would invent a standing it does not have) with `immune` beside it to tell that from an unreadable rank; ranked_count rides with every rank because 94 means different things in a field of 100 and a field of 128; comparison_price is what the pallet compares -- a FLAT 1.0 for a Stable (SubnetMechanism 0) subnet -- published beside the raw moving_price so the substitution is visible rather than inferred. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED: pinned_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the honest denominator for any claim that a rank MOVED, because a rank that was not re-measured must not read as a rank that held steady. WHAT THE SERIES ALREADY SHOWS, replayed against production 2026-08-15 with six days written: netuid 70 sat at rank 1 on 2026-08-10 and 2026-08-11 with registered_at_block 7,787,562; on 2026-08-12 its registered_at_block is 8,825,571 -- 130 blocks before that day's pin -- its moving price is 4.0e-8 and it is immune for another 863,870 blocks. It was deregistered and re-registered, exactly as the ranking had it two days earlier, and its price has climbed back every day since. Netuid 36 inherited rank 1 and has fallen on every one of the six days. Neither fact is visible in a single day's answer. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily lane. oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day (2026-08-10) rides on every response so a caller receiving six points for a 90d window reads it as 'the series begins here' rather than '84 days were dropped'. An EMPTY series is a measurement, not an error: a subnet registered after the lane began returns one legitimately. Mainnet-only: subnet_deregistration_daily carries no network dimension. */
         get: operations["subnetDeregistrationRankingHistory"];
         put?: never;
         post?: never;
@@ -4141,7 +4114,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, DERIVED from UID reuse in the NeuronRegistered stream (NeuronDeregistered has never been emitted by the runtime). Raw deregistration/eviction activity — the exit-side companion to the NeuronRegistered demand in GET /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). The card carries a `derivation` block stating how many window registrations had no observable previous holder, and a `degraded` block when nothing derived it. */
+        /** @description Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, DERIVED from UID reuse in the NeuronRegistered stream (NeuronDeregistered has never been emitted by the runtime). Raw deregistration/eviction activity — the exit-side companion to the NeuronRegistered demand in GET /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). The card carries a `derivation` block stating how many window registrations had no observable previous holder, and a `degraded` block when nothing derived it. */
         get: operations["subnetDeregistrations"];
         put?: never;
         post?: never;
@@ -4158,7 +4131,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's emission-pipeline series. One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension. */
+        /** @description Fetch one subnet's emission-pipeline series. One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension. */
         get: operations["subnetEmissionPipelineHistory"];
         put?: never;
         post?: never;
@@ -4175,7 +4148,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-day split of one subnet's emission by recipient class over a 7d/30d/90d window: how much went to the owner, to validators, and to miners, one point per day (computed live from the neuron_daily rollup). The validator/miner split is measured from the per-UID rows and is exact; the owner leg and every absolute alpha/TAO figure are reconstructed, because the owner's cut is paid OUTSIDE the UID set -- summing the rows alone yields 82% of the emission, not all of it. Each point also reports how many validator and miner UIDs actually earned anything. Pass ?format=csv to download the per-day series as CSV. */
+        /** @description Fetch the per-day split of one subnet's emission by recipient class over a 7d/30d/90d window: how much went to the owner, to validators, and to miners, one point per day (computed live from the neuron_daily rollup). The validator/miner split is measured from the per-UID rows and is exact; the owner leg and every absolute alpha/TAO figure are reconstructed, because the owner's cut is paid OUTSIDE the UID set -- summing the rows alone yields 82% of the emission, not all of it. Each point also reports how many validator and miner UIDs actually earned anything. Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetEmissionSplitHistory"];
         put?: never;
         post?: never;
@@ -4192,7 +4165,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List generalized endpoint resources for one subnet. */
+        /**
+         * List live endpoints for one subnet, with probe results
+         * @description List generalized endpoint resources for one subnet.
+         */
         get: operations["subnetEndpoints"];
         put?: never;
         post?: never;
@@ -4209,7 +4185,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events store. */
+        /** @description Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events store. */
         get: operations["subnetEventSummary"];
         put?: never;
         post?: never;
@@ -4226,7 +4202,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events store filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset. Pass ?format=csv to download the page as CSV. */
+        /** @description Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events store filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset. Pass ?format=csv to download the page as CSV. */
         get: operations["subnetEvents"];
         put?: never;
         post?: never;
@@ -4243,7 +4219,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch public evidence ledger claims for one subnet. */
+        /** @description Fetch public evidence ledger claims for one subnet. */
         get: operations["subnetEvidence"];
         put?: never;
         post?: never;
@@ -4260,7 +4236,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch interface gap priorities and enrichment queue for one subnet. */
+        /** @description Fetch interface gap priorities and enrichment queue for one subnet. */
         get: operations["subnetGaps"];
         put?: never;
         post?: never;
@@ -4277,7 +4253,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch health detail for one subnet. */
+        /**
+         * Fetch probe-derived health for one subnet
+         * @description Fetch health detail for one subnet.
+         */
         get: operations["subnetHealth"];
         put?: never;
         post?: never;
@@ -4294,7 +4273,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from the store). */
+        /** @description Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from the store). */
         get: operations["subnetHealthIncidents"];
         put?: never;
         post?: never;
@@ -4311,7 +4290,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from the store). */
+        /** @description Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from the store). */
         get: operations["subnetHealthPercentiles"];
         put?: never;
         post?: never;
@@ -4328,7 +4307,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from the store). */
+        /** @description Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from the store). */
         get: operations["subnetHealthTrends"];
         put?: never;
         post?: never;
@@ -4345,7 +4324,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** @description Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["subnetHistory"];
         put?: never;
         post?: never;
@@ -4362,7 +4341,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch who owns one subnet's alpha (#9557) — the top coldkeys by alpha held on that netuid, with each holder's share of the subnet total, how many hotkeys they hold it through, and whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of /accounts/{ss58}/positions, which reads the same ledger one coldkey (one account) at a time. Distinct from /subnets/{netuid}/concentration, which computes its scalars off neurons.stake_tao and therefore sees REGISTERED UIDs only: this reads nominator_positions, keyed on (coldkey, hotkey, netuid) whether or not the hotkey holds a UID on the subnet, so alpha staked to UNREGISTERED hotkeys is included — on netuid 74, 92 hotkeys carry positions and 10 are registered there, which is the part no other public source reaches without a full-chain map scan. Valued as share_fraction x hotkey_alpha.total_alpha against ONE proven pool pass, and ranked in ALPHA rather than TAO: within a single subnet alpha is already a common unit, so there is no subnet_snapshots price join and none of its up-to-24h staleness — multiply by the subnet's alpha_price_tao for TAO. limit caps the returned rows (default 20, max 100); holder_count, total_alpha and the three concentration shares are computed across the FULL holder set and then sliced, never over the capped rows, because the top of a sum is not contained in the union of the tops of its addends. TWO STATES DECLINE rather than answer, both with holders:[] plus a degraded.reason and NULL counts: pool_totals_unproven while no hotkey_alpha pass is recorded complete (a partially loaded pool ledger silently UNDERPRICES holders rather than visibly dropping them, so the ranking would be plausible and wrong), and root_not_in_alpha_map for netuid 0, which SubtensorModule::Alpha does not cover at all. A zero in any count is therefore a measured zero, never a decline. Mainnet-only: neither source table carries a network dimension. */
+        /** @description Fetch who owns one subnet's alpha (#9557) — the top coldkeys by alpha held on that netuid, with each holder's share of the subnet total, how many hotkeys they hold it through, and whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of /accounts/{ss58}/positions, which reads the same ledger one coldkey (one account) at a time. Distinct from /subnets/{netuid}/concentration, which computes its scalars off neurons.stake_tao and therefore sees REGISTERED UIDs only: this reads nominator_positions, keyed on (coldkey, hotkey, netuid) whether or not the hotkey holds a UID on the subnet, so alpha staked to UNREGISTERED hotkeys is included — on netuid 74, 92 hotkeys carry positions and 10 are registered there, which is the part no other public source reaches without a full-chain map scan. Valued as share_fraction x hotkey_alpha.total_alpha against ONE proven pool pass, and ranked in ALPHA rather than TAO: within a single subnet alpha is already a common unit, so there is no subnet_snapshots price join and none of its up-to-24h staleness — multiply by the subnet's alpha_price_tao for TAO. limit caps the returned rows (default 20, max 100); holder_count, total_alpha and the three concentration shares are computed across the FULL holder set and then sliced, never over the capped rows, because the top of a sum is not contained in the union of the tops of its addends. TWO STATES DECLINE rather than answer, both with holders:[] plus a degraded.reason and NULL counts: pool_totals_unproven while no hotkey_alpha pass is recorded complete (a partially loaded pool ledger silently UNDERPRICES holders rather than visibly dropping them, so the ranking would be plausible and wrong), and root_not_in_alpha_map for netuid 0, which SubtensorModule::Alpha does not cover at all. A zero in any count is therefore a measured zero, never a decline. Mainnet-only: neither source table carries a network dimension. */
         get: operations["subnetHolders"];
         put?: never;
         post?: never;
@@ -4379,7 +4358,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the subnet_hyperparams tier. */
+        /** @description Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the subnet_hyperparams tier. */
         get: operations["subnetHyperparameters"];
         put?: never;
         post?: never;
@@ -4396,7 +4375,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the append-only hyperparameter-change timeline for one subnet (#4309): each entry is a subnet_hyperparams snapshot recorded when any hyperparameter changed. Forward-only (no pre-feature history). Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
+        /** @description Fetch the append-only hyperparameter-change timeline for one subnet (#4309): each entry is a subnet_hyperparams snapshot recorded when any hyperparameter changed. Forward-only (no pre-feature history). Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
         get: operations["subnetHyperparametersHistory"];
         put?: never;
         post?: never;
@@ -4413,7 +4392,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. Served from the frozen lakehouse export of subnet_identity_history -- no table backs this route, and the export stops where the capture did, so observed_at on each entry says how current it is. */
+        /** @description Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. Served from the frozen lakehouse export of subnet_identity_history -- no table backs this route, and the export stops where the capture did, so observed_at on each entry says how current it is. */
         get: operations["subnetIdentityHistory"];
         put?: never;
         post?: never;
@@ -4430,7 +4409,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike (computed live from the neurons store). */
+        /** @description Fetch stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike (computed live from the neurons store). */
         get: operations["subnetIdleStake"];
         put?: never;
         post?: never;
@@ -4447,7 +4426,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms + accumulated-but-undistributed alpha dividends, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). */
+        /** @description Fetch the live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms + accumulated-but-undistributed alpha dividends, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). */
         get: operations["subnetLease"];
         put?: never;
         post?: never;
@@ -4464,7 +4443,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the chain_events lakehouse table, no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case. */
+        /** @description Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the chain_events lakehouse table, no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case. */
         get: operations["subnetLeaseHistory"];
         put?: never;
         post?: never;
@@ -4481,7 +4460,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch when one subnet was registered or deregistered (#10263): an append-only timeline, newest first, from the subnet_lifecycle Neon table. Entries where predates_capture is true are older than detection and carry a null block_number — that is a real answer, not a missing one. ?limit (<=1000) / ?offset. Pass ?format=csv to download the page as CSV. */
+        /** @description Fetch when one subnet was registered or deregistered (#10263): an append-only timeline, newest first, from the subnet_lifecycle Neon table. Entries where predates_capture is true are older than detection and carry a null block_number — that is a real answer, not a missing one. ?limit (<=1000) / ?offset. Pass ?format=csv to download the page as CSV. */
         get: operations["subnetLifecycle"];
         put?: never;
         post?: never;
@@ -4498,7 +4477,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons store. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set. */
+        /** @description Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons store. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set. */
         get: operations["subnetMetagraph"];
         put?: never;
         post?: never;
@@ -4515,7 +4494,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Measure whether a subnet's registered miners actually earn, over a 7d/30d/90d window rather than from a snapshot. Every dashboard publishes a miner count; the median subnet has 99.2% of its non-validator UIDs on zero emission, so that count read as a count of earners is close to fiction. Reports the daily zero rate, how many days each miner UID earned on -- `earned on 0 of 31` and `earned on 3 of 31` are different answers a snapshot collapses -- and emission concentration across controlling ENTITIES (the addresses holding the UIDs) as the headline lens, because a subnet with three operators behind 256 UIDs is not diverse and the per-UID Gini alone hides that. Descriptive only: there is no fairness score, because a high Gini on a subnet whose task genuinely has one best answer is not misconduct. For the subnet's measured validator/miner/burned split -- never assume a split constant -- see /subnets/{netuid}/emission-split/history, which also carries the derived per-day USD legs. */
+        /** @description Measure whether a subnet's registered miners actually earn, over a 7d/30d/90d window rather than from a snapshot. Every dashboard publishes a miner count; the median subnet has 99.2% of its non-validator UIDs on zero emission, so that count read as a count of earners is close to fiction. Reports the daily zero rate, how many days each miner UID earned on -- `earned on 0 of 31` and `earned on 3 of 31` are different answers a snapshot collapses -- and emission concentration across controlling ENTITIES (the addresses holding the UIDs) as the headline lens, because a subnet with three operators behind 256 UIDs is not diverse and the per-UID Gini alone hides that. Descriptive only: there is no fairness score, because a high Gini on a subnet whose task genuinely has one best answer is not misconduct. For the subnet's measured validator/miner/burned split -- never assume a split constant -- see /subnets/{netuid}/emission-split/history, which also carries the derived per-day USD legs. */
         get: operations["subnetMinerFairness"];
         put?: never;
         post?: never;
@@ -4532,7 +4511,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a single neuron's metagraph state by UID, computed live from the neurons store. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. */
+        /** @description Fetch a single neuron's metagraph state by UID, computed live from the neurons store. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. */
         get: operations["subnetNeuron"];
         put?: never;
         post?: never;
@@ -4549,7 +4528,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** @description Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["subnetNeuronHistory"];
         put?: never;
         post?: never;
@@ -4566,7 +4545,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch open/high/low/close/volume candles for one subnet's alpha price, bucketed by ?interval= (1h or 1d, default 1h) from the same account_events StakeAdded/StakeRemoved stream as GET /api/v1/subnets/{netuid}/volume — each row is one executed trade, price = amount_tao / alpha_amount. Open/high/low/close are the first/max/min/last trade price in the bucket; volume_alpha/volume_tao are summed amounts. ?days= bounds the lookback window (default 90, max 365). Empty buckets are omitted (a gap, not a synthesized flat candle). The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candle array with root_excluded:true rather than a meaningless flat-line series. */
+        /** @description Fetch open/high/low/close/volume candles for one subnet's alpha price, bucketed by ?interval= (1h or 1d, default 1h) from the same account_events StakeAdded/StakeRemoved stream as GET /api/v1/subnets/{netuid}/volume — each row is one executed trade, price = amount_tao / alpha_amount. Open/high/low/close are the first/max/min/last trade price in the bucket; volume_alpha/volume_tao are summed amounts. ?days= bounds the lookback window (default 90, max 365). Empty buckets are omitted (a gap, not a synthesized flat candle). The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candle array with root_excluded:true rather than a meaningless flat-line series. */
         get: operations["subnetOhlc"];
         put?: never;
         post?: never;
@@ -4583,7 +4562,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a composed overview (profile + health + curation + gaps + counts) for one subnet. */
+        /** @description Fetch a composed overview (profile + health + curation + gaps + counts) for one subnet. */
         get: operations["subnetOverview"];
         put?: never;
         post?: never;
@@ -4600,7 +4579,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Measure how much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window. Two chain-visible layers: the protocol owner cut (L1, 18%, the same for every subnet) and emission landing on UIDs held by the declared `owner_coldkey` (L2, which varies enormously -- the network median is far above 18%). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is NOT the owner's. THIS IS NOT `what the owner takes`: the identity of those nominators (L3) and any treasury cut inside the subnet's own code (L4) are not observable here, and the response says so in `blind_spots`. Every other stakeholder address is reported `unresolved`, which is the honest default and not a finding against them. */
+        /** @description Measure how much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window. Two chain-visible layers: the protocol owner cut (L1, 18%, the same for every subnet) and emission landing on UIDs held by the declared `owner_coldkey` (L2, which varies enormously -- the network median is far above 18%). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is NOT the owner's. THIS IS NOT `what the owner takes`: the identity of those nominators (L3) and any treasury cut inside the subnet's own code (L4) are not observable here, and the response says so in `blind_spots`. Every other stakeholder address is reported `unresolved`, which is the honest default and not a finding against them. */
         get: operations["subnetOwnerCapture"];
         put?: never;
         post?: never;
@@ -4617,7 +4596,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's owner-cut accrual and its disposition. The share is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is echoed on the response so nobody has to assume it. READ disposition.buckets.unresolved AND disposition.reconciles BEFORE citing any of this: the cut is paid as stake rather than as a liquid balance, so where it went is frequently not determinable from what we index, and `unresolved` is a first-class answer rather than a failure. The buckets are not balanced to tie -- residual_alpha reports what is unaccounted for, and a negative residual means the parts exceed the whole. Never 404s. */
+        /** @description Fetch one subnet's owner-cut accrual and its disposition. The share is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is echoed on the response so nobody has to assume it. READ disposition.buckets.unresolved AND disposition.reconciles BEFORE citing any of this: the cut is paid as stake rather than as a liquid balance, so where it went is frequently not determinable from what we index, and `unresolved` is a first-class answer rather than a failure. The buckets are not balanced to tie -- residual_alpha reports what is unaccounted for, and a negative residual means the parts exceed the whole. Never 404s. */
         get: operations["subnetOwnerCut"];
         put?: never;
         post?: never;
@@ -4634,7 +4613,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch every ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302) — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Two sources, labelled per record by `source`: `chain-event` records are decoded from the chain_events SubnetOwnerChanged stream and carry the block that emitted them, while `owner-observation` records are inferred from two consecutive owner captures, so their observed_at is when the change was NOTICED and block_number is null. Both are needed because a subnet's owning account can change without that event ever being emitted. observed_through reports how far the observation source covers this subnet at all. Served live from the all-events tier (ADR 0013), falling to the R2 lakehouse reader when that tier cannot answer, no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case. */
+        /** @description Fetch every ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302) — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Two sources, labelled per record by `source`: `chain-event` records are decoded from the chain_events SubnetOwnerChanged stream and carry the block that emitted them, while `owner-observation` records are inferred from two consecutive owner captures, so their observed_at is when the change was NOTICED and block_number is null. Both are needed because a subnet's owning account can change without that event ever being emitted. observed_through reports how far the observation source covers this subnet at all. Served live from the all-events tier (ADR 0013), falling to the R2 lakehouse reader when that tier cannot answer, no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case. */
         get: operations["subnetOwnershipHistory"];
         put?: never;
         post?: never;
@@ -4651,7 +4630,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons store). The reward-flow companion to /concentration. */
+        /** @description Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons store). The reward-flow companion to /concentration. */
         get: operations["subnetPerformance"];
         put?: never;
         post?: never;
@@ -4668,7 +4647,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily rollup). The reward-flow twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
+        /** @description Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily rollup). The reward-flow twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetPerformanceHistory"];
         put?: never;
         post?: never;
@@ -4685,7 +4664,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch public-safe profile detail for one subnet. */
+        /** @description Fetch public-safe profile detail for one subnet. */
         get: operations["subnetProfile"];
         put?: never;
         post?: never;
@@ -4702,7 +4681,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted — an empty card is marked `degraded` rather than published as a measured zero. The per-subnet drill-in of GET /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of GET /api/v1/subnets/{netuid}/serving (axon endpoints). The zeroed card carries a `degraded` block whenever it is empty. */
+        /** @description Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted — an empty card is marked `degraded` rather than published as a measured zero. The per-subnet drill-in of GET /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of GET /api/v1/subnets/{netuid}/serving (axon endpoints). The zeroed card carries a `degraded` block whenever it is empty. */
         get: operations["subnetPrometheus"];
         put?: never;
         post?: never;
@@ -4719,7 +4698,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0. */
+        /** @description Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0. */
         get: operations["subnetRecycled"];
         put?: never;
         post?: never;
@@ -4736,7 +4715,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch neuron-registration activity for one subnet over a 7d or 30d window: the distinct registrants (hotkeys), the NeuronRegistered event count, and the average registrations per registrant, computed live from the account_events NeuronRegistered stream. Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). Schema-stable zeroed card when the subnet has no NeuronRegistered events in the window. */
+        /** @description Fetch neuron-registration activity for one subnet over a 7d or 30d window: the distinct registrants (hotkeys), the NeuronRegistered event count, and the average registrations per registrant, computed live from the account_events NeuronRegistered stream. Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). Schema-stable zeroed card when the subnet has no NeuronRegistered events in the window. */
         get: operations["subnetRegistrations"];
         put?: never;
         post?: never;
@@ -4753,7 +4732,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 126 of 128 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible. */
+        /** @description Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 126 of 128 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible. */
         get: operations["subnetRevenue"];
         put?: never;
         post?: never;
@@ -4770,7 +4749,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch axon-serving announcement activity for one subnet over a 7d or 30d window: the distinct servers (hotkeys), the AxonServed event count, and the average announcements per server, computed live from the account_events AxonServed stream. The per-subnet drill-in of GET /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no AxonServed events in the window. */
+        /** @description Fetch axon-serving announcement activity for one subnet over a 7d or 30d window: the distinct servers (hotkeys), the AxonServed event count, and the average announcements per server, computed live from the account_events AxonServed stream. The per-subnet drill-in of GET /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no AxonServed events in the window. */
         get: operations["subnetServing"];
         put?: never;
         post?: never;
@@ -4787,7 +4766,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. Windows (7d/30d/90d) are bounded by the account_events retention. */
+        /** @description Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. Windows (7d/30d/90d) are bounded by the account_events retention. */
         get: operations["subnetStakeFlow"];
         put?: never;
         post?: never;
@@ -4804,7 +4783,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch stake-movement (re-delegation) activity for one subnet over a 7d or 30d window: the distinct movers (accounts), the StakeMoved event count, and the average movements per mover, computed live from the account_events StakeMoved stream. The per-subnet drill-in of GET /api/v1/chain/stake-moves (which ranks only the top-N subnets and cannot be queried by netuid) and the re-delegation-churn sibling of GET /api/v1/subnets/{netuid}/stake-flow (net capital flow) — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Schema-stable zeroed card when the subnet has no StakeMoved events in the window. */
+        /** @description Fetch stake-movement (re-delegation) activity for one subnet over a 7d or 30d window: the distinct movers (accounts), the StakeMoved event count, and the average movements per mover, computed live from the account_events StakeMoved stream. The per-subnet drill-in of GET /api/v1/chain/stake-moves (which ranks only the top-N subnets and cannot be queried by netuid) and the re-delegation-churn sibling of GET /api/v1/subnets/{netuid}/stake-flow (net capital flow) — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Schema-stable zeroed card when the subnet has no StakeMoved events in the window. */
         get: operations["subnetStakeMoves"];
         put?: never;
         post?: never;
@@ -4821,7 +4800,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote. */
+        /** @description Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote. */
         get: operations["subnetStakeQuote"];
         put?: never;
         post?: never;
@@ -4838,7 +4817,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch stake-transfer activity for one subnet over a 7d or 30d window: the distinct senders (accounts), the StakeTransferred event count, and the average transfers per sender, computed live from the account_events StakeTransferred stream. The per-subnet drill-in of GET /api/v1/chain/stake-transfers (which ranks only the top-N subnets and cannot be queried by netuid) and the between-coldkeys sibling of GET /api/v1/subnets/{netuid}/stake-moves (within-account re-delegation churn) — transfer_stake relocates staked alpha from one account to another on the same hotkey (origin leg only), so it moves ownership, not net capital. Schema-stable zeroed card when the subnet has no StakeTransferred events in the window. */
+        /** @description Fetch stake-transfer activity for one subnet over a 7d or 30d window: the distinct senders (accounts), the StakeTransferred event count, and the average transfers per sender, computed live from the account_events StakeTransferred stream. The per-subnet drill-in of GET /api/v1/chain/stake-transfers (which ranks only the top-N subnets and cannot be queried by netuid) and the between-coldkeys sibling of GET /api/v1/subnets/{netuid}/stake-moves (within-account re-delegation churn) — transfer_stake relocates staked alpha from one account to another on the same hotkey (origin leg only), so it moves ownership, not net capital. Schema-stable zeroed card when the subnet has no StakeTransferred events in the window. */
         get: operations["subnetStakeTransfers"];
         put?: never;
         post?: never;
@@ -4855,7 +4834,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's surface audit trail. When one subnet's public surfaces were added, changed or removed, and in which commit (#9612). The registry publishes what a subnet exposes TODAY; this answers when that became true -- the question behind 'did this API move?' and 'when did this subnet stop publishing an OpenAPI spec?'. Each entry names the surface (id, kind, url, name lifted from the recorded overlay), the action (insert, update or delete), the source_commit that produced it, and when it was recorded. A DELETE entry is the only evidence a surface ever existed -- the registry itself carries no trace of a removed surface, which is what makes this trail rather than the surface list the place to ask. IDENTITY IS COALESCED: the upsert path omitted surface_id from its INSERT column list, so 8,831 of the table's 8,892 rows carried a NULL and only the 61 deletes recorded one. Migration 0024 backfilled the column from the overlay's own id -- present on every row -- and the writer now records it, but this route still falls back to the overlay because migrations here are applied by hand and a fresh or restored database will have the nulls back. The overlay itself is READ, not republished: only the fields identifying WHAT changed are lifted out, and a caller wanting the full surface record reads /subnets/{netuid}/surfaces, which is that document's home. surface_count counts distinct surfaces with a recorded mutation, which is NOT the subnet's current surface count -- a deleted surface appears here and not there, and that difference is the point. limit caps the entries (default 50, max 200), newest first. A subnet whose surfaces have never changed returns an empty trail, never a 404 -- stability is the common case. Mainnet-only: the registry sync that writes this table is mainnet's. */
+        /** @description Fetch one subnet's surface audit trail. When one subnet's public surfaces were added, changed or removed, and in which commit (#9612). The registry publishes what a subnet exposes TODAY; this answers when that became true -- the question behind 'did this API move?' and 'when did this subnet stop publishing an OpenAPI spec?'. Each entry names the surface (id, kind, url, name lifted from the recorded overlay), the action (insert, update or delete), the source_commit that produced it, and when it was recorded. A DELETE entry is the only evidence a surface ever existed -- the registry itself carries no trace of a removed surface, which is what makes this trail rather than the surface list the place to ask. IDENTITY IS COALESCED: the upsert path omitted surface_id from its INSERT column list, so 8,831 of the table's 8,892 rows carried a NULL and only the 61 deletes recorded one. Migration 0024 backfilled the column from the overlay's own id -- present on every row -- and the writer now records it, but this route still falls back to the overlay because migrations here are applied by hand and a fresh or restored database will have the nulls back. The overlay itself is READ, not republished: only the fields identifying WHAT changed are lifted out, and a caller wanting the full surface record reads /subnets/{netuid}/surfaces, which is that document's home. surface_count counts distinct surfaces with a recorded mutation, which is NOT the subnet's current surface count -- a deleted surface appears here and not there, and that difference is the point. limit caps the entries (default 50, max 200), newest first. A subnet whose surfaces have never changed returns an empty trail, never a 404 -- stability is the common case. Mainnet-only: the registry sync that writes this table is mainnet's. */
         get: operations["subnetSurfaceHistory"];
         put?: never;
         post?: never;
@@ -4872,7 +4851,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List curated public surfaces for one subnet. */
+        /**
+         * List the API surfaces one subnet publishes
+         * @description List curated public surfaces for one subnet.
+         */
         get: operations["subnetSurfaces"];
         put?: never;
         post?: never;
@@ -4889,7 +4871,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from the store). Pass ?format=csv to download the per-day series as CSV. */
+        /** @description Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from the store). Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetTrajectory"];
         put?: never;
         post?: never;
@@ -4906,7 +4888,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read what one subnet's own published source declares it allocates to a treasury, against what the chain shows. Some subnets take a share of miner emission in their own validator code, applied before emission is ever assigned -- that is not a chain event and no indexer in this ecosystem can see it. THIS IS A DISCLOSED BUSINESS MODEL, NOT A DISCOVERY: the publishable signal is declared_matches_observed, and agreement is the expected result. THREE STATES MUST NOT BE COLLAPSED INTO TWO: no reading at all means nobody has read this subnet's repositories and the response makes no claim about it; a reading with found:false means a repo was read at a specific commit and nothing was allocated, which is evidence; and a reading with a share is a reviewed finding. Every reading cites the commit SHA that was HEAD when it was read, so a claim can be re-derived by someone who does not trust us. Readings a machine produced but no maintainer has checked publish their read status only, never their finding. */
+        /** @description Read what one subnet's own published source declares it allocates to a treasury, against what the chain shows. Some subnets take a share of miner emission in their own validator code, applied before emission is ever assigned -- that is not a chain event and no indexer in this ecosystem can see it. THIS IS A DISCLOSED BUSINESS MODEL, NOT A DISCOVERY: the publishable signal is declared_matches_observed, and agreement is the expected result. THREE STATES MUST NOT BE COLLAPSED INTO TWO: no reading at all means nobody has read this subnet's repositories and the response makes no claim about it; a reading with found:false means a repo was read at a specific commit and nothing was allocated, which is evidence; and a reading with a share is a reviewed finding. Every reading cites the commit SHA that was HEAD when it was read, so a claim can be re-derived by someone who does not trust us. Readings a machine produced but no maintainer has checked publish their read status only, never their finding. */
         get: operations["subnetTreasury"];
         put?: never;
         post?: never;
@@ -4923,7 +4905,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the neuron_daily rollup). */
+        /** @description Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the neuron_daily rollup). */
         get: operations["subnetTurnover"];
         put?: never;
         post?: never;
@@ -4940,7 +4922,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history. */
+        /** @description Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history. */
         get: operations["subnetUptime"];
         put?: never;
         post?: never;
@@ -4957,7 +4939,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch what it costs to become a validator on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), the TAO to reach each priced against live AMM pool reserves plus the registration burn, how many validator slots are open, the commission (take) distribution across permit-holders, whether the emission gate is open and the daily TAO inflow, and the live StakeThreshold/TaoWeight the floors were computed against. Permitted, active and earning are returned as three separate counts because they are three different sets. Root stake counts toward the threshold on every registered subnet at once, so root_tao_to_clear_threshold is the cross-subnet alternative to the per-subnet alpha costs. Read-only and derived — no chain write, no custody; every derived field is nullable and degrades with a stated reason rather than a confident zero. */
+        /** @description Fetch what it costs to become a validator on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), the TAO to reach each priced against live AMM pool reserves plus the registration burn, how many validator slots are open, the commission (take) distribution across permit-holders, whether the emission gate is open and the daily TAO inflow, and the live StakeThreshold/TaoWeight the floors were computed against. Permitted, active and earning are returned as three separate counts because they are three different sets. Root stake counts toward the threshold on every registered subnet at once, so root_tao_to_clear_threshold is the cross-subnet alternative to the per-subnet alpha costs. Read-only and derived — no chain write, no custody; every derived field is nullable and degrades with a stated reason rather than a confident zero. */
         get: operations["subnetValidatorEconomics"];
         put?: never;
         post?: never;
@@ -4974,7 +4956,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch whether validating on one subnet is getting cheaper or more expensive: a daily series of the observed permit floor and earning floor in alpha, the validator set composition as three separate counts, and the emission-gate state with daily TAO inflow, over a 7d/30d/90d window (default 30d), newest first. A floor that has doubled means the subnet is filling up and entering now buys a contested position; a falling earning floor means it is emptying out — the same snapshot value, opposite decisions. Set-composition drift is what usually explains a floor change, which is why both ship together. TAO cost is deliberately excluded: a historical cost needs the pool reserves as they were, and reconstructing one from today's reserves would be wrong. */
+        /** @description Fetch whether validating on one subnet is getting cheaper or more expensive: a daily series of the observed permit floor and earning floor in alpha, the validator set composition as three separate counts, and the emission-gate state with daily TAO inflow, over a 7d/30d/90d window (default 30d), newest first. A floor that has doubled means the subnet is filling up and entering now buys a contested position; a falling earning floor means it is emptying out — the same snapshot value, opposite decisions. Set-composition drift is what usually explains a floor change, which is why both ship together. TAO cost is deliberately excluded: a historical cost needs the pool reserves as they were, and reconstructing one from today's reserves would be wrong. */
         get: operations["subnetValidatorEconomicsHistory"];
         put?: never;
         post?: never;
@@ -4991,7 +4973,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons store. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set. */
+        /** @description Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons store. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set. */
         get: operations["subnetValidators"];
         put?: never;
         post?: never;
@@ -5008,7 +4990,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Also returns a buy/sell sentiment indicator derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data. */
+        /** @description Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Also returns a buy/sell sentiment indicator derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data. */
         get: operations["subnetAlphaVolume"];
         put?: never;
         post?: never;
@@ -5025,7 +5007,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's declared wallets: the chain-derived owner keys, plus any treasury, burn, payment-collector or multisig address the team has published and somebody has evidenced. EVERY DECLARED WALLET CARRIES ITS source_urls HERE -- reporting an attribution without the evidence is an unsourced allegation, so the proof travels with the claim. `owner` is flagged chain_derived so a consumer can tell a chain read from a human attribution without knowing our schema. Activity is per denomination and never summed across TAO and alpha. An empty list means nothing has been attributed, not that nothing exists. */
+        /** @description Fetch one subnet's declared wallets: the chain-derived owner keys, plus any treasury, burn, payment-collector or multisig address the team has published and somebody has evidenced. EVERY DECLARED WALLET CARRIES ITS source_urls HERE -- reporting an attribution without the evidence is an unsourced allegation, so the proof travels with the claim. `owner` is flagged chain_derived so a consumer can tell a chain read from a human attribution without knowing our schema. Activity is per denomination and never summed across TAO and alpha. An empty list means nothing has been attributed, not that nothing exists. */
         get: operations["subnetWallets"];
         put?: never;
         post?: never;
@@ -5042,7 +5024,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch validator weight-setting activity for one subnet over a 7d or 30d window: the distinct weight-setting validators, the WeightsSet event count, and the average updates per validator, computed live from the account_events WeightsSet stream. The per-subnet drill-in of GET /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no WeightsSet events in the window. */
+        /** @description Fetch validator weight-setting activity for one subnet over a 7d or 30d window: the distinct weight-setting validators, the WeightsSet event count, and the average updates per validator, computed live from the account_events WeightsSet stream. The per-subnet drill-in of GET /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no WeightsSet events in the window. */
         get: operations["subnetWeights"];
         put?: never;
         post?: never;
@@ -5059,7 +5041,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-subnet weight-setter leaderboard over a 7d or 30d window: the individual validators behind /weights ranked by activity, each with its WeightsSet count, its share of the subnet's total weight-setting, and when it first and last set weights in the window, computed live from the account_events WeightsSet stream. The setter-level drill-in of GET /api/v1/subnets/{netuid}/weights (which reports only the aggregate and never names the setters). Schema-stable empty leaderboard when the subnet has no WeightsSet events in the window. */
+        /** @description Fetch the per-subnet weight-setter leaderboard over a 7d or 30d window: the individual validators behind /weights ranked by activity, each with its WeightsSet count, its share of the subnet's total weight-setting, and when it first and last set weights in the window, computed live from the account_events WeightsSet stream. The setter-level drill-in of GET /api/v1/subnets/{netuid}/weights (which reports only the aggregate and never names the setters). Schema-stable empty leaderboard when the subnet has no WeightsSet events in the window. */
         get: operations["subnetWeightSetters"];
         put?: never;
         post?: never;
@@ -5076,7 +5058,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons store. Pass ?format=csv to download the ranked neuron rows as CSV. */
+        /** @description Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons store. Pass ?format=csv to download the ranked neuron rows as CSV. */
         get: operations["subnetYield"];
         put?: never;
         post?: never;
@@ -5093,7 +5075,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily rollup). The time-series companion to /yield and the return-rate twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
+        /** @description Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily rollup). The time-series companion to /yield and the return-rate twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetYieldHistory"];
         put?: never;
         post?: never;
@@ -5110,7 +5092,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily rollup. */
+        /** @description Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily rollup. */
         get: operations["subnetMovers"];
         put?: never;
         post?: never;
@@ -5127,7 +5109,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the root-origin (Sudo pallet) call table, newest first — subtensor has no Council/Senate, so this is the extrinsics feed hardcoded to call_module='Sudo'. ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics tier (#4310/2.2). */
+        /** @description Fetch the root-origin (Sudo pallet) call table, newest first — subtensor has no Council/Senate, so this is the extrinsics feed hardcoded to call_module='Sudo'. ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics tier (#4310/2.2). */
         get: operations["sudoCalls"];
         put?: never;
         post?: never;
@@ -5144,7 +5126,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310). hotkey is null on RPC failure or an unset sudo key. `field_sources` marks hotkey measured and names the storage item behind it (Sudo.Key). */
+        /** @description Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310). hotkey is null on RPC failure or an unset sudo key. `field_sources` marks hotkey measured and names the storage item behind it (Sudo.Key). */
         get: operations["sudoKey"];
         put?: never;
         post?: never;
@@ -5161,7 +5143,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List curated public surfaces. */
+        /**
+         * List every published surface across the registry
+         * @description List curated public surfaces.
+         */
         get: operations["surfaces"];
         put?: never;
         post?: never;
@@ -5178,7 +5163,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Probe ONE registered surface right now and report whether it is actually callable. Catalog-resolved, not arbitrary URL fetching: name a surface the registry knows and the Worker probes the URL it has on file, echoing the resolved identity (surface_key, netuid, kind, url, provider, auth_required) beside the verdict (status, classification, callable) and its evidence (latency_ms, status_code, error). `from_cache` says whether this was a fresh probe. Use it as the last step before integrating, after list_subnet_apis/get_api_schema. Mirrored by the `verify_integration` MCP tool. Served live (no static file); 404 surface_not_found when no catalogued surface matches. */
+        /** @description Probe ONE registered surface right now and report whether it is actually callable. Catalog-resolved, not arbitrary URL fetching: name a surface the registry knows and the Worker probes the URL it has on file, echoing the resolved identity (surface_key, netuid, kind, url, provider, auth_required) beside the verdict (status, classification, callable) and its evidence (latency_ms, status_code, error). `from_cache` says whether this was a fresh probe. Use it as the last step before integrating, after list_subnet_apis/get_api_schema. Mirrored by the `verify_integration` MCP tool. Served live (no static file); 404 surface_not_found when no catalogued surface matches. */
         get: operations["surfaceVerify"];
         put?: never;
         post?: never;
@@ -5195,7 +5180,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 2000). Computed live from the neurons store. */
+        /**
+         * Fetch the network-wide validator leaderboard
+         * @description Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 2000). Computed live from the neurons store.
+         */
         get: operations["globalValidators"];
         put?: never;
         post?: never;
@@ -5212,7 +5200,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons store. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404. */
+        /** @description Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons store. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404. */
         get: operations["validatorDetail"];
         put?: never;
         post?: never;
@@ -5229,7 +5217,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** @description Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["validatorHistory"];
         put?: never;
         post?: never;
@@ -5246,7 +5234,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404. ?basis= selects WHICH QUESTION is answered (#9617), not how well it is answered. basis=flow (the DEFAULT, and everything above) is TAO MOVED within the window, so it cannot see a nominator who staked before the window and has not touched it since -- a dormant delegator is invisible and a long-standing one reads as smaller than they are. basis=positions instead reads the standing position ledger keyed (coldkey, hotkey, netuid): every coldkey (an ss58 address) currently delegating to this hotkey, and how much ALPHA each holds per subnet, whenever they staked. The two are different units over different time semantics -- TAO moved in a window versus alpha held now -- so they are not comparable and the default does not move. On the positions basis, window and sort are REJECTED rather than ignored, because accepting them would imply the snapshot honoured them; nominator_count is the whole delegator set rather than the returned page; and alpha is reported PER SUBNET with no cross-subnet total, since each subnet's alpha is a different token. Nominators are ranked by how many subnets they hold on, then by their largest single-subnet holding, for the same reason. The positions basis DECLINES with degraded.reason pool_totals_unproven while the hotkey_alpha pool ledger has no complete pass -- a partial ledger underprices a nominator rather than dropping them. */
+        /** @description Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404. ?basis= selects WHICH QUESTION is answered (#9617), not how well it is answered. basis=flow (the DEFAULT, and everything above) is TAO MOVED within the window, so it cannot see a nominator who staked before the window and has not touched it since -- a dormant delegator is invisible and a long-standing one reads as smaller than they are. basis=positions instead reads the standing position ledger keyed (coldkey, hotkey, netuid): every coldkey (an ss58 address) currently delegating to this hotkey, and how much ALPHA each holds per subnet, whenever they staked. The two are different units over different time semantics -- TAO moved in a window versus alpha held now -- so they are not comparable and the default does not move. On the positions basis, window and sort are REJECTED rather than ignored, because accepting them would imply the snapshot honoured them; nominator_count is the whole delegator set rather than the returned page; and alpha is reported PER SUBNET with no cross-subnet total, since each subnet's alpha is a different token. Nominators are ranked by how many subnets they hold on, then by their largest single-subnet holding, for the same reason. The positions basis DECLINES with degraded.reason pool_totals_unproven while the hotkey_alpha pool ledger has no complete pass -- a partial ledger underprices a nominator rather than dropping them. */
         get: operations["validatorNominators"];
         put?: never;
         post?: never;
@@ -5263,7 +5251,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch every subnet ranked by what it costs to become an EARNING validator there. One row per subnet with the same fields as /api/v1/subnets/{netuid}/validator-economics: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), their TAO cost against live pool reserves, validator set composition as three separate counts, open slots, the take distribution, and the emission-gate state. Sort by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom; filter on emission_gate_open or cap_binding, where omitting a filter means BOTH rather than false. limit caps the page (default 50, max 512). Every subnet the ranking drops is returned in `excluded` with a reason. The registration burn is excluded from the ranking — it is a live per-subnet read and immaterial to the order; the per-subnet route reports the true entry cost. */
+        /** @description Fetch every subnet ranked by what it costs to become an EARNING validator there. One row per subnet with the same fields as /api/v1/subnets/{netuid}/validator-economics: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), their TAO cost against live pool reserves, validator set composition as three separate counts, open slots, the take distribution, and the emission-gate state. Sort by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom; filter on emission_gate_open or cap_binding, where omitting a filter means BOTH rather than false. limit caps the page (default 50, max 512). Every subnet the ranking drops is returned in `excluded` with a reason. The registration burn is excluded from the ranking — it is a live per-subnet read and immaterial to the order; the per-subnet route reports the true entry cost. */
         get: operations["validatorEconomicsRanking"];
         put?: never;
         post?: never;
@@ -5280,7 +5268,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read back one webhook subscription and its recent delivery outcomes. `delivery.status` is the one field to branch on: `ok` means nothing is outstanding, `retrying` means the queue has the event and will try again (not a loss), and `dead_letter` means an event will never arrive. `last_failure` carries the reason, the HTTP `status_code`, the attempt count and the next scheduled attempt, which is what a subscriber debugging a missed event actually needs. The id is a UUID v4 returned once at creation -- there is no listing route, and an id that was not kept cannot be recovered. Mirrored by the `get_webhook_subscription` MCP tool. Served live (no static file). */
+        /** @description Read back one webhook subscription and its recent delivery outcomes. `delivery.status` is the one field to branch on: `ok` means nothing is outstanding, `retrying` means the queue has the event and will try again (not a loss), and `dead_letter` means an event will never arrive. `last_failure` carries the reason, the HTTP `status_code`, the attempt count and the next scheduled attempt, which is what a subscriber debugging a missed event actually needs. The id is a UUID v4 returned once at creation -- there is no listing route, and an id that was not kept cannot be recovered. Mirrored by the `get_webhook_subscription` MCP tool. Served live (no static file). */
         get: operations["webhookSubscription"];
         put?: never;
         post?: never;
@@ -6157,9 +6145,19 @@ export interface components {
             };
             generated_at: string;
             mcp: {
+                /**
+                 * Format: uri
+                 * @description The core listing profile: 23 tools instead of 243. Filters tools/list only -- a core session can still call every tool.
+                 */
+                core_endpoint?: string;
                 /** Format: uri */
                 endpoint: string;
                 install: string;
+                /**
+                 * Format: uri
+                 * @description The endpoint a first-time caller should connect to, which `install` uses.
+                 */
+                recommended_endpoint?: string;
                 /** Format: uri */
                 server_card?: string;
                 tools: {
@@ -6331,6 +6329,7 @@ export interface components {
             question: string;
         };
         AskRequest: {
+            /** @description The question to answer, in plain language. Exploratory questions work best ("which subnets expose a public inference API?"); for ranked matches rather than prose, use GET /api/v1/search/semantic. */
             question: string;
         };
         AttributionCandidate: {
@@ -14349,6 +14348,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -14462,6 +14465,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -14586,6 +14593,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -14710,6 +14721,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -14843,7 +14858,9 @@ export interface operations {
                 offset?: number;
                 /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
+                /** @description Filter to blocks authored by this validator, as an SS58 address. */
                 author?: string;
+                /** @description Filter to blocks produced under this runtime spec version. */
                 spec_version?: number;
                 /** @description Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
@@ -14853,7 +14870,9 @@ export interface operations {
                 block_start?: number;
                 /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_extrinsics?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_events?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -14950,6 +14969,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -14986,6 +15014,7 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
             };
             cookie?: never;
@@ -15071,6 +15100,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -15107,6 +15145,7 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
             };
             cookie?: never;
@@ -15183,6 +15222,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -15226,6 +15274,7 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
             };
             cookie?: never;
@@ -15310,6 +15359,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -15353,6 +15411,7 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
             };
             cookie?: never;
@@ -15440,6 +15499,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15587,6 +15655,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -15619,10 +15696,13 @@ export interface operations {
     chainEventsFeedByNetwork: {
         parameters: {
             query?: {
+                /** @description Filter to events emitted by this pallet, e.g. `SubtensorModule` or `Balances`. */
                 pallet?: string;
+                /** @description Filter to events with this method name within the pallet, e.g. `StakeAdded`. */
                 method?: string;
                 /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
+                /** @description Filter to events emitted by the extrinsic at this index within its block. */
                 extrinsic?: number;
                 /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
@@ -15719,6 +15799,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -15751,6 +15840,7 @@ export interface operations {
     chainEventsStatsByNetwork: {
         parameters: {
             query?: {
+                /** @description How many of the most recent blocks to aggregate over (1-5000). */
                 blocks?: number;
             };
             header?: never;
@@ -15825,6 +15915,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16292,6 +16391,7 @@ export interface operations {
                 group_by?: "module" | "module_function";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50. */
                 limit?: number;
+                /** @description Filter to calls dispatched into this pallet, e.g. `SubtensorModule`. */
                 call_module?: string;
                 /** @description Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope. */
                 format?: "json" | "csv";
@@ -16579,6 +16679,7 @@ export interface operations {
                 window?: "7d" | "30d";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 25. */
                 limit?: number;
+                /** @description Filter to calls dispatched into this pallet, e.g. `SubtensorModule`. */
                 call_module?: string;
                 /** @description Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers). */
                 format?: "json" | "csv";
@@ -17170,6 +17271,7 @@ export interface operations {
                 sort?: "tx_count" | "total_fee_tao";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50. */
                 limit?: number;
+                /** @description Filter to calls dispatched into this pallet, e.g. `SubtensorModule`. */
                 call_module?: string;
                 /** @description Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope. */
                 format?: "json" | "csv";
@@ -18599,6 +18701,7 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /** @description A crowdloan's numeric id in the Crowdloan pallet's storage map. */
                 crowdloan_id: number;
             };
             cookie?: never;
@@ -18910,6 +19013,7 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /** @description A 0x-prefixed, 20-byte EVM (H160) address. */
                 h160: string;
             };
             cookie?: never;
@@ -19016,6 +19120,137 @@ export interface operations {
             };
         };
     };
+    exportChainEventsByNetwork: {
+        parameters: {
+            query?: {
+                /** @description Filter to events emitted by this pallet, e.g. `SubtensorModule` or `Balances`. */
+                pallet?: string;
+                /** @description Filter to events with this method name within the pallet, e.g. `StakeAdded`. */
+                method?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
+                before?: number;
+                /** @description Maximum number of rows to return in one page (at most 25000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 5000. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "count": 1,
+                     *         "events": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "event_index": 1,
+                     *             "method": "GET",
+                     *             "pallet": "example"
+                     *           }
+                     *         ],
+                     *         "next_before": 1,
+                     *         "next_cursor": "100.123.4"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainEventsFeedArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     extrinsicsFeedByNetwork: {
         parameters: {
             query?: {
@@ -19027,8 +19262,11 @@ export interface operations {
                 cursor?: string;
                 /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
+                /** @description Filter to extrinsics signed by this SS58 account. */
                 signer?: string;
+                /** @description Filter to calls dispatched into this pallet, e.g. `SubtensorModule`. */
                 call_module?: string;
+                /** @description Filter to calls of this extrinsic within the pallet, e.g. `add_stake`. */
                 call_function?: string;
                 /** @description Requires call_module so the decoded call-args JSON scan stays scoped. */
                 call_hash?: string;
@@ -19140,6 +19378,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -19176,6 +19423,7 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /** @description An extrinsic reference: either a 0x-prefixed extrinsic hash or the composite `<block_number>-<extrinsic_index>` id, which is the identifier guaranteed to be present. */
                 hash: string;
             };
             cookie?: never;
@@ -19258,6 +19506,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19800,21 +20057,37 @@ export interface operations {
                 subnet_type?: "root" | "application";
                 /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_block?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_block?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_candidate_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_candidate_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_integration_readiness?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_integration_readiness?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_mechanism_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_mechanism_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_participant_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_participant_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_probed_surface_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_probed_surface_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_surface_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_surface_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_tempo?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_tempo?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
@@ -19970,6 +20243,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -20324,6 +20601,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -20437,6 +20718,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -20561,6 +20846,10 @@ export interface operations {
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -20924,6 +21213,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21074,6 +21367,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21194,6 +21491,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21305,6 +21606,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21433,6 +21738,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21587,6 +21896,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21714,6 +22027,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21849,6 +22166,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -21933,6 +22254,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -21980,6 +22310,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22123,6 +22457,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22206,6 +22544,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -22240,6 +22587,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22361,6 +22712,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22479,6 +22834,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22601,6 +22960,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22741,6 +23104,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22826,6 +23193,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -22863,6 +23239,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -22986,6 +23366,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23102,6 +23486,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23234,6 +23622,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23355,6 +23747,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23486,6 +23882,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23607,6 +24007,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23723,7 +24127,15 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -23862,6 +24274,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -23947,6 +24363,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -23984,6 +24409,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 ss58: string;
             };
             cookie?: never;
@@ -24228,6 +24657,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description A provider's URL-safe slug, as published in the provider list. */
                 slug: string;
             };
             cookie?: never;
@@ -24509,6 +24939,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -24692,8 +25126,10 @@ export interface operations {
                      *         },
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "mcp": {
+                     *           "core_endpoint": "https://api.metagraph.sh/example",
                      *           "endpoint": "https://api.metagraph.sh/example",
                      *           "install": "example",
+                     *           "recommended_endpoint": "https://api.metagraph.sh/example",
                      *           "server_card": "https://api.metagraph.sh/example",
                      *           "tools": [
                      *             {
@@ -24799,6 +25235,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description The alert trigger's id, as returned when it was created. */
                 id: string;
             };
             cookie?: never;
@@ -24997,6 +25434,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -25035,7 +25481,9 @@ export interface operations {
                 offset?: number;
                 /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
+                /** @description Filter to blocks authored by this validator, as an SS58 address. */
                 author?: string;
+                /** @description Filter to blocks produced under this runtime spec version. */
                 spec_version?: number;
                 /** @description Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
@@ -25045,7 +25493,9 @@ export interface operations {
                 block_start?: number;
                 /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_extrinsics?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_events?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -25139,6 +25589,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -25173,6 +25632,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
             };
             cookie?: never;
@@ -25258,6 +25718,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -25292,6 +25761,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
             };
             cookie?: never;
@@ -25368,6 +25838,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -25409,6 +25888,7 @@ export interface operations {
             };
             header?: never;
             path: {
+                /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
             };
             cookie?: never;
@@ -25493,6 +25973,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -25534,6 +26023,7 @@ export interface operations {
             };
             header?: never;
             path: {
+                /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
             };
             cookie?: never;
@@ -25621,6 +26111,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25758,6 +26257,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26124,10 +26632,13 @@ export interface operations {
     chainEventsFeed: {
         parameters: {
             query?: {
+                /** @description Filter to events emitted by this pallet, e.g. `SubtensorModule` or `Balances`. */
                 pallet?: string;
+                /** @description Filter to events with this method name within the pallet, e.g. `StakeAdded`. */
                 method?: string;
                 /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
+                /** @description Filter to events emitted by the extrinsic at this index within its block. */
                 extrinsic?: number;
                 /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
@@ -26221,6 +26732,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -26253,6 +26773,7 @@ export interface operations {
     chainEventsStats: {
         parameters: {
             query?: {
+                /** @description How many of the most recent blocks to aggregate over (1-5000). */
                 blocks?: number;
             };
             header?: never;
@@ -26324,6 +26845,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26937,6 +27467,7 @@ export interface operations {
                 group_by?: "module" | "module_function";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50. */
                 limit?: number;
+                /** @description Filter to calls dispatched into this pallet, e.g. `SubtensorModule`. */
                 call_module?: string;
                 /** @description Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope. */
                 format?: "json" | "csv";
@@ -28048,6 +28579,7 @@ export interface operations {
                 window?: "7d" | "30d";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 25. */
                 limit?: number;
+                /** @description Filter to calls dispatched into this pallet, e.g. `SubtensorModule`. */
                 call_module?: string;
                 /** @description Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers). */
                 format?: "json" | "csv";
@@ -29545,6 +30077,7 @@ export interface operations {
                 sort?: "tx_count" | "total_fee_tao";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50. */
                 limit?: number;
+                /** @description Filter to calls dispatched into this pallet, e.g. `SubtensorModule`. */
                 call_module?: string;
                 /** @description Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope. */
                 format?: "json" | "csv";
@@ -31395,6 +31928,7 @@ export interface operations {
             query?: {
                 /** @description Comma-separated subnet ids to restrict the result to, e.g. `1,7,64`. At most 128 ids, each 0-65535. Unknown ids match nothing rather than erroring. */
                 netuids?: string;
+                /** @description Comma-separated list of the comparison dimensions to return; omit for all of them. */
                 dimensions?: string;
             };
             header?: never;
@@ -32321,6 +32855,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description A crowdloan's numeric id in the Crowdloan pallet's storage map. */
                 crowdloan_id: number;
             };
             cookie?: never;
@@ -32717,6 +33252,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description One of the fixed domain/capability tags, as validated by `?domain=` on /api/v1/subnets. */
                 tag: "agents" | "compute" | "data" | "finance" | "inference" | "media" | "prediction" | "privacy" | "robotics" | "science" | "search" | "security" | "storage" | "training";
             };
             cookie?: never;
@@ -33305,9 +33841,13 @@ export interface operations {
                 /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 id?: string;
                 kind?: "subtensor-rpc" | "subtensor-wss" | "archive";
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_eligible_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_eligible_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_endpoint_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_endpoint_count?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
@@ -33491,9 +34031,13 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_latency_ms?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_latency_ms?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_score?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_score?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
@@ -33795,6 +34339,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description A 0x-prefixed, 20-byte EVM (H160) address. */
                 h160: string;
             };
             cookie?: never;
@@ -33901,6 +34446,134 @@ export interface operations {
             };
         };
     };
+    exportChainEvents: {
+        parameters: {
+            query?: {
+                /** @description Filter to events emitted by this pallet, e.g. `SubtensorModule` or `Balances`. */
+                pallet?: string;
+                /** @description Filter to events with this method name within the pallet, e.g. `StakeAdded`. */
+                method?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
+                before?: number;
+                /** @description Maximum number of rows to return in one page (at most 25000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 5000. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "count": 1,
+                     *         "events": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "event_index": 1,
+                     *             "method": "GET",
+                     *             "pallet": "example"
+                     *           }
+                     *         ],
+                     *         "next_before": 1,
+                     *         "next_cursor": "100.123.4"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainEventsFeedArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     extrinsicsFeed: {
         parameters: {
             query?: {
@@ -33912,8 +34585,11 @@ export interface operations {
                 cursor?: string;
                 /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
+                /** @description Filter to extrinsics signed by this SS58 account. */
                 signer?: string;
+                /** @description Filter to calls dispatched into this pallet, e.g. `SubtensorModule`. */
                 call_module?: string;
+                /** @description Filter to calls of this extrinsic within the pallet, e.g. `add_stake`. */
                 call_function?: string;
                 /** @description Requires call_module so the decoded call-args JSON scan stays scoped. */
                 call_hash?: string;
@@ -34022,6 +34698,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -34056,6 +34741,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description An extrinsic reference: either a 0x-prefixed extrinsic hash or the composite `<block_number>-<extrinsic_index>` id, which is the identifier guaranteed to be present. */
                 hash: string;
             };
             cookie?: never;
@@ -34138,6 +34824,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -35885,6 +36580,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description The id of a captured request/response fixture. */
                 surface_id: string;
             };
             cookie?: never;
@@ -36274,6 +36970,7 @@ export interface operations {
                 cursor?: string;
                 /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
+                /** @description Filter to calls of this extrinsic within the pallet, e.g. `add_stake`. */
                 call_function?: string;
                 success?: "true" | "false";
                 /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
@@ -36703,6 +37400,7 @@ export interface operations {
             };
             header?: never;
             path: {
+                /** @description A calendar day in `YYYY-MM-DD`, addressing that day's history row. */
                 date: string;
             };
             cookie?: never;
@@ -37464,6 +38162,7 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `1h`, `24h`, `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "1h" | "24h" | "7d" | "30d";
+                /** @description Include the underlying time-series points alongside the summary, rather than the summary alone. */
                 include_points?: boolean;
             };
             header?: never;
@@ -38258,6 +38957,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description A provider's URL-safe slug, as published in the provider list. */
                 slug: string;
             };
             cookie?: never;
@@ -38401,9 +39101,13 @@ export interface operations {
                 pool_eligible?: "true" | "false";
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_latency_ms?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_latency_ms?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_score?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_score?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
@@ -38420,6 +39124,7 @@ export interface operations {
             };
             header?: never;
             path: {
+                /** @description A provider's URL-safe slug, as published in the provider list. */
                 slug: string;
             };
             cookie?: never;
@@ -40103,9 +40808,13 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_latency_ms?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_latency_ms?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_score?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_score?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
@@ -40249,9 +40958,13 @@ export interface operations {
                 /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 id?: string;
                 kind?: "subtensor-rpc" | "subtensor-wss" | "archive";
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_eligible_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_eligible_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_endpoint_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_endpoint_count?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
@@ -41227,9 +41940,9 @@ export interface operations {
     };
     searchSemantic: {
         parameters: {
-            query?: {
+            query: {
                 /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
-                q?: string;
+                q: string;
                 /** @description Maximum number of rows to return in one page (at most 20). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 10. */
                 limit?: number;
                 type?: "subnet" | "surface" | "provider";
@@ -41312,6 +42025,15 @@ export interface operations {
             };
             /** @description Query parameters were malformed or unsupported. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -41754,21 +42476,37 @@ export interface operations {
                 subnet_type?: "root" | "application";
                 /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_block?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_block?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_candidate_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_candidate_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_integration_readiness?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_integration_readiness?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_mechanism_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_mechanism_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_participant_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_participant_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_probed_surface_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_probed_surface_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_surface_count?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_surface_count?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_tempo?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_tempo?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
@@ -41919,6 +42657,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -42274,6 +43016,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -42386,6 +43132,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -42500,6 +43250,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -42634,6 +43388,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -42762,6 +43520,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -42944,6 +43706,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43059,6 +43825,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43180,6 +43950,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43379,6 +44153,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43515,6 +44293,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43647,6 +44429,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43783,6 +44569,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -43922,9 +44712,13 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_latency_ms?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_latency_ms?: number;
+                /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_score?: number;
+                /** @description Inclusive upper bound: only rows at or below this value are returned. */
                 max_score?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
@@ -43941,6 +44735,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44101,6 +44899,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44260,6 +45062,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44391,6 +45197,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44528,6 +45338,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44746,6 +45560,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -44884,6 +45702,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45013,6 +45835,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45133,6 +45959,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45262,6 +46092,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45378,6 +46212,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45502,6 +46340,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45652,6 +46494,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45779,6 +46625,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -45897,6 +46747,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46004,6 +46858,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46126,6 +46984,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46248,6 +47110,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46375,6 +47241,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46504,6 +47374,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -46658,7 +47532,15 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
+                /**
+                 * @description A neuron's UID within its subnet's metagraph.
+                 * @example 0
+                 */
                 uid: number;
             };
             cookie?: never;
@@ -46791,7 +47673,15 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
+                /**
+                 * @description A neuron's UID within its subnet's metagraph.
+                 * @example 0
+                 */
                 uid: number;
             };
             cookie?: never;
@@ -46910,12 +47800,17 @@ export interface operations {
         parameters: {
             query?: {
                 interval?: "1h" | "1d";
+                /** @description How many days of history to return; defaults to 90. */
                 days?: number;
                 /** @description Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 2000. */
                 limit?: number;
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -47050,6 +47945,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -47399,6 +48298,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -47542,6 +48445,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -47680,6 +48587,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -47794,6 +48705,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -47967,6 +48882,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48085,6 +49004,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48528,6 +49451,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48640,6 +49567,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48754,6 +49685,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -48869,6 +49804,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49029,6 +49968,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49146,6 +50089,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49258,6 +50205,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49368,12 +50319,17 @@ export interface operations {
     subnetStakeQuote: {
         parameters: {
             query: {
+                /** @description The stake amount to quote, in TAO. Must be greater than zero. */
                 amount: number;
                 /** @description Which side of the trade to price: `stake` buys alpha with TAO, `unstake` sells alpha for TAO. Omit for `stake`. */
                 direction?: "stake" | "unstake";
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49490,6 +50446,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49605,6 +50565,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49744,6 +50708,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -49882,6 +50850,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50002,6 +50974,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50131,6 +51107,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50275,12 +51255,17 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `90d`, `1y`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "90d" | "1y";
+                /** @description Drop day rows whose daily probe count is below this, including zero-sample days. */
                 min_samples?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50420,6 +51405,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50574,6 +51563,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50704,6 +51697,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50824,6 +51821,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -50957,6 +51958,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51112,6 +52117,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51227,6 +52236,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51358,6 +52371,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51504,6 +52521,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
                 netuid: number;
             };
             cookie?: never;
@@ -51782,6 +52803,7 @@ export interface operations {
                 cursor?: string;
                 /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
+                /** @description Filter to calls of this extrinsic within the pallet, e.g. `add_stake`. */
                 call_function?: string;
                 success?: "true" | "false";
                 /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
@@ -52173,6 +53195,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description The id of a captured request/response fixture. */
                 surface_id: string;
             };
             cookie?: never;
@@ -52456,6 +53479,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded hotkey address identifying one validator identity.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 hotkey: string;
             };
             cookie?: never;
@@ -52619,6 +53646,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded hotkey address identifying one validator identity.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 hotkey: string;
             };
             cookie?: never;
@@ -52753,6 +53784,10 @@ export interface operations {
             };
             header?: never;
             path: {
+                /**
+                 * @description An SS58-encoded hotkey address identifying one validator identity.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
                 hotkey: string;
             };
             cookie?: never;
@@ -52885,7 +53920,9 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Filter to subnets whose emission gate is currently open (true) or closed (false). */
                 emission_gate_open?: boolean;
+                /** @description Filter to subnets where the alpha injection cap is currently binding (true) or not (false). */
                 cap_binding?: boolean;
             };
             header?: never;
@@ -53057,6 +54094,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description The alert trigger's id, as returned when it was created. */
                 id: string;
             };
             cookie?: never;

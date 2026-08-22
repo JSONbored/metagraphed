@@ -1863,6 +1863,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "The chain_events lakehouse feed as a single unpaginated export (newest first), served live at /api/v1/export/chain-events (no static file). Same rows and same filters as /api/v1/chain-events; what differs is the ceiling -- up to 25,000 events in one call against that route's 100 -- and that the call REQUIRES an x402 payment. See /.well-known/x402.",
+      "id": "export-chain-events",
+      "path": "/metagraph/export/chain-events.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainEventsFeedArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Recent all-events feed (newest first) from the chain_events lakehouse table, served live at /api/v1/chain-events; pass ?format=csv to download the page as CSV (no static file). Each page reads one bounded block window below its ceiling, so a short page still carries a continuation. Distinct from the curated account-attributed event stream.",
       "id": "chain-events-feed",
       "path": "/metagraph/chain-events.json",

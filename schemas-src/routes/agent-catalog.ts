@@ -303,7 +303,26 @@ export const AgentResourcesArtifactSchema = ArtifactBaseSchema.extend({
     .strict(),
   mcp: z
     .object({
+      // The server's identity, and what every existing consumer resolved.
       endpoint: z.url(),
+      // The two listing profiles, stated separately (#11164). `endpoint` is
+      // the full one; `recommended_endpoint` is what a reader should actually
+      // install, and `install` is built from it. They are distinct fields
+      // because they answer different questions -- "what is this server" and
+      // "what should I connect to" -- and collapsing them would make one of
+      // the two answers wrong.
+      core_endpoint: z
+        .url()
+        .optional()
+        .describe(
+          "The core listing profile: 23 tools instead of 243. Filters tools/list only -- a core session can still call every tool.",
+        ),
+      recommended_endpoint: z
+        .url()
+        .optional()
+        .describe(
+          "The endpoint a first-time caller should connect to, which `install` uses.",
+        ),
       transport: z.string().optional(),
       install: z.string(),
       server_card: z.url().optional(),

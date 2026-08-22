@@ -3811,6 +3811,7 @@ describe("Access-Control-Expose-Headers", () => {
         policy,
         tier: "free",
         accountId: "1",
+        accountKind: "rpc" as const,
         block: {
           blocked: true,
           reasonCode: "abuse_manual",
@@ -3825,6 +3826,7 @@ describe("Access-Control-Expose-Headers", () => {
         policy,
         tier: "paid",
         accountId: "1",
+        accountKind: "rpc" as const,
       },
       { code: "rate_limited", message: "Too many requests." },
     )!;
@@ -3834,6 +3836,7 @@ describe("Access-Control-Expose-Headers", () => {
         policy,
         tier: "free",
         accountId: "1",
+        accountKind: "rpc" as const,
         quota: {
           allowed: false,
           used: 1000,
