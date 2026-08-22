@@ -29,10 +29,7 @@ export function Breadcrumbs({ pathname, crumbs, className }: BreadcrumbsProps) {
   return (
     <nav
       aria-label="Breadcrumb"
-      className={classNames(
-        "flex flex-wrap items-center gap-1 mg-type-caption text-ink-muted",
-        className,
-      )}
+      className={classNames("flex flex-wrap items-center gap-1 text-13 text-ink-muted", className)}
     >
       {resolved.map((c, i) => {
         const isLast = i === resolved.length - 1;

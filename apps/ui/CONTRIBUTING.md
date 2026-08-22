@@ -24,6 +24,7 @@ all pass:
 
 ```bash
 npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui
+npm run lint --workspace=packages/ui-kit && npx prettier --check packages/ui-kit/src   # ui-kit is formatted by the ROOT prettier config
 npm run typecheck --workspace=apps/ui  # auto-builds packages/client first (pretypecheck) -- no separate step needed
 npm test --workspace=apps/ui
 npm run test:e2e --workspace=apps/ui   # needs a Chromium browser: npx playwright install --with-deps chromium (once)
@@ -37,8 +38,7 @@ rule — don't hand-format.
 The responsive-overflow E2E check (`tests/e2e/responsive-overflow.spec.ts`) replays
 recorded API traffic (`tests/e2e/har/*.har`) instead of hitting live production data, so
 it stays deterministic regardless of live chain state. If your PR adds a new API call on
-one of the checked routes (`/`, `/subnets/1`, `/endpoints`, `/status`, `/settings`,
-`/explorer`), re-record the fixtures against a running dev server:
+one of the checked routes (see `tests/e2e/overflow-check.config.ts`), re-record the fixtures against a running dev server:
 `npm run test:e2e:record-har --workspace=apps/ui`. A stale HAR still passes (unmatched
 requests fall back to live data) but re-recording keeps the check fully offline-capable
 and avoids masking a real layout change behind stale fixture data.
@@ -59,76 +59,49 @@ budget — keep new dependencies/imports lean.
   display, Interaction, Feedback, each with a rendered example and its import line. Check there
   before reaching for a raw value or reinventing something that already exists; a component
   landing in the barrel should get a section there in the same PR.
-- Reuse existing design tokens (`src/styles.css`, `packages/ui-kit/src/styles.css`) and
-  shared components instead of inventing new one-off styles. The "Bone & Ink" rules,
-  mechanically flagged by `no-restricted-syntax` (see `eslint.config.ts`) — **warning**
-  everywhere by default, but **error** inside the directories listed in each config's
-  `RATCHETED_DIRS` (see "Lint ratchet" below):
-  - Semantic tokens only — `bg-paper`, `text-ink-strong`, `bg-health-ok`, `text-accent-text`,
-    `border-border`, etc. Never a raw Tailwind palette color (`bg-emerald-500`,
-    `text-gray-600`) and never a hex/rgb literal in code. Author new colors in OKLCH in
-    `packages/ui-kit/src/styles.css`.
-  - Type weights capped at 500/600 — `font-bold`, `font-extrabold`, `font-black` are banned.
-  - Sticky offsets use `var(--mg-sticky-offset)`, never a hardcoded `top-14` / `top-[3.5rem]`.
-  - Spacing/type scale: prefer the `--mg-space-*` / `--mg-type-*` tokens (see
-    `src/styles.css`) over arbitrary values like `text-[13px]` or `p-[7px]`.
-  - Card/panel shells: use `<Panel>` from `src/components/metagraphed/primitives` rather
-    than hand-rolling `rounded border bg-card`.
-  - External links: use `<ExternalLink>` from `@jsonbored/ui-kit`, not a raw
-    `<a target="_blank">` — it sets `rel=noreferrer` and filters unsafe/private URLs.
-  - Stacking order: use one of the named `--mg-z-*` layer tokens
-    (`packages/ui-kit/src/styles.css`), never a bare `z-10`/`z-20`/etc. or a
-    one-off `z-[N]`. From lowest to highest:
+- **The design system (v2, #11605).** One token file — `packages/ui-kit/src/styles.css` — carries
+  the whole visual contract, and both `eslint.config.ts` files enforce it at **error** tier in every
+  source directory (there is no warn tier and no ratchet list any more). The contract:
+  - **One family.** IBM Plex Mono for every UI, label, number and heading (`font-mono`,
+    `font-sans` and `font-display` all resolve to it). IBM Plex Sans only inside the docs/news
+    article body via `.mg-prose`.
+  - **Seven sizes.** `text-10` · `text-11` · `text-13` · `text-16` · `text-28` · `text-40`
+    (`text-64` on the landing `h1` only). Each carries its line-height. Tailwind's `text-xs`…`text-9xl`,
+    `text-[…]` and the old `mg-type-*` / `mg-label` utilities do not exist.
+  - **Weights** 400 / 500 / 600 (`font-normal` / `font-medium` / `font-semibold`).
+  - **No tracking, no uppercase** — `letter-spacing: normal` everywhere; `<th>` gets
+    `10px / 600 / uppercase / 0.05em` from CSS and is the only exception. A `<th>` (and a
+    sort button inside it) carries no `text-N` / `font-*` utility of its own — the CSS rule
+    is the header, and the `token-inventory` gate fails any header text that is not
+    10px / 600 / uppercase.
+  - **One radius.** `rounded` (4px). `rounded-sm/md/lg/xl/2xl`, corner variants and `rounded-[…]`
+    are gone. `rounded-full` is only for 8×8 status dots, which also carry `mg-dot`
+    (`mg-dot-before` for a pseudo-element dot).
+  - **Surfaces are flat and opaque.** Canvas → layer → raised (`bg-canvas` / `bg-layer` / `bg-raised`;
+    the older `bg-paper` / `bg-surface` / `bg-card` names alias onto them). Three rules:
+    `border-rule` (ink/11%), `border-rule-strong` (ink/24%), and the 2px canvas gap between chart
+    segments. **No resting shadow, no blur, no glass, no glow, no gradient, no `bg-card/80`** — the only
+    shadow is `--mg-shadow-tooltip` on a floating tooltip.
+  - **Colour.** Semantic tokens only (`text-ink-strong` values/headings, `text-ink` body,
+    `text-ink-muted` labels, `text-ink-subtle` tertiary; `text-good` / `text-warn` / `text-bad` for
+    deltas and health; `--brand` mint for the wordmark and live dot only; `--accent` green for text,
+    selection and focus; `--chart-1`…`--chart-11` only where every colour is a named series). Never a raw
+    Tailwind palette colour or a hex literal.
+  - **Motion.** `var(--mg-motion)` (140ms ease) on background / colour / border / fill / opacity only.
+    Hover never translates, scales or rotates; nothing animates perpetually (skeleton shimmer and
+    spinners are loading feedback, not decoration).
+  - **Rhythm.** Sections `var(--mg-section-y) var(--mg-section-x)` (80×40 → 64×32 → 48×24), 40px under
+    a section heading, 28px rank rows, 44px table rows, a 1280px shell. Spacing utilities stay on the
+    4pt subset (`0 px 0.5 1 1.5 2 2.5 3 4 6 8 10 12 16 20 24`) or the `--mg-space-*` tokens.
+  - Sticky offsets use `var(--mg-sticky-offset)`, never `top-14`; stacking uses the `--mg-z-*`
+    layer tokens (`sticky 10 · raised 20 · nav 30 · overlay 40 · modal 50 · progress 60 · skip-link 100`).
+  - External links: `<ExternalLink>` from `@jsonbored/ui-kit`, never a raw `<a target="_blank">`.
+  - See `docs/ssr-safety.md` for the hydration-safety rules (also ESLint-enforced).
 
-    | Token              | Value | Use for                                                                  |
-    | ------------------ | ----- | ------------------------------------------------------------------------ |
-    | `--mg-z-sticky`    | 10    | Sticky theads/toolbars, scroll shadows, in-flow progress bars            |
-    | `--mg-z-raised`    | 20    | Elements that must clear sticky content within the same page section     |
-    | `--mg-z-nav`       | 30    | Site header/nav chrome                                                   |
-    | `--mg-z-overlay`   | 40    | Drawers, back-to-top, hover cards, lightweight menus                     |
-    | `--mg-z-modal`     | 50    | Dialogs, popovers, sheets, command palette (matches Radix's own default) |
-    | `--mg-z-progress`  | 60    | Route-transition progress bar — must beat modal                          |
-    | `--mg-z-skip-link` | 100   | a11y skip-link — must beat everything                                    |
-
-    The only standing exception: the sticky corner cell in the two compare
-    drawers (`subnets-compare-drawer.tsx`, `validators-compare-drawer.tsx`) uses
-    raw `z-[1]`/`z-[2]` for micro-stacking inside the table's own local
-    stacking context — not a global layer, so it doesn't belong on this scale.
-
-  - Border radius: use one of the 5 approved steps, never `rounded-sm`/`rounded-lg`/
-    `rounded-3xl` or an arbitrary `rounded-[…]` value:
-
-    | Token          | Use for                                                                                                                                                             |
-    | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-    | `rounded-full` | Pills, badges, dots, avatars, circular icon buttons                                                                                                                 |
-    | `rounded`      | Inputs, buttons, chips, kbd, small controls, table-corner clips                                                                                                     |
-    | `rounded-md`   | Cards/panels not using `<Panel>`, popover/menu surfaces                                                                                                             |
-    | `rounded-xl`   | Drawers, modals, sheets, command palette, `<PageSection>`'s content shells                                                                                          |
-    | `rounded-2xl`  | Homepage hero/marketing tiles, and detail-page KPI panels using the documented `.mg-card-glow`/`.mg-card-glow-accent` soft-elevation variant (#6398) — nowhere else |
-
-    Two standing exceptions: dense visualization grids (heatmaps, the status
-    mosaic, the endpoint-uptime bar) use a sub-token `rounded-[1px]`/
-    `rounded-[2px]` micro-radius on their per-cell fills — every named step
-    above is visually much larger and would materially change these grids, so
-    this is a documented residual, not drift (still flagged as a warning to
-    stay visible). `rounded-sm`/`rounded-lg` were fully eliminated (snapped to
-    `rounded`/`rounded-md`) in the 2026-07-24 sweep — see #7843.
-
-  - See `docs/ssr-safety.md` for the hydration-safety rules (also partly ESLint-enforced).
-
-  **Lint ratchet.** `no-restricted-syntax` is warn-tier everywhere by default — a
-  full-codebase audit (2026-07-23) found too many pre-existing violations to make error-tier
-  safe repo-wide without blocking unrelated PRs. Both `eslint.config.ts` files (here and in
-  `packages/ui-kit/`) define a `RATCHETED_DIRS` array of glob prefixes verified at 0
-  warnings; a directory in that list is error-tier instead, so new drift there fails CI
-  rather than only annotating it. This is a **one-way ratchet**:
-  - If your PR brings a directory to 0 `no-restricted-syntax` warnings, add it to
-    `RATCHETED_DIRS` in the _same_ PR — don't leave a clean directory un-ratcheted for a
-    later PR to notice.
-  - Removing a directory from `RATCHETED_DIRS` requires its own issue explaining why
-    (e.g. a new dependency reintroduced unavoidable raw values) — never a silent drop.
-  - `RATCHETED_DIRS` globs are checked directory-by-directory, not file-by-file — a single
-    remaining violation anywhere under a glob keeps the whole directory out.
+  **The contract is also measured in the rendered page.** `tests/e2e/token-inventory.spec.ts` sweeps
+  `<main>` on every route in `tests/e2e/overflow-check.config.ts` at 1280×800 in both themes and fails
+  if it finds a font family, font size, letter-spacing, radius, pill or resting shadow outside the
+  contract. It is absolute, not baseline-diffed: fix the token or the component, never a snapshot.
 
 - Keep diffs focused. Don't reformat or refactor unrelated files in a feature PR.
 

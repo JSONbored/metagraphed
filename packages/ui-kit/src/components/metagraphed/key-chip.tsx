@@ -50,7 +50,7 @@ export function KeyChip({
             onClick={() => copy(value)}
             aria-label={copied ? `${label} copied` : `Copy ${label}: ${value}`}
             className={classNames(
-              "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left mg-type-data text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
+              "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left text-11 text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
               className,
             )}
           >
@@ -61,11 +61,8 @@ export function KeyChip({
             />
           </button>
         </TooltipTrigger>
-        <TooltipContent
-          side="top"
-          className="max-w-[90vw] break-all mg-type-data"
-        >
-          <span className="mr-1 mg-type-label opacity-70">{label}</span>
+        <TooltipContent side="top" className="max-w-[90vw] break-all text-11">
+          <span className="mr-1 text-11 opacity-70">{label}</span>
           {value}
         </TooltipContent>
       </Tooltip>

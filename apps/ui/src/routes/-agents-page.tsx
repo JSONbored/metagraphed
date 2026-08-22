@@ -52,10 +52,10 @@ function StatRail({ res }: { res: AgentResources }) {
     <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-border pb-6">
       {stats.map((s) => (
         <div key={s.label} className="min-w-0">
-          <div className="font-display text-xl font-semibold tabular-nums text-ink-strong md:text-2xl">
+          <div className="font-display text-28 font-semibold tabular-nums text-ink-strong md:text-28">
             {s.value}
           </div>
-          <div className="mt-0.5 mg-type-caption text-ink-muted">{s.label}</div>
+          <div className="mt-0.5 text-13 text-ink-muted">{s.label}</div>
         </div>
       ))}
     </div>

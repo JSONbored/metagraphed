@@ -99,7 +99,7 @@ export function TakeManagementModal({
       <SheetTrigger asChild>{trigger(() => setOpen(true))}</SheetTrigger>
       <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle className="font-display text-lg">
+          <SheetTitle className="font-display text-16">
             Manage take ·{" "}
             <AddressDisplay
               ss58={hotkey}
@@ -177,13 +177,11 @@ function TakeFlowBody({
       return (
         <div className="flex flex-col items-center gap-4 py-10 text-center">
           <AlertTriangle className="size-6 text-health-down" aria-hidden />
-          <p className="mg-type-caption-lg text-ink-strong">
-            {describeTxError(flow.txStatus.error)}
-          </p>
+          <p className="text-13 text-ink-strong">{describeTxError(flow.txStatus.error)}</p>
           <button
             type="button"
             onClick={flow.editAmount}
-            className="rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink/30"
+            className="rounded border border-border bg-card px-3 py-2 text-13 font-medium text-ink-strong transition-colors hover:border-ink/30"
           >
             Edit and try again
           </button>
@@ -228,7 +226,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
                 aria-selected={active}
                 onClick={() => flow.setDirection(d)}
                 className={classNames(
-                  "min-h-8 rounded px-4 py-1.5 mg-type-label uppercase transition-colors",
+                  "min-h-8 rounded px-4 py-1.5 text-11 transition-colors",
                   active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
                 )}
               >
@@ -239,7 +237,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
         </Panel>
 
         <div className="flex flex-col gap-1">
-          <span aria-hidden="true" className="mg-type-caption text-ink-muted">
+          <span aria-hidden="true" className="text-13 text-ink-muted">
             New take (%)
           </span>
           <SearchInput
@@ -251,7 +249,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
           />
         </div>
 
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded border border-border bg-surface/40 p-3 mg-type-caption">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded border border-border bg-surface p-3 text-13">
           <dt className="text-ink-muted">Current take</dt>
           <dd className="text-right font-mono text-ink-strong">
             {flow.currentTakePct != null ? `${flow.currentTakePct.toFixed(2)}%` : "—"}
@@ -265,7 +263,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
         </dl>
 
         {flow.direction === "increase" && flow.cooldownDurationLabel ? (
-          <p className="inline-flex items-center gap-1.5 mg-type-data text-health-down">
+          <p className="inline-flex items-center gap-1.5 text-11 text-health-down">
             <AlertCircle className="size-3.5 shrink-0" aria-hidden />
             Take was changed too recently — try again in {flow.cooldownDurationLabel}. (Decreasing
             take has no cooldown.)
@@ -273,7 +271,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
         ) : null}
 
         {!hasValidPercentInput ? (
-          <p className="mg-type-data text-ink-muted">Enter a new take percentage to continue.</p>
+          <p className="text-11 text-ink-muted">Enter a new take percentage to continue.</p>
         ) : null}
 
         {flow.validationMessages.length > 0 ? (
@@ -281,7 +279,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
             {flow.validationMessages.map((message) => (
               <li
                 key={message}
-                className="inline-flex items-center gap-1.5 mg-type-data text-health-down"
+                className="inline-flex items-center gap-1.5 text-11 text-health-down"
               >
                 <AlertCircle className="size-3.5 shrink-0" aria-hidden />
                 {message}
@@ -296,7 +294,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
           type="button"
           onClick={flow.confirm}
           disabled={!flow.canConfirm}
-          className="w-full rounded border border-ink-strong/40 bg-surface px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-50"
+          className="w-full rounded border border-ink-strong/40 bg-surface px-3 py-2 text-13 font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-50"
         >
           Review {DIRECTION_VERB[flow.direction].toLowerCase()}
         </button>
@@ -321,8 +319,8 @@ function TakeConfirmationStep({
   return (
     <div className="space-y-4">
       <div>
-        <div className="mg-label mb-1">{DIRECTION_VERB[flow.direction]} take</div>
-        <div className="font-display text-lg font-medium text-ink-strong">
+        <div className="text-10 text-ink-muted mb-1">{DIRECTION_VERB[flow.direction]} take</div>
+        <div className="font-display text-16 font-medium text-ink-strong">
           {newTakePct != null ? `${newTakePct.toFixed(2)}%` : "—"}
         </div>
       </div>
@@ -338,7 +336,7 @@ function TakeConfirmationStep({
         loading={flow.feeTao === null}
       />
 
-      <div className="flex items-start gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-2 mg-type-caption text-ink-muted">
+      <div className="flex items-start gap-1.5 rounded border border-border bg-surface px-2.5 py-2 text-13 text-ink-muted">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
         <span>
           metagraphed builds this transaction for your wallet to sign — we never see your keys and
@@ -351,7 +349,7 @@ function TakeConfirmationStep({
           type="button"
           onClick={flow.editAmount}
           disabled={confirming}
-          className="flex-1 rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong disabled:opacity-60"
+          className="flex-1 rounded border border-border bg-card px-3 py-2 text-13 font-medium text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong disabled:opacity-60"
         >
           Cancel
         </button>
@@ -359,7 +357,7 @@ function TakeConfirmationStep({
           type="button"
           onClick={onConfirm}
           disabled={confirming || flow.feeTao === null}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded border border-ink-strong/40 bg-surface px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-60"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded border border-ink-strong/40 bg-surface px-3 py-2 text-13 font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-60"
         >
           {confirming ? (
             <>
@@ -389,10 +387,10 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0">
-      <span className="mg-type-caption text-ink-muted">{label}</span>
+      <span className="text-13 text-ink-muted">{label}</span>
       <span
         className={classNames(
-          "block mg-type-caption font-medium text-ink-strong",
+          "block text-13 font-medium text-ink-strong",
           loading && "animate-pulse text-ink-muted",
         )}
       >
@@ -416,26 +414,24 @@ function StatusView({
   return (
     <div className="flex flex-col items-center gap-4 py-10 text-center">
       {icon}
-      <p className="mg-type-caption-lg text-ink-strong">{message}</p>
+      <p className="text-13 text-ink-strong">{message}</p>
       {txHash ? (
         <div className="space-y-1">
           <Link
             to="/extrinsics/$hash"
             params={{ hash: txHash }}
-            className="mg-type-data text-accent hover:underline"
+            className="text-11 text-accent hover:underline"
           >
             {shortHash(txHash, 8)}
           </Link>
-          <p className="mg-type-caption text-ink-muted">
-            May take a few moments to appear once indexed.
-          </p>
+          <p className="text-13 text-ink-muted">May take a few moments to appear once indexed.</p>
         </div>
       ) : null}
       {onClose ? (
         <button
           type="button"
           onClick={onClose}
-          className="rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink/30"
+          className="rounded border border-border bg-card px-3 py-2 text-13 font-medium text-ink-strong transition-colors hover:border-ink/30"
         >
           Done
         </button>

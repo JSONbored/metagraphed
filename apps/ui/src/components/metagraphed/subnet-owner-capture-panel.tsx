@@ -45,7 +45,7 @@ export function SubnetOwnerCapturePanel({ netuid }: { netuid: number }) {
   const latest = card.points[0];
 
   return (
-    <Panel as="section" dense>
+    <Panel as="section">
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
         <Figure
           label="protocol cut (L1)"
@@ -66,12 +66,10 @@ export function SubnetOwnerCapturePanel({ netuid }: { netuid: number }) {
 
       {card.owner_uids.length > 0 && (
         <div className="mt-4">
-          <div className="mg-type-caption text-ink-muted">
-            Owner-held UIDs ({card.owner_uids.length})
-          </div>
+          <div className="text-13 text-ink-muted">Owner-held UIDs ({card.owner_uids.length})</div>
           <ul className="mt-2 space-y-1">
             {card.owner_uids.map((uid) => (
-              <li key={String(uid.uid)} className="mg-type-caption text-ink-muted">
+              <li key={String(uid.uid)} className="text-13 text-ink-muted">
                 <span className="text-ink-strong">UID {uid.uid}</span>
                 {uid.validator_permit ? " · validator" : " · miner"}
                 {" · take "}
@@ -87,10 +85,10 @@ export function SubnetOwnerCapturePanel({ netuid }: { netuid: number }) {
 
       {/* Never collapsed behind a link. See rule 2 above. */}
       <div className="mt-4 border-t border-border/60 pt-3">
-        <div className="mg-type-caption text-ink-muted">What this measurement cannot see</div>
+        <div className="text-13 text-ink-muted">What this measurement cannot see</div>
         <ul className="mt-1 space-y-1">
           {card.blind_spots.map((spot) => (
-            <li key={spot.layer} className="mg-type-caption text-ink-muted">
+            <li key={spot.layer} className="text-13 text-ink-muted">
               <span className="text-ink-strong">{spot.layer}</span> — {spot.summary}
             </li>
           ))}
@@ -124,9 +122,9 @@ function Figure({
 }) {
   return (
     <div>
-      <div className="mg-type-caption text-ink-muted">{label}</div>
-      <div className="mg-type-body text-ink-strong">{percentOrDash(value)}</div>
-      <div className="mg-type-caption text-ink-muted">{hint}</div>
+      <div className="text-13 text-ink-muted">{label}</div>
+      <div className="text-13 text-ink-strong">{percentOrDash(value)}</div>
+      <div className="text-13 text-ink-muted">{hint}</div>
     </div>
   );
 }

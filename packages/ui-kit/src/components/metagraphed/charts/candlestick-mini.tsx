@@ -304,7 +304,7 @@ export function CandlestickMini({
       </svg>
       {hoverBar && tooltipText ? (
         <div
-          className="pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap"
+          className="pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 text-10 leading-tight text-ink-strong whitespace-nowrap"
           style={{
             // `cx` is a viewBox coordinate, but `left` is CSS pixels -- the two
             // only coincided while the rendered width happened to equal

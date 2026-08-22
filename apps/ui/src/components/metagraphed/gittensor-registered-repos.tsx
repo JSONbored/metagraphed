@@ -48,13 +48,11 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
   const total = master?.repository_count;
 
   return (
-    <Panel as="div" dense id="registered-repos">
+    <Panel as="div" id="registered-repos">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="mg-type-caption text-ink-muted">Registered repositories</span>
+        <span className="text-13 text-ink-muted">Registered repositories</span>
         {total ? (
-          <span className="shrink-0 mg-type-data-sm text-ink-muted tabular-nums">
-            {total} total
-          </span>
+          <span className="shrink-0 text-10 text-ink-muted tabular-nums">{total} total</span>
         ) : null}
       </div>
       <ol className="space-y-0.5">
@@ -66,16 +64,16 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
               <ExternalLink
                 bare
                 href={repoUrl}
-                className="mg-row-hover flex items-center justify-between gap-2 rounded-md px-2 py-1.5"
+                className="mg-row-hover flex items-center justify-between gap-2 rounded px-2 py-1.5"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="w-4 shrink-0 text-right mg-type-data-sm text-ink-muted tabular-nums">
+                  <span className="w-4 shrink-0 text-right text-10 text-ink-muted tabular-nums">
                     {i + 1}
                   </span>
                   <BrandIcon size={18} name={row.repository} repoUrl={repoUrl} fallback={i + 1} />
-                  <span className="truncate text-sm text-ink-strong">{row.repository}</span>
+                  <span className="truncate text-13 text-ink-strong">{row.repository}</span>
                 </span>
-                <span className="shrink-0 font-mono mg-type-caption tabular-nums text-ink-muted">
+                <span className="shrink-0 font-mono text-13 tabular-nums text-ink-muted">
                   {sharePct !== null ? `${sharePct.toFixed(1)}%` : "—"}
                 </span>
               </ExternalLink>
@@ -87,7 +85,7 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
         <ExternalLink
           bare
           href="https://gittensor.io/repositories"
-          className="mt-2 block text-center text-xs text-accent hover:underline"
+          className="mt-2 block text-center text-13 text-accent hover:underline"
         >
           View all {total} registered repositories →
         </ExternalLink>

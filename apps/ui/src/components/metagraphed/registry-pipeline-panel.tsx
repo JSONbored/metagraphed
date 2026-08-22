@@ -42,7 +42,7 @@ export function RegistryPipelinePanel() {
 
   return (
     <div className="space-y-6">
-      <Panel as="section" dense>
+      <Panel as="section">
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           <Stage
             label="candidates"
@@ -87,11 +87,11 @@ export function RegistryPipelinePanel() {
         </div>
       </Panel>
 
-      <Panel as="section" dense>
-        <h3 className="mb-3 mg-type-label text-ink-muted">Source snapshots</h3>
+      <Panel as="section">
+        <h3 className="mb-3 text-11 text-ink-muted">Source snapshots</h3>
         {p.snapshots_reachable ? (
           <>
-            <p className="mb-3 mg-type-data-sm text-ink-muted">
+            <p className="mb-3 text-10 text-ink-muted">
               {formatNumber(p.source_count)} source
               {p.source_count === 1 ? "" : "s"}
               {p.verification_result_count == null
@@ -101,7 +101,7 @@ export function RegistryPipelinePanel() {
             </p>
             <ul className="space-y-1">
               {p.sources.slice(0, SOURCES_SHOWN).map((s) => (
-                <li key={s.id} className="flex gap-3 mg-type-data-sm">
+                <li key={s.id} className="flex gap-3 text-10">
                   <span className="min-w-0 flex-1 truncate text-ink">{s.id}</span>
                   <span className="shrink-0 tabular-nums text-ink-muted">
                     {formatNumber(s.record_count)} rows
@@ -110,7 +110,7 @@ export function RegistryPipelinePanel() {
                       hash saw the same bytes -- a timestamp cannot tell you
                       whether a re-capture actually changed anything. */}
                   <span
-                    className="shrink-0 mg-type-label text-ink-muted"
+                    className="shrink-0 text-11 text-ink-muted"
                     title={s.hash ? `Content hash ${s.hash}` : "No content hash recorded."}
                   >
                     {s.hash ? s.hash.slice(0, 7) : "—"}
@@ -120,7 +120,7 @@ export function RegistryPipelinePanel() {
             </ul>
           </>
         ) : (
-          <p className="mg-type-data-sm text-ink-muted">
+          <p className="text-10 text-ink-muted">
             The source-snapshot route could not be read — this is unknown, not empty.
           </p>
         )}
@@ -147,21 +147,21 @@ function SampleList({
 }) {
   return (
     <div>
-      <h4 className="mb-1 mg-type-label text-ink-muted">
+      <h4 className="mb-1 text-11 text-ink-muted">
         {title}
         {reachable && rows.length > 0 ? ` · latest ${rows.length}` : ""}
       </h4>
       {!reachable ? (
-        <p className="mg-type-data-sm text-ink-muted">Unreadable — unknown, not empty.</p>
+        <p className="text-10 text-ink-muted">Unreadable — unknown, not empty.</p>
       ) : rows.length === 0 ? (
-        <p className="mg-type-data-sm text-ink-muted">None returned.</p>
+        <p className="text-10 text-ink-muted">None returned.</p>
       ) : (
         <ul className="space-y-0.5">
           {rows.map((r) => (
-            <li key={r.id} className="flex gap-2 mg-type-data-sm">
+            <li key={r.id} className="flex gap-2 text-10">
               <span className="min-w-0 flex-1 truncate text-ink">{r.name ?? r.id}</span>
               {r.detail ? (
-                <span className="shrink-0 mg-type-label text-ink-muted">{r.detail}</span>
+                <span className="shrink-0 text-11 text-ink-muted">{r.detail}</span>
               ) : null}
             </li>
           ))}
@@ -191,9 +191,9 @@ function Stage({
 }) {
   return (
     <div title={reachable ? hint : `${hint} (This stage could not be read — unknown, not zero.)`}>
-      <div className="mg-type-label text-ink-muted">{label}</div>
-      <div className="mg-type-data tabular-nums text-ink">{reachable ? value : "—"}</div>
-      {!reachable ? <div className="mg-type-label text-ink-muted">unreadable</div> : null}
+      <div className="text-11 text-ink-muted">{label}</div>
+      <div className="text-11 tabular-nums text-ink">{reachable ? value : "—"}</div>
+      {!reachable ? <div className="text-11 text-ink-muted">unreadable</div> : null}
     </div>
   );
 }
@@ -215,8 +215,8 @@ export function FixtureLookupPanel() {
   });
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Fixture lookup</h3>
+    <Panel as="section">
+      <h3 className="mb-3 text-11 text-ink-muted">Fixture lookup</h3>
       <form
         className="flex gap-2"
         onSubmit={(e) => {
@@ -229,11 +229,11 @@ export function FixtureLookupPanel() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="surface id, e.g. allways-api-health"
           aria-label="Surface id"
-          className="min-w-0 flex-1 rounded border border-border bg-surface px-2 py-1 mg-type-data-sm text-ink"
+          className="min-w-0 flex-1 rounded border border-border bg-surface px-2 py-1 text-10 text-ink"
         />
         <button
           type="submit"
-          className="rounded border border-border bg-card px-3 py-1 mg-type-caption font-medium text-ink-strong hover:border-accent/40"
+          className="rounded border border-border bg-card px-3 py-1 text-13 font-medium text-ink-strong hover:border-accent/40"
         >
           Look up
         </button>
@@ -245,14 +245,14 @@ export function FixtureLookupPanel() {
         ) : isError ? (
           <ErrorState error={error} onRetry={() => void refetch()} />
         ) : data?.data.available ? (
-          <p className="mt-3 mg-type-data-sm text-ink">
+          <p className="mt-3 text-10 text-ink">
             Captured{data.data.captured_at ? ` ${formatRelative(data.data.captured_at)}` : ""}
             {data.data.response_status == null
               ? ""
               : ` · responded ${formatNumber(data.data.response_status)}`}
           </p>
         ) : (
-          <p className="mt-3 mg-type-data-sm text-ink-muted">{data?.data.reason}</p>
+          <p className="mt-3 text-10 text-ink-muted">{data?.data.reason}</p>
         )
       ) : null}
     </Panel>

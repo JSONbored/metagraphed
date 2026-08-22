@@ -50,33 +50,28 @@ export function PalletMethodBreakdown({ events }: { events: ChainEvent[] }) {
             >
               <div className="min-w-0">
                 <div className="flex items-baseline gap-1.5 min-w-0">
-                  <span className="mg-type-caption shrink-0 text-ink-subtle tabular-nums">
-                    #{i + 1}
-                  </span>
-                  <span
-                    className="font-mono mg-type-caption text-ink-strong truncate"
-                    title={r.label}
-                  >
+                  <span className="text-13 shrink-0 text-ink-subtle tabular-nums">#{i + 1}</span>
+                  <span className="font-mono text-13 text-ink-strong truncate" title={r.label}>
                     <span className="text-ink-muted">{pallet}.</span>
                     {method}
                   </span>
                 </div>
                 <div
                   aria-hidden
-                  className="mt-1 h-[3px] w-full overflow-hidden rounded-full bg-border/60"
+                  className="mt-1 h-[3px] w-full overflow-hidden rounded bg-border/60"
                 >
                   <div
                     className={classNames(
-                      "h-full rounded-full",
+                      "h-full rounded",
                       i === 0 ? "bg-accent" : "bg-ink-strong/40",
                     )}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
               </div>
-              <div className="shrink-0 text-right mg-type-data tabular-nums">
+              <div className="shrink-0 text-right text-11 tabular-nums">
                 <div className="text-ink-strong">{formatNumber(r.count)}</div>
-                <div className="mg-type-data-sm text-ink-muted">{share.toFixed(1)}%</div>
+                <div className="text-10 text-ink-muted">{share.toFixed(1)}%</div>
               </div>
             </li>
           );

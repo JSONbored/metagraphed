@@ -31,10 +31,10 @@ export function NativeOnlyNotice({ context }: { context?: string }) {
       <div className="flex items-start gap-3">
         <Compass className="size-4 shrink-0 text-ink-muted" />
         <div className="min-w-0 flex-1">
-          <div className="mb-1 font-display text-sm font-medium text-ink-strong">
+          <div className="mb-1 font-display text-13 font-medium text-ink-strong">
             Not published for {network.label}
           </div>
-          <p className="text-xs leading-relaxed text-ink-muted">
+          <p className="text-13 leading-relaxed text-ink-muted">
             {notes ||
               `${
                 context ? `The ${context} view` : "This view"

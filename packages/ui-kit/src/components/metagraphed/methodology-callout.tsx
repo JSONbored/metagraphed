@@ -29,7 +29,7 @@ export function MethodologyCallout({
   return (
     <aside
       aria-label="Data freshness and methodology"
-      className="mb-6 rounded-md border border-border mg-glass-soft"
+      className="mb-6 rounded border border-border"
     >
       <button
         type="button"
@@ -39,12 +39,12 @@ export function MethodologyCallout({
       >
         <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
         <span className="min-w-0 flex-1">
-          <span className="block mg-type-caption text-ink-muted">
+          <span className="block text-13 text-ink-muted">
             Data freshness &amp; methodology
           </span>
           {freshLine ? (
             <span
-              className="mt-0.5 block mg-type-data-sm text-ink-muted/80"
+              className="mt-0.5 block text-10 text-ink-muted/80"
               title={freshAbs ?? undefined}
             >
               {freshLine}
@@ -59,9 +59,9 @@ export function MethodologyCallout({
         />
       </button>
       {open ? (
-        <div className="grid gap-3 border-t border-border px-3 py-3 mg-type-caption text-ink-muted md:grid-cols-2">
+        <div className="grid gap-3 border-t border-border px-3 py-3 text-13 text-ink-muted md:grid-cols-2">
           <div>
-            <div className="mg-type-caption text-ink-strong">Sparklines</div>
+            <div className="text-13 text-ink-strong">Sparklines</div>
             <p className="mt-1">
               Uptime &amp; latency sparklines plot the active health window (7d
               default, switchable to 30d). Each point is the mean across every
@@ -70,9 +70,7 @@ export function MethodologyCallout({
             </p>
           </div>
           <div>
-            <div className="mg-type-caption text-ink-strong">
-              Donuts &amp; mosaics
-            </div>
+            <div className="text-13 text-ink-strong">Donuts &amp; mosaics</div>
             <p className="mt-1">
               Pool ratio comes from on-chain AMM reserves; endpoint topology
               counts tracked public surfaces by kind. The mosaic in Operational
@@ -80,7 +78,7 @@ export function MethodologyCallout({
             </p>
           </div>
           <div>
-            <div className="mg-type-caption text-ink-strong">Staleness</div>
+            <div className="text-13 text-ink-strong">Staleness</div>
             <p className="mt-1">
               Tiles show a <span className="text-health-warn-text">stale</span>{" "}
               chip when the snapshot is older than the refresh budget. Visuals
@@ -91,7 +89,7 @@ export function MethodologyCallout({
             </p>
           </div>
           <div>
-            <div className="mg-type-caption text-ink-strong">
+            <div className="text-13 text-ink-strong">
               Verified vs. candidate
             </div>
             <p className="mt-1">
@@ -102,9 +100,7 @@ export function MethodologyCallout({
           </div>
           {stakeRisk ? (
             <div>
-              <div className="mg-type-caption text-ink-strong">
-                Root vs. alpha risk
-              </div>
+              <div className="text-13 text-ink-strong">Root vs. alpha risk</div>
               <p className="mt-1">
                 Root stake (netuid 0) is TAO-denominated with no principal risk
                 — what you stake is what you can unstake. Alpha stake is

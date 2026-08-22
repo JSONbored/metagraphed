@@ -48,7 +48,7 @@ export function CadenceHeatmap({ rows }: { rows: Block[] }) {
         </span>
       }
       action={
-        <div className="flex items-center gap-3 mg-type-caption text-ink-muted">
+        <div className="flex items-center gap-3 text-13 text-ink-muted">
           {mean != null ? <span>mean {humaniseSeconds(mean)}</span> : null}
           <span className={slow ? "text-health-warn-text" : ""}>slow {slow}</span>
           <span className={stalled ? "text-health-down" : ""}>stalled {stalled}</span>
@@ -69,7 +69,7 @@ export function CadenceHeatmap({ rows }: { rows: Block[] }) {
                 params={{ ref: String(block.block_number) }}
                 className={classNames(
                   // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
-                  "mg-focus-ring block h-5 w-[10px] rounded-[2px] transition-transform hover:scale-125",
+                  "mg-focus-ring block h-5 w-[10px] rounded transition-transform hover:scale-125",
                   tone.cls,
                 )}
                 title={`#${formatNumber(block.block_number)} · ${
@@ -106,13 +106,12 @@ function Legend() {
     { label: ">48s", cls: "bg-health-down/80" },
   ];
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border/60 pt-2.5 mg-type-caption text-ink-muted">
+    <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border/60 pt-2.5 text-13 text-ink-muted">
       <span>faster</span>
       <div className="flex flex-wrap items-center gap-1">
         {items.map((i) => (
           <span key={i.label} className="inline-flex items-center gap-1">
-            {/* eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids */}
-            <span className={classNames("inline-block h-2 w-3 rounded-[2px]", i.cls)} />
+            <span className={classNames("inline-block h-2 w-3 rounded", i.cls)} />
             <span>{i.label}</span>
           </span>
         ))}

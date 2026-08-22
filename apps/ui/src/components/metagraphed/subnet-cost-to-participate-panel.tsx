@@ -38,7 +38,7 @@ export function SubnetCostToParticipatePanel({ netuid }: { netuid: number }) {
   const miner = card.declared_compute.miner;
 
   return (
-    <Panel as="section" dense>
+    <Panel as="section">
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure
           label="registration"
@@ -63,7 +63,7 @@ export function SubnetCostToParticipatePanel({ netuid }: { netuid: number }) {
       </div>
 
       {card.declarations_read === 0 ? (
-        <p className="mg-type-caption mt-4 border-t border-border/60 pt-3 text-ink-muted">
+        <p className="text-13 mt-4 border-t border-border/60 pt-3 text-ink-muted">
           No min_compute declaration has been read for this subnet. That is not a finding that
           running here takes nothing — nobody has looked.
         </p>
@@ -76,7 +76,7 @@ export function SubnetCostToParticipatePanel({ netuid }: { netuid: number }) {
         </dl>
       )}
 
-      <ul className="mg-type-caption mt-3 space-y-1 border-t border-border/60 pt-3 text-ink-muted">
+      <ul className="text-13 mt-3 space-y-1 border-t border-border/60 pt-3 text-ink-muted">
         {card.not_modelled.map((line) => (
           <li key={line}>{line}</li>
         ))}
@@ -138,8 +138,8 @@ export function gpuHint(spec: DeclaredComputeSpec | null): string {
 function Spec({ label, value }: { label: string; value: number | null | undefined }) {
   return (
     <div>
-      <dt className="mg-type-caption text-ink-muted">{label}</dt>
-      <dd className="mg-type-body text-ink-strong">{formatNumber(value)}</dd>
+      <dt className="text-13 text-ink-muted">{label}</dt>
+      <dd className="text-13 text-ink-strong">{formatNumber(value)}</dd>
     </div>
   );
 }
@@ -147,9 +147,9 @@ function Spec({ label, value }: { label: string; value: number | null | undefine
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div>
-      <div className="mg-type-caption text-ink-muted">{label}</div>
-      <div className="mg-type-body text-ink-strong">{value}</div>
-      <div className="mg-type-caption text-ink-muted">{hint}</div>
+      <div className="text-13 text-ink-muted">{label}</div>
+      <div className="text-13 text-ink-strong">{value}</div>
+      <div className="text-13 text-ink-muted">{hint}</div>
     </div>
   );
 }

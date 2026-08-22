@@ -106,7 +106,7 @@ export function summarizeTriggerFilter(trigger: OwnerAlertTriggerView): string {
 }
 
 const inputCls =
-  "w-full rounded border border-border bg-card px-2.5 py-1.5 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
+  "w-full rounded border border-border bg-card px-2.5 py-1.5 text-13 text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
 
 export function AlertsManager() {
   const { wallet, status: walletStatus } = useWallet();
@@ -119,7 +119,7 @@ export function AlertsManager() {
         title="Alerts"
         intro="Chain alert triggers you've created with a verified wallet -- pause, edit, or delete, and see recent delivery attempts. Re-verify with your wallet to view (read scope only, never a transaction)."
       />
-      <Panel as="div" dense>
+      <Panel as="div">
         {walletStatus !== "connected" || !wallet ? (
           <EmptyState
             title="Connect your wallet"
@@ -150,7 +150,7 @@ function AlertsSignInPrompt({
 }) {
   return (
     <div className="space-y-3">
-      <p className="mg-type-caption text-ink-muted">
+      <p className="text-13 text-ink-muted">
         Sign a one-time message with your connected wallet to view and manage the alert triggers you
         created with it. This never constructs or broadcasts a transaction -- it only proves you
         control this address.
@@ -158,7 +158,7 @@ function AlertsSignInPrompt({
       {error ? (
         <div
           role="alert"
-          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 mg-type-caption text-health-down"
+          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 text-13 text-health-down"
         >
           {error}
         </div>
@@ -167,7 +167,7 @@ function AlertsSignInPrompt({
         type="button"
         onClick={onSignIn}
         disabled={signingIn}
-        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
       >
         {signingIn ? "Signing in…" : "Sign in with wallet"}
       </button>
@@ -179,7 +179,7 @@ function ErrorPanel({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="rounded border border-health-down/30 bg-health-down/5 p-3 mg-type-caption text-health-down"
+      className="rounded border border-health-down/30 bg-health-down/5 p-3 text-13 text-health-down"
     >
       {message}
     </div>
@@ -206,13 +206,13 @@ function AlertsPanel({ token, onSignOut }: { token: string; onSignOut: () => voi
           already-verified panel so the T6 token is reused, not re-issued. */}
       <PushDevicesManager token={token} />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="mg-type-caption text-ink-muted">
+        <span className="text-13 text-ink-muted">
           {triggers.length} alert{triggers.length === 1 ? "" : "s"}
         </span>
         <button
           type="button"
           onClick={onSignOut}
-          className="rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30"
+          className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
         >
           Sign out
         </button>
@@ -236,21 +236,21 @@ function AlertsPanel({ token, onSignOut }: { token: string; onSignOut: () => voi
 /** #8375 requirement 4: no triggers -> the two entry points as links, not prose. */
 function AlertsEmptyState() {
   return (
-    <div className="rounded border border-dashed border-ink-subtle bg-surface/30 p-6 text-center space-y-3">
-      <div className="font-display text-sm font-medium text-ink-strong">No alerts yet</div>
-      <p className="mg-type-caption text-ink-muted max-w-md mx-auto">
+    <div className="rounded border border-dashed border-ink-subtle bg-surface p-6 text-center space-y-3">
+      <div className="font-display text-13 font-medium text-ink-strong">No alerts yet</div>
+      <p className="text-13 text-ink-muted max-w-md mx-auto">
         Watch a subnet or a validator to get pinged the moment something changes.
       </p>
       <div className="flex items-center justify-center gap-2">
         <Link
           to="/subnets"
-          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong hover:border-ink/30"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong hover:border-ink/30"
         >
           Watch a subnet
         </Link>
         <Link
           to="/validators"
-          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong hover:border-ink/30"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong hover:border-ink/30"
         >
           Watch a validator
         </Link>
@@ -265,7 +265,7 @@ function TriggerEntityChip({ trigger }: { trigger: OwnerAlertTriggerView }) {
       <Link
         to="/subnets/$netuid"
         params={{ netuid: trigger.netuid }}
-        className="inline-flex shrink-0 items-center rounded-full border border-border bg-paper px-2 py-0.5 mg-type-micro text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
+        className="inline-flex shrink-0 items-center rounded border border-border bg-paper px-2 py-0.5 text-10 text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
       >
         SN{trigger.netuid}
       </Link>
@@ -276,14 +276,14 @@ function TriggerEntityChip({ trigger }: { trigger: OwnerAlertTriggerView }) {
       <Link
         to="/accounts/$ss58"
         params={{ ss58: trigger.account }}
-        className="inline-flex shrink-0 items-center rounded-full border border-border bg-paper px-2 py-0.5 mg-type-micro text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
+        className="inline-flex shrink-0 items-center rounded border border-border bg-paper px-2 py-0.5 text-10 text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
       >
         account
       </Link>
     );
   }
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-border bg-paper px-2 py-0.5 mg-type-micro text-ink-muted">
+    <span className="inline-flex shrink-0 items-center rounded border border-border bg-paper px-2 py-0.5 text-10 text-ink-muted">
       network-wide
     </span>
   );
@@ -291,7 +291,7 @@ function TriggerEntityChip({ trigger }: { trigger: OwnerAlertTriggerView }) {
 
 function ChannelBadge({ channel }: { channel: OwnerAlertTriggerView["channel"] }) {
   return (
-    <span className="inline-flex shrink-0 items-center rounded border border-border bg-card px-1.5 py-0.5 mg-type-caption uppercase text-ink-muted">
+    <span className="inline-flex shrink-0 items-center rounded border border-border bg-card px-1.5 py-0.5 text-13 text-ink-muted">
       {channel}
     </span>
   );
@@ -305,17 +305,14 @@ function LastDeliveryPill({
   isLoading: boolean;
 }) {
   if (isLoading) {
-    return <span className="mg-type-caption-sm text-ink-muted">…</span>;
+    return <span className="text-11 text-ink-muted">…</span>;
   }
   if (!delivery) {
-    return <span className="mg-type-caption-sm text-ink-muted">no deliveries yet</span>;
+    return <span className="text-11 text-ink-muted">no deliveries yet</span>;
   }
   return (
     <span
-      className={classNames(
-        "mg-type-caption-sm",
-        delivery.success ? "text-health-ok" : "text-health-down",
-      )}
+      className={classNames("text-11", delivery.success ? "text-health-ok" : "text-health-down")}
       title={delivery.status_code != null ? `HTTP ${delivery.status_code}` : undefined}
     >
       {delivery.success ? "delivered" : "failed"}{" "}
@@ -339,7 +336,7 @@ function DeliveryHistory({
   if (isError) return <ErrorPanel message={describeApiError(error)} />;
   if (deliveries.length === 0) {
     return (
-      <p className="mg-type-caption text-ink-muted px-1 py-2">
+      <p className="text-13 text-ink-muted px-1 py-2">
         No deliveries recorded yet -- this trigger hasn't matched a live event since it was created.
       </p>
     );
@@ -349,7 +346,7 @@ function DeliveryHistory({
       {deliveries.map((d) => (
         <li
           key={d.id}
-          className="flex flex-wrap items-center gap-2 rounded border border-border/60 bg-card px-2 py-1 mg-type-caption-sm"
+          className="flex flex-wrap items-center gap-2 rounded border border-border/60 bg-card px-2 py-1 text-11"
         >
           <span className={d.success ? "text-health-ok" : "text-health-down"}>
             {d.success ? "ok" : "failed"}
@@ -460,19 +457,19 @@ function TriggerRow({
   }
 
   return (
-    <div className="rounded border border-border bg-surface/40">
+    <div className="rounded border border-border bg-surface">
       <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">
         <TriggerEntityChip trigger={trigger} />
-        <span className="min-w-0 flex-1 truncate mg-type-caption text-ink-strong">
+        <span className="min-w-0 flex-1 truncate text-13 text-ink-strong">
           {trigger.name || summarizeTriggerFilter(trigger)}
         </span>
         <ChannelBadge channel={trigger.channel} />
-        <span className="shrink-0 mg-type-caption-sm text-ink-muted">
+        <span className="shrink-0 text-11 text-ink-muted">
           <TimeAgo at={epochMsToIso(trigger.created_at)} />
         </span>
         <LastDeliveryPill delivery={deliveries[0] ?? null} isLoading={deliveriesQuery.isPending} />
         {!trigger.active ? (
-          <span className="shrink-0 rounded border border-health-warn/30 bg-health-warn/10 px-1.5 py-0.5 mg-type-caption text-health-warn">
+          <span className="shrink-0 rounded border border-health-warn/30 bg-health-warn/10 px-1.5 py-0.5 text-13 text-health-warn">
             paused
           </span>
         ) : null}
@@ -481,14 +478,14 @@ function TriggerRow({
             type="button"
             onClick={() => toggleActiveMutation.mutate()}
             disabled={toggleActiveMutation.isPending}
-            className="rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:opacity-50"
+            className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:opacity-50"
           >
             {trigger.active ? "Pause" : "Resume"}
           </button>
           <button
             type="button"
             onClick={() => setEditing((v) => !v)}
-            className="rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30"
+            className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
           >
             Edit
           </button>
@@ -498,14 +495,14 @@ function TriggerRow({
                 type="button"
                 onClick={() => deleteMutation.mutate()}
                 disabled={deleteMutation.isPending}
-                className="rounded border border-health-down/40 bg-health-down/5 px-2 py-1 mg-type-caption font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
+                className="rounded border border-health-down/40 bg-health-down/5 px-2 py-1 text-13 font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
               >
                 {deleteMutation.isPending ? "Deleting…" : "Confirm delete"}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
-                className="rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong"
+                className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong"
               >
                 Cancel
               </button>
@@ -514,7 +511,7 @@ function TriggerRow({
             <button
               type="button"
               onClick={() => setConfirmingDelete(true)}
-              className="rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink-muted hover:text-health-down hover:border-health-down/40"
+              className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-health-down hover:border-health-down/40"
             >
               Delete
             </button>
@@ -522,7 +519,7 @@ function TriggerRow({
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30"
+            className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
           >
             {expanded ? "Hide history" : "History"}
           </button>
@@ -534,7 +531,7 @@ function TriggerRow({
           onSubmit={onSubmitDestination}
           className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-2.5"
         >
-          <span className="mg-type-caption text-ink-muted">Delivery destination</span>
+          <span className="text-13 text-ink-muted">Delivery destination</span>
           <input
             value={destinationInput}
             onChange={(e) => setDestinationInput(e.target.value)}
@@ -543,7 +540,7 @@ function TriggerRow({
           <button
             type="submit"
             disabled={editDestinationMutation.isPending}
-            className="rounded border border-accent/40 bg-primary-soft px-2.5 py-1 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+            className="rounded border border-accent/40 bg-primary-soft px-2.5 py-1 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
           >
             {editDestinationMutation.isPending ? "Saving…" : "Save"}
           </button>

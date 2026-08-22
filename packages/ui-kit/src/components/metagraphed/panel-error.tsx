@@ -40,22 +40,20 @@ export function PanelError({
     <div
       role="alert"
       className={classNames(
-        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded-xl",
+        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded",
         "border border-border/70 bg-card p-6 text-center",
         HEIGHTS[height],
         className,
       )}
     >
-      <div className="grid size-9 place-items-center rounded-full bg-surface-2 text-health-warn">
+      <div className="grid size-9 place-items-center rounded bg-surface-2 text-health-warn">
         <AlertTriangle className="size-4" aria-hidden />
       </div>
       <div className="max-w-sm space-y-1">
-        <div className="font-display mg-type-caption-lg font-semibold text-ink-strong">
+        <div className="font-display text-13 font-semibold text-ink-strong">
           {title}
         </div>
-        <p className="mg-type-caption leading-relaxed text-ink-muted">
-          {message}
-        </p>
+        <p className="text-13 leading-relaxed text-ink-muted">{message}</p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
         {onRetry ? (
@@ -76,7 +74,7 @@ export function PanelError({
                 window.setTimeout(() => setCopied(false), 1400);
               });
             }}
-            className="mg-focus-ring inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-ink-strong"
+            className="mg-focus-ring inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-10 text-ink-muted hover:text-ink-strong"
             aria-label={`Copy error id ${errorId}`}
           >
             {copied ? (
@@ -84,9 +82,7 @@ export function PanelError({
             ) : (
               <Copy className="size-3" aria-hidden />
             )}
-            <span className="tracking-normal normal-case">
-              id · {errorId.slice(0, 8)}
-            </span>
+            <span className="normal-case">id · {errorId.slice(0, 8)}</span>
           </button>
         ) : null}
         {trailing}

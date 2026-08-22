@@ -98,7 +98,7 @@ export function ConcentrationLoader({ netuid }: { netuid: number }) {
       </div>
 
       {/* Holders / entity context strip. */}
-      <Panel as="div" dense bodyClassName="grid grid-cols-2 gap-3 min-[400px]:grid-cols-4">
+      <Panel as="div" bodyClassName="grid grid-cols-2 gap-3 min-[400px]:grid-cols-4">
         <Fact label="Stake holders" value={stake?.holders ?? "—"} />
         <Fact label="Emission holders" value={emission?.holders ?? "—"} />
         <Fact label="Entities" value={c.entity_count ?? "—"} />
@@ -131,10 +131,10 @@ function SharePanel({
   ];
   const allEmpty = bars.every((b) => b.value === 0);
   return (
-    <Panel as="div" dense>
-      <div className="mb-3 mg-type-caption text-ink-muted">{title}</div>
+    <Panel as="div">
+      <div className="mb-3 text-13 text-ink-muted">{title}</div>
       {allEmpty ? (
-        <p className="mg-type-data text-ink-muted">Not enough data yet.</p>
+        <p className="text-11 text-ink-muted">Not enough data yet.</p>
       ) : (
         <BarMini data={bars} max={100} />
       )}
@@ -151,8 +151,8 @@ function pctToBar(v?: number | null): number {
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="mg-type-caption text-ink-muted truncate">{label}</div>
-      <div className="mt-1 min-w-0 truncate font-display text-base font-semibold tabular-nums text-ink-strong leading-none min-[400px]:text-lg">
+      <div className="text-13 text-ink-muted truncate">{label}</div>
+      <div className="mt-1 min-w-0 truncate font-display text-16 font-semibold tabular-nums text-ink-strong leading-none min-[400px]:text-16">
         {value}
       </div>
     </div>
@@ -200,7 +200,7 @@ function DriftCard({ netuid }: { netuid: number }) {
     <div
       role="tablist"
       aria-label="Concentration window"
-      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+      className="inline-flex rounded border border-border bg-surface p-0.5"
     >
       {WINDOWS.map((w) => (
         <button
@@ -210,7 +210,7 @@ function DriftCard({ netuid }: { netuid: number }) {
           aria-selected={w === win}
           onClick={() => setWin(w)}
           className={classNames(
-            "px-2.5 py-1 mg-type-label uppercase rounded transition-colors",
+            "px-2.5 py-1 text-11 rounded transition-colors",
             w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
           )}
         >
@@ -223,7 +223,7 @@ function DriftCard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="mg-type-caption text-ink-muted">Concentration drift</span>
+        <span className="text-13 text-ink-muted">Concentration drift</span>
         {toggle}
       </div>
       {isLoading ? (
@@ -236,7 +236,7 @@ function DriftCard({ netuid }: { netuid: number }) {
           description="Daily concentration snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel as="div" dense bodyClassName="space-y-3">
+        <Panel as="div" bodyClassName="space-y-3">
           {series.stakeGini.length > 0 ? (
             <DriftRow
               label="Stake Gini"
@@ -289,7 +289,7 @@ function DriftRow({
   const last = series[series.length - 1];
   return (
     <div className="grid grid-cols-1 gap-1 min-[400px]:grid-cols-[minmax(0,7rem)_1fr_auto] min-[400px]:items-center min-[400px]:gap-3">
-      <span className="mg-type-label uppercase text-ink-muted">{label}</span>
+      <span className="text-11 text-ink-muted">{label}</span>
       <div className="min-w-0">
         <Sparkline
           values={series}
@@ -300,7 +300,7 @@ function DriftRow({
           ariaLabel={label}
         />
       </div>
-      <span className="min-w-0 font-display text-sm font-semibold tabular-nums text-ink-strong min-[400px]:text-right">
+      <span className="min-w-0 font-display text-13 font-semibold tabular-nums text-ink-strong min-[400px]:text-right">
         {last != null ? format(last) : "—"}
       </span>
     </div>
@@ -372,7 +372,7 @@ function PerformanceLoader({ netuid }: { netuid: number }) {
       </div>
 
       {/* Score spread — 0-1 trust / consensus / validator-trust medians. */}
-      <Panel as="div" dense bodyClassName="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <Panel as="div" bodyClassName="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Fact label="Trust median" value={numStr(p.trust?.p50)} />
         <Fact label="Consensus median" value={numStr(p.consensus?.p50)} />
         <Fact label="Val-trust median" value={numStr(p.validator_trust?.p50)} />
@@ -426,7 +426,7 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
     <div
       role="tablist"
       aria-label="Concentration window"
-      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+      className="inline-flex rounded border border-border bg-surface p-0.5"
     >
       {WINDOWS.map((w) => (
         <button
@@ -436,7 +436,7 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
           aria-selected={w === win}
           onClick={() => setWin(w)}
           className={classNames(
-            "px-2.5 py-1 mg-type-label uppercase rounded transition-colors",
+            "px-2.5 py-1 text-11 rounded transition-colors",
             w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
           )}
         >
@@ -449,7 +449,7 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="mg-type-caption text-ink-muted">Reward drift</span>
+        <span className="text-13 text-ink-muted">Reward drift</span>
         {toggle}
       </div>
       {isLoading ? (
@@ -462,7 +462,7 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
           description="Daily reward-distribution snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel as="div" dense bodyClassName="space-y-3">
+        <Panel as="div" bodyClassName="space-y-3">
           {series.incentiveGini.length > 0 ? (
             <DriftRow
               label="Incentive Gini"
@@ -519,14 +519,14 @@ export function DistributionPanel({ netuid }: { netuid: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="inline-flex rounded-md border border-border bg-surface/40 p-0.5">
+      <div className="inline-flex rounded border border-border bg-surface p-0.5">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setView(t.id)}
             className={classNames(
-              "px-3 py-1 mg-type-label uppercase rounded transition-colors",
+              "px-3 py-1 text-11 rounded transition-colors",
               view === t.id ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
             )}
           >

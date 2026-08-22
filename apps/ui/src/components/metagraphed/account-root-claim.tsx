@@ -29,40 +29,38 @@ export function AccountRootClaim({ ss58 }: { ss58: string }) {
   // a plain statement rather than an error or an empty-state alarm.
   if (!c || !c.claim_kind) {
     return (
-      <Panel as="section" dense>
-        <p className="mg-type-data-sm text-ink-muted">
-          This account has no root-claim state recorded.
-        </p>
+      <Panel as="section">
+        <p className="text-10 text-ink-muted">This account has no root-claim state recorded.</p>
       </Panel>
     );
   }
 
   return (
-    <Panel as="section" dense>
+    <Panel as="section">
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         <div>
-          <div className="mg-type-label text-ink-muted">claim type</div>
-          <div className="mg-type-data text-ink" title="Read from SubtensorModule.RootClaimType.">
+          <div className="text-11 text-ink-muted">claim type</div>
+          <div className="text-11 text-ink" title="Read from SubtensorModule.RootClaimType.">
             {c.claim_kind}
           </div>
         </div>
         <div>
-          <div className="mg-type-label text-ink-muted">hotkeys reached</div>
-          <div className="mg-type-data tabular-nums text-ink">{formatNumber(c.hotkeys.length)}</div>
+          <div className="text-11 text-ink-muted">hotkeys reached</div>
+          <div className="text-11 tabular-nums text-ink">{formatNumber(c.hotkeys.length)}</div>
         </div>
       </div>
 
       {/* The provenance sits beside the figure it qualifies. A reconstructed
           list is inferred from other state, not read from it. */}
       {c.hotkeys_source && c.hotkeys_source !== "measured" ? (
-        <p className="mt-3 mg-type-label text-ink-muted">
+        <p className="mt-3 text-11 text-ink-muted">
           The hotkey list is <strong>{c.hotkeys_source}</strong> — inferred from other state rather
           than read from chain storage, unlike the claim type above.
         </p>
       ) : null}
 
       {c.queried_at ? (
-        <p className="mt-2 mg-type-label text-ink-muted">Read {formatRelative(c.queried_at)}.</p>
+        <p className="mt-2 text-11 text-ink-muted">Read {formatRelative(c.queried_at)}.</p>
       ) : null}
     </Panel>
   );

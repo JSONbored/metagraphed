@@ -40,15 +40,15 @@ function InstallRow({
     <div className="flex items-center gap-3 px-4 py-3">
       <Icon className={classNames("size-4 shrink-0", iconTone)} aria-hidden />
       <div className="min-w-0 flex-1">
-        <code className="block overflow-x-auto whitespace-nowrap font-mono mg-type-caption text-ink-strong">
+        <code className="block overflow-x-auto whitespace-nowrap font-mono text-13 text-ink-strong">
           {command}
         </code>
         {metaHref ? (
-          <ExternalLink href={metaHref} className="mg-type-data-sm text-ink-muted">
+          <ExternalLink href={metaHref} className="text-10 text-ink-muted">
             {meta}
           </ExternalLink>
         ) : (
-          <span className="mg-type-data-sm text-ink-muted">{meta}</span>
+          <span className="text-10 text-ink-muted">{meta}</span>
         )}
       </div>
       <CopyButton value={command} label={copyLabel} compact />
@@ -76,7 +76,7 @@ export function AgentConnectCard({
     <Panel flush>
       <div className="border-b border-border/70 p-4 md:p-6">
         <AgentHarnessPicker mcp={mcp} />
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 mg-type-data">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-11">
           <ExternalLink href={mcp.endpoint} className="text-ink-muted hover:text-ink-strong">
             {mcp.endpoint.replace("https://", "")}
           </ExternalLink>
@@ -114,12 +114,12 @@ export function AgentConnectCard({
       </div>
 
       <div className="border-t border-border/70 p-4 md:p-6">
-        <p className="mg-type-caption text-ink-muted">{copyableAgentDescription}</p>
+        <p className="text-13 text-ink-muted">{copyableAgentDescription}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <ExternalLink
             bare
             href={CLAUDE_URL}
-            className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3.5 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15"
+            className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-accent/10 px-3.5 py-2 text-13 font-medium text-accent hover:bg-accent/15"
           >
             <ClaudeIcon className="size-3.5" aria-hidden /> Open in Claude{" "}
             <ArrowUpRight className="size-3.5" />
@@ -127,7 +127,7 @@ export function AgentConnectCard({
           <ExternalLink
             bare
             href={CHATGPT_URL}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3.5 py-2 mg-type-caption-lg font-medium text-ink-strong hover:border-ink/30"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3.5 py-2 text-13 font-medium text-ink-strong hover:border-ink/30"
           >
             <OpenAIIcon className="size-3.5" aria-hidden /> Open in ChatGPT{" "}
             <ArrowUpRight className="size-3.5" />

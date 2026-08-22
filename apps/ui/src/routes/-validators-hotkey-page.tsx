@@ -121,16 +121,16 @@ function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] })
           placeholder="Filter by netuid"
           className="w-full sm:w-64"
         />
-        <span className="mg-type-data text-ink-muted">
+        <span className="text-11 text-ink-muted">
           {formatNumber(filtered.length)} membership{filtered.length === 1 ? "" : "s"}
         </span>
       </div>
 
       {/* Desktop table. #8251: the per-row Stake buttons died — the page's ONE
           Delegate CTA lives in the header. */}
-      <div className="hidden md:block overflow-x-auto rounded-md border border-border">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50">
+      <div className="hidden md:block overflow-x-auto rounded border border-border">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface">
             <tr>
               <th className={TH}>Subnet</th>
               <th className={`${TH} text-right`}>UID</th>
@@ -143,32 +143,32 @@ function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] })
           </thead>
           <tbody className="divide-y divide-border">
             {visible.map((s) => (
-              <tr key={s.netuid} className="hover:bg-surface/40">
-                <td className="px-3 py-2 mg-type-data">
+              <tr key={s.netuid} className="hover:bg-surface">
+                <td className="px-3 py-2 text-11">
                   <SubnetCellLink s={s} />
                 </td>
-                <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+                <td className="px-3 py-2 text-right font-mono text-13 tabular-nums text-ink-muted">
                   {s.uid}
                 </td>
-                <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
+                <td className="px-3 py-2 text-right font-mono text-13 tabular-nums text-ink-strong">
                   {subnetStakeStr(s)}
                 </td>
-                <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink">
+                <td className="px-3 py-2 text-right font-mono text-13 tabular-nums text-ink">
                   {subnetEmissionStr(s)}
                 </td>
-                <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink">
+                <td className="px-3 py-2 text-right font-mono text-13 tabular-nums text-ink">
                   {scoreStr(s.dividends)}
                 </td>
-                <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+                <td className="px-3 py-2 text-right font-mono text-13 tabular-nums text-ink-muted">
                   {scoreStr(s.validator_trust)}
                 </td>
                 <td className="px-3 py-2 text-center">
                   {s.validator_permit ? (
-                    <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
+                    <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-13 text-accent-text">
                       Yes
                     </span>
                   ) : (
-                    <span className="mg-type-data-sm text-ink-subtle-text">—</span>
+                    <span className="text-10 text-ink-subtle-text">—</span>
                   )}
                 </td>
               </tr>
@@ -181,16 +181,16 @@ function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] })
           expandable per-row detail — the 8-column table doesn't survive 390px. */}
       <ul className="space-y-2 md:hidden">
         {visible.map((s) => (
-          <li key={s.netuid} className="rounded-md border border-border bg-card">
+          <li key={s.netuid} className="rounded border border-border bg-card">
             <details>
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
                 <SubnetCellLink s={s} />
-                <span className="flex items-center gap-4 mg-type-data tabular-nums">
+                <span className="flex items-center gap-4 text-11 tabular-nums">
                   <span className="text-ink-strong">{subnetStakeStr(s)}</span>
                   <span className="text-ink-muted">{scoreStr(s.dividends)}</span>
                 </span>
               </summary>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-border px-3 py-2.5 mg-type-data">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-border px-3 py-2.5 text-11">
                 <MobileField label="UID" value={String(s.uid)} />
                 <MobileField label="Emission" value={subnetEmissionStr(s)} />
                 <MobileField label="Val trust" value={scoreStr(s.validator_trust)} />
@@ -205,7 +205,7 @@ function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] })
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="block w-full rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
+          className="block w-full rounded border border-border bg-card px-3 py-2 text-13 font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
         >
           Show all {formatNumber(filtered.length)} memberships
         </button>
@@ -238,7 +238,7 @@ function MobileField({ label, value }: { label: string; value: string }) {
   );
 }
 
-const TH = "mg-type-caption px-3 py-2 text-ink-muted";
+const TH = "text-13 px-3 py-2 text-ink-muted";
 
 function nominatorsQueryParams(search: ValidatorNominatorsSearch): Record<string, string | number> {
   const params: Record<string, string | number> = {
@@ -329,7 +329,7 @@ function ApyKpiTile({
       value={formatApyPct(value)}
       hint={usingSnapshot ? "latest snapshot · net of take" : `${window} history · net of take`}
       truncate={false}
-      className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
+      className="rounded border-border/80 p-4"
       chart={
         <SegmentedToggle<ValidatorApyWindow>
           options={APY_WINDOWS.map((w) => ({ value: w, label: w }))}
@@ -390,7 +390,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
         title={displayName}
         description={
           <span className="block space-y-4">
-            <span className="block max-w-2xl text-sm text-ink-muted">
+            <span className="block max-w-2xl text-13 text-ink-muted">
               Cross-subnet performance, nominators, and staking history for one Bittensor validator
               hotkey.
             </span>
@@ -402,8 +402,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             {/* Hotkey + coldkey (#6427) get identical, symmetric AddressDisplay
                 rows -- the operator name is already the page title, so it
                 isn't repeated here. */}
-            {/* eslint-disable-next-line no-restricted-syntax -- genuinely 80% (#8554): this tier is 95%; .mg-glass would add blur(8px), a real visual change */}
-            <dl className="max-w-2xl divide-y divide-border/80 rounded-2xl border border-border/80 bg-card/80 mg-card-glow-accent">
+            <dl className="max-w-2xl divide-y divide-border/80 rounded border border-border/80 bg-card">
               <FieldRow label="Hotkey">
                 <span className="flex w-full min-w-0 items-center">
                   <AddressDisplay
@@ -440,7 +439,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
                   <button
                     type="button"
                     onClick={open}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent-surface px-3.5 py-2 mg-type-caption-lg font-medium text-accent-text transition-colors hover:border-accent/70"
+                    className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-accent-surface px-3.5 py-2 text-13 font-medium text-accent-text transition-colors hover:border-accent/70"
                   >
                     <Coins className="size-3.5" aria-hidden />
                     Delegate
@@ -458,7 +457,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
                     <button
                       type="button"
                       onClick={open}
-                      className="inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Percent className="size-3" aria-hidden />
                       Manage take
@@ -492,14 +491,14 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
       {isUnrecognizedValidator(detail) ? (
         <div
           role="status"
-          className="mb-8 flex items-start gap-3 rounded-2xl border border-health-warn/40 bg-health-warn/5 px-4 py-3"
+          className="mb-8 flex items-start gap-3 rounded border border-health-warn/40 bg-health-warn/5 px-4 py-3"
         >
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-health-warn" aria-hidden />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-ink-strong">
+            <p className="text-13 font-medium text-ink-strong">
               This hotkey isn&apos;t a registered validator
             </p>
-            <p className="mt-1 max-w-2xl mg-type-caption-lg text-ink-muted">
+            <p className="mt-1 max-w-2xl text-13 text-ink-muted">
               The address is a valid ss58, but it has never been seen validating on any subnet —
               every figure below reads zero for that reason, not because the validator is idle. It
               may be mistyped, or a coldkey rather than a hotkey.
@@ -525,7 +524,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           hint={`Root ${taoCompact(detail.root_stake_tao)} · Alpha ${taoCompact(detail.alpha_stake_tao)}`}
           truncate={false}
           tone="accent"
-          className="rounded-2xl border-accent/25 mg-glass-opaque p-4 mg-card-glow-accent"
+          className="rounded border-accent/25 p-4"
         />
         <ApyKpiTile hotkey={hotkey} take={detail.take} snapshotApy={snapshotApy} />
         <StatTile
@@ -533,28 +532,28 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           eyebrow="Take rate"
           value={formatTakePct(detail.take)}
           hint="commission kept from delegators"
-          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
+          className="rounded border-border/80 p-4"
         />
         <StatTile
           icon={Boxes}
           eyebrow="Active subnets"
           value={formatNumber(detail.subnet_count)}
           hint="validator memberships"
-          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
+          className="rounded border-border/80 p-4"
         />
         <StatTile
           icon={Users}
           eyebrow="Nominators"
           value={detail.nominator_count != null ? formatNumber(detail.nominator_count) : "—"}
           hint="distinct coldkeys delegated"
-          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
+          className="rounded border-border/80 p-4"
         />
         <StatTile
           icon={Gauge}
           eyebrow="Avg validator trust"
           value={scoreStr(detail.avg_validator_trust)}
           hint="mean across subnets"
-          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
+          className="rounded border-border/80 p-4"
         />
       </div>
 
@@ -609,7 +608,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
       <div className="mt-6">
         <Link
           to="/validators"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
         >
           ← All validators
         </Link>
@@ -646,7 +645,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-      <dt className="mg-type-caption text-ink-muted sm:w-20 sm:shrink-0">{label}</dt>
+      <dt className="text-13 text-ink-muted sm:w-20 sm:shrink-0">{label}</dt>
       <dd className="min-w-0 w-full sm:flex-1">{children}</dd>
     </div>
   );

@@ -45,7 +45,6 @@ export const tableSearchSchema = z.object({
   // Layout state for list routes that support multiple views + row density.
   // Additive + optional with safe fallbacks so the toggles persist in the URL.
   view: z.enum(["table", "grid", "matrix"]).catch("table").default("table"),
-  density: z.enum(["comfortable", "compact"]).catch("comfortable").default("comfortable"),
 });
 
 /**

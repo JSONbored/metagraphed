@@ -62,7 +62,7 @@ export function ValidatorHistoryChart({ hotkey }: { hotkey: string }) {
     <div
       role="tablist"
       aria-label="History window"
-      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+      className="inline-flex rounded border border-border bg-surface p-0.5"
     >
       {WINDOWS.map((w) => (
         <button
@@ -72,7 +72,7 @@ export function ValidatorHistoryChart({ hotkey }: { hotkey: string }) {
           aria-selected={w === win}
           onClick={() => setWin(w)}
           className={classNames(
-            "px-2.5 py-1 mg-type-label uppercase rounded transition-colors",
+            "px-2.5 py-1 text-11 rounded transition-colors",
             w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
           )}
         >
@@ -95,7 +95,7 @@ export function ValidatorHistoryChart({ hotkey }: { hotkey: string }) {
           description="Daily snapshots will appear here once enough chain history has accumulated for this validator."
         />
       ) : (
-        <Panel as="div" dense bodyClassName="space-y-3">
+        <Panel as="div" bodyClassName="space-y-3">
           {series.stake.length > 0 ? (
             <HistoryRow
               label="Staked"
@@ -133,11 +133,11 @@ function HistoryRow({
   const display = format ? format(last) : Number.isFinite(last) ? formatNumber(last) : "—";
   return (
     <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 mg-type-label uppercase text-ink-muted">{label}</span>
+      <span className="w-28 shrink-0 text-11 text-ink-muted">{label}</span>
       <div className="flex-1 min-w-0">
         <Sparkline values={series} color={color} width={220} height={28} formatValue={format} />
       </div>
-      <span className="w-20 shrink-0 text-right font-display text-sm font-semibold tabular-nums text-ink-strong">
+      <span className="w-20 shrink-0 text-right font-display text-13 font-semibold tabular-nums text-ink-strong">
         {display}
       </span>
     </div>

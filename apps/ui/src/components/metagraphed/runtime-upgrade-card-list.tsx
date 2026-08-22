@@ -35,20 +35,19 @@ export function RuntimeUpgradeCardList({ rows, className }: RuntimeUpgradeCardLi
       {rows.map((row) => (
         <Panel
           as="div"
-          dense
           key={`${row.spec_version}-${row.block_number}`}
           className="min-w-0"
           bodyClassName="space-y-2"
         >
           <div className="flex items-baseline justify-between gap-2">
-            <span className="mg-type-caption text-ink-muted">Spec Version</span>
-            <span className="font-mono mg-type-caption-lg tabular-nums text-ink-strong">
+            <span className="text-13 text-ink-muted">Spec Version</span>
+            <span className="font-mono text-13 tabular-nums text-ink-strong">
               {formatNumber(row.spec_version)}
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-2">
-            <span className="mg-type-caption text-ink-muted">Block</span>
-            <span className="font-mono mg-type-caption tabular-nums">
+            <span className="text-13 text-ink-muted">Block</span>
+            <span className="font-mono text-13 tabular-nums">
               {row.block_number != null ? (
                 <Link
                   to="/blocks/$ref"
@@ -63,8 +62,8 @@ export function RuntimeUpgradeCardList({ rows, className }: RuntimeUpgradeCardLi
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-2">
-            <span className="mg-type-caption text-ink-muted">Observed</span>
-            <span className="font-mono mg-type-caption text-ink-muted">
+            <span className="text-13 text-ink-muted">Observed</span>
+            <span className="font-mono text-13 text-ink-muted">
               {row.observed_at ? <TimeAgo at={row.observed_at} /> : "—"}
             </span>
           </div>

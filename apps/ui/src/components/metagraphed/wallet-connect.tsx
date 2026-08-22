@@ -52,7 +52,7 @@ export function WalletConnectButton() {
           aria-label={connected ? `Wallet connected: ${wallet.address}` : "Connect wallet"}
           title={connected ? `Connected · ${wallet.source} · ${wallet.address}` : "Connect wallet"}
           className={classNames(
-            "inline-flex items-center gap-1.5 rounded border px-2 py-1.5 min-h-11 mg-type-data transition-colors",
+            "inline-flex items-center gap-1.5 rounded border px-2 py-1.5 min-h-11 text-11 transition-colors",
             connected
               ? "border-ink-strong/40 bg-surface text-ink-strong"
               : "border-border bg-card text-ink-muted hover:text-ink-strong hover:border-ink/30",
@@ -107,7 +107,7 @@ export function WalletConnectPanel({ onConnected }: { onConnected?: () => void }
     <div className="space-y-3">
       <Disclaimer />
       {status === "no-accounts" ? (
-        <div className="rounded border border-border bg-surface/40 px-2 py-1.5 mg-type-caption text-ink-muted">
+        <div className="rounded border border-border bg-surface px-2 py-1.5 text-13 text-ink-muted">
           No accounts available — open your wallet extension and make sure at least one account is
           shared with this site.
         </div>
@@ -115,7 +115,7 @@ export function WalletConnectPanel({ onConnected }: { onConnected?: () => void }
       {status === "error" ? (
         <div
           role="alert"
-          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 mg-type-caption text-health-down"
+          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 text-13 text-health-down"
         >
           {error ?? "Failed to connect wallet."}
         </div>
@@ -126,7 +126,7 @@ export function WalletConnectPanel({ onConnected }: { onConnected?: () => void }
           await connect();
         }}
         disabled={status === "connecting"}
-        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-60"
+        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-3 py-2 text-13 font-medium text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-60"
       >
         {status === "connecting" ? (
           <>
@@ -146,7 +146,7 @@ export function WalletConnectPanel({ onConnected }: { onConnected?: () => void }
 
 function Disclaimer() {
   return (
-    <div className="flex items-start gap-1.5 mg-type-caption text-ink-muted">
+    <div className="flex items-start gap-1.5 text-13 text-ink-muted">
       <ShieldCheck className="mt-0.5 size-3 shrink-0 text-ink-muted" aria-hidden="true" />
       <span>{DISCLAIMER}</span>
     </div>
@@ -166,7 +166,7 @@ function NoExtensionView() {
           <li key={w.label}>
             <ExternalLink
               href={w.href}
-              className="w-full justify-between gap-2 rounded border border-border bg-card px-2 py-1.5 mg-type-caption text-ink-strong hover:border-ink/30 transition-colors"
+              className="w-full justify-between gap-2 rounded border border-border bg-card px-2 py-1.5 text-13 text-ink-strong hover:border-ink/30 transition-colors"
             >
               {w.label}
             </ExternalLink>
@@ -186,7 +186,7 @@ function AccountPicker({
 }) {
   return (
     <div className="space-y-2">
-      <div className="mg-label mb-1">Choose an account</div>
+      <div className="text-10 text-ink-muted mb-1">Choose an account</div>
       <ul className="space-y-1">
         {accounts.map((account) => (
           <li key={account.address}>
@@ -196,10 +196,10 @@ function AccountPicker({
               className="w-full flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-left transition-colors hover:border-ink/30 min-h-9"
             >
               <span className="min-w-0 flex-1">
-                <span className="block mg-type-caption font-medium text-ink-strong truncate">
+                <span className="block text-13 font-medium text-ink-strong truncate">
                   {account.meta.name || shortHash(account.address, 6)}
                 </span>
-                <span className="block mg-type-caption text-ink-muted truncate">
+                <span className="block text-13 text-ink-muted truncate">
                   {shortHash(account.address, 6)} · {account.meta.source}
                 </span>
               </span>
@@ -230,11 +230,9 @@ function ConnectedView({
               ss58={wallet.address}
               fallback={<>{wallet.address}</>}
               keep={6}
-              valueClassName="block mg-type-caption font-medium text-ink-strong font-mono truncate"
+              valueClassName="block text-13 font-medium text-ink-strong font-mono truncate"
             />
-            <span className="block mg-type-caption text-ink-muted">
-              Connected via {wallet.source}
-            </span>
+            <span className="block text-13 text-ink-muted">Connected via {wallet.source}</span>
           </span>
         </div>
       </div>
@@ -246,7 +244,7 @@ function ConnectedView({
           into /accounts' own "Your wallet" panel. */}
       <Link
         to="/accounts"
-        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 transition-colors"
+        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 transition-colors"
       >
         <Wallet className="size-3.5" aria-hidden="true" />
         Your positions
@@ -254,12 +252,12 @@ function ConnectedView({
       <button
         type="button"
         onClick={onDisconnect}
-        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-13 font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
       >
         <LogOut className="size-3.5" aria-hidden="true" />
         Disconnect
       </button>
-      <p className="flex items-start gap-1.5 mg-type-caption text-ink-muted">
+      <p className="flex items-start gap-1.5 text-13 text-ink-muted">
         <ShieldCheck className="mt-0.5 size-2.5 shrink-0" aria-hidden="true" />
         <span>metagraphed never sees your keys.</span>
       </p>

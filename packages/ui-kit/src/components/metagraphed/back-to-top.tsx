@@ -64,9 +64,9 @@ export function BackToTop({ threshold = 600 }: { threshold?: number }) {
       tabIndex={visible ? 0 : -1}
       className={classNames(
         "fixed z-[var(--mg-z-overlay)] bottom-5 right-5 md:bottom-7 md:right-7",
-        "inline-flex items-center gap-1.5 rounded-full border border-border mg-glass",
-        "px-3 py-2 mg-type-label uppercase text-ink-strong",
-        "shadow-[var(--mg-shadow-pop)] hover:border-accent/60 hover:text-accent",
+        "inline-flex items-center gap-1.5 rounded border border-border",
+        "px-3 py-2 text-11 text-ink-strong",
+        "hover:border-accent/60 hover:text-accent",
         "transition-[opacity,transform,border-color,color] duration-200",
         visible
           ? "opacity-100 translate-y-0 pointer-events-auto"

@@ -49,8 +49,8 @@ export function Chip({
       title={title}
       onClick={onClick}
       className={classNames(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5",
-        "mg-type-data-sm leading-none whitespace-nowrap transition-colors",
+        "inline-flex items-center gap-1.5 rounded border px-2 py-0.5",
+        "text-10 leading-none whitespace-nowrap transition-colors",
         onClick ? "mg-focus-ring hover:border-ink/30 cursor-pointer" : null,
         TONE_CLASSES[tone],
         className,
@@ -70,13 +70,9 @@ export function Chip({
           {icon}
         </span>
       ) : null}
-      {label ? (
-        <span className="uppercase tracking-widest opacity-70">{label}</span>
-      ) : null}
+      {label ? <span className="opacity-70">{label}</span> : null}
       {children != null ? (
-        <span className="text-ink-strong normal-case tracking-normal">
-          {children}
-        </span>
+        <span className="text-ink-strong normal-case">{children}</span>
       ) : null}
     </Cmp>
   );

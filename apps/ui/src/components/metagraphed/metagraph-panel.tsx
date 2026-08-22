@@ -92,13 +92,13 @@ export function MetagraphTableLoader({
 
       {/* Stake distribution across the leading UIDs. */}
       {stakeBars.length > 0 ? (
-        <Panel as="div" dense>
+        <Panel as="div">
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="mg-type-caption text-ink-muted">
+            <span className="text-13 text-ink-muted">
               Stake distribution · top {stakeBars.length} UIDs
             </span>
             <span className="ml-auto flex items-center gap-2">
-              <span className="mg-type-data-sm text-ink-muted">
+              <span className="text-10 text-ink-muted">
                 peak {taoCompact(stakeBars[0]?.value)} τ
               </span>
               {freshness}
@@ -112,7 +112,7 @@ export function MetagraphTableLoader({
 
       {/* Permit filter + sortable neuron table. */}
       <div className="flex items-center justify-between gap-3">
-        <span className="mg-type-caption text-ink-muted">
+        <span className="text-13 text-ink-muted">
           {filtered.length} of {neurons.length} neurons
         </span>
         <button
@@ -120,10 +120,10 @@ export function MetagraphTableLoader({
           onClick={() => setPermitOnly((v) => !v)}
           aria-pressed={permitOnly}
           className={classNames(
-            "inline-flex items-center gap-1.5 rounded border px-2.5 py-1 mg-type-label uppercase transition-colors",
+            "inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-11 transition-colors",
             permitOnly
               ? "border-accent/40 bg-accent-surface text-accent-text"
-              : "border-border bg-surface/40 text-ink-muted hover:text-ink-strong",
+              : "border-border bg-surface text-ink-muted hover:text-ink-strong",
           )}
         >
           <ShieldCheck className="size-3" aria-hidden />

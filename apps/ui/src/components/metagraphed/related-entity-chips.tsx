@@ -21,7 +21,7 @@ export function RelatedEntityChipRow({ children }: { children: ReactNode }) {
 }
 
 export const relatedEntityChipLinkClass =
-  "rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+  "rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 /** Presentational chip body — wrap with a typed `<Link>` or hash `<a>`. */
 export function RelatedEntityChip({
@@ -76,7 +76,7 @@ export function BlockNeighborNav({
   return (
     <nav
       aria-label="Adjacent blocks"
-      className="inline-flex items-center gap-1.5 mg-type-data-sm tabular-nums"
+      className="inline-flex items-center gap-1.5 text-10 tabular-nums"
     >
       {prev != null ? (
         <Link

@@ -11,7 +11,16 @@ import {
   type IconSource,
 } from "./brand-overrides";
 
+/** Initials are sized from the mark but snapped to the type scale (#11605). */
+function initialsSize(size: number): number {
+  if (size < 26) return 10;
+  if (size < 32) return 11;
+  if (size < 44) return 13;
+  return 16;
+}
+
 /** A candidate served by our own icon proxy (CORS-enabled; trust its sizing). */
+
 function isProxiedIcon(candidate?: string | null): boolean {
   return Boolean(
     candidate && ICON_PROXY_URL && candidate.startsWith(ICON_PROXY_URL),
@@ -403,7 +412,7 @@ export function BrandIcon({
 
   const baseClasses = classNames(
     "relative inline-flex items-center justify-center shrink-0 overflow-hidden",
-    "rounded-md border border-border",
+    "rounded border border-border",
     needsContrastTile ? "bg-white/95" : "bg-surface",
     className,
   );
@@ -428,7 +437,7 @@ export function BrandIcon({
       >
         <span
           className="font-display font-semibold tabular-nums leading-none"
-          style={{ fontSize: Math.max(10, Math.round(size * 0.42)) }}
+          style={{ fontSize: initialsSize(size) }}
           aria-hidden="true"
         >
           {monogramFor(name, fallback)}
@@ -453,7 +462,7 @@ export function BrandIcon({
         >
           <span
             className="font-display font-semibold tabular-nums leading-none"
-            style={{ fontSize: Math.max(10, Math.round(size * 0.42)) }}
+            style={{ fontSize: initialsSize(size) }}
           >
             {monogramFor(name, fallback)}
           </span>

@@ -16,7 +16,7 @@ takes plain props and renders standalone.
 
 ## Styling idiom — Tailwind v4 utility classes + semantic tokens
 
-This is a Tailwind design system ("Bone & Ink") — style with utility classes, not
+This is a Tailwind design system (v2, #11605 — one family, seven sizes, one radius) — style with utility classes, not
 inline styles or a CSS-in-JS prop API. The classes below resolve through named
 CSS custom properties (not raw Tailwind palette colors like `bg-emerald-500`) —
 always reach for the semantic name:
@@ -38,9 +38,9 @@ inline CSS variable values, e.g. `color="var(--chart-1)"` or
 `style={{ background: "var(--chart-3)" }}`. Follow that pattern for chart/series
 color, don't invent a `bg-chart-*` class.
 
-Typography: `font-display` (Space Grotesk — headings, use explicitly),
-`font-mono` (JetBrains Mono — code, addresses, numeric labels, timestamps, use
-explicitly). DM Sans is the body default (no `font-sans` class needed — it's
+Typography: IBM Plex Mono is the only UI face (`font-mono`, `font-sans` and
+`font-display` all resolve to it); IBM Plex Sans is used only by `.mg-prose`
+(docs/news article bodies). Sizes are `text-10/11/13/16/28/40` (
 already what text renders in). Sizes run small and dense throughout this system
 — real components lean on `text-[9px]`–`text-sm` with `uppercase tracking-wide`
 for labels far more than default Tailwind text sizes; match that density rather
@@ -53,7 +53,7 @@ than defaulting to `text-base`.
   Read it before inventing a new color.
 - **Per-component API + usage**: each component's `<Name>.prompt.md` (composition
   examples come from this repo's real previews, not invented).
-- **Fonts**: `fonts/fonts.css` — Space Grotesk, DM Sans, JetBrains Mono, self-hosted
+- **Fonts**: `packages/ui-kit/src/fonts/` — IBM Plex Mono + IBM Plex Sans (400/500/600), self-hosted
   as real woff2 at exactly the weights this app uses (400/500/600 — verified by
   grepping every `font-weight` utility class in `apps/ui/src`; `font-bold`/700
   never appears anywhere in the app, so it isn't shipped).

@@ -29,7 +29,7 @@ export function AboutPage() {
           <ExternalLink
             href={GITHUB_REPO}
             bare
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-4 py-2 text-sm font-medium text-paper hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-1.5 rounded bg-ink-strong px-4 py-2 text-13 font-medium text-paper hover:opacity-90 transition-opacity"
           >
             <Github className="size-3.5" /> View on GitHub
             <ArrowUpRight className="size-3.5" />
@@ -154,10 +154,8 @@ export function AboutPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
-        {title}
-      </h2>
-      <div className="text-sm leading-relaxed text-ink space-y-2">{children}</div>
+      <h2 className="font-display text-13 font-semibold text-ink-strong mb-2">{title}</h2>
+      <div className="text-13 leading-relaxed text-ink space-y-2">{children}</div>
     </section>
   );
 }
@@ -165,8 +163,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Term({ name, desc }: { name: string; desc: string }) {
   return (
     <div className="grid grid-cols-[auto_1fr] gap-3 items-baseline">
-      <dt className="mg-type-label uppercase text-ink-strong whitespace-nowrap">{name}</dt>
-      <dd className="text-sm text-ink-muted">{desc}</dd>
+      <dt className="text-11 text-ink-strong whitespace-nowrap">{name}</dt>
+      <dd className="text-13 text-ink-muted">{desc}</dd>
     </div>
   );
 }
@@ -224,8 +222,8 @@ function AtAGlance() {
     },
   ];
   return (
-    <Panel as="div" dense>
-      <div className="mg-label mb-3 inline-flex items-center gap-2">
+    <Panel as="div">
+      <div className="text-10 text-ink-muted mb-3 inline-flex items-center gap-2">
         <span className="mg-live-dot" /> At a glance
       </div>
       <ul className="space-y-2.5">
@@ -233,14 +231,14 @@ function AtAGlance() {
           <li key={label}>
             <Link
               to={to}
-              className="group flex items-center gap-3 rounded-md border border-transparent hover:border-border hover:bg-surface/40 px-2 py-1.5 -mx-2 transition-colors"
+              className="group flex items-center gap-3 rounded border border-transparent hover:border-border hover:bg-surface px-2 py-1.5 -mx-2 transition-colors"
             >
-              <span className="inline-flex size-7 items-center justify-center rounded-md bg-surface/70 text-ink shrink-0">
+              <span className="inline-flex size-7 items-center justify-center rounded bg-surface text-ink shrink-0">
                 <Icon className="size-3.5" />
               </span>
               <div className="min-w-0 flex-1">
-                <div className="mg-label">{label}</div>
-                <div className="font-display text-base font-semibold text-ink-strong tabular-nums">
+                <div className="text-10 text-ink-muted">{label}</div>
+                <div className="font-display text-16 font-semibold text-ink-strong tabular-nums">
                   {phase === "pending" ? (
                     <Skeleton className="mt-1 h-4 w-16" />
                   ) : phase === "error" ? (
@@ -250,7 +248,7 @@ function AtAGlance() {
                   )}
                 </div>
               </div>
-              <ArrowUpRight className="size-3.5 text-ink-muted group-hover:text-ink-strong group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              <ArrowUpRight className="size-3.5 text-ink-muted group-hover:text-ink-strong transition-colors" />
             </Link>
           </li>
         ))}
@@ -258,13 +256,13 @@ function AtAGlance() {
       <div className="mt-4 border-t border-border pt-3 grid gap-1.5">
         <Link
           to="/apis/schemas"
-          className="mg-type-data text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
+          className="text-11 text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
         >
           → API & schemas
         </Link>
         <Link
           to="/contribute"
-          className="mg-type-data text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
+          className="text-11 text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
         >
           → Registry gaps
         </Link>

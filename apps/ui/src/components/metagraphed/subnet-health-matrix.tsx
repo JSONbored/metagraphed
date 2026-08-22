@@ -61,25 +61,23 @@ export function SubnetHealthMatrix() {
                     to="/subnets/$netuid"
                     params={{ netuid: s.netuid }}
                     className={classNames(
-                      "group flex aspect-square items-center justify-center rounded transition-all duration-150 ring-0 hover:ring-2 hover:ring-accent/40 hover:scale-110",
+                      "group flex aspect-square items-center justify-center rounded transition-colors ring-0 hover:ring-2 hover:ring-accent/40",
                       tone,
                       TONE_TEXT[s.health ?? "unknown"],
                     )}
                     aria-label={`SN${s.netuid}${s.name ? ` — ${s.name}` : ""} — ${s.health ?? "unknown"}`}
                   >
-                    <span className="mg-type-data-sm font-semibold leading-none tabular-nums tracking-tight">
+                    <span className="text-10 font-semibold leading-none tabular-nums">
                       {s.netuid}
                     </span>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="mg-type-caption">
+                <TooltipContent side="top" className="text-13">
                   <div className="font-display font-semibold text-ink-strong">
                     SN{s.netuid}{" "}
                     {s.name ? <span className="text-ink-muted">· {s.name}</span> : null}
                   </div>
-                  <div className="mg-type-caption text-ink-muted mt-0.5">
-                    {s.health ?? "unknown"}
-                  </div>
+                  <div className="text-13 text-ink-muted mt-0.5">{s.health ?? "unknown"}</div>
                 </TooltipContent>
               </Tooltip>
             );
@@ -99,7 +97,7 @@ function Legend() {
     { label: "Unknown", state: "unknown" },
   ];
   return (
-    <div className="flex flex-wrap items-center gap-3 mg-type-caption text-ink-muted">
+    <div className="flex flex-wrap items-center gap-3 text-13 text-ink-muted">
       {items.map((i) => (
         <span key={i.state} className="inline-flex items-center gap-1.5">
           <span className={classNames("size-2 rounded", TONE[i.state])} aria-hidden />

@@ -23,7 +23,7 @@ export const CHANNELS = ["webhook", "discord"] as const;
 export type Channel = (typeof CHANNELS)[number];
 
 export const inputCls =
-  "w-full rounded border border-border bg-card px-2.5 py-1.5 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
+  "w-full rounded border border-border bg-card px-2.5 py-1.5 text-13 text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
 
 /** Distinguishes the create-token gate, validation, and rate-limit rejections. */
 export function describeApiError(error: unknown): string {
@@ -43,7 +43,7 @@ export function ErrorPanel({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="rounded border border-health-down/30 bg-health-down/5 p-3 mg-type-caption text-health-down"
+      className="rounded border border-health-down/30 bg-health-down/5 p-3 text-13 text-health-down"
     >
       {message}
     </div>
@@ -63,12 +63,12 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block mg-type-caption text-ink-muted">
+      <span className="mb-1 block text-13 text-ink-muted">
         {label}
         {required ? <span className="text-health-down"> *</span> : null}
       </span>
       {children}
-      {hint ? <span className="mt-1 block mg-type-caption text-ink-muted">{hint}</span> : null}
+      {hint ? <span className="mt-1 block text-13 text-ink-muted">{hint}</span> : null}
     </label>
   );
 }
@@ -91,7 +91,7 @@ export function ChannelAndDestinationFields({
       <Field label="Delivery channel">
         <div className="flex gap-4">
           {CHANNELS.map((c) => (
-            <label key={c} className="inline-flex items-center gap-1.5 mg-type-caption text-ink">
+            <label key={c} className="inline-flex items-center gap-1.5 text-13 text-ink">
               <input
                 type="radio"
                 name="channel"
@@ -159,8 +159,8 @@ export function WalletVerifyForToken({
 
   if (walletStatus !== "connected" || !wallet) {
     return (
-      <div className="rounded border border-border bg-surface/40 p-3">
-        <p className="mb-2 mg-type-caption text-ink-muted">
+      <div className="rounded border border-border bg-surface p-3">
+        <p className="mb-2 text-13 text-ink-muted">
           Or connect a wallet to verify yourself — no operator token needed.
         </p>
         <WalletConnectPanel />
@@ -171,14 +171,14 @@ export function WalletVerifyForToken({
   if (watchToken.status === "active" && watchToken.token) {
     return (
       <div className="flex items-center justify-between gap-2 rounded border border-ink-strong/40 bg-surface px-2 py-1.5">
-        <span className="inline-flex items-center gap-1.5 mg-type-caption text-ink-strong">
+        <span className="inline-flex items-center gap-1.5 text-13 text-ink-strong">
           <Check className="size-3.5 text-health-ok shrink-0" aria-hidden="true" />
           Verified with wallet {shortHash(wallet.address, 4)} — token filled in below.
         </span>
         <button
           type="button"
           onClick={watchToken.clear}
-          className="inline-flex shrink-0 items-center gap-1 mg-type-caption text-ink-muted hover:text-ink-strong"
+          className="inline-flex shrink-0 items-center gap-1 text-13 text-ink-muted hover:text-ink-strong"
         >
           <LogOut className="size-3 shrink-0" aria-hidden="true" />
           Use a different token
@@ -188,15 +188,15 @@ export function WalletVerifyForToken({
   }
 
   return (
-    <div className="space-y-2 rounded border border-border bg-surface/40 p-3">
-      <p className="mg-type-caption text-ink-muted">
+    <div className="space-y-2 rounded border border-border bg-surface p-3">
+      <p className="text-13 text-ink-muted">
         Sign a one-time message with {shortHash(wallet.address, 4)} to verify yourself instead of
         pasting an operator token. This never constructs or broadcasts a transaction.
       </p>
       {watchToken.status === "error" && watchToken.error ? (
         <div
           role="alert"
-          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 mg-type-caption text-health-down"
+          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 text-13 text-health-down"
         >
           {watchToken.error}
         </div>
@@ -205,7 +205,7 @@ export function WalletVerifyForToken({
         type="button"
         onClick={watchToken.issue}
         disabled={watchToken.status === "issuing"}
-        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
       >
         {watchToken.status === "issuing" ? "Verifying…" : "Verify with wallet"}
       </button>
@@ -217,7 +217,7 @@ export function WalletVerifyForToken({
 export function CreatedTokenPanel({ id, ownerToken }: { id: string; ownerToken: string }) {
   return (
     <div className="space-y-2 rounded border border-accent/40 bg-primary-soft/40 p-4">
-      <p className="mg-type-caption font-medium text-health-warn">
+      <p className="text-13 font-medium text-health-warn">
         The owner token below is shown once and is never echoed back by GET — store it now to manage
         or delete this alert later via the API.
       </p>

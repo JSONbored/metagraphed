@@ -72,8 +72,8 @@ export function CoverageFunnel({ className }: { className?: string }) {
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="mg-type-caption text-ink-muted">Curation funnel</div>
-            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+            <div className="text-13 text-ink-muted">Curation funnel</div>
+            <h3 className="mt-0.5 font-display text-13 font-semibold text-ink-strong">
               Registry depth
             </h3>
           </div>
@@ -86,21 +86,21 @@ export function CoverageFunnel({ className }: { className?: string }) {
             const width = (s.value / max) * 100;
             return (
               <li key={s.key} className="space-y-1">
-                <div className="flex items-baseline justify-between text-xs">
+                <div className="flex items-baseline justify-between text-13">
                   <div className="flex items-baseline gap-2 min-w-0">
-                    <span className="mg-type-caption text-ink-muted shrink-0">
+                    <span className="text-13 text-ink-muted shrink-0">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <span className="font-display font-medium text-ink-strong truncate">
                       {s.label}
                     </span>
-                    <span className="mg-type-data-sm text-ink-muted truncate">{s.hint}</span>
+                    <span className="text-10 text-ink-muted truncate">{s.hint}</span>
                   </div>
                   <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
                     {conv != null ? (
                       <span
                         className={classNames(
-                          "mg-type-data-sm",
+                          "text-10",
                           conv >= 90
                             ? "text-health-ok"
                             : conv >= 50
@@ -112,15 +112,15 @@ export function CoverageFunnel({ className }: { className?: string }) {
                         {conv.toFixed(0)}%
                       </span>
                     ) : null}
-                    <span className="font-display text-sm font-semibold text-ink-strong">
+                    <span className="font-display text-13 font-semibold text-ink-strong">
                       {formatNumber(s.value)}
                     </span>
                   </div>
                 </div>
-                <div className="h-1.5 rounded-full bg-border/40 overflow-hidden" aria-hidden>
+                <div className="h-1.5 rounded bg-border/40 overflow-hidden" aria-hidden>
                   <div
                     className={classNames(
-                      "h-full rounded-full transition-all duration-500",
+                      "h-full rounded transition-all duration-500",
                       s.tone === "accent" && "bg-accent",
                       s.tone === "warn" && "bg-health-warn",
                       s.tone === "default" && "bg-ink-muted/60",

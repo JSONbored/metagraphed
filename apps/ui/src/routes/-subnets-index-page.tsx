@@ -39,7 +39,6 @@ import {
   prefetchBrandIcon,
   TimeAgo,
   HealthPill,
-  DensityToggle,
   ViewModeToggle,
   ShareButton,
   DownloadCsvButton,
@@ -52,10 +51,8 @@ import {
   BackToTop,
   SegmentedToggle,
   type SegmentedToggleOption,
-  type Density,
   type ViewMode,
 } from "@jsonbored/ui-kit";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useInView } from "@/hooks/use-in-view";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import {
@@ -214,18 +211,6 @@ export function SubnetsPage() {
       search: (prev: Record<string, unknown>) => ({ ...prev, view: v }),
       replace: true,
     });
-  const isMobile = useIsMobile();
-  const effectiveDensity: Density =
-    search.density === "compact" || search.density === "comfortable"
-      ? search.density
-      : isMobile
-        ? "compact"
-        : "comfortable";
-  const setDensity = (d: Density) =>
-    navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, density: d }),
-      replace: true,
-    });
   const setSection = (section: "registry" | "rankings") =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, section }),
@@ -253,9 +238,6 @@ export function SubnetsPage() {
             {search.section === "registry" ? (
               <>
                 <ViewModeToggle value={search.view} onChange={setView} />
-                {search.view === "table" ? (
-                  <DensityToggle value={effectiveDensity} onChange={setDensity} />
-                ) : null}
               </>
             ) : null}
             <ActionBar>
@@ -300,11 +282,10 @@ export function SubnetsPage() {
               <TableSkeleton
                 rows={search.view === "table" ? 10 : 6}
                 columns={search.view === "table" ? 8 : 4}
-                density={effectiveDensity}
               />
             }
           >
-            <SubnetsTable view={search.view} density={effectiveDensity} />
+            <SubnetsTable view={search.view} />
           </AsyncPanel>
           <AsyncPanel
             context="domains rollup"
@@ -323,7 +304,7 @@ export function SubnetsPage() {
               "which subnets came and went" is the same question the table
               answers as a snapshot. */}
           <section className="mt-8">
-            <h2 className="mb-2 mg-type-label text-ink-muted">Registration churn</h2>
+            <h2 className="mb-2 text-11 text-ink-muted">Registration churn</h2>
             <NetworkSubnetLifecycle />
           </section>
           {/* #11204: the table above virtualizes, so its server-rendered HTML
@@ -359,7 +340,7 @@ export function SubnetsPage() {
         category the registry stops deriving stops being linked.
       */}
       <SubnetCategoryLinks />
-      <p className="mt-8 mg-type-caption text-ink-muted">
+      <p className="mt-8 text-13 text-ink-muted">
         Looking for the ones you can integrate with?{" "}
         <Link to="/subnets/with-api" className="text-accent-text hover:underline">
           Subnets publishing a machine-readable API spec
@@ -415,7 +396,7 @@ function SubnetsCompactStats() {
       </>
     );
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 mg-type-data text-ink-muted">
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-11 text-ink-muted">
       <span>
         <span className="font-medium text-ink-strong">{formatNumber(active)}</span> active
         {total ? ` of ${formatNumber(total)}` : ""}
@@ -443,7 +424,7 @@ function SubnetsCompactStats() {
           <span aria-hidden className="text-border">
             ·
           </span>
-          <span className="inline-flex items-center rounded border border-health-warn/40 bg-health-warn/10 px-1.5 py-0.5 mg-type-caption text-health-warn">
+          <span className="inline-flex items-center rounded border border-health-warn/40 bg-health-warn/10 px-1.5 py-0.5 text-13 text-health-warn">
             Data may be stale
           </span>
         </>
@@ -464,8 +445,8 @@ function SubnetsDomainsRollup() {
   if (domains.length === 0) return null;
   const sorted = [...domains].sort((a, b) => (b.subnet_count ?? 0) - (a.subnet_count ?? 0));
   return (
-    <Panel as="div" dense className="mt-6">
-      <div className="mb-2 mg-type-caption text-ink-muted">Domains</div>
+    <Panel as="div" className="mt-6">
+      <div className="mb-2 text-13 text-ink-muted">Domains</div>
       <div className="flex flex-wrap gap-2">
         {sorted.map((d) => {
           const active = search.domain === d.domain;
@@ -484,7 +465,7 @@ function SubnetsDomainsRollup() {
               }
               aria-pressed={active}
               className={classNames(
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 mg-type-data-sm transition-colors",
+                "inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-10 transition-colors",
                 active
                   ? "border-accent/60 bg-accent/10 text-ink-strong"
                   : "border-border bg-card text-ink-muted hover:text-ink-strong",
@@ -529,20 +510,20 @@ function ExcludeToggle({
       aria-pressed={hidden}
       title={title}
       className={classNames(
-        "mg-type-caption inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
+        "text-13 inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
         hidden
           ? "border-accent/40 bg-accent/10 text-accent"
           : "border-border bg-card text-ink-muted hover:text-ink-strong",
       )}
     >
-      <span className={classNames("size-1.5 rounded-full", hidden && "bg-accent")} />
+      <span className={classNames("size-1.5 rounded-full mg-dot", hidden && "bg-accent")} />
       {label}
       {count > 0 ? <span className="text-ink-muted">· {count}</span> : null}
     </button>
   );
 }
 
-function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; density?: Density }) {
+function SubnetsTable({ view }: { view: ViewMode }) {
   const search = useSearch({ from: "/subnets/" }) as SubnetsSearch;
   const navigate = useNavigate({ from: "/subnets/" });
   const columns = useColumnVisibility("subnets", SUBNET_COLUMNS);
@@ -773,7 +754,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // grid/matrix early return below) since hooks can't be conditional --
   // grid/matrix renders just never read `rowVirtualizer`'s output.
   const tableScrollRef = useRef<HTMLDivElement>(null);
-  const rowHeight = useMeasuredRowHeight(tableScrollRef, density === "compact" ? 37 : 49);
+  const rowHeight = useMeasuredRowHeight(tableScrollRef, 49);
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableScrollRef.current,
@@ -1217,7 +1198,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                   size={32}
                 />
                 <div className="min-w-0">
-                  <div className="mg-type-data text-ink-muted">
+                  <div className="text-11 text-ink-muted">
                     #{String(s.netuid).padStart(3, "0")}
                     {s.symbol ? ` · ${s.symbol}` : ""}
                     {" · "}
@@ -1232,21 +1213,21 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                 compares subnets by -- price, emission share, health -- in
                 place of the old participants/surfaces/updated registry-
                 plumbing row. */}
-              <div className="mt-2 grid grid-cols-3 gap-2 mg-type-data">
+              <div className="mt-2 grid grid-cols-3 gap-2 text-11">
                 <div>
-                  <div className="mg-type-caption text-ink-muted">Price</div>
+                  <div className="text-13 text-ink-muted">Price</div>
                   <div className="tabular-nums text-ink-strong">
                     {s.alpha_price_tao != null ? `${s.alpha_price_tao.toFixed(4)} τ` : "—"}
                   </div>
                 </div>
                 <div>
-                  <div className="mg-type-caption text-ink-muted">Emission</div>
+                  <div className="text-13 text-ink-muted">Emission</div>
                   <div className="tabular-nums text-ink-strong">
                     {s.emission_share != null ? `${(s.emission_share * 100).toFixed(2)}%` : "—"}
                   </div>
                 </div>
                 <div>
-                  <div className="mg-type-caption text-ink-muted">Health</div>
+                  <div className="text-13 text-ink-muted">Health</div>
                   <HealthPill state={s.health} />
                 </div>
               </div>
@@ -1264,10 +1245,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           ) : null,
         ]}
         table={(() => {
-          const compact = density === "compact";
+          const compact = false;
           const cellPad = compact ? "px-3 py-1.5" : "px-4 py-2.5";
           const firstPad = compact ? "pl-3 pr-1 py-1.5" : "pl-4 pr-1 py-2.5";
-          const monoSize = compact ? "mg-type-data" : "mg-type-caption";
+          const monoSize = compact ? "text-11" : "text-13";
           return (
             // #8248's bounded, internally-scrolling virtualized region now
             // comes from ListShell itself (`viewportRef` above), rather than
@@ -1276,7 +1257,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
             // owned the sticky <thead>, and the outer of the two could never
             // scroll because the inner capped its content at the same 70vh.
             // One viewport, one ref, one thing the header pins against.
-            <table className="w-full min-w-[1100px] table-fixed text-left text-sm">
+            <table className="w-full min-w-[1100px] table-fixed text-left text-13">
               {/* Pins the column tracks so they cannot be re-derived from
                   whichever virtualized rows happen to be mounted. */}
               <TableColGroup widths={columnWidths(SUBNET_COLUMNS, columns.isVisible, [42, 36])} />
@@ -1428,9 +1409,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       className={classNames(cellPad, "mg-table-head-pinned text-right")}
                       title={`Alpha price change over the selected trend window (${trendWindow})`}
                     >
-                      <span className="mg-type-caption font-normal text-ink-muted">
-                        {trendWindow} %
-                      </span>
+                      <span>{trendWindow} %</span>
                     </th>
                   ) : null}
                   {columns.isVisible("totalStake") ? (
@@ -1497,12 +1476,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                     </th>
                   ) : null}
                   {columns.isVisible("health") ? (
-                    <th
-                      className={classNames(
-                        cellPad,
-                        "mg-table-head-pinned mg-type-micro text-ink-muted font-normal text-left",
-                      )}
-                    >
+                    <th className={classNames(cellPad, "mg-table-head-pinned text-left")}>
                       Health
                     </th>
                   ) : null}
@@ -1541,7 +1515,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       key={s.netuid}
                       data-index={vRow.index}
                       ref={rowVirtualizer.measureElement}
-                      className="mg-row-accent hover:bg-surface/40"
+                      className="mg-row-accent hover:bg-surface"
                     >
                       <td className={classNames(firstPad, "align-middle")}>
                         <button
@@ -1578,7 +1552,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                         </EntityHoverCard>
                         {/* #6643: age-in-days, estimated from the already-fetched
                         registered_at_block/block delta -- no new backend call. */}
-                        <div className="mg-type-caption font-sans text-ink-muted/70 whitespace-nowrap">
+                        <div className="text-13 font-sans text-ink-muted/70 whitespace-nowrap">
                           {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
                         </div>
                       </td>
@@ -1603,7 +1577,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                         </EntityHoverCard>
                       </td>
                       {columns.isVisible("symbol") ? (
-                        <td className={classNames(cellPad, "mg-type-data text-ink-muted")}>
+                        <td className={classNames(cellPad, "text-11 text-ink-muted")}>
                           {s.symbol ?? "—"}
                         </td>
                       ) : null}
@@ -1614,7 +1588,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       ) : null}
                       {columns.isVisible("surfaces") ? (
                         <td className={classNames(cellPad, "text-right")}>
-                          <SurfacesCell subnet={s} density={density} />
+                          <SurfacesCell subnet={s} />
                         </td>
                       ) : null}
                       {columns.isVisible("readiness") ? (
@@ -1631,7 +1605,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                         <td
                           className={classNames(
                             cellPad,
-                            "text-right mg-type-data tabular-nums",
+                            "text-right text-11 tabular-nums",
                             // #3364: dim the cost only when registration is explicitly
                             // closed. `registration_allowed === undefined` (economics
                             // entry present but flag absent, or no entry at all) keeps
@@ -1650,7 +1624,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                         </td>
                       ) : null}
                       {columns.isVisible("emission") ? (
-                        <td className={classNames(cellPad, "text-right mg-type-data tabular-nums")}>
+                        <td className={classNames(cellPad, "text-right text-11 tabular-nums")}>
                           <EmissionCell share={s.emission_share} />
                         </td>
                       ) : null}
@@ -1694,21 +1668,17 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                         />
                       ) : null}
                       {columns.isVisible("participants") ? (
-                        <td
-                          className={classNames(cellPad, "text-right mg-type-data text-ink-muted")}
-                        >
+                        <td className={classNames(cellPad, "text-right text-11 text-ink-muted")}>
                           {s.participants != null ? formatNumber(s.participants) : "—"}
                         </td>
                       ) : null}
                       {columns.isVisible("lifecycle") ? (
-                        <td className={classNames(cellPad, "mg-type-data text-ink-muted")}>
+                        <td className={classNames(cellPad, "text-11 text-ink-muted")}>
                           {s.lifecycle ?? "—"}
                         </td>
                       ) : null}
                       {columns.isVisible("updated") ? (
-                        <td
-                          className={classNames(cellPad, "text-right mg-type-data text-ink-muted")}
-                        >
+                        <td className={classNames(cellPad, "text-right text-11 text-ink-muted")}>
                           <TimeAgo at={s.updated_at ?? s.freshness} />
                         </td>
                       ) : null}
@@ -1721,7 +1691,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                         <td
                           className={classNames(
                             cellPad,
-                            "text-right mg-type-data tabular-nums text-ink-muted",
+                            "text-right text-11 tabular-nums text-ink-muted",
                           )}
                         >
                           {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
@@ -1786,7 +1756,7 @@ function PctChangeCell({
       ref={cellRef}
       className={classNames(
         compact ? "px-3 py-1.5" : "px-4 py-2.5",
-        "text-right mg-type-data tabular-nums",
+        "text-right text-11 tabular-nums",
         toneClass,
       )}
     >
@@ -1811,7 +1781,7 @@ function SubnetGrid({
           key={s.netuid}
           to="/subnets/$netuid"
           params={{ netuid: s.netuid }}
-          className="group relative flex flex-col gap-3 rounded border border-border bg-card p-4 mg-hover-lift mg-fade-in"
+          className="group relative flex flex-col gap-3 rounded border border-border bg-card p-4 mg-hover-lift"
         >
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-3 min-w-0">
@@ -1824,7 +1794,7 @@ function SubnetGrid({
                 size={36}
               />
               <div className="min-w-0">
-                <div className="mg-type-caption text-ink-muted">
+                <div className="text-13 text-ink-muted">
                   #{String(s.netuid).padStart(3, "0")}
                   {s.symbol ? ` · ${s.symbol}` : ""}
                 </div>
@@ -1860,7 +1830,7 @@ function SubnetGrid({
           </div>
 
           {(s as { description?: string }).description ? (
-            <p className="mg-type-caption text-ink-muted leading-relaxed line-clamp-2">
+            <p className="text-13 text-ink-muted leading-relaxed line-clamp-2">
               {(s as { description?: string }).description}
             </p>
           ) : null}
@@ -1934,10 +1904,10 @@ const HEALTH_TEXT: Record<string, string> = {
 
 function SubnetMatrix({ rows }: { rows: Subnet[] }) {
   return (
-    <Panel as="div" dense>
+    <Panel as="div">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="mg-type-caption text-ink-muted">Health matrix · {rows.length} subnets</div>
-        <div className="flex items-center gap-3 mg-type-data-sm text-ink-muted">
+        <div className="text-13 text-ink-muted">Health matrix · {rows.length} subnets</div>
+        <div className="flex items-center gap-3 text-10 text-ink-muted">
           <Legend color="bg-health-ok" label="ok" />
           <Legend color="bg-health-warn" label="warn" />
           <Legend color="bg-health-down" label="down" />
@@ -1956,7 +1926,7 @@ function SubnetMatrix({ rows }: { rows: Subnet[] }) {
               aria-label={`Subnet ${s.netuid}${s.name ? ` — ${s.name}` : ""}`}
               title={`#${s.netuid}${s.name ? ` · ${s.name}` : ""} · ${s.health ?? "unknown"}`}
               className={classNames(
-                "mg-pulse-cell flex aspect-square items-center justify-center rounded mg-type-data-sm font-medium transition-transform",
+                "mg-pulse-cell flex aspect-square items-center justify-center rounded text-10 font-medium transition-transform",
                 HEALTH_BG[s.health ?? "unknown"] ?? HEALTH_BG.unknown,
                 HEALTH_TEXT[s.health ?? "unknown"] ?? HEALTH_TEXT.unknown,
               )}
@@ -2089,7 +2059,7 @@ function FinancialTrendCell({
       ref={cellRef}
       className={classNames(
         compact ? "px-3 py-1.5" : "px-4 py-2.5",
-        "text-right mg-type-data tabular-nums",
+        "text-right text-11 tabular-nums",
       )}
     >
       <div className="flex items-center justify-end gap-2">
@@ -2107,7 +2077,7 @@ function FinancialTrendCell({
         <div className="min-w-0">
           <div className={toneClass}>{displayValue == null ? "—" : fmtVal(displayValue)}</div>
           {usd != null || pct ? (
-            <div className="mg-type-data-sm text-ink-muted/80 flex items-center justify-end gap-1">
+            <div className="text-10 text-ink-muted/80 flex items-center justify-end gap-1">
               {usd != null ? <span>{fmtUsd(usd)}</span> : null}
               {pct ? (
                 <span className={toneClass} title={`${win} change`}>
@@ -2131,7 +2101,7 @@ function EmissionCell({ share }: { share?: number }) {
   );
 }
 
-function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; density?: Density }) {
+function SurfacesCell({ subnet }: { subnet: Subnet }) {
   const count = subnet.surfaces_count ?? 0;
   const num = (k: string) => readNumber(subnet, k) ?? 0;
   const byKind = (readKey(subnet, "surfaces_by_kind") ?? readKey(subnet, "surface_kinds")) as
@@ -2161,7 +2131,7 @@ function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; den
         }))
       : trust.map((t) => ({ ...t, color: TRUST_COLORS[t.label] }))
   ).filter((s) => s.value > 0);
-  const compact = density === "compact";
+  const compact = false;
   const summary = (
     byKind ? Object.entries(byKind) : (trust.map((t) => [t.label, t.value]) as [string, number][])
   )
@@ -2184,7 +2154,7 @@ function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; den
         <span
           className={classNames(
             "font-mono tabular-nums text-ink w-6 text-right",
-            compact ? "mg-type-data" : "mg-type-caption",
+            compact ? "text-11" : "text-13",
           )}
         >
           {count || "—"}
@@ -2230,9 +2200,9 @@ function SectionTabs({
             aria-selected={active}
             onClick={() => onChange(id)}
             className={classNames(
-              "relative min-h-11 px-3 py-2 mg-type-caption-lg font-medium transition-colors mg-focus-ring",
+              "relative min-h-11 px-3 py-2 text-13 font-medium transition-colors mg-focus-ring",
               active
-                ? "text-ink-strong after:absolute after:inset-x-2 after:-bottom-px after:h-[1.5px] after:rounded-full after:bg-accent after:content-['']"
+                ? "text-ink-strong after:absolute after:inset-x-2 after:-bottom-px after:h-[1.5px] after:rounded after:bg-accent after:content-['']"
                 : "text-ink-muted hover:text-ink-strong",
             )}
           >
@@ -2259,7 +2229,7 @@ function SubnetsDomainsTaxonomy() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="domains-taxonomy"
-        className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded px-1 py-1 mg-type-caption font-medium text-ink-muted transition-colors hover:text-ink-strong"
+        className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded px-1 py-1 text-13 font-medium text-ink-muted transition-colors hover:text-ink-strong"
       >
         <ChevronDown
           className={classNames("size-3.5 transition-transform", open && "rotate-180")}

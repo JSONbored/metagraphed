@@ -61,11 +61,11 @@ export function SurfacePlayground({ netuid }: { netuid: number }) {
     >
       <div className="space-y-3">
         <label className="block">
-          <span className="mg-type-label uppercase text-ink-muted">Surface</span>
+          <span className="text-11 text-ink-muted">Surface</span>
           <select
             value={selected?.id ?? ""}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="mt-1 block w-full min-h-11 rounded border border-border bg-card px-2 py-1 mg-type-data text-ink-strong"
+            className="mt-1 block w-full min-h-11 rounded border border-border bg-card px-2 py-1 text-11 text-ink-strong"
           >
             {callable.map((s) => (
               <option key={s.id} value={s.id}>
@@ -110,7 +110,7 @@ function SurfaceRunner({ surface }: { surface: Surface }) {
               type="button"
               onClick={() => setLang(l.id)}
               className={classNames(
-                "min-h-9 rounded px-2 py-1 mg-type-caption transition-colors",
+                "min-h-9 rounded px-2 py-1 text-13 transition-colors",
                 lang === l.id
                   ? "bg-surface text-ink-strong"
                   : "text-ink-muted hover:text-ink-strong",
@@ -132,7 +132,7 @@ function SurfaceRunner({ surface }: { surface: Surface }) {
           type="button"
           onClick={() => void run()}
           disabled={running}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded border border-accent/40 bg-accent/10 px-3 py-1.5 mg-type-caption font-medium text-accent-text transition-colors hover:bg-accent/15 disabled:opacity-60"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded border border-accent/40 bg-accent/10 px-3 py-1.5 text-13 font-medium text-accent-text transition-colors hover:bg-accent/15 disabled:opacity-60"
         >
           {running ? (
             <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -142,7 +142,7 @@ function SurfaceRunner({ surface }: { surface: Surface }) {
           {running ? "Calling…" : "Execute"}
         </button>
       ) : (
-        <p className="inline-flex items-start gap-1.5 mg-type-caption text-ink-muted">
+        <p className="inline-flex items-start gap-1.5 text-13 text-ink-muted">
           <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           <span>
             This surface needs a credential, so it can&rsquo;t be run from here — the playground
@@ -165,17 +165,17 @@ function SurfaceRunner({ surface }: { surface: Surface }) {
 function ResponseView({ outcome }: { outcome: SurfaceCallOutcome }) {
   if (!outcome.ok) {
     return (
-      <Panel as="div" dense tone="warn">
-        <p className="mg-type-caption text-ink-strong">{outcome.error.message}</p>
-        <p className="mt-1 mg-type-data-sm text-ink-muted">{outcome.error.code}</p>
+      <Panel as="div" tone="warn">
+        <p className="text-13 text-ink-strong">{outcome.error.message}</p>
+        <p className="mt-1 text-10 text-ink-muted">{outcome.error.code}</p>
       </Panel>
     );
   }
   const r = outcome.result;
   const ok = r.status_code >= 200 && r.status_code < 300;
   return (
-    <Panel as="div" dense>
-      <div className="mb-2 flex flex-wrap items-center gap-3 mg-type-data-sm">
+    <Panel as="div">
+      <div className="mb-2 flex flex-wrap items-center gap-3 text-10">
         <span className={ok ? "text-health-ok" : "text-health-warn"}>HTTP {r.status_code}</span>
         <span className="text-ink-muted tabular-nums">{r.latency_ms} ms</span>
         {r.content_type ? <span className="text-ink-muted">{r.content_type}</span> : null}
@@ -185,7 +185,7 @@ function ResponseView({ outcome }: { outcome: SurfaceCallOutcome }) {
       </div>
       {/* Untrusted third-party output. Stringified into a text node -- markup in
           the body renders as literal characters, never as HTML. */}
-      <pre className="mg-scroll max-h-80 overflow-auto rounded bg-surface p-2 mg-type-data-sm text-ink-strong">
+      <pre className="mg-scroll max-h-80 overflow-auto rounded bg-surface p-2 text-10 text-ink-strong">
         {renderBody(r.body)}
       </pre>
     </Panel>

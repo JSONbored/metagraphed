@@ -51,7 +51,7 @@ export function FilterSheet({
         aria-haspopup="dialog"
         className={classNames(
           "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1",
-          "mg-type-label uppercase transition-colors",
+          "text-11 transition-colors",
           activeCount > 0
             ? "border-accent/40 bg-accent/10 text-accent"
             : "border-border bg-card text-ink-strong hover:border-accent/40",
@@ -60,7 +60,7 @@ export function FilterSheet({
         <Filter className="size-3.5" aria-hidden />
         {label}
         {activeCount > 0 ? (
-          <span className="ml-0.5 inline-flex size-4 items-center justify-center rounded-full bg-accent text-[9px] text-accent-foreground">
+          <span className="ml-0.5 inline-flex size-4 items-center justify-center rounded bg-accent text-10 text-accent-foreground">
             {activeCount}
           </span>
         ) : null}
@@ -74,20 +74,20 @@ export function FilterSheet({
           className="fixed inset-0 z-[var(--mg-z-modal)] flex items-end sm:items-center sm:justify-center"
         >
           <div
-            className="absolute inset-0 bg-ink-strong/30 backdrop-blur-sm"
+            className="absolute inset-0 bg-ink-strong/30"
             onClick={() => setOpen(false)}
             aria-hidden
           />
           <div
             className={classNames(
               "relative z-[var(--mg-z-sticky)] w-full max-h-[85vh] overflow-y-auto",
-              "rounded-t-xl border-t border-border bg-card p-4",
-              "sm:max-w-md sm:rounded-xl sm:border sm:mx-4",
+              "rounded border-t border-border bg-card p-4",
+              "sm:max-w-md sm:rounded sm:border sm:mx-4",
               "mg-scroll",
             )}
           >
             <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
-              <span className="mg-type-label uppercase text-ink-strong">
+              <span className="text-11 text-ink-strong">
                 {label}
                 {activeCount > 0 ? (
                   <span className="ml-2 text-ink-muted">

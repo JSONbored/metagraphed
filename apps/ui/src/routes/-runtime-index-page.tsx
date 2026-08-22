@@ -70,12 +70,12 @@ function RuntimeContent() {
         <>
           <Panel as="div" flush className="hidden md:block overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="mg-type-micro bg-surface/50 text-ink-muted">
+              <table className="w-full text-13">
+                <thead className="text-10 bg-surface text-ink-muted">
                   <tr>
-                    <th className="mg-type-micro px-3 py-2.5 text-left">Spec Version</th>
-                    <th className="mg-type-micro px-3 py-2.5 text-left">Block</th>
-                    <th className="mg-type-micro px-3 py-2.5 text-left">Observed</th>
+                    <th className="px-3 py-2.5 text-left">Spec Version</th>
+                    <th className="px-3 py-2.5 text-left">Block</th>
+                    <th className="px-3 py-2.5 text-left">Observed</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -84,10 +84,10 @@ function RuntimeContent() {
                       key={`${row.spec_version}-${row.block_number}`}
                       className="mg-row-hover border-t border-border/60"
                     >
-                      <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums text-ink-strong">
+                      <td className="px-3 py-2.5 font-mono text-13 tabular-nums text-ink-strong">
                         {formatNumber(row.spec_version)}
                       </td>
-                      <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums">
+                      <td className="px-3 py-2.5 font-mono text-13 tabular-nums">
                         {row.block_number != null ? (
                           <Link
                             to="/blocks/$ref"
@@ -100,7 +100,7 @@ function RuntimeContent() {
                           "—"
                         )}
                       </td>
-                      <td className="px-3 py-2.5 font-mono mg-type-caption text-ink-muted">
+                      <td className="px-3 py-2.5 font-mono text-13 text-ink-muted">
                         {row.observed_at ? <TimeAgo at={row.observed_at} /> : "—"}
                       </td>
                     </tr>
@@ -146,9 +146,9 @@ function KpiTile({ label, value, hint }: { label: string; value: ReactNode; hint
   return (
     <Panel as="div" flush>
       <div className="px-4 py-3">
-        <div className="mg-type-caption text-ink-muted">{label}</div>
-        <div className="mt-1 font-mono text-lg text-ink-strong tabular-nums">{value}</div>
-        {hint ? <div className="mt-0.5 text-xs text-ink-muted">{hint}</div> : null}
+        <div className="text-13 text-ink-muted">{label}</div>
+        <div className="mt-1 font-mono text-16 text-ink-strong tabular-nums">{value}</div>
+        {hint ? <div className="mt-0.5 text-13 text-ink-muted">{hint}</div> : null}
       </div>
     </Panel>
   );

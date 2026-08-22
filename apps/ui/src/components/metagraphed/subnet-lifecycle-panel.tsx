@@ -144,7 +144,7 @@ function StandingCard({
         />
       </div>
       {standing.subnet_mechanism === 0 ? (
-        <p className="mt-3 text-xs text-ink-muted">
+        <p className="mt-3 text-13 text-ink-muted">
           This is a Stable subnet (mechanism 0). The pallet compares a flat 1.0 for it rather than
           reading its moving price, which is why the two figures above differ.
         </p>
@@ -190,8 +190,8 @@ function TimelineSection({
             key={`${entry.event}-${entry.observed_at ?? i}`}
             className="flex flex-wrap items-baseline justify-between gap-2 py-2"
           >
-            <span className="mg-type-label uppercase text-ink-strong">{entry.event}</span>
-            <span className="text-xs text-ink-muted">
+            <span className="text-11 text-ink-strong">{entry.event}</span>
+            <span className="text-13 text-ink-muted">
               {/* THE DISTINCTION. A null block with predates_capture means the
                   transition is older than our record, which is a different
                   claim from "at block 0" and must not render as one. */}

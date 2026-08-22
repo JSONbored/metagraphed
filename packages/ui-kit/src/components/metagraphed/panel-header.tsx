@@ -8,7 +8,7 @@ export type PanelHeaderProps = {
   description?: ReactNode;
   /** Right-aligned actions slot (buttons, filters, freshness pill). */
   actions?: ReactNode;
-  /** Show as a small mg-label micro-label instead of a display heading. */
+  /** Show as a small text-10 text-ink-muted micro-label instead of a display heading. */
   variant?: "display" | "micro";
   className?: string;
 };
@@ -36,12 +36,12 @@ export function PanelHeader({
         {variant === "micro" ? (
           <SectionLabel>{title}</SectionLabel>
         ) : (
-          <h2 className="font-display text-base font-medium leading-tight text-ink-strong">
+          <h2 className="font-display text-16 font-medium leading-tight text-ink-strong">
             {title}
           </h2>
         )}
         {description ? (
-          <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+          <p className="mt-1 text-13 leading-relaxed text-ink-muted">
             {description}
           </p>
         ) : null}

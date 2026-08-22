@@ -13,7 +13,7 @@ describe("yield percentile layout tokens", () => {
   });
 
   it("scales percentile values down on narrow containers", () => {
-    expect(YIELD_PERCENTILE_VALUE_CLASS).toContain("text-sm");
+    expect(YIELD_PERCENTILE_VALUE_CLASS).toContain("text-13");
     expect(YIELD_PERCENTILE_VALUE_CLASS).toContain("truncate");
   });
 

@@ -4,7 +4,7 @@ import { classNames } from "@/lib/format";
 export interface IndicatorProps {
   /** Lucide icon component (or any 12-16px SVG component). */
   icon?: ComponentType<{ className?: string }>;
-  /** Short uppercase key label rendered above/beside the value. */
+  /** Short key label rendered above/beside the value. */
   label: string;
   /** Primary value — number or short text. */
   value: ReactNode;
@@ -43,14 +43,14 @@ export function Indicator({
     >
       <span
         className={classNames(
-          "inline-flex items-center gap-1 mg-type-micro text-ink-muted",
+          "inline-flex items-center gap-1 text-10 text-ink-muted",
           isRow ? "self-center" : null,
         )}
       >
         {Icon ? <Icon className="size-3" aria-hidden /> : null}
         {label}
       </span>
-      <span className="mg-type-data tabular-nums text-ink-strong truncate">
+      <span className="text-11 tabular-nums text-ink-strong truncate">
         {value}
         {hint ? (
           <span className="ml-1 text-ink-muted normal-case">{hint}</span>

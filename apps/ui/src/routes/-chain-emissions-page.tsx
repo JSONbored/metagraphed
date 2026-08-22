@@ -43,7 +43,7 @@ function EmissionsBody() {
 
       <div id="emissions-subnets" className="mt-6">
         <SectionLabel as="h2">Per-subnet decomposition</SectionLabel>
-        <p className="mt-1 mb-3 max-w-3xl mg-type-caption text-ink-muted">
+        <p className="mt-1 mb-3 max-w-3xl text-13 text-ink-muted">
           Read a row left to right and it is the pipeline itself: the published price share, then
           the miner-burn reweighting, then the gate, then the share of block emission the subnet
           actually receives — followed by how that TAO arrives.
@@ -67,16 +67,16 @@ function VerificationNotice({ pipeline }: { pipeline: EmissionPipeline }) {
   const failed = pipeline.verification.checks.filter((check) => !check.ok);
   return (
     <Panel as="section" tone="warn" className="mb-4">
-      <h2 className="mg-type-label text-ink-strong">These figures did not reproduce the chain</h2>
-      <p className="mt-1 text-sm text-ink">
+      <h2 className="text-11 text-ink-strong">These figures did not reproduce the chain</h2>
+      <p className="mt-1 text-13 text-ink">
         Every share below is reconstructed from chain storage, and this capture&apos;s identity
         checks did not pass. Treat the numbers as unverified — do not cite them.
       </p>
       {failed.length > 0 ? (
-        <ul className="mt-2 space-y-1 mg-type-caption text-ink-muted">
+        <ul className="mt-2 space-y-1 text-13 text-ink-muted">
           {failed.map((check) => (
             <li key={check.name}>
-              <code className="mg-type-data">{check.name}</code>
+              <code className="text-11">{check.name}</code>
               {check.detail ? ` — ${check.detail}` : null}
             </li>
           ))}
@@ -95,7 +95,7 @@ function Provenance({ pipeline }: { pipeline: EmissionPipeline }) {
   return (
     <Panel as="section" className="mt-6">
       <SectionLabel as="h2">How these numbers were produced</SectionLabel>
-      <p className="mt-2 max-w-3xl text-sm text-ink">
+      <p className="mt-2 max-w-3xl text-13 text-ink">
         The chain publishes the pipeline&apos;s inputs, not its output, so most fields here are
         reconstructed rather than read.{" "}
         {measured.length > 0 ? (
@@ -104,7 +104,7 @@ function Provenance({ pipeline }: { pipeline: EmissionPipeline }) {
             {measured.map((field, index) => (
               <span key={field}>
                 {index > 0 ? ", " : ""}
-                <code className="mg-type-data">{field}</code>
+                <code className="text-11">{field}</code>
               </span>
             ))}
             . Everything else is derived from those.
@@ -115,11 +115,11 @@ function Provenance({ pipeline }: { pipeline: EmissionPipeline }) {
       </p>
       {passed.length > 0 ? (
         <>
-          <h3 className="mt-3 mg-type-label text-ink-muted">Identities checked on this response</h3>
-          <ul className="mt-1 space-y-1 mg-type-caption text-ink-muted">
+          <h3 className="mt-3 text-11 text-ink-muted">Identities checked on this response</h3>
+          <ul className="mt-1 space-y-1 text-13 text-ink-muted">
             {passed.map((check) => (
               <li key={check.name}>
-                <code className="mg-type-data">{check.name}</code>
+                <code className="text-11">{check.name}</code>
                 {check.detail ? ` — ${check.detail}` : null}
               </li>
             ))}
@@ -133,7 +133,7 @@ function Provenance({ pipeline }: { pipeline: EmissionPipeline }) {
 export function ChainEmissionsPage() {
   return (
     <>
-      <p className="mb-6 max-w-3xl mg-type-caption-lg text-ink-muted">
+      <p className="mb-6 max-w-3xl text-13 text-ink-muted">
         A subnet&apos;s published emission share is a price signal, not a payout. What it actually
         receives is decided in stages — reweighted by miner burn, then passed through a gate that
         moves share between subnets — and the TAO that results arrives through two channels. This

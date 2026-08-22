@@ -105,14 +105,14 @@ export function EndpointDetailDrawer({
   }, [allRows]);
 
   return (
-    <div className="space-y-4 border-t border-border bg-surface/45 px-4 py-4 lg:px-6">
+    <div className="space-y-4 border-t border-border bg-surface px-4 py-4 lg:px-6">
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
-          <div className="mg-label mb-1">Endpoint</div>
+          <div className="text-10 text-ink-muted mb-1">Endpoint</div>
           <div className="flex items-center gap-1.5 min-w-0">
             {endpoint.url ? (
               <>
-                <ExternalLink href={endpoint.url} className="truncate font-mono mg-type-caption">
+                <ExternalLink href={endpoint.url} className="truncate font-mono text-13">
                   {endpoint.url}
                 </ExternalLink>
                 <CopyButton value={endpoint.url} label="URL" />
@@ -123,7 +123,7 @@ export function EndpointDetailDrawer({
                 />
               </>
             ) : (
-              <span className="font-mono mg-type-caption text-ink-muted">no url</span>
+              <span className="font-mono text-13 text-ink-muted">no url</span>
             )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -133,7 +133,7 @@ export function EndpointDetailDrawer({
           </div>
         </div>
         <div className="shrink-0">
-          <div className="mg-label mb-1">Uptime 7d</div>
+          <div className="text-10 text-ink-muted mb-1">Uptime 7d</div>
           <EndpointUptimeBar endpointId={endpoint.id} incidents={incidents} />
         </div>
       </div>
@@ -142,15 +142,15 @@ export function EndpointDetailDrawer({
         <section aria-labelledby={`latency-${endpoint.id}`}>
           <div className="flex items-end justify-between gap-3">
             <div>
-              <div id={`latency-${endpoint.id}`} className="mg-label">
+              <div id={`latency-${endpoint.id}`} className="text-10 text-ink-muted">
                 Latency trend
               </div>
-              <p className="mt-1 mg-type-caption text-ink-muted">
+              <p className="mt-1 text-13 text-ink-muted">
                 Seeded from server probe history when published; augmented with client-observed
                 samples as you monitor the endpoint.
               </p>
             </div>
-            <span className="mg-type-data text-ink-strong">
+            <span className="text-11 text-ink-strong">
               {endpoint.latency_ms != null ? `${endpoint.latency_ms}ms latest` : "No latest sample"}
             </span>
           </div>
@@ -167,7 +167,7 @@ export function EndpointDetailDrawer({
                 formatValue={(value) => `${Math.round(value)}ms`}
               />
             ) : (
-              <div className="flex h-[88px] items-center justify-center border border-dashed border-border mg-type-caption text-ink-muted">
+              <div className="flex h-[88px] items-center justify-center border border-dashed border-border text-13 text-ink-muted">
                 Collecting latency samples — trend will grow as probes arrive
               </div>
             )}
@@ -178,9 +178,11 @@ export function EndpointDetailDrawer({
               .reverse()
               .map((p, index) => (
                 <div key={`${p.t}-${index}`} className="min-w-0 border-l border-border pl-2">
-                  <div className="mg-label">{index === 0 ? "Latest" : `Prior ${index}`}</div>
-                  <div className="mt-1 mg-type-data text-ink-strong">{Math.round(p.v)}ms</div>
-                  <div className="mt-0.5 truncate mg-type-data-sm text-ink-muted">
+                  <div className="text-10 text-ink-muted">
+                    {index === 0 ? "Latest" : `Prior ${index}`}
+                  </div>
+                  <div className="mt-1 text-11 text-ink-strong">{Math.round(p.v)}ms</div>
+                  <div className="mt-0.5 truncate text-10 text-ink-muted">
                     {new Date(p.t).toLocaleString("en-US")}
                   </div>
                 </div>
@@ -190,12 +192,10 @@ export function EndpointDetailDrawer({
 
         <section aria-labelledby={`incidents-${endpoint.id}`}>
           <div className="mb-1.5 flex items-center justify-between gap-2">
-            <div id={`incidents-${endpoint.id}`} className="mg-label">
+            <div id={`incidents-${endpoint.id}`} className="text-10 text-ink-muted">
               Incident timeline
             </div>
-            <span className="mg-type-data-sm text-ink-muted tabular-nums">
-              {allRows.length} total
-            </span>
+            <span className="text-10 text-ink-muted tabular-nums">{allRows.length} total</span>
           </div>
 
           <div className="mb-2 flex flex-wrap items-center gap-1">
@@ -213,7 +213,7 @@ export function EndpointDetailDrawer({
                 onClick={() => setStateFilter(id)}
                 aria-pressed={stateFilter === id}
                 className={classNames(
-                  "mg-focus-ring rounded border px-1.5 py-0.5 mg-type-caption",
+                  "mg-focus-ring rounded border px-1.5 py-0.5 text-13",
                   stateFilter === id
                     ? "border-accent/50 bg-accent/10 text-accent-text"
                     : "border-border text-ink-muted hover:text-ink-strong",
@@ -228,7 +228,7 @@ export function EndpointDetailDrawer({
                 onClick={() => setPoolOnly((v) => !v)}
                 aria-pressed={poolOnly}
                 className={classNames(
-                  "mg-focus-ring ml-auto rounded border px-1.5 py-0.5 mg-type-caption",
+                  "mg-focus-ring ml-auto rounded border px-1.5 py-0.5 text-13",
                   poolOnly
                     ? "border-accent/50 bg-accent/10 text-accent-text"
                     : "border-border text-ink-muted hover:text-ink-strong",
@@ -241,7 +241,7 @@ export function EndpointDetailDrawer({
           </div>
 
           {rows.length === 0 ? (
-            <div className="rounded border border-dashed border-border/70 px-3 py-2 mg-type-caption text-ink-muted">
+            <div className="rounded border border-dashed border-border/70 px-3 py-2 text-13 text-ink-muted">
               {allRows.length === 0
                 ? "No incidents recorded for this endpoint in the retained window."
                 : "No incidents match the current filter."}
@@ -259,7 +259,7 @@ export function EndpointDetailDrawer({
                   >
                     <span
                       className={
-                        "mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full " +
+                        "mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full mg-dot" +
                         (String(inc.state) === "down"
                           ? "bg-health-down"
                           : String(inc.state) === "warn" || String(inc.state) === "degraded"
@@ -270,11 +270,11 @@ export function EndpointDetailDrawer({
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="mg-type-data text-ink-strong">
+                        <span className="text-11 text-ink-strong">
                           {String(inc.state ?? "incident")}
                         </span>
                         <span className="flex items-center gap-1">
-                          <span className="mg-type-data-sm text-ink-muted tabular-nums">
+                          <span className="text-10 text-ink-muted tabular-nums">
                             {inc.started_at
                               ? new Date(inc.started_at).toLocaleString("en-US")
                               : "—"}
@@ -287,11 +287,9 @@ export function EndpointDetailDrawer({
                         </span>
                       </div>
                       {inc.message ? (
-                        <div className="mt-0.5 truncate mg-type-caption text-ink-muted">
-                          {inc.message}
-                        </div>
+                        <div className="mt-0.5 truncate text-13 text-ink-muted">{inc.message}</div>
                       ) : null}
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2 mg-type-data-sm text-ink-subtle-text">
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2 text-10 text-ink-subtle-text">
                         <a
                           href={`#endpoint-${affected}`}
                           className="mg-focus-ring hover:text-accent-text"
@@ -311,7 +309,7 @@ export function EndpointDetailDrawer({
               })}
             </ol>
           )}
-          <p className="mt-2 mg-type-caption text-ink-subtle-text">
+          <p className="mt-2 text-13 text-ink-subtle-text">
             Incident intervals come from /api/v1/endpoint-incidents. Latency series merges published
             probe samples with locally-observed samples — no synthetic values are generated.
           </p>

@@ -1,4 +1,4 @@
-import { Link, useLoaderData, useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
   useCallback,
@@ -63,14 +63,8 @@ import { nextTabIndex } from "@jsonbored/ui-kit";
 
 export function BlockDetailPage() {
   const { ref } = useParams({ from: "/blocks/$ref" });
-  // The loader already primed this query for head()'s title -- reuse its
-  // resolved block number for the shell's breadcrumb label too, rather than
-  // standing up a second breadcrumb trail of our own (#7853).
-  const loaderData = useLoaderData({ from: "/blocks/$ref" });
-  const crumbLabel =
-    loaderData?.blockNumber != null ? `#${formatNumber(loaderData.blockNumber)}` : undefined;
   return (
-    <AppShell crumbLabel={crumbLabel}>
+    <AppShell>
       <ValueUnitProvider>
         <AsyncPanel
           context="block detail"
@@ -298,7 +292,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         })()}
 
         <div className="flex items-center justify-end -mb-6">
-          <span className="mg-label inline-flex items-center gap-1.5">
+          <span className="text-10 text-ink-muted inline-flex items-center gap-1.5">
             Observed <TimeAgo at={block.observed_at} />
           </span>
         </div>
@@ -313,7 +307,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         <SectionAnchor id="details" title="Block details" info={BLOCK_SECTION_HINTS.details}>
           <dl className="rounded border border-border bg-card divide-y divide-border">
             <FieldRow label="Block number">
-              <span className="font-mono text-sm text-ink-strong tabular-nums">
+              <span className="font-mono text-13 text-ink-strong tabular-nums">
                 {formatNumber(block.block_number)}
               </span>
             </FieldRow>
@@ -321,12 +315,12 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               {block.block_hash ? (
                 <div className="flex min-w-0 items-center gap-1.5">
                   <span
-                    className="font-mono mg-type-caption text-ink-strong break-all md:hidden"
+                    className="font-mono text-13 text-ink-strong break-all md:hidden"
                     title={block.block_hash}
                   >
                     {shortHash(block.block_hash, 10)}
                   </span>
-                  <span className="hidden md:inline font-mono mg-type-caption text-ink-strong break-all">
+                  <span className="hidden md:inline font-mono text-13 text-ink-strong break-all">
                     {block.block_hash}
                   </span>
                   <CopyButton value={block.block_hash} label="block hash" compact />
@@ -341,7 +335,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   <Link
                     to="/blocks/$ref"
                     params={{ ref: block.parent_hash }}
-                    className="font-mono mg-type-caption text-ink-strong hover:underline break-all md:hidden"
+                    className="font-mono text-13 text-ink-strong hover:underline break-all md:hidden"
                     title={block.parent_hash}
                   >
                     {shortHash(block.parent_hash, 10)}
@@ -349,7 +343,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   <Link
                     to="/blocks/$ref"
                     params={{ ref: block.parent_hash }}
-                    className="hidden md:inline font-mono mg-type-caption text-ink-strong hover:underline break-all"
+                    className="hidden md:inline font-mono text-13 text-ink-strong hover:underline break-all"
                   >
                     {block.parent_hash}
                   </Link>
@@ -381,17 +375,17 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               </div>
             </FieldRow>
             <FieldRow label="Extrinsics">
-              <span className="font-mono text-sm text-ink tabular-nums">
+              <span className="font-mono text-13 text-ink tabular-nums">
                 {block.extrinsic_count == null ? "—" : formatNumber(block.extrinsic_count)}
               </span>
             </FieldRow>
             <FieldRow label="Events">
-              <span className="font-mono text-sm text-ink tabular-nums">
+              <span className="font-mono text-13 text-ink tabular-nums">
                 {block.event_count == null ? "—" : formatNumber(block.event_count)}
               </span>
             </FieldRow>
             <FieldRow label="Observed at">
-              <span className="font-mono mg-type-caption text-ink-muted">
+              <span className="font-mono text-13 text-ink-muted">
                 <TimeAgo at={block.observed_at} />
               </span>
             </FieldRow>
@@ -431,8 +425,8 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
             />
           ) : (
             <Panel as="div" flush className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-surface/40">
+              <table className="w-full text-left text-13">
+                <thead className="bg-surface">
                   <tr>
                     <th className="px-4 py-2.5 text-right">Index</th>
                     <th className="px-4 py-2.5">Extrinsic</th>
@@ -464,14 +458,14 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                           extrinsic.extrinsic_hash ||
                           `${extrinsic.block_number}-${extrinsic.extrinsic_index}`
                         }
-                        className="mg-row-accent hover:bg-surface/40"
+                        className="mg-row-accent hover:bg-surface"
                       >
-                        <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
+                        <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
                           {extrinsic.extrinsic_index != null
                             ? formatNumber(extrinsic.extrinsic_index)
                             : "—"}
                         </td>
-                        <td className="px-4 py-2.5 mg-type-data text-ink-muted break-all">
+                        <td className="px-4 py-2.5 text-11 text-ink-muted break-all">
                           {extrinsic.extrinsic_hash ? (
                             <Link
                               to="/extrinsics/$hash"
@@ -484,10 +478,10 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                             "—"
                           )}
                         </td>
-                        <td className="px-4 py-2.5 mg-type-data text-ink-strong">
+                        <td className="px-4 py-2.5 text-11 text-ink-strong">
                           {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
                         </td>
-                        <td className={`px-4 py-2.5 mg-type-data ${resultClass}`}>{result}</td>
+                        <td className={`px-4 py-2.5 text-11 ${resultClass}`}>{result}</td>
                       </tr>
                     );
                   })}
@@ -543,13 +537,13 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           subtitle="Curated events above are grouped by extrinsic; this table is the raw per-event stream — every pallet-level event in the block, decoded from the chain."
         >
           <details className="group rounded border border-border bg-card">
-            <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 mg-type-caption font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-13 font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <span>
                 {chainEventsQuery.isPending
                   ? "Loading raw events…"
                   : `${formatNumber(chainEvents.length)} raw pallet events`}
               </span>
-              <span className="mg-type-caption">
+              <span className="text-13">
                 <span className="group-open:hidden">Show</span>
                 <span className="hidden group-open:inline">Hide</span>
               </span>
@@ -574,8 +568,8 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                 />
               ) : (
                 <Panel as="div" flush className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-surface/40">
+                  <table className="w-full text-left text-13">
+                    <thead className="bg-surface">
                       <tr>
                         <th className="px-4 py-2.5">Pallet.method</th>
                         <th className="px-4 py-2.5">Phase</th>
@@ -587,20 +581,20 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                       {chainEvents.map((event) => (
                         <tr
                           key={`${event.block_number}-${event.event_index}`}
-                          className="mg-row-accent hover:bg-surface/40"
+                          className="mg-row-accent hover:bg-surface"
                         >
-                          <td className="px-4 py-2.5 mg-type-data text-ink-strong">
+                          <td className="px-4 py-2.5 text-11 text-ink-strong">
                             {extrinsicCall(event.pallet, event.method)}
                           </td>
-                          <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                          <td className="px-4 py-2.5 text-11 text-ink-muted">
                             {event.phase ?? "—"}
                           </td>
-                          <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink">
+                          <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink">
                             {event.extrinsic_index != null
                               ? formatNumber(event.extrinsic_index)
                               : "—"}
                           </td>
-                          <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                          <td className="px-4 py-2.5 text-11 text-ink-muted">
                             <div className="flex max-w-xs items-center gap-1.5">
                               <span className="truncate" title={formatChainEventArgs(event.args)}>
                                 {formatChainEventArgs(event.args)}
@@ -629,9 +623,9 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           subtitle="Copy a ready-to-run request for this block."
         >
           <details className="group rounded border border-border bg-card">
-            <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 mg-type-caption font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-13 font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <span>API &amp; artifact URLs</span>
-              <span className="mg-type-caption">
+              <span className="text-13">
                 <span className="group-open:hidden">Show</span>
                 <span className="hidden group-open:inline">Hide</span>
               </span>
@@ -775,14 +769,14 @@ function GroupedEvents({
   return (
     <Panel as="div" flush>
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <span className="mg-label">
+        <span className="text-10 text-ink-muted">
           {groups.length} extrinsic{groups.length === 1 ? "" : "s"} · {events.length} event
           {events.length === 1 ? "" : "s"}
         </span>
         <button
           type="button"
           onClick={() => setOpen(allOpen ? new Set() : new Set(groups.map((g) => g.key)))}
-          className="mg-type-caption font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1"
+          className="text-13 font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1"
         >
           {allOpen ? "Collapse all" : "Expand all"}
         </button>
@@ -815,7 +809,7 @@ function GroupedEvents({
                   setFocusIdx(i);
                   toggle(g.key);
                 }}
-                className="flex w-full items-center gap-2 sm:gap-3 px-3 py-2.5 text-left hover:bg-surface/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex w-full items-center gap-2 sm:gap-3 px-3 py-2.5 text-left hover:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-expanded={isOpen}
               >
                 {isOpen ? (
@@ -823,20 +817,18 @@ function GroupedEvents({
                 ) : (
                   <ChevronRight className="size-3.5 shrink-0 text-ink-muted" />
                 )}
-                <span className="mg-type-data tabular-nums text-ink-muted w-8 sm:w-10 shrink-0">
+                <span className="text-11 tabular-nums text-ink-muted w-8 sm:w-10 shrink-0">
                   {g.isSystem ? "sys" : `#${g.index}`}
                 </span>
-                <span className="mg-type-data text-ink-strong truncate min-w-0 flex-1">
-                  {title}
-                </span>
+                <span className="text-11 text-ink-strong truncate min-w-0 flex-1">{title}</span>
                 {success != null ? (
                   <span
-                    className={`hidden sm:inline mg-type-caption ${success ? "text-health-ok" : "text-health-down"}`}
+                    className={`hidden sm:inline text-13 ${success ? "text-health-ok" : "text-health-down"}`}
                   >
                     {success ? "success" : "failed"}
                   </span>
                 ) : null}
-                <span className="mg-label shrink-0 hidden sm:inline">
+                <span className="text-10 text-ink-muted shrink-0 hidden sm:inline">
                   {g.list.length} evt{g.list.length === 1 ? "" : "s"}
                 </span>
                 {g.extrinsic?.extrinsic_hash ? (
@@ -844,7 +836,7 @@ function GroupedEvents({
                     to="/extrinsics/$hash"
                     params={{ hash: g.extrinsic.extrinsic_hash }}
                     onClick={(e) => e.stopPropagation()}
-                    className="hidden sm:inline mg-type-data-sm text-ink-muted hover:text-ink-strong hover:underline shrink-0"
+                    className="hidden sm:inline text-10 text-ink-muted hover:text-ink-strong hover:underline shrink-0"
                     title={g.extrinsic.extrinsic_hash}
                   >
                     {shortHash(g.extrinsic.extrinsic_hash, 6)}
@@ -852,13 +844,13 @@ function GroupedEvents({
                 ) : null}
               </button>
               {isOpen ? (
-                <div className="border-t border-border bg-surface/20 px-3 py-2">
-                  <table className="w-full text-left text-sm">
+                <div className="border-t border-border bg-surface px-3 py-2">
+                  <table className="w-full text-left text-13">
                     <thead>
-                      <tr className="mg-type-micro text-ink-muted">
-                        <th className="px-2 py-1.5 font-normal">Kind</th>
-                        {showHotkeyCol ? <th className="px-2 py-1.5 font-normal">Hotkey</th> : null}
-                        <th className="px-2 py-1.5 text-right font-normal">Amount</th>
+                      <tr className="text-10 text-ink-muted">
+                        <th className="px-2 py-1.5">Kind</th>
+                        {showHotkeyCol ? <th className="px-2 py-1.5">Hotkey</th> : null}
+                        <th className="px-2 py-1.5 text-right">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -867,13 +859,13 @@ function GroupedEvents({
                           key={`${event.block_number}-${event.event_index}-${event.event_kind ?? "unknown"}`}
                         >
                           <td
-                            className="px-2 py-1.5 mg-type-data text-ink-strong"
+                            className="px-2 py-1.5 text-11 text-ink-strong"
                             title={event.event_kind ?? undefined}
                           >
                             {eventKindLabel(event.event_kind)}
                           </td>
                           {showHotkeyCol ? (
-                            <td className="px-2 py-1.5 mg-type-data text-ink">
+                            <td className="px-2 py-1.5 text-11 text-ink">
                               <AddressDisplay
                                 ss58={event.hotkey}
                                 keep={10}
@@ -886,7 +878,7 @@ function GroupedEvents({
                             {event.amount_tao != null ? (
                               <TaoValue amount={event.amount_tao} layout="stacked" precision={4} />
                             ) : (
-                              <span className="mg-type-data text-ink-muted">—</span>
+                              <span className="text-11 text-ink-muted">—</span>
                             )}
                           </td>
                         </tr>
@@ -940,11 +932,11 @@ function JumpToBlock() {
         placeholder="Jump to # or 0x…"
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? "jump-to-block-err" : undefined}
-        className="mg-focus-ring h-8 w-40 rounded border border-border bg-paper px-2 font-mono mg-type-caption tabular-nums text-ink-strong placeholder:text-ink-subtle sm:w-48"
+        className="mg-focus-ring h-8 w-40 rounded border border-border bg-paper px-2 font-mono text-13 tabular-nums text-ink-strong placeholder:text-ink-subtle sm:w-48"
       />
       <Kbd>↵</Kbd>
       {error ? (
-        <span id="jump-to-block-err" role="alert" className="ml-1 mg-type-data-sm text-health-down">
+        <span id="jump-to-block-err" role="alert" className="ml-1 text-10 text-health-down">
           {error}
         </span>
       ) : null}
@@ -963,7 +955,7 @@ function FieldRow({
 }) {
   return (
     <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-      <dt className="inline-flex items-center gap-1 mg-type-caption text-ink-muted sm:w-40 sm:shrink-0">
+      <dt className="inline-flex items-center gap-1 text-13 text-ink-muted sm:w-40 sm:shrink-0">
         <span>{label}</span>
         {hint ? <InfoTooltip label={hint} /> : null}
       </dt>

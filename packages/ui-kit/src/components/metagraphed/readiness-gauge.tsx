@@ -24,7 +24,7 @@ export function ReadinessGauge({
   className,
 }: ReadinessGaugeProps) {
   if (score == null && !tier) {
-    return <span className="mg-type-data text-ink-muted">—</span>;
+    return <span className="text-11 text-ink-muted">—</span>;
   }
 
   const value = Math.max(0, Math.min(100, score ?? 0));
@@ -54,15 +54,15 @@ export function ReadinessGauge({
       )}
     >
       <span
-        className="relative h-1.5 overflow-hidden rounded-full bg-surface-2"
+        className="relative h-1.5 overflow-hidden rounded bg-surface-2"
         aria-hidden
       >
         <span
-          className={classNames("absolute inset-y-0 left-0 rounded-full", fill)}
+          className={classNames("absolute inset-y-0 left-0 rounded", fill)}
           style={{ width: `${value}%` }}
         />
       </span>
-      <span className="text-right mg-type-data tabular-nums text-ink-strong">
+      <span className="text-right text-11 tabular-nums text-ink-strong">
         {value}
       </span>
     </span>

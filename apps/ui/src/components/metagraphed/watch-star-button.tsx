@@ -48,7 +48,7 @@ export function WatchStarButton({
       className={classNames(
         iconOnly
           ? "inline-flex items-center justify-center rounded p-1 min-h-8 transition-colors mg-focus-ring"
-          : "inline-flex min-h-11 items-center gap-1.5 rounded px-2 py-1 mg-type-caption font-medium transition-colors mg-focus-ring",
+          : "inline-flex min-h-11 items-center gap-1.5 rounded px-2 py-1 text-13 font-medium transition-colors mg-focus-ring",
         watched
           ? "text-accent-text hover:bg-surface"
           : "text-ink-muted hover:bg-surface hover:text-ink-strong",

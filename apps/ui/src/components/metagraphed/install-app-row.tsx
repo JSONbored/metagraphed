@@ -14,13 +14,13 @@ export function InstallAppRow() {
     <div className="flex items-start gap-3 rounded border border-accent/30 bg-accent-surface px-3 py-2.5">
       <Download className="size-4 shrink-0 text-accent" aria-hidden />
       <div className="min-w-0 flex-1">
-        <div className="mg-type-caption font-medium text-ink-strong">Install Metagraphed</div>
+        <div className="text-13 font-medium text-ink-strong">Install Metagraphed</div>
         {kind === "native" ? (
-          <p className="mt-0.5 mg-type-caption text-ink-muted">
+          <p className="mt-0.5 text-13 text-ink-muted">
             Add it to your home screen for instant, offline-capable access to your watchlist.
           </p>
         ) : (
-          <p className="mt-0.5 mg-type-caption text-ink-muted">
+          <p className="mt-0.5 text-13 text-ink-muted">
             Tap <Share className="inline size-3 -mt-0.5" aria-hidden /> Share, then "Add to Home
             Screen" for instant, offline-capable access to your watchlist.
           </p>
@@ -31,7 +31,7 @@ export function InstallAppRow() {
           <button
             type="button"
             onClick={promptInstall}
-            className="rounded border border-accent/40 bg-primary-soft px-2.5 py-1 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80"
+            className="rounded border border-accent/40 bg-primary-soft px-2.5 py-1 text-13 font-medium text-ink-strong hover:bg-primary-soft/80"
           >
             Install
           </button>

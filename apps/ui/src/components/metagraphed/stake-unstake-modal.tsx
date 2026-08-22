@@ -128,7 +128,7 @@ export function StakeUnstakeModal({
       <SheetTrigger asChild>{trigger(() => setOpen(true))}</SheetTrigger>
       <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle className="font-display text-lg">
+          <SheetTitle className="font-display text-16">
             {ACTION_VERB[flow.action]} ·{" "}
             <AddressDisplay
               ss58={hotkey}
@@ -211,7 +211,7 @@ function StakeFlowBody({
               type="button"
               onClick={flow.confirm}
               disabled={!flow.canConfirm}
-              className="w-full rounded border border-ink-strong/40 bg-surface px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-50"
+              className="w-full rounded border border-ink-strong/40 bg-surface px-3 py-2 text-13 font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-50"
             >
               Review {ACTION_VERB[flow.action].toLowerCase()}
             </button>
@@ -261,13 +261,11 @@ function StakeFlowBody({
       return (
         <div className="flex flex-col items-center gap-4 py-10 text-center">
           <AlertTriangle className="size-6 text-health-down" aria-hidden />
-          <p className="mg-type-caption-lg text-ink-strong">
-            {describeTxError(flow.txStatus.error)}
-          </p>
+          <p className="text-13 text-ink-strong">{describeTxError(flow.txStatus.error)}</p>
           <button
             type="button"
             onClick={flow.editAmount}
-            className="rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink/30"
+            className="rounded border border-border bg-card px-3 py-2 text-13 font-medium text-ink-strong transition-colors hover:border-ink/30"
           >
             Edit amount and try again
           </button>
@@ -300,26 +298,24 @@ function StatusView({
   return (
     <div className="flex flex-col items-center gap-4 py-10 text-center">
       {icon}
-      <p className="mg-type-caption-lg text-ink-strong">{message}</p>
+      <p className="text-13 text-ink-strong">{message}</p>
       {txHash ? (
         <div className="space-y-1">
           <Link
             to="/extrinsics/$hash"
             params={{ hash: txHash }}
-            className="mg-type-data text-accent hover:underline"
+            className="text-11 text-accent hover:underline"
           >
             {shortHash(txHash, 8)}
           </Link>
-          <p className="mg-type-caption text-ink-muted">
-            May take a few moments to appear once indexed.
-          </p>
+          <p className="text-13 text-ink-muted">May take a few moments to appear once indexed.</p>
         </div>
       ) : null}
       {onClose ? (
         <button
           type="button"
           onClick={onClose}
-          className="rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink/30"
+          className="rounded border border-border bg-card px-3 py-2 text-13 font-medium text-ink-strong transition-colors hover:border-ink/30"
         >
           Done
         </button>

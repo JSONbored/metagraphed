@@ -236,7 +236,7 @@ export function StackedAreaMini({
       </svg>
       {hoverX != null && hoverLines.length > 0 ? (
         <div
-          className="pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-1 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap"
+          className="pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-1 text-10 leading-tight text-ink-strong whitespace-nowrap"
           // Percentage, not px: the SVG stretches to the container's real
           // width, so `hoverX` (a viewBox coordinate) only maps back onto
           // screen space as a fraction of `width`.

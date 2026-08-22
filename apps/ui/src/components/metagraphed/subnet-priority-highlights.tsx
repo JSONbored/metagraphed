@@ -46,30 +46,23 @@ function Tile({
     <a
       href={href}
       className={classNames(
-        "group flex items-start gap-3 rounded-md border p-3 transition-colors hover:border-ink/30 mg-focus-ring",
+        "group flex items-start gap-3 rounded border p-3 transition-colors hover:border-ink/30 mg-focus-ring",
         TONE[tone],
       )}
     >
       <span
         aria-hidden
         className={classNames(
-          "inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-paper",
+          "inline-flex size-8 shrink-0 items-center justify-center rounded border border-border bg-paper",
           ICON_TONE[tone],
         )}
       >
         <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="mg-type-caption text-ink-muted">{eyebrow}</div>
-        <div
-          className="truncate font-display font-medium text-ink-strong"
-          style={{ fontSize: "var(--mg-type-body-lg)" }}
-        >
-          {value}
-        </div>
-        {hint ? (
-          <div className="truncate mg-type-caption leading-snug text-ink-muted">{hint}</div>
-        ) : null}
+        <div className="text-13 text-ink-muted">{eyebrow}</div>
+        <div className="truncate font-display font-medium text-13 text-ink-strong">{value}</div>
+        {hint ? <div className="truncate text-13 leading-snug text-ink-muted">{hint}</div> : null}
       </div>
     </a>
   );

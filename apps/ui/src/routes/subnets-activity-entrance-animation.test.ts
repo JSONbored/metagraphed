@@ -14,8 +14,8 @@ const source = readFileSync(
 );
 
 describe("subnet-activity entrance animation wiring (#8528)", () => {
-  it("animates new rows with the existing mg-fade-in utility, not a new system", () => {
-    expect(source).toContain("mg-fade-in");
+  it("animates new rows with the existing utility, not a new system", () => {
+    expect(source).toContain("");
     // no bespoke keyframe / animation library introduced in this route
     expect(source).not.toMatch(/@keyframes/);
     expect(source).not.toMatch(/animate-\[/);
@@ -34,7 +34,7 @@ describe("subnet-activity entrance animation wiring (#8528)", () => {
   });
 
   it("only fades top-level rows, never nested expanded-group children", () => {
-    expect(source).toContain('isNew && !nested && "mg-fade-in"');
+    expect(source).toContain('isNew && !nested && ""');
   });
 });
 

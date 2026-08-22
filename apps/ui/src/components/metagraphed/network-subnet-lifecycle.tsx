@@ -33,8 +33,8 @@ export function NetworkSubnetLifecycle() {
   }
 
   return (
-    <Panel as="section" dense>
-      <p className="mb-3 mg-type-data-sm text-ink-muted">
+    <Panel as="section">
+      <p className="mb-3 text-10 text-ink-muted">
         {formatNumber(l.entry_count)} recorded transition
         {l.entry_count === 1 ? "" : "s"}
         {l.subnet_count == null ? "" : ` across ${formatNumber(l.subnet_count)} subnets`}
@@ -42,10 +42,7 @@ export function NetworkSubnetLifecycle() {
 
       <ul className="space-y-1">
         {l.entries.slice(0, SHOWN).map((e, i) => (
-          <li
-            key={`${e.netuid}-${e.event}-${e.observed_at ?? i}`}
-            className="flex gap-3 mg-type-data-sm"
-          >
+          <li key={`${e.netuid}-${e.event}-${e.observed_at ?? i}`} className="flex gap-3 text-10">
             <span className="w-16 shrink-0 text-ink">SN{e.netuid}</span>
             <span className="w-28 shrink-0 text-ink-muted">{e.event}</span>
             <span className="flex-1 tabular-nums text-ink-muted">
@@ -56,7 +53,7 @@ export function NetworkSubnetLifecycle() {
                   ? `#${formatNumber(e.block_number)}`
                   : "—"}
             </span>
-            <span className="shrink-0 mg-type-label text-ink-muted">
+            <span className="shrink-0 text-11 text-ink-muted">
               {e.observed_at ? formatRelative(e.observed_at) : ""}
             </span>
           </li>
@@ -88,7 +85,7 @@ export function DomainSummaryCard({ tag }: { tag: string }) {
   }
 
   return (
-    <Panel as="section" dense>
+    <Panel as="section">
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure
           label="subnets"
@@ -120,8 +117,8 @@ export function DomainSummaryCard({ tag }: { tag: string }) {
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div title={hint}>
-      <div className="mg-type-label text-ink-muted">{label}</div>
-      <div className="mg-type-data tabular-nums text-ink">{value}</div>
+      <div className="text-11 text-ink-muted">{label}</div>
+      <div className="text-11 tabular-nums text-ink">{value}</div>
     </div>
   );
 }

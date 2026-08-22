@@ -153,7 +153,6 @@ function ReviewProvenanceChip({
           as="div"
           role="dialog"
           aria-label="Review provenance"
-          glow
           title="Review provenance"
           action={
             <button
@@ -165,11 +164,11 @@ function ReviewProvenanceChip({
               ×
             </button>
           }
-          className="absolute left-0 top-full z-[var(--mg-z-popover,50)] mt-2 w-80 max-w-[min(90vw,20rem)] shadow-lg"
+          className="absolute left-0 top-full z-[var(--mg-z-popover,50)] mt-2 w-80 max-w-[min(90vw,20rem)]"
         >
-          <p className="text-sm leading-relaxed text-ink-muted">{notes}</p>
+          <p className="text-13 leading-relaxed text-ink-muted">{notes}</p>
           {reviewedAt ? (
-            <p className="mt-2 mg-type-caption text-ink-muted">
+            <p className="mt-2 text-13 text-ink-muted">
               Reviewed <TimeAgo at={reviewedAt} />
             </p>
           ) : null}
@@ -461,7 +460,7 @@ export function SubnetMasthead({
     uptimeDelta != null && Math.abs(uptimeDelta) > 0.01 ? (
       <span
         className={
-          "inline-flex items-center gap-0.5 mg-type-data-sm " +
+          "inline-flex items-center gap-0.5 text-10" +
           (uptimeDelta > 0 ? "text-health-ok" : "text-health-down")
         }
         title={`${uptimeDelta > 0 ? "+" : ""}${uptimeDelta.toFixed(2)}% over window`}
@@ -483,7 +482,7 @@ export function SubnetMasthead({
           gives every subnet a recognizable identity colour. */}
       <div
         aria-hidden
-        className="h-[3px] w-full rounded-full opacity-80 mb-3"
+        className="h-[3px] w-full rounded opacity-80 mb-3"
         style={{
           background: `linear-gradient(90deg, ${accentColor} 0%, ${accentColor} 40%, var(--border) 100%)`,
         }}
@@ -514,21 +513,21 @@ export function SubnetMasthead({
         </div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-[-0.01em] text-ink-strong truncate">
+            <h1 className="font-display text-28 md:text-28 font-semibold text-ink-strong truncate">
               {name}
             </h1>
             {profile?.symbol ? (
-              <span className="font-mono text-sm text-ink-muted">{profile.symbol}</span>
+              <span className="font-mono text-13 text-ink-muted">{profile.symbol}</span>
             ) : null}
             {profile?.subnet_type ? (
-              <span className="rounded border border-border bg-surface/40 px-1.5 py-0.5 mg-type-caption text-ink-muted">
+              <span className="rounded border border-border bg-surface px-1.5 py-0.5 text-13 text-ink-muted">
                 {profile.subnet_type}
               </span>
             ) : null}
             {categories.map((c) => (
               <span
                 key={c}
-                className="rounded border border-border/60 bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted"
+                className="rounded border border-border/60 bg-paper px-1.5 py-0.5 text-13 text-ink-muted"
               >
                 {c}
               </span>
@@ -560,7 +559,7 @@ export function SubnetMasthead({
             />
           </div>
           {lede ? (
-            <p className="mt-2 text-sm text-ink-muted max-w-3xl leading-relaxed line-clamp-2">
+            <p className="mt-2 text-13 text-ink-muted max-w-3xl leading-relaxed line-clamp-2">
               {lede}
             </p>
           ) : null}
@@ -583,7 +582,7 @@ export function SubnetMasthead({
                 const Icon = l.icon;
                 const safeHref = safeExternalUrl(l.href);
                 const className =
-                  "inline-flex size-8 items-center justify-center text-ink-muted transition-colors " +
+                  "inline-flex size-8 items-center justify-center text-ink-muted transition-colors" +
                   (safeHref
                     ? "hover:bg-surface hover:text-ink-strong"
                     : "cursor-default opacity-40");
@@ -616,7 +615,7 @@ export function SubnetMasthead({
                         </span>
                       )}
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="mg-type-data">
+                    <TooltipContent side="bottom" className="text-11">
                       {safeHref ? host(safeHref) : "Blocked unsafe external URL"}
                     </TooltipContent>
                   </Tooltip>
@@ -633,7 +632,7 @@ export function SubnetMasthead({
                     <Code2 className="size-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="mg-type-data">
+                <TooltipContent side="bottom" className="text-11">
                   {"{ } API"}
                 </TooltipContent>
               </Tooltip>
@@ -772,7 +771,7 @@ export function SubnetMasthead({
           onClick={() => setShowMoreStats((v) => !v)}
           aria-expanded={showMoreStats}
           aria-controls={`masthead-more-stats-${netuid}`}
-          className="mg-focus-ring inline-flex items-center gap-1.5 rounded px-1 py-1 mg-type-caption font-medium text-ink-muted transition-colors hover:text-ink-strong"
+          className="mg-focus-ring inline-flex items-center gap-1.5 rounded px-1 py-1 text-13 font-medium text-ink-muted transition-colors hover:text-ink-strong"
         >
           <ChevronDown
             className={`size-3.5 transition-transform ${showMoreStats ? "rotate-180" : ""}`}
@@ -948,7 +947,7 @@ export function SubnetMasthead({
                     size={22}
                     stroke={3}
                   />
-                  <span className="mg-type-data-sm text-ink-muted truncate">
+                  <span className="text-10 text-ink-muted truncate">
                     {profile?.curation_level ?? "—"}
                   </span>
                 </div>

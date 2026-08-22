@@ -54,8 +54,8 @@ function BurnSpread() {
     .slice(0, TOP_SHOWN);
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Registration cost across subnets</h3>
+    <Panel as="section">
+      <h3 className="mb-3 text-11 text-ink-muted">Registration cost across subnets</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
         <Figure
           label="cheapest"
@@ -76,14 +76,14 @@ function BurnSpread() {
       {dearest.length > 0 ? (
         <ul className="mt-4 space-y-1">
           {dearest.map((s) => (
-            <li key={s.netuid} className="flex justify-between mg-type-data-sm">
+            <li key={s.netuid} className="flex justify-between text-10">
               <span className="text-ink-muted">SN{s.netuid}</span>
               <span className="tabular-nums text-ink">{formatTao(s.burn_tao)}</span>
             </li>
           ))}
         </ul>
       ) : null}
-      {note ? <p className="mt-3 mg-type-label text-ink-muted">{note}</p> : null}
+      {note ? <p className="mt-3 text-11 text-ink-muted">{note}</p> : null}
     </Panel>
   );
 }
@@ -101,8 +101,8 @@ function HolderConcentration() {
   const split = capturesDiverge(h.captured_at, h.positions_captured_at);
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Alpha holders across subnets</h3>
+    <Panel as="section">
+      <h3 className="mb-3 text-11 text-ink-muted">Alpha holders across subnets</h3>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
         <Figure
           label="median top-1 share"
@@ -121,12 +121,12 @@ function HolderConcentration() {
         />
       </div>
       {split ? (
-        <p className="mt-3 mg-type-label text-ink-muted">
+        <p className="mt-3 text-11 text-ink-muted">
           Subnet set read {formatRelative(h.captured_at)}; holder positions{" "}
           {formatRelative(h.positions_captured_at)}. The two halves describe different moments.
         </p>
       ) : null}
-      {note ? <p className="mt-2 mg-type-label text-ink-muted">{note}</p> : null}
+      {note ? <p className="mt-2 text-11 text-ink-muted">{note}</p> : null}
     </Panel>
   );
 }
@@ -146,8 +146,8 @@ function ConcentrationRanking() {
   const ranked = c.subnets.filter((s) => !s.unmeasured).slice(0, TOP_SHOWN);
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Most concentrated subnets</h3>
+    <Panel as="section">
+      <h3 className="mb-3 text-11 text-ink-muted">Most concentrated subnets</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
         <Figure
           label="median gini"
@@ -168,7 +168,7 @@ function ConcentrationRanking() {
       {ranked.length > 0 ? (
         <ul className="mt-4 space-y-1">
           {ranked.map((s) => (
-            <li key={s.netuid} className="flex justify-between mg-type-data-sm">
+            <li key={s.netuid} className="flex justify-between text-10">
               <span className="text-ink-muted">SN{s.netuid}</span>
               <span className="tabular-nums text-ink">
                 gini {formatNumber(s.gini)} · nakamoto {formatNumber(s.nakamoto_coefficient)}
@@ -177,7 +177,7 @@ function ConcentrationRanking() {
           ))}
         </ul>
       ) : null}
-      {note ? <p className="mt-3 mg-type-label text-ink-muted">{note}</p> : null}
+      {note ? <p className="mt-3 text-11 text-ink-muted">{note}</p> : null}
     </Panel>
   );
 }
@@ -204,8 +204,8 @@ function ConcentrationDrift() {
   const mixed = spansBuilderVersions(hist.builder_versions);
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Concentration drift · {hist.window}</h3>
+    <Panel as="section">
+      <h3 className="mb-3 text-11 text-ink-muted">Concentration drift · {hist.window}</h3>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure label="days" value={formatNumber(hist.point_count)} hint="Days in the series." />
         <Figure
@@ -228,7 +228,7 @@ function ConcentrationDrift() {
           definitions rather than measuring a movement, so it is named rather
           than smoothed over. */}
       {mixed ? (
-        <p className="mt-3 mg-type-label text-ink-muted">
+        <p className="mt-3 text-11 text-ink-muted">
           This window spans builder versions {hist.builder_versions.join(", ")} — points either side
           were computed differently, so a change across the seam is a change of definition, not of
           the network.
@@ -241,8 +241,8 @@ function ConcentrationDrift() {
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div title={hint}>
-      <div className="mg-type-label text-ink-muted">{label}</div>
-      <div className="mg-type-data tabular-nums text-ink">{value}</div>
+      <div className="text-11 text-ink-muted">{label}</div>
+      <div className="text-11 tabular-nums text-ink">{value}</div>
     </div>
   );
 }

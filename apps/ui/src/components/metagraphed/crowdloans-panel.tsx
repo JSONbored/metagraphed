@@ -37,8 +37,8 @@ export function CrowdloansPanel() {
   }
 
   return (
-    <Panel as="section" dense>
-      <p className="mb-3 mg-type-data-sm text-ink-muted">
+    <Panel as="section">
+      <p className="mb-3 text-10 text-ink-muted">
         {formatNumber(c.crowdloan_count)} crowdloan{c.crowdloan_count === 1 ? "" : "s"}
       </p>
 
@@ -49,7 +49,7 @@ export function CrowdloansPanel() {
               type="button"
               onClick={() => setOpenId((cur) => (cur === l.crowdloan_id ? null : l.crowdloan_id))}
               aria-expanded={openId === l.crowdloan_id}
-              className="flex w-full items-center gap-3 py-2 text-left mg-type-data-sm"
+              className="flex w-full items-center gap-3 py-2 text-left text-10"
             >
               <span className="w-10 shrink-0 text-ink">#{l.crowdloan_id}</span>
               <span className="flex-1 tabular-nums text-ink">
@@ -59,7 +59,7 @@ export function CrowdloansPanel() {
                 {l.percent_raised == null ? "—" : `${formatNumber(l.percent_raised)}%`}
               </span>
               {/* Two states, two badges. Raised is not settled. */}
-              <span className="w-24 shrink-0 mg-type-label text-ink-muted" title={statusHint(l)}>
+              <span className="w-24 shrink-0 text-11 text-ink-muted" title={statusHint(l)}>
                 {settlementLabel(l)}
               </span>
             </button>
@@ -82,7 +82,7 @@ function CrowdloanDetail({ id }: { id: number }) {
   // `exists: false` at 200 is an ANSWER about the chain, not a failed request.
   if (!d?.exists || !d.crowdloan) {
     return (
-      <p className="pb-2 mg-type-data-sm text-ink-muted">
+      <p className="pb-2 text-10 text-ink-muted">
         No crowdloan {id} exists on chain — a fact about the chain, not a failed lookup.
       </p>
     );
@@ -106,8 +106,8 @@ function CrowdloanDetail({ id }: { id: number }) {
 function Detail({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div title={hint}>
-      <dt className="mg-type-label text-ink-muted">{label}</dt>
-      <dd className="mg-type-data-sm tabular-nums text-ink">{value}</dd>
+      <dt className="text-11 text-ink-muted">{label}</dt>
+      <dd className="text-10 tabular-nums text-ink">{value}</dd>
     </div>
   );
 }

@@ -5,79 +5,144 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
-// Bone & Ink guardrails — see CONTRIBUTING.md.
+// Design-system v2 guardrails (#11605) — see apps/ui/CONTRIBUTING.md and
+// packages/ui-kit/src/styles.css. Every rule here is an ERROR in every source
+// directory: the v2 contract is one family, six sizes, normal tracking, one
+// radius, three rules and no resting shadow, and the token-inventory e2e
+// measures the same things in the rendered page. There is no warn tier.
+//
 // Spacing scale allowed in raw utilities: 4pt subset.
 const ALLOWED_SPACE = "0|px|0\\.5|1|1\\.5|2|2\\.5|3|4|6|8|10|12|16|20|24";
 const SPACE_UTILS = "p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|gap-x|gap-y|space-x|space-y";
 const RAW_SPACING_REGEX = new RegExp(
   `\\b(?:${SPACE_UTILS})-(?!(?:${ALLOWED_SPACE})\\b)(?:\\[[^\\]]+\\]|[0-9]+(?:\\.[0-9]+)?)\\b`,
 );
-const RAW_TEXT_ARBITRARY = /\btext-\[[^\]]+\]/;
 
-const BASE_DESIGN_RULES = [
+const COLOR_RULES = [
   {
     selector:
       "Literal[value=/\\b(?:bg|text|border|from|to|via|ring|fill|stroke|decoration|outline|shadow|divide|placeholder|caret|accent)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]{2,3}\\b/]",
     message:
-      "Use semantic Bone & Ink tokens (bg-paper, text-ink-strong, bg-health-ok, text-accent-text, …) instead of raw Tailwind palette colors. See CONTRIBUTING.md.",
+      "Use the semantic tokens (bg-canvas, bg-layer, text-ink-strong, text-ink-muted, text-good, border-rule, …) instead of raw Tailwind palette colors.",
   },
   {
-    selector: "Literal[value=/\\bfont-(?:bold|extrabold|black)\\b/]",
-    message:
-      "Bone & Ink caps font-weight at 600. Use font-medium or font-semibold — never bold/extrabold/black.",
-  },
-  {
-    // Anchored to the whole literal (a bare hex value, e.g. a theme-color meta
-    // string) or Tailwind's `[#...]` arbitrary-value bracket syntax -- NOT a
-    // bare `\b#[0-9a-f]{3,8}\b` scan, which false-positives on GitHub issue
-    // references embedded in prose strings (test descriptions, tooltip copy,
-    // JSDoc-in-string), e.g. "...(#6424)..." reads as a 4-digit hex color to
-    // an unanchored regex. A 2026-07-23 audit found 26 of 27 "hits" were this
-    // exact false positive; only the real one (an unavoidable meta theme-color
-    // literal, __root.tsx) survives this tightened match.
+    // Anchored to the whole literal (a bare hex value) or Tailwind's `[#...]`
+    // arbitrary-value bracket syntax -- NOT a bare scan, which false-positives
+    // on GitHub issue references in prose strings.
     selector: "Literal[value=/^#[0-9a-fA-F]{3,8}$|\\[#[0-9a-fA-F]{3,8}\\]/]",
     message:
-      "No raw hex colors in className / string literals. Author new colors in OKLCH in packages/ui-kit/src/styles.css.",
+      "No raw hex colors in className / string literals. Author new colors as tokens in packages/ui-kit/src/styles.css.",
+  },
+];
+
+// The type contract: seven sizes (text-10 … text-64), weights 400/500/600,
+// no tracking, no uppercase outside <th>.
+const TYPE_RULES = [
+  {
+    selector: "Literal[value=/\\btext-(?:xs|sm|base|lg|xl|[2-9]xl)\\b/]",
+    message:
+      "Tailwind's size ramp does not exist here. Use text-10 / text-11 / text-13 / text-16 / text-28 / text-40 (text-64 on the landing h1 only).",
+  },
+  {
+    selector: "Literal[value=/\\btext-\\[[^\\]]+\\]/]",
+    message: "Arbitrary text sizes are drift. Use one of the seven text-N utilities.",
+  },
+  {
+    selector: "Literal[value=/\\bmg-type-[a-z-]+\\b|\\bmg-label\\b/]",
+    message:
+      "The mg-type-* / mg-label utilities were removed (#11605). Use text-N + a colour token.",
+  },
+  {
+    selector: "Literal[value=/\\bfont-(?:bold|extrabold|black|thin|extralight|light)\\b/]",
+    message: "Weights are 400 / 500 / 600 only. Use font-normal, font-medium or font-semibold.",
+  },
+  {
+    selector: "Literal[value=/\\btracking-/]",
+    message:
+      "letter-spacing is normal everywhere except <th> (which gets it from CSS). Remove the tracking-* utility.",
+  },
+  {
+    selector:
+      "JSXOpeningElement[name.name!=/^(?:th|Th)$/] JSXAttribute[name.name='className'] Literal[value=/\\buppercase\\b/]",
+    message: "text-transform: uppercase is reserved for table headers (<th>, styled in CSS).",
+  },
+];
+
+// One radius. Status dots are the only circles, and they carry `mg-dot`.
+const RADIUS_RULES = [
+  {
+    selector:
+      "Literal[value=/\\brounded-(?:xs|sm|md|lg|xl|[2-4]xl|t|b|l|r|tl|tr|bl|br|s|e|ss|se|es|ee)(?:-[a-z0-9]+)?\\b|\\brounded-\\[[^\\]]+\\]/]",
+    message: "There is one radius: `rounded` (4px). Corner- and size-specific radii were removed.",
+  },
+  {
+    selector: "Literal[value=/\\brounded-full\\b/][value!=/\\bmg-dot\\b/]",
+    message:
+      "rounded-full is only for 8×8 status dots, which carry `mg-dot` in the same className. Everything else is `rounded`.",
+  },
+];
+
+// No resting shadow, no blur, no glass, no glow, no translucent surfaces.
+const SURFACE_RULES = [
+  {
+    selector:
+      "Literal[value=/(?<![\\w-])(?:drop-)?shadow-(?!\\[var\\(--mg-shadow-tooltip\\)\\])[a-z0-9\\[\\(\\)\\.\\-]+/]",
+    message:
+      "No resting shadows. The only shadow is the floating tooltip's --mg-shadow-tooltip (applied by the tooltip primitive).",
+  },
+  {
+    selector:
+      "Literal[value=/\\bbackdrop-blur|\\bsupports-\\[backdrop-filter\\]|\\bmg-glass|\\bmg-card-glow/]",
+    message:
+      "Glass, blur and glow surfaces were removed (#11605). Use bg-canvas / bg-layer / bg-raised.",
+  },
+  {
+    selector:
+      "Literal[value=/\\bbg-(?:card|paper|surface|canvas|layer|raised|popover)\\/[0-9]+\\b/]",
+    message:
+      "Surfaces are opaque. Use bg-canvas / bg-layer / bg-raised without an opacity fraction.",
+  },
+  {
+    selector:
+      "Literal[value=/\\b(?:mg-quick-tile|mg-reveal|mg-scanline|mg-eyebrow-rot|mg-metric-tile|mg-dot-grid|mg-leaderboard|mg-lb-|mg-chip-rail|mg-glyph-rule|mg-section-rule|mg-display-tight|mg-fade-in|mg-route-enter|mg-row-flash|mg-flash-|mg-ticker|mg-mega-|mg-pulse(?![\\w-]))/]",
+    message: "This decorative class was deleted in #11605 and must not come back.",
   },
   {
     selector: "Literal[value=/\\btop-14\\b|\\btop-\\[3\\.5rem\\]/]",
     message:
       "Do not hardcode sticky offsets. Use style={{ top: 'var(--mg-sticky-offset)' }} so the header height stays authoritative.",
   },
+  {
+    selector: "Literal[value=/\\bz-(\\[[0-9]+\\]|[0-9]+\\b)/]",
+    message: "Raw z-index step. Use one of the --mg-z-* layer tokens (see styles.css).",
+  },
+];
+
+// No perpetual motion, no transforms on hover.
+const MOTION_RULES = [
+  {
+    selector:
+      "Literal[value=/\\b(?:animate-marquee|animate-scroll|mg-marquee|mg-ticker-track|animate-bounce|animate-ping)\\b/]",
+    message:
+      "No perpetual decorative animation. Loading feedback uses the skeleton shimmer (animate-pulse) or a spinner (animate-spin) only.",
+  },
+  {
+    selector:
+      "Literal[value=/\\b(?:hover|group-hover|focus|focus-visible|active):(?:-?translate-[xy]?-|scale-|rotate-)/]",
+    message: "Hover never moves or scales an element. Change colour, background or border only.",
+  },
+];
+
+const SPACING_RULES = [
+  {
+    selector: `Literal[value=/${RAW_SPACING_REGEX.source}/]`,
+    message: "Raw spacing outside the 4pt subset. Use --mg-space-* tokens or the primitives.",
+  },
 ];
 
 // Steer contributors to the extracted primitives instead of hand-rolling the
-// same shells. These rules only fire outside the primitives folder + design
-// showcase.
+// same shells.
 const PRIMITIVE_STEER_RULES = [
-  {
-    // Scoped to plain `<div>`/`<section>` className literals only -- an
-    // unscoped `Literal[value=/regex/]` (the original form of this rule)
-    // matched the same rounded/border/bg-card substrings on buttons, `<a>`/
-    // `<Link>` nav pills, `<input>` fields, and existing styled components
-    // (e.g. `<StatTile className="rounded-2xl border-border/80 bg-card/95 ...">`,
-    // which already owns its own card rendering) -- none of those are the
-    // hand-rolled content-shell divs this rule exists to catch. Also excludes
-    // `mg-card-glow`/`mg-card-glow-accent` (packages/ui-kit/src/styles.css)
-    // matches -- that's a real, already-documented soft-elevation variant for
-    // detail-page panels (#6398), not drift; <Panel> has no glow variant to
-    // migrate it to. A 2026-07-23 audit found the unscoped selector's false
-    // positives outnumbered genuine hits roughly 3-to-1.
-    //
-    // Third tightening (2026-07-29, #8556): excludes `inline-flex` className
-    // values. Genuine card shells are block-level content surfaces; a div
-    // that lays itself out as an inline-flex row is a *control* shell (the
-    // /health interval segmented control, /status window toggle, the
-    // subnet-detail stake/unstake tablist) sharing the border/bg-card look
-    // without being a content panel -- wrapping those in <Panel> would be
-    // actively wrong, since Panel carries panel semantics and padding a
-    // control must not inherit. Same failure mode as the two tightenings
-    // above: the look-alike class cluster, not the element's actual role.
-    selector:
-      "JSXOpeningElement[name.name=/^(?:div|section)$/] JSXAttribute[name.name='className'] Literal[value=/\\brounded\\b.*\\bborder\\b.*\\bbg-card\\b|\\bborder\\b.*\\bbg-card\\b.*\\brounded\\b/][value!=/mg-card-glow/][value!=/\\binline-flex\\b/]",
-    message:
-      "Wrap card shells in <Panel> from '@/components/metagraphed/primitives' instead of re-authoring rounded/border/bg-card by hand.",
-  },
   {
     selector:
       "JSXOpeningElement[name.name='a'] > JSXAttribute[name.name='target'][value.value='_blank']",
@@ -102,173 +167,15 @@ const SSR_SAFETY_RULES = [
   },
 ];
 
-const SPACING_TYPE_RULES = [
-  {
-    selector: `Literal[value=/${RAW_SPACING_REGEX.source}/]`,
-    message:
-      "Raw spacing outside the 4pt subset. Use --mg-space-* tokens or the Panel/primitives (see CONTRIBUTING.md).",
-  },
-  {
-    selector: `Literal[value=/${RAW_TEXT_ARBITRARY.source}/]`,
-    message:
-      "Bare arbitrary text sizes are drift. Use <SectionLabel>, <Chip>, or the .mg-type-* utilities.",
-  },
-];
-
-// #7840: the 13 raw shadow-[…] values found across both packages collapsed
-// into a named --mg-shadow-* elevation scale (packages/ui-kit/src/styles.css).
-// Negative-lookahead excludes the token-referencing form itself
-// (shadow-[var(--mg-shadow-…)]) so the rule doesn't flag the fix.
-const ELEVATION_RULES = [
-  {
-    selector: "Literal[value=/\\bshadow-\\[(?!var\\(--mg-shadow)/]",
-    message: "Raw shadow value. Use one of the --mg-shadow-* elevation tokens (see styles.css).",
-  },
-];
-
-// #7841: bare z-* stacking steps collapsed into a named --mg-z-* layer scale
-// (packages/ui-kit/src/styles.css). Also flags the 6 documented z-[1]/z-[2]
-// sticky-cell micro-stacking exceptions in the two compare drawers -- that's
-// intentional (matches the residual-worklist convention other guardrails use).
-const Z_INDEX_RULES = [
-  {
-    selector: "Literal[value=/\\bz-(\\[[0-9]+\\]|[0-9]+\\b)/]",
-    message: "Raw z-index step. Use one of the --mg-z-* layer tokens (see styles.css).",
-  },
-];
-
-// #7842: ad-hoc bg-card/NN opacity fractions collapsed into two named
-// surface-translucency tiers (styles.css): .mg-glass (the sticky-header/
-// drawer-shell blur idiom) and .mg-glass-soft (flat 60%, no blur). A small,
-// documented set of sites couldn't cleanly snap to either tier and were left
-// as bare fractions with an inline comment -- those will still warn here,
-// same residual-worklist convention the other token rules already use.
-const GLASS_SURFACE_RULES = [
-  {
-    selector: "Literal[value=/\\bbg-card\\/[0-9]+\\b/]",
-    message: "Raw bg-card opacity. Use .mg-glass or .mg-glass-soft (see styles.css).",
-  },
-];
-
-// #7843: `rounded-sm`/`rounded-lg` were eliminated (snapped to `rounded` /
-// `rounded-md`) and `rounded-3xl` was never used -- the approved 5-step scale
-// is rounded-full / rounded (base) / rounded-md / rounded-xl / rounded-2xl
-// (the last confined to the homepage hero family and the documented
-// .mg-card-glow detail-page panel pattern, #6398 -- see CONTRIBUTING.md's
-// radius table). Arbitrary `rounded-[…]` is flagged too, except the
-// documented dense-grid micro-radius residual (heatmap/mosaic/uptime-bar
-// cells at 1-2px, far below any named step) -- those still warn here rather
-// than getting a file exemption, same residual-worklist convention as the
-// z-index rule's compare-drawer sites.
-const RADIUS_RULES = [
-  {
-    // Message deliberately avoids spelling out the banned classes as
-    // contiguous "rounded-X" tokens -- doing so would self-match this same
-    // selector inside this config file (a real 2026-07-24 false positive).
-    selector: "Literal[value=/\\brounded-(?:sm|lg|3xl)\\b/]",
-    message:
-      "This radius step was eliminated from the approved scale. Use rounded (base), rounded-md, rounded-xl, or rounded-2xl (hero/mg-card-glow only) -- see CONTRIBUTING.md.",
-  },
-  {
-    // Same self-match hazard as above -- the message avoids a literal
-    // bracket-closed "rounded-[...]" example.
-    selector: "Literal[value=/\\brounded-\\[[^\\]]+\\]/]",
-    message:
-      "Arbitrary bracketed radius value outside the approved scale. Use rounded-full, rounded, rounded-md, rounded-xl, or rounded-2xl -- see CONTRIBUTING.md.",
-  },
-];
-
-// #8255 visual grammar. Unlike the token rules above -- which encode "which
-// value" -- this encodes "how much": how loud a page is allowed to be.
-//
-// It joins FULL_DESIGN_RULES and inherits that severity: warn in src/**, error
-// in RATCHETED_DIRS. `no-restricted-syntax` carries one severity for all its
-// selectors, so there is no way to run this at error while the token worklist
-// stays at warn. For the marquee ban, visual-grammar-guardrails.test.ts does
-// that job instead, failing CI outright on any occurrence anywhere in either
-// package. The #8325 label-diet rule below is NOT in that suite (a 2026-07-29
-// audit found the previous version of this comment overstated its coverage --
-// the suite asserts marquee/infinite-translate/full-bleed-accent only): its
-// boundary needs the element set + rounded-full chip exemption, which lives
-// in AST-selector form here, so its cross-package enforcement is the verbatim
-// copy of the selector in packages/ui-kit/eslint.config.ts (#8557), at error
-// tier for ui-kit's ratcheted src/components/**.
-//
-// The companion accent-budget rule is deliberately NOT here. Telling a
-// legitimate accent data mark (a bar sized `width: ${pct}%`, a sparkline
-// stroke, an 8px legend swatch) from a full-bleed region fill needs the
-// element's className, which a `style` -> Property -> Literal selector can't
-// reach -- a first attempt flagged all three of those as violations. The test
-// file makes that distinction with line context instead.
-const VISUAL_GRAMMAR_RULES = [
-  {
-    // #8325 label diet. mg-type-micro is 9.5px mono UPPERCASE with 0.18em
-    // tracking -- reserved for table headers and provenance chips, where a
-    // label is structural furniture the eye skips. Used on a section heading
-    // or an eyebrow it turns every heading into a shout, which is what made
-    // pages read as loud even though the tokens themselves are calm.
-    //
-    // Scoped to the element set the sweep covered, and excludes className
-    // values containing `rounded-full`: that's the chip/pill family, which
-    // keeps micro legitimately (34 sites). th/thead/td/tr aren't listed at
-    // all, so table headers are safe by construction rather than by
-    // exception.
-    selector:
-      "JSXOpeningElement[name.name=/^(?:span|div|button|Link|dt|p|a|label|ExternalLink|CommandShortcut)$/] JSXAttribute[name.name='className'] Literal[value=/\\bmg-type-micro\\b/][value!=/rounded-full/]",
-    message:
-      "mg-type-micro is for table headers and provenance chips only (#8325). Section labels and eyebrows use mg-type-caption / <SectionLabel> / <SectionHeading>.",
-  },
-  {
-    // Auto-scrolling text is unreadable, unpausable, and steals attention from
-    // whatever the reader actually came for. No markup referenced the marquee
-    // any more -- .mg-ticker-track had zero consumers and .mg-ticker is a
-    // plain user-scrollable row -- so what survived was dead CSS keeping the
-    // pattern one className away. This change deletes it and this rule keeps
-    // it deleted.
-    selector:
-      "Literal[value=/\\b(?:animate-marquee|animate-scroll|mg-marquee|mg-ticker-track)\\b/]",
-    message:
-      "No marquees or auto-scrolling strips (#8255). Give the reader a static list, or a scroll container they control.",
-  },
-];
-
-// The full Bone & Ink rule set applied to src/**/*.{ts,tsx} (the "warn" block
-// below) -- named so the #7851 ratchet block can apply the identical set at
-// "error" without duplicating the array.
-const FULL_DESIGN_RULES = [
-  ...BASE_DESIGN_RULES,
-  ...SPACING_TYPE_RULES,
+const DESIGN_RULES = [
+  ...COLOR_RULES,
+  ...TYPE_RULES,
+  ...RADIUS_RULES,
+  ...SURFACE_RULES,
+  ...MOTION_RULES,
+  ...SPACING_RULES,
   ...PRIMITIVE_STEER_RULES,
   ...SSR_SAFETY_RULES,
-  ...ELEVATION_RULES,
-  ...Z_INDEX_RULES,
-  ...GLASS_SURFACE_RULES,
-  ...RADIUS_RULES,
-  ...VISUAL_GRAMMAR_RULES,
-];
-
-// #7851: one-way lint ratchet. A directory enters this list only once it's
-// been verified at 0 Bone & Ink warnings (no-restricted-syntax) -- from that
-// point on, new drift in the directory fails CI instead of only annotating
-// it. Any PR that brings a directory to 0 warnings MUST add it here in the
-// same PR (see CONTRIBUTING.md); removing an entry requires an issue
-// explaining why. Initial set (2026-07-24 audit): src/hooks/** was clean
-// end-to-end. #8424 cleared the last src/lib/** residuals (dead
-// download-csv-button text-[11px], ValueUnitControl, and a gap-5 fixture
-// false-positive) and added that directory here. #8552 finished
-// src/components/**: #8167-#8171 took it from 81 warning-files down to 13
-// warnings, #8571 deleted its inert text-[10px] trio, and the remaining 10
-// were fixed or suppressed-with-reason in the same PR that ratcheted it.
-const RATCHETED_DIRS = [
-  "src/hooks/**/*.{ts,tsx}",
-  "src/lib/**/*.{ts,tsx}",
-  "src/components/**/*.{ts,tsx}",
-  // #9343: the last tier promoted, and the largest (107 files). Every real
-  // design-token hit under src/routes/** was already suppressed with the
-  // documented pattern citing #8554/#8717; the one that was not is the 9px
-  // repeat badge in -blocks-index-page.tsx, now suppressed the same way. With
-  // routes at error tier the ratchet covers the whole of src/.
-  "src/routes/**/*.{ts,tsx}",
 ];
 
 export default tseslint.config(
@@ -301,14 +208,6 @@ export default tseslint.config(
         },
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      // ON, matching the root config. It was "off" purely because the Vite/
-      // Lovable scaffold shipped it that way when the UI came into the
-      // monorepo (#3190) -- combined with tsconfig's noUnusedLocals:false that
-      // left this package with NO unused-code detection at all, so an
-      // imported-but-never-rendered component was invisible to build, lint and
-      // review. Enabling it surfaced a subnet-detail share affordance and a
-      // homepage chart that had been silently orphaned (#8294).
-      // argsIgnorePattern keeps deliberate signature placeholders legal.
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -318,68 +217,25 @@ export default tseslint.config(
           ignoreRestSiblings: true,
         },
       ],
-      // Bone & Ink design-system guardrails. See CONTRIBUTING.md.
-      // "warn", not "error": a full-codebase audit (2026-07-23) found 2177
-      // pre-existing violations across 201 files -- tightening to "error" now
-      // would block every unrelated PR. Fix incrementally as each file is
-      // touched (the Lovable-sync route-sweep batches do this naturally);
-      // revisit "error" once a file/directory is verified clean.
-      "no-restricted-syntax": ["warn", ...BASE_DESIGN_RULES],
     },
   },
   {
-    // Full guardrail set — layered on top of the base rules for every source
-    // file. The primitives folder, design showcase, vendor-adjacent snapshot,
-    // and the two files below authoritatively define or unavoidably need raw
-    // values are excluded. Contributors adding new drift must reach for
-    // --mg-space-* or the primitives instead. See CONTRIBUTING.md.
+    // The design contract, at error tier, for every source file. The only
+    // exemptions are the two files that must carry literal colours because no
+    // CSS cascade reaches them.
     files: ["src/**/*.{ts,tsx}"],
-    ignores: [
-      "src/components/metagraphed/primitives/**",
-      "src/routes/design.primitives.tsx",
-      // -design-primitives-page.tsx (#7850): the showcase page's actual
-      // content, moved out of design.primitives.tsx so that file exports
-      // only Route (fast-refresh compliance) -- same authoritative-raw-
-      // values exemption as its route file above.
-      "src/routes/-design-primitives-page.tsx",
-      // The one agreed `var(--health-*, <fallback-hex>)` CSS-fallback source of
-      // truth (#3458) -- these are inert fallback values for a custom-property
-      // reference, not classNames, and must stay literal hex by construction.
-      "src/lib/health-tokens.ts",
-      // Server-rendered OG image HTML string (satori/workers-og) -- no CSS
-      // cascade or custom properties reach this renderer, so literal colors
-      // are unavoidable here.
-      "src/lib/og-image.ts",
-    ],
+    ignores: ["src/lib/health-tokens.ts", "src/lib/og-image.ts", "src/lib/og-image.test.ts"],
     rules: {
-      // "warn" for the same reason as the base block above -- see its comment.
-      "no-restricted-syntax": ["warn", ...FULL_DESIGN_RULES],
-    },
-  },
-  {
-    // #7851: promotes the ratcheted directories above from warn to error.
-    // Layered after the warn-tier block so it wins for files in both (flat
-    // config's last-matching-block-wins semantics); the off-exclusion blocks
-    // below stay last so primitives/showcase/health-tokens/og-image keep
-    // their existing exemption unchanged even if a ratcheted glob ever
-    // overlapped one of them.
-    files: RATCHETED_DIRS,
-    rules: {
-      "no-restricted-syntax": ["error", ...FULL_DESIGN_RULES],
+      "no-restricted-syntax": ["error", ...DESIGN_RULES],
     },
   },
   {
     files: [
-      "src/routes/design.primitives.tsx",
-      "src/routes/-design-primitives-page.tsx",
-      "src/components/metagraphed/primitives/**",
+      // The one agreed `var(--health-*, <fallback-hex>)` CSS-fallback source of
+      // truth (#3458) -- inert fallback values for a custom-property reference.
       "src/lib/health-tokens.ts",
       // The OG card is rasterized by satori on the Worker, where CSS custom
-      // properties do not exist -- every colour has to ship as a literal hex,
-      // which is why this file is exempt. Its TEST is exempt for the same
-      // reason: the assertions that the card uses --accent-text rather than
-      // the unreadable brand mint, and the site's own health colours, can only
-      // be written against those literals.
+      // properties do not exist -- every colour has to ship as a literal.
       "src/lib/og-image.ts",
       "src/lib/og-image.test.ts",
     ],
@@ -387,18 +243,14 @@ export default tseslint.config(
   },
   {
     // shadcn/ui primitives co-export their `cva` variants, and our leaf
-    // components co-export tightly-coupled helpers/hooks (prefetchBrandIcon,
-    // safeExternalUrl, useActiveTab). That co-location is intentional here; this
-    // fast-refresh-only rule stays ON for routes, where a file should export just
-    // its route.
+    // components co-export tightly-coupled helpers/hooks. That co-location is
+    // intentional here; this fast-refresh-only rule stays ON for routes.
     files: ["src/components/**/*.{ts,tsx}"],
     rules: { "react-refresh/only-export-components": "off" },
   },
   {
-    // These three lib/ files are React context modules: the provider
-    // component and its useXCtx/useX hook both need direct access to the
-    // same module-private createContext() value, so the hook can't move to
-    // a sibling file without exporting the context object itself (#7850).
+    // React context modules: the provider component and its hook both need
+    // the same module-private createContext() value (#7850).
     files: [
       "src/lib/metagraphed/api-source-context.tsx",
       "src/lib/metagraphed/subnet-window.tsx",

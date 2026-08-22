@@ -38,7 +38,7 @@ export function SubnetTreasuryPanel({ netuid }: { netuid: number }) {
   }
 
   return (
-    <Panel as="section" dense>
+    <Panel as="section">
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
         <Figure
           label="repos read"
@@ -65,7 +65,7 @@ export function SubnetTreasuryPanel({ netuid }: { netuid: number }) {
         {card.readings.map((r) => (
           <li
             key={`${r.evidence.source_url}-${r.evidence.read_at_sha}`}
-            className="mg-type-caption text-ink-muted"
+            className="text-13 text-ink-muted"
           >
             <span className="text-ink-strong">
               {r.review_state === "reviewed"
@@ -103,9 +103,9 @@ export function matchLabel(value: boolean | null | undefined): string {
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div>
-      <div className="mg-type-caption text-ink-muted">{label}</div>
-      <div className="mg-type-body text-ink-strong">{value}</div>
-      <div className="mg-type-caption text-ink-muted">{hint}</div>
+      <div className="text-13 text-ink-muted">{label}</div>
+      <div className="text-13 text-ink-strong">{value}</div>
+      <div className="text-13 text-ink-muted">{hint}</div>
     </div>
   );
 }

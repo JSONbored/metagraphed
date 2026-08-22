@@ -59,7 +59,7 @@ const ACTIONS: QuickAction[] = [
  * Icon-anchored quick-actions row rendered under the leaderboard module.
  * Five compact tiles linking to the registry's primary destinations, each
  * with an eyebrow, title, and one-line description. Hover microinteractions
- * are defined in styles.css (`.mg-quick-tile`) and respect prefers-reduced-motion.
+ * are defined in styles.css (`.`) and respect prefers-reduced-motion.
  */
 export function QuickActionsRow() {
   return (
@@ -71,21 +71,21 @@ export function QuickActionsRow() {
             <Link
               key={a.to}
               to={a.to}
-              className="mg-quick-tile group relative flex flex-col gap-3 rounded-xl border border-border bg-card p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              className="group relative flex flex-col gap-3 rounded border border-border bg-card p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
             >
               <div className="flex items-start justify-between">
                 <span
                   aria-hidden
-                  className="mg-quick-icon inline-flex size-9 items-center justify-center rounded-md border border-border bg-surface/60 text-ink-strong"
+                  className="inline-flex size-9 items-center justify-center rounded border border-border bg-surface text-ink-strong"
                 >
                   <Icon className="size-4" />
                 </span>
-                <ArrowUpRight aria-hidden className="mg-quick-arrow size-3.5 text-ink-subtle" />
+                <ArrowUpRight aria-hidden className="size-3.5 text-ink-subtle" />
               </div>
               <div className="space-y-1">
-                <div className="mg-type-caption text-ink-muted">{a.eyebrow}</div>
-                <div className="font-display text-sm font-semibold text-ink-strong">{a.title}</div>
-                <p className="mg-type-caption leading-relaxed text-ink-muted">{a.description}</p>
+                <div className="text-13 text-ink-muted">{a.eyebrow}</div>
+                <div className="font-display text-13 font-semibold text-ink-strong">{a.title}</div>
+                <p className="text-13 leading-relaxed text-ink-muted">{a.description}</p>
               </div>
             </Link>
           );

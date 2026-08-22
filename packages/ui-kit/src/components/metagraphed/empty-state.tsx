@@ -1,7 +1,8 @@
 import type { ComponentType, ReactNode } from "react";
+import { ExternalLink } from "./external-link";
 import {
   AlertTriangle,
-  ExternalLink,
+  ExternalLink as ExternalLinkIcon,
   Filter,
   Inbox,
   RotateCcw,
@@ -72,35 +73,32 @@ export function EmptyState({
       <span
         aria-hidden
         className={classNames(
-          "inline-flex size-10 items-center justify-center rounded-full border border-border bg-surface-2",
+          "inline-flex size-10 items-center justify-center rounded border border-border bg-surface-2",
           VARIANT_TONE[variant],
         )}
       >
         <Icon className="size-4" />
       </span>
       <div className="max-w-sm space-y-1">
-        <p className="font-display text-[15px] font-medium text-ink-strong">
+        <p className="font-display text-13 font-medium text-ink-strong">
           {title}
         </p>
         {hint != null ? (
-          <p className="mg-type-caption-lg leading-relaxed text-ink-muted">
-            {hint}
-          </p>
+          <p className="text-13 leading-relaxed text-ink-muted">{hint}</p>
         ) : null}
       </div>
       {action != null || evidenceHref ? (
         <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
           {action}
           {evidenceHref ? (
-            <a
+            <ExternalLink
+              bare
               href={evidenceHref}
-              target="_blank"
-              rel="noreferrer"
-              className="mg-focus-ring inline-flex items-center gap-1 mg-type-label uppercase text-ink-muted hover:text-ink-strong"
+              className="mg-focus-ring inline-flex items-center gap-1 text-11 text-ink-muted hover:text-ink-strong"
             >
               {evidenceLabel}
-              <ExternalLink className="size-3" aria-hidden />
-            </a>
+              <ExternalLinkIcon className="size-3" aria-hidden />
+            </ExternalLink>
           ) : null}
         </div>
       ) : null}

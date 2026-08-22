@@ -50,7 +50,7 @@ export function HubTabs({ tabs, ariaLabel }: { tabs: readonly HubTab[]; ariaLabe
     <nav
       ref={ref}
       aria-label={ariaLabel}
-      className="sticky z-[var(--mg-z-sticky)] -mx-4 mb-8 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80 md:mx-0"
+      className="sticky z-[var(--mg-z-sticky)] -mx-4 mb-8 border-b border-border bg-paper md:mx-0"
       style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
     >
       <ScrollShadow className="min-w-0" innerClassName="scroll-smooth">
@@ -63,9 +63,9 @@ export function HubTabs({ tabs, ariaLabel }: { tabs: readonly HubTab[]; ariaLabe
                   to={tab.to}
                   aria-current={isActive ? "page" : undefined}
                   className={classNames(
-                    "relative inline-flex items-center gap-1.5 whitespace-nowrap px-1 py-3 mg-type-caption-lg font-medium transition-colors mg-focus-ring",
+                    "relative inline-flex items-center gap-1.5 whitespace-nowrap px-1 py-3 text-13 font-medium transition-colors mg-focus-ring",
                     isActive
-                      ? "text-ink-strong after:absolute after:-bottom-[1.5px] after:left-1 after:right-1 after:h-[1.5px] after:rounded-full after:bg-accent after:content-['']"
+                      ? "text-ink-strong after:absolute after:-bottom-[1.5px] after:left-1 after:right-1 after:h-[1.5px] after:rounded after:bg-accent after:content-['']"
                       : "text-ink-muted hover:text-ink-strong",
                   )}
                 >

@@ -108,7 +108,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-3">
       {data?.queried_at_block != null ? (
-        <p className="mg-type-data text-ink-muted">
+        <p className="text-11 text-ink-muted">
           Rolled forward to block #{formatNumber(data.queried_at_block)}
           {data.unlock_rate != null ? ` · unlock_rate ${formatNumber(data.unlock_rate)}` : ""}
           {data.maturity_rate != null ? ` · maturity_rate ${formatNumber(data.maturity_rate)}` : ""}
@@ -116,12 +116,12 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
       ) : null}
       <Panel as="div" flush className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface/40">
+          <table className="w-full text-left text-13">
+            <thead className="bg-surface">
               <tr>
-                <th className="px-4 py-2.5 mg-type-micro text-ink-muted">Hotkey</th>
-                <th className="px-4 py-2.5 text-right mg-type-micro text-ink-muted">Locked mass</th>
-                <th className="px-4 py-2.5 text-right mg-type-micro text-ink-muted">Conviction</th>
+                <th className="px-4 py-2.5 text-ink-muted">Hotkey</th>
+                <th className="px-4 py-2.5 text-right text-ink-muted">Locked mass</th>
+                <th className="px-4 py-2.5 text-right text-ink-muted">Conviction</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -135,7 +135,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
                   <tr
                     key={entry.hotkey}
                     className={classNames(
-                      "mg-row-accent hover:bg-surface/40",
+                      "mg-row-accent hover:bg-surface",
                       isChallenger && rowTint ? rowTint : null,
                     )}
                   >
@@ -152,7 +152,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
                           {entry.is_owner ? (
                             <span
                               className={classNames(
-                                "shrink-0 rounded border border-border px-1.5 py-0.5 mg-type-caption text-ink-muted",
+                                "shrink-0 rounded border border-border px-1.5 py-0.5 text-13 text-ink-muted",
                               )}
                             >
                               owner
@@ -162,7 +162,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
                         {!isKing && gap != null ? (
                           <div
                             className={classNames(
-                              "flex items-center gap-1.5 mg-type-data tabular-nums",
+                              "flex items-center gap-1.5 text-11 tabular-nums",
                               tone?.className ?? "text-ink-muted",
                             )}
                           >
@@ -177,10 +177,10 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 align-top text-right font-mono mg-type-caption tabular-nums text-ink">
+                    <td className="px-4 py-2.5 align-top text-right font-mono text-13 tabular-nums text-ink">
                       {fmtAlpha(entry.locked_mass)}
                     </td>
-                    <td className="px-4 py-2.5 align-top text-right font-mono mg-type-caption tabular-nums text-ink-strong">
+                    <td className="px-4 py-2.5 align-top text-right font-mono text-13 tabular-nums text-ink-strong">
                       {fmtAlpha(entry.conviction)}
                     </td>
                   </tr>

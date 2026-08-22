@@ -1,4 +1,4 @@
-import { Link, useLoaderData, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -45,12 +45,8 @@ const SECTION_TO_TAB: Record<string, string> = {
 
 export function ProviderDetail() {
   const { slug } = useParams({ from: "/providers/$slug" });
-  // The loader already primed this query for head()'s title -- reuse its
-  // resolved provider name for the shell's breadcrumb label too, rather than
-  // standing up a second breadcrumb trail of our own (#7853).
-  const loaderData = useLoaderData({ from: "/providers/$slug" });
   return (
-    <AppShell crumbLabel={loaderData?.name ?? undefined}>
+    <AppShell>
       <AsyncPanel
         height="md"
         context="provider"
@@ -108,7 +104,7 @@ function ProviderShell({ slug }: { slug: string }) {
         }
       />
       {shouldShowProviderSlugSubtitle(p?.name, slug) ? (
-        <div className="-mt-2 mb-3 mg-type-data text-ink-muted">{slug}</div>
+        <div className="-mt-2 mb-3 text-11 text-ink-muted">{slug}</div>
       ) : null}
 
       <div className="mg-kpi-strip">
@@ -173,12 +169,12 @@ function ProviderShell({ slug }: { slug: string }) {
 function ProviderPulseTile({ label, value, tone }: { label: string; value: string; tone?: "ok" }) {
   return (
     <div>
-      <div className="mg-label">{label}</div>
+      <div className="text-10 text-ink-muted">{label}</div>
       <div
         className={
           tone === "ok"
-            ? "mt-1 font-mono text-xl text-health-ok"
-            : "mt-1 font-mono text-xl text-ink-strong"
+            ? "mt-1 font-mono text-28 text-health-ok"
+            : "mt-1 font-mono text-28 text-ink-strong"
         }
       >
         {value}
@@ -339,7 +335,7 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
               <Link
                 to="/subnets/$netuid"
                 params={{ netuid: netuid }}
-                className="flex items-center gap-2.5 rounded-md border border-border bg-card p-3 hover:border-ink/30 mg-row-hover"
+                className="flex items-center gap-2.5 rounded border border-border bg-card p-3 hover:border-ink/30 mg-row-hover"
               >
                 <BrandIcon
                   url={sn?.website}
@@ -352,14 +348,14 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate font-display text-sm font-semibold text-ink-strong">
+                    <span className="truncate font-display text-13 font-semibold text-ink-strong">
                       {sn?.name ?? "Subnet"}
                     </span>
-                    <span className="shrink-0 mg-type-data text-ink-muted tabular-nums">
+                    <span className="shrink-0 text-11 text-ink-muted tabular-nums">
                       {String(netuid).padStart(3, "0")}
                     </span>
                   </div>
-                  <div className="mt-0.5 mg-type-data-sm text-ink-muted">
+                  <div className="mt-0.5 text-10 text-ink-muted">
                     {items.length} endpoint{items.length === 1 ? "" : "s"}
                   </div>
                 </div>
@@ -369,7 +365,7 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
         })}
       </ul>
       {compact && grouped.length > visible.length ? (
-        <div className="mt-2 mg-type-caption text-ink-muted">
+        <div className="mt-2 text-13 text-ink-muted">
           + {grouped.length - visible.length} more — open the Subnets served tab.
         </div>
       ) : null}
@@ -382,16 +378,14 @@ function BreakdownCard({ title, data }: { title: string; data: Record<string, nu
   if (entries.length === 0) return null;
   const max = Math.max(...entries.map((e) => e[1]));
   return (
-    <Panel dense>
-      <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong mb-2">
-        {title}
-      </h3>
+    <Panel>
+      <h3 className="font-display text-13 font-semibold text-ink-strong mb-2">{title}</h3>
       <ul className="space-y-1.5">
         {entries.map(([kk, v]) => (
           <li key={kk}>
             <div className="flex items-baseline justify-between gap-2 mb-0.5">
-              <span className="mg-type-data text-ink truncate">{kk}</span>
-              <span className="mg-type-data text-ink-muted tabular-nums">{v}</span>
+              <span className="text-11 text-ink truncate">{kk}</span>
+              <span className="text-11 text-ink-muted tabular-nums">{v}</span>
             </div>
             <div className="h-1 w-full overflow-hidden rounded bg-surface">
               <div

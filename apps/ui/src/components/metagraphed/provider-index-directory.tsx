@@ -32,7 +32,7 @@ export function ProviderIndexDirectory() {
           <Link
             to="/providers/$slug"
             params={{ slug: provider.slug }}
-            className="mg-type-caption text-ink-muted hover:text-accent"
+            className="text-13 text-ink-muted hover:text-accent"
           >
             {provider.label}
           </Link>

@@ -136,7 +136,7 @@ export function EmissionPipelineTable({
         <EmissionCard key={s.netuid} subnet={s} />
       ))}
       table={
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-13">
           <thead className="mg-table-head-pinned">
             <tr>
               <th className="px-4 py-2.5">Subnet</th>
@@ -186,7 +186,7 @@ export function EmissionPipelineTable({
         </table>
       }
       footer={
-        <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 mg-type-data text-ink-muted">
+        <div className="flex items-center justify-between gap-3 border-t border-border bg-surface px-4 py-2 text-11 text-ink-muted">
           <span>
             Showing {formatNumber(rows.length)} of {formatNumber(filtered.length)}
             {filtered.length === subnets.length ? "" : ` (${formatNumber(subnets.length)} total)`}
@@ -230,7 +230,7 @@ function EmissionRow({ subnet }: { subnet: EmissionPipelineSubnet }) {
   return (
     <tr
       className={classNames(
-        "mg-row-accent hover:bg-surface/40",
+        "mg-row-accent hover:bg-surface",
         // A row outside the pipeline is context, not a competitor — dimmed so
         // the ranked set reads as the ranked set, without hiding it.
         state === "ineligible" && "opacity-70",
@@ -241,40 +241,40 @@ function EmissionRow({ subnet }: { subnet: EmissionPipelineSubnet }) {
           <Link
             to="/subnets/$netuid"
             params={{ netuid: subnet.netuid }}
-            className="font-mono mg-type-data text-ink-strong hover:text-accent mg-focus-ring"
+            className="font-mono text-11 text-ink-strong hover:text-accent mg-focus-ring"
           >
             SN{subnet.netuid}
           </Link>
           <StateChip subnet={subnet} />
         </div>
       </td>
-      <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
+      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
         {share(subnet.emission_share)}
       </td>
-      <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
         {share(subnet.miner_burned, 1)}
       </td>
-      <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
         {share(subnet.weighted_share)}
       </td>
-      <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
         {share(subnet.gated_share)}
       </td>
-      <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
+      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink-strong">
         {share(subnet.final_share)}
       </td>
       <td
         className={classNames(
-          "px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums",
+          "px-4 py-2.5 text-right font-mono text-13 tabular-nums",
           movedToneClass(subnet),
         )}
       >
         {signedShare(subnet.gate_delta)}
       </td>
-      <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
+      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
         {tao(subnet.tao_total)}
       </td>
-      <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
         {taoChannelMix(subnet) === "chain-buys-only"
           ? "0% (chain buys)"
           : share(subnet.liquidity_fraction, 1)}
@@ -285,23 +285,23 @@ function EmissionRow({ subnet }: { subnet: EmissionPipelineSubnet }) {
 
 function EmissionCard({ subnet }: { subnet: EmissionPipelineSubnet }) {
   return (
-    <Panel as="div" dense className="block min-h-11">
+    <Panel as="div" className="block min-h-11">
       <div className="flex items-center justify-between gap-2">
         <Link
           to="/subnets/$netuid"
           params={{ netuid: subnet.netuid }}
-          className="font-mono mg-type-data text-ink-strong mg-focus-ring"
+          className="font-mono text-11 text-ink-strong mg-focus-ring"
         >
           SN{subnet.netuid}
         </Link>
         <div className="flex items-center gap-2">
           <StateChip subnet={subnet} />
-          <span className="font-mono mg-type-caption tabular-nums text-ink-strong">
+          <span className="font-mono text-13 tabular-nums text-ink-strong">
             {share(subnet.final_share)}
           </span>
         </div>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 mg-type-data text-ink-muted">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-11 text-ink-muted">
         <span>price {share(subnet.emission_share)}</span>
         <span className={movedToneClass(subnet)}>moved {signedShare(subnet.gate_delta)}</span>
         <span>{tao(subnet.tao_total)} τ/block</span>

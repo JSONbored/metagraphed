@@ -59,9 +59,9 @@ export function AlertTriggerLookup() {
   const t = lookup.data;
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-1 mg-type-label text-ink-muted">Look up a trigger</h3>
-      <p className="mb-3 max-w-2xl mg-type-caption-lg text-ink-muted">
+    <Panel as="section">
+      <h3 className="mb-1 text-11 text-ink-muted">Look up a trigger</h3>
+      <p className="mb-3 max-w-2xl text-13 text-ink-muted">
         Check whether an alert you created is still active and whether it has ever fired. Needs the
         owner token issued when it was created — it is shown once and never echoed back.
       </p>
@@ -72,7 +72,7 @@ export function AlertTriggerLookup() {
           onChange={(e) => setId(e.target.value)}
           placeholder="trigger id"
           aria-label="Trigger id"
-          className="min-w-0 flex-1 rounded border border-border bg-surface px-2 py-1 mg-type-data-sm text-ink"
+          className="min-w-0 flex-1 rounded border border-border bg-surface px-2 py-1 text-10 text-ink"
         />
         <input
           value={token}
@@ -80,12 +80,12 @@ export function AlertTriggerLookup() {
           type="password"
           placeholder="owner token"
           aria-label="Owner token"
-          className="min-w-0 flex-1 rounded border border-border bg-surface px-2 py-1 mg-type-data-sm text-ink"
+          className="min-w-0 flex-1 rounded border border-border bg-surface px-2 py-1 text-10 text-ink"
         />
         <button
           type="submit"
           disabled={lookup.isPending || !id.trim() || !token.trim()}
-          className="rounded border border-border bg-card px-3 py-1 mg-type-caption font-medium text-ink-strong hover:border-accent/40 disabled:opacity-50"
+          className="rounded border border-border bg-card px-3 py-1 text-13 font-medium text-ink-strong hover:border-accent/40 disabled:opacity-50"
         >
           {lookup.isPending ? "Looking up…" : "Look up"}
         </button>
@@ -95,7 +95,7 @@ export function AlertTriggerLookup() {
           must not pick one. Claiming "no such trigger" for a mistyped token
           would send someone hunting for a trigger that exists. */}
       {lookup.isError ? (
-        <p className="mt-3 mg-type-data-sm text-ink-muted">
+        <p className="mt-3 text-10 text-ink-muted">
           No trigger matched — either the id does not exist or the token is wrong. The API returns
           the same answer for both on purpose, so that this cannot be used to discover other
           callers&rsquo; triggers.
@@ -127,8 +127,8 @@ export function AlertTriggerLookup() {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="mg-type-label text-ink-muted">{label}</dt>
-      <dd className="mg-type-data-sm text-ink">{value}</dd>
+      <dt className="text-11 text-ink-muted">{label}</dt>
+      <dd className="text-10 text-ink">{value}</dd>
     </div>
   );
 }

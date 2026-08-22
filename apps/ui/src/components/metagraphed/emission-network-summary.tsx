@@ -99,7 +99,7 @@ export function EmissionNetworkSummary({ pipeline }: { pipeline: EmissionPipelin
           />
           {/* Provenance, per the issue's "every figure is traceable" rule:
               one block, named, so a reader can check us against the chain. */}
-          <p className="mt-3 mg-type-caption text-ink-muted">
+          <p className="mt-3 text-13 text-ink-muted">
             {chainState.block == null
               ? "No pinned block on this capture."
               : `Point sample at block ${formatNumber(chainState.block)}.`}{" "}

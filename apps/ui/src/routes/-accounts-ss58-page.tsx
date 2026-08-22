@@ -300,8 +300,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                 : "Cross-subnet registrations, first-party chain events, and daily activity rollups for one Bittensor account."}
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              {/* eslint-disable-next-line no-restricted-syntax -- genuinely 80% (#8554): this tier is 95%; .mg-glass would add blur(8px), a real visual change */}
-              <div className="max-w-full sm:max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 mg-card-glow">
+              <div className="max-w-full sm:max-w-fit rounded border border-border/80 bg-card px-3 py-2">
                 <CopyableCode value={ss58} truncate={false} className="max-w-full" />
               </div>
               <RoleChip role={detectedRole} dual={dualRole} />
@@ -467,16 +466,13 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             >
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {account.event_kinds.map((entry) => (
-                  <div
-                    key={entry.kind}
-                    className="rounded-2xl border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
-                  >
-                    <div className="mg-type-caption text-ink-muted">event kind</div>
+                  <div key={entry.kind} className="rounded border border-border/80 px-4 py-3">
+                    <div className="text-13 text-ink-muted">event kind</div>
                     <div className="mt-2 flex items-end justify-between gap-3">
-                      <span className="min-w-0 truncate font-mono mg-type-caption text-ink-strong">
+                      <span className="min-w-0 truncate font-mono text-13 text-ink-strong">
                         {entry.kind}
                       </span>
-                      <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
+                      <span className="font-display text-28 font-semibold tabular-nums text-ink-strong">
                         {formatNumber(entry.count)}
                       </span>
                     </div>
@@ -534,7 +530,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <div className="mt-6">
         <Link
           to="/accounts"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-data font-medium hover:border-ink/30"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-11 font-medium hover:border-ink/30"
         >
           ← Account lookup
         </Link>
@@ -566,7 +562,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
 function RoleChip({ role, dual }: { role: AccountRole; dual: boolean }) {
   const label = dual ? "coldkey + hotkey" : role;
   return (
-    <span className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1.5 mg-type-caption text-ink-muted">
+    <span className="inline-flex items-center rounded border border-border bg-card px-3 py-1.5 text-13 text-ink-muted">
       {label}
     </span>
   );
@@ -628,11 +624,11 @@ function AccountKpiBand({
   const freeValue = balanceError ? (
     <span className="inline-flex items-center gap-2">
       <AlertCircle aria-hidden className="size-4 text-health-down" />
-      <span className="text-base font-medium text-health-down">Unavailable</span>
+      <span className="text-16 font-medium text-health-down">Unavailable</span>
       <button
         type="button"
         onClick={onRetryBalance}
-        className="inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 mg-type-data font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
+        className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-0.5 text-11 font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
       >
         <RefreshCw className="size-3" /> Retry
       </button>
@@ -660,7 +656,7 @@ function AccountKpiBand({
     <div className="mb-8">
       {dual ? (
         <div className="mb-3 flex items-center gap-2">
-          <span className="mg-type-caption text-ink-muted">Showing:</span>
+          <span className="text-13 text-ink-muted">Showing:</span>
           {(["coldkey", "hotkey"] as const).map((r) => (
             <button
               key={r}
@@ -668,7 +664,7 @@ function AccountKpiBand({
               onClick={() => onRoleChange(r)}
               aria-pressed={role === r}
               className={classNames(
-                "rounded-full border px-3 py-1 mg-type-label uppercase transition-colors",
+                "rounded border px-3 py-1 text-11 transition-colors",
                 role === r
                   ? "border-accent/40 bg-accent/10 text-accent-text"
                   : "border-border bg-card text-ink-muted hover:border-ink/30",
@@ -688,13 +684,13 @@ function AccountKpiBand({
               value={total != null ? fmtTaoCompact(total) : freeValue}
               hint="free + staked · live RPC"
               tone={balanceError ? "down" : "accent"}
-              className="rounded-2xl mg-glass-opaque p-4 mg-card-glow-accent"
+              className="rounded p-4"
             />
             <StatTile
               icon={Scale}
               eyebrow="Free / staked"
               value={
-                <span className="mg-type-data">
+                <span className="text-11">
                   {freeValue} <span className="text-ink-muted">/</span>{" "}
                   {staked != null ? fmtTaoCompact(staked) : "—"}
                 </span>
@@ -756,7 +752,7 @@ function AccountKpiBand({
               value={fmtTaoCompact(validator?.total_stake_tao)}
               hint="validator detail · cross-subnet"
               tone="accent"
-              className="rounded-2xl mg-glass-opaque p-4 mg-card-glow-accent"
+              className="rounded p-4"
             />
             <StatTile
               icon={Users}
@@ -818,7 +814,7 @@ function AccountRecentActivityPreview({ events }: { events: AccountEvent[] }) {
         <Link
           to="."
           search={(prev: Record<string, unknown>) => ({ ...prev, tab: "activity" })}
-          className="mg-type-data text-ink-muted transition-colors hover:text-accent hover:underline"
+          className="text-11 text-ink-muted transition-colors hover:text-accent hover:underline"
         >
           View all →
         </Link>
@@ -828,16 +824,13 @@ function AccountRecentActivityPreview({ events }: { events: AccountEvent[] }) {
         {rows.map((ev, i) => (
           <div
             key={`${ev.block_number}-${ev.event_index}-${i}`}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
+            className="flex items-center justify-between gap-3 rounded border border-border/80 px-4 py-3"
           >
             <div className="min-w-0 flex-1">
-              <div
-                className="truncate mg-type-data text-ink-strong"
-                title={ev.event_kind ?? undefined}
-              >
+              <div className="truncate text-11 text-ink-strong" title={ev.event_kind ?? undefined}>
                 {eventKindLabel(ev.event_kind)}
               </div>
-              <div className="mt-0.5 flex items-center gap-2 mg-type-data-sm text-ink-muted">
+              <div className="mt-0.5 flex items-center gap-2 text-10 text-ink-muted">
                 {ev.block_number != null ? (
                   <Link
                     to="/blocks/$ref"
@@ -860,11 +853,9 @@ function AccountRecentActivityPreview({ events }: { events: AccountEvent[] }) {
             </div>
             <div className="shrink-0 text-right">
               {ev.amount_tao != null ? (
-                <div className="mg-type-data tabular-nums text-ink">
-                  {formatNumber(ev.amount_tao)} τ
-                </div>
+                <div className="text-11 tabular-nums text-ink">{formatNumber(ev.amount_tao)} τ</div>
               ) : null}
-              <div className="mg-type-data-sm text-ink-muted">
+              <div className="text-10 text-ink-muted">
                 <TimeAgo at={ev.observed_at} />
               </div>
             </div>
@@ -900,7 +891,7 @@ function SectionBadge({
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded-full border px-3 py-1 mg-type-micro",
+        "inline-flex items-center rounded border px-3 py-1 text-10",
         tone === "accent"
           ? "border-accent/30 bg-accent/10 text-accent"
           : "border-border bg-card text-ink-muted",
@@ -911,7 +902,7 @@ function SectionBadge({
   );
 }
 
-const TH = "px-4 py-3 mg-type-caption text-ink-muted";
+const TH = "px-4 py-3";
 
 function AccountFeedSectionSkeleton({
   id,
@@ -993,8 +984,8 @@ function AccountExtrinsicsSection({
       }
     >
       <DataPanel>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface">
             <tr>
               <th className={TH}>Block</th>
               <th className={TH}>Call</th>
@@ -1014,9 +1005,9 @@ function AccountExtrinsicsSection({
               return (
                 <tr
                   key={x.extrinsic_hash ?? `${x.block_number}-${x.extrinsic_index}-${i}`}
-                  className="hover:bg-surface/30"
+                  className="hover:bg-surface"
                 >
-                  <td className="px-4 py-4 font-mono mg-type-caption">
+                  <td className="px-4 py-4 font-mono text-13">
                     {x.block_number != null ? (
                       <Link
                         to="/blocks/$ref"
@@ -1032,7 +1023,7 @@ function AccountExtrinsicsSection({
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-4 mg-type-data text-ink" title={sentence ?? undefined}>
+                  <td className="px-4 py-4 text-11 text-ink" title={sentence ?? undefined}>
                     {x.extrinsic_hash ? (
                       <Link
                         to="/extrinsics/$hash"
@@ -1045,7 +1036,7 @@ function AccountExtrinsicsSection({
                       (sentence ?? extrinsicCall(x.call_module, x.call_function))
                     )}
                   </td>
-                  <td className="px-4 py-4 mg-type-data">
+                  <td className="px-4 py-4 text-11">
                     {x.success == null ? (
                       <span className="text-ink-muted">—</span>
                     ) : x.success ? (
@@ -1054,7 +1045,7 @@ function AccountExtrinsicsSection({
                       <span className="text-health-down">fail</span>
                     )}
                   </td>
-                  <td className="px-4 py-4 text-right mg-type-data text-ink-muted">
+                  <td className="px-4 py-4 text-right text-11 text-ink-muted">
                     <TimeAgo at={x.observed_at} />
                   </td>
                 </tr>
@@ -1129,8 +1120,8 @@ function AccountTransfersSection({
       }
     >
       <DataPanel>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface">
             <tr>
               <th className={TH}>Block</th>
               <th className={TH}>Direction</th>
@@ -1143,8 +1134,8 @@ function AccountTransfersSection({
             {rows.map((t, i) => {
               const counterparty = t.direction === "sent" ? t.to : t.from;
               return (
-                <tr key={`${t.block_number}-${t.event_index}-${i}`} className="hover:bg-surface/30">
-                  <td className="px-4 py-4 font-mono mg-type-caption">
+                <tr key={`${t.block_number}-${t.event_index}-${i}`} className="hover:bg-surface">
+                  <td className="px-4 py-4 font-mono text-13">
                     {t.block_number != null ? (
                       <Link
                         to="/blocks/$ref"
@@ -1157,7 +1148,7 @@ function AccountTransfersSection({
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-4 mg-type-data">
+                  <td className="px-4 py-4 text-11">
                     {t.direction === "received" ? (
                       <span className="text-health-ok">received</span>
                     ) : t.direction === "sent" ? (
@@ -1167,7 +1158,7 @@ function AccountTransfersSection({
                     )}
                   </td>
                   <td
-                    className="px-4 py-4 mg-type-data text-ink-muted"
+                    className="px-4 py-4 text-11 text-ink-muted"
                     title={counterparty ?? undefined}
                   >
                     <AddressDisplay
@@ -1176,10 +1167,10 @@ function AccountTransfersSection({
                       linkToAccount={counterparty !== ss58}
                     />
                   </td>
-                  <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
+                  <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
                     {t.amount_tao != null ? `${formatNumber(t.amount_tao)} τ` : "—"}
                   </td>
-                  <td className="px-4 py-4 text-right mg-type-data text-ink-muted">
+                  <td className="px-4 py-4 text-right text-11 text-ink-muted">
                     <TimeAgo at={t.observed_at} />
                   </td>
                 </tr>
@@ -1216,7 +1207,7 @@ function fmtAlphaPrice(v: number | null | undefined): string {
   return `${v < 1 ? v.toFixed(4) : v.toFixed(3)} τ`;
 }
 
-const KPI_TILE = "rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow";
+const KPI_TILE = "rounded border-border/80 p-4";
 
 // Compact TAO formatter for the portfolio KPI tiles — a long raw value like
 // "338,030.153 τ" wraps + overflows a narrow StatTile, so summarise it (338.0k τ).
@@ -1310,8 +1301,8 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
         />
       </div>
       <DataPanel>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface">
             <tr>
               <th className={TH}>Subnet</th>
               <th className={`${TH} text-right`}>Movements</th>
@@ -1321,8 +1312,8 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map((s) => (
-              <tr key={s.netuid} className="hover:bg-surface/30">
-                <td className="px-4 py-4 font-mono mg-type-caption">
+              <tr key={s.netuid} className="hover:bg-surface">
+                <td className="px-4 py-4 font-mono text-13">
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: s.netuid }}
@@ -1331,13 +1322,13 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
                     SN{s.netuid}
                   </Link>
                 </td>
-                <td className="px-4 py-4 text-right font-mono mg-type-caption tabular-nums text-ink">
+                <td className="px-4 py-4 text-right font-mono text-13 tabular-nums text-ink">
                   {formatNumber(s.movements)}
                 </td>
-                <td className="px-4 py-4 text-right mg-type-data text-ink-muted">
+                <td className="px-4 py-4 text-right text-11 text-ink-muted">
                   {s.last_moved_at ? <TimeAgo at={s.last_moved_at} /> : "—"}
                 </td>
-                <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink-muted">
+                <td className="px-4 py-4 text-right text-11 tabular-nums text-ink-muted">
                   {fmtAlphaPrice(s.price_tao_at_last_move)}
                 </td>
               </tr>
@@ -1346,7 +1337,7 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
         </table>
       </DataPanel>
       {subnets.length > rows.length ? (
-        <p className="mt-3 mg-type-data-sm text-ink-muted">
+        <p className="mt-3 text-10 text-ink-muted">
           Showing the {rows.length} most-active of {formatNumber(subnets.length)} subnets.
         </p>
       ) : null}
@@ -1430,8 +1421,8 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
         />
       </div>
       <DataPanel>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface">
             <tr>
               <th className={TH}>Address</th>
               <th className={`${TH} text-right`}>Sent</th>
@@ -1443,21 +1434,21 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map((p, i) => (
-              <tr key={`${p.address}-${i}`} className="hover:bg-surface/30">
-                <td className="px-4 py-4 mg-type-data text-ink-muted" title={p.address}>
+              <tr key={`${p.address}-${i}`} className="hover:bg-surface">
+                <td className="px-4 py-4 text-11 text-ink-muted" title={p.address}>
                   <AddressDisplay
                     ss58={p.address}
                     fallback={<>{p.address}</>}
                     linkToAccount={p.address !== ss58}
                   />
                 </td>
-                <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
+                <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
                   {p.sent_tao != null ? `${formatNumber(p.sent_tao)} τ` : "—"}
                 </td>
-                <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
+                <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
                   {p.received_tao != null ? `${formatNumber(p.received_tao)} τ` : "—"}
                 </td>
-                <td className="px-4 py-4 text-right mg-type-data tabular-nums">
+                <td className="px-4 py-4 text-right text-11 tabular-nums">
                   {p.net_tao == null ? (
                     <span className="text-ink-muted">—</span>
                   ) : (
@@ -1467,10 +1458,10 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
+                <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
                   {formatNumber(p.transfer_count ?? 0)}
                 </td>
-                <td className="px-4 py-4 text-right font-mono mg-type-caption">
+                <td className="px-4 py-4 text-right font-mono text-13">
                   {p.last_block != null ? (
                     <Link
                       to="/blocks/$ref"
@@ -1489,7 +1480,7 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
         </table>
       </DataPanel>
       {parties.length > rows.length ? (
-        <p className="mt-3 mg-type-data-sm text-ink-muted">
+        <p className="mt-3 text-10 text-ink-muted">
           Showing the {rows.length} highest-volume of {formatNumber(parties.length)} counterparties.
         </p>
       ) : null}
@@ -1568,7 +1559,7 @@ function deriveDelegationStatus(
  */
 function DelegationEdgeList({ ss58, rows }: { ss58: string; rows: DelegationRow[] }) {
   return (
-    <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border/80 mg-glass-opaque">
+    <div className="divide-y divide-border overflow-hidden rounded border border-border/80">
       {rows.map((r, i) => {
         const pct =
           r.proportion_fraction != null && Number.isFinite(r.proportion_fraction)
@@ -1582,14 +1573,11 @@ function DelegationEdgeList({ ss58, rows }: { ss58: string; rows: DelegationRow[
             <Link
               to="/subnets/$netuid"
               params={{ netuid: r.netuid }}
-              className="shrink-0 whitespace-nowrap mg-type-data text-ink hover:text-accent hover:underline"
+              className="shrink-0 whitespace-nowrap text-11 text-ink hover:text-accent hover:underline"
             >
               SN{r.netuid}
             </Link>
-            <div
-              className="min-w-0 flex-1 truncate mg-type-data text-ink-muted"
-              title={r.counterpart}
-            >
+            <div className="min-w-0 flex-1 truncate text-11 text-ink-muted" title={r.counterpart}>
               <AddressDisplay
                 ss58={r.counterpart}
                 fallback={<>{r.counterpart}</>}
@@ -1599,13 +1587,13 @@ function DelegationEdgeList({ ss58, rows }: { ss58: string; rows: DelegationRow[
               />
             </div>
             <div className="flex w-28 shrink-0 items-center gap-2">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+              <div className="h-1.5 flex-1 overflow-hidden rounded bg-surface">
                 <div
-                  className="h-full rounded-full bg-accent"
+                  className="h-full rounded bg-accent"
                   style={{ width: `${pct == null ? 0 : pct * 100}%` }}
                 />
               </div>
-              <span className="w-11 whitespace-nowrap text-right mg-type-data tabular-nums text-ink">
+              <span className="w-11 whitespace-nowrap text-right text-11 tabular-nums text-ink">
                 {fmtProportionPct(r.proportion_fraction)}
               </span>
             </div>
@@ -1639,7 +1627,7 @@ function DelegationSide({
 }) {
   return (
     <div>
-      <h3 className="mb-2 whitespace-nowrap mg-type-label uppercase text-ink-muted">{label}</h3>
+      <h3 className="mb-2 whitespace-nowrap text-11 text-ink-muted">{label}</h3>
       {unavailable ? (
         <TableState
           variant="error"
@@ -1752,19 +1740,19 @@ function EntityLabelCard({ label }: { label: AccountEntityLabel }) {
         <Tag className="h-3.5 w-3.5 shrink-0 text-accent" />
         <span className="min-w-0 truncate font-semibold text-ink">{label.name ?? "Unnamed"}</span>
         {label.category ? (
-          <span className="shrink-0 whitespace-nowrap rounded border border-border/70 px-1.5 py-0.5 mg-type-caption text-ink-muted">
+          <span className="shrink-0 whitespace-nowrap rounded border border-border/70 px-1.5 py-0.5 text-13 text-ink-muted">
             {label.category}
           </span>
         ) : null}
       </div>
-      {label.notes ? <p className="mt-2 mg-type-caption text-ink-muted">{label.notes}</p> : null}
+      {label.notes ? <p className="mt-2 text-13 text-ink-muted">{label.notes}</p> : null}
       {label.source_urls.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-3">
           {label.source_urls.map((url, i) => (
             <ExternalLink
               key={`${url}-${i}`}
               href={url}
-              className="mg-type-data-sm text-accent-text hover:underline"
+              className="text-10 text-accent-text hover:underline"
             >
               source{label.source_urls.length > 1 ? ` ${i + 1}` : ""}
             </ExternalLink>
@@ -1819,12 +1807,10 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
 
       {ties.length > 0 ? (
         <>
-          <h3 className="mb-2 whitespace-nowrap mg-type-label uppercase text-ink-muted">
-            Ownership
-          </h3>
+          <h3 className="mb-2 whitespace-nowrap text-11 text-ink-muted">Ownership</h3>
           <DataPanel>
-            <table className="w-full text-left text-sm">
-              <thead className="bg-surface/50">
+            <table className="w-full text-left text-13">
+              <thead className="bg-surface">
                 <tr>
                   <th className={`${TH} whitespace-nowrap`}>SN</th>
                   <th className={`${TH} whitespace-nowrap`}>Role</th>
@@ -1834,11 +1820,8 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
               </thead>
               <tbody className="divide-y divide-border">
                 {ties.map((tie, i) => (
-                  <tr
-                    key={`${tie.netuid}-${tie.block_number}-${i}`}
-                    className="hover:bg-surface/30"
-                  >
-                    <td className="whitespace-nowrap px-4 py-4 font-mono mg-type-caption">
+                  <tr key={`${tie.netuid}-${tie.block_number}-${i}`} className="hover:bg-surface">
+                    <td className="whitespace-nowrap px-4 py-4 font-mono text-13">
                       {tie.netuid != null ? (
                         <Link
                           to="/subnets/$netuid"
@@ -1851,7 +1834,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
                         <span className="text-ink-muted">—</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-4 mg-type-data">
+                    <td className="whitespace-nowrap px-4 py-4 text-11">
                       <span
                         className={
                           tie.role === "gained_ownership"
@@ -1864,7 +1847,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
                         {ownershipRoleLabel(tie.role)}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-right font-mono mg-type-caption">
+                    <td className="whitespace-nowrap px-4 py-4 text-right font-mono text-13">
                       {tie.block_number != null ? (
                         <Link
                           to="/blocks/$ref"
@@ -1877,7 +1860,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
                         <span className="text-ink-muted">—</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-right mg-type-data text-ink-muted">
+                    <td className="whitespace-nowrap px-4 py-4 text-right text-11 text-ink-muted">
                       {tie.observed_at ? <TimeAgo at={tie.observed_at} /> : "—"}
                     </td>
                   </tr>
@@ -2033,16 +2016,16 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
       </div>
 
       {bars.length > 0 ? (
-        <div className="mb-4 rounded-2xl border border-border/80 mg-glass-opaque px-4 py-4 mg-card-glow">
-          <div className="mb-3 mg-type-caption text-ink-muted">gross flow by subnet (τ)</div>
+        <div className="mb-4 rounded border border-border/80 px-4 py-4">
+          <div className="mb-3 text-13 text-ink-muted">gross flow by subnet (τ)</div>
           <BarMini data={bars} showValue={false} />
         </div>
       ) : null}
 
       {subnets.length > 0 ? (
         <DataPanel>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface/50">
+          <table className="w-full text-left text-13">
+            <thead className="bg-surface">
               <tr>
                 <th className={TH}>Subnet</th>
                 <th className={TH}>Direction</th>
@@ -2056,8 +2039,8 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
                 .sort((a, b) => (b.gross_flow_tao ?? 0) - (a.gross_flow_tao ?? 0))
                 .slice(0, 20)
                 .map((s) => (
-                  <tr key={s.netuid} className="hover:bg-surface/30">
-                    <td className="px-4 py-4 font-mono mg-type-caption">
+                  <tr key={s.netuid} className="hover:bg-surface">
+                    <td className="px-4 py-4 font-mono text-13">
                       <Link
                         to="/subnets/$netuid"
                         params={{ netuid: s.netuid }}
@@ -2066,10 +2049,10 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
                         SN{s.netuid}
                       </Link>
                     </td>
-                    <td className="px-4 py-4 mg-type-data">
+                    <td className="px-4 py-4 text-11">
                       <span className={stakeFlowDirClass(s.direction)}>{s.direction ?? "—"}</span>
                     </td>
-                    <td className="px-4 py-4 text-right mg-type-data tabular-nums">
+                    <td className="px-4 py-4 text-right text-11 tabular-nums">
                       {s.net_flow_tao == null ? (
                         <span className="text-ink-muted">—</span>
                       ) : (
@@ -2083,10 +2066,10 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
+                    <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
                       {fmtStake(s.gross_flow_tao)}
                     </td>
-                    <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink-muted">
+                    <td className="px-4 py-4 text-right text-11 tabular-nums text-ink-muted">
                       {formatNumber((s.stake_events ?? 0) + (s.unstake_events ?? 0))}
                     </td>
                   </tr>
@@ -2095,7 +2078,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
           </table>
         </DataPanel>
       ) : (
-        <p className="rounded-2xl border border-border/80 mg-glass-opaque px-4 py-4 mg-type-data text-ink-muted">
+        <p className="rounded border border-border/80 px-4 py-4 text-11 text-ink-muted">
           No stake or unstake flow recorded for this account over the {f?.window ?? window} window.
         </p>
       )}
@@ -2190,8 +2173,8 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
         />
       </div>
       <DataPanel>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface">
             <tr>
               <th className={TH} aria-hidden="true" />
               <th className={TH}>Subnet</th>
@@ -2206,7 +2189,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
               const expanded = expandedNetuid === pos.netuid;
               return (
                 <Fragment key={`${pos.netuid}-${pos.uid ?? "x"}`}>
-                  <tr className="hover:bg-surface/30">
+                  <tr className="hover:bg-surface">
                     <td className="px-3 py-4">
                       <button
                         type="button"
@@ -2223,7 +2206,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
                         />
                       </button>
                     </td>
-                    <td className="px-4 py-4 font-mono mg-type-caption">
+                    <td className="px-4 py-4 font-mono text-13">
                       <Link
                         to="/subnets/$netuid"
                         params={{ netuid: pos.netuid }}
@@ -2232,7 +2215,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
                         SN{pos.netuid}
                       </Link>
                     </td>
-                    <td className="px-4 py-4 mg-type-data">
+                    <td className="px-4 py-4 text-11">
                       {pos.role === "validator" ? (
                         <span className="text-health-ok">validator</span>
                       ) : pos.role === "miner" ? (
@@ -2241,18 +2224,18 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
                         <span className="text-ink-muted">{"—"}</span>
                       )}
                     </td>
-                    <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
+                    <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
                       {fmtPositionStake(pos.stake_alpha, pos.netuid)}
                     </td>
-                    <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
+                    <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
                       {fmtPositionStake(pos.emission_alpha, pos.netuid)}
                     </td>
-                    <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink-muted">
+                    <td className="px-4 py-4 text-right text-11 tabular-nums text-ink-muted">
                       {pos.incentive != null ? pos.incentive.toFixed(4) : "—"}
                     </td>
                   </tr>
                   {expanded ? (
-                    <tr className="bg-surface/20">
+                    <tr className="bg-surface">
                       <td colSpan={6} className="px-4 py-4">
                         <AccountPositionHistoryChart ss58={ss58} netuid={pos.netuid} />
                       </td>
@@ -2268,7 +2251,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
             <button
               type="button"
               onClick={() => setVisibleCount((c) => c + POSITIONS_PAGE_SIZE)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3.5 py-1.5 text-11 text-ink-muted hover:border-ink/30 hover:text-ink-strong"
             >
               Show {Math.min(POSITIONS_PAGE_SIZE, positions.length - visibleCount)} more
             </button>
@@ -2316,22 +2299,22 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
       tone="accent"
       info="GET /api/v1/accounts/{ss58}/identity — the coldkey's own on-chain identity, distinct from subnet identity and the validator directory's coldkey-identity join."
     >
-      <div className="rounded-2xl border border-border/80 mg-glass-opaque p-4 mg-card-glow">
+      <div className="rounded border border-border/80 p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="font-display text-lg font-semibold text-ink-strong">
+          <span className="font-display text-16 font-semibold text-ink-strong">
             {identity.name ?? "Unnamed identity"}
           </span>
           {identity.captured_at ? (
-            <span className="mg-type-data text-ink-muted">
+            <span className="text-11 text-ink-muted">
               captured <TimeAgo at={identity.captured_at} />
             </span>
           ) : null}
         </div>
         {identity.description ? (
-          <p className="mt-2 text-sm text-ink-muted">{identity.description}</p>
+          <p className="mt-2 text-13 text-ink-muted">{identity.description}</p>
         ) : null}
         {identity.url || identity.github || identity.discord || identity.image ? (
-          <div className="mt-3 flex flex-wrap gap-3 mg-type-data">
+          <div className="mt-3 flex flex-wrap gap-3 text-11">
             {identity.url ? (
               <ExternalLink href={identity.url} className="text-accent-text hover:underline">
                 <Globe className="size-3.5 shrink-0" aria-hidden /> website
@@ -2356,7 +2339,7 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
           </div>
         ) : null}
         {identity.additional ? (
-          <p className="mt-2 mg-type-data text-ink-muted">{identity.additional}</p>
+          <p className="mt-2 text-11 text-ink-muted">{identity.additional}</p>
         ) : null}
       </div>
       <AccountIdentityTimeline ss58={ss58} />
@@ -2398,23 +2381,23 @@ function AccountIdentityTimeline({ ss58 }: { ss58: string }) {
 
   return (
     <div className="mt-3">
-      <h3 className="mg-type-caption mb-2 text-ink-muted">Previous revisions ({entries.length})</h3>
+      <h3 className="text-13 mb-2 text-ink-muted">Previous revisions ({entries.length})</h3>
       <ol className="space-y-2">
         {entries.map((entry) => (
-          <li key={entry.identity_hash} className="rounded-md border border-border bg-card p-3">
+          <li key={entry.identity_hash} className="rounded border border-border bg-card p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="font-display text-sm font-semibold text-ink-strong">
+              <span className="font-display text-13 font-semibold text-ink-strong">
                 {entry.name ?? "Unnamed"}
               </span>
-              <span className="mg-type-data text-ink-muted">
+              <span className="text-11 text-ink-muted">
                 {entry.observed_at ? <TimeAgo at={entry.observed_at} /> : "unknown time"}
               </span>
             </div>
             {entry.description ? (
-              <p className="mt-1 text-xs text-ink-muted">{entry.description}</p>
+              <p className="mt-1 text-13 text-ink-muted">{entry.description}</p>
             ) : null}
             {entry.url || entry.github || entry.discord ? (
-              <div className="mt-1.5 flex flex-wrap gap-3 mg-type-caption">
+              <div className="mt-1.5 flex flex-wrap gap-3 text-13">
                 {entry.url ? (
                   <ExternalLink href={entry.url} className="text-accent-text hover:underline">
                     website
@@ -2727,8 +2710,8 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
             />
           </div>
           <DataPanel>
-            <table className="w-full text-left text-sm">
-              <thead className="bg-surface/50">
+            <table className="w-full text-left text-13">
+              <thead className="bg-surface">
                 <tr>
                   <th className={TH}>Subnet</th>
                   <th className={`${TH} text-right`}>Weight sets</th>
@@ -2737,20 +2720,20 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
               </thead>
               <tbody className="divide-y divide-border">
                 {subnets.map((row) => (
-                  <tr key={row.netuid} className="hover:bg-surface/30">
-                    <td className="px-4 py-4 font-mono mg-type-caption">
+                  <tr key={row.netuid} className="hover:bg-surface">
+                    <td className="px-4 py-4 font-mono text-13">
                       <Link
                         to="/subnets/$netuid"
                         params={{ netuid: row.netuid }}
-                        className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
+                        className="inline-flex items-center rounded border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
                       >
                         SN{row.netuid}
                       </Link>
                     </td>
-                    <td className="px-4 py-4 text-right font-mono mg-type-caption tabular-nums text-ink">
+                    <td className="px-4 py-4 text-right font-mono text-13 tabular-nums text-ink">
                       {formatNumber(row.weight_sets)}
                     </td>
-                    <td className="px-4 py-4 text-right mg-type-data text-ink-muted">
+                    <td className="px-4 py-4 text-right text-11 text-ink-muted">
                       <TimeAgo at={row.last_set_at ?? undefined} />
                     </td>
                   </tr>
@@ -2775,9 +2758,7 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
 // wrapped to two lines at the 375px mobile width. Tighten the tracking a step on
 // mobile so it stays on one line, restoring the default wider tracking from the
 // sm breakpoint up (tablet/desktop are unchanged).
-const endpointAnnouncementsTitle = (
-  <span className="tracking-normal sm:tracking-wider">Endpoint announcements</span>
-);
+const endpointAnnouncementsTitle = <span className="">Endpoint announcements</span>;
 
 function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
   const servingResult = useQuery(accountServingQuery(ss58));
@@ -2951,8 +2932,8 @@ function AccountFootprintSection({
       right={<SectionBadge>{formatNumber(rows.length)} subnets</SectionBadge>}
     >
       {staked.length > 0 ? (
-        <div className="mb-4 rounded-2xl border border-border/80 mg-glass-opaque px-4 py-4 mg-card-glow">
-          <div className="mb-3 mg-type-caption text-ink-muted">stake by subnet (τ)</div>
+        <div className="mb-4 rounded border border-border/80 px-4 py-4">
+          <div className="mb-3 text-13 text-ink-muted">stake by subnet (τ)</div>
           <BarMini data={staked} showValue={false} />
         </div>
       ) : null}
@@ -2963,8 +2944,8 @@ function AccountFootprintSection({
           the same problem, so every field (and the permit link) is reachable
           without a horizontal swipe. */}
       <DataPanel className="hidden md:block">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50">
+        <table className="w-full text-left text-13">
+          <thead className="bg-surface">
             <tr>
               <th className={TH}>Subnet</th>
               <th className={`${TH} text-right`}>UID</th>
@@ -2975,8 +2956,8 @@ function AccountFootprintSection({
           </thead>
           <tbody className="divide-y divide-border">
             {rows.slice(0, visibleCount).map((r) => (
-              <tr key={`${r.netuid}-${r.uid}`} className="hover:bg-surface/30">
-                <td className="px-4 py-4 font-mono mg-type-caption">
+              <tr key={`${r.netuid}-${r.uid}`} className="hover:bg-surface">
+                <td className="px-4 py-4 font-mono text-13">
                   {r.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"
@@ -2984,7 +2965,7 @@ function AccountFootprintSection({
                       // Same deep-link as SubnetPerformanceTable: this row already
                       // knows its uid, so land on the neuron card, not the overview.
                       search={subnetPositionSearch(r.uid)}
-                      className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
+                      className="inline-flex items-center rounded border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
                     >
                       SN{r.netuid}
                     </Link>
@@ -2992,26 +2973,26 @@ function AccountFootprintSection({
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-4 text-right font-mono mg-type-caption tabular-nums text-ink">
+                <td className="px-4 py-4 text-right font-mono text-13 tabular-nums text-ink">
                   {r.uid != null ? formatNumber(r.uid) : "—"}
                 </td>
-                <td className="px-4 py-4 text-right font-mono mg-type-caption tabular-nums text-ink">
+                <td className="px-4 py-4 text-right font-mono text-13 tabular-nums text-ink">
                   {fmtStake(r.stake_tao)}
                 </td>
-                <td className="px-4 py-4 mg-type-data">
+                <td className="px-4 py-4 text-11">
                   {r.validator_permit ? (
                     <ValidatorPermitBadge ss58={ss58} />
                   ) : (
                     <span className="text-ink-muted">—</span>
                   )}
                 </td>
-                <td className="px-4 py-4 mg-type-data">
+                <td className="px-4 py-4 text-11">
                   {r.active ? (
-                    <span className="inline-flex rounded-full bg-health-ok/10 px-2 py-0.5 text-health-ok">
+                    <span className="inline-flex rounded bg-health-ok/10 px-2 py-0.5 text-health-ok">
                       active
                     </span>
                   ) : (
-                    <span className="inline-flex rounded-full bg-surface px-2 py-0.5 text-ink-muted">
+                    <span className="inline-flex rounded bg-surface px-2 py-0.5 text-ink-muted">
                       idle
                     </span>
                   )}
@@ -3024,38 +3005,38 @@ function AccountFootprintSection({
 
       <ul className="space-y-2 md:hidden">
         {rows.slice(0, visibleCount).map((r) => (
-          <li key={`${r.netuid}-${r.uid}`} className="rounded-md border border-border bg-card p-3">
+          <li key={`${r.netuid}-${r.uid}`} className="rounded border border-border bg-card p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
                 {r.netuid != null ? (
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: r.netuid }}
-                    className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-mono mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
+                    className="inline-flex items-center rounded border border-border bg-paper px-2.5 py-1 font-mono text-13 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
                   >
                     SN{r.netuid}
                   </Link>
                 ) : (
-                  <span className="font-mono mg-type-caption text-ink-muted">—</span>
+                  <span className="font-mono text-13 text-ink-muted">—</span>
                 )}
                 {r.validator_permit ? <ValidatorPermitBadge ss58={ss58} /> : null}
               </div>
               {r.active ? (
-                <span className="inline-flex shrink-0 rounded-full bg-health-ok/10 px-2 py-0.5 mg-type-data text-health-ok">
+                <span className="inline-flex shrink-0 rounded bg-health-ok/10 px-2 py-0.5 text-11 text-health-ok">
                   active
                 </span>
               ) : (
-                <span className="inline-flex shrink-0 rounded-full bg-surface px-2 py-0.5 mg-type-data text-ink-muted">
+                <span className="inline-flex shrink-0 rounded bg-surface px-2 py-0.5 text-11 text-ink-muted">
                   idle
                 </span>
               )}
             </div>
-            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 mg-type-data">
-              <dt className="mg-type-caption text-ink-muted">UID</dt>
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-11">
+              <dt className="text-13 text-ink-muted">UID</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {r.uid != null ? formatNumber(r.uid) : "—"}
               </dd>
-              <dt className="mg-type-caption text-ink-muted">Stake</dt>
+              <dt className="text-13 text-ink-muted">Stake</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {fmtStake(r.stake_tao)}
               </dd>
@@ -3068,7 +3049,7 @@ function AccountFootprintSection({
           <button
             type="button"
             onClick={() => setVisibleCount((c) => c + POSITIONS_PAGE_SIZE)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3.5 py-1.5 text-11 text-ink-muted hover:border-ink/30 hover:text-ink-strong"
           >
             Show {Math.min(POSITIONS_PAGE_SIZE, rows.length - visibleCount)} more
           </button>
@@ -3096,7 +3077,7 @@ function ValidatorPermitBadge({ ss58 }: { ss58: string }) {
       to="/validators/$hotkey"
       params={{ hotkey: ss58 }}
       title={`Validator profile for ${ss58}`}
-      className="inline-flex shrink-0 rounded-full bg-health-ok/10 px-2 py-0.5 mg-type-data text-health-ok transition-colors hover:bg-health-ok/20"
+      className="inline-flex shrink-0 rounded bg-health-ok/10 px-2 py-0.5 text-11 text-health-ok transition-colors hover:bg-health-ok/20"
     >
       validator
     </Link>
@@ -3196,8 +3177,8 @@ function AccountEventsSection({
     >
       {events.length > 0 ? (
         <DataPanel>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface/50">
+          <table className="w-full text-left text-13">
+            <thead className="bg-surface">
               <tr>
                 <th className={TH}>Block</th>
                 <th className={TH}>Kind</th>
@@ -3208,11 +3189,8 @@ function AccountEventsSection({
             </thead>
             <tbody className="divide-y divide-border">
               {events.map((ev, i) => (
-                <tr
-                  key={`${ev.block_number}-${ev.event_index}-${i}`}
-                  className="hover:bg-surface/30"
-                >
-                  <td className="px-4 py-4 font-mono mg-type-caption">
+                <tr key={`${ev.block_number}-${ev.event_index}-${i}`} className="hover:bg-surface">
+                  <td className="px-4 py-4 font-mono text-13">
                     {ev.block_number != null ? (
                       <Link
                         to="/blocks/$ref"
@@ -3226,12 +3204,12 @@ function AccountEventsSection({
                     )}
                   </td>
                   <td
-                    className="px-4 py-4 mg-type-data text-ink-strong"
+                    className="px-4 py-4 text-11 text-ink-strong"
                     title={ev.event_kind ?? undefined}
                   >
                     {eventKindLabel(ev.event_kind)}
                   </td>
-                  <td className="px-4 py-4 mg-type-data text-ink-muted">
+                  <td className="px-4 py-4 text-11 text-ink-muted">
                     {ev.netuid != null ? (
                       <Link
                         to="/subnets/$netuid"
@@ -3244,7 +3222,7 @@ function AccountEventsSection({
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
+                  <td className="px-4 py-4 text-right text-11 tabular-nums text-ink">
                     {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
                     {/* #8369: what it was worth at the time, as secondary
                         text. Renders nothing for events that have no price.
@@ -3257,14 +3235,14 @@ function AccountEventsSection({
                       usd={ev.usd_at_tx}
                     />
                   </td>
-                  <td className="px-4 py-4 text-right mg-type-data text-ink-muted">
+                  <td className="px-4 py-4 text-right text-11 text-ink-muted">
                     <TimeAgo at={ev.observed_at} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-3 mg-type-data text-ink-muted">
+          <div className="flex items-center justify-between gap-3 border-t border-border bg-surface px-4 py-3 text-11 text-ink-muted">
             <span>
               {events.length
                 ? `${formatNumber(offset + 1)}–${formatNumber(offset + events.length)}`
@@ -3307,7 +3285,7 @@ function AccountEventsSection({
               <button
                 type="button"
                 onClick={() => setSearch({ ev_offset: undefined, ev_kind: undefined })}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+                className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3.5 py-1.5 text-11 text-ink-muted hover:border-ink/30 hover:text-ink-strong"
               >
                 <ChevronLeft className="size-3" /> Back to newest
               </button>
@@ -3321,12 +3299,7 @@ function AccountEventsSection({
 
 function DataPanel({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div
-      className={classNames(
-        "overflow-x-auto rounded-2xl border border-border/80 mg-glass-opaque mg-card-glow",
-        className,
-      )}
-    >
+    <div className={classNames("overflow-x-auto rounded border border-border/80", className)}>
       {children}
     </div>
   );

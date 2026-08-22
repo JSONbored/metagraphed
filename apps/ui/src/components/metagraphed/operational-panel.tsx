@@ -126,7 +126,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
             <Stat
               label={`Tracked · ${formatNumber(total)}`}
               value={
-                <div className="flex h-2 w-full overflow-hidden rounded-full bg-border/40 mt-1.5">
+                <div className="flex h-2 w-full overflow-hidden rounded bg-border/40 mt-1.5">
                   {total > 0 ? (
                     <>
                       <SegBtn
@@ -176,14 +176,14 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
           </div>
 
           {!filter.isAll ? (
-            <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border bg-paper/40">
-              <span className="mg-type-caption text-ink-muted">Filtering resources</span>
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border bg-paper">
+              <span className="text-13 text-ink-muted">Filtering resources</span>
               {(["ok", "warn", "down", "unknown"] as Severity[])
                 .filter((s) => filter.isActive(s))
                 .map((s) => (
                   <span
                     key={s}
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 mg-type-micro text-ink-strong"
+                    className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-0.5 text-10 text-ink-strong"
                   >
                     {s}
                   </span>
@@ -191,7 +191,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
               <button
                 type="button"
                 onClick={filter.reset}
-                className="ml-auto inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 mg-type-caption text-ink-muted hover:text-ink-strong"
+                className="ml-auto inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 text-13 text-ink-muted hover:text-ink-strong"
               >
                 <X className="size-3" /> clear
               </button>
@@ -203,11 +203,11 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
           {endpoints.length > 0 ? (
             <div className="border-b border-border px-4 py-3">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 mg-type-caption text-ink-muted">
+                <span className="inline-flex items-center gap-1.5 text-13 text-ink-muted">
                   Endpoint mosaic · {endpoints.length}
                   <InfoTooltip label="One cell per tracked endpoint, colored by the last probe result: ok (2xx within latency budget), warn (slow / intermittent 5xx), down (consecutive failures), or unknown (no probe in window). Source: /api/v1/subnets/{netuid}/endpoints joined with /health. Stale snapshots still render — check the panel's `updated` stamp." />
                 </span>
-                <span className="mg-type-data-sm text-ink-muted/80">
+                <span className="text-10 text-ink-muted/80">
                   one cell = one tracked endpoint, colored by last probe
                 </span>
               </div>
@@ -225,8 +225,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                           // as a standing sub-token residual: every named step on the
                           // approved scale is visually much larger and would
                           // materially change this dense per-cell grid.
-                          // eslint-disable-next-line no-restricted-syntax -- documented dense-grid exception
-                          "size-3 rounded-[2px] border border-border/40",
+                          "size-3 rounded border border-border/40",
                           (e.health ?? "unknown") === "ok" && "bg-health-ok",
                           (e.health ?? "") === "warn" && "bg-health-warn",
                           (e.health ?? "") === "down" && "bg-health-down",
@@ -234,7 +233,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                         )}
                       />
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="mg-type-data-sm">
+                    <TooltipContent side="top" className="text-10">
                       <div className="text-ink-strong">{e.kind?.toUpperCase() ?? "—"}</div>
                       <div className="text-ink">{e.url?.replace(/^https?:\/\//, "") ?? "—"}</div>
                       <div className="text-ink-muted">
@@ -251,10 +250,10 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
           {/* Timeline */}
           <div className="grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <div className="min-w-0 border-b lg:border-b-0 lg:border-r border-border">
-              <div className="flex items-center justify-between gap-2 border-b border-border bg-paper/40 px-4 py-2">
+              <div className="flex items-center justify-between gap-2 border-b border-border bg-paper px-4 py-2">
                 <div>
-                  <div className="mg-type-caption text-ink-strong">Health trend</div>
-                  <div className="mg-type-data-sm text-ink-muted/80">
+                  <div className="text-13 text-ink-strong">Health trend</div>
+                  <div className="text-10 text-ink-muted/80">
                     uptime &amp; latency over the selected window, with incident markers
                     {healthRes?.meta?.generated_at
                       ? ` · ${formatFreshness(healthRes.meta.generated_at) ?? ""}`
@@ -267,7 +266,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
             </div>
             <div className="min-w-0 p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="mg-type-caption text-ink-muted">Recent incidents</span>
+                <span className="text-13 text-ink-muted">Recent incidents</span>
                 <a
                   href="#incidents"
                   onClick={(e) => {
@@ -276,7 +275,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                       .getElementById("incidents")
                       ?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
-                  className="inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-accent"
+                  className="inline-flex items-center gap-1 text-13 text-ink-muted hover:text-accent"
                 >
                   all <ArrowRight className="size-3" />
                 </a>
@@ -288,9 +287,9 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                   context="recent incidents"
                 />
               ) : incidents.length === 0 ? (
-                <div className="rounded-md border border-dashed border-border bg-paper/40 px-3 py-6 text-center">
-                  <div className="mg-type-caption text-ink-muted">Clean history</div>
-                  <div className="mt-1 mg-type-caption text-ink-muted">
+                <div className="rounded border border-dashed border-border bg-paper px-3 py-6 text-center">
+                  <div className="text-13 text-ink-muted">Clean history</div>
+                  <div className="mt-1 text-13 text-ink-muted">
                     No incidents recorded for this subnet.
                   </div>
                 </div>
@@ -301,17 +300,14 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                     return (
                       <li
                         key={`${inc.surface_id}-${inc.started_at ?? i}`}
-                        className="flex items-start gap-2 rounded-md border border-border bg-surface/30 px-2.5 py-2"
+                        className="flex items-start gap-2 rounded border border-border bg-surface px-2.5 py-2"
                       >
                         <span className="shrink-0 mt-0.5">{sevIcon(inc.severity)}</span>
                         <div className="min-w-0 flex-1">
-                          <div
-                            className="truncate mg-type-caption text-ink-strong"
-                            title={inc.surface_id}
-                          >
+                          <div className="truncate text-13 text-ink-strong" title={inc.surface_id}>
                             {shortSurfaceId(inc.surface_id, netuid)}
                           </div>
-                          <div className="mt-0.5 mg-type-data-sm text-ink-muted">
+                          <div className="mt-0.5 text-10 text-ink-muted">
                             {inc.started_at ? (
                               <>
                                 <TimeAgo at={inc.started_at} />
@@ -322,7 +318,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                         </div>
                         <span
                           className={classNames(
-                            "shrink-0 rounded-full border px-1.5 py-0.5 mg-type-micro",
+                            "shrink-0 rounded border px-1.5 py-0.5 text-10",
                             open
                               ? "border-health-down/40 bg-health-down/10 text-health-down"
                               : "border-border bg-paper text-ink-muted",
@@ -427,12 +423,12 @@ function Stat({
       <TooltipTrigger asChild>
         <div
           tabIndex={0}
-          className="px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface/40"
+          className="px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface"
         >
-          <div className="mg-type-caption text-ink-muted truncate">{label}</div>
+          <div className="text-13 text-ink-muted truncate">{label}</div>
           <div
             className={classNames(
-              "mt-1 font-display text-base font-semibold tabular-nums leading-tight truncate",
+              "mt-1 font-display text-16 font-semibold tabular-nums leading-tight truncate",
               tone === "ok" && "text-health-ok",
               tone === "warn" && "text-health-warn",
               (!tone || tone === "default") && "text-ink-strong",
@@ -442,7 +438,7 @@ function Stat({
           </div>
         </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-xs mg-type-caption leading-relaxed">
+      <TooltipContent side="bottom" className="max-w-xs text-13 leading-relaxed">
         {hint}
       </TooltipContent>
     </Tooltip>
@@ -481,7 +477,7 @@ function SegBtn({
           style={{ width: `${pct}%` }}
         />
       </TooltipTrigger>
-      <TooltipContent side="top" className="mg-type-data-sm">
+      <TooltipContent side="top" className="text-10">
         {count} {sev} · click to filter (shift+click to add)
       </TooltipContent>
     </Tooltip>

@@ -97,9 +97,9 @@ export function EndpointsPriorityStrip() {
 function PriorityCard({ item }: { item: Item }) {
   const Icon = item.icon;
   const body = (
-    <Panel as="div" dense interactive className="h-full">
+    <Panel as="div" interactive className="h-full">
       <div className="flex items-center justify-between gap-2">
-        <span className="mg-label inline-flex items-center gap-1.5">
+        <span className="text-10 text-ink-muted inline-flex items-center gap-1.5">
           <Icon className="size-3" aria-hidden />
           {item.label}
         </span>
@@ -111,28 +111,23 @@ function PriorityCard({ item }: { item: Item }) {
         ) : null}
       </div>
       <div className="mt-1 flex items-baseline gap-2">
-        <span className="font-display text-xl text-ink-strong tabular-nums">{item.value}</span>
+        <span className="font-display text-28 text-ink-strong tabular-nums">{item.value}</span>
       </div>
-      {item.hint ? <p className="mt-0.5 mg-type-caption text-ink-muted">{item.hint}</p> : null}
+      {item.hint ? <p className="mt-0.5 text-13 text-ink-muted">{item.hint}</p> : null}
       {item.rows.length > 0 ? (
         <ul className="mt-2 space-y-0.5">
           {item.rows.slice(0, 3).map((r) => (
-            <li
-              key={r.id}
-              className="flex items-center gap-1.5 mg-type-caption text-ink-muted min-w-0"
-            >
+            <li key={r.id} className="flex items-center gap-1.5 text-13 text-ink-muted min-w-0">
               <HealthDot state={r.health ?? "unknown"} />
               <span className="truncate font-mono">{r.provider ?? r.provider_slug ?? r.id}</span>
               {r.latency_ms != null ? (
-                <span className="ml-auto shrink-0 mg-type-data-sm tabular-nums">
-                  {r.latency_ms}ms
-                </span>
+                <span className="ml-auto shrink-0 text-10 tabular-nums">{r.latency_ms}ms</span>
               ) : null}
             </li>
           ))}
         </ul>
       ) : (
-        <div className="mt-2 flex items-center gap-1.5 mg-type-caption text-ink-muted">
+        <div className="mt-2 flex items-center gap-1.5 text-13 text-ink-muted">
           <Chip tone="muted">Nothing to review</Chip>
         </div>
       )}

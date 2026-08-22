@@ -28,7 +28,7 @@ export function VerifySurfaceButton({ surfaceId }: { surfaceId: string }) {
   const rateLimited = mutation.error instanceof ApiError && mutation.error.status === 429;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 mg-type-data">
+    <div className="flex flex-wrap items-center gap-2 text-11">
       <button
         type="button"
         onClick={() => mutation.mutate()}

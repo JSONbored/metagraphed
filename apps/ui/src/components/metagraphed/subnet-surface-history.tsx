@@ -39,8 +39,8 @@ export function SubnetSurfaceHistoryPanel({ netuid }: { netuid: number }) {
   const shown = h.changes.slice(0, MAX_SHOWN);
 
   return (
-    <Panel as="section" dense>
-      <p className="mb-3 mg-type-data-sm text-ink-muted">
+    <Panel as="section">
+      <p className="mb-3 text-10 text-ink-muted">
         {formatNumber(h.change_count)} recorded change
         {h.change_count === 1 ? "" : "s"}
         {h.surface_count == null
@@ -52,22 +52,22 @@ export function SubnetSurfaceHistoryPanel({ netuid }: { netuid: number }) {
       <ul className="space-y-2">
         {shown.map((c) => (
           <li key={`${c.surface_id}-${c.recorded_at ?? ""}-${c.action}`} className="flex gap-3">
-            <span className="mg-type-label w-16 shrink-0 text-ink-muted">{c.action}</span>
+            <span className="text-11 w-16 shrink-0 text-ink-muted">{c.action}</span>
             <span className="min-w-0 flex-1">
-              <span className="mg-type-data-sm text-ink">{c.name ?? c.surface_id}</span>
-              {c.kind ? <span className="ml-2 mg-type-label text-ink-muted">{c.kind}</span> : null}
+              <span className="text-10 text-ink">{c.name ?? c.surface_id}</span>
+              {c.kind ? <span className="ml-2 text-11 text-ink-muted">{c.kind}</span> : null}
               {/* The commit is what makes this auditable rather than anecdotal:
                   a claim about a surface traces to the change that made it. */}
               {c.source_commit ? (
                 <span
-                  className="ml-2 mg-type-label text-ink-muted"
+                  className="ml-2 text-11 text-ink-muted"
                   title={`Recorded by commit ${c.source_commit}`}
                 >
                   {c.source_commit.slice(0, 7)}
                 </span>
               ) : null}
             </span>
-            <span className="mg-type-label shrink-0 text-ink-muted">
+            <span className="text-11 shrink-0 text-ink-muted">
               {c.recorded_at ? formatRelative(c.recorded_at) : "—"}
             </span>
           </li>
@@ -75,7 +75,7 @@ export function SubnetSurfaceHistoryPanel({ netuid }: { netuid: number }) {
       </ul>
 
       {h.changes.length > MAX_SHOWN ? (
-        <p className="mt-3 mg-type-label text-ink-muted">
+        <p className="mt-3 text-11 text-ink-muted">
           Showing the {MAX_SHOWN} most recent of {formatNumber(h.changes.length)} returned.
         </p>
       ) : null}

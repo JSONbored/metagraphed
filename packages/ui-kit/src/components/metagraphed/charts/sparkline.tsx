@@ -191,7 +191,7 @@ export function Sparkline({
       </svg>
       {hoverPoint && tooltipText ? (
         <div
-          className="pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap"
+          className="pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 text-10 leading-tight text-ink-strong whitespace-nowrap"
           style={{
             left: Math.max(24, Math.min(width - 24, hoverPoint[0])),
             top: hoverPoint[1] - 4,

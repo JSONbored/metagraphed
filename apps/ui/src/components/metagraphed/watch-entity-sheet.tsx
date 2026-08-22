@@ -47,7 +47,7 @@ export function WatchEntitySheet({ netuid, name }: { netuid: number; name?: stri
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded px-2 py-1 mg-type-caption font-medium text-ink-muted transition-colors hover:bg-surface hover:text-ink-strong"
+        className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded px-2 py-1 text-13 font-medium text-ink-muted transition-colors hover:bg-surface hover:text-ink-strong"
       >
         <Bell className="size-3.5" aria-hidden />
         Follow
@@ -61,16 +61,15 @@ export function WatchEntitySheet({ netuid, name }: { netuid: number; name?: stri
           className="fixed inset-0 z-[var(--mg-z-modal)] flex items-end sm:items-center sm:justify-center"
         >
           <div
-            className="absolute inset-0 bg-ink-strong/30 backdrop-blur-sm"
+            className="absolute inset-0 bg-ink-strong/30"
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          {/* eslint-disable-next-line no-restricted-syntax -- not a card shell: this is the bottom-sheet dialog surface itself (mobile-first rounded-t-xl/border-t geometry that upgrades to rounded-xl/full border at sm, with its own max-h scroll region); <Panel> hardcodes `rounded border` and cannot express that responsive split without overriding every one of those classes */}
-          <div className="relative z-[var(--mg-z-sticky)] mg-scroll max-h-[85vh] w-full overflow-y-auto rounded-t-xl border-t border-border bg-card p-4 sm:mx-4 sm:max-w-lg sm:rounded-xl sm:border">
+          <div className="relative z-[var(--mg-z-sticky)] mg-scroll max-h-[85vh] w-full overflow-y-auto rounded border-t border-border bg-card p-4 sm:mx-4 sm:max-w-lg sm:rounded sm:border">
             <div className="mb-4 flex items-start justify-between gap-3 border-b border-border pb-3">
               <div className="min-w-0">
-                <span className="mg-type-label uppercase text-ink-strong">Follow {label}</span>
-                <p className="mt-1 mg-type-caption text-ink-muted">
+                <span className="text-11 text-ink-strong">Follow {label}</span>
+                <p className="mt-1 text-13 text-ink-muted">
                   Registry changes and incidents for this subnet. No account, no email — a feed URL
                   or a webhook, both of which you already have somewhere to put.
                 </p>
@@ -86,10 +85,10 @@ export function WatchEntitySheet({ netuid, name }: { netuid: number; name?: stri
             </div>
 
             <section className="space-y-2">
-              <h3 className="mg-type-label uppercase text-ink-muted">Feed</h3>
+              <h3 className="text-11 text-ink-muted">Feed</h3>
               {FORMATS.map((f) => (
                 <div key={f.suffix} className="flex items-center gap-2">
-                  <span className="w-20 shrink-0 mg-type-caption text-ink-muted">{f.label}</span>
+                  <span className="w-20 shrink-0 text-13 text-ink-muted">{f.label}</span>
                   <CopyableCode
                     label={f.label}
                     value={`${base}${f.suffix}`}
@@ -98,7 +97,7 @@ export function WatchEntitySheet({ netuid, name }: { netuid: number; name?: stri
                 </div>
               ))}
               <div className="pt-1">
-                <span className="mg-type-caption text-ink-muted">Or fetch it directly:</span>
+                <span className="text-13 text-ink-muted">Or fetch it directly:</span>
                 <CopyableCode
                   label="curl"
                   value={apiSnippet("curl", `${base}.json`)}
@@ -108,8 +107,8 @@ export function WatchEntitySheet({ netuid, name }: { netuid: number; name?: stri
             </section>
 
             <section className="mt-4 space-y-2 border-t border-border pt-4">
-              <h3 className="mg-type-label uppercase text-ink-muted">Webhook</h3>
-              <p className="mg-type-caption text-ink-muted">
+              <h3 className="text-11 text-ink-muted">Webhook</h3>
+              <p className="text-13 text-ink-muted">
                 For a push instead of a poll, create a subscription against the public subscription
                 API. The operator-issued token flow is unchanged — set it up on{" "}
                 <Link

@@ -12,7 +12,7 @@ import { TimeAgo } from "@jsonbored/ui-kit";
 
 function Notice({ children }: { children: string }) {
   return (
-    <Panel as="div" dense bodyClassName="text-xs text-ink-muted">
+    <Panel as="div" bodyClassName="text-13 text-ink-muted">
       {children}
     </Panel>
   );
@@ -47,26 +47,26 @@ export function RecentIdentityChanges() {
   }
 
   return (
-    <ul className="divide-y divide-border rounded-md border border-border bg-card">
+    <ul className="divide-y divide-border rounded border border-border bg-card">
       {changes.map((c) => (
         <li key={`${c.netuid}-${c.identity_hash}`} className="flex items-center gap-3 px-4 py-3">
           <Link
             to="/subnets/$netuid"
             params={{ netuid: c.netuid }}
-            className="shrink-0 mg-type-label uppercase text-ink-muted hover:text-accent"
+            className="shrink-0 text-11 text-ink-muted hover:text-accent"
           >
             SN{c.netuid}
           </Link>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm text-ink-strong">
+            <div className="truncate text-13 text-ink-strong">
               {c.subnet_name ?? "—"}
               {c.symbol ? <span className="ml-1.5 text-ink-muted">({c.symbol})</span> : null}
             </div>
             {c.description ? (
-              <div className="truncate mg-type-data-sm text-ink-muted">{c.description}</div>
+              <div className="truncate text-10 text-ink-muted">{c.description}</div>
             ) : null}
           </div>
-          <span className="shrink-0 mg-type-data-sm text-ink-muted">
+          <span className="shrink-0 text-10 text-ink-muted">
             <TimeAgo at={c.observed_at} />
           </span>
         </li>

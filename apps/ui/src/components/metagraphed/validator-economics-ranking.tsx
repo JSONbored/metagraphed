@@ -39,37 +39,37 @@ export function ValidatorEconomicsRanking() {
   const grouped = groupExclusions(e.excluded);
 
   return (
-    <Panel as="section" dense>
-      <p className="mb-3 mg-type-data-sm text-ink-muted">
+    <Panel as="section">
+      <p className="mb-3 text-10 text-ink-muted">
         What it costs to start validating — cheapest {formatNumber(Math.min(SHOWN, e.rows.length))}{" "}
         of {formatNumber(e.total)} ranked subnets
         {e.tao_weight != null ? ` · tao weight ${formatNumber(e.tao_weight)}` : ""}
       </p>
 
       <div className="overflow-x-auto">
-        <table className="w-full mg-type-data-sm">
+        <table className="w-full text-10">
           <thead>
-            <tr className="mg-type-label text-ink-muted">
-              <th className="py-1 text-left font-normal">subnet</th>
+            <tr className="text-11 text-ink-muted">
+              <th className="py-1 text-left">subnet</th>
               <th
-                className="py-1 text-right font-normal"
+                className="py-1 text-right"
                 title="Stake needed to hold a validator permit. Holding one does not mean earning from it."
               >
                 permit floor
               </th>
               <th
-                className="py-1 text-right font-normal"
+                className="py-1 text-right"
                 title="Stake needed to actually earn. This is the number that matters if you intend to be paid."
               >
                 earning floor
               </th>
               <th
-                className="py-1 text-right font-normal"
+                className="py-1 text-right"
                 title="How far above the permit floor the earning floor sits."
               >
                 ×
               </th>
-              <th className="py-1 text-right font-normal">slots</th>
+              <th className="py-1 text-right">slots</th>
             </tr>
           </thead>
           <tbody>
@@ -81,13 +81,13 @@ export function ValidatorEconomicsRanking() {
                       figure derived under a stated degradation is not the same
                       claim as one that was not. */}
                   {r.degraded_reason ? (
-                    <span className="ml-1 mg-type-label text-ink-muted" title={r.degraded_reason}>
+                    <span className="ml-1 text-11 text-ink-muted" title={r.degraded_reason}>
                       degraded
                     </span>
                   ) : null}
                   {r.emission_gate_open === false ? (
                     <span
-                      className="ml-1 mg-type-label text-ink-muted"
+                      className="ml-1 text-11 text-ink-muted"
                       title="The emission gate is shut for this subnet — a permit here earns nothing regardless of stake."
                     >
                       gate shut
@@ -126,12 +126,12 @@ export function ValidatorEconomicsRanking() {
           ranking that hides its exclusions describes a subset as the whole. */}
       {grouped.length > 0 ? (
         <div className="mt-4">
-          <p className="mg-type-label text-ink-muted">
+          <p className="text-11 text-ink-muted">
             Not ranked ({e.excluded.length} subnet{e.excluded.length === 1 ? "" : "s"}):
           </p>
           <ul className="mt-1 space-y-0.5">
             {grouped.map(([reason, netuids]) => (
-              <li key={reason} className="mg-type-label text-ink-muted">
+              <li key={reason} className="text-11 text-ink-muted">
                 {reason} — {netuids.map((n) => `SN${n}`).join(", ")}
               </li>
             ))}

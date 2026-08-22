@@ -91,7 +91,7 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
   return (
     <Panel as="div" flush className="overflow-hidden">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <div className="mg-type-caption text-ink-muted">
+        <div className="text-13 text-ink-muted">
           Per-surface reliability · uptime · latency percentiles
         </div>
         <div role="tablist" aria-label="Reliability window" className="flex items-center gap-1">
@@ -103,7 +103,7 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
               aria-selected={w === window}
               onClick={() => setWindow(w)}
               className={classNames(
-                "rounded px-2 py-0.5 mg-type-data transition-colors",
+                "rounded px-2 py-0.5 text-11 transition-colors",
                 w === window ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink-strong",
               )}
             >
@@ -113,7 +113,7 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
         </div>
       </div>
       {loading && rows.length === 0 ? (
-        <div className="p-4 text-xs text-ink-muted">Loading reliability…</div>
+        <div className="p-4 text-13 text-ink-muted">Loading reliability…</div>
       ) : isError ? (
         <div className="p-4">
           <ErrorState
@@ -126,14 +126,14 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
           />
         </div>
       ) : rows.length === 0 ? (
-        <div className="p-4 text-xs text-ink-muted">
+        <div className="p-4 text-13 text-ink-muted">
           No probe history for this subnet in the {window} window yet.
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full mg-type-data">
+          <table className="w-full text-11">
             <thead>
-              <tr className="mg-type-micro text-ink-muted">
+              <tr className="text-10 text-ink-muted">
                 <th className="border-b border-border px-3 py-2 text-left">Surface</th>
                 <th className="border-b border-border px-2 py-2 text-right">Uptime</th>
                 <th className="border-b border-border px-2 py-2 text-right">p50</th>

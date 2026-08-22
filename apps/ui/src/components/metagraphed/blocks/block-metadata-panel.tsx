@@ -29,7 +29,7 @@ export function BlockMetadataPanel({ block }: { block: Block }) {
             key={r.label}
             className="grid grid-cols-[minmax(120px,auto)_minmax(0,1fr)] gap-3 px-3 py-2 sm:px-4"
           >
-            <dt className="mg-type-caption text-ink-muted inline-flex items-center gap-1.5">
+            <dt className="text-13 text-ink-muted inline-flex items-center gap-1.5">
               {r.label}
               {r.hint ? <InfoTooltip label={r.hint} /> : null}
             </dt>
@@ -37,20 +37,18 @@ export function BlockMetadataPanel({ block }: { block: Block }) {
               {r.mono ? (
                 <>
                   <span
-                    className="font-mono mg-type-caption text-ink-strong break-all md:hidden"
+                    className="font-mono text-13 text-ink-strong break-all md:hidden"
                     title={r.value}
                   >
                     {truncate(r.value, 28)}
                   </span>
-                  <span className="hidden md:inline font-mono mg-type-caption text-ink-strong break-all">
+                  <span className="hidden md:inline font-mono text-13 text-ink-strong break-all">
                     {r.value}
                   </span>
                   <CopyButton value={r.value} label={r.label} compact />
                 </>
               ) : (
-                <span className="font-mono mg-type-caption text-ink-strong tabular-nums">
-                  {r.value}
-                </span>
+                <span className="font-mono text-13 text-ink-strong tabular-nums">{r.value}</span>
               )}
             </dd>
           </div>

@@ -112,12 +112,12 @@ export function YieldLoader({ netuid }: { netuid: number }) {
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Validator vs miner split. */}
-        <Panel as="div" dense>
-          <div className="mb-3 mg-type-caption text-ink-muted">Validator / miner split</div>
+        <Panel as="div">
+          <div className="mb-3 text-13 text-ink-muted">Validator / miner split</div>
           {splitBars.length ? (
             <BarMini data={splitBars} />
           ) : (
-            <p className="mg-type-data text-ink-muted">Not enough data yet.</p>
+            <p className="text-11 text-ink-muted">Not enough data yet.</p>
           )}
         </Panel>
 
@@ -141,25 +141,23 @@ export function YieldLoader({ netuid }: { netuid: number }) {
             <div key={n.uid} className="p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="shrink-0 mg-type-data tabular-nums text-ink-muted">
-                    #{n.uid}
-                  </span>
+                  <span className="shrink-0 text-11 tabular-nums text-ink-muted">#{n.uid}</span>
                   <AddressDisplay
                     ss58={n.hotkey}
-                    fallback={<span className="font-mono mg-type-caption text-ink-muted">—</span>}
+                    fallback={<span className="font-mono text-13 text-ink-muted">—</span>}
                     compact
-                    valueClassName="truncate font-mono mg-type-caption text-ink-strong hover:text-accent"
+                    valueClassName="truncate font-mono text-13 text-ink-strong hover:text-accent"
                   />
                 </div>
                 {n.role === "validator" ? (
-                  <span className="shrink-0 inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
+                  <span className="shrink-0 inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-13 text-accent-text">
                     Validator
                   </span>
                 ) : (
-                  <span className="shrink-0 mg-type-caption text-ink-muted">Miner</span>
+                  <span className="shrink-0 text-13 text-ink-muted">Miner</span>
                 )}
               </div>
-              <div className="mt-2 flex items-center justify-between gap-2 mg-type-data tabular-nums">
+              <div className="mt-2 flex items-center justify-between gap-2 text-11 tabular-nums">
                 <span className="text-ink-muted">{taoCompact(n.stake_tao)} τ stake</span>
                 <span className="text-ink-muted">{taoCompact(n.emission_tao)} τ emission</span>
                 <span className="flex items-center gap-1 text-ink-strong">
@@ -171,8 +169,8 @@ export function YieldLoader({ netuid }: { netuid: number }) {
           ))}
         </div>
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-surface/50 mg-type-micro text-ink-muted">
+          <table className="w-full text-13">
+            <thead className="bg-surface text-10 text-ink-muted">
               <tr>
                 <th className="px-3 py-2.5 text-left">UID</th>
                 <th className="px-3 py-2.5 text-left">Hotkey</th>
@@ -186,10 +184,10 @@ export function YieldLoader({ netuid }: { netuid: number }) {
             <tbody>
               {ranked.map((n) => (
                 <tr key={n.uid} className="mg-row-hover border-t border-border/60">
-                  <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 font-mono text-13 tabular-nums text-ink-strong">
                     {n.uid}
                   </td>
-                  <td className="px-3 py-2.5 mg-type-data">
+                  <td className="px-3 py-2.5 text-11">
                     <AddressDisplay
                       ss58={n.hotkey}
                       fallback={<>—</>}
@@ -199,20 +197,20 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                   </td>
                   <td className="px-3 py-2.5">
                     {n.role === "validator" ? (
-                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
+                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-13 text-accent-text">
                         Validator
                       </span>
                     ) : (
-                      <span className="mg-type-caption text-ink-muted">Miner</span>
+                      <span className="text-13 text-ink-muted">Miner</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-strong">
                     {taoCompact(n.stake_tao)}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
                     {taoCompact(n.emission_tao)}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-strong">
                     {fmtYield(n.yield)}
                   </td>
                   <td className="px-3 py-2.5 text-center">
@@ -223,7 +221,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
             </tbody>
           </table>
         </div>
-        <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 mg-type-caption text-ink-muted">
+        <div className="border-t border-border/60 bg-surface px-3 py-1.5 text-13 text-ink-muted">
           top {ranked.length} of {neurons.length} by yield · subnet {netuid}
         </div>
       </Panel>
@@ -266,7 +264,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
     <div
       role="tablist"
       aria-label="Yield window"
-      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+      className="inline-flex rounded border border-border bg-surface p-0.5"
     >
       {WINDOWS.map((w) => (
         <button
@@ -276,7 +274,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
           aria-selected={w === win}
           onClick={() => setWin(w)}
           className={classNames(
-            "px-2.5 py-1 mg-type-label uppercase rounded transition-colors",
+            "px-2.5 py-1 text-11 rounded transition-colors",
             w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
           )}
         >
@@ -289,7 +287,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="mg-type-caption text-ink-muted">Yield drift</span>
+        <span className="text-13 text-ink-muted">Yield drift</span>
         {toggle}
       </div>
       {isLoading ? (
@@ -302,7 +300,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
           description="Daily yield-distribution snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel as="div" dense bodyClassName="space-y-3">
+        <Panel as="div" bodyClassName="space-y-3">
           {series.subnet.length > 0 ? (
             <DriftRow label="Subnet yield" series={series.subnet} color="var(--accent)" />
           ) : null}
@@ -322,7 +320,7 @@ function DriftRow({ label, series, color }: { label: string; series: number[]; c
   const last = series[series.length - 1];
   return (
     <div className="grid grid-cols-1 gap-1 min-[400px]:grid-cols-[minmax(0,7rem)_1fr_auto] min-[400px]:items-center min-[400px]:gap-3">
-      <span className="mg-type-label uppercase text-ink-muted">{label}</span>
+      <span className="text-11 text-ink-muted">{label}</span>
       <div className="min-w-0">
         <Sparkline
           values={series}
@@ -333,7 +331,7 @@ function DriftRow({ label, series, color }: { label: string; series: number[]; c
           ariaLabel={label}
         />
       </div>
-      <span className="min-w-0 font-display text-sm font-semibold tabular-nums text-ink-strong min-[400px]:text-right">
+      <span className="min-w-0 font-display text-13 font-semibold tabular-nums text-ink-strong min-[400px]:text-right">
         {last != null ? fmtYield(last) : "—"}
       </span>
     </div>

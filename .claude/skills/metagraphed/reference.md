@@ -108,10 +108,10 @@ python -m unittest discover -s tests` (the `[test]` extra pulls in httpx so the 
   no wiring, but a `scripts/test_*.py` whose subject is deleted now fails at import here** (#9473 —
   four of them sat unrun and broken for two weeks before this step existed). Node-independent, so
   neither adds wall-clock to the long poles.
-- **`ui`** — lint + typecheck + test + a responsive-overflow e2e check (Playwright, baseline-diffed
+- **`ui`** — lint + typecheck + test + three Playwright e2e projects: `responsive-overflow` (baseline-diffed
   against `apps/ui/tests/e2e/overflow-baseline.json` — fails only on a NEW element escaping the
   viewport, not the pre-existing tracked backlog like #3930/#3931/#3985; regenerate the baseline via
-  `npm run test:e2e:update-baseline --workspace=apps/ui` after a real fix or an accepted new layout),
+  `npm run test:e2e:update-baseline --workspace=apps/ui` after a real fix or an accepted new layout), `interaction` (sticky headers, crawlability, offline, deep links) and `token-inventory` (#11605 — the design-system contract measured in the rendered page: font families, the seven sizes, `letter-spacing: normal`, one 4px radius, zero pills, no resting shadow; absolute, never baseline-diffed),
   build, and bundle-size-budget for `apps/ui` (the TanStack Start/Vite frontend, folded into this
   repo as an npm workspace — #3062), plus a `packages/client/dist` drift check (rebuild fresh,
   `git diff --exit-code` against the committed runtime bundle — #3066/#3294) and, the same way, a

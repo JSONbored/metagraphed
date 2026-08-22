@@ -46,7 +46,7 @@ function ExplorerFallback({ heightClassName }: { heightClassName: string }) {
       as="div"
       flush
       className={classNames(
-        "flex items-center justify-center font-mono text-xs text-ink-muted",
+        "flex items-center justify-center font-mono text-13 text-ink-muted",
         heightClassName,
       )}
     >

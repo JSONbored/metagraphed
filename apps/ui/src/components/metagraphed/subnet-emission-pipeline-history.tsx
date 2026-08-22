@@ -42,7 +42,7 @@ export function SubnetEmissionPipelineHistoryPanel({ netuid }: { netuid: number 
   const latest = h.points[h.points.length - 1];
 
   return (
-    <Panel as="section" dense>
+    <Panel as="section">
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure label="days" value={formatNumber(h.point_count)} hint="Days in the window." />
         <Figure
@@ -69,7 +69,7 @@ export function SubnetEmissionPipelineHistoryPanel({ netuid }: { netuid: number 
           was copied -- and this is the difference between "stable" and "we
           stopped looking". */}
       {carried > 0 ? (
-        <p className="mt-4 mg-type-data-sm text-ink-muted">
+        <p className="mt-4 text-10 text-ink-muted">
           {carried} of {h.point_count} day{h.point_count === 1 ? "" : "s"} repeat the previous
           reading rather than a fresh observation — a flat stretch here is not evidence the pipeline
           held steady.
@@ -77,7 +77,7 @@ export function SubnetEmissionPipelineHistoryPanel({ netuid }: { netuid: number 
       ) : null}
 
       {h.first_captured_day ? (
-        <p className="mt-2 mg-type-data-sm text-ink-muted">
+        <p className="mt-2 text-10 text-ink-muted">
           Capture begins {h.first_captured_day}. Anything earlier is unwatched, not empty.
         </p>
       ) : null}
@@ -88,8 +88,8 @@ export function SubnetEmissionPipelineHistoryPanel({ netuid }: { netuid: number 
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div title={hint}>
-      <div className="mg-type-label text-ink-muted">{label}</div>
-      <div className="mg-type-data tabular-nums text-ink">{value}</div>
+      <div className="text-11 text-ink-muted">{label}</div>
+      <div className="text-11 tabular-nums text-ink">{value}</div>
     </div>
   );
 }

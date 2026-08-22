@@ -296,7 +296,7 @@ export function SankeyMini({
                 }
                 dominantBaseline={vertical ? "auto" : "middle"}
                 fill="var(--ink-strong)"
-                className="mg-type-data-sm"
+                className="text-10"
               >
                 {node.label}
               </text>

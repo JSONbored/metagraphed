@@ -38,8 +38,8 @@ function IndexerLagCard() {
     return <EmptyState title="No lag reading" description="Capture lag has not been measured." />;
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Capture currency</h3>
+    <Panel as="section">
+      <h3 className="mb-3 text-11 text-ink-muted">Capture currency</h3>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure
           label="behind head"
@@ -67,9 +67,7 @@ function IndexerLagCard() {
         />
       </div>
       {l.measured_at ? (
-        <p className="mt-3 mg-type-label text-ink-muted">
-          Measured {formatRelative(l.measured_at)}.
-        </p>
+        <p className="mt-3 text-11 text-ink-muted">Measured {formatRelative(l.measured_at)}.</p>
       ) : null}
     </Panel>
   );
@@ -92,8 +90,8 @@ function FailureMixCard() {
   const failing = rankedFailures(f.reasons);
 
   return (
-    <Panel as="section" dense>
-      <h3 className="mb-3 mg-type-label text-ink-muted">Why probes fail · {f.window}</h3>
+    <Panel as="section">
+      <h3 className="mb-3 text-11 text-ink-muted">Why probes fail · {f.window}</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
         <Figure
           label="checks"
@@ -118,7 +116,7 @@ function FailureMixCard() {
           classification that is 2% of traffic reads as 2% of the problem. */}
       <ul className="mt-4 space-y-1">
         {failing.map((r) => (
-          <li key={r.classification} className="flex justify-between mg-type-data-sm">
+          <li key={r.classification} className="flex justify-between text-10">
             <span className="text-ink-muted">{r.classification}</span>
             <span
               className="tabular-nums text-ink"
@@ -130,7 +128,7 @@ function FailureMixCard() {
         ))}
       </ul>
       {failing.length === 0 ? (
-        <p className="mt-3 mg-type-label text-ink-muted">
+        <p className="mt-3 text-11 text-ink-muted">
           Every classification in this window is a non-failure outcome.
         </p>
       ) : null}
@@ -141,8 +139,8 @@ function FailureMixCard() {
 function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div title={hint}>
-      <div className="mg-type-label text-ink-muted">{label}</div>
-      <div className="mg-type-data tabular-nums text-ink">{value}</div>
+      <div className="text-11 text-ink-muted">{label}</div>
+      <div className="text-11 tabular-nums text-ink">{value}</div>
     </div>
   );
 }

@@ -117,12 +117,12 @@ export function EndpointsGlance({
               <Icon className="size-3.5 shrink-0 text-ink-muted" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="mg-type-caption text-ink-muted">{b.label}</span>
-                  <span className="font-display text-sm font-semibold text-ink-strong tabular-nums">
+                  <span className="text-13 text-ink-muted">{b.label}</span>
+                  <span className="font-display text-13 font-semibold text-ink-strong tabular-nums">
                     {items.length}
                   </span>
                 </div>
-                <div className="mt-0.5 truncate mg-type-data text-ink-muted">
+                <div className="mt-0.5 truncate text-11 text-ink-muted">
                   {top ? maskHost(top.url) : "—"}
                 </div>
               </div>
@@ -135,7 +135,7 @@ export function EndpointsGlance({
         type="button"
         onClick={toggle}
         className={classNames(
-          "flex w-full items-center justify-center gap-1.5 border-t border-border bg-surface/40 px-3 py-3 mg-type-caption font-medium text-ink-muted hover:text-accent hover:bg-surface min-h-11 transition-colors",
+          "flex w-full items-center justify-center gap-1.5 border-t border-border bg-surface px-3 py-3 text-13 font-medium text-ink-muted hover:text-accent hover:bg-surface min-h-11 transition-colors",
         )}
         aria-expanded={open}
         aria-controls={panelId}

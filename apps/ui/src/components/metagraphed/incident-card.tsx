@@ -14,16 +14,14 @@ export function IncidentCard({ incident }: { incident: EndpointIncident }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <HealthPill state={i.state} />
-          <span className="mg-type-data text-ink-strong truncate">{i.endpoint_id ?? "—"}</span>
+          <span className="text-11 text-ink-strong truncate">{i.endpoint_id ?? "—"}</span>
         </div>
-        <span className={`mg-type-caption ${ongoing ? "text-health-down" : "text-ink-muted"}`}>
+        <span className={`text-13 ${ongoing ? "text-health-down" : "text-ink-muted"}`}>
           {ongoing ? "ongoing" : "resolved"} · {durationLabel(i.started_at, i.ended_at)}
         </span>
       </div>
-      {i.message ? (
-        <p className="mg-type-caption text-ink-muted line-clamp-2">{i.message}</p>
-      ) : null}
-      <div className="flex items-center justify-between mg-type-data-sm text-ink-muted">
+      {i.message ? <p className="text-13 text-ink-muted line-clamp-2">{i.message}</p> : null}
+      <div className="flex items-center justify-between text-10 text-ink-muted">
         <span>
           started <TimeAgo at={i.started_at} />
         </span>

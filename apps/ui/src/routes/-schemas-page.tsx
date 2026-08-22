@@ -192,7 +192,7 @@ function SchemasHero() {
         <Link
           to="/docs/$"
           params={{ _splat: "api-reference" }}
-          className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 mg-type-label uppercase text-accent-text transition-colors hover:bg-accent/15"
+          className="inline-flex items-center rounded border border-accent/30 bg-accent/10 px-4 py-2 text-11 text-accent-text transition-colors hover:bg-accent/15"
         >
           Browse reference
         </Link>
@@ -208,8 +208,8 @@ function SchemasHero() {
           { label: "Subnets covered", value: subnets },
         ].map((k) => (
           <Panel key={k.label} as="div" flush className="px-3 py-2.5">
-            <div className="mg-label">{k.label}</div>
-            <div className="mt-0.5 mg-type-data text-ink-strong">
+            <div className="text-10 text-ink-muted">{k.label}</div>
+            <div className="mt-0.5 text-11 text-ink-strong">
               <AnimatedNumber value={k.value} />
             </div>
           </Panel>
@@ -257,19 +257,19 @@ function ContractsList() {
         {visible.map((c) => {
           const artifactUrl = sameOriginApiUrl(c.path);
           return (
-            <Panel key={c.id} dense interactive className="min-w-0">
+            <Panel key={c.id} interactive className="min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="font-display text-sm font-semibold text-ink-strong">{c.id}</div>
+                  <div className="font-display text-13 font-semibold text-ink-strong">{c.id}</div>
                   {c.description ? (
-                    <div className="mg-type-data-sm text-ink-muted mt-0.5">{c.description}</div>
+                    <div className="text-10 text-ink-muted mt-0.5">{c.description}</div>
                   ) : null}
                 </div>
                 <FileCode className="size-4 text-ink-muted shrink-0" />
               </div>
               {c.path && artifactUrl ? (
                 <div className="mt-3">
-                  <ExternalLink href={artifactUrl} className="mg-type-caption">
+                  <ExternalLink href={artifactUrl} className="text-13">
                     {c.path}
                   </ExternalLink>
                 </div>
@@ -380,7 +380,7 @@ function SchemaExplorer() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_1fr]">
         {/* Left rail */}
-        <aside className="rounded-xl border border-border bg-card overflow-hidden flex flex-col max-h-[min(680px,70vh)]">
+        <aside className="rounded border border-border bg-card overflow-hidden flex flex-col max-h-[min(680px,70vh)]">
           <div className="border-b border-border p-3 space-y-2.5">
             {/* The shared SearchInput, which carries an aria-label (a
                 placeholder is not an accessible name), replacing the bespoke
@@ -398,7 +398,7 @@ function SchemaExplorer() {
                   type="button"
                   onClick={() => setSearch({ drift: v })}
                   className={classNames(
-                    "mg-type-micro flex-1 rounded-full border px-2 py-1 transition-all duration-150",
+                    "text-10 flex-1 rounded border px-2 py-1 transition-all duration-150",
                     search.drift === v
                       ? "border-ink/40 bg-ink-strong text-paper"
                       : "border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-accent/40",
@@ -409,7 +409,7 @@ function SchemaExplorer() {
               ))}
             </div>
             <div className="flex items-center justify-between gap-2">
-              <div className="mg-type-caption text-ink-muted">
+              <div className="text-13 text-ink-muted">
                 {filtered.length} of {all.length}
               </div>
               {/* One-click way back to the unfiltered view for a shared
@@ -440,29 +440,27 @@ function SchemaExplorer() {
                       onClick={() => setSearch({ open: s.id })}
                       className={classNames(
                         "w-full text-left px-3 py-2.5 transition-colors",
-                        active ? "bg-primary-soft" : "hover:bg-surface/60",
+                        active ? "bg-primary-soft" : "hover:bg-surface",
                       )}
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span
                           aria-hidden
                           className={classNames(
-                            "size-1.5 rounded-full shrink-0",
+                            "size-1.5 rounded-full mg-dot shrink-0",
                             s.drift ? "bg-health-warn" : "bg-health-ok",
                           )}
                         />
-                        <span className="text-sm text-ink-strong truncate font-medium">
+                        <span className="text-13 text-ink-strong truncate font-medium">
                           {s.name ?? s.id}
                         </span>
                         {s.netuid != null ? (
-                          <span className="ml-auto mg-type-data-sm text-ink-muted shrink-0">
+                          <span className="ml-auto text-10 text-ink-muted shrink-0">
                             SN{s.netuid}
                           </span>
                         ) : null}
                       </div>
-                      <div className="mg-type-data-sm text-ink-muted truncate mt-1">
-                        {s.url ?? s.id}
-                      </div>
+                      <div className="text-10 text-ink-muted truncate mt-1">{s.url ?? s.id}</div>
                     </button>
                   </li>
                 );
@@ -523,20 +521,20 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
                   replace: true,
                 })
               }
-              className="mg-type-caption lg:hidden inline-flex items-center gap-1 text-ink-muted hover:text-ink-strong mb-2"
+              className="text-13 lg:hidden inline-flex items-center gap-1 text-ink-muted hover:text-ink-strong mb-2"
             >
               <ChevronLeft className="size-3" /> back
             </button>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-display text-xl font-semibold text-ink-strong tracking-[-0.01em]">
+              <h3 className="font-display text-28 font-semibold text-ink-strong">
                 {schema.name ?? schema.id}
               </h3>
               {schema.drift ? (
-                <span className="mg-type-micro inline-flex items-center rounded-full border border-health-warn/40 bg-health-warn/10 px-2 py-0.5 text-health-warn">
+                <span className="text-10 inline-flex items-center rounded border border-health-warn/40 bg-health-warn/10 px-2 py-0.5 text-health-warn">
                   drift
                 </span>
               ) : (
-                <span className="mg-type-micro inline-flex items-center rounded-full border border-health-ok/40 bg-health-ok/10 px-2 py-0.5 text-health-ok">
+                <span className="text-10 inline-flex items-center rounded border border-health-ok/40 bg-health-ok/10 px-2 py-0.5 text-health-ok">
                   stable
                 </span>
               )}
@@ -544,13 +542,13 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
                 <Link
                   to="/subnets/$netuid"
                   params={{ netuid: schema.netuid }}
-                  className="mg-type-data-sm text-accent hover:underline"
+                  className="text-10 text-accent hover:underline"
                 >
                   SN{schema.netuid}
                 </Link>
               ) : null}
             </div>
-            <div className="mg-type-data text-ink-muted mt-1.5">
+            <div className="text-11 text-ink-muted mt-1.5">
               snapshot <TimeAgo at={schema.updated_at} />
             </div>
           </div>
@@ -559,12 +557,12 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
               <button
                 type="button"
                 onClick={() => copy(artifactUrl)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 mg-type-caption text-ink hover:border-accent/40 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-3 py-1.5 text-13 text-ink hover:border-accent/40 transition-colors"
               >
                 {copied ? <Check className="size-3 text-health-ok" /> : <Copy className="size-3" />}
                 {copied ? "copied" : "copy url"}
               </button>
-              <ExternalLink href={artifactUrl} className="mg-type-caption">
+              <ExternalLink href={artifactUrl} className="text-13">
                 open
               </ExternalLink>
             </div>

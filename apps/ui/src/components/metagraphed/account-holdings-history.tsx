@@ -138,7 +138,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
     <div
       role="tablist"
       aria-label="Holdings history window"
-      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+      className="inline-flex rounded border border-border bg-surface p-0.5"
     >
       {WINDOWS.map((w) => (
         <button
@@ -148,7 +148,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
           aria-selected={w.id === win}
           onClick={() => setWin(w.id)}
           className={classNames(
-            "px-2.5 py-1 mg-type-label uppercase rounded transition-colors",
+            "px-2.5 py-1 text-11 rounded transition-colors",
             w.id === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
           )}
         >
@@ -180,7 +180,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="mg-type-caption text-ink-muted">
+        <span className="text-13 text-ink-muted">
           {extentStart && extentEnd ? (
             <>
               History begins {extentStart}
@@ -200,8 +200,8 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
           description="Daily snapshots will appear here once enough chain history has accumulated for these positions."
         />
       ) : (
-        <Panel as="div" dense bodyClassName="space-y-3">
-          <div className="mg-type-caption text-ink-muted">
+        <Panel as="div" bodyClassName="space-y-3">
+          <div className="text-13 text-ink-muted">
             Staked τ by subnet
             {positions.length > TOP_POSITIONS
               ? ` · top ${TOP_POSITIONS} positions by current value`
@@ -217,7 +217,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
           />
           <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {stacked.map((s) => (
-              <li key={s.id} className="flex items-center gap-1.5 mg-type-caption text-ink-muted">
+              <li key={s.id} className="flex items-center gap-1.5 text-13 text-ink-muted">
                 <span
                   aria-hidden
                   className="inline-block size-2 rounded"
@@ -232,7 +232,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
 
       {!anyLoading && hasChartData ? (
         <div>
-          <div className="mb-2 mg-type-caption text-ink-muted">Per-position history</div>
+          <div className="mb-2 text-13 text-ink-muted">Per-position history</div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {visiblePositions.map((pos, i) => {
               const history = historyResults[i]?.data?.data;
@@ -241,19 +241,16 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
                 .filter((v): v is number => v != null && Number.isFinite(v));
               const color = CHART_COLORS[i % CHART_COLORS.length]!;
               return (
-                <div
-                  key={pos.netuid}
-                  className="rounded-2xl border border-border/80 mg-glass px-4 py-3 mg-card-glow"
-                >
+                <div key={pos.netuid} className="rounded border border-border/80 px-4 py-3">
                   <div className="flex items-baseline justify-between gap-2">
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: pos.netuid }}
-                      className="font-mono mg-type-caption text-ink-strong hover:text-accent hover:underline"
+                      className="font-mono text-13 text-ink-strong hover:text-accent hover:underline"
                     >
                       SN{pos.netuid}
                     </Link>
-                    <span className="font-display text-sm font-semibold tabular-nums text-ink-strong">
+                    <span className="font-display text-13 font-semibold tabular-nums text-ink-strong">
                       {stakeStr(pos.stake_alpha, pos.netuid)}
                     </span>
                   </div>
@@ -271,7 +268,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
                         ariaLabel={`SN${pos.netuid} staked TAO history`}
                       />
                     ) : (
-                      <span className="mg-type-caption text-ink-muted">No history yet</span>
+                      <span className="text-13 text-ink-muted">No history yet</span>
                     )}
                   </div>
                 </div>
@@ -284,7 +281,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
                 <button
                   type="button"
                   onClick={() => setVisibleCount((c) => c + POSITIONS_PAGE_SIZE)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+                  className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3.5 py-1.5 text-11 text-ink-muted hover:border-ink/30 hover:text-ink-strong"
                 >
                   Show{" "}
                   {formatNumber(Math.min(POSITIONS_PAGE_SIZE, positions.length - visibleCount))}{" "}
@@ -298,7 +295,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
                 <button
                   type="button"
                   onClick={() => setVisibleCount(TOP_POSITIONS)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+                  className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3.5 py-1.5 text-11 text-ink-muted hover:border-ink/30 hover:text-ink-strong"
                 >
                   Show fewer
                 </button>

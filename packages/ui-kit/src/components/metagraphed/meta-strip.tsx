@@ -30,7 +30,7 @@ export function MetaStrip({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-x-2 gap-y-1 mg-type-caption text-ink-muted",
+        "flex flex-wrap items-center gap-x-2 gap-y-1 text-13 text-ink-muted",
         className,
       )}
     >
@@ -45,7 +45,7 @@ export function MetaStrip({
               {sep}
             </span>
           ) : null}
-          <span className="mg-type-micro">{it.label}</span>
+          <span className="text-10">{it.label}</span>
           <span className="text-ink-strong">{it.value}</span>
         </span>
       ))}

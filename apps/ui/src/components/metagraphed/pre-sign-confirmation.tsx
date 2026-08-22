@@ -63,11 +63,11 @@ export function PreSignConfirmation({
   return (
     <div className="space-y-4">
       <div>
-        <div className="mg-label mb-1">{copy.verb}</div>
-        <div className="font-display text-lg font-medium text-ink-strong">
+        <div className="text-10 text-ink-muted mb-1">{copy.verb}</div>
+        <div className="font-display text-16 font-medium text-ink-strong">
           {amountTao} τ
           {amountAlpha ? (
-            <span className="ml-1.5 text-sm font-normal text-ink-muted">
+            <span className="ml-1.5 text-13 font-normal text-ink-muted">
               ({amountAlpha} α on subnet {netuid})
             </span>
           ) : null}
@@ -100,7 +100,7 @@ export function PreSignConfirmation({
         />
       ) : null}
 
-      <div className="flex items-start gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-2 mg-type-caption text-ink-muted">
+      <div className="flex items-start gap-1.5 rounded border border-border bg-surface px-2.5 py-2 text-13 text-ink-muted">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
         <span>
           metagraphed builds this transaction for your wallet to sign — we never see your keys and
@@ -113,7 +113,7 @@ export function PreSignConfirmation({
           type="button"
           onClick={onCancel}
           disabled={confirming}
-          className="flex-1 rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-60"
+          className="flex-1 rounded border border-border bg-card px-3 py-2 text-13 font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-60"
         >
           Cancel
         </button>
@@ -121,7 +121,7 @@ export function PreSignConfirmation({
           type="button"
           onClick={onConfirm}
           disabled={confirming || feeTao === null}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded border border-ink-strong/40 bg-surface px-3 py-2 mg-type-caption font-medium text-ink-strong hover:border-ink-strong/60 transition-colors disabled:opacity-60"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded border border-ink-strong/40 bg-surface px-3 py-2 text-13 font-medium text-ink-strong hover:border-ink-strong/60 transition-colors disabled:opacity-60"
         >
           {confirming ? (
             <>
@@ -153,17 +153,17 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0">
-      <span className="mg-type-caption text-ink-muted">{label}</span>
+      <span className="text-13 text-ink-muted">{label}</span>
       <span className="text-right">
         <span
           className={classNames(
-            "block mg-type-caption font-medium text-ink-strong",
+            "block text-13 font-medium text-ink-strong",
             loading && "animate-pulse text-ink-muted",
           )}
         >
           {value}
         </span>
-        {detail ? <span className="block mg-type-caption text-ink-muted">{detail}</span> : null}
+        {detail ? <span className="block text-13 text-ink-muted">{detail}</span> : null}
       </span>
     </div>
   );

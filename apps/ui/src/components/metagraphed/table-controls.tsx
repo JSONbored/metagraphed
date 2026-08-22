@@ -47,7 +47,7 @@ export function SortHeader<TField extends string>({
       onClick={() => onSort(field)}
       aria-label={`Sort by ${label}${sortHint}`}
       className={classNames(
-        "inline-flex items-center gap-1 mg-type-caption hover:text-ink-strong transition-colors",
+        "inline-flex items-center gap-1 hover:text-ink-strong transition-colors",
         active ? "text-ink-strong" : "text-ink-muted",
         align === "right" && "justify-end w-full",
       )}
@@ -112,14 +112,14 @@ export function SearchInput({
         // the aria-labelled sibling controls (SortButton, PageSizeSelect) in this file.
         aria-label={placeholder ?? "Search"}
         className={classNames(
-          "w-full rounded border border-border bg-paper pl-8 pr-16 py-1.5 text-sm text-ink-strong",
+          "w-full rounded border border-border bg-paper pl-8 pr-16 py-1.5 text-13 text-ink-strong",
           "placeholder:text-ink-muted focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-ring transition-colors",
         )}
       />
       {shortcut ? (
         <kbd
           aria-hidden
-          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 mg-type-data-sm text-ink-muted"
+          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 text-10 text-ink-muted"
         >
           /
         </kbd>
@@ -155,12 +155,12 @@ export function SelectFilter({
   return (
     <label
       className={classNames(
-        "items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs",
+        "items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-13",
         fill ? "flex w-full min-w-0" : "inline-flex",
         className,
       )}
     >
-      <span className="shrink-0 mg-type-caption text-ink-muted">{label}</span>
+      <span className="shrink-0 text-13 text-ink-muted">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -168,7 +168,7 @@ export function SelectFilter({
         // to font-mono so the value matches the label instead of falling back to
         // the sans body font, which reads as unstyled next to the mono label.
         className={classNames(
-          "min-w-0 truncate bg-transparent font-mono text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "min-w-0 truncate bg-transparent font-mono text-ink-strong text-13 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           fill ? "flex-1" : "",
         )}
       >
@@ -214,7 +214,7 @@ export function FilterChip({
   return (
     <label
       className={classNames(
-        "group relative inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition-colors cursor-pointer",
+        "group relative inline-flex items-center gap-1.5 rounded border px-2.5 py-1 transition-colors cursor-pointer",
         active
           ? "border-accent/50 bg-accent/8 text-ink-strong hover:border-accent/70"
           : "border-border bg-card text-ink-muted hover:border-ink/25 hover:text-ink-strong",
@@ -224,10 +224,10 @@ export function FilterChip({
         className={classNames("size-3 shrink-0", active ? "text-accent" : "text-ink-muted")}
         aria-hidden
       />
-      {label ? <span className="mg-type-caption opacity-80 shrink-0">{label}</span> : null}
+      {label ? <span className="text-13 opacity-80 shrink-0">{label}</span> : null}
       <span
         className={classNames(
-          "mg-type-data truncate max-w-[100px]",
+          "text-11 truncate max-w-[100px]",
           active ? "text-ink-strong" : "text-ink-muted",
         )}
       >
@@ -265,13 +265,13 @@ export function PageSizeSelect({
   options?: number[];
 }) {
   return (
-    <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
-      <span className="mg-type-caption text-ink-muted">per page</span>
+    <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-13">
+      <span className="text-13 text-ink-muted">per page</span>
       <select
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label="Results per page"
-        className="bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-7"
+        className="bg-transparent text-ink-strong text-13 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-7"
       >
         {options.map((n) => (
           <option key={n} value={n}>
@@ -305,8 +305,8 @@ export function ResetFiltersButton({
       onClick={onReset}
       className={
         bare
-          ? "inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-          : "inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 mg-type-caption font-medium text-ink hover:border-ink/30 min-h-7"
+          ? "inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+          : "inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-13 font-medium text-ink hover:border-ink/30 min-h-7"
       }
       title="Clear search, filters, and pagination"
     >

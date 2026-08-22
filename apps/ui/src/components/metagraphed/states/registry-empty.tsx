@@ -102,12 +102,12 @@ export function RegistryEmpty({
   return (
     <div
       role={variant === "error" ? "alert" : "status"}
-      className={classNames("rounded-xl border p-4 sm:p-6", tone.ring, className)}
+      className={classNames("rounded border p-4 sm:p-6", tone.ring, className)}
     >
       <div className="flex items-start gap-3">
         <div
           className={classNames(
-            "inline-flex size-8 shrink-0 items-center justify-center rounded-full border",
+            "inline-flex size-8 shrink-0 items-center justify-center rounded border",
             tone.badge,
           )}
         >
@@ -115,17 +115,17 @@ export function RegistryEmpty({
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-display text-base font-semibold text-ink-strong">{title}</h3>
+            <h3 className="font-display text-16 font-semibold text-ink-strong">{title}</h3>
             <span
               className={classNames(
-                "inline-flex items-center rounded-full border px-2 py-0.5 mg-type-micro",
+                "inline-flex items-center rounded border px-2 py-0.5 text-10",
                 tone.badge,
               )}
             >
               {tone.label}
             </span>
             {variant === "stale" && fresh ? (
-              <span className="mg-type-data-sm text-ink-muted">
+              <span className="text-10 text-ink-muted">
                 {fresh}
                 {freshAbs ? ` · last checked ${freshAbs}` : ""}
               </span>
@@ -133,19 +133,19 @@ export function RegistryEmpty({
           </div>
 
           {description ? (
-            <p className="mg-type-caption-lg leading-relaxed text-ink-muted">{description}</p>
+            <p className="text-13 leading-relaxed text-ink-muted">{description}</p>
           ) : null}
 
           {freshnessHint ? (
-            <p className="mg-type-caption leading-relaxed text-ink-muted/80">
-              <span className="mg-type-caption opacity-70">how freshness works · </span>
+            <p className="text-13 leading-relaxed text-ink-muted/80">
+              <span className="text-13 opacity-70">how freshness works · </span>
               {freshnessHint}
             </p>
           ) : null}
 
           {evidenceHref ? (
-            <p className="mg-type-caption text-ink-muted">
-              <span className="mg-type-caption opacity-70">where to verify · </span>
+            <p className="text-13 text-ink-muted">
+              <span className="text-13 opacity-70">where to verify · </span>
               {/* #11204: resolveEvidenceHref makes this absolute before it is
                   rendered, so <ExternalLink>'s safeExternalUrl can parse it.
                   The raw anchor this replaced existed only because the relative
@@ -176,7 +176,7 @@ export function RegistryEmpty({
 
 function ActionButton({ action, variant }: { action: ActionLink; variant: RegistryEmptyVariant }) {
   const base =
-    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 mg-type-label uppercase transition-colors";
+    "inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-11 transition-colors";
   const primary = action.primary
     ? "border-accent/40 bg-primary-soft text-accent hover:bg-primary-soft/80"
     : "border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-ink/30";

@@ -24,7 +24,7 @@ export function SubnetIndexDirectory() {
           <Link
             to="/subnets/$netuid"
             params={{ netuid: subnet.netuid }}
-            className="mg-type-caption text-ink-muted hover:text-accent"
+            className="text-13 text-ink-muted hover:text-accent"
           >
             <span className="text-ink-strong">SN{subnet.netuid}</span>
             {subnet.name ? ` · ${subnet.name}` : ""}

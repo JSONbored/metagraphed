@@ -34,7 +34,7 @@ describe("visual grammar guardrails (#8255)", () => {
   it("has no marquee or auto-scrolling strip anywhere in either package", () => {
     // Auto-scrolling text is unreadable, unpausable, and takes attention from
     // whatever the reader actually came for. The last one was the footer's
-    // registry-pulse ticker; .mg-ticker survives as a plain user-scrollable
+    // registry-pulse ticker; .survives as a plain user-scrollable
     // row, but nothing animates a translate on a loop any more.
     const offenders = sources.filter((p) =>
       /\b(?:animate-marquee|animate-scroll|mg-marquee|mg-ticker-track)\b/.test(read(p)),

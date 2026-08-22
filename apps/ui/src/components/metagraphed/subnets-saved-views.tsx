@@ -122,7 +122,7 @@ export function SubnetsSavedViews() {
                 aria-pressed={active}
                 onClick={() => apply(p.patch)}
                 className={classNames(
-                  "relative inline-flex shrink-0 items-center px-3 py-2 mg-type-caption-lg transition-colors",
+                  "relative inline-flex shrink-0 items-center px-3 py-2 text-13 transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded",
                   active ? "text-ink-strong" : "text-ink-muted hover:text-ink-strong",
                 )}

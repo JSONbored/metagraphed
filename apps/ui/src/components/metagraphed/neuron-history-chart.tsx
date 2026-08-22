@@ -59,7 +59,7 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
     <div
       role="tablist"
       aria-label="History window"
-      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+      className="inline-flex rounded border border-border bg-surface p-0.5"
     >
       {WINDOWS.map((w) => (
         <button
@@ -69,7 +69,7 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
           aria-selected={w === win}
           onClick={() => setWin(w)}
           className={classNames(
-            "px-2.5 py-1 mg-type-label uppercase rounded transition-colors",
+            "px-2.5 py-1 text-11 rounded transition-colors",
             w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
           )}
         >
@@ -82,7 +82,7 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="mg-type-caption text-ink-muted">UID {uid} history</span>
+        <span className="text-13 text-ink-muted">UID {uid} history</span>
         {windowSelector}
       </div>
       {isLoading ? (
@@ -95,7 +95,7 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
           description="Daily snapshots for this neuron will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel as="div" dense bodyClassName="space-y-3">
+        <Panel as="div" bodyClassName="space-y-3">
           {series.stake.length > 0 ? (
             <HistoryRow
               label="Stake"
@@ -161,7 +161,7 @@ function HistoryRow({
     last == null ? "—" : format ? format(last) : Number.isFinite(last) ? formatNumber(last) : "—";
   return (
     <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 mg-type-label uppercase text-ink-muted">{label}</span>
+      <span className="w-28 shrink-0 text-11 text-ink-muted">{label}</span>
       <div className="flex-1 min-w-0">
         <Sparkline
           values={series}
@@ -172,7 +172,7 @@ function HistoryRow({
           ariaLabel={label}
         />
       </div>
-      <span className="w-20 shrink-0 text-right font-display text-sm font-semibold tabular-nums text-ink-strong">
+      <span className="w-20 shrink-0 text-right font-display text-13 font-semibold tabular-nums text-ink-strong">
         {display}
       </span>
     </div>

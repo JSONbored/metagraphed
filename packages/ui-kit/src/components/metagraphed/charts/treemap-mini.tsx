@@ -143,7 +143,7 @@ export function TreemapMini({
 
   const label =
     ariaLabel ??
-    `Treemap of ${tiles.length} items sized by share: ` +
+    `Treemap of ${tiles.length} items sized by share:` +
       tiles.map((t) => `${t.label} ${(t.share * 100).toFixed(1)}%`).join(", ");
 
   return (
@@ -151,7 +151,7 @@ export function TreemapMini({
       role="img"
       aria-label={label}
       className={classNames(
-        "relative aspect-[16/9] w-full overflow-hidden rounded-md",
+        "relative aspect-[16/9] w-full overflow-hidden rounded",
         className,
       )}
     >
@@ -179,11 +179,11 @@ export function TreemapMini({
           >
             {t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? (
               <>
-                <span className="truncate mg-type-data-sm font-medium leading-none text-ink-strong">
+                <span className="truncate text-10 font-medium leading-none text-ink-strong">
                   {t.label}
                 </span>
                 {t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? (
-                  <span className="truncate mg-type-data-sm leading-none text-ink-muted">
+                  <span className="truncate text-10 leading-none text-ink-muted">
                     {formatValue(t.value)}
                   </span>
                 ) : null}

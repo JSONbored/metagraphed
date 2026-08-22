@@ -16,7 +16,7 @@ import { summarizeEvent } from "@/lib/metagraphed/chain-summaries";
 import type { ChainEvent } from "@/lib/metagraphed/types";
 import { chainStreamEventMatchesFilters, useChainStream } from "@/hooks/use-chain-stream";
 
-const TH = "px-4 py-2.5 mg-type-caption text-ink-muted";
+const TH = "px-4 py-2.5";
 
 /** Subnet chip for a decoded `netuid` arg — links to that subnet. */
 function SubnetChip({ netuid }: { netuid: number }) {
@@ -24,7 +24,7 @@ function SubnetChip({ netuid }: { netuid: number }) {
     <Link
       to="/subnets/$netuid"
       params={{ netuid }}
-      className="inline-flex items-center rounded-full border border-border bg-paper px-2 py-0.5 mg-type-micro text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
+      className="inline-flex items-center rounded border border-border bg-paper px-2 py-0.5 text-10 text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
     >
       SN{netuid}
     </Link>
@@ -63,22 +63,17 @@ export function ChainEventCard({ event }: { event: ChainEvent }) {
   // -- never a guessed sentence.
   const sentence = summarizeEvent(event.pallet, event.method, event.args);
   return (
-    <Panel as="div" dense className="min-h-11">
+    <Panel as="div" className="min-h-11">
       <div className="flex items-baseline justify-between gap-2">
-        <span
-          className="min-w-0 truncate mg-type-data text-ink-strong"
-          title={sentence ?? undefined}
-        >
+        <span className="min-w-0 truncate text-11 text-ink-strong" title={sentence ?? undefined}>
           {sentence ?? extrinsicCall(event.pallet, event.method)}
         </span>
         {s.amountTao != null ? (
-          <span className="shrink-0 mg-type-data tabular-nums text-ink">
-            {formatTao(s.amountTao)}
-          </span>
+          <span className="shrink-0 text-11 tabular-nums text-ink">{formatTao(s.amountTao)}</span>
         ) : null}
       </div>
       {s.from || s.to ? (
-        <div className="mt-1 flex items-center gap-1.5 mg-type-data-sm text-ink-muted">
+        <div className="mt-1 flex items-center gap-1.5 text-10 text-ink-muted">
           <AddressDisplay ss58={s.from} compact fallback="—" />
           {s.to ? (
             <>
@@ -88,7 +83,7 @@ export function ChainEventCard({ event }: { event: ChainEvent }) {
           ) : null}
         </div>
       ) : null}
-      <div className="mt-1 flex items-center justify-between gap-2 mg-type-data-sm text-ink-muted">
+      <div className="mt-1 flex items-center justify-between gap-2 text-10 text-ink-muted">
         <span className="flex items-center gap-2">
           {s.netuid != null ? <SubnetChip netuid={s.netuid} /> : null}
           {event.block_number != null ? (
@@ -184,13 +179,13 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
         // override regardless of prop order (classNames() is a plain string-join,
         // not tailwind-merge-aware -- see #6904); the trailing `!` forces this
         // narrower floor to actually apply for these compact pallet/method filters.
-        className="min-w-[140px]! flex-none mg-type-data"
+        className="min-w-[140px]! flex-none text-11"
       />
       <SearchInput
         value={method}
         onChange={(v) => onFilter({ method: v })}
         placeholder={pallet.trim() ? "Filter by method" : "Method (requires pallet)"}
-        className="min-w-[140px]! flex-none mg-type-data"
+        className="min-w-[140px]! flex-none text-11"
       />
       {/* #6387: a filtered /events?pallet=X or /explorer?pallet=X link is
           URL-persisted and otherwise stuck until manually cleared, unlike every
@@ -214,13 +209,13 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
             : "System plumbing events (ExtrinsicSuccess / ExtrinsicFailed / TransactionFeePaid) are hidden — click to show them"
         }
         className={classNames(
-          "mg-type-caption inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
+          "text-13 inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
           !showNoise
             ? "border-accent/40 bg-accent/10 text-accent"
             : "border-border bg-card text-ink-muted hover:text-ink-strong",
         )}
       >
-        <span className={classNames("size-1.5 rounded-full", !showNoise && "bg-accent")} />
+        <span className={classNames("size-1.5 rounded-full mg-dot", !showNoise && "bg-accent")} />
         Hide system noise
         {hiddenCount > 0 ? <span className="text-ink-muted">· {hiddenCount}</span> : null}
       </button>
@@ -262,8 +257,8 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
   // how-much / where. The args have carried this all along -- see
   // lib/metagraphed/chain-event-summary.ts.
   const table = (
-    <table className="w-full text-left text-sm">
-      <thead className="bg-surface/40">
+    <table className="w-full text-left text-13">
+      <thead className="bg-surface">
         <tr>
           <th className={TH}>Event</th>
           <th className={`${TH} text-right`}>Amount</th>
@@ -279,26 +274,23 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
           const s = summarizeChainEvent(event.args);
           const sentence = summarizeEvent(event.pallet, event.method, event.args);
           return (
-            <tr key={`${event.block_number}-${event.event_index}`} className="hover:bg-surface/40">
-              <td
-                className="px-4 py-2.5 mg-type-data text-ink-strong"
-                title={sentence ?? undefined}
-              >
+            <tr key={`${event.block_number}-${event.event_index}`} className="hover:bg-surface">
+              <td className="px-4 py-2.5 text-11 text-ink-strong" title={sentence ?? undefined}>
                 {sentence ?? extrinsicCall(event.pallet, event.method)}
               </td>
-              <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink">
+              <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink">
                 {s.amountTao != null ? formatTao(s.amountTao) : "—"}
               </td>
-              <td className="px-4 py-2.5 mg-type-data">
+              <td className="px-4 py-2.5 text-11">
                 <AddressDisplay ss58={s.from} compact fallback="—" />
               </td>
-              <td className="px-4 py-2.5 mg-type-data">
+              <td className="px-4 py-2.5 text-11">
                 <AddressDisplay ss58={s.to} compact fallback="—" />
               </td>
-              <td className="px-4 py-2.5 mg-type-data">
+              <td className="px-4 py-2.5 text-11">
                 {s.netuid != null ? <SubnetChip netuid={s.netuid} /> : "—"}
               </td>
-              <td className="px-4 py-2.5 mg-type-data">
+              <td className="px-4 py-2.5 text-11">
                 {event.block_number != null ? (
                   <Link
                     to="/blocks/$ref"
@@ -311,7 +303,7 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
                   "—"
                 )}
               </td>
-              <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
+              <td className="px-4 py-2.5 text-right text-11 text-ink-muted">
                 <TimeAgo at={event.observed_at} />
               </td>
             </tr>
@@ -370,7 +362,7 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
                   on a pricing page nobody visits. Rendered as a link, never
                   fetched: this route answers 402 without a payment. */}
               {PAID_EXPORT_ENDPOINTS.map((endpoint) => (
-                <p key={endpoint.path} className="mg-type-data text-ink-muted mt-3">
+                <p key={endpoint.path} className="text-11 text-ink-muted mt-3">
                   <ExternalLink
                     href={`${API_BASE}${endpoint.path}`}
                     className="hover:text-ink-strong"

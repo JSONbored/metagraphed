@@ -129,7 +129,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
 
   if (providers.length === 0) {
     return (
-      <Panel as="div" dense bodyClassName="text-xs text-ink-muted">
+      <Panel as="div" bodyClassName="text-13 text-ink-muted">
         No endpoint latency data yet.
       </Panel>
     );
@@ -139,9 +139,9 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
     <TooltipProvider delayDuration={150}>
       <Panel as="div" flush className="overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justify-between gap-2">
-          <div className="mg-type-caption text-ink-muted">Latency heatmap · provider × kind</div>
+          <div className="text-13 text-ink-muted">Latency heatmap · provider × kind</div>
           <div
-            className="flex flex-wrap items-center gap-2.5 mg-type-data-sm text-ink-muted"
+            className="flex flex-wrap items-center gap-2.5 text-10 text-ink-muted"
             role="list"
             aria-label="Latency legend"
           >
@@ -165,20 +165,17 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
             (#8314). */}
         <div className="mg-table-scroll w-full overflow-x-auto [scrollbar-gutter:stable]">
           <table
-            className="w-full min-w-[480px] mg-type-data"
+            className="w-full min-w-[480px] text-11"
             role="table"
             aria-label="Endpoint latency by provider and kind"
           >
             <thead>
               <tr>
-                <th className="sticky left-0 z-[var(--mg-z-sticky)] bg-card text-left px-3 py-2 mg-type-micro text-ink-muted border-b border-border">
+                <th className="sticky left-0 z-[var(--mg-z-sticky)] bg-card text-left px-3 py-2 text-ink-muted border-b border-border">
                   Provider
                 </th>
                 {kinds.map((k) => (
-                  <th
-                    key={k}
-                    className="px-2 py-2 mg-type-micro text-ink-muted border-b border-border"
-                  >
+                  <th key={k} className="px-2 py-2 text-ink-muted border-b border-border">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span
@@ -188,7 +185,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
                           {k}
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="mg-type-caption">
+                      <TooltipContent side="top" className="text-13">
                         {KIND_HINT[k] ?? k}
                       </TooltipContent>
                     </Tooltip>
@@ -213,7 +210,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
                             {p}
                           </Link>
                         </TooltipTrigger>
-                        <TooltipContent side="right" className="mg-type-caption">
+                        <TooltipContent side="right" className="text-13">
                           {p} · {total} endpoint{total === 1 ? "" : "s"}
                         </TooltipContent>
                       </Tooltip>
@@ -281,7 +278,7 @@ function Cell({ cell }: { cell: Cell }) {
           title={title}
           aria-label={ariaSummary}
           className={classNames(
-            "relative h-7 w-full rounded flex items-center justify-center mg-type-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-1 focus-visible:ring-offset-card",
+            "relative h-7 w-full rounded flex items-center justify-center text-13 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-1 focus-visible:ring-offset-card",
             tone,
           )}
         >
@@ -291,12 +288,12 @@ function Cell({ cell }: { cell: Cell }) {
           {cell.downCount > 0 || cell.warnCount > 0 ? (
             <span className="absolute top-0.5 right-0.5 flex items-center gap-0.5" aria-hidden>
               {cell.downCount > 0 ? (
-                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded bg-health-down/95 px-0.5 mg-type-data-sm leading-none text-paper">
+                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded bg-health-down/95 px-0.5 text-10 leading-none text-paper">
                   {cell.downCount}
                 </span>
               ) : null}
               {cell.warnCount > 0 ? (
-                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded bg-health-warn/95 px-0.5 mg-type-data-sm leading-none text-paper">
+                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded bg-health-warn/95 px-0.5 text-10 leading-none text-paper">
                   {cell.warnCount}
                 </span>
               ) : null}
@@ -307,20 +304,20 @@ function Cell({ cell }: { cell: Cell }) {
       <PopoverContent
         side="top"
         align="center"
-        className="w-[min(92vw,20rem)] p-3 mg-fade-in"
+        className="w-[min(92vw,20rem)] p-3"
         aria-label="Endpoint cell details"
       >
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="m-0 min-w-0 mg-type-caption text-ink-muted truncate">
+            <h3 className="m-0 min-w-0 text-13 text-ink-muted truncate">
               {cell.provider} · {cell.kind}
             </h3>
-            <span className="mg-type-data-sm text-ink-strong tabular-nums shrink-0">
+            <span className="text-10 text-ink-strong tabular-nums shrink-0">
               {cell.avgLatency != null ? `${Math.round(cell.avgLatency)}ms avg` : "—"}
             </span>
           </div>
           <div
-            className="grid grid-cols-3 gap-1.5 mg-type-data-sm"
+            className="grid grid-cols-3 gap-1.5 text-10"
             role="list"
             aria-label="Health breakdown"
           >
@@ -333,7 +330,7 @@ function Cell({ cell }: { cell: Cell }) {
               <Link
                 to="/providers/$slug"
                 params={{ slug: cell.provider }}
-                className="inline-flex items-center gap-1 mg-type-data text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded"
+                className="inline-flex items-center gap-1 text-11 text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded"
               >
                 open provider <ExternalLink className="size-3" />
               </Link>
@@ -343,7 +340,7 @@ function Cell({ cell }: { cell: Cell }) {
                   provider: cell.provider,
                   category: KIND_TO_CATEGORY[cell.kind] ?? "all",
                 }}
-                className="sm:ml-auto inline-flex items-center gap-1 rounded border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
+                className="sm:ml-auto inline-flex items-center gap-1 rounded border border-border bg-paper px-1.5 py-0.5 text-13 text-ink-muted hover:text-accent hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                 aria-label={`Open endpoints filtered to ${cell.provider} ${cell.kind}`}
               >
                 <Filter className="size-3" /> filter endpoints
@@ -359,13 +356,13 @@ function Cell({ cell }: { cell: Cell }) {
                         params={{ netuid: n }}
                         search={{ tab: "endpoints" }}
                         hash="endpoints"
-                        className="inline-flex h-6 items-center rounded border border-border bg-paper px-2 mg-type-data-sm text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
+                        className="inline-flex h-6 items-center rounded border border-border bg-paper px-2 text-10 text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                         aria-label={`Jump to subnet ${n} endpoints`}
                       >
                         SN{n}
                       </Link>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="mg-type-caption">
+                    <TooltipContent side="top" className="text-13">
                       Jump to SN{n} · {cell.kind} endpoints
                     </TooltipContent>
                   </Tooltip>
@@ -381,13 +378,13 @@ function Cell({ cell }: { cell: Cell }) {
                         to="/apis/endpoints"
                         search={{ q: p }}
                         hash={`pool-${p}`}
-                        className="inline-flex h-6 max-w-[16ch] items-center truncate rounded border border-border bg-paper px-2 mg-type-data-sm text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
+                        className="inline-flex h-6 max-w-[16ch] items-center truncate rounded border border-border bg-paper px-2 text-10 text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                         aria-label={`Scroll to pool ${p} in endpoints`}
                       >
                         {p}
                       </Link>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="mg-type-data break-all max-w-[90vw]">
+                    <TooltipContent side="top" className="text-11 break-all max-w-[90vw]">
                       {p}
                     </TooltipContent>
                   </Tooltip>
@@ -404,7 +401,7 @@ function Cell({ cell }: { cell: Cell }) {
 function ChipGroup({ label, id, children }: { label: string; id: string; children: ReactNode }) {
   return (
     <div>
-      <div id={id} className="mg-type-caption text-ink-muted mb-1">
+      <div id={id} className="text-13 text-ink-muted mb-1">
         {label}
       </div>
       <div className="flex flex-wrap gap-1.5" role="list" aria-labelledby={id}>
@@ -417,8 +414,8 @@ function ChipGroup({ label, id, children }: { label: string; id: string; childre
 function CellStat({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="rounded border border-border bg-paper px-2 py-1 text-center" role="listitem">
-      <div className={classNames("tabular-nums mg-type-caption font-semibold", color)}>{value}</div>
-      <div className="mg-type-caption text-ink-muted">{label}</div>
+      <div className={classNames("tabular-nums text-13 font-semibold", color)}>{value}</div>
+      <div className="text-13 text-ink-muted">{label}</div>
     </div>
   );
 }
@@ -436,7 +433,7 @@ function LegendBucket({ cls, label, hint }: { cls: string; label: string; hint: 
           {label}
         </span>
       </TooltipTrigger>
-      <TooltipContent side="top" className="mg-type-caption">
+      <TooltipContent side="top" className="text-13">
         {hint}
       </TooltipContent>
     </Tooltip>

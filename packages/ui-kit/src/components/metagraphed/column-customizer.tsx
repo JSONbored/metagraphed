@@ -34,11 +34,11 @@ export function ColumnCustomizer({
         aria-haspopup="menu"
         aria-expanded={open}
         title="Customize visible columns"
-        className="mg-focus-ring inline-flex items-center gap-1.5 h-9 rounded border border-border bg-card px-2.5 mg-type-micro text-ink-muted hover:text-ink-strong hover:border-ink/25 transition-colors"
+        className="mg-focus-ring inline-flex items-center gap-1.5 h-9 rounded border border-border bg-card px-2.5 text-10 text-ink-muted hover:text-ink-strong hover:border-ink/25 transition-colors"
       >
         <Columns3 className="size-3" aria-hidden />
         <span className="hidden sm:inline">Columns</span>
-        <span className="text-ink-strong tabular-nums normal-case tracking-normal">
+        <span className="text-ink-strong tabular-nums normal-case">
           {visibleCount}/{columns.length}
         </span>
       </button>
@@ -52,14 +52,14 @@ export function ColumnCustomizer({
           />
           <div
             role="menu"
-            className="absolute right-0 z-[var(--mg-z-overlay)] mt-1.5 w-64 rounded border border-border bg-card p-1 mg-card-glow"
+            className="absolute right-0 z-[var(--mg-z-overlay)] mt-1.5 w-64 rounded border border-border bg-card p-1"
           >
             <div className="flex items-center justify-between px-2 py-1.5">
-              <span className="mg-type-micro text-ink-muted">Columns</span>
+              <span className="text-10 text-ink-muted">Columns</span>
               <button
                 type="button"
                 onClick={onReset}
-                className="mg-focus-ring inline-flex items-center gap-1 mg-type-data-sm text-ink-muted hover:text-ink-strong"
+                className="mg-focus-ring inline-flex items-center gap-1 text-10 text-ink-muted hover:text-ink-strong"
                 title="Reset to defaults"
               >
                 <RotateCcw className="size-3" aria-hidden /> Reset
@@ -72,7 +72,7 @@ export function ColumnCustomizer({
                   <label
                     key={c.id}
                     className={classNames(
-                      "flex items-center gap-2 rounded px-2 py-1.5 mg-type-caption text-ink hover:bg-surface-2 cursor-pointer",
+                      "flex items-center gap-2 rounded px-2 py-1.5 text-13 text-ink hover:bg-surface-2 cursor-pointer",
                       c.required ? "opacity-60 cursor-not-allowed" : null,
                     )}
                   >
@@ -85,7 +85,7 @@ export function ColumnCustomizer({
                     />
                     <span className="flex-1 truncate">{c.label}</span>
                     {c.required ? (
-                      <span className="mg-type-micro text-ink-subtle-text">
+                      <span className="text-10 text-ink-subtle-text">
                         Locked
                       </span>
                     ) : null}

@@ -48,7 +48,6 @@ export function StatTile({
   return (
     <Panel
       as="div"
-      dense
       tintBorderOnly
       tone={tone}
       className={className}
@@ -81,7 +80,7 @@ export function StatTile({
           without it flex would keep shrinking this column to fit the chart
           beside it rather than pushing the chart to the next line. */}
       <div className="min-w-[6rem] flex-1">
-        <div className="flex items-center gap-1 mg-type-caption text-ink-muted">
+        <div className="flex items-center gap-1 text-13 text-ink-muted">
           {/* The eyebrow names the statistic -- clipping it mid-word is the
               one thing a KPI tile can't afford ("Take rate" became "Take
               rat…", "Avg validator trust" became "Avg vali…" in a 2-column
@@ -99,11 +98,11 @@ export function StatTile({
         </div>
         <div className="mt-1 flex min-w-0 items-baseline gap-1.5">
           {/* #3940: shrink-0 so the hint (already truncate-clipped) absorbs constrained width instead of the value wrapping. */}
-          <span className="shrink-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl">
+          <span className="shrink-0 font-display text-16 font-semibold tabular-nums leading-none text-ink-strong sm:text-28 md:text-28">
             {value}
           </span>
           {hint && truncate ? (
-            <span className="min-w-0 truncate mg-type-data-sm text-ink-muted">
+            <span className="min-w-0 truncate text-10 text-ink-muted">
               {hint}
             </span>
           ) : null}
@@ -116,7 +115,7 @@ export function StatTile({
             tiles run ~2x taller than their truncating neighbours in the same
             grid. On its own line it wraps normally. */}
         {hint && !truncate ? (
-          <div className="mt-0.5 mg-type-data-sm leading-tight text-ink-muted">
+          <div className="mt-0.5 text-10 leading-tight text-ink-muted">
             {hint}
           </div>
         ) : null}

@@ -38,7 +38,7 @@ import {
  * count is how a reader learns the headline-eligible set is two subnets wide.
  */
 
-const TH = "px-4 py-3 text-left mg-type-caption text-ink-muted";
+const TH = "px-4 py-3 text-left";
 
 function ProvenanceCell({ provenance }: { provenance: string | null }) {
   const eligible = HEADLINE_TIERS.has(provenance ?? "");
@@ -50,7 +50,7 @@ function SubnetCell({ row }: { row: CoverageRow }) {
     <Link
       to="/subnets/$netuid"
       params={{ netuid: row.netuid }}
-      className="font-mono mg-type-caption text-ink-strong hover:text-accent hover:underline"
+      className="font-mono text-13 text-ink-strong hover:text-accent hover:underline"
     >
       SN{row.netuid}
       {row.name ? <span className="ml-2 font-sans text-ink-muted">{row.name}</span> : null}
@@ -116,11 +116,11 @@ export function RevenuePage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mg-type-caption text-ink-muted">Provenance</span>
+        <span className="text-13 text-ink-muted">Provenance</span>
         <button
           type="button"
           onClick={() => navigate({ search: (p) => ({ ...p, provenance: "" }) })}
-          className={`rounded-full border px-3 py-1 mg-type-caption ${
+          className={`rounded border px-3 py-1 text-13 ${
             search.provenance ? "border-border/80 text-ink-muted" : "border-accent text-ink-strong"
           }`}
         >
@@ -135,7 +135,7 @@ export function RevenuePage() {
                 search: (p) => ({ ...p, provenance: option.value }),
               })
             }
-            className={`rounded-full border px-3 py-1 mg-type-caption ${
+            className={`rounded border px-3 py-1 text-13 ${
               search.provenance === option.value
                 ? "border-accent text-ink-strong"
                 : "border-border/80 text-ink-muted"
@@ -147,7 +147,7 @@ export function RevenuePage() {
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-border/80">
+      <div className="overflow-x-auto rounded border border-border/80">
         <table className="w-full min-w-[52rem]">
           <thead>
             <tr className="border-b border-border/80">
@@ -224,16 +224,16 @@ export function RevenuePage() {
                 <td className="px-4 py-3">
                   <ProvenanceCell provenance={row.provenance} />
                 </td>
-                <td className="px-4 py-3 text-right mg-type-data tabular-nums text-ink">
+                <td className="px-4 py-3 text-right text-11 tabular-nums text-ink">
                   {usdLabel(row.emission_usd) ?? "—"}
                 </td>
-                <td className="px-4 py-3 text-right mg-type-data tabular-nums text-ink">
+                <td className="px-4 py-3 text-right text-11 tabular-nums text-ink">
                   {usdLabel(row.revenue_usd) ?? "—"}
                 </td>
-                <td className="px-4 py-3 text-right mg-type-data tabular-nums text-ink">
+                <td className="px-4 py-3 text-right text-11 tabular-nums text-ink">
                   {coverageLabel(row.coverage_ratio)}
                 </td>
-                <td className="px-4 py-3 text-right mg-type-data tabular-nums text-ink">
+                <td className="px-4 py-3 text-right text-11 tabular-nums text-ink">
                   {subsidyLabel(row.subsidy_multiple)}
                 </td>
               </tr>
@@ -247,12 +247,12 @@ export function RevenuePage() {
           {/* Visually distinct and OUTSIDE the ranked table, because ordering
               these by a figure nobody measured is the defect this page exists
               not to have. */}
-          <Panel as="div" dense bodyClassName="mg-type-caption text-ink-muted">
+          <Panel as="div" bodyClassName="text-13 text-ink-muted">
             {notObservedNote(notObserved.length, rows.length)}
           </Panel>
           <div className="flex flex-wrap gap-2">
             {notObserved.map((row) => (
-              <span key={row.netuid} className="rounded-full border border-border/60 px-3 py-1">
+              <span key={row.netuid} className="rounded border border-border/60 px-3 py-1">
                 <SubnetCell row={row} />
               </span>
             ))}
@@ -263,7 +263,7 @@ export function RevenuePage() {
       <Link
         to="/docs/$"
         params={{ _splat: "revenue-coverage" }}
-        className="mg-type-caption text-accent hover:underline"
+        className="text-13 text-accent hover:underline"
       >
         How the ratio is derived, and what it does not mean
       </Link>

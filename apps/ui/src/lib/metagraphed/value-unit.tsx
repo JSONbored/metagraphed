@@ -60,7 +60,7 @@ export function ValueUnitControl() {
     <span
       role="tablist"
       aria-label="Value display unit"
-      className="inline-flex items-center rounded-md border border-border bg-card p-0.5"
+      className="inline-flex items-center rounded border border-border bg-card p-0.5"
     >
       {opts.map((o) => {
         const active = o.v === unit;
@@ -73,7 +73,7 @@ export function ValueUnitControl() {
             title={o.title}
             onClick={() => setUnit(o.v)}
             className={
-              "inline-flex items-center rounded px-2 py-1 mg-type-caption font-medium transition-colors min-h-8 " +
+              "inline-flex items-center rounded px-2 py-1 text-13 font-medium transition-colors min-h-8" +
               (active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong")
             }
           >

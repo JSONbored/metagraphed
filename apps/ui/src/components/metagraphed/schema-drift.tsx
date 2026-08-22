@@ -61,20 +61,18 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
 
   if (compact) {
     return (
-      <Panel as="div" dense>
+      <Panel as="div">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
             <GitCompare className="size-3.5 text-ink-muted" />
-            <span className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong">
-              Schema drift
-            </span>
-            <span className="mg-type-data-sm text-ink-muted">{schemas.length} tracked</span>
+            <span className="font-display text-13 font-semibold text-ink-strong">Schema drift</span>
+            <span className="text-10 text-ink-muted">{schemas.length} tracked</span>
           </div>
           <Link
             to="/subnets/$netuid"
             params={{ netuid: netuid }}
             search={(prev: Record<string, unknown>) => ({ ...prev, tab: "schemas" })}
-            className="mg-type-data-sm text-ink-muted hover:text-ink-strong"
+            className="text-10 text-ink-muted hover:text-ink-strong"
           >
             view all →
           </Link>
@@ -83,14 +81,14 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
           {Object.entries(counts).map(([k, v]) => (
             <span
               key={k}
-              className={classNames("rounded border px-1.5 py-0.5 mg-type-data-sm", driftTone(k))}
+              className={classNames("rounded border px-1.5 py-0.5 text-10", driftTone(k))}
             >
               {k} · {v}
             </span>
           ))}
         </div>
         {drift.length > 0 ? (
-          <ul className="mt-2 space-y-0.5 mg-type-caption text-ink-muted">
+          <ul className="mt-2 space-y-0.5 text-13 text-ink-muted">
             {drift.slice(0, 3).map((s) => (
               <li key={s.id} className="truncate font-mono">
                 · {s.name ?? s.url}
@@ -110,19 +108,19 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
           <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-2 min-w-0">
               <FileCode className="size-3.5 text-ink-muted shrink-0" />
-              <span className="truncate text-sm font-medium text-ink-strong">
+              <span className="truncate text-13 font-medium text-ink-strong">
                 {s.name ?? s.url}
               </span>
               <span
                 className={classNames(
-                  "rounded border px-1.5 py-0.5 mg-type-data-sm",
+                  "rounded border px-1.5 py-0.5 text-10",
                   driftTone(s.drift_status),
                 )}
               >
                 {s.drift_status ?? "unknown"}
               </span>
             </div>
-            <span className="mg-type-data-sm text-ink-muted shrink-0">
+            <span className="text-10 text-ink-muted shrink-0">
               <TimeAgo at={s.updated_at} />
             </span>
           </div>
@@ -140,7 +138,7 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
             ) : null}
           </div>
           {s.hash && s.previous_hash && s.hash !== s.previous_hash ? (
-            <div className="mt-1.5 mg-type-data-sm text-ink-muted truncate">
+            <div className="mt-1.5 text-10 text-ink-muted truncate">
               hash {s.previous_hash.slice(0, 8)} → {s.hash.slice(0, 8)}
             </div>
           ) : null}

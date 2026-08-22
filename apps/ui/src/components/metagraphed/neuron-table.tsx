@@ -165,11 +165,11 @@ export function NeuronTable({
         ))}
       </ul>
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full text-sm">
-          <thead className="bg-surface/50 mg-type-micro text-ink-muted">
+        <table className="w-full text-13">
+          <thead className="bg-surface text-10 text-ink-muted">
             <tr>
               {col("uid", "UID", "left")}
-              <th className="px-3 py-2.5 text-left mg-type-micro">Hotkey</th>
+              <th className="px-3 py-2.5 text-left">Hotkey</th>
               {col("stake_tao", "Stake τ")}
               {col("emission_tao", "Emission τ")}
               {isValidator ? (
@@ -177,7 +177,7 @@ export function NeuronTable({
                   {col("dividends", "Dividends")}
                   {col("validator_trust", "Val Trust")}
                   {col("take", "Take")}
-                  <th className="px-3 py-2.5 text-right mg-type-micro">Est. APY</th>
+                  <th className="px-3 py-2.5 text-right">Est. APY</th>
                 </>
               ) : (
                 <>
@@ -186,10 +186,8 @@ export function NeuronTable({
                   {col("consensus", "Consensus")}
                 </>
               )}
-              <th className="px-3 py-2.5 text-center mg-type-micro">Permit</th>
-              {isValidator ? (
-                <th className="px-3 py-2.5 text-right mg-type-micro">Delegate</th>
-              ) : null}
+              <th className="px-3 py-2.5 text-center">Permit</th>
+              {isValidator ? <th className="px-3 py-2.5 text-right">Delegate</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -203,7 +201,7 @@ export function NeuronTable({
                     active && "bg-accent-surface",
                   )}
                 >
-                  <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 font-mono text-13 tabular-nums text-ink-strong">
                     {onSelect ? (
                       <button
                         type="button"
@@ -216,7 +214,7 @@ export function NeuronTable({
                       n.uid
                     )}
                   </td>
-                  <td className="px-3 py-2.5 mg-type-data">
+                  <td className="px-3 py-2.5 text-11">
                     <div className="flex items-center gap-1.5">
                       {n.featured ? <SponsoredBadge /> : null}
                       {n.hotkey ? (
@@ -251,24 +249,24 @@ export function NeuronTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-strong">
                     {taoCompact(n.stake_tao)}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
                     {taoCompact(n.emission_tao)}
                   </td>
                   {isValidator ? (
                     <>
-                      <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
+                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
                         {scoreStr(n.dividends)}
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
                         {scoreStr(validatorTrustValue(n))}
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
                         {formatTakePct(n.take)}
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
                         {formatApyPct(
                           annualizedDelegatorApyPct(n.emission_tao ?? 0, n.stake_tao ?? 0, n.take),
                         )}
@@ -276,24 +274,24 @@ export function NeuronTable({
                     </>
                   ) : (
                     <>
-                      <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
                         {n.rank == null ? "—" : n.rank}
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
                         {scoreStr(n.trust)}
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
+                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
                         {scoreStr(n.consensus)}
                       </td>
                     </>
                   )}
                   <td className="px-3 py-2.5 text-center">
                     {n.validator_permit ? (
-                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
+                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-13 text-accent-text">
                         Validator
                       </span>
                     ) : (
-                      <span className="mg-type-data-sm text-ink-subtle-text">—</span>
+                      <span className="text-10 text-ink-subtle-text">—</span>
                     )}
                   </td>
                   {isValidator ? (
@@ -306,7 +304,7 @@ export function NeuronTable({
                             <button
                               type="button"
                               onClick={open}
-                              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+                              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
                             >
                               <Coins className="size-3 text-ink-muted" aria-hidden />
                               Delegate
@@ -322,7 +320,7 @@ export function NeuronTable({
           </tbody>
         </table>
       </div>
-      <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 mg-type-caption text-ink-muted">
+      <div className="border-t border-border/60 bg-surface px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-13 text-ink-muted">
         <span>
           {sorted.length} {sorted.length === 1 ? "neuron" : "neurons"} · subnet {netuid}
         </span>
@@ -330,7 +328,7 @@ export function NeuronTable({
           <ExternalLink
             bare
             href={csvUrl}
-            className="inline-flex items-center gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-1 mg-type-label uppercase text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2.5 py-1 text-11 text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Download className="size-3" aria-hidden />
             Download CSV
@@ -363,8 +361,8 @@ function NeuronCard({
   return (
     <li className={classNames("min-w-0 space-y-2 p-3", active && "bg-accent-surface")}>
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 font-mono mg-type-caption tabular-nums text-ink-strong">
-          <span className="mg-type-caption text-ink-muted">UID</span>
+        <div className="flex items-center gap-1.5 font-mono text-13 tabular-nums text-ink-strong">
+          <span className="text-13 text-ink-muted">UID</span>
           {onSelect ? (
             <button
               type="button"
@@ -378,12 +376,12 @@ function NeuronCard({
           )}
         </div>
         {n.validator_permit ? (
-          <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
+          <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-13 text-accent-text">
             Validator
           </span>
         ) : null}
       </div>
-      <div className="flex min-w-0 items-center gap-1.5 mg-type-data text-ink-muted">
+      <div className="flex min-w-0 items-center gap-1.5 text-11 text-ink-muted">
         {n.featured ? <SponsoredBadge /> : null}
         {n.hotkey ? (
           isValidator ? (
@@ -412,7 +410,7 @@ function NeuronCard({
           "—"
         )}
       </div>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 mg-type-caption">
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-13">
         <Stat label="Stake τ" value={taoCompact(n.stake_tao)} />
         <Stat label="Emission τ" value={taoCompact(n.emission_tao)} />
         {isValidator ? (
@@ -443,7 +441,7 @@ function NeuronCard({
             <button
               type="button"
               onClick={open}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
             >
               <Coins className="size-3 text-ink-muted" aria-hidden />
               Delegate

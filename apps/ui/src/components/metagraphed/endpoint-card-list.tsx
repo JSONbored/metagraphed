@@ -44,9 +44,9 @@ export function EndpointCardList({
           subnetById,
         );
         return (
-          <Panel as="div" dense key={e.id} className="min-w-0" bodyClassName="space-y-2">
+          <Panel as="div" key={e.id} className="min-w-0" bodyClassName="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="mg-type-caption text-ink-muted">{kindLabel}</span>
+              <span className="text-13 text-ink-muted">{kindLabel}</span>
               <SparkLegend
                 metric="Endpoint health"
                 source="/api/v1/endpoints"
@@ -57,10 +57,10 @@ export function EndpointCardList({
                 <HealthPill state={e.health} />
               </SparkLegend>
             </div>
-            <div className="mg-type-data min-w-0">
+            <div className="text-11 min-w-0">
               {e.url ? (
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <ExternalLink href={e.url} className="min-w-0 mg-type-caption">
+                  <ExternalLink href={e.url} className="min-w-0 text-13">
                     {e.url}
                   </ExternalLink>
                   <CopyButton value={e.url} label="URL" compact />
@@ -69,7 +69,7 @@ export function EndpointCardList({
                 "—"
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mg-type-caption text-ink-muted">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-13 text-ink-muted">
               {e.netuid != null ? (
                 <Link
                   to="/subnets/$netuid"
@@ -127,7 +127,7 @@ export function EndpointCardList({
               updatedAt={e.last_probed_at}
               staleness="Rows older than the probe cycle are dimmed in tooltips elsewhere."
             >
-              <span className="mg-type-data-sm text-ink-muted">
+              <span className="text-10 text-ink-muted">
                 probed <TimeAgo at={e.last_probed_at} />
               </span>
             </SparkLegend>

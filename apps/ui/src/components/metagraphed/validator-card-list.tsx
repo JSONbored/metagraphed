@@ -27,14 +27,14 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
       {validators.map((v) => {
         const f = resolveValidatorCard(v);
         return (
-          <Panel as="div" dense key={v.hotkey} className="min-w-0" bodyClassName="space-y-2">
+          <Panel as="div" key={v.hotkey} className="min-w-0" bodyClassName="space-y-2">
             <div className="flex min-w-0 items-center gap-1.5">
               {v.featured ? <SponsoredBadge /> : null}
               <Link
                 to="/validators/$hotkey"
                 params={{ hotkey: v.hotkey }}
                 title={v.hotkey}
-                className="truncate font-mono mg-type-caption text-ink-strong hover:text-accent hover:underline"
+                className="truncate font-mono text-13 text-ink-strong hover:text-accent hover:underline"
               >
                 {f.hotkeyShort}
               </Link>
@@ -47,12 +47,12 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
             {/* Mirrors the hotkey row above: a flex row so the copy button's 44px
                 touch target centers against the value. `compact` folds that height
                 back into the row so it does not add vertical spacing. */}
-            <div className="flex min-w-0 items-center gap-1.5 mg-type-data text-ink-muted">
-              <span className="mg-type-caption">coldkey</span>
+            <div className="flex min-w-0 items-center gap-1.5 text-11 text-ink-muted">
+              <span className="text-13">coldkey</span>
               {/* Same AddressDisplay hover-card treatment as the desktop column (#6338). */}
               <AddressDisplay ss58={v.coldkey} compact fallback="—" />
             </div>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 mg-type-caption">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-13">
               <Stat label="Active subnets" value={f.subnetsLabel} />
               <Stat label="UIDs" value={f.uidsLabel} />
               <Stat label="Nominators" value={f.nominatorsLabel} />

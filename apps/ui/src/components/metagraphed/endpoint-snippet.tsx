@@ -108,7 +108,7 @@ export function EndpointSnippet({ rows }: { rows: EndpointSnippetRow[] }) {
             aria-selected={lang === l.id}
             onClick={() => setLang(l.id)}
             className={classNames(
-              "rounded px-2.5 py-1 mg-type-label uppercase transition-colors",
+              "rounded px-2.5 py-1 text-11 transition-colors",
               lang === l.id ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
             )}
           >
@@ -128,7 +128,7 @@ export function EndpointSnippet({ rows }: { rows: EndpointSnippetRow[] }) {
         ))}
       </div>
       {lang === "python" ? (
-        <p className="mt-2 mg-type-data-sm text-ink-muted">
+        <p className="mt-2 text-10 text-ink-muted">
           requires <code className="text-ink-strong">pip install requests</code>
         </p>
       ) : null}

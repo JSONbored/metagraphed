@@ -110,8 +110,8 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 mg-type-caption">
-        <span className="font-mono uppercase tracking-widest text-ink-muted">Source</span>
+      <div className="flex flex-wrap items-center gap-2 text-13">
+        <span className="font-mono text-ink-muted">Source</span>
         <select
           value={sourceFilter}
           onChange={(e) => setSourceFilter(e.target.value)}
@@ -125,7 +125,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
             </option>
           ))}
         </select>
-        <span className="ml-2 font-mono uppercase tracking-widest text-ink-muted">Sort</span>
+        <span className="ml-2 font-mono text-ink-muted">Sort</span>
         <select
           value={sortMode}
           onChange={(e) => setSortMode(e.target.value as SortMode)}
@@ -145,10 +145,10 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
       </div>
 
       {sortedGroups.map(([source, items]) => (
-        <Panel as="div" dense key={source}>
+        <Panel as="div" key={source}>
           <div className="flex items-center justify-between mb-2 gap-3">
-            <span className="mg-label">{source}</span>
-            <span className="flex items-center gap-2 mg-type-data-sm text-ink-muted">
+            <span className="text-10 text-ink-muted">{source}</span>
+            <span className="flex items-center gap-2 text-10 text-ink-muted">
               <span>
                 latest <TimeAgo at={items[0]?.recorded_at} />
               </span>
@@ -165,28 +165,28 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
                   focusable={!item.url}
                   content={
                     <div className="space-y-1.5">
-                      <div className="mg-label">
+                      <div className="text-10 text-ink-muted">
                         {sourceLabel(item)}
                         {item.netuid != null ? <> · SN{item.netuid}</> : null}
                       </div>
                       {item.note ? (
-                        <div className="mg-type-caption text-ink-strong">{item.note}</div>
+                        <div className="text-13 text-ink-strong">{item.note}</div>
                       ) : null}
                       {item.url ? (
-                        <div className="mg-type-data-sm text-ink break-all">{item.url}</div>
+                        <div className="text-10 text-ink break-all">{item.url}</div>
                       ) : null}
-                      <div className="mg-type-data-sm text-ink-muted">
+                      <div className="text-10 text-ink-muted">
                         recorded <TimeAgo at={item.recorded_at} />
                       </div>
                     </div>
                   }
                 >
                   {item.url ? (
-                    <ExternalLink href={item.url} className="mg-type-caption">
+                    <ExternalLink href={item.url} className="text-13">
                       {shortLabel(item)}
                     </ExternalLink>
                   ) : (
-                    <span className="inline-flex items-center rounded border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted">
+                    <span className="inline-flex items-center rounded border border-border bg-paper px-1.5 py-0.5 text-13 text-ink-muted">
                       {shortLabel(item)}
                     </span>
                   )}
@@ -194,16 +194,14 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
               </li>
             ))}
             {items.length > 24 ? (
-              <li className="mg-type-caption text-ink-muted self-center">
-                +{items.length - 24} more
-              </li>
+              <li className="text-13 text-ink-muted self-center">+{items.length - 24} more</li>
             ) : null}
           </ul>
         </Panel>
       ))}
 
       <div className="flex items-center justify-between gap-3 pt-1">
-        <span className="mg-type-data-sm text-ink-muted">
+        <span className="text-10 text-ink-muted">
           loaded {allRows.length}
           {totalKnown != null ? ` of ${totalKnown}` : ""}
         </span>
@@ -212,12 +210,12 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
             type="button"
             onClick={() => query.fetchNextPage()}
             disabled={query.isFetchingNextPage}
-            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink hover:border-ink/30 transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink hover:border-ink/30 transition-colors disabled:opacity-60"
           >
             {query.isFetchingNextPage ? "Loading…" : `Load ${pageSize} more`}
           </button>
         ) : (
-          <span className="mg-type-data-sm text-ink-muted">end of evidence</span>
+          <span className="text-10 text-ink-muted">end of evidence</span>
         )}
       </div>
     </div>

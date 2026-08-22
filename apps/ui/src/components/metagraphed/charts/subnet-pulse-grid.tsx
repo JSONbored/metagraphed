@@ -40,7 +40,7 @@ export function SubnetPulseGrid({ columns = 16 }: { columns?: number }) {
   }
 
   if (isError) {
-    return <div className="mg-type-caption text-health-down">Couldn't load subnet pulse.</div>;
+    return <div className="text-13 text-health-down">Couldn't load subnet pulse.</div>;
   }
 
   const subs = data?.data ?? [];
@@ -67,12 +67,12 @@ export function SubnetPulseGrid({ columns = 16 }: { columns?: number }) {
                 role="listitem"
               />
             </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              <div className="mg-type-caption text-ink-muted">netuid {s.netuid}</div>
-              <div className="font-display text-sm font-semibold text-ink-strong">
+            <TooltipContent side="top" className="text-13">
+              <div className="text-13 text-ink-muted">netuid {s.netuid}</div>
+              <div className="font-display text-13 font-semibold text-ink-strong">
                 {s.name ?? `Subnet ${s.netuid}`}
               </div>
-              <div className="mt-0.5 mg-type-caption text-ink-muted">health · {health}</div>
+              <div className="mt-0.5 text-13 text-ink-muted">health · {health}</div>
             </TooltipContent>
           </Tooltip>
         );

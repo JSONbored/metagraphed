@@ -77,13 +77,13 @@ export function AgentResourceGrid({ resources }: { resources: AgentResource[] })
             <div className="flex items-start gap-3 p-4">
               <Icon className={classNames("mt-0.5 size-4 shrink-0", meta.tone)} aria-hidden />
               <div className="min-w-0 flex-1">
-                <p className="mg-type-caption-lg font-medium text-ink-strong">{r.title}</p>
+                <p className="text-13 font-medium text-ink-strong">{r.title}</p>
                 {RESOURCE_HINT[r.id] ? (
-                  <p className="mt-0.5 mg-type-caption text-ink-muted">{RESOURCE_HINT[r.id]}</p>
+                  <p className="mt-0.5 text-13 text-ink-muted">{RESOURCE_HINT[r.id]}</p>
                 ) : null}
                 <ExternalLink
                   href={r.url}
-                  className="mt-1.5 inline-flex mg-type-data text-ink-muted hover:text-ink-strong"
+                  className="mt-1.5 inline-flex text-11 text-ink-muted hover:text-ink-strong"
                 >
                   {r.url.replace(API_ORIGIN, "")}
                 </ExternalLink>

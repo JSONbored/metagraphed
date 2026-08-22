@@ -355,7 +355,7 @@ one PR.
 
 ### Phase C1 — Implement (match the house style)
 
-- Reuse existing shared components and the design tokens in `apps/ui/src/styles.css` (the "Bone & Ink"
+- Reuse existing shared components and the design tokens in `packages/ui-kit/src/styles.css` (the v2
   system — warm bone/paper background, deep ink text, mint accent used **sparingly**, flat surfaces
   with hairline borders, **no shadows or gradients**) instead of inventing new one-off styles.
 - Anchor on an existing analogous page/component before writing a new one — this codebase already has

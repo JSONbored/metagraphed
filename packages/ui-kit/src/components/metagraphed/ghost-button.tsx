@@ -12,9 +12,9 @@ export type GhostButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const SIZE: Record<GhostButtonSize, string> = {
-  sm: "min-h-8 px-2.5 text-xs",
-  md: "min-h-10 px-4 text-sm",
-  lg: "min-h-11 px-5 text-sm",
+  sm: "min-h-8 px-2.5 text-13",
+  md: "min-h-10 px-4 text-13",
+  lg: "min-h-11 px-4 text-13",
 };
 
 const TONE: Record<GhostButtonTone, string> = {
@@ -29,7 +29,7 @@ const TONE: Record<GhostButtonTone, string> = {
 /**
  * Standard hairline/ghost button used across toolbars and card actions.
  * Replaces the recurring
- * `inline-flex items-center gap-… rounded-md border border-border bg-card …`
+ * `inline-flex items-center gap-… rounded border border-border bg-card …`
  * clusters so tone, spacing and focus ring stay uniform site-wide.
  */
 export const GhostButton = forwardRef<HTMLButtonElement, GhostButtonProps>(
@@ -51,7 +51,7 @@ export const GhostButton = forwardRef<HTMLButtonElement, GhostButtonProps>(
         ref={ref}
         type={type ?? "button"}
         className={cn(
-          "inline-flex items-center justify-center gap-1.5 rounded-md border bg-card transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          "inline-flex items-center justify-center gap-1.5 rounded border bg-card transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
           SIZE[size],
           TONE[tone],
           className,

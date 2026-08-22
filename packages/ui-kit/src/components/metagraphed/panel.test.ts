@@ -5,7 +5,7 @@ import { Panel, type PanelProps } from "@/components/metagraphed/panel";
 
 // #7848: Panel gained rest-prop forwarding, a new "ok" tone, tintBorderOnly,
 // and glow so the 31 documented #7817 skips (ids/aria-*/role, tone
-// mismatches, mg-card-glow shells) could finally convert to it instead of a
+// mismatches, shells) could finally convert to it instead of a
 // hand-rolled `rounded border bg-card` shell. Rendered via react-dom/server:
 // this package's suite is node-environment with no jsdom.
 const html = (element: React.ReactElement) => renderToStaticMarkup(element);
@@ -46,16 +46,10 @@ describe("Panel rest-prop forwarding (#7848)", () => {
 
   it("still renders children inside the padded body wrapper, not the outer element directly", () => {
     const markup = html(
-      React.createElement(
-        Panel,
-        { dense: true },
-        React.createElement("span", null, "hi"),
-      ),
+      React.createElement(Panel, {}, React.createElement("span", null, "hi")),
     );
-    expect(markup).toContain('class="mg-panel-pad-dense"');
-    expect(markup).toMatch(
-      /<div class="mg-panel-pad-dense"><span>hi<\/span><\/div>/,
-    );
+    expect(markup).toContain('class="mg-panel-pad"');
+    expect(markup).toMatch(/<div class="mg-panel-pad"><span>hi<\/span><\/div>/);
   });
 
   it("does not let a caller override className/bodyClassName via rest (type-level, not just runtime)", () => {
@@ -94,25 +88,5 @@ describe("Panel tone + tintBorderOnly (#7848)", () => {
     expect(markup).toContain("border-accent/40");
     expect(markup).toContain("bg-card");
     expect(markup).not.toContain("bg-primary-soft");
-  });
-});
-
-describe("Panel glow (#7848)", () => {
-  it("appends mg-card-glow for the default tone", () => {
-    const markup = html(React.createElement(Panel, { glow: true }, "x"));
-    expect(markup).toContain("mg-card-glow");
-    expect(markup).not.toContain("mg-card-glow-accent");
-  });
-
-  it("appends mg-card-glow-accent when tone is accent", () => {
-    const markup = html(
-      React.createElement(Panel, { glow: true, tone: "accent" }, "x"),
-    );
-    expect(markup).toContain("mg-card-glow-accent");
-  });
-
-  it("omits any glow class when glow is not set", () => {
-    const markup = html(React.createElement(Panel, {}, "x"));
-    expect(markup).not.toContain("mg-card-glow");
   });
 });

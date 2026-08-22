@@ -62,12 +62,12 @@ export function ContinueExploring() {
     <section className="mt-12" aria-labelledby="continue-exploring-title">
       <div className="flex items-end justify-between mb-4 gap-3">
         <div>
-          <div className="mg-type-caption text-ink-muted inline-flex items-center gap-1.5">
+          <div className="text-13 text-ink-muted inline-flex items-center gap-1.5">
             <Compass className="size-3" /> Continue exploring
           </div>
           <h2
             id="continue-exploring-title"
-            className="font-display text-lg md:text-xl font-semibold text-ink-strong tracking-tight mt-1"
+            className="font-display text-16 md:text-28 font-semibold text-ink-strong mt-1"
           >
             Pick up where you left off.
           </h2>
@@ -80,7 +80,7 @@ export function ContinueExploring() {
             setVisits([]);
             setRecent([]);
           }}
-          className="mg-type-caption text-ink-muted hover:text-ink-strong transition-colors inline-flex items-center gap-1"
+          className="text-13 text-ink-muted hover:text-ink-strong transition-colors inline-flex items-center gap-1"
           aria-label="Clear continue-exploring history"
         >
           <X className="size-3" /> Clear
@@ -98,7 +98,7 @@ export function ContinueExploring() {
               <Link
                 key={`${v.kind}-${v.id}`}
                 to={v.href}
-                className="mg-recent-card group flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5 hover:border-accent/40 transition-colors min-w-0"
+                className="mg-recent-card group flex items-center gap-3 rounded border border-border bg-card px-3 py-2.5 hover:border-accent/40 transition-colors min-w-0"
               >
                 {v.kind === "subnet" ? (
                   <BrandIcon
@@ -106,25 +106,25 @@ export function ContinueExploring() {
                     netuid={Number(v.id)}
                     name={label}
                     fallback={Number(v.id)}
-                    className="shrink-0 rounded-md"
+                    className="shrink-0 rounded"
                   />
                 ) : (
                   <span
                     aria-hidden
-                    className="shrink-0 inline-flex items-center justify-center size-[22px] rounded-md border border-border bg-paper mg-type-data-sm text-ink-muted"
+                    className="shrink-0 inline-flex items-center justify-center size-[22px] rounded border border-border bg-paper text-10 text-ink-muted"
                   >
                     {v.kind === "provider" ? "PR" : "•"}
                   </span>
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block mg-type-caption text-ink-muted">
+                  <span className="block text-13 text-ink-muted">
                     {v.kind === "subnet" ? `SN ${String(v.id).padStart(3, "0")}` : v.kind}
                   </span>
-                  <span className="block truncate text-sm font-medium text-ink-strong group-hover:text-accent transition-colors">
+                  <span className="block truncate text-13 font-medium text-ink-strong group-hover:text-accent transition-colors">
                     {label}
                   </span>
                 </span>
-                <ArrowUpRight className="size-3.5 text-ink-muted shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent" />
+                <ArrowUpRight className="size-3.5 text-ink-muted shrink-0 group-hover:text-accent" />
               </Link>
             );
           })}
@@ -133,7 +133,7 @@ export function ContinueExploring() {
 
       {recent.length > 0 ? (
         <div className={classNames(visits.length > 0 ? "mt-4" : "")}>
-          <div className="mg-type-caption text-ink-muted mb-2 inline-flex items-center gap-1.5">
+          <div className="text-13 text-ink-muted mb-2 inline-flex items-center gap-1.5">
             <History className="size-3" /> Recent searches
           </div>
           <ul className="flex flex-wrap gap-1.5">
@@ -142,7 +142,7 @@ export function ContinueExploring() {
                 <Link
                   to="/subnets"
                   search={{ q }}
-                  className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 mg-type-caption text-ink hover:border-accent/40 hover:text-accent transition-colors"
+                  className="group inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-13 text-ink hover:border-accent/40 hover:text-accent transition-colors"
                 >
                   <Search className="size-3 text-ink-muted group-hover:text-accent transition-colors" />
                   <span className="truncate max-w-[200px]">{q}</span>

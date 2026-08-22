@@ -70,13 +70,13 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
                 <button
                   type="button"
                   onClick={filterByAuthor}
-                  className="mg-focus-ring shrink-0 text-right mg-type-data tabular-nums text-ink-strong"
+                  className="mg-focus-ring shrink-0 text-right text-11 tabular-nums text-ink-strong"
                   title="Filter by this author"
                 >
                   <div>{formatNumber(count)}</div>
                   <div
                     className={classNames(
-                      "mg-type-caption",
+                      "text-13",
                       heavy ? "text-health-warn-text" : "text-ink-muted",
                     )}
                   >
@@ -92,11 +92,11 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
               >
                 <div
                   aria-hidden
-                  className="h-[3px] w-full overflow-hidden rounded-full bg-border/60 group-hover:opacity-80"
+                  className="h-[3px] w-full overflow-hidden rounded bg-border/60 group-hover:opacity-80"
                 >
                   <div
                     className={classNames(
-                      "h-full rounded-full transition-[width]",
+                      "h-full rounded transition-[width]",
                       heavy ? "bg-health-warn/80" : "bg-accent/70",
                     )}
                     style={{ width: `${pct}%` }}

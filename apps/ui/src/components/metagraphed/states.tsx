@@ -30,10 +30,10 @@ function DataTierUnavailableNotice({ context }: { context?: string }) {
       <div className="flex items-start gap-3">
         <Database className="size-4 shrink-0 text-ink-muted" />
         <div className="min-w-0 flex-1">
-          <div className="mb-1 font-display text-sm font-medium text-ink-strong">
+          <div className="mb-1 font-display text-13 font-medium text-ink-strong">
             Deep-history tier not enabled
           </div>
-          <p className="text-xs leading-relaxed text-ink-muted">
+          <p className="text-13 leading-relaxed text-ink-muted">
             {context ? `The ${context} view` : "This view"} reads the deep-history all-events tier,
             which isn't available in this deployment. It's unrelated to the rest of this page.
           </p>
@@ -53,7 +53,7 @@ function OfflineNotice({ context }: { context?: string }) {
   return (
     <div role="status" className="rounded border border-border bg-surface p-4 text-center">
       <WifiOff className="mx-auto size-4 text-ink-muted" />
-      <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+      <p className="mt-2 text-13 leading-relaxed text-ink-muted">
         Couldn't load {context ?? "this data"} — you're offline. It'll refresh automatically once
         you're back online.
       </p>
@@ -81,7 +81,7 @@ function RateLimitedNotice({ context }: { context?: string }) {
   return (
     <div role="status" className="rounded border border-border bg-surface p-4 text-center">
       <Hourglass className="mx-auto size-4 text-ink-muted" />
-      <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+      <p className="mt-2 text-13 leading-relaxed text-ink-muted">
         Rate-limited while loading {context ?? "this data"} — you've hit the public API's per-minute
         ceiling. It'll work again in under a minute.
       </p>
@@ -162,26 +162,24 @@ export function ErrorState({
     >
       <AlertCircle className="mx-auto size-4 text-health-down" />
       <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-        <span className="font-display text-sm font-medium text-ink-strong">
+        <span className="font-display text-13 font-medium text-ink-strong">
           Couldn't load {context ?? "this data"}
         </span>
         {status ? (
-          <code className="rounded bg-surface px-1.5 py-0.5 mg-type-data-sm text-ink-muted">
+          <code className="rounded bg-surface px-1.5 py-0.5 text-10 text-ink-muted">
             HTTP {status}
           </code>
         ) : null}
       </div>
-      <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-ink-muted">{message}</p>
+      <p className="mx-auto mt-1 max-w-md text-13 leading-relaxed text-ink-muted">{message}</p>
       {url ? (
-        <code className="mx-auto mt-1 block max-w-md truncate mg-type-data-sm text-ink-muted">
-          {url}
-        </code>
+        <code className="mx-auto mt-1 block max-w-md truncate text-10 text-ink-muted">{url}</code>
       ) : null}
       <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
         {onRetry ? (
           <button
             onClick={onRetry}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
+            className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
           >
             <RefreshCw className="size-3" /> Retry
           </button>
@@ -190,7 +188,7 @@ export function ErrorState({
           <ExternalLink
             bare
             href={safeUrl}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+            className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong"
           >
             <ExternalLinkIcon className="size-3" /> Open API URL
           </ExternalLink>
@@ -234,14 +232,14 @@ export function EmptyState({
 }) {
   const actionHref = safeActionHref(action);
   return (
-    <div className="rounded border border-dashed border-ink-subtle bg-surface/30 p-6 text-center">
+    <div className="rounded border border-dashed border-ink-subtle bg-surface p-6 text-center">
       <Inbox className="mx-auto size-5 text-ink-muted" />
-      <div className="mt-2 font-display text-sm font-medium text-ink-strong">{title}</div>
+      <div className="mt-2 font-display text-13 font-medium text-ink-strong">{title}</div>
       {description ? (
-        <p className="mt-1 text-xs text-ink-muted max-w-md mx-auto">{description}</p>
+        <p className="mt-1 text-13 text-ink-muted max-w-md mx-auto">{description}</p>
       ) : null}
       {isUsableTimestamp(lastChecked) ? (
-        <div className="mt-2 mg-type-data-sm text-ink-muted">
+        <div className="mt-2 text-10 text-ink-muted">
           Last checked <TimeAgo at={lastChecked} />
         </div>
       ) : null}
@@ -249,7 +247,7 @@ export function EmptyState({
         <a
           href={actionHref}
           {...(action.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-          className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
+          className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
         >
           {action.label}
           {action.external ? <ExternalLinkIcon className="size-3" /> : null}
@@ -308,7 +306,7 @@ export function StaleBanner({
   if (!hasTimestamp) {
     if (hideText) return null;
     return (
-      <p className="flex items-center gap-1.5 mg-type-data-sm text-ink-muted">
+      <p className="flex items-center gap-1.5 text-10 text-ink-muted">
         <Clock className="size-3 shrink-0" aria-hidden />
         Snapshot freshness unknown — verify before relying on this data.
       </p>
@@ -337,7 +335,7 @@ export function StaleBanner({
     <div
       role="status"
       aria-live="polite"
-      className={`flex items-center mg-type-data-sm text-ink-muted ${
+      className={`flex items-center text-10 text-ink-muted ${
         compact ? "gap-2" : "flex-wrap gap-x-3 gap-y-1.5"
       }`}
     >
@@ -398,8 +396,8 @@ export function StaleBanner({
  * (#3964) and the About "At a glance" sidebar (#3968).
  *
  * `h-[1em]` matches the parent value line's font-size (e.g. StatTile's
- * font-display text-2xl) so an error tile stays the same height as its
- * numeric neighbours instead of collapsing to text-sm metrics (#8818).
+ * font-display text-28) so an error tile stays the same height as its
+ * numeric neighbours instead of collapsing to text-13 metrics (#8818).
  *
  * `variant="inline"` drops the alert icon and inherits the parent type size —
  * for compact masthead strips (Active / Healthy / Total stake) where an icon
@@ -416,7 +414,7 @@ export function StatUnavailable({
     return <span className="font-medium text-health-down">Unavailable</span>;
   }
   return (
-    <span className="inline-flex h-[1em] max-w-full items-center gap-1 text-sm font-medium leading-none text-health-down">
+    <span className="inline-flex h-[1em] max-w-full items-center gap-1 text-13 font-medium leading-none text-health-down">
       <AlertCircle className={`shrink-0 ${iconClassName}`} aria-hidden />
       <span className="min-w-0 truncate">Unavailable</span>
     </span>
@@ -451,12 +449,10 @@ export function PageHeading({
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
       <div>
-        {eyebrow ? <div className="mg-label mb-1">{eyebrow}</div> : null}
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-strong">
-          {title}
-        </h1>
+        {eyebrow ? <div className="text-10 text-ink-muted mb-1">{eyebrow}</div> : null}
+        <h1 className="font-display text-28 font-semibold text-ink-strong">{title}</h1>
         {description ? (
-          <p className="mt-1 text-sm text-ink-muted max-w-2xl">{description}</p>
+          <p className="mt-1 text-13 text-ink-muted max-w-2xl">{description}</p>
         ) : null}
       </div>
       {right ? <div className="flex items-center gap-2">{right}</div> : null}

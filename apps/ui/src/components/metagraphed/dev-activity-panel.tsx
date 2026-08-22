@@ -22,7 +22,7 @@ export function DevActivityPanel({ profile }: { profile?: SubnetProfile }) {
       subtitle="Commits, stars, and last push on the resolved source repo."
       info="Captured from the GitHub API against this subnet's resolved source repo (curated, or chain-declared as a fallback). Refreshed daily; a repo that fails to load keeps its last-known values, marked unreachable, for up to 30 days."
     >
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mg-type-caption text-ink-muted">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-13 text-ink-muted">
         {profile.github_stars != null ? (
           <span className="inline-flex items-center gap-1.5">
             <Star className="size-3.5" aria-hidden /> {profile.github_stars.toLocaleString("en-US")}{" "}

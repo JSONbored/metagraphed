@@ -29,7 +29,7 @@ type MegaMenuLivePreviewLinkProps = {
 };
 
 const LIVE_LINK_CLASS =
-  "flex items-center justify-between rounded-md px-2 py-1.5 -mx-2 hover:bg-surface/70 focus:bg-surface/70 focus:outline-none transition-colors";
+  "flex items-center justify-between rounded px-2 py-1.5 -mx-2 hover:bg-surface focus:bg-surface focus:outline-none transition-colors";
 
 function LiveRowLink({ item, onNavigate, registerItem, itemIndex }: MegaMenuLivePreviewLinkProps) {
   return (
@@ -43,8 +43,8 @@ function LiveRowLink({ item, onNavigate, registerItem, itemIndex }: MegaMenuLive
       data-mega-live-preview={item.kind}
     >
       <span className="min-w-0">
-        <span className="block text-sm text-ink-strong truncate">{item.label}</span>
-        <span className="block mg-type-caption text-ink-muted truncate">{item.sub}</span>
+        <span className="block text-13 text-ink-strong truncate">{item.label}</span>
+        <span className="block text-13 text-ink-muted truncate">{item.sub}</span>
       </span>
       <ArrowUpRight className="size-3 text-ink-muted shrink-0" />
     </Link>

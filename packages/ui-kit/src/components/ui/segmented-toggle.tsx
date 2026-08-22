@@ -51,7 +51,7 @@ export function SegmentedToggle<T extends string>({
               title={title ?? label}
               onClick={() => onChange(v)}
               className={classNames(
-                "inline-flex items-center gap-1.5 rounded px-2 py-1 mg-type-caption font-medium transition-colors min-h-8",
+                "inline-flex items-center gap-1.5 rounded px-2 py-1 text-13 font-medium transition-colors min-h-8",
                 active
                   ? "bg-surface text-ink-strong"
                   : "text-ink-muted hover:text-ink-strong",

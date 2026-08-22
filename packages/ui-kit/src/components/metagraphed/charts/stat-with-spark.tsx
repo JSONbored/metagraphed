@@ -56,17 +56,15 @@ export function StatWithSpark({
           <div
             tabIndex={0}
             className={classNames(
-              "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface/40 transition-colors",
+              "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface transition-colors",
               className,
             )}
           >
-            <div className="mg-type-caption text-ink-muted truncate">
-              {label}
-            </div>
+            <div className="text-13 text-ink-muted truncate">{label}</div>
             <div className="flex items-baseline gap-1.5 min-w-0">
               <span
                 className={classNames(
-                  "font-display text-lg font-semibold tabular-nums leading-none truncate",
+                  "font-display text-16 font-semibold tabular-nums leading-none truncate",
                   tone === "ok" && "text-health-ok",
                   tone === "warn" && "text-health-warn",
                   tone === "down" && "text-health-down",
@@ -76,29 +74,25 @@ export function StatWithSpark({
                 {value}
               </span>
               {unit ? (
-                <span className="shrink-0 mg-type-data text-ink-muted">
-                  {unit}
-                </span>
+                <span className="shrink-0 text-11 text-ink-muted">{unit}</span>
               ) : null}
               {delta}
             </div>
             {viz ? <div className="mt-0.5 min-h-[18px]">{viz}</div> : null}
             {hint ? (
-              <div className="mg-type-data-sm text-ink-muted/80 truncate">
-                {hint}
-              </div>
+              <div className="text-10 text-ink-muted/80 truncate">{hint}</div>
             ) : null}
             {freshLine ? (
-              <div className="mg-type-data-sm tracking-wide text-ink-muted/70 truncate">
+              <div className="text-10 text-ink-muted/70 truncate">
                 {freshLine}
               </div>
             ) : null}
           </div>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs mg-type-caption">
+        <TooltipContent side="bottom" className="max-w-xs text-13">
           <div>{full ?? hint ?? label}</div>
           {freshAbs || windowLabel ? (
-            <div className="mt-1 mg-type-data-sm text-primary-foreground/70">
+            <div className="mt-1 text-10 text-primary-foreground/70">
               {freshAbs ? `Last checked ${freshAbs}` : null}
               {freshAbs && windowLabel ? " · " : ""}
               {windowLabel ? `${windowLabel} window` : null}
@@ -122,7 +116,7 @@ export function MiniStack({
   if (total <= 0) {
     return (
       <div
-        className="w-full rounded-full bg-border/40"
+        className="w-full rounded bg-border/40"
         style={{ height }}
         aria-hidden
       />
@@ -130,7 +124,7 @@ export function MiniStack({
   }
   return (
     <div
-      className="flex w-full overflow-hidden rounded-full bg-border/40"
+      className="flex w-full overflow-hidden rounded bg-border/40"
       style={{ height }}
       role="img"
       aria-label={segments.map((s) => `${s.label} ${s.value}`).join(", ")}
@@ -218,12 +212,12 @@ export function DotRow({
             <TooltipTrigger asChild>
               <span
                 className={classNames(
-                  "size-1.5 rounded-full",
+                  "size-1.5 rounded-full mg-dot",
                   d.on ? "bg-accent" : "bg-border",
                 )}
               />
             </TooltipTrigger>
-            <TooltipContent side="top" className="mg-type-data-sm">
+            <TooltipContent side="top" className="text-10">
               {d.label} {d.on ? "✓" : "—"}
             </TooltipContent>
           </Tooltip>
@@ -260,19 +254,19 @@ export function NoDataSpark({
             tabIndex={0}
             role="img"
             aria-label={`${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`}
-            className="flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             style={{ height }}
           >
             <span
               aria-hidden
-              className="inline-block size-1 rounded-full bg-ink-muted/60"
+              className="inline-block size-1 rounded-full mg-dot bg-ink-muted/60"
             />
-            <span className="truncate mg-type-caption text-ink-muted/80">
+            <span className="truncate text-13 text-ink-muted/80">
               {freshLine ?? reason}
             </span>
           </div>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs mg-type-caption">
+        <TooltipContent side="top" className="max-w-xs text-13">
           {reason}.{" "}
           {freshAbs
             ? `Last checked ${freshAbs}${windowLabel ? ` · ${windowLabel} window` : ""}.`

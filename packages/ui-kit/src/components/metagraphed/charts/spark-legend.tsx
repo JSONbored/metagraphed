@@ -53,24 +53,24 @@ export function SparkLegend({
           sideOffset={6}
           collisionPadding={8}
           avoidCollisions
-          className="max-w-xs mg-type-caption"
+          className="max-w-xs text-13"
         >
-          <div className="mg-type-caption mb-1">
+          <div className="text-13 mb-1">
             {metric}
             {windowLabel ? ` · ${windowLabel}` : ""}
           </div>
           <div className="mb-1">
-            <span className="mg-type-label opacity-70">source · </span>
+            <span className="text-11 opacity-70">source · </span>
             {source}
           </div>
           {staleness ? (
             <div className="mb-1">
-              <span className="mg-type-label opacity-70">staleness · </span>
+              <span className="text-11 opacity-70">staleness · </span>
               {staleness}
             </div>
           ) : null}
           {fresh || freshAbs ? (
-            <div className="mt-1 mg-type-data-sm opacity-80">
+            <div className="mt-1 text-10 opacity-80">
               {fresh ?? ""}
               {freshAbs ? `${fresh ? " · " : ""}last checked ${freshAbs}` : ""}
             </div>

@@ -88,7 +88,7 @@ describe("it reads as a leaderboard, not a list of labelled fields", () => {
 
   it("marks the bar aria-hidden, since the percentage is the value", () => {
     // Redundant encoding, not the only one -- a screen reader gets the number.
-    const at = component.indexOf("rounded-full bg-border/60");
+    const at = component.indexOf("rounded bg-border/60");
     expect(component.slice(Math.max(0, at - 260), at)).toContain("aria-hidden");
   });
 

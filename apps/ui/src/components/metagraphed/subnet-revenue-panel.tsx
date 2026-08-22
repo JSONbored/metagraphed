@@ -49,9 +49,7 @@ function RevenueProvenanceChip({ provenance }: { provenance: unknown }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       <Chip tone={eligible ? "accent" : "muted"}>{tierLabel(provenance)}</Chip>
-      {eligible ? null : (
-        <span className="mg-type-caption text-ink-muted">not headline-eligible</span>
-      )}
+      {eligible ? null : <span className="text-13 text-ink-muted">not headline-eligible</span>}
     </span>
   );
 }
@@ -95,16 +93,16 @@ export function SubnetRevenuePanel({ netuid }: { netuid: number }) {
         />
       </div>
 
-      <Panel as="div" dense>
+      <Panel as="div">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="mg-type-caption text-ink-muted">Provenance</span>
+            <span className="text-13 text-ink-muted">Provenance</span>
             <RevenueProvenanceChip provenance={revenue.provenance} />
           </div>
           <Link
             to="/docs/$"
             params={{ _splat: "revenue-coverage" }}
-            className="mg-type-caption text-accent hover:underline"
+            className="text-13 text-accent hover:underline"
           >
             How this is derived
           </Link>
@@ -114,15 +112,13 @@ export function SubnetRevenuePanel({ netuid }: { netuid: number }) {
       {/* The sentence that keeps a null from being read as a zero. It is prose
           rather than a tooltip because it is the most important thing on the
           panel for 127 of 129 subnets. */}
-      <Panel as="div" dense bodyClassName="mg-type-caption text-ink-muted">
+      <Panel as="div" bodyClassName="text-13 text-ink-muted">
         {coverageNote(observedUsd)}
       </Panel>
 
       {sources.length > 0 ? (
         <div className="space-y-2">
-          <div className="mg-type-caption text-ink-muted">
-            Declared revenue sources ({sources.length})
-          </div>
+          <div className="text-13 text-ink-muted">Declared revenue sources ({sources.length})</div>
           <ul className="space-y-1">
             {sources.map((raw, i) => {
               const source = (raw ?? {}) as Record<string, unknown>;
@@ -130,12 +126,12 @@ export function SubnetRevenuePanel({ netuid }: { netuid: number }) {
               return (
                 <li
                   key={id}
-                  className="flex flex-wrap items-center gap-2 rounded-xl border border-border/80 px-3 py-2"
+                  className="flex flex-wrap items-center gap-2 rounded border border-border/80 px-3 py-2"
                 >
-                  <span className="font-mono mg-type-caption text-ink-strong">{id}</span>
+                  <span className="font-mono text-13 text-ink-strong">{id}</span>
                   <RevenueProvenanceChip provenance={source.provenance} />
                   {source.grain ? (
-                    <span className="mg-type-caption text-ink-muted">{String(source.grain)}</span>
+                    <span className="text-13 text-ink-muted">{String(source.grain)}</span>
                   ) : null}
                 </li>
               );

@@ -50,23 +50,23 @@ export function SubnetOwnershipHistory({ netuid }: { netuid: number }) {
       {changes.map((change, i) => (
         <li
           key={`${change.block_number ?? i}-${change.new_coldkey ?? i}`}
-          className="rounded-md border border-border bg-card p-3"
+          className="rounded border border-border bg-card p-3"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               {change.old_coldkey ? (
                 <CopyableCode value={change.old_coldkey} className="max-w-full" />
               ) : (
-                <span className="mg-type-data text-ink-muted">unknown</span>
+                <span className="text-11 text-ink-muted">unknown</span>
               )}
               <ArrowRight aria-hidden className="size-3.5 shrink-0 text-ink-muted" />
               {change.new_coldkey ? (
                 <CopyableCode value={change.new_coldkey} className="max-w-full" />
               ) : (
-                <span className="mg-type-data text-ink-muted">unknown</span>
+                <span className="text-11 text-ink-muted">unknown</span>
               )}
             </div>
-            <span className="shrink-0 mg-type-data text-ink-muted">
+            <span className="shrink-0 text-11 text-ink-muted">
               {change.block_number != null ? `block #${formatNumber(change.block_number)} · ` : ""}
               {change.observed_at ? <TimeAgo at={change.observed_at} /> : "unknown time"}
             </span>

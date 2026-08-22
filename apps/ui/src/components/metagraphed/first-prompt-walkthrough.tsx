@@ -19,7 +19,7 @@ export function FirstPromptWalkthrough() {
       {FIRST_PROMPTS.map((p, i) => (
         <Panel key={i} flush className="flex min-w-0 flex-col">
           <div className="flex flex-1 items-start justify-between gap-2 p-4">
-            <p className="min-w-0 mg-type-caption-lg leading-relaxed text-ink-strong">
+            <p className="min-w-0 text-13 leading-relaxed text-ink-strong">
               &ldquo;{p.prompt}&rdquo;
             </p>
             <div
@@ -29,7 +29,7 @@ export function FirstPromptWalkthrough() {
               <CopyButton value={p.prompt} label="Prompt" compact />
             </div>
           </div>
-          <p className="border-t border-border/70 px-4 py-3 mg-type-caption text-ink-muted">
+          <p className="border-t border-border/70 px-4 py-3 text-13 text-ink-muted">
             {p.whatYouGet}
           </p>
         </Panel>

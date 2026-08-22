@@ -65,21 +65,21 @@ export function ProxyHero() {
   const proxyUrl = `${API_BASE}/rpc/v1/${chain}`;
   const curlExample = curlFor(proxyUrl);
   return (
-    <div className="rounded-md border border-accent/30 bg-accent-surface p-4">
+    <div className="rounded border border-accent/30 bg-accent-surface p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded border border-health-ok/40 bg-health-ok/10 px-1.5 py-0.5 mg-type-caption text-health-ok">
-          <span className="size-1.5 rounded-full bg-health-ok" />
+        <span className="inline-flex items-center gap-1.5 rounded border border-health-ok/40 bg-health-ok/10 px-1.5 py-0.5 text-13 text-health-ok">
+          <span className="size-1.5 rounded-full mg-dot bg-health-ok" />
           Live
         </span>
-        <span className="mg-label">Load-balanced reverse proxy</span>
-        <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 mg-type-caption text-accent-text">
+        <span className="text-10 text-ink-muted">Load-balanced reverse proxy</span>
+        <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-13 text-accent-text">
           {label}
         </span>
       </div>
-      <h2 className="mt-2 font-display text-lg font-semibold text-ink-strong">
+      <h2 className="mt-2 font-display text-16 font-semibold text-ink-strong">
         One endpoint for Bittensor RPC
       </h2>
-      <p className="mt-1 max-w-2xl mg-type-caption-lg text-ink-muted">
+      <p className="mt-1 max-w-2xl text-13 text-ink-muted">
         POST JSON-RPC to a single URL and Metagraphed routes it across the healthiest, most in-sync
         public endpoints — with failover, edge caching, and abuse controls. No key, no account, no
         single point of failure.
@@ -87,20 +87,18 @@ export function ProxyHero() {
 
       <Panel as="div" flush className="mt-4">
         <div className="flex items-center gap-2 px-3 py-2">
-          <span className="mg-label">POST</span>
-          <code className="flex-1 truncate font-mono mg-type-caption-lg text-ink-strong">
-            {proxyUrl}
-          </code>
+          <span className="text-10 text-ink-muted">POST</span>
+          <code className="flex-1 truncate font-mono text-13 text-ink-strong">{proxyUrl}</code>
           <CopyButton value={proxyUrl} label="proxy URL" />
         </div>
       </Panel>
 
       <div className="mt-2 rounded border border-border bg-paper">
         <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
-          <span className="mg-label">Try it</span>
+          <span className="text-10 text-ink-muted">Try it</span>
           <CopyButton value={curlExample} label="curl command" />
         </div>
-        <pre className="overflow-x-auto px-3 py-2 mg-type-data leading-relaxed text-ink">
+        <pre className="overflow-x-auto px-3 py-2 text-11 leading-relaxed text-ink">
           {curlExample}
         </pre>
       </div>
@@ -110,8 +108,8 @@ export function ProxyHero() {
           <li key={title} className="flex gap-2.5">
             <Icon className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
             <div>
-              <p className="mg-type-caption font-medium text-ink-strong">{title}</p>
-              <p className="mg-type-caption leading-snug text-ink-muted">{body}</p>
+              <p className="text-13 font-medium text-ink-strong">{title}</p>
+              <p className="text-13 leading-snug text-ink-muted">{body}</p>
             </div>
           </li>
         ))}
@@ -145,10 +143,10 @@ function UsageStat({
     <Panel as="div" flush tintBorderOnly tone={tone} bodyClassName="px-3 py-2.5">
       <div className="flex items-center gap-1.5 text-ink-muted">
         <Icon className="size-3" aria-hidden />
-        <span className="mg-type-caption">{eyebrow}</span>
+        <span className="text-13">{eyebrow}</span>
       </div>
-      <div className="mt-1 font-mono text-lg font-semibold text-ink-strong">{value}</div>
-      {hint ? <div className="mg-type-data-sm text-ink-muted">{hint}</div> : null}
+      <div className="mt-1 font-mono text-16 font-semibold text-ink-strong">{value}</div>
+      {hint ? <div className="text-10 text-ink-muted">{hint}</div> : null}
     </Panel>
   );
 }
@@ -170,7 +168,7 @@ export function ProxyUsagePanel() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="mg-type-data text-ink-muted">
+        <p className="text-11 text-ink-muted">
           {usage.observed_at ? (
             <>
               Updated <TimeAgo at={usage.observed_at} />
@@ -186,7 +184,7 @@ export function ProxyUsagePanel() {
               type="button"
               onClick={() => navigate({ search: (prev) => ({ ...prev, window: w }) })}
               className={classNames(
-                "rounded px-2 py-0.5 mg-type-caption transition-colors",
+                "rounded px-2 py-0.5 text-13 transition-colors",
                 window === w ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink-strong",
               )}
             >
@@ -248,11 +246,11 @@ export function ProxyUsagePanel() {
 
           {usage.networks.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="mg-label">By network</span>
+              <span className="text-10 text-ink-muted">By network</span>
               {usage.networks.map((n) => (
                 <span
                   key={n.network}
-                  className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-0.5 mg-type-data"
+                  className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-0.5 text-11"
                 >
                   <span className="text-ink-strong">{n.network}</span>
                   <span className="text-ink-muted">{formatNumber(n.requests)}</span>
@@ -263,11 +261,11 @@ export function ProxyUsagePanel() {
 
           {usage.endpoints.length > 0 ? (
             <Panel as="div" flush className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <caption className="px-3 pt-2 text-left mg-label">
+              <table className="w-full text-13">
+                <caption className="px-3 pt-2 text-left text-10 text-ink-muted">
                   Per-endpoint distribution
                 </caption>
-                <thead className="bg-surface/50 mg-type-micro text-ink-muted">
+                <thead className="bg-surface text-10 text-ink-muted">
                   <tr>
                     <th className="px-3 py-2 text-left">Endpoint</th>
                     <th className="px-3 py-2 text-left">Provider</th>
@@ -282,12 +280,10 @@ export function ProxyUsagePanel() {
                     const share = s.total_requests ? e.requests / s.total_requests : null;
                     return (
                       <tr key={e.endpoint_id ?? e.rank} className="mg-row-hover">
-                        <td className="px-3 py-2 font-mono mg-type-caption text-ink-strong">
+                        <td className="px-3 py-2 font-mono text-13 text-ink-strong">
                           {e.endpoint_id ?? "—"}
                         </td>
-                        <td className="px-3 py-2 mg-type-caption text-ink-muted">
-                          {e.provider ?? "—"}
-                        </td>
+                        <td className="px-3 py-2 text-13 text-ink-muted">{e.provider ?? "—"}</td>
                         <td className="px-3 py-2 text-right font-mono">
                           {formatNumber(e.requests)}
                         </td>

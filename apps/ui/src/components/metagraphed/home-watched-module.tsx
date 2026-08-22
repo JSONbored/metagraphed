@@ -35,13 +35,13 @@ import {
 const WATCHLIST_ROW_FLASH_ENABLED = true;
 
 // #8446: brief, subtle background pulse on a watchlist row that just acted
-// on-chain. #8367 moved the actual animation into ui-kit's `.mg-row-flash`
+// on-chain. #8367 moved the actual animation into ui-kit's `.`
 // rather than the Tailwind `transition-colors duration-1000` + `bg-accent/15`
 // pair this used to carry inline: those utilities sit outside every
 // `prefers-reduced-motion` block in the codebase (which all name specific
 // `mg-*` classes -- there is no universal reset), so the pulse played
 // regardless of the visitor's motion preference. As a named class it's
-// covered by the same media query as `.mg-flash-up`/`.mg-pulse`.
+// covered by the same media query as `.`/`.`.
 //
 // This still gates the highlight's LIFETIME in JS, because the set drives the
 // `key` that replays the animation; the animation duration itself lives in
@@ -117,7 +117,7 @@ export function HomeWatchedModule() {
 
   if (nothingWatched) {
     return (
-      <p className="mg-type-caption text-ink-muted">
+      <p className="text-13 text-ink-muted">
         Star a subnet on{" "}
         <Link to="/subnets" className="text-accent-text hover:underline">
           the registry
@@ -135,7 +135,7 @@ export function HomeWatchedModule() {
   return (
     <div className="space-y-2">
       {cachedAgeMs != null ? (
-        <p className="inline-flex items-center gap-1.5 mg-type-caption-sm text-ink-muted">
+        <p className="inline-flex items-center gap-1.5 text-11 text-ink-muted">
           <Clock className="size-3 shrink-0" aria-hidden />
           cached · {Math.round(cachedAgeMs / 60_000)}m old
         </p>
@@ -172,7 +172,7 @@ function WatchFeedSubscribe({
   if (!encoded) return null;
   const rssUrl = buildWatchFeedUrl(base, encoded, ".rss");
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border pt-2 mg-type-caption text-ink-muted">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border pt-2 text-13 text-ink-muted">
       <span className="inline-flex items-center gap-1.5">
         <Rss className="size-3 shrink-0 text-accent" aria-hidden />
         Subscribe to this watchlist
@@ -249,23 +249,20 @@ function WatchedSubnets({ netuids }: { netuids: string[] }) {
           const e = econByNetuid.get(s.netuid);
           const health = healthMap[s.netuid]?.health as HealthState | undefined;
           return (
-            <li
-              key={s.netuid}
-              className={classNames(flashed.has(String(s.netuid)) && "mg-row-flash")}
-            >
+            <li key={s.netuid} className={classNames(flashed.has(String(s.netuid)) && "")}>
               <Link
                 to="/subnets/$netuid"
                 params={{ netuid: s.netuid }}
-                className="flex items-center gap-3 py-2 hover:bg-surface/50"
+                className="flex items-center gap-3 py-2 hover:bg-surface"
               >
                 <Star className="size-3 shrink-0 fill-accent text-accent" aria-hidden />
-                <span className="min-w-0 flex-1 truncate mg-type-data text-ink-strong">
+                <span className="min-w-0 flex-1 truncate text-11 text-ink-strong">
                   {s.name ?? `SN${s.netuid}`}
                 </span>
-                <span className="shrink-0 tabular-nums mg-type-data-sm text-ink-muted">
+                <span className="shrink-0 tabular-nums text-10 text-ink-muted">
                   {e?.alpha_price_tao != null ? `${e.alpha_price_tao.toFixed(4)} τ` : "—"}
                 </span>
-                <span className="shrink-0 tabular-nums mg-type-data-sm text-ink-muted">
+                <span className="shrink-0 tabular-nums text-10 text-ink-muted">
                   {e?.emission_share != null ? `${(e.emission_share * 100).toFixed(2)}%` : "—"}
                 </span>
                 {health ? <HealthPill state={health} /> : <span className="w-4" aria-hidden />}
@@ -304,20 +301,20 @@ function WatchedValidators({ hotkeys }: { hotkeys: string[] }) {
     <Panel as="section" title={`Watched validators · ${hotkeys.length}`}>
       <ul className="divide-y divide-border">
         {rows.map((v) => (
-          <li key={v.hotkey} className={classNames(flashed.has(v.hotkey) && "mg-row-flash")}>
+          <li key={v.hotkey} className={classNames(flashed.has(v.hotkey) && "")}>
             <Link
               to="/validators/$hotkey"
               params={{ hotkey: v.hotkey }}
-              className="flex items-center gap-3 py-2 hover:bg-surface/50"
+              className="flex items-center gap-3 py-2 hover:bg-surface"
             >
               <Star className="size-3 shrink-0 fill-accent text-accent" aria-hidden />
-              <span className="min-w-0 flex-1 truncate mg-type-data text-ink-strong">
+              <span className="min-w-0 flex-1 truncate text-11 text-ink-strong">
                 {v.coldkey_identity?.name ?? `${v.hotkey.slice(0, 6)}…${v.hotkey.slice(-6)}`}
               </span>
-              <span className="shrink-0 tabular-nums mg-type-data-sm text-ink-muted">
+              <span className="shrink-0 tabular-nums text-10 text-ink-muted">
                 {formatTao(v.total_stake_tao)}
               </span>
-              <span className="shrink-0 tabular-nums mg-type-data-sm text-ink-muted">
+              <span className="shrink-0 tabular-nums text-10 text-ink-muted">
                 {v.apy_estimate != null ? `${(v.apy_estimate * 100).toFixed(2)}%` : "—"}
               </span>
             </Link>
@@ -343,7 +340,7 @@ function Footnote({
   const overflow = total - shown - missing;
   if (overflow <= 0 && missing <= 0) return null;
   return (
-    <p className="pt-2 mg-type-caption text-ink-muted">
+    <p className="pt-2 text-13 text-ink-muted">
       {overflow > 0 ? `+${formatNumber(overflow)} more watched. ` : ""}
       {missing > 0
         ? `${formatNumber(missing)} watched ${noun}${missing === 1 ? "" : "s"} ${missing === 1 ? "isn't" : "aren't"} in the current index.`

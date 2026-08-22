@@ -70,30 +70,30 @@ export function IntegrabilityBoard() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {dimensionData.length > 0 ? (
-          <Panel as="div" dense>
+          <Panel as="div">
             <div className="mb-2 flex items-baseline justify-between">
-              <h3 className="font-display text-sm font-semibold text-ink-strong">
+              <h3 className="font-display text-13 font-semibold text-ink-strong">
                 Coverage by dimension
               </h3>
-              <span className="mg-label">% of subnets</span>
+              <span className="text-10 text-ink-muted">% of subnets</span>
             </div>
             <BarMini data={dimensionData} max={100} />
-            <p className="mt-2 mg-type-caption text-ink-muted">
+            <p className="mt-2 text-13 text-ink-muted">
               Lowest-coverage dimensions first — the biggest gaps to fill.
             </p>
           </Panel>
         ) : null}
 
         {distribution.length > 0 ? (
-          <Panel as="div" dense>
+          <Panel as="div">
             <div className="mb-2 flex items-baseline justify-between">
-              <h3 className="font-display text-sm font-semibold text-ink-strong">
+              <h3 className="font-display text-13 font-semibold text-ink-strong">
                 Completeness scores
               </h3>
-              <span className="mg-label">subnets</span>
+              <span className="text-10 text-ink-muted">subnets</span>
             </div>
             <BarMini data={distribution} />
-            <p className="mt-2 mg-type-caption text-ink-muted">
+            <p className="mt-2 text-13 text-ink-muted">
               How subnet completeness scores are distributed across the registry.
             </p>
           </Panel>

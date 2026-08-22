@@ -58,22 +58,22 @@ function CategoryTable({ slug }: { slug: string }) {
         intro={`${rows.length} subnets are classified under ${copy.label.toLowerCase()}. ${withSpec} publish at least one first-party interface and ${probed} have a surface that answered our most recent probe. ${copy.guidance}`}
       />
       <Panel>
-        <table className="w-full text-left mg-type-data-sm">
+        <table className="w-full text-left text-10">
           <caption className="sr-only">
             Bittensor {copy.label.toLowerCase()} subnets, ranked by integration readiness
           </caption>
           <thead>
             <tr className="border-b border-border text-ink-muted">
-              <th scope="col" className="px-3 py-2 font-medium">
+              <th scope="col" className="px-3 py-2">
                 Subnet
               </th>
-              <th scope="col" className="px-3 py-2 font-medium">
+              <th scope="col" className="px-3 py-2">
                 Readiness
               </th>
-              <th scope="col" className="px-3 py-2 font-medium">
+              <th scope="col" className="px-3 py-2">
                 Surfaces
               </th>
-              <th scope="col" className="px-3 py-2 font-medium">
+              <th scope="col" className="px-3 py-2">
                 Health
               </th>
             </tr>
@@ -81,7 +81,7 @@ function CategoryTable({ slug }: { slug: string }) {
           <tbody>
             {rows.map((row) => (
               <tr key={row.netuid} className="border-b border-border/60">
-                <th scope="row" className="px-3 py-2 font-normal">
+                <th scope="row" className="px-3 py-2">
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: row.netuid }}

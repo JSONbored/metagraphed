@@ -25,7 +25,7 @@ export function ChartSkeleton({
       role="img"
       aria-label={label}
       className={classNames(
-        "mg-chart-skeleton relative w-full overflow-hidden rounded-md",
+        "mg-chart-skeleton relative w-full overflow-hidden rounded",
         "border border-border/60 bg-surface-2/40",
         className,
       )}

@@ -107,7 +107,7 @@ export function PageMasthead({
                 caller either passes a short static string or a pre-shortened
                 dynamic one (shortHash()/formatNumber()), so this is strictly
                 more forgiving, not a new risk of unbounded layout. */}
-            <h1 className="font-display text-2xl md:text-3xl font-semibold leading-[1.15] tracking-[-0.015em] text-ink-strong min-w-0 line-clamp-2 break-words">
+            <h1 className="font-display text-28 md:text-28 font-semibold leading-[1.15] text-ink-strong min-w-0 line-clamp-2 break-words">
               {title}
             </h1>
             {/* `eyebrow` prop intentionally not rendered: the breadcrumb rail
@@ -123,7 +123,7 @@ export function PageMasthead({
             // renders identically for the plain-text case this line-clamp
             // styling targets, while staying valid for the richer one.
             <div
-              className="mt-1 max-w-3xl mg-type-caption-lg text-ink-muted leading-snug line-clamp-2"
+              className="mt-1 max-w-3xl text-13 text-ink-muted leading-snug line-clamp-2"
               title={typeof description === "string" ? description : undefined}
             >
               {description}
@@ -140,14 +140,12 @@ export function PageMasthead({
         <div className="mg-masthead-kpi mt-3">
           {kpis.map((k) => (
             <div key={k.label} className="min-w-0">
-              <div className="mg-type-caption text-ink-muted truncate">{k.label}</div>
+              <div className="text-13 text-ink-muted truncate">{k.label}</div>
               <div className="mt-0.5 flex items-baseline gap-1.5 min-w-0">
-                <span className="font-display text-sm md:text-base font-semibold tabular-nums text-ink-strong leading-none truncate">
+                <span className="font-display text-13 md:text-16 font-semibold tabular-nums text-ink-strong leading-none truncate">
                   {k.value}
                 </span>
-                {k.hint ? (
-                  <span className="mg-type-data-sm text-ink-muted truncate">{k.hint}</span>
-                ) : null}
+                {k.hint ? <span className="text-10 text-ink-muted truncate">{k.hint}</span> : null}
               </div>
               {k.chart ? <div className="mt-1 -ml-0.5">{k.chart}</div> : null}
             </div>
