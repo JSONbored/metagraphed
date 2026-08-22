@@ -522,7 +522,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Registry coverage and completeness summary
+         * Fetch the registry coverage and completeness summary
          * @description Network-scoped form of /api/v1/coverage — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["coverageByNetwork"];
@@ -576,7 +576,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Per-subnet validator and economic metrics
+         * List per-subnet validator and economic metrics
          * @description Network-scoped form of /api/v1/economics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["economicsByNetwork"];
@@ -840,7 +840,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Cross-subnet activity summary for one account
+         * Fetch a cross-subnet activity summary for one account
          * @description Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events lakehouse and the neurons tier -- the same rows /accounts/{ss58}/events and /accounts/{ss58}/subnets serve, so the three cannot disagree. A tier that exists and cannot answer declines with a typed 503 (account_summary_unavailable) rather than an all-zero card, which is indistinguishable from an account with no history.
          */
         get: operations["accountSummary"];
@@ -1372,7 +1372,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Ask a question, get a grounded answer with citations
+         * Generate a grounded answer with citations
          * @description Ask a natural-language question about the registry and get a grounded answer with citations. POST a JSON body `{ question }`; the answer carries inline [n] markers resolved by `citations`, each naming the surface it came from, so every claim is traceable to a registered surface rather than to the model. Use this when the question is exploratory ("which subnets expose a public inference API?"); use /api/v1/search/semantic when you want the ranked matches themselves rather than prose. Mirrored by the `ask` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured.
          */
         post: operations["ask"];
@@ -2209,7 +2209,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Registry coverage and completeness summary
+         * Fetch the registry coverage and completeness summary
          * @description Fetch registry coverage summary.
          */
         get: operations["coverage"];
@@ -2331,7 +2331,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Per-subnet validator and economic metrics
+         * List per-subnet validator and economic metrics
          * @description List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.
          */
         get: operations["economics"];
@@ -3244,7 +3244,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Aggregate health across all probed surfaces
+         * Fetch aggregate health across all probed surfaces
          * @description Fetch global health summary.
          */
         get: operations["health"];
@@ -4109,7 +4109,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Live endpoints for one subnet, with probe results
+         * List live endpoints for one subnet, with probe results
          * @description List generalized endpoint resources for one subnet.
          */
         get: operations["subnetEndpoints"];
@@ -4197,7 +4197,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Probe-derived health for one subnet
+         * Fetch probe-derived health for one subnet
          * @description Fetch health detail for one subnet.
          */
         get: operations["subnetHealth"];
@@ -4795,7 +4795,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The API surfaces one subnet publishes
+         * List the API surfaces one subnet publishes
          * @description List curated public surfaces for one subnet.
          */
         get: operations["subnetSurfaces"];
@@ -5087,7 +5087,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Every published surface across the registry
+         * List every published surface across the registry
          * @description List curated public surfaces.
          */
         get: operations["surfaces"];
@@ -5124,7 +5124,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Network-wide validator leaderboard
+         * Fetch the network-wide validator leaderboard
          * @description Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 2000). Computed live from the neurons store.
          */
         get: operations["globalValidators"];
