@@ -1,4 +1,4 @@
-import { API_ORIGIN, GITHUB_REPO_URL } from "./identity";
+import { API_DATA_ORIGIN, GITHUB_REPO_URL } from "./identity";
 
 // Metagraphed API client config.
 //
@@ -16,11 +16,10 @@ const env = (import.meta as ImportMeta & { env?: Record<string, string | undefin
 const STORAGE_KEY = "metagraphed:api-base";
 const EVT = "metagraphed:api-base-changed";
 
-export const DEFAULT_API_BASE = (
-  env?.VITE_METAGRAPH_API_BASE ||
-  env?.VITE_METAGRAPHED_API_BASE ||
-  API_ORIGIN
-).replace(/\/$/, "");
+// One definition, in identity.ts, so the server half and the client half of the
+// app cannot resolve different data hosts -- see API_DATA_ORIGIN for the bug
+// that caused.
+export const DEFAULT_API_BASE = API_DATA_ORIGIN;
 
 let cached: string | null = null;
 
