@@ -1,13 +1,14 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { AsyncPanel, Panel, TableSkeleton } from "@/components/metagraphed/primitives";
 import {
-  AsyncPanel,
-  PageMasthead,
-  Panel,
-  TableSkeleton,
-} from "@/components/metagraphed/primitives";
-import { SectionHeading, StatusBadge, type HealthStatus } from "@jsonbored/ui-kit";
+  StatusBadge,
+  type HealthStatus,
+  SectionHead,
+  EntityHero,
+  FactSentence,
+} from "@jsonbored/ui-kit";
 import { HubSections, hubLede } from "@/components/metagraphed/hub-prose";
 import { agentCatalogMapQuery } from "@/lib/metagraphed/queries";
 import type { AgentCatalogSummary } from "@/lib/metagraphed/types";
@@ -62,9 +63,9 @@ function WithApiTable() {
         competitor holds, and they are what makes this a page rather than a
         query string.
       */}
-      <SectionHeading
-        title="What the registry currently shows"
-        intro={
+      <SectionHead
+        name="What the registry currently shows"
+        question={
           `${rows.length} of ${total} catalogued subnets publish a machine-readable API ` +
           `specification. ${ready} of those score ${READY_SCORE} or above on integration ` +
           `readiness, and ${healthy} answered their most recent probe. Every figure here is ` +
@@ -126,11 +127,9 @@ function WithApiTable() {
 export function SubnetsWithApiPage() {
   return (
     <AppShell>
-      <PageMasthead
-        live
-        eyebrow="Capability"
-        title="Subnets with an API spec"
-        description={hubLede("/subnets/with-api")}
+      <EntityHero
+        name="Subnets with an API spec"
+        sentence={<FactSentence>{hubLede("/subnets/with-api")}</FactSentence>}
       />
       <AsyncPanel context="subnets-with-api" fallback={<TableSkeleton rows={10} columns={4} />}>
         <WithApiTable />

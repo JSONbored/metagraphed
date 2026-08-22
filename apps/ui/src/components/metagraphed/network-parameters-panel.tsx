@@ -1,12 +1,6 @@
 import { Definition } from "@jsonbored/ui-kit";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import {
-  DefinitionList,
-  FreshnessPill,
-  Panel,
-  SectionLabel,
-  type DefinitionItem,
-} from "@/components/metagraphed/primitives";
+import { DefinitionList, Panel, type DefinitionItem } from "@/components/metagraphed/primitives";
 import { networkParametersQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { NetworkParameters } from "@/lib/metagraphed/types";
@@ -142,15 +136,11 @@ export function NetworkParametersPanel() {
   const { data: res } = useSuspenseQuery(networkParametersQuery());
   const groups = buildParameterGroups(res.data);
   return (
-    <Panel
-      title="Parameters"
-      action={<FreshnessPill updatedAt={res.data.queried_at} />}
-      className="mb-6"
-    >
+    <Panel title="Parameters" className="mb-6">
       <div className="space-y-4">
         {groups.map((group) => (
           <div key={group.label}>
-            <SectionLabel>{group.label}</SectionLabel>
+            <h3 className="text-13 font-semibold text-ink-strong">{group.label}</h3>
             <DefinitionList
               layout="inline"
               className="mt-2"

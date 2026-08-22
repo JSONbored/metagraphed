@@ -213,9 +213,6 @@ function CompareBody({ base, peer }: { base: number; peer: number }) {
         delta={
           baseRatio != null && peerRatio != null ? `${(peerRatio - baseRatio).toFixed(1)} pp` : null
         }
-        highlight={
-          baseRatio != null && peerRatio != null ? Math.abs(peerRatio - baseRatio) > 5 : false
-        }
       />
 
       <DiffRow
@@ -226,9 +223,6 @@ function CompareBody({ base, peer }: { base: number; peer: number }) {
           baseUptime != null && peerUptime != null
             ? `${(peerUptime - baseUptime).toFixed(2)} pp`
             : null
-        }
-        highlight={
-          baseUptime != null && peerUptime != null ? Math.abs(peerUptime - baseUptime) > 1 : false
         }
       />
 
@@ -256,7 +250,7 @@ function CompareBody({ base, peer }: { base: number; peer: number }) {
 
 function Header({ label, name, netuid }: { label: string; name?: string; netuid: number }) {
   return (
-    <Panel as="div" flush>
+    <Panel flush>
       <div className="px-2.5 py-2">
         <div className="text-13 text-ink-muted">{label}</div>
         <div className="mt-0.5 truncate font-display text-13 font-semibold text-ink-strong">
@@ -273,22 +267,14 @@ function DiffRow({
   baseValue,
   peerValue,
   delta,
-  highlight,
 }: {
   title: string;
   baseValue: string;
   peerValue: string;
   delta: string | null;
-  highlight?: boolean;
 }) {
   return (
-    <Panel
-      as="div"
-      flush
-      tintBorderOnly
-      tone={highlight ? "accent" : "default"}
-      bodyClassName="px-3 py-2.5"
-    >
+    <Panel flush bodyClassName="px-3 py-2.5">
       <div className="text-13 text-ink-muted">{title}</div>
       <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
         <span className="font-display text-13 font-semibold tabular-nums text-ink-strong">

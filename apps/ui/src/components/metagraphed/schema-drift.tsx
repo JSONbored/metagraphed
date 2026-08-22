@@ -61,7 +61,7 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
 
   if (compact) {
     return (
-      <Panel as="div">
+      <Panel>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
             <GitCompare className="size-3.5 text-ink-muted" />

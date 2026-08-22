@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Boxes, Layers, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { subnetMetagraphQuery } from "@/lib/metagraphed/queries";
-import { TableState, RealtimeFreshness, StatTile, BarMini } from "@jsonbored/ui-kit";
+import { TableState, BarMini, FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { NeuronTable } from "@/components/metagraphed/neuron-table";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
@@ -62,37 +62,26 @@ export function MetagraphTableLoader({
     );
   }
 
-  const freshness = <RealtimeFreshness at={meta?.generated_at} />;
-
   return (
     <div className="space-y-4">
       {/* KPI strip — neuron + validator counts and the dominant-UID stake share. */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatTile
-          icon={Boxes}
-          eyebrow="Neurons"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Neurons"
           value={summary.neuronCount}
           hint={data.data.neuron_count ? `cap ${data.data.neuron_count}` : undefined}
         />
-        <StatTile
-          icon={ShieldCheck}
-          eyebrow="Validators"
-          value={summary.validatorCount}
-          hint="with permit"
-          tone="accent"
-        />
-        <StatTile
-          icon={Layers}
-          eyebrow="Top-UID stake"
+        <FactCell label="Validators" value={summary.validatorCount} hint="with permit" />
+        <FactCell
+          label="Top-UID stake"
           value={summary.topShare == null ? "—" : `${(summary.topShare * 100).toFixed(0)}%`}
           hint="of total"
-          tone={summary.topShare != null && summary.topShare > 0.5 ? "warn" : "default"}
         />
-      </div>
+      </FactStrip>
 
       {/* Stake distribution across the leading UIDs. */}
       {stakeBars.length > 0 ? (
-        <Panel as="div">
+        <Panel>
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="text-13 text-ink-muted">
               Stake distribution · top {stakeBars.length} UIDs
@@ -101,14 +90,11 @@ export function MetagraphTableLoader({
               <span className="text-10 text-ink-muted">
                 peak {taoCompact(stakeBars[0]?.value)} τ
               </span>
-              {freshness}
             </span>
           </div>
           <BarMini data={stakeBars} />
         </Panel>
-      ) : (
-        <div className="flex items-center justify-end">{freshness}</div>
-      )}
+      ) : null}
 
       {/* Permit filter + sortable neuron table. */}
       <div className="flex items-center justify-between gap-3">

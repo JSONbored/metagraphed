@@ -39,7 +39,7 @@ function ChangeLog() {
   }
 
   return (
-    <Panel as="section">
+    <Panel>
       <h3 className="mb-3 text-11 text-ink-muted">Emission gate changes</h3>
       <p className="mb-3 text-10 text-ink-muted">
         {formatNumber(c.change_count)} recorded change{c.change_count === 1 ? "" : "s"}
@@ -88,7 +88,7 @@ function RandomnessCard() {
   if (!r) return <EmptyState title="No randomness reading" description="Round storage not read." />;
 
   return (
-    <Panel as="section">
+    <Panel>
       <h3 className="mb-3 text-11 text-ink-muted">Stored randomness rounds</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
         {/* THE SPAN LEADS, not the newest round. Commit-reveal verifies a

@@ -1,8 +1,8 @@
+import { FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Coins, Flame, Award, Server, X } from "lucide-react";
+import { X } from "lucide-react";
 import { subnetNeuronQuery } from "@/lib/metagraphed/queries";
-import { RealtimeFreshness, StatTile } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
@@ -15,7 +15,7 @@ function scoreStr(v?: number | null): string {
 }
 
 /**
- * Per-UID snapshot detail card. A StatTile grid (stake / emission / rank /
+ * Per-UID snapshot detail card. A FactStrip (stake / emission / rank /
  * validator-permit / axon / coldkey+hotkey) over the live /neurons/{uid}
  * snapshot. Every field is null-safe — an inactive UID renders em-dashes, not
  * misleading zeros. Sits above the per-UID history sparklines on the drill-in.
@@ -30,7 +30,6 @@ export function NeuronDetailCard({
   onClose?: () => void;
 }) {
   const { data } = useSuspenseQuery(subnetNeuronQuery(netuid, uid));
-  const meta = data.meta;
   const n = data.data.neuron;
 
   if (!n) {
@@ -62,7 +61,6 @@ export function NeuronDetailCard({
           ) : null}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <RealtimeFreshness at={meta?.generated_at} />
           {onClose ? (
             <button
               type="button"
@@ -76,24 +74,12 @@ export function NeuronDetailCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile
-          icon={Coins}
-          eyebrow="Stake"
-          value={taoCompact(n.stake_tao)}
-          hint="τ"
-          tone="accent"
-        />
-        <StatTile icon={Flame} eyebrow="Emission" value={taoCompact(n.emission_tao)} hint="τ" />
-        <StatTile icon={Award} eyebrow="Rank" value={n.rank == null ? "—" : n.rank} />
-        <StatTile
-          icon={Server}
-          eyebrow="Axon"
-          value={n.axon ? "Live" : "—"}
-          hint={n.axon ?? "no endpoint"}
-          tone={n.axon ? "ok" : "default"}
-        />
-      </div>
+      <FactStrip>
+        <FactCell label="Stake" value={taoCompact(n.stake_tao)} hint="τ" />
+        <FactCell label="Emission" value={taoCompact(n.emission_tao)} hint="τ" />
+        <FactCell label="Rank" value={n.rank == null ? "—" : n.rank} />
+        <FactCell label="Axon" value={n.axon ? "Live" : "—"} hint={n.axon ?? "no endpoint"} />
+      </FactStrip>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Fact label="Trust" value={scoreStr(n.trust)} />
@@ -102,7 +88,7 @@ export function NeuronDetailCard({
         <Fact label="Dividends" value={scoreStr(n.dividends)} />
       </div>
 
-      <Panel as="div" bodyClassName="space-y-2.5">
+      <Panel bodyClassName="space-y-2.5">
         <KeyRow label="Hotkey" value={n.hotkey} />
         <KeyRow label="Coldkey" value={n.coldkey} />
         {n.registered_at_block != null ? (
@@ -124,7 +110,7 @@ export function NeuronDetailCard({
 
 function Fact({ label, value }: { label: string; value: string | number }) {
   return (
-    <Panel as="div">
+    <Panel>
       <div className="text-13 text-ink-muted">{label}</div>
       <div className="mt-1 font-display text-16 font-semibold tabular-nums text-ink-strong leading-none">
         {value}

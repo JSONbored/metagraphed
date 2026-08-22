@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Check, ClipboardCopy, Link2 } from "lucide-react";
-import { ExternalLink, SectionLabel } from "@jsonbored/ui-kit";
+import { ExternalLink } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { Skeleton } from "@/components/metagraphed/states";
 import { useCopy } from "@/hooks/use-copy";
@@ -75,7 +75,7 @@ export function AgentContextCard({ agent }: { agent: AgentResources["copyable_ag
     <Panel flush>
       <div className="flex flex-col gap-4 border-b border-border/70 p-4 md:flex-row md:items-start md:justify-between md:p-6">
         <div className="min-w-0 max-w-2xl">
-          <SectionLabel>One-file context bundle</SectionLabel>
+          <h3 className="text-13 font-semibold text-ink-strong">One-file context bundle</h3>
           <h3 className="mt-1 font-display text-16 font-semibold text-ink-strong">
             Hand this to an agent and it can use metagraphed.
           </h3>

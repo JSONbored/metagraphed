@@ -1,5 +1,5 @@
+import { EntityHero, FactSentence, FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageMasthead } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { WebhookSubscriptionManager } from "@/components/metagraphed/webhook-subscription-manager";
 import { ApiKeysManager } from "@/components/metagraphed/api-keys-manager";
@@ -14,13 +14,27 @@ export function SettingsPage() {
   const kpis = buildSettingsHeroKpis();
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="Developer"
-        live
-        title="Developer settings"
-        description="Your watchlist's export/import, self-service webhook subscription management against the public subscription API (no account model), wallet-connected API key management for gated fullnode access, and your own verified chain alert triggers."
-        caption={<>webhooks / v1</>}
-        kpis={kpis}
+      <EntityHero
+        name="Developer settings"
+        sentence={
+          <FactSentence>
+            Your watchlist's export/import, self-service webhook subscription management against the
+            public subscription API (no account model), wallet-connected API key management for
+            gated fullnode access, and your own verified chain alert triggers.
+          </FactSentence>
+        }
+        facts={
+          <FactStrip>
+            {kpis.map((k) => (
+              <FactCell
+                key={k.label}
+                label={k.label}
+                value={k.value}
+                hint={typeof k.hint === "string" ? k.hint : undefined}
+              />
+            ))}
+          </FactStrip>
+        }
       />
       {/* #8384: install affordance renders nothing when there's nothing to
           offer (already installed, dismissed, unsupported browser). */}

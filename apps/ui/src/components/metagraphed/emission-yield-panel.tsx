@@ -1,7 +1,6 @@
+import { FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { TrendingUp, Server, Users, Coins } from "lucide-react";
 import { chainYieldQuery } from "@/lib/metagraphed/queries";
-import { StatTile } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { formatNumber } from "@/lib/metagraphed/format";
 
@@ -72,57 +71,36 @@ export function EmissionYieldPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <StatTile
-          icon={TrendingUp}
-          eyebrow="Network yield"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Network yield"
           value={fmtPct(y.network_yield)}
           hint="Emission ÷ total stake"
-          tone="accent"
-          tooltip="Annualized network-wide return: total emission divided by total stake, before validator take. A baseline for what staked TAO earns across the whole network."
         />
-        <StatTile
-          icon={Server}
-          eyebrow="Validator yield"
+        <FactCell
+          label="Validator yield"
           value={fmtPct(y.validator_yield)}
           hint={`${formatNumber(y.validator_count)} validators`}
-          tooltip="Average return earned by validating neurons — emission to validators relative to their stake. Typically differs from miner yield by the incentive split."
         />
-        <StatTile
-          icon={Users}
-          eyebrow="Miner yield"
+        <FactCell
+          label="Miner yield"
           value={fmtPct(y.miner_yield)}
           hint={`${formatNumber(y.miner_count)} miners`}
-          tooltip="Average return earned by mining neurons — emission to miners relative to their stake. Reflects reward flow to the mining side of the network."
         />
-      </div>
+      </FactStrip>
 
       {dist ? (
         <div>
           <div className="mb-3 text-13 text-ink-muted">Per-neuron return spread</div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <StatTile
-              icon={Coins}
-              eyebrow="Median"
+          <FactStrip variant="grid">
+            <FactCell
+              label="Median"
               value={fmtPct(dist.median)}
               hint={`${formatNumber(dist.count)} neurons`}
-              tooltip="The median per-neuron return — half of neurons earn more, half less. A typical-neuron benchmark that is robust to a few very high or very low outliers."
             />
-            <StatTile
-              icon={Coins}
-              eyebrow="75th pct"
-              value={fmtPct(dist.p75)}
-              hint="per-neuron return"
-              tooltip="75th-percentile per-neuron return: a quarter of neurons earn more than this. Shows the upper spread of returns above the typical neuron."
-            />
-            <StatTile
-              icon={Coins}
-              eyebrow="90th pct"
-              value={fmtPct(dist.p90)}
-              hint="per-neuron return"
-              tooltip="90th-percentile per-neuron return: only the top 10% of neurons earn more. Highlights how concentrated the strongest returns are."
-            />
-          </div>
+            <FactCell label="75th pct" value={fmtPct(dist.p75)} hint="per-neuron return" />
+            <FactCell label="90th pct" value={fmtPct(dist.p90)} hint="per-neuron return" />
+          </FactStrip>
         </div>
       ) : null}
     </div>

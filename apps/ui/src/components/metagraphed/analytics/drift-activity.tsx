@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ArrowUpRight, ChevronRight } from "lucide-react";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 import { classNames } from "@/lib/metagraphed/format";
-import { TimeAgo } from "@jsonbored/ui-kit";
+import { TimeAgo, RangeControl } from "@jsonbored/ui-kit";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
 import { Panel } from "@/components/metagraphed/primitives";
 import { readNumber } from "@/lib/metagraphed/read-key";
@@ -76,7 +76,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
     });
 
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-paper px-4 py-2.5">
         <div className="flex items-center gap-2 text-13 text-ink-muted">
@@ -90,33 +90,16 @@ export function DriftActivity({ schemas, fromPath }: Props) {
           <span className="text-health-warn">{drifting.length} drifting</span>
           <span className="text-ink-muted"> · {stable.length} stable</span>
         </div>
-        <Panel
-          as="div"
-          flush
+        <RangeControl
+          label="Drift scope"
+          options={[
+            { value: "drifting", label: "drifting only" },
+            { value: "all", label: "show all" },
+          ]}
+          value={scope}
+          onChange={setScope}
           className="ml-auto"
-          bodyClassName="inline-flex items-center p-0.5"
-          role="tablist"
-          aria-label="Drift scope"
-        >
-          {(["drifting", "all"] as const).map((v) => {
-            const on = scope === v;
-            return (
-              <button
-                key={v}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                onClick={() => setScope(v)}
-                className={classNames(
-                  "rounded px-2 py-1 text-13 transition-colors",
-                  on ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
-                )}
-              >
-                {v === "drifting" ? "drifting only" : "show all"}
-              </button>
-            );
-          })}
-        </Panel>
+        />
       </div>
 
       {/* Drifting list */}

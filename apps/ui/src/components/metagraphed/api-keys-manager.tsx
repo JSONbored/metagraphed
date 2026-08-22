@@ -1,7 +1,6 @@
-import {} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
-import { SectionHeading, CopyableCode, BarMini } from "@jsonbored/ui-kit";
+import { CopyableCode, BarMini, SectionHead } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { useWallet } from "@/hooks/use-wallet";
@@ -82,12 +81,12 @@ export function ApiKeysManager() {
 
   return (
     <section aria-labelledby="api-keys-heading">
-      <SectionHeading
+      <SectionHead
+        name="API keys"
+        question="Real fullnode RPC access, plus a higher rate-limit tier on the general API (currently: the chain-events/deep-history routes, more to follow). The keyless API keeps working exactly as-is -- a key buys headroom, it never gates the base. Requires a wallet-signed login; no invite code."
         id="api-keys-heading"
-        title="API keys"
-        intro="Real fullnode RPC access, plus a higher rate-limit tier on the general API (currently: the chain-events/deep-history routes, more to follow). The keyless API keeps working exactly as-is -- a key buys headroom, it never gates the base. Requires a wallet-signed login; no invite code."
       />
-      <Panel as="div">
+      <Panel>
         {walletStatus !== "connected" || !wallet ? (
           <EmptyState
             title="Connect your wallet"

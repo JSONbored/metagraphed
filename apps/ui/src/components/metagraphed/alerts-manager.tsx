@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { PushDevicesManager } from "@/components/metagraphed/push-devices-manager";
 import { classNames } from "@/lib/metagraphed/format";
-import { SectionHeading, TimeAgo } from "@jsonbored/ui-kit";
+import { TimeAgo, SectionHead } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { useWallet } from "@/hooks/use-wallet";
@@ -114,12 +114,12 @@ export function AlertsManager() {
 
   return (
     <section aria-labelledby="alerts-heading">
-      <SectionHeading
+      <SectionHead
+        name="Alerts"
+        question="Chain alert triggers you've created with a verified wallet -- pause, edit, or delete, and see recent delivery attempts. Re-verify with your wallet to view (read scope only, never a transaction)."
         id="alerts-heading"
-        title="Alerts"
-        intro="Chain alert triggers you've created with a verified wallet -- pause, edit, or delete, and see recent delivery attempts. Re-verify with your wallet to view (read scope only, never a transaction)."
       />
-      <Panel as="div">
+      <Panel>
         {walletStatus !== "connected" || !wallet ? (
           <EmptyState
             title="Connect your wallet"

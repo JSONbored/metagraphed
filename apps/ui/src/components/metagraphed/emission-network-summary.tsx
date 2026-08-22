@@ -1,5 +1,5 @@
-import { StatTile } from "@jsonbored/ui-kit";
-import { DefinitionList, Panel, SectionLabel } from "@/components/metagraphed/primitives";
+import { FactStrip, FactCell } from "@jsonbored/ui-kit";
+import { DefinitionList, Panel } from "@/components/metagraphed/primitives";
 import { emissionPipelineCounts, networkTaoSplit } from "@/lib/metagraphed/emission-pipeline";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { EmissionPipeline } from "@/lib/metagraphed/types";
@@ -26,22 +26,15 @@ export function EmissionNetworkSummary({ pipeline }: { pipeline: EmissionPipelin
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          eyebrow="Pool liquidity injection"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Pool liquidity injection"
           value={percent(poolFraction)}
           hint="of block emission"
-          tone="accent"
-          tooltip="The share of each block's TAO that lands in subnet liquidity pools (SubnetTaoInEmission). The rest arrives as chain buys — both are TAO the subnet receives."
         />
-        <StatTile
-          eyebrow="Chain buys"
-          value={percent(buysFraction)}
-          hint="of block emission"
-          tooltip="The share of each block's TAO that arrives as chain buys (SubnetExcessTao) rather than as pool liquidity."
-        />
-        <StatTile
-          eyebrow="Block emission"
+        <FactCell label="Chain buys" value={percent(buysFraction)} hint="of block emission" />
+        <FactCell
+          label="Block emission"
           value={taoPerBlock(pipeline.block_emission_tao)}
           hint={
             pipeline.block_emission_halvings == null
@@ -50,20 +43,17 @@ export function EmissionNetworkSummary({ pipeline }: { pipeline: EmissionPipelin
                   pipeline.block_emission_halvings === 1 ? "" : "s"
                 }`
           }
-          tooltip="TAO issued per block, derived from total issuance. All of it reaches subnets; the pipeline decides how it is divided, not whether it is released."
         />
-        <StatTile
-          eyebrow="Reaching subnets"
+        <FactCell
+          label="Reaching subnets"
           value={percent(pipeline.aggregate.total_final_share, 2)}
           hint="of block emission"
-          tone="ok"
-          tooltip="Final shares sum to 1 across every eligible subnet. Nothing is withheld — the pipeline redistributes, it does not throttle."
         />
-      </div>
+      </FactStrip>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Panel as="section">
-          <SectionLabel as="h2">Gate parameters</SectionLabel>
+        <Panel>
+          <h3 className="text-13 font-semibold text-ink-strong">Gate parameters</h3>
           <DefinitionList
             className="mt-3"
             items={[
@@ -108,8 +98,8 @@ export function EmissionNetworkSummary({ pipeline }: { pipeline: EmissionPipelin
           </p>
         </Panel>
 
-        <Panel as="section">
-          <SectionLabel as="h2">Subnet states</SectionLabel>
+        <Panel>
+          <h3 className="text-13 font-semibold text-ink-strong">Subnet states</h3>
           <DefinitionList
             layout="stacked"
             className="mt-3"

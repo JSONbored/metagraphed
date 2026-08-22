@@ -39,7 +39,7 @@ function IndexerLagCard() {
     return <EmptyState title="No lag reading" description="Capture lag has not been measured." />;
 
   return (
-    <Panel as="section">
+    <Panel>
       <h3 className="mb-3 text-11 text-ink-muted">Capture currency</h3>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure
@@ -91,7 +91,7 @@ function FailureMixCard() {
   const failing = rankedFailures(f.reasons);
 
   return (
-    <Panel as="section">
+    <Panel>
       <h3 className="mb-3 text-11 text-ink-muted">Why probes fail · {f.window}</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
         <Figure

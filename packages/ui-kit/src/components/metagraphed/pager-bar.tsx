@@ -1,5 +1,4 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ActionBar } from "./action-bar";
 
 export interface PagerBarProps {
   hasPrev: boolean;
@@ -26,7 +25,7 @@ export function PagerBar({
   const itemCls =
     "inline-flex items-center gap-1 rounded px-2.5 py-1.5 min-h-9 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-muted";
   return (
-    <ActionBar>
+    <div className="mg-actions">
       <button
         type="button"
         onClick={onPrev}
@@ -43,6 +42,6 @@ export function PagerBar({
       >
         {nextLabel} <ChevronRight className="size-3" />
       </button>
-    </ActionBar>
+    </div>
   );
 }

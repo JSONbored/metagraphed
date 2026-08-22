@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { subnetRevenueQuery } from "@/lib/metagraphed/queries";
-import { StatTile, Chip } from "@jsonbored/ui-kit";
+import { Chip, FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { Skeleton, ErrorState } from "@/components/metagraphed/states";
 import { formatTao } from "@/lib/metagraphed/format";
@@ -74,26 +74,26 @@ export function SubnetRevenuePanel({ netuid }: { netuid: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile
-          eyebrow="Emission received"
+      <FactStrip>
+        <FactCell
+          label="Emission received"
           value={formatTao(finite(emission.tao))}
           hint={usdLabel(emission.usd) ?? "TAO/USD not read for this window"}
         />
-        <StatTile
-          eyebrow="External revenue"
+        <FactCell
+          label="External revenue"
           value={usdLabel(observedUsd) ?? "Not observed"}
           hint={observedUsd == null ? "No readable public figure" : `over ${windowDays ?? 1}d`}
         />
-        <StatTile eyebrow="Coverage" value={coverageLabel(coverage)} />
-        <StatTile
-          eyebrow="Subsidy multiple"
+        <FactCell label="Coverage" value={coverageLabel(coverage)} />
+        <FactCell
+          label="Subsidy multiple"
           value={subsidyLabel(revenue.subsidy_multiple)}
           hint="Emission per dollar earned"
         />
-      </div>
+      </FactStrip>
 
-      <Panel as="div">
+      <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="text-13 text-ink-muted">Provenance</span>
@@ -112,9 +112,7 @@ export function SubnetRevenuePanel({ netuid }: { netuid: number }) {
       {/* The sentence that keeps a null from being read as a zero. It is prose
           rather than a tooltip because it is the most important thing on the
           panel for 127 of 129 subnets. */}
-      <Panel as="div" bodyClassName="text-13 text-ink-muted">
-        {coverageNote(observedUsd)}
-      </Panel>
+      <Panel bodyClassName="text-13 text-ink-muted">{coverageNote(observedUsd)}</Panel>
 
       {sources.length > 0 ? (
         <div className="space-y-2">

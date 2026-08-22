@@ -24,28 +24,16 @@ export {
   type ColumnDef,
   Panel,
   type PanelProps,
-  type PanelTone,
-  SectionLabel,
-  type SectionLabelProps,
-  type SectionLabelSize,
-  type SectionLabelTone,
   EmptyState,
   type EmptyStateProps,
   type EmptyStateVariant,
   TableSkeleton,
   type TableSkeletonProps,
   type TableSkeletonDensity,
-  MetricGrid,
-  type MetricGridProps,
   PanelHeader,
   type PanelHeaderProps,
   Divider,
   type DividerProps,
-  TabStrip,
-  type TabStripProps,
-  type TabStripItem,
-  StickyToolbar,
-  type StickyToolbarProps,
   DefinitionList,
   type DefinitionListProps,
   type DefinitionItem,
@@ -57,22 +45,15 @@ export {
   type GhostButtonTone,
   PagerFooter,
   type PagerFooterProps,
-  MetaStrip,
-  type MetaStripProps,
-  type MetaStripItem,
   ScrollShadow,
   type ScrollShadowProps,
   ResponsiveTable,
   type ResponsiveTableProps,
   FilterSheet,
   type FilterSheetProps,
-  PageActions,
-  type PageActionsProps,
   PanelSkeleton,
   type PanelSkeletonProps,
   type PanelSkeletonHeight,
-  MobileCollapse,
-  type MobileCollapseProps,
   ReadinessGauge,
   type ReadinessGaugeProps,
   ProvenanceChip,
@@ -97,8 +78,6 @@ export {
 } from "@jsonbored/ui-kit";
 
 /* Still local: genuinely coupled to apps/ui's router, query, or hooks. */
-export { FreshnessPill } from "./freshness-pill";
-export type { FreshnessPillProps } from "./freshness-pill";
 export { Breadcrumbs } from "./breadcrumbs";
 export type { BreadcrumbsProps } from "./breadcrumbs";
 export { CopyLinkButton } from "./copy-link-button";
@@ -107,4 +86,3 @@ export { ChartCard } from "./chart-card";
 export type { ChartCardProps } from "./chart-card";
 export { AsyncPanel } from "./async-panel";
 export type { AsyncPanelProps } from "./async-panel";
-export { PageMasthead } from "./page-masthead";

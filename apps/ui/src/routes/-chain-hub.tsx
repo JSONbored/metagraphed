@@ -1,9 +1,4 @@
-import {
-  HubTabActions,
-  HubTabs,
-  activeHubTab,
-  type HubTab,
-} from "@/components/metagraphed/hub-tabs";
+import { HubTabActions, HubNav, activeHubTab, type HubTab } from "@/components/metagraphed/hub-nav";
 
 /**
  * The Chain hub's tab set (#8244).
@@ -75,7 +70,7 @@ export function activeChainTab(pathname: string): ChainTab {
 }
 
 export function ChainTabs() {
-  return <HubTabs tabs={CHAIN_TABS} ariaLabel="Chain sections" />;
+  return <HubNav tabs={CHAIN_TABS} />;
 }
 
 export const ChainTabActions = HubTabActions;

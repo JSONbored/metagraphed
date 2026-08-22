@@ -1,3 +1,4 @@
+import { RangeControl } from "@jsonbored/ui-kit";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import {
   readStoredValueUnit,
@@ -57,29 +58,11 @@ export function ValueUnitControl() {
     { v: "both", label: "Both", title: "Show TAO and USD" },
   ];
   return (
-    <span
-      role="tablist"
-      aria-label="Value display unit"
-      className="inline-flex items-center rounded border border-border bg-card p-0.5"
-    >
-      {opts.map((o) => {
-        const active = o.v === unit;
-        return (
-          <button
-            key={o.v}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => setUnit(o.v)}
-            className={
-              "inline-flex items-center rounded px-2 py-1 text-13 font-medium transition-colors min-h-8" +
-              (active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong")
-            }
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </span>
+    <RangeControl
+      label="Value display unit"
+      options={opts.map((o) => ({ value: o.v, label: o.label }))}
+      value={unit}
+      onChange={setUnit}
+    />
   );
 }

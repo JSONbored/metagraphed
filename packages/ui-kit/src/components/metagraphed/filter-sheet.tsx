@@ -15,7 +15,7 @@ export interface FilterSheetProps {
 /**
  * Mobile-first drawer that hosts secondary filter controls. Trigger is
  * a compact button showing an active-count pill; on click it opens a
- * bottom sheet on mobile / side panel on tablet+. Keeps <StickyToolbar>
+ * bottom sheet on mobile / side panel on tablet+. Keeps the toolbar
  * clean on narrow viewports.
  *
  * Designed to be hidden above `md:` via `md:hidden` wrapper in callers.

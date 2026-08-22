@@ -85,7 +85,7 @@ export function ProxyHero() {
         single point of failure.
       </p>
 
-      <Panel as="div" flush className="mt-4">
+      <Panel flush className="mt-4">
         <div className="flex items-center gap-2 px-3 py-2">
           <span className="text-10 text-ink-muted">POST</span>
           <code className="flex-1 truncate font-mono text-13 text-ink-strong">{proxyUrl}</code>
@@ -131,16 +131,14 @@ function UsageStat({
   value,
   hint,
   icon: Icon,
-  tone = "default",
 }: {
   eyebrow: string;
   value: string;
   hint?: string;
   icon: typeof Zap;
-  tone?: "default" | "ok" | "warn";
 }) {
   return (
-    <Panel as="div" flush tintBorderOnly tone={tone} bodyClassName="px-3 py-2.5">
+    <Panel flush bodyClassName="px-3 py-2.5">
       <div className="flex items-center gap-1.5 text-ink-muted">
         <Icon className="size-3" aria-hidden />
         <span className="text-13">{eyebrow}</span>
@@ -177,7 +175,7 @@ export function ProxyUsagePanel() {
             "Live from the proxy telemetry"
           )}
         </p>
-        <Panel as="div" flush bodyClassName="inline-flex !p-0.5">
+        <Panel flush bodyClassName="inline-flex !p-0.5">
           {(["7d", "30d"] as const).map((w) => (
             <button
               key={w}
@@ -221,14 +219,12 @@ export function ProxyUsagePanel() {
               eyebrow="Success"
               value={pct(s.total_requests ? s.ok_requests / s.total_requests : null)}
               hint={`${formatNumber(s.ok_requests)} ok`}
-              tone={s.error_rate != null && s.error_rate > 0.05 ? "warn" : "ok"}
             />
             <UsageStat
               icon={Zap}
               eyebrow="Errors"
               value={pct(s.error_rate)}
               hint={`${formatNumber(s.error_requests)} failed`}
-              tone={s.error_rate != null && s.error_rate > 0.05 ? "warn" : "default"}
             />
             <UsageStat
               icon={ArrowUpDown}
@@ -260,7 +256,7 @@ export function ProxyUsagePanel() {
           ) : null}
 
           {usage.endpoints.length > 0 ? (
-            <Panel as="div" flush className="overflow-x-auto">
+            <Panel flush className="overflow-x-auto">
               <table className="w-full text-13">
                 <caption className="px-3 pt-2 text-left text-10 text-ink-muted">
                   Per-endpoint distribution

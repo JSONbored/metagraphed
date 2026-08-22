@@ -150,7 +150,7 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
     <div className="p-4 space-y-4">
       <section className="space-y-2">
         <div className="text-13 text-ink-muted">Request</div>
-        <Panel as="div" flush>
+        <Panel flush>
           <div className="p-3 font-mono text-13 text-ink-strong break-all flex items-start gap-2">
             <span className="shrink-0 rounded bg-curation-verified/15 text-curation-verified px-1.5 py-0.5 text-13">
               GET
@@ -189,7 +189,7 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
           </button>
         </div>
         {isLoading ? (
-          <Panel as="div" bodyClassName="text-13 text-ink-muted inline-flex items-center gap-2">
+          <Panel bodyClassName="text-13 text-ink-muted inline-flex items-center gap-2">
             <Loader2 className="size-3.5 animate-spin" /> Loading…
           </Panel>
         ) : error ? (

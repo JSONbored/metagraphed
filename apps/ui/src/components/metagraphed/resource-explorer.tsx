@@ -22,6 +22,7 @@ import {
   TimeAgo,
   safeExternalUrl,
   ExternalLink,
+  RangeControl,
 } from "@jsonbored/ui-kit";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -72,7 +73,6 @@ export function ResourceExplorer({ netuid }: { netuid: number }) {
       subtitle="Endpoints, curated surfaces, and tracked schemas for this subnet."
       info="Probe-derived health and curation metadata. Full detail lives in the dedicated tabs."
       right={controls}
-      tone="accent"
       refreshQueryKeys={[
         endpointOpts.queryKey,
         surfaceOpts.queryKey,
@@ -100,7 +100,7 @@ export function ResourceExplorer({ netuid }: { netuid: number }) {
           </button>
         </div>
       ) : null}
-      <Panel as="div" flush className="overflow-hidden">
+      <Panel flush className="overflow-hidden">
         {seg === "endpoints" ? (
           <Suspense fallback={<Skeleton className="h-40 w-full" />}>
             <EndpointsView netuid={netuid} filter={filter} />
@@ -205,30 +205,12 @@ function SegmentBar({
     { id: "schemas", label: "Schemas", short: "SC" },
   ];
   return (
-    <div
-      role="tablist"
-      aria-label="Resource view"
-      className="inline-flex rounded border border-border bg-surface p-0.5"
-    >
-      {segs.map((s) => {
-        const active = s.id === value;
-        return (
-          <button
-            key={s.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(s.id)}
-            className={classNames(
-              "px-2.5 py-1 text-13 font-medium rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              active ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
-            )}
-          >
-            {compact ? s.short : s.label}
-          </button>
-        );
-      })}
-    </div>
+    <RangeControl
+      label="Resource view"
+      options={segs.map((s) => ({ value: s.id, label: compact ? s.short : s.label }))}
+      value={value}
+      onChange={onChange}
+    />
   );
 }
 

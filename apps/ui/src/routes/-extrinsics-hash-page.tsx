@@ -1,7 +1,7 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, type ReactNode } from "react";
-import { Boxes, Clock, FileText, Link2, UserCog } from "lucide-react";
+import { Link2, UserCog } from "lucide-react";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -11,12 +11,14 @@ import {
   CopyableCode,
   TimeAgo,
   ShareButton,
-  ActionBar,
-  SectionAnchor,
-  StatTile,
   TableState,
+  AnalyticsSection,
+  FactStrip,
+  FactCell,
+  EntityHero,
+  FactSentence,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -151,25 +153,14 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
 
   return (
     <>
-      <PageMasthead
-        eyebrow="Explorer · extrinsic"
-        live
-        title={shortHash(extrinsic.extrinsic_hash, 10) ?? "Extrinsic"}
-        description={
-          sentence ? (
-            <span className="text-13">{sentence}</span>
-          ) : (
-            <span className="font-mono text-13 break-all">
-              {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
-            </span>
-          )
-        }
-        actions={
+      <EntityHero
+        name={shortHash(extrinsic.extrinsic_hash, 10) ?? "Extrinsic"}
+        action={
           <>
-            <ActionBar>
+            <div className="mg-actions">
               <ValueUnitControl />
               <ShareButton bare />
-            </ActionBar>
+            </div>
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner
                 compact
@@ -179,7 +170,17 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             ) : null}
           </>
         }
-        caption="explorer / v1"
+        sentence={
+          <FactSentence>
+            {sentence ? (
+              <span className="text-13">{sentence}</span>
+            ) : (
+              <span className="font-mono text-13 break-all">
+                {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
+              </span>
+            )}
+          </FactSentence>
+        }
       />
 
       <RelatedEntityChipRow>
@@ -242,22 +243,16 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
-        <StatTile
-          icon={Boxes}
-          eyebrow="Block"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Block"
           value={extrinsic.block_number != null ? `#${formatNumber(extrinsic.block_number)}` : "—"}
         />
-        <StatTile icon={FileText} eyebrow="Result" value={result} />
-        <StatTile
-          icon={Clock}
-          eyebrow="Observed"
-          value={<TimeAgo at={extrinsic.observed_at} />}
-          tone="accent"
-        />
-      </div>
+        <FactCell label="Result" value={result} />
+        <FactCell label="Observed" value={<TimeAgo at={extrinsic.observed_at} />} />
+      </FactStrip>
 
-      <SectionAnchor id="details" title="Extrinsic details" tone="accent">
+      <AnalyticsSection id="details" name="Extrinsic details">
         <dl className="rounded border border-border bg-card divide-y divide-border">
           <FieldRow label="Extrinsic hash">
             {extrinsic.extrinsic_hash ? (
@@ -327,12 +322,12 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             </span>
           </FieldRow>
         </dl>
-      </SectionAnchor>
+      </AnalyticsSection>
 
-      <SectionAnchor
+      <AnalyticsSection
         id="call-args"
-        title="Call arguments"
-        subtitle="The decoded parameters passed to this extrinsic."
+        name="Call arguments"
+        question="The decoded parameters passed to this extrinsic."
       >
         {renderCallArgs(callArgs, extrinsic.call_module, extrinsic.call_function)}
         {callArgsOmitted > 0 ? (
@@ -341,14 +336,13 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             more omitted.
           </p>
         ) : null}
-      </SectionAnchor>
+      </AnalyticsSection>
 
       {callHash ? (
-        <SectionAnchor
+        <AnalyticsSection
           id="multisig-chain"
-          title="Related Multisig calls"
-          subtitle="Other extrinsics approving or executing this same call_hash."
-          tone="accent"
+          name="Related Multisig calls"
+          question="Other extrinsics approving or executing this same call_hash."
         >
           {relatedQuery.isLoading ? (
             <Skeleton className="h-16 w-full" />
@@ -391,12 +385,12 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
               No other extrinsics reference this call_hash yet.
             </p>
           )}
-        </SectionAnchor>
+        </AnalyticsSection>
       ) : null}
 
-      <SectionAnchor id="events" title="Emitted events" tone="accent">
+      <AnalyticsSection id="events" name="Emitted events">
         {events.length > 0 ? (
-          <Panel as="div" flush className="overflow-x-auto">
+          <Panel flush className="overflow-x-auto">
             <table className="w-full text-left text-13">
               <thead className="bg-surface">
                 <tr>
@@ -455,7 +449,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             omitted.
           </p>
         ) : null}
-      </SectionAnchor>
+      </AnalyticsSection>
 
       <div className="mt-6">
         <Link
@@ -466,10 +460,10 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         </Link>
       </div>
 
-      <SectionAnchor
+      <AnalyticsSection
         id="call"
-        title="Call this endpoint"
-        subtitle="Copy a ready-to-run request for this extrinsic."
+        name="Call this endpoint"
+        question="Copy a ready-to-run request for this extrinsic."
       >
         <EndpointSnippet
           rows={[
@@ -477,7 +471,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             { label: "artifact", path: `/metagraph/extrinsics/${sourceRef}.json` },
           ]}
         />
-      </SectionAnchor>
+      </AnalyticsSection>
 
       <ApiSourceFooter
         paths={[`/api/v1/extrinsics/${sourceRef}`]}
@@ -508,7 +502,7 @@ function renderCallArgs(
       return <p className="text-13 text-ink-muted">No call args were indexed.</p>;
     }
     return (
-      <Panel as="div" flush className="overflow-x-auto">
+      <Panel flush className="overflow-x-auto">
         <table className="w-full text-left text-13">
           <thead className="bg-surface">
             <tr>
@@ -539,7 +533,7 @@ function renderCallArgs(
       return <p className="text-13 text-ink-muted">No call args were indexed.</p>;
     }
     return (
-      <Panel as="div" flush className="overflow-x-auto">
+      <Panel flush className="overflow-x-auto">
         <table className="w-full text-left text-13">
           <thead className="bg-surface">
             <tr>

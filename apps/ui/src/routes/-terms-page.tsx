@@ -1,16 +1,20 @@
 import { Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { ExternalLink } from "@jsonbored/ui-kit";
-import { PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { ExternalLink, EntityHero, FactSentence } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
 
 export function TermsPage() {
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="Terms"
-        title="Terms of use"
-        description="What you can rely on from Metagraphed, what you cannot, and the few things we ask in return."
+      <EntityHero
+        name="Terms of use"
+        sentence={
+          <FactSentence>
+            What you can rely on from Metagraphed, what you cannot, and the few things we ask in
+            return.
+          </FactSentence>
+        }
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-8 min-w-0">

@@ -408,7 +408,6 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     >
       {/* Input */}
       <Panel
-        as="div"
         flush
         className={classNames(
           "w-full !rounded text-left text-13 transition-all",

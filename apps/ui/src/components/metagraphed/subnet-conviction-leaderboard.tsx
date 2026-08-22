@@ -114,7 +114,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
           {data.maturity_rate != null ? ` · maturity_rate ${formatNumber(data.maturity_rate)}` : ""}
         </p>
       ) : null}
-      <Panel as="div" flush className="overflow-hidden">
+      <Panel flush className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-13">
             <thead className="bg-surface">

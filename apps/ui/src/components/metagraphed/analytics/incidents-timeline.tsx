@@ -145,7 +145,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
   }, [pools]);
 
   return (
-    <Panel as="div" flush className={classNames("overflow-hidden", className)}>
+    <Panel flush className={classNames("overflow-hidden", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
           <div className="text-13 text-ink-muted">Incidents · {RANGE_LABEL[range]}</div>

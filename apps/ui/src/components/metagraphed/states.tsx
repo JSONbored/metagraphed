@@ -392,7 +392,7 @@ export function StaleBanner({
  * loading skeleton or a legitimately-empty "—". Used in the homepage KPI panels
  * (#3964) and the About "At a glance" sidebar (#3968).
  *
- * `h-[1em]` matches the parent value line's font-size (e.g. StatTile's
+ * `h-[1em]` matches the parent value line's font-size (e.g. FactCell's
  * font-display text-28) so an error tile stays the same height as its
  * numeric neighbours instead of collapsing to text-13 metrics (#8818).
  *

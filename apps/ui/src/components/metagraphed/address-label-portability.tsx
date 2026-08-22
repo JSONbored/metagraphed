@@ -58,7 +58,6 @@ export function AddressLabelPortability() {
 
   return (
     <Panel
-      as="section"
       title="Private address labels"
       caption={
         count > 0

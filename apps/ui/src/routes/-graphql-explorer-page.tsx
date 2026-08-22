@@ -1,10 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { CopyableCode } from "@jsonbored/ui-kit";
+import { CopyableCode, EntityHero, FactSentence } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { GraphiqlExplorer } from "@/components/metagraphed/graphiql-explorer";
-import { PageMasthead } from "@/components/metagraphed/primitives";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { toGraphqlSubscriptionUrl } from "@/lib/metagraphed/graphql-subscription-url";
 
@@ -25,11 +24,14 @@ export function GraphqlExplorerPage() {
         <ArrowLeft aria-hidden className="size-3.5" />
         GraphQL docs
       </Link>
-      <PageMasthead
-        eyebrow="GraphQL"
-        title="Explorer"
-        description="Schema-aware autocomplete, docs, and history against the live GraphQL endpoint — queries over HTTP, live chainEvents subscriptions over WebSocket. No API key."
-        hideBreadcrumbs
+      <EntityHero
+        name="Explorer"
+        sentence={
+          <FactSentence>
+            Schema-aware autocomplete, docs, and history against the live GraphQL endpoint — queries
+            over HTTP, live chainEvents subscriptions over WebSocket. No API key.
+          </FactSentence>
+        }
         className="mt-2"
       />
 

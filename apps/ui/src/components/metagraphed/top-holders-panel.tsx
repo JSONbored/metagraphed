@@ -41,7 +41,7 @@ export function TopHoldersPanel() {
   }
 
   return (
-    <Panel as="section">
+    <Panel>
       <p className="mb-3 text-10 text-ink-muted">
         Largest {formatNumber(Math.min(SHOWN, h.accounts.length))} TAO holders network-wide
         {h.account_count == null ? "" : ` of ${formatNumber(h.account_count)} ranked`}

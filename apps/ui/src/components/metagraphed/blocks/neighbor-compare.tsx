@@ -38,7 +38,7 @@ function NeighborCard({
 
   if (!ref) {
     return (
-      <Panel tone="muted">
+      <Panel>
         <div className="flex items-center justify-between gap-2 text-ink-muted">
           <span className="inline-flex items-center gap-1.5">
             <Icon className="size-3.5" />
@@ -56,7 +56,7 @@ function NeighborCard({
   const evtDelta = evt != null ? evt - (current.event_count ?? 0) : null;
 
   return (
-    <Panel interactive>
+    <Panel>
       <Link
         to="/blocks/$ref"
         params={{ ref }}

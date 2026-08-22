@@ -44,14 +44,12 @@ export function ValidatorSubnetHeatmap() {
 
   if (rows.length === 0 || netuids.length === 0) {
     return (
-      <Panel as="div" bodyClassName="text-13 text-ink-muted">
-        No validator participation data yet.
-      </Panel>
+      <Panel bodyClassName="text-13 text-ink-muted">No validator participation data yet.</Panel>
     );
   }
 
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="text-13 text-ink-muted">Validator × subnet · stake intensity</div>
         <div className="flex flex-wrap items-center gap-2.5 text-10 text-ink-muted">

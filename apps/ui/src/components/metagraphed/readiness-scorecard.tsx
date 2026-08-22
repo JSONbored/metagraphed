@@ -72,13 +72,18 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
           // (#8537). w-full keeps the anchor bounded to the card (#6903).
           className="mt-3 w-full min-w-0 items-center gap-2 rounded border border-accent/30 bg-accent-surface px-3 py-2 text-13 no-underline hover:decoration-transparent"
         >
-          <span className="flex min-w-0 items-center gap-1.5">
+          <span className="flex min-w-0 max-w-full items-center gap-1.5">
             <ArrowRight className="size-4 shrink-0 text-accent" />
             <span className="min-w-0 flex-1 truncate">
               <span className="font-medium text-ink-strong">Start here:</span>{" "}
               {cta.name ?? cta.kind ?? "Primary API"}
-              {cta.provider ? <span className="text-ink-muted"> · {cta.provider}</span> : null}
             </span>
+            {/* A sibling, not a child of the truncating span: a clipped child
+                still reports a box past the viewport edge (the overflow gate
+                measures boxes, not paint). */}
+            {cta.provider ? (
+              <span className="shrink-0 truncate text-ink-muted">· {cta.provider}</span>
+            ) : null}
           </span>
         </ExternalLink>
       ) : null}

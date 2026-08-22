@@ -55,7 +55,7 @@ function BurnSpread() {
     .slice(0, TOP_SHOWN);
 
   return (
-    <Panel as="section">
+    <Panel>
       <h3 className="mb-3 text-11 text-ink-muted">Registration cost across subnets</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
         <Figure
@@ -102,7 +102,7 @@ function HolderConcentration() {
   const split = capturesDiverge(h.captured_at, h.positions_captured_at);
 
   return (
-    <Panel as="section">
+    <Panel>
       <h3 className="mb-3 text-11 text-ink-muted">Alpha holders across subnets</h3>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
         <Figure
@@ -147,7 +147,7 @@ function ConcentrationRanking() {
   const ranked = c.subnets.filter((s) => !s.unmeasured).slice(0, TOP_SHOWN);
 
   return (
-    <Panel as="section">
+    <Panel>
       <h3 className="mb-3 text-11 text-ink-muted">Most concentrated subnets</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
         <Figure
@@ -205,7 +205,7 @@ function ConcentrationDrift() {
   const mixed = spansBuilderVersions(hist.builder_versions);
 
   return (
-    <Panel as="section">
+    <Panel>
       <h3 className="mb-3 text-11 text-ink-muted">Concentration drift · {hist.window}</h3>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure label="days" value={formatNumber(hist.point_count)} hint="Days in the series." />

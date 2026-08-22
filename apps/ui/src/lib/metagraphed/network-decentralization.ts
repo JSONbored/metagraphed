@@ -1,7 +1,7 @@
 // #3471: pure view-model for the network-scope decentralization scorecard.
 // Maps the normalized chain concentration (/api/v1/chain/concentration) and
 // performance (/api/v1/chain/performance) snapshots — the chain-wide twin of
-// the per-subnet concentration panel — into StatTile view-models with safe
+// the per-subnet concentration panel — into FactCell view-models with safe
 // fallbacks for missing / null fields. Kept framework-free so it can be unit
 // tested without React (Codecov gates coverage).
 
@@ -18,7 +18,7 @@ export type DecentralizationTone = "ok" | "warn" | "down" | "default";
 export interface DecentralizationTile {
   /** Stable key for React lists, icon lookup, and tests. */
   key: string;
-  /** Uppercase eyebrow shown on the StatTile. */
+  /** Uppercase eyebrow shown on the FactCell. */
   label: string;
   /** Formatted display value ("—" when the source field is missing). */
   value: string;

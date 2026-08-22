@@ -43,7 +43,7 @@ export function RegistryPipelinePanel() {
 
   return (
     <div className="space-y-6">
-      <Panel as="section">
+      <Panel>
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           <Stage
             label="candidates"
@@ -88,7 +88,7 @@ export function RegistryPipelinePanel() {
         </div>
       </Panel>
 
-      <Panel as="section">
+      <Panel>
         <h3 className="mb-3 text-11 text-ink-muted">Source snapshots</h3>
         {p.snapshots_reachable ? (
           <>
@@ -219,7 +219,7 @@ export function FixtureLookupPanel() {
   });
 
   return (
-    <Panel as="section">
+    <Panel>
       <h3 className="mb-3 text-11 text-ink-muted">Fixture lookup</h3>
       <form
         className="flex gap-2"

@@ -11,11 +11,7 @@ import { TimeAgo } from "@jsonbored/ui-kit";
 // fetches via useQuery and renders a compact feed list.
 
 function Notice({ children }: { children: string }) {
-  return (
-    <Panel as="div" bodyClassName="text-13 text-ink-muted">
-      {children}
-    </Panel>
-  );
+  return <Panel bodyClassName="text-13 text-ink-muted">{children}</Panel>;
 }
 
 /**

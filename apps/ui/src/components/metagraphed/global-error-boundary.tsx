@@ -91,7 +91,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
               overview, or copy the error details for a bug report.
             </p>
 
-            <Panel as="div" className="mt-6">
+            <Panel className="mt-6">
               <div className="text-10 text-ink-muted">Error message</div>
               <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-paper p-2 font-mono text-13 text-ink">
                 {message || "Unknown error"}

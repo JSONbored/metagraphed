@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { nextTabIndex, rovingTabIndex } from "./use-roving-tablist";
+import { nextTabIndex, rovingTabIndex } from "./use-roving-group";
 
 describe("nextTabIndex", () => {
   it("ArrowRight/ArrowDown advance and wrap at the end", () => {

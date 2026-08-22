@@ -1,13 +1,14 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { AsyncPanel, Panel, TableSkeleton } from "@/components/metagraphed/primitives";
 import {
-  AsyncPanel,
-  PageMasthead,
-  Panel,
-  TableSkeleton,
-} from "@/components/metagraphed/primitives";
-import { SectionHeading, StatusBadge, type HealthStatus } from "@jsonbored/ui-kit";
+  StatusBadge,
+  type HealthStatus,
+  SectionHead,
+  EntityHero,
+  FactSentence,
+} from "@jsonbored/ui-kit";
 import { SUBNETS_ALL_LIMIT, subnetsQuery } from "@/lib/metagraphed/queries";
 import { categoryCopy, MIN_CATEGORY_SUBNETS } from "@/lib/metagraphed/subnet-categories";
 import type { Subnet } from "@/lib/metagraphed/types";
@@ -42,9 +43,9 @@ function CategoryTable({ slug }: { slug: string }) {
   // says so rather than rendering a one-row table dressed as a category.
   if (rows.length < MIN_CATEGORY_SUBNETS) {
     return (
-      <SectionHeading
-        title={`Not enough subnets to compare yet`}
-        intro={`The registry currently classifies ${rows.length} subnet${rows.length === 1 ? "" : "s"} under ${copy.label.toLowerCase()}. A category needs at least ${MIN_CATEGORY_SUBNETS} before a comparison page tells you anything a single subnet page would not — browse all subnets instead.`}
+      <SectionHead
+        name={`Not enough subnets to compare yet`}
+        question={`The registry currently classifies ${rows.length} subnet${rows.length === 1 ? "" : "s"} under ${copy.label.toLowerCase()}. A category needs at least ${MIN_CATEGORY_SUBNETS} before a comparison page tells you anything a single subnet page would not — browse all subnets instead.`}
       />
     );
   }
@@ -53,9 +54,9 @@ function CategoryTable({ slug }: { slug: string }) {
     <>
       {/* Synthesis first, list second — the rule every new URL in #11313 ships
           under. These counts come from our own probe cycle. */}
-      <SectionHeading
-        title={`${copy.label} on Bittensor today`}
-        intro={`${rows.length} subnets are classified under ${copy.label.toLowerCase()}. ${withSpec} publish at least one first-party interface and ${probed} have a surface that answered our most recent probe. ${copy.guidance}`}
+      <SectionHead
+        name={`${copy.label} on Bittensor today`}
+        question={`${rows.length} subnets are classified under ${copy.label.toLowerCase()}. ${withSpec} publish at least one first-party interface and ${probed} have a surface that answered our most recent probe. ${copy.guidance}`}
       />
       <Panel>
         <table className="w-full text-left text-10">
@@ -103,13 +104,13 @@ function CategoryTable({ slug }: { slug: string }) {
         </table>
       </Panel>
       <div className="mt-10">
-        <SectionHeading
-          title={`What "${copy.label.toLowerCase()}" means here`}
-          intro={copy.summary}
+        <SectionHead
+          name={`What "${copy.label.toLowerCase()}" means here`}
+          question={copy.summary}
         />
-        <SectionHeading
-          title="How the classification is derived"
-          intro="Categories come from what a subnet publishes about itself — its declared purpose, its source repository and the interfaces it exposes — not from a hand-maintained list. A subnet can belong to several, and 60 of 129 currently belong to none, which is a coverage gap in our data rather than a statement about those subnets."
+        <SectionHead
+          name="How the classification is derived"
+          question="Categories come from what a subnet publishes about itself — its declared purpose, its source repository and the interfaces it exposes — not from a hand-maintained list. A subnet can belong to several, and 60 of 129 currently belong to none, which is a coverage gap in our data rather than a statement about those subnets."
         />
       </div>
     </>
@@ -121,11 +122,9 @@ export function SubnetCategoryPage() {
   const copy = categoryCopy(slug);
   return (
     <AppShell>
-      <PageMasthead
-        live
-        eyebrow="Category"
-        title={`${copy.label} subnets`}
-        description={copy.summary}
+      <EntityHero
+        name={`${copy.label} subnets`}
+        sentence={<FactSentence>{copy.summary}</FactSentence>}
       />
       <AsyncPanel context="subnet-category" fallback={<TableSkeleton rows={8} columns={4} />}>
         <CategoryTable slug={slug} />

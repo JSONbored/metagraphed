@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { RevenueSearch } from "./revenue";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Chip, StatTile } from "@jsonbored/ui-kit";
+import { Chip, FactStrip, FactCell } from "@jsonbored/ui-kit";
 import { Route } from "./revenue";
 import { chainRevenueCoverageQuery } from "@/lib/metagraphed/queries";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -97,23 +97,23 @@ export function RevenuePage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatTile
-          eyebrow="Subnets measured"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Subnets measured"
           value={String(measured.length)}
           hint="With an observable external revenue figure"
         />
-        <StatTile
-          eyebrow="Not observed"
+        <FactCell
+          label="Not observed"
           value={String(notObserved.length)}
           hint="No readable public figure — not measured, not judged"
         />
-        <StatTile
-          eyebrow="Headline-eligible"
+        <FactCell
+          label="Headline-eligible"
           value={String(rows.filter((r) => HEADLINE_TIERS.has(r.provenance ?? "")).length)}
           hint="Chain-verified or probe-derived"
         />
-      </div>
+      </FactStrip>
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-13 text-ink-muted">Provenance</span>
@@ -247,7 +247,7 @@ export function RevenuePage() {
           {/* Visually distinct and OUTSIDE the ranked table, because ordering
               these by a figure nobody measured is the defect this page exists
               not to have. */}
-          <Panel as="div" bodyClassName="text-13 text-ink-muted">
+          <Panel bodyClassName="text-13 text-ink-muted">
             {notObservedNote(notObserved.length, rows.length)}
           </Panel>
           <div className="flex flex-wrap gap-2">

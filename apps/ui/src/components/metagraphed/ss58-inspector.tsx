@@ -121,7 +121,7 @@ export function Ss58Inspector() {
         </ResultCard>
       ) : null}
 
-      <Panel as="section" flush bodyClassName="text-13 leading-relaxed text-ink-muted">
+      <Panel flush bodyClassName="text-13 leading-relaxed text-ink-muted">
         <div className="p-4">
           <h3 className="mb-2 font-display text-13 font-semibold text-ink-strong">
             How this works

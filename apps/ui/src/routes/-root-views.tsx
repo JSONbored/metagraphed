@@ -89,7 +89,7 @@ export function NotFoundComponent() {
           </p>
 
           {/* Attempted URL + copy */}
-          <Panel as="div" className="mt-6">
+          <Panel className="mt-6">
             <div className="flex items-center gap-2 text-10 text-ink-muted">
               <AlertTriangle className="size-3.5 text-health-warn" /> Attempted URL
             </div>

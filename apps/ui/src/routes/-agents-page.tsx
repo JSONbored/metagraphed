@@ -1,8 +1,8 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { ActionBar, ShareButton, SectionHeading } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import { ShareButton, SectionHead, EntityHero, FactSentence } from "@jsonbored/ui-kit";
+import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { AgentContextCard } from "@/components/metagraphed/agent-context-card";
 import { AgentConnectCard } from "@/components/metagraphed/agent-connect-card";
 import { AgentLiveCard } from "@/components/metagraphed/agent-live-card";
@@ -16,14 +16,18 @@ import type { AgentResource, AgentResources } from "@/lib/metagraphed/types";
 export function AgentsPage() {
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="For AI agents"
-        title="Use AI to explore Bittensor"
-        description="Point any agent at metagraphed — over MCP, a typed SDK, or plain HTTP — and it can find, explain, and call the right Bittensor subnet for a task. No key, no account."
-        actions={
-          <ActionBar>
+      <EntityHero
+        name="Use AI to explore Bittensor"
+        action={
+          <div className="mg-actions">
             <ShareButton bare />
-          </ActionBar>
+          </div>
+        }
+        sentence={
+          <FactSentence>
+            Point any agent at metagraphed — over MCP, a typed SDK, or plain HTTP — and it can find,
+            explain, and call the right Bittensor subnet for a task. No key, no account.
+          </FactSentence>
         }
       />
       <AsyncPanel
@@ -74,19 +78,17 @@ function AgentsBody() {
       <StatRail res={res} />
 
       <section>
-        <SectionHeading
-          step={1}
-          title="Hand off context"
-          intro="Copy once, ingest once — everything an agent needs to start using metagraphed on its own."
+        <SectionHead
+          name="Hand off context"
+          question="Copy once, ingest once — everything an agent needs to start using metagraphed on its own."
         />
         <AgentContextCard agent={res.copyable_agent} />
       </section>
 
       <section id="connect">
-        <SectionHeading
-          step={2}
-          title="Connect your client"
-          intro="MCP is the fastest path — no install in the consuming project. The SDK, skill, and chat links below are alternates for hosts that can't speak MCP."
+        <SectionHead
+          name="Connect your client"
+          question="MCP is the fastest path — no install in the consuming project. The SDK, skill, and chat links below are alternates for hosts that can't speak MCP."
         />
         <AgentConnectCard
           mcp={res.mcp}
@@ -96,33 +98,30 @@ function AgentsBody() {
       </section>
 
       <section>
-        <SectionHeading step={3} title="Query the registry live" />
+        <SectionHead name="Query the registry live" />
         <AgentLiveCard />
       </section>
 
       <section id="first-prompt">
-        <SectionHeading
-          step={4}
-          title="Try your first prompt"
-          intro="Paste one straight into the client you just connected — each one is a real task, not a demo."
+        <SectionHead
+          name="Try your first prompt"
+          question="Paste one straight into the client you just connected — each one is a real task, not a demo."
         />
         <FirstPromptWalkthrough />
       </section>
 
       <section>
-        <SectionHeading
-          step={5}
-          title="Deeper integrations"
-          intro="Context files, the OpenAPI contract, GraphQL, bulk data, and everything else the registry exposes directly."
+        <SectionHead
+          name="Deeper integrations"
+          question="Context files, the OpenAPI contract, GraphQL, bulk data, and everything else the registry exposes directly."
         />
         <AgentResourceGrid resources={res.resources} />
       </section>
 
       <section id="playbooks">
-        <SectionHeading
-          step={6}
-          title="Task-oriented playbooks"
-          intro="Executed, tested tool-call sequences for the tasks people actually bring — also registered as MCP prompts for harnesses that surface them natively."
+        <SectionHead
+          name="Task-oriented playbooks"
+          question="Executed, tested tool-call sequences for the tasks people actually bring — also registered as MCP prompts for harnesses that surface them natively."
         />
         <AgentPlaybookGrid />
       </section>

@@ -1,16 +1,8 @@
-import { Webhook, Search, Trash2, type LucideIcon } from "lucide-react";
-import { StatTile } from "@jsonbored/ui-kit";
+import { FactCell } from "@jsonbored/ui-kit";
 import {
   buildSettingsSummaryTiles,
-  type SettingsSummaryAction,
   type SettingsSummaryTile,
 } from "@/lib/metagraphed/settings-summary";
-
-const ACTION_ICONS: Record<SettingsSummaryAction["id"], LucideIcon> = {
-  create: Webhook,
-  lookup: Search,
-  delete: Trash2,
-};
 
 export interface SettingsSummaryStripProps {
   /** Optional override for tests/previews — defaults to the live action set. */
@@ -32,17 +24,7 @@ export function SettingsSummaryStrip({
       aria-label="Webhook subscription actions at a glance"
     >
       {tiles.map((tile) => {
-        const Icon = ACTION_ICONS[tile.id];
-        return (
-          <StatTile
-            key={tile.id}
-            icon={Icon}
-            eyebrow={tile.eyebrow}
-            value={tile.value}
-            hint={tile.hint}
-            tone={tile.tone}
-          />
-        );
+        return <FactCell key={tile.id} label={tile.eyebrow} value={tile.value} hint={tile.hint} />;
       })}
     </div>
   );

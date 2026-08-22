@@ -1221,7 +1221,6 @@ function AskAnswerPanel({
 
       {mutation.isPending ? (
         <Panel
-          as="div"
           flush
           className="px-3 py-3 text-13 text-ink-muted"
           bodyClassName="flex items-center gap-2"

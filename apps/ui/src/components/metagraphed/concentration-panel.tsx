@@ -1,16 +1,14 @@
 import { Suspense, useMemo, useState, type ReactNode } from "react";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
-import { Scale, Users, BarChart3 } from "lucide-react";
 import {
   subnetConcentrationQuery,
   subnetConcentrationHistoryQuery,
   subnetPerformanceQuery,
   subnetPerformanceHistoryQuery,
 } from "@/lib/metagraphed/queries";
-import { StatTile, BarMini, Sparkline } from "@jsonbored/ui-kit";
+import { BarMini, Sparkline, FactStrip, FactCell, RangeControl } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
-import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
 import { Panel } from "@/components/metagraphed/primitives";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 import type {
@@ -31,19 +29,6 @@ function numStr(v?: number | null, digits = 3): string {
 // A higher Gini / HHI means more concentration (worse decentralization); a
 // higher Nakamoto coefficient means more resilient. Map each to a tone so the
 // KPI border/icon reads the right way.
-function giniTone(g?: number): "ok" | "warn" | "down" | "default" {
-  if (g == null) return "default";
-  if (g >= 0.85) return "down";
-  if (g >= 0.6) return "warn";
-  return "ok";
-}
-function nakamotoTone(n?: number): "ok" | "warn" | "down" | "default" {
-  if (n == null) return "default";
-  if (n <= 1) return "down";
-  if (n <= 3) return "warn";
-  return "ok";
-}
-
 /**
  * Stake/emission concentration for one subnet: Gini / Nakamoto / HHI KPI tiles,
  * a top-1/5/10/20% share bar chart, and Gini-drift sparklines over a window.
@@ -67,29 +52,23 @@ export function ConcentrationLoader({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-4">
       {/* KPI tiles — stake-weighted by default (the headline distribution). */}
-      <div className={PROFILE_KPI_GRID_CLASS}>
-        <StatTile
-          icon={Scale}
-          eyebrow="Stake Gini"
+      <FactStrip>
+        <FactCell
+          label="Stake Gini"
           value={numStr(stake?.gini)}
           hint={emission?.gini != null ? `emission ${numStr(emission.gini)}` : undefined}
-          tone={giniTone(stake?.gini)}
         />
-        <StatTile
-          icon={Users}
-          eyebrow="Nakamoto"
+        <FactCell
+          label="Nakamoto"
           value={stake?.nakamoto_coefficient ?? "—"}
           hint="entities to 51%"
-          tone={nakamotoTone(stake?.nakamoto_coefficient)}
         />
-        <StatTile
-          icon={BarChart3}
-          eyebrow="Stake HHI"
+        <FactCell
+          label="Stake HHI"
           value={numStr(stake?.hhi)}
           hint={stake?.hhi_normalized != null ? `norm ${numStr(stake.hhi_normalized)}` : undefined}
-          tone={giniTone(stake?.hhi)}
         />
-      </div>
+      </FactStrip>
 
       {/* Top-percentile share — stake vs emission side by side. */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -98,7 +77,7 @@ export function ConcentrationLoader({ netuid }: { netuid: number }) {
       </div>
 
       {/* Holders / entity context strip. */}
-      <Panel as="div" bodyClassName="grid grid-cols-2 gap-3 min-[400px]:grid-cols-4">
+      <Panel bodyClassName="grid grid-cols-2 gap-3 min-[400px]:grid-cols-4">
         <Fact label="Stake holders" value={stake?.holders ?? "—"} />
         <Fact label="Emission holders" value={emission?.holders ?? "—"} />
         <Fact label="Entities" value={c.entity_count ?? "—"} />
@@ -131,7 +110,7 @@ function SharePanel({
   ];
   const allEmpty = bars.every((b) => b.value === 0);
   return (
-    <Panel as="div">
+    <Panel>
       <div className="mb-3 text-13 text-ink-muted">{title}</div>
       {allEmpty ? (
         <p className="text-11 text-ink-muted">Not enough data yet.</p>
@@ -197,27 +176,12 @@ function DriftCard({ netuid }: { netuid: number }) {
     0;
 
   const toggle = (
-    <div
-      role="tablist"
-      aria-label="Concentration window"
-      className="inline-flex rounded border border-border bg-surface p-0.5"
-    >
-      {WINDOWS.map((w) => (
-        <button
-          key={w}
-          type="button"
-          role="tab"
-          aria-selected={w === win}
-          onClick={() => setWin(w)}
-          className={classNames(
-            "px-2.5 py-1 text-11 rounded transition-colors",
-            w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
-          )}
-        >
-          {w}
-        </button>
-      ))}
-    </div>
+    <RangeControl
+      label="Concentration window"
+      options={WINDOWS.map((w) => ({ value: w, label: String(w) }))}
+      value={win}
+      onChange={setWin}
+    />
   );
 
   return (
@@ -236,7 +200,7 @@ function DriftCard({ netuid }: { netuid: number }) {
           description="Daily concentration snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel as="div" bodyClassName="space-y-3">
+        <Panel bodyClassName="space-y-3">
           {series.stakeGini.length > 0 ? (
             <DriftRow
               label="Stake Gini"
@@ -337,33 +301,27 @@ function PerformanceLoader({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-4">
       {/* KPI tiles — incentive-weighted (the headline reward distribution). */}
-      <div className={PROFILE_KPI_GRID_CLASS}>
-        <StatTile
-          icon={Scale}
-          eyebrow="Incentive Gini"
+      <FactStrip>
+        <FactCell
+          label="Incentive Gini"
           value={numStr(incentive?.gini)}
           hint={dividends?.gini != null ? `dividends ${numStr(dividends.gini)}` : undefined}
-          tone={giniTone(incentive?.gini)}
         />
-        <StatTile
-          icon={Users}
-          eyebrow="Nakamoto"
+        <FactCell
+          label="Nakamoto"
           value={incentive?.nakamoto_coefficient ?? "—"}
           hint="miners to 51%"
-          tone={nakamotoTone(incentive?.nakamoto_coefficient)}
         />
-        <StatTile
-          icon={BarChart3}
-          eyebrow="Incentive HHI"
+        <FactCell
+          label="Incentive HHI"
           value={numStr(incentive?.hhi)}
           hint={
             incentive?.hhi_normalized != null
               ? `norm ${numStr(incentive.hhi_normalized)}`
               : undefined
           }
-          tone={giniTone(incentive?.hhi)}
         />
-      </div>
+      </FactStrip>
 
       {/* Top-percentile reward share — incentive vs dividends side by side. */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -372,7 +330,7 @@ function PerformanceLoader({ netuid }: { netuid: number }) {
       </div>
 
       {/* Score spread — 0-1 trust / consensus / validator-trust medians. */}
-      <Panel as="div" bodyClassName="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <Panel bodyClassName="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Fact label="Trust median" value={numStr(p.trust?.p50)} />
         <Fact label="Consensus median" value={numStr(p.consensus?.p50)} />
         <Fact label="Val-trust median" value={numStr(p.validator_trust?.p50)} />
@@ -423,27 +381,12 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
     0;
 
   const toggle = (
-    <div
-      role="tablist"
-      aria-label="Concentration window"
-      className="inline-flex rounded border border-border bg-surface p-0.5"
-    >
-      {WINDOWS.map((w) => (
-        <button
-          key={w}
-          type="button"
-          role="tab"
-          aria-selected={w === win}
-          onClick={() => setWin(w)}
-          className={classNames(
-            "px-2.5 py-1 text-11 rounded transition-colors",
-            w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
-          )}
-        >
-          {w}
-        </button>
-      ))}
-    </div>
+    <RangeControl
+      label="Concentration window"
+      options={WINDOWS.map((w) => ({ value: w, label: String(w) }))}
+      value={win}
+      onChange={setWin}
+    />
   );
 
   return (
@@ -462,7 +405,7 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
           description="Daily reward-distribution snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel as="div" bodyClassName="space-y-3">
+        <Panel bodyClassName="space-y-3">
           {series.incentiveGini.length > 0 ? (
             <DriftRow
               label="Incentive Gini"

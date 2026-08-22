@@ -147,7 +147,7 @@ export function NeuronTable({
   );
 
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       {/* Mobile card fallback (#6335): the 8-10 column table is unreadable on a
           narrow viewport, so mirror ValidatorCardList's per-row cards (one per
           neuron, each metric labelled by its field). The desktop table below is

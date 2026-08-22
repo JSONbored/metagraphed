@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { SectionLabel, Skeleton } from "@jsonbored/ui-kit";
+import { Skeleton } from "@jsonbored/ui-kit";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmissionNetworkSummary } from "@/components/metagraphed/emission-network-summary";
@@ -42,7 +42,7 @@ function EmissionsBody() {
       <EmissionNetworkSummary pipeline={pipeline} />
 
       <div id="emissions-subnets" className="mt-6">
-        <SectionLabel as="h2">Per-subnet decomposition</SectionLabel>
+        <h3 className="text-13 font-semibold text-ink-strong">Per-subnet decomposition</h3>
         <p className="mt-1 mb-3 max-w-3xl text-13 text-ink-muted">
           Read a row left to right and it is the pipeline itself: the published price share, then
           the miner-burn reweighting, then the gate, then the share of block emission the subnet
@@ -66,7 +66,7 @@ function VerificationNotice({ pipeline }: { pipeline: EmissionPipeline }) {
   if (pipeline.verification.verified) return null;
   const failed = pipeline.verification.checks.filter((check) => !check.ok);
   return (
-    <Panel as="section" tone="warn" className="mb-4">
+    <Panel className="mb-4">
       <h2 className="text-11 text-ink-strong">These figures did not reproduce the chain</h2>
       <p className="mt-1 text-13 text-ink">
         Every share below is reconstructed from chain storage, and this capture&apos;s identity
@@ -93,8 +93,8 @@ function Provenance({ pipeline }: { pipeline: EmissionPipeline }) {
   const measured = measuredFields(pipeline);
   const passed = pipeline.verification.checks.filter((check) => check.ok);
   return (
-    <Panel as="section" className="mt-6">
-      <SectionLabel as="h2">How these numbers were produced</SectionLabel>
+    <Panel className="mt-6">
+      <h3 className="text-13 font-semibold text-ink-strong">How these numbers were produced</h3>
       <p className="mt-2 max-w-3xl text-13 text-ink">
         The chain publishes the pipeline&apos;s inputs, not its output, so most fields here are
         reconstructed rather than read.{" "}

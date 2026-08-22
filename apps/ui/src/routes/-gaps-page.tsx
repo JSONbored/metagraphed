@@ -8,17 +8,15 @@ import { RegistryPipelinePanel } from "@/components/metagraphed/registry-pipelin
 import {
   ExternalLink,
   TableState,
-  PageSection,
-  SectionHeading,
-  MethodologyCallout,
   BrandIcon,
   CurationChip,
-  StatWithSpark,
-  MiniStack,
-  MiniRadial,
-  MobileCollapse,
+  AnalyticsSection,
+  SectionHead,
+  EntityHero,
+  FactSentence,
+  FactCell,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import { X, Search } from "lucide-react";
 import { IntegrabilityBoard } from "@/components/metagraphed/integrability-board";
@@ -52,15 +50,18 @@ const GAP_PAGE = 25;
 export function GapsPage() {
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="Operations"
-        live
-        title="Contribute"
-        description="The contributor work queue — which subnets are missing which public interfaces, and where a correction or addition helps most. Submit through the GitHub repo."
-        actions={
+      <EntityHero
+        name="Contribute"
+        action={
           <ExternalLink href={GITHUB_REPO} className="text-13">
             github
           </ExternalLink>
+        }
+        sentence={
+          <FactSentence>
+            The contributor work queue — which subnets are missing which public interfaces, and
+            where a correction or addition helps most. Submit through the GitHub repo.
+          </FactSentence>
         }
       />
 
@@ -73,38 +74,32 @@ export function GapsPage() {
           <MissingKindsAtAGlance />
         </AsyncPanel>
 
-        <AsyncPanel height="sm">
-          <GapsMethodology />
-        </AsyncPanel>
-
         <section>
-          <SectionHeading title="Integrability scoreboard" />
+          <SectionHead name="Integrability scoreboard" />
           <AsyncPanel height="lg">
             <IntegrabilityBoard />
           </AsyncPanel>
         </section>
 
-        <PageSection
+        <AnalyticsSection
           id="coverage-matrix"
-          eyebrow="Coverage"
-          title="What's actually missing"
-          description="Subnets × required public-interface kinds. Cells link straight to that subnet's surfaces tab."
+          name="What's actually missing"
+          question="Subnets × required public-interface kinds. Cells link straight to that subnet's surfaces tab."
         >
           <AsyncPanel height="lg">
             <CoverageMatrix />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="completeness-distribution"
-          eyebrow="Distribution"
-          title="Registry shape"
-          description="Histogram of completeness across every scored profile. Median and quartile markers show where the registry sits today."
+          name="Registry shape"
+          question="Histogram of completeness across every scored profile. Median and quartile markers show where the registry sits today."
         >
           <AsyncPanel height="md">
             <CompletenessHistogram />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
         <AsyncPanel height="lg">
           <OpenGapsSection />
@@ -117,91 +112,83 @@ export function GapsPage() {
             indistinguishable from the outside". This is that decision, made the
             other way -- they are the four stages of registry intake, and this
             is the console where someone asks where it has stalled. */}
-        <PageSection
+        <AnalyticsSection
           id="registry-pipeline"
-          eyebrow="Intake"
-          title="Registry pipeline"
-          description="Discovered, curated, profiled — and the snapshot of what each source actually said."
+          name="Registry pipeline"
+          question="Discovered, curated, profiled — and the snapshot of what each source actually said."
         >
           <RegistryPipelinePanel />
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="profile-completeness"
-          eyebrow="Coverage"
-          title="Profile completeness"
-          description="Per-subnet completeness across required public-interface kinds."
+          name="Profile completeness"
+          question="Per-subnet completeness across required public-interface kinds."
         >
           <AsyncPanel height="md">
             <CompletenessList />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="adapter-candidates"
-          eyebrow="Pilots"
-          title="Adapter candidates"
-          description="Subnets where a maintained adapter would unlock the highest registry value."
+          name="Adapter candidates"
+          question="Subnets where a maintained adapter would unlock the highest registry value."
         >
           <AsyncPanel height="md">
             <AdapterCandidates />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="enrichment-queue"
-          eyebrow="Queue"
-          title="Enrichment queue"
-          description="Prioritized list of registry entries awaiting verification or enrichment."
+          name="Enrichment queue"
+          question="Prioritized list of registry entries awaiting verification or enrichment."
         >
           <AsyncPanel height="md">
             <EnrichmentQueue />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="enrichment-targets"
-          eyebrow="Targets"
-          title="Enrichment targets"
-          description="Per-target contributor task board — the specific surfaces to add per subnet, ranked by priority."
+          name="Enrichment targets"
+          question="Per-target contributor task board — the specific surfaces to add per subnet, ranked by priority."
         >
           <AsyncPanel height="md">
             <EnrichmentTargets />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="enrichment-evidence"
-          eyebrow="Evidence"
-          title="Enrichment evidence"
-          description="The detailed candidate evidence behind the enrichment queue — one level down from the summary above."
+          name="Enrichment evidence"
+          question="The detailed candidate evidence behind the enrichment queue — one level down from the summary above."
         >
           <AsyncPanel height="md">
             <EnrichmentEvidence />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="attribution-candidates"
-          eyebrow="Unjudged"
-          title="Attribution candidates"
-          description="Addresses the sweep found in the text of pages subnets publish, which nobody has judged yet. Each row is a LEAD, not an attribution — open the source and decide."
+          name="Attribution candidates"
+          question="Addresses the sweep found in the text of pages subnets publish, which nobody has judged yet. Each row is a LEAD, not an attribution — open the source and decide."
         >
           <AsyncPanel height="md">
             <AttributionCandidates />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
 
-        <PageSection
+        <AnalyticsSection
           id="gap-priorities"
-          eyebrow="Priorities"
-          title="Gap priorities"
-          description="Priority-scored per-subnet gap board — ranked separately from the interface-facet gaps above."
+          name="Gap priorities"
+          question="Priority-scored per-subnet gap board — ranked separately from the interface-facet gaps above."
         >
           <AsyncPanel height="md">
             <GapPriorityList />
           </AsyncPanel>
-        </PageSection>
+        </AnalyticsSection>
       </main>
 
       <ApiSourceFooter
@@ -233,8 +220,6 @@ function GapsKpiStrip() {
   const adapters = adaptersRes.data ?? [];
 
   const high = gaps.filter((g) => g.severity === "high").length;
-  const medium = gaps.filter((g) => g.severity === "medium").length;
-  const low = gaps.filter((g) => !g.severity || g.severity === "low").length;
   const avgComp =
     completeness.length > 0
       ? Math.round(
@@ -242,74 +227,36 @@ function GapsKpiStrip() {
         )
       : null;
   // Below-50% subnets distribution for the queue tile.
-  const below50 = completeness.filter((r) => (r.completeness ?? 0) < 0.5).length;
-  const above75 = completeness.filter((r) => (r.completeness ?? 0) >= 0.75).length;
 
   return (
     <Panel
-      as="div"
       flush
       bodyClassName="grid grid-cols-2 md:grid-cols-5 divide-x divide-border overflow-hidden"
     >
-      <StatWithSpark
+      <FactCell
         label="Open gaps"
         value={gaps.length}
-        full="Outstanding registry gaps across all subnets, split by severity."
-        hint={`${high} high · ${medium} med · ${low} low`}
-        updatedAt={gapsRes.meta?.generated_at}
-        viz={
-          <MiniStack
-            segments={[
-              { label: "high", value: high, color: "var(--health-down)" },
-              { label: "med", value: medium, color: "var(--health-warn)" },
-              { label: "low", value: low, color: "var(--ink-subtle)" },
-            ]}
-          />
-        }
+        hint="Outstanding registry gaps across all subnets, split by severity."
       />
-      <StatWithSpark
+      <FactCell
         label="High severity"
         value={high}
-        tone={high > 0 ? "down" : "default"}
-        hint={high === 0 ? "none open" : "needs attention"}
-        full="Count of gaps marked `high` — these are blocking registry curation."
-        updatedAt={gapsRes.meta?.generated_at}
+        hint="Count of gaps marked `high` — these are blocking registry curation."
       />
-      <StatWithSpark
+      <FactCell
         label="Avg completeness"
         value={avgComp != null ? `${avgComp}%` : "—"}
-        tone={
-          avgComp != null && avgComp >= 75
-            ? "ok"
-            : avgComp != null && avgComp < 50
-              ? "warn"
-              : "default"
-        }
-        hint={`${completeness.length} scored`}
-        full="Mean profile completeness across all scored subnets. Updated when the review pipeline reruns."
-        updatedAt={completenessRes.meta?.generated_at}
-        viz={
-          <div className="flex items-center gap-2">
-            <MiniRadial value={avgComp != null ? avgComp / 100 : 0} size={20} stroke={3} />
-            <span className="text-10 text-ink-muted truncate">
-              {above75} ≥75% · {below50} &lt;50%
-            </span>
-          </div>
-        }
+        hint="Mean profile completeness across all scored subnets. Updated when the review pipeline reruns."
       />
-      <StatWithSpark
+      <FactCell
         label="Adapter candidates"
         value={adapters.length}
-        hint="prioritized leads"
-        full="Subnets where a maintained adapter would unlock the most registry value."
-        updatedAt={adaptersRes.meta?.generated_at}
+        hint="Subnets where a maintained adapter would unlock the most registry value."
       />
-      <StatWithSpark
+      <FactCell
         label="Queue depth"
         value={queue.length}
-        hint="awaiting enrichment"
-        full="Items the enrichment pipeline has flagged for human review or re-probe."
-        updatedAt={queueRes.meta?.generated_at}
+        hint="Items the enrichment pipeline has flagged for human review or re-probe."
       />
     </Panel>
   );
@@ -354,11 +301,10 @@ function MissingKindsAtAGlance() {
   };
 
   return (
-    <PageSection
+    <AnalyticsSection
       id="missing-kinds"
-      eyebrow="At a glance"
-      title="Missing kinds across the registry"
-      description="Click a row to filter the open-gaps section by that resource kind and jump straight to it."
+      name="Missing kinds across the registry"
+      question="Click a row to filter the open-gaps section by that resource kind and jump straight to it."
     >
       <ul className="rounded border border-border bg-card divide-y divide-border">
         {counts.map(([k, n]) => {
@@ -442,13 +388,8 @@ function MissingKindsAtAGlance() {
           </button>
         </div>
       ) : null}
-    </PageSection>
+    </AnalyticsSection>
   );
-}
-
-function GapsMethodology() {
-  const gapsRes = useSuspenseQuery(gapsQuery()).data;
-  return <MethodologyCallout generatedAt={gapsRes.meta?.generated_at} windowLabel="snapshot" />;
 }
 
 /* --------------------------- Open gaps + filters --------------------------- */
@@ -572,12 +513,11 @@ function OpenGapsSection() {
   );
 
   return (
-    <PageSection
+    <AnalyticsSection
       id="open-gaps"
-      eyebrow="Open gaps"
-      title="Missing evidence, by priority"
-      description="Filter by status, curation target, and missing resource kind."
-      toolbar={toolbar}
+      name="Missing evidence, by priority"
+      question="Filter by status, curation target, and missing resource kind."
+      controls={toolbar}
     >
       <div className="flex flex-wrap gap-1.5">
         {MISSING_KINDS.map((k) => {
@@ -691,7 +631,7 @@ function OpenGapsSection() {
           </button>
         </div>
       ) : null}
-    </PageSection>
+    </AnalyticsSection>
   );
 }
 
@@ -743,154 +683,106 @@ function GapRow({
   // card owns its own open state (no single-expanded coordination) -- the
   // simpler option the issue allows, and it keeps expand/collapse purely
   // presentational so it never has to touch the URL-synced filters/sort.
-  const identityLabel =
-    gap.netuid != null
-      ? `SN${gap.netuid}${subnet?.name ? ` · ${subnet.name}` : ""}`
-      : "Unscoped gap";
-  const hintText = gap.title ?? gap.description ?? undefined;
-  const visibleKinds = gapKinds.slice(0, 3);
-  const overflowKindCount = gapKinds.length - visibleKinds.length;
-
-  const trailing = (
-    <span className="flex items-center gap-1.5">
-      <span aria-hidden className={classNames("size-1.5 shrink-0 rounded-full mg-dot", sevTint)} />
-      {gapKinds.length > 0 ? (
-        <span className="text-10 text-ink-muted">{gapKinds.length}</span>
-      ) : null}
-      {visibleKinds.length > 0 ? (
-        <span className="flex items-center gap-1">
-          {visibleKinds.map((k) => (
-            <span
-              key={k}
-              className="text-10 inline-flex h-4 items-center rounded border border-border bg-paper px-1.5 text-ink-muted"
-            >
-              {k}
-            </span>
-          ))}
-          {overflowKindCount > 0 ? (
-            <span className="text-10 inline-flex h-4 items-center rounded border border-border bg-paper px-1.5 text-ink-muted">
-              +{overflowKindCount}
-            </span>
-          ) : null}
-        </span>
-      ) : null}
-    </span>
-  );
 
   return (
     <li>
-      <MobileCollapse
-        label={identityLabel}
-        hint={hintText}
-        trailing={trailing}
+      <Panel
+        flush
         className={classNames(
-          "md:rounded md:border md:bg-card md:p-4 md:transition-colors",
-          matchedKind
-            ? "rounded ring-1 ring-inset ring-accent/30 md:border-accent/50"
-            : "md:border-border md:hover:border-accent/40",
+          matchedKind ? "ring-1 ring-inset ring-accent/30" : null,
+          "md:border-0 md:rounded-none md:bg-transparent md:p-0 md:ring-0",
         )}
       >
-        <Panel
-          as="div"
-          flush
-          interactive={!matchedKind}
-          tone={matchedKind ? "accent" : "default"}
-          tintBorderOnly={!!matchedKind}
-          className={classNames(
-            matchedKind ? "ring-1 ring-inset ring-accent/30" : null,
-            "md:border-0 md:rounded-none md:bg-transparent md:p-0 md:ring-0",
-          )}
-        >
-          <div className="grid grid-cols-[6px_1fr_auto] gap-3 p-4">
-            <span aria-hidden className={classNames("rounded", sevTint)} />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <SeverityChip severity={gap.severity} />
-                {gap.category ? (
-                  <span
-                    className={classNames(
-                      "text-10 inline-flex h-5 items-center rounded border px-2",
-                      matchedKind
-                        ? "border-accent/50 bg-primary-soft text-accent"
-                        : "border-transparent text-ink-muted",
-                    )}
-                  >
-                    {gap.category}
-                  </span>
-                ) : null}
-                {gap.netuid != null ? (
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: gap.netuid }}
-                    className="inline-flex items-center gap-1.5 text-10 text-accent hover:underline"
-                  >
-                    <BrandIcon
-                      url={subnet?.website}
-                      iconUrl={subnet?.icon_url}
-                      netuid={gap.netuid}
-                      name={subnet?.name}
-                      fallback={gap.netuid}
-                      size={14}
-                    />
-                    <span>SN{gap.netuid}</span>
-                    {subnet?.name ? (
-                      <span className="font-display text-13 text-ink normal-case">
-                        · {subnet.name}
-                      </span>
-                    ) : null}
-                  </Link>
-                ) : null}
-              </div>
-              <div className="font-medium text-ink-strong">{gap.title ?? gap.id}</div>
-              {gap.description ? (
-                <p className="mt-1 text-13 text-ink-muted leading-relaxed line-clamp-2">
-                  {gap.description}
-                </p>
+        <div className="grid grid-cols-[6px_1fr_auto] gap-3 p-4">
+          <span aria-hidden className={classNames("rounded", sevTint)} />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <SeverityChip severity={gap.severity} />
+              {gap.category ? (
+                <span
+                  className={classNames(
+                    "text-10 inline-flex h-5 items-center rounded border px-2",
+                    matchedKind
+                      ? "border-accent/50 bg-primary-soft text-accent"
+                      : "border-transparent text-ink-muted",
+                  )}
+                >
+                  {gap.category}
+                </span>
               ) : null}
-              {gap.suggested_action ? (
-                <p className="mt-1.5 text-13 text-ink">↳ {gap.suggested_action}</p>
-              ) : null}
-              {matchedKind && (rawSources.length > 0 || gap.netuid != null) ? (
-                <div className="text-13 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-ink-muted">
-                  <span>relevant sources:</span>
-                  {rawSources.map((s) => (
-                    <ExternalLink key={s.href} href={s.href} className="text-13 normal-case">
-                      {s.label}
-                    </ExternalLink>
-                  ))}
-                  {rawSources.length === 0 && gap.netuid != null ? (
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: gap.netuid }}
-                      hash="evidence"
-                      className="text-accent hover:underline normal-case"
-                    >
-                      evidence on SN{gap.netuid}
-                    </Link>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
               {gap.netuid != null ? (
                 <Link
                   to="/subnets/$netuid"
                   params={{ netuid: gap.netuid }}
-                  className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-accent hover:border-accent/40"
+                  className="inline-flex items-center gap-1.5 text-10 text-accent hover:underline"
                 >
-                  open
+                  <BrandIcon
+                    url={subnet?.website}
+                    iconUrl={subnet?.icon_url}
+                    netuid={gap.netuid}
+                    name={subnet?.name}
+                    fallback={gap.netuid}
+                    size={14}
+                  />
+                  <span>SN{gap.netuid}</span>
+                  {subnet?.name ? (
+                    <span className="font-display text-13 text-ink normal-case">
+                      · {subnet.name}
+                    </span>
+                  ) : null}
                 </Link>
               ) : null}
-              <ExternalLink
-                href={`${GITHUB_REPO}/issues/new?title=${encodeURIComponent(`gap: ${gap.title ?? gap.id}`)}`}
+            </div>
+            <div className="font-medium text-ink-strong">{gap.title ?? gap.id}</div>
+            {gap.description ? (
+              <p className="mt-1 text-13 text-ink-muted leading-relaxed line-clamp-2">
+                {gap.description}
+              </p>
+            ) : null}
+            {gap.suggested_action ? (
+              <p className="mt-1.5 text-13 text-ink">↳ {gap.suggested_action}</p>
+            ) : null}
+            {matchedKind && (rawSources.length > 0 || gap.netuid != null) ? (
+              <div className="text-13 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-ink-muted">
+                <span>relevant sources:</span>
+                {rawSources.map((s) => (
+                  <ExternalLink key={s.href} href={s.href} className="text-13 normal-case">
+                    {s.label}
+                  </ExternalLink>
+                ))}
+                {rawSources.length === 0 && gap.netuid != null ? (
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: gap.netuid }}
+                    hash="evidence"
+                    className="text-accent hover:underline normal-case"
+                  >
+                    evidence on SN{gap.netuid}
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            {gap.netuid != null ? (
+              <Link
+                to="/subnets/$netuid"
+                params={{ netuid: gap.netuid }}
                 className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-accent hover:border-accent/40"
               >
-                file
-              </ExternalLink>
-            </div>
+                open
+              </Link>
+            ) : null}
+            <ExternalLink
+              href={`${GITHUB_REPO}/issues/new?title=${encodeURIComponent(`gap: ${gap.title ?? gap.id}`)}`}
+              className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-accent hover:border-accent/40"
+            >
+              file
+            </ExternalLink>
           </div>
-        </Panel>
-      </MobileCollapse>
+        </div>
+      </Panel>
+      trailing
     </li>
   );
 }
@@ -1048,7 +940,7 @@ function EnrichmentQueue() {
       />
     );
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-13">
           <thead className="text-10 bg-surface-2/60 text-ink-muted">
@@ -1104,7 +996,7 @@ function EnrichmentTargets() {
       />
     );
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-13">
           <thead className="text-10 bg-surface-2/60 text-ink-muted">
@@ -1165,7 +1057,7 @@ function EnrichmentEvidence() {
       />
     );
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-13">
           <thead className="text-10 bg-surface-2/60 text-ink-muted">
@@ -1243,7 +1135,7 @@ function AttributionCandidates() {
       />
     );
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-13">
           <thead className="text-10 bg-surface-2/60 text-ink-muted">

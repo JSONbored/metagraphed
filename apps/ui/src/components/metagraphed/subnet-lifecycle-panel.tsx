@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { subnetDeregistrationStandingQuery, subnetLifecycleQuery } from "@/lib/metagraphed/queries";
 import type { DeregistrationStanding, SubnetLifecycleEntry } from "@/lib/metagraphed/types";
-import { StatTile, TimeAgo } from "@jsonbored/ui-kit";
+import { TimeAgo, FactCell } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -103,17 +103,17 @@ function StandingCard({
           <>
             {/* Deliberately NOT a rank. An immune subnet is outside the
                 ranking, and a number here would read as a position in it. */}
-            <StatTile eyebrow="Status" value="Immune" />
-            <StatTile
-              eyebrow="Until block"
+            <FactCell label="Status" value="Immune" />
+            <FactCell
+              label="Until block"
               value={
                 standing.immune_until_block === null
                   ? "—"
                   : formatNumber(standing.immune_until_block)
               }
             />
-            <StatTile
-              eyebrow="Blocks remaining"
+            <FactCell
+              label="Blocks remaining"
               value={
                 standing.blocks_until_prunable === null
                   ? "—"
@@ -123,16 +123,16 @@ function StandingCard({
           </>
         ) : (
           <>
-            <StatTile
-              eyebrow="Rank"
+            <FactCell
+              label="Rank"
               value={standing.rank === null ? "—" : `#${standing.rank}`}
               hint={rankedCount === null ? undefined : `of ${formatNumber(rankedCount)} prunable`}
             />
-            <StatTile eyebrow="Status" value="Prunable" />
+            <FactCell label="Status" value="Prunable" />
           </>
         )}
-        <StatTile
-          eyebrow="Comparison price"
+        <FactCell
+          label="Comparison price"
           value={formatAlphaPrice(standing.comparison_price)}
           hint={
             standing.comparison_price !== null &&

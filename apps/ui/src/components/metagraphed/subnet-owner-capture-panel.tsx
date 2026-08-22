@@ -45,7 +45,7 @@ export function SubnetOwnerCapturePanel({ netuid }: { netuid: number }) {
   const latest = card.points[0];
 
   return (
-    <Panel as="section">
+    <Panel>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
         <Figure
           label="protocol cut (L1)"

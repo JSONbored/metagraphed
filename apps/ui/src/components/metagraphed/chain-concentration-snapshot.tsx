@@ -23,7 +23,6 @@ export function ChainConcentrationSnapshot({
     <ChartCard
       title="Stake & emission concentration"
       caption="Current snapshot, not a trend — the network-wide concentration endpoint has no historical window."
-      updatedAt={concentration.captured_at}
       height={120}
       empty={!hasData}
     >

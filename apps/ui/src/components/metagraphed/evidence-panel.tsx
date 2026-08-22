@@ -145,7 +145,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
       </div>
 
       {sortedGroups.map(([source, items]) => (
-        <Panel as="div" key={source}>
+        <Panel key={source}>
           <div className="flex items-center justify-between mb-2 gap-3">
             <span className="text-10 text-ink-muted">{source}</span>
             <span className="flex items-center gap-2 text-10 text-ink-muted">

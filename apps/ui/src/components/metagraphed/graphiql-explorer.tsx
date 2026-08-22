@@ -43,7 +43,6 @@ export function GraphiqlExplorer({
 function ExplorerFallback({ heightClassName }: { heightClassName: string }) {
   return (
     <Panel
-      as="div"
       flush
       className={classNames(
         "flex items-center justify-center font-mono text-13 text-ink-muted",

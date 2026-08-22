@@ -63,7 +63,7 @@ export function ChainEventCard({ event }: { event: ChainEvent }) {
   // -- never a guessed sentence.
   const sentence = summarizeEvent(event.pallet, event.method, event.args);
   return (
-    <Panel as="div" className="min-h-11">
+    <Panel className="min-h-11">
       <div className="flex items-baseline justify-between gap-2">
         <span className="min-w-0 truncate text-11 text-ink-strong">
           {sentence ?? extrinsicCall(event.pallet, event.method)}

@@ -36,7 +36,7 @@ interface Props {
    * Icon-only, borderless square segment (fixed size-8, no own
    * border/rounded/bg) meant to sit inside a shared `divide-x` bar
    * alongside other icon actions (e.g. `PrimaryLinksRail bare`) —
-   * matching SegmentedToggle/ViewModeToggle's one connected-bar look.
+   * matching RangeControl/ViewModeToggle's one connected-bar look.
    * Takes precedence over `bare`/`iconOnly` if set.
    */
   connected?: boolean;

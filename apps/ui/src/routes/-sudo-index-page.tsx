@@ -38,7 +38,7 @@ export function SudoKeyCard() {
   const queriedAt = keyResult.data?.data.queried_at;
 
   return (
-    <Panel as="div" className="mb-6">
+    <Panel className="mb-6">
       <div className="text-10 text-ink-muted">Current Sudo key</div>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="font-mono text-11 text-ink-strong">

@@ -20,15 +20,14 @@ import {
   CurationChip,
   ReviewChip,
   ExternalLink,
-  SectionHeading,
   BrandIcon,
   ShareButton,
   DownloadCsvButton,
-  ActionBar,
   ViewModeToggle,
   ListShell,
   LoadMore,
   SparkLegend,
+  SectionHead,
 } from "@jsonbored/ui-kit";
 import {
   TimeRangeProvider,
@@ -101,11 +100,11 @@ export function SurfacesPage() {
               })
             }
           />
-          <ActionBar>
+          <div className="mg-actions">
             <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
             <DownloadCsvButton url={surfacesCsvUrl} bare />
             <ShareButton bare />
-          </ActionBar>
+          </div>
         </ApisTabActions>
         <AsyncPanel
           height="xl"
@@ -119,7 +118,7 @@ export function SurfacesPage() {
           <SurfacesTable view={viewMode} />
         </AsyncPanel>
         <section className="mt-section">
-          <SectionHeading title="Evidence & sources" />
+          <SectionHead name="Evidence & sources" />
           <EvidencePanel />
         </section>
         {/* #10300: /api/v1/fixtures/{surface_id} was published and rendered
@@ -462,7 +461,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
   };
 
   const cardFor = (s: Surface) => (
-    <Panel as="div" key={s.id} className="min-h-11">
+    <Panel key={s.id} className="min-h-11">
       <div className="flex items-center justify-between gap-2">
         <span className="text-10 text-ink-muted">{s.kind ?? "surface"}</span>
         <div className="flex items-center gap-1.5">

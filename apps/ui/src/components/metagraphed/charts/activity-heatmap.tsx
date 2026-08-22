@@ -106,7 +106,7 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
   if (!hydrated || tLoading) return <Skeleton className="h-44 w-full" />;
 
   return (
-    <Panel as="div" flush className="overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border bg-paper">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-13 text-ink-muted">Registry activity</span>

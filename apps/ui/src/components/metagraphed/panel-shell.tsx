@@ -1,7 +1,7 @@
 import { Component, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
-import { Panel, SectionAnchor, TimeAgo, type SectionTone } from "@jsonbored/ui-kit";
+import { Panel, TimeAgo, AnalyticsSection } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { classNames, isStaleFreshness, isUsableTimestamp } from "@/lib/metagraphed/format";
 import { reportError } from "@/lib/error-reporting";
@@ -26,7 +26,6 @@ interface PanelShellProps {
   isEmpty?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
-  tone?: SectionTone;
   children: ReactNode;
 }
 
@@ -48,7 +47,6 @@ export function PanelShell({
   isEmpty,
   emptyTitle,
   emptyDescription,
-  tone,
   children,
 }: PanelShellProps) {
   const queryClient = useQueryClient();
@@ -59,7 +57,7 @@ export function PanelShell({
   // the query resolves in the gap between them — gate the timestamp pill
   // behind hydration so both passes agree, matching useHydrated's own doc.
   const hydrated = useHydrated();
-  const showFreshnessPill = hydrated && isUsableTimestamp(meta?.generatedAt);
+  const showTimestamp = hydrated && isUsableTimestamp(meta?.generatedAt);
   // isLoading is caller-supplied and usually derived from a plain (non-suspense)
   // useQuery, so it can already be `false` by hydration time even though SSR
   // committed the loading branch — stay loading until hydration completes so
@@ -84,7 +82,7 @@ export function PanelShell({
   const headerRight = (
     <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2 min-w-0">
       <div className="flex items-center gap-2">
-        {showFreshnessPill ? (
+        {showTimestamp ? (
           <span
             className={
               "inline-flex items-center gap-1 rounded border px-2 py-0.5 text-10" +
@@ -114,13 +112,12 @@ export function PanelShell({
   );
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id={id}
-      title={title}
-      subtitle={subtitle}
-      info={info}
-      right={headerRight}
-      tone={tone}
+      name={title}
+      question={subtitle}
+      footnote={info}
+      controls={headerRight}
     >
       <PanelErrorBoundary
         refreshQueryKeys={refreshQueryKeys}
@@ -128,7 +125,7 @@ export function PanelShell({
         context={typeof title === "string" ? title : id}
       >
         {effectiveLoading ? (
-          <Panel as="div" aria-busy="true" aria-live="polite">
+          <Panel aria-busy="true" aria-live="polite">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="mt-3 h-8 w-full" />
             <Skeleton className="mt-2 h-8 w-3/4" />
@@ -144,7 +141,7 @@ export function PanelShell({
           <div className={classNames(refreshing && "mg-refreshing")}>{children}</div>
         )}
       </PanelErrorBoundary>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 

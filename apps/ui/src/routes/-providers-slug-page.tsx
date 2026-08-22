@@ -7,12 +7,15 @@ import { Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
   BrandIcon,
-  PrimaryLinksRail,
   CopyableCode,
-  SectionAnchor,
   ShareButton,
+  AnalyticsSection,
+  Raw,
+  RangeControl,
+  EntityHero,
+  FactSentence,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, TabStrip } from "@/components/metagraphed/primitives";
+import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
@@ -80,27 +83,30 @@ function ProviderShell({ slug }: { slug: string }) {
       {/* No breadcrumb row here: the app-shell's own row is the single
           canonical trail (#7853). AppShell's `crumbLabel` prop carries the
           provider's display name this used to render redundantly. */}
-      <PageMasthead
-        eyebrow={["Provider", p?.kind, p?.authority].filter(Boolean).join(" · ")}
-        title={p?.name ?? slug}
-        description={
-          p?.notes ?? "Public Bittensor infrastructure, endpoints, and supporting evidence."
-        }
-        live={(summary?.by_status?.ok ?? 0) > 0}
-        actions={
+      <EntityHero
+        name={p?.name ?? slug}
+        action={
           <Panel
-            as="div"
             flush
             bodyClassName="inline-flex items-center divide-x divide-border overflow-hidden"
           >
-            <PrimaryLinksRail
-              bare
-              website={p?.website ?? p?.homepage}
-              docs={p?.docs}
-              repo={p?.repo}
+            <Raw
+              title="Links"
+              rows={[
+                ...((v) => (v ? [{ label: "Website", value: v, href: v }] : []))(
+                  p?.website ?? p?.homepage,
+                ),
+                ...((v) => (v ? [{ label: "Docs", value: v, href: v }] : []))(p?.docs),
+                ...((v) => (v ? [{ label: "Repository", value: v, href: v }] : []))(p?.repo),
+              ]}
             />
             <ShareButton connected />
           </Panel>
+        }
+        sentence={
+          <FactSentence>
+            {p?.notes ?? "Public Bittensor infrastructure, endpoints, and supporting evidence."}
+          </FactSentence>
         }
       />
       {shouldShowProviderSlugSubtitle(p?.name, slug) ? (
@@ -123,13 +129,13 @@ function ProviderShell({ slug }: { slug: string }) {
         />
       ) : null}
 
-      <TabStrip
-        items={TABS.map((item) =>
+      <RangeControl
+        options={TABS.map((item) =>
           item.id === "endpoints" ? { ...item, meta: summary?.endpoint_count } : item,
-        )}
+        ).map((t) => ({ value: t.id, label: String(t.label) }))}
         value={tab}
         onChange={setTab}
-        ariaLabel="Provider profile sections"
+        label="Provider profile sections"
         className="mt-4 overflow-x-auto"
       />
 
@@ -186,11 +192,11 @@ function ProviderPulseTile({ label, value, tone }: { label: string; value: strin
 function OverviewPanel({ slug }: { slug: string }) {
   return (
     <>
-      <SectionAnchor
+      <AnalyticsSection
         id="endpoints-glance"
-        title="Endpoints at a glance"
-        subtitle="Root RPC/WSS, SSE/data streams, and open incidents — one tap to expand."
-        info="Compact operational summary across this provider's endpoints."
+        name="Endpoints at a glance"
+        question="Root RPC/WSS, SSE/data streams, and open incidents — one tap to expand."
+        footnote="Compact operational summary across this provider's endpoints."
       >
         <AsyncPanel
           height="md"
@@ -199,13 +205,13 @@ function OverviewPanel({ slug }: { slug: string }) {
         >
           <EndpointsGlanceLoader slug={slug} />
         </AsyncPanel>
-      </SectionAnchor>
+      </AnalyticsSection>
 
-      <SectionAnchor
+      <AnalyticsSection
         id="subnets-served-preview"
-        title="Subnets served"
-        subtitle="Active netuids where this provider operates endpoints."
-        info="Grouped by netuid — click any to open the subnet profile."
+        name="Subnets served"
+        question="Active netuids where this provider operates endpoints."
+        footnote="Grouped by netuid — click any to open the subnet profile."
       >
         <AsyncPanel
           height="sm"
@@ -217,18 +223,18 @@ function OverviewPanel({ slug }: { slug: string }) {
         >
           <SubnetsServedGrid slug={slug} compact />
         </AsyncPanel>
-      </SectionAnchor>
+      </AnalyticsSection>
     </>
   );
 }
 
 function EndpointsPanel({ slug }: { slug: string }) {
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="endpoints"
-      title="Endpoints"
-      subtitle="Probe-derived health, latency, and freshness."
-      info="Each endpoint is probed periodically. Health reflects the most recent probe."
+      name="Endpoints"
+      question="Probe-derived health, latency, and freshness."
+      footnote="Each endpoint is probed periodically. Health reflects the most recent probe."
     >
       <AsyncPanel
         height="lg"
@@ -237,16 +243,16 @@ function EndpointsPanel({ slug }: { slug: string }) {
       >
         <EndpointsTableLoader slug={slug} />
       </AsyncPanel>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
 function SubnetsServedPanel({ slug }: { slug: string }) {
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="subnets-served"
-      title="Subnets served"
-      subtitle="Active netuids where this provider operates endpoints."
+      name="Subnets served"
+      question="Active netuids where this provider operates endpoints."
     >
       <AsyncPanel
         height="md"
@@ -258,7 +264,7 @@ function SubnetsServedPanel({ slug }: { slug: string }) {
       >
         <SubnetsServedGrid slug={slug} />
       </AsyncPanel>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 
@@ -406,11 +412,11 @@ function EvidencePanel({
   provider: { website?: string; homepage?: string; docs?: string; repo?: string };
 }) {
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="evidence"
-      title="Evidence & source links"
-      subtitle="Public references and canonical data behind this profile."
-      info="Provider links are source context; canonical API and artifact URLs expose the normalized registry record."
+      name="Evidence & source links"
+      question="Public references and canonical data behind this profile."
+      footnote="Provider links are source context; canonical API and artifact URLs expose the normalized registry record."
     >
       <div className="space-y-2">
         {(provider.website ?? provider.homepage) ? (
@@ -433,6 +439,6 @@ function EvidencePanel({
           />
         ) : null}
       </div>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }

@@ -54,7 +54,7 @@ function SubnetValidatorsPreviewLoader({ netuid }: { netuid: number }) {
   return (
     <div className="mt-6 space-y-3">
       {sponsored ? <SponsoredValidatorCallout netuid={netuid} validator={sponsored} /> : null}
-      <Panel as="div">
+      <Panel>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <span className="text-13 text-ink-muted">Top validators · by stake</span>
           <button

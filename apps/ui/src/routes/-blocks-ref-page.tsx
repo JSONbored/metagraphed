@@ -9,7 +9,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
-import { FileText, Zap, CheckCircle2, ChevronDown, ChevronRight, DollarSign } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { ChainWalkRibbon } from "@/components/metagraphed/blocks/chain-walk-ribbon";
 import { NeighborCompare } from "@/components/metagraphed/blocks/neighbor-compare";
@@ -18,7 +18,7 @@ import { PalletMethodBreakdown } from "@/components/metagraphed/blocks/pallet-me
 import { ShortcutsDialog } from "@/components/metagraphed/blocks/shortcuts-dialog";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
@@ -28,13 +28,14 @@ import {
   Kbd,
   TimeAgo,
   ShareButton,
-  ActionBar,
-  SectionAnchor,
-  StatTile,
   TableState,
   DownloadCsvButton,
   BackToTop,
   Definition,
+  AnalyticsSection,
+  FactCell,
+  EntityHero,
+  FactSentence,
 } from "@jsonbored/ui-kit";
 import {
   blockChainEventsQuery,
@@ -169,27 +170,18 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
   return (
     <>
       <ShortcutsDialog blockRef={refValue} />
-      <PageMasthead
-        eyebrow="Explorer · block"
-        live
-        title={`#${formatNumber(block.block_number)}`}
-        description={
-          block.block_hash ? (
-            <CopyableCode value={block.block_hash} className="max-w-full" />
-          ) : (
-            <span className="text-ink-muted">—</span>
-          )
-        }
-        actions={
+      <EntityHero
+        name={`#${formatNumber(block.block_number)}`}
+        action={
           <>
-            <ActionBar>
+            <div className="mg-actions">
               <BlockNeighborNav prev={prevBlockNumber} next={nextBlockNumber} hash={sectionHash} />
               <ValueUnitControl />
               <div className="hidden sm:flex">
                 <JumpToBlock />
               </div>
               <ShareButton bare />
-            </ActionBar>
+            </div>
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner
                 compact
@@ -199,7 +191,15 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
             ) : null}
           </>
         }
-        caption="explorer / v1"
+        sentence={
+          <FactSentence>
+            {block.block_hash ? (
+              <CopyableCode value={block.block_hash} className="max-w-full" />
+            ) : (
+              <span className="text-ink-muted">—</span>
+            )}
+          </FactSentence>
+        }
       />
 
       <RelatedEntityChipRow>
@@ -230,14 +230,6 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           const withResult = extrinsics.filter((e) => e.success != null);
           const successful = withResult.filter((e) => e.success).length;
           const successRate = withResult.length > 0 ? (successful / withResult.length) * 100 : null;
-          const rateTone: "accent" | "warn" | "down" | "default" =
-            successRate == null
-              ? "default"
-              : successRate >= 99
-                ? "accent"
-                : successRate >= 90
-                  ? "warn"
-                  : "down";
           // Sum of τ moved by economically-relevant events in this block.
           // Only events that expose an `amount_tao` contribute — this is a
           // signal, not a settlement total.
@@ -259,33 +251,27 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   sync's head. A count we do not have is not a count of zero,
                   and the Success tile below already renders that distinction
                   correctly. */}
-              <StatTile
-                icon={FileText}
-                eyebrow="Extrinsics"
+              <FactCell
+                label="Extrinsics"
                 value={block.extrinsic_count == null ? "—" : formatNumber(block.extrinsic_count)}
-                tooltip={BLOCK_TERM_HINTS.extrinsic}
+                hint={BLOCK_TERM_HINTS.extrinsic}
               />
-              <StatTile
-                icon={Zap}
-                eyebrow="Events"
+              <FactCell
+                label="Events"
                 value={block.event_count == null ? "—" : formatNumber(block.event_count)}
-                tooltip={BLOCK_TERM_HINTS.event}
+                hint={BLOCK_TERM_HINTS.event}
               />
-              <StatTile
-                icon={CheckCircle2}
-                eyebrow="Success"
+              <FactCell
+                label="Success"
                 value={
                   successRate == null ? "—" : `${successRate.toFixed(successRate === 100 ? 0 : 1)}%`
                 }
-                tone={rateTone}
-                tooltip={BLOCK_TERM_HINTS.successRate}
+                hint={BLOCK_TERM_HINTS.successRate}
               />
-              <StatTile
-                icon={DollarSign}
-                eyebrow="Value moved"
+              <FactCell
+                label="Value moved"
                 value={valueMovedNode}
-                tone={valueMoved > 0 ? "accent" : "default"}
-                tooltip={BLOCK_TERM_HINTS.valueMoved}
+                hint={BLOCK_TERM_HINTS.valueMoved}
               />
             </div>
           );
@@ -297,14 +283,14 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           </span>
         </div>
 
-        <SectionAnchor id="chain" title="Chain walk" info={BLOCK_SECTION_HINTS.chain}>
+        <AnalyticsSection id="chain" name="Chain walk" footnote={BLOCK_SECTION_HINTS.chain}>
           <div className="space-y-3">
             <ChainWalkRibbon current={block} radius={3} />
             <NeighborCompare current={block} />
           </div>
-        </SectionAnchor>
+        </AnalyticsSection>
 
-        <SectionAnchor id="details" title="Block details" info={BLOCK_SECTION_HINTS.details}>
+        <AnalyticsSection id="details" name="Block details" footnote={BLOCK_SECTION_HINTS.details}>
           <dl className="rounded border border-border bg-card divide-y divide-border">
             <FieldRow label="Block number">
               <span className="font-mono text-13 text-ink-strong tabular-nums">
@@ -390,21 +376,21 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               </span>
             </FieldRow>
           </dl>
-        </SectionAnchor>
+        </AnalyticsSection>
 
-        <SectionAnchor
+        <AnalyticsSection
           id="metadata"
-          title="Block metadata"
-          info="Extended header fields (runtime version, storage roots) returned by the block API."
+          name="Block metadata"
+          footnote="Extended header fields (runtime version, storage roots) returned by the block API."
         >
           <BlockMetadataPanel block={block} />
-        </SectionAnchor>
+        </AnalyticsSection>
 
-        <SectionAnchor
+        <AnalyticsSection
           id="extrinsics"
-          title="Extrinsics"
-          info={BLOCK_SECTION_HINTS.extrinsics}
-          right={<DownloadCsvButton url={buildUrl(`/api/v1/blocks/${sourceRef}/extrinsics`)} />}
+          name="Extrinsics"
+          footnote={BLOCK_SECTION_HINTS.extrinsics}
+          controls={<DownloadCsvButton url={buildUrl(`/api/v1/blocks/${sourceRef}/extrinsics`)} />}
         >
           {extrinsicsQuery.isPending ? (
             <Skeleton className="h-44" />
@@ -424,7 +410,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               description="This block has no indexed extrinsics (or the poller window for this shard is still catching up)."
             />
           ) : (
-            <Panel as="div" flush className="overflow-x-auto">
+            <Panel flush className="overflow-x-auto">
               <table className="w-full text-left text-13">
                 <thead className="bg-surface">
                   <tr>
@@ -489,14 +475,14 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               </table>
             </Panel>
           )}
-        </SectionAnchor>
+        </AnalyticsSection>
 
-        <SectionAnchor
+        <AnalyticsSection
           id="events"
-          title="Events"
-          info={BLOCK_SECTION_HINTS.events}
-          subtitle="Grouped by parent extrinsic. System events (fees, deposits, ExtrinsicSuccess) are collapsed by default."
-          right={<DownloadCsvButton url={buildUrl(`/api/v1/blocks/${sourceRef}/events`)} />}
+          name="Events"
+          footnote={BLOCK_SECTION_HINTS.events}
+          question="Grouped by parent extrinsic. System events (fees, deposits, ExtrinsicSuccess) are collapsed by default."
+          controls={<DownloadCsvButton url={buildUrl(`/api/v1/blocks/${sourceRef}/events`)} />}
         >
           {eventsQuery.isPending ? (
             <Skeleton className="h-44" />
@@ -518,23 +504,23 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           ) : (
             <GroupedEvents events={events} extrinsics={extrinsics} />
           )}
-        </SectionAnchor>
+        </AnalyticsSection>
 
         {chainEvents.length > 0 ? (
-          <SectionAnchor
+          <AnalyticsSection
             id="pallets"
-            title="Pallet · method breakdown"
-            info="Ranked runtime pallet.method calls emitted by this block."
+            name="Pallet · method breakdown"
+            footnote="Ranked runtime pallet.method calls emitted by this block."
           >
             <PalletMethodBreakdown events={chainEvents} />
-          </SectionAnchor>
+          </AnalyticsSection>
         ) : null}
 
-        <SectionAnchor
+        <AnalyticsSection
           id="chain-events"
-          title="Chain events (raw)"
-          info={BLOCK_SECTION_HINTS.chainEventsRaw}
-          subtitle="Curated events above are grouped by extrinsic; this table is the raw per-event stream — every pallet-level event in the block, decoded from the chain."
+          name="Chain events (raw)"
+          footnote={BLOCK_SECTION_HINTS.chainEventsRaw}
+          question="Curated events above are grouped by extrinsic; this table is the raw per-event stream — every pallet-level event in the block, decoded from the chain."
         >
           <details className="group rounded border border-border bg-card">
             <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-13 font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -567,7 +553,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   description="This block has no decoded pallet events indexed yet, or the all-events backfill hasn't reached it."
                 />
               ) : (
-                <Panel as="div" flush className="overflow-x-auto">
+                <Panel flush className="overflow-x-auto">
                   <table className="w-full text-left text-13">
                     <thead className="bg-surface">
                       <tr>
@@ -612,13 +598,13 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               )}
             </div>
           </details>
-        </SectionAnchor>
+        </AnalyticsSection>
 
-        <SectionAnchor
+        <AnalyticsSection
           id="call"
-          title="Call this endpoint"
-          info={BLOCK_SECTION_HINTS.call}
-          subtitle="Copy a ready-to-run request for this block."
+          name="Call this endpoint"
+          footnote={BLOCK_SECTION_HINTS.call}
+          question="Copy a ready-to-run request for this block."
         >
           <details className="group rounded border border-border bg-card">
             <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-13 font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -643,7 +629,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               />
             </div>
           </details>
-        </SectionAnchor>
+        </AnalyticsSection>
 
         <ApiSourceFooter
           paths={[
@@ -765,7 +751,7 @@ function GroupedEvents({
   };
 
   return (
-    <Panel as="div" flush>
+    <Panel flush>
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="text-10 text-ink-muted">
           {groups.length} extrinsic{groups.length === 1 ? "" : "s"} · {events.length} event

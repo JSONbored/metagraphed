@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { subnetOhlcQuery } from "@/lib/metagraphed/queries";
-import { CandlestickMini, type CandlestickDatum } from "@jsonbored/ui-kit";
+import { CandlestickMini, type CandlestickDatum, RangeControl } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { classNames, formatTao, formatUsdApprox } from "@/lib/metagraphed/format";
+import { formatTao, formatUsdApprox } from "@/lib/metagraphed/format";
 import { alphaUsdCoverage } from "@/lib/metagraphed/alpha-usd.functions";
 
 // Lookback windows offered as pills. "max" is 365d, the server's own clamp
@@ -93,29 +93,12 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
   }, [data?.candles, days, interval]);
 
   const windowSelector = (
-    <div
-      role="tablist"
-      aria-label="Price history window"
-      className="inline-flex rounded border border-border bg-surface p-0.5"
-    >
-      {WINDOWS.map((w) => (
-        <button
-          key={w.key}
-          type="button"
-          role="tab"
-          aria-selected={w.key === windowKey}
-          onClick={() => setWindowKey(w.key)}
-          className={classNames(
-            "px-2.5 py-1 text-11 rounded transition-colors",
-            w.key === windowKey
-              ? "bg-ink-strong text-paper"
-              : "text-ink-muted hover:text-ink-strong",
-          )}
-        >
-          {w.key}
-        </button>
-      ))}
-    </div>
+    <RangeControl
+      label="Price history window"
+      options={WINDOWS.map((w) => ({ value: w.key, label: w.key }))}
+      value={windowKey}
+      onChange={setWindowKey}
+    />
   );
 
   if (isError) {
@@ -159,7 +142,7 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
           description="OHLC candles are built from executed stake/unstake trades -- once this subnet has trading activity in the selected window, candles will appear here."
         />
       ) : (
-        <Panel as="div">
+        <Panel>
           <CandlestickMini
             data={candles}
             width={640}

@@ -43,7 +43,7 @@ export function SubnetEmissionPipelineHistoryPanel({ netuid }: { netuid: number 
   const latest = h.points[h.points.length - 1];
 
   return (
-    <Panel as="section">
+    <Panel>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure label="days" value={formatNumber(h.point_count)} hint="Days in the window." />
         <Figure

@@ -5,13 +5,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useMemo, useRef, useState } from "react";
 import { ChevronDown, Star } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { ShareButton, DownloadCsvButton, ActionBar, MiniStack } from "@jsonbored/ui-kit";
-import {
-  AsyncPanel,
-  PageMasthead,
-  Panel,
-  TableSkeleton,
-} from "@/components/metagraphed/primitives";
+import { ShareButton, DownloadCsvButton, EntityHero, FactSentence } from "@jsonbored/ui-kit";
+import { AsyncPanel, Panel, TableSkeleton } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ValidatorEconomicsRanking } from "@/components/metagraphed/validator-economics-ranking";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
@@ -58,21 +53,17 @@ export function ValidatorsPage() {
   });
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="Directory"
-        live
-        title="Validators"
-        // #11320: from HUB_COPY -- this slot and the meta description were two
-        // separately written copies of the same fact.
-        description={hubLede("/validators")}
-        actions={
+      <EntityHero
+        name="Validators"
+        action={
           <>
-            <ActionBar>
+            <div className="mg-actions">
               <DownloadCsvButton url={validatorsCsvUrl} bare />
               <ShareButton bare />
-            </ActionBar>
+            </div>
           </>
         }
+        sentence={<FactSentence>{hubLede("/validators")}</FactSentence>}
       />
       <ValidatorGuide />
       <AsyncPanel
@@ -413,25 +404,13 @@ function ConcentrationSection({ validators }: { validators: GlobalValidator[] })
   const top = ranked.slice(0, CONCENTRATION_TOP_N);
   if (top.length === 0) return null;
   const topShare = top.reduce((sum, v) => sum + (v.stake_dominance ?? 0), 0);
-  const rest = Math.max(0, 1 - topShare);
   const label = (v: GlobalValidator) =>
     v.coldkey_identity?.has_identity && v.coldkey_identity.name
       ? v.coldkey_identity.name
       : (v.hotkey.slice(0, 6) ?? "validator");
-  const segments = [
-    ...top.map((v, i) => ({
-      label: label(v),
-      value: (v.stake_dominance ?? 0) * 100,
-      // One accent moment: interpolate opacity down the ranking rather than
-      // introducing a second hue.
-      color: `color-mix(in oklab, var(--accent) ${100 - i * 8}%, var(--border))`,
-    })),
-    { label: "everyone else", value: rest * 100, color: "var(--border)" },
-  ];
-
   return (
     <div id="validator-dominance" className="space-y-3 pt-3">
-      <Panel as="div">
+      <Panel>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <span className="text-13 text-ink-muted">
             Stake concentration · top {top.length} operators
@@ -440,7 +419,6 @@ function ConcentrationSection({ validators }: { validators: GlobalValidator[] })
             {(topShare * 100).toFixed(1)}% of network stake
           </span>
         </div>
-        <MiniStack segments={segments} height={14} />
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
           {top.slice(0, 5).map((v) => (
             <span key={v.hotkey} className="text-10 text-ink-muted">

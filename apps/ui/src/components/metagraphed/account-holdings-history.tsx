@@ -1,11 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { Sparkline, StackedAreaMini, type StackedAreaSeries } from "@jsonbored/ui-kit";
+import {
+  Sparkline,
+  StackedAreaMini,
+  type StackedAreaSeries,
+  RangeControl,
+} from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { accountPortfolioQuery, accountPositionHistoryQuery } from "@/lib/metagraphed/queries";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber } from "@/lib/metagraphed/format";
 import type { AccountPositionHistory, PortfolioPosition } from "@/lib/metagraphed/types";
 import { CHART_PALETTE } from "@/lib/metagraphed/chart-palette";
 
@@ -135,27 +140,12 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
   const extentEnd = aligned.dates[aligned.dates.length - 1] ?? null;
 
   const windowSelector = (
-    <div
-      role="tablist"
-      aria-label="Holdings history window"
-      className="inline-flex rounded border border-border bg-surface p-0.5"
-    >
-      {WINDOWS.map((w) => (
-        <button
-          key={w.id}
-          type="button"
-          role="tab"
-          aria-selected={w.id === win}
-          onClick={() => setWin(w.id)}
-          className={classNames(
-            "px-2.5 py-1 text-11 rounded transition-colors",
-            w.id === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
-          )}
-        >
-          {w.label}
-        </button>
-      ))}
-    </div>
+    <RangeControl
+      label="Holdings history window"
+      options={WINDOWS.map((w) => ({ value: w.id, label: w.label }))}
+      value={win}
+      onChange={setWin}
+    />
   );
 
   if (portfolioResult.isError) {
@@ -200,7 +190,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
           description="Daily snapshots will appear here once enough chain history has accumulated for these positions."
         />
       ) : (
-        <Panel as="div" bodyClassName="space-y-3">
+        <Panel bodyClassName="space-y-3">
           <div className="text-13 text-ink-muted">
             Staked τ by subnet
             {positions.length > TOP_POSITIONS

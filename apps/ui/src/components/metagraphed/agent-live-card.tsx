@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { CopyableCode, SectionLabel } from "@jsonbored/ui-kit";
-import { Panel, TabStrip } from "@/components/metagraphed/primitives";
+import { CopyableCode, RangeControl } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import { AskBox } from "@/components/metagraphed/ask-box";
 import { SearchBox } from "@/components/metagraphed/search-box";
 
@@ -30,7 +30,7 @@ export function AgentLiveCard() {
   return (
     <Panel flush>
       <div className="border-b border-border/70 px-4 pt-4 md:px-6 md:pt-6">
-        <SectionLabel>Query the registry live</SectionLabel>
+        <h3 className="text-13 font-semibold text-ink-strong">Query the registry live</h3>
         <p className="mt-1 text-13 leading-relaxed text-ink-muted">
           Grounded answers and vector search over all 128 subnets — the same data the MCP's 204
           tools and 2,292 callable services are built on. Run a real query below.
@@ -40,15 +40,15 @@ export function AgentLiveCard() {
           registry is reachable and answering, not that a specific MCP client's handshake works. The
           response time shown is round-trip from here, not from an MCP session.
         </p>
-        <TabStrip
-          className="mt-4 -mb-px"
-          ariaLabel="Live query mode"
-          value={mode}
-          onChange={setMode}
-          items={[
+        <RangeControl
+          options={[
             { id: "ask", label: "Ask" },
             { id: "search", label: "Search" },
-          ]}
+          ].map((t) => ({ value: t.id, label: String(t.label) }))}
+          value={mode}
+          onChange={(v) => setMode(v as LiveMode)}
+          label="Live query mode"
+          className="mt-4 -mb-px"
         />
       </div>
 

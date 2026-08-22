@@ -39,7 +39,7 @@ export function SubnetSurfaceHistoryPanel({ netuid }: { netuid: number }) {
   const shown = h.changes.slice(0, MAX_SHOWN);
 
   return (
-    <Panel as="section">
+    <Panel>
       <p className="mb-3 text-10 text-ink-muted">
         {formatNumber(h.change_count)} recorded change
         {h.change_count === 1 ? "" : "s"}

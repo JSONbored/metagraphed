@@ -34,7 +34,6 @@ export function RuntimeUpgradeCardList({ rows, className }: RuntimeUpgradeCardLi
     <div className={className}>
       {rows.map((row) => (
         <Panel
-          as="div"
           key={`${row.spec_version}-${row.block_number}`}
           className="min-w-0"
           bodyClassName="space-y-2"

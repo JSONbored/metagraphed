@@ -1,13 +1,7 @@
 import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
-import {
-  TableState,
-  RealtimeFreshness,
-  BarMini,
-  TreemapMini,
-  type TreemapMiniDatum,
-} from "@jsonbored/ui-kit";
+import { TableState, BarMini, TreemapMini, type TreemapMiniDatum } from "@jsonbored/ui-kit";
 import { NeuronTable } from "@/components/metagraphed/neuron-table";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { SponsoredValidatorCallout } from "@/components/metagraphed/sponsored-validator-callout";
@@ -71,20 +65,17 @@ export function ValidatorsTableLoader({
     );
   }
 
-  const freshness = <RealtimeFreshness at={meta?.generated_at} />;
-
   return (
     <div className="space-y-4">
       {sponsored ? <SponsoredValidatorCallout netuid={netuid} validator={sponsored} /> : null}
       {stakeBars.length > 0 ? (
-        <Panel as="div">
+        <Panel>
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="text-13 text-ink-muted">Validator stake · top {stakeBars.length}</span>
             <span className="ml-auto flex items-center gap-2">
               <span className="text-10 text-ink-muted">
                 peak {taoCompact(stakeBars[0]?.value)} τ
               </span>
-              {freshness}
             </span>
           </div>
           <BarMini data={stakeBars} />
@@ -102,9 +93,7 @@ export function ValidatorsTableLoader({
             </div>
           ) : null}
         </Panel>
-      ) : (
-        <div className="flex items-center justify-end">{freshness}</div>
-      )}
+      ) : null}
 
       <NeuronTable
         netuid={netuid}

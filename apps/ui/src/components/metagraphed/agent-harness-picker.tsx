@@ -1,7 +1,6 @@
 import { useState, type ComponentType } from "react";
 import { Code2, Plug } from "lucide-react";
-import { CopyButton, ClaudeIcon, OpenAIIcon } from "@jsonbored/ui-kit";
-import { TabStrip } from "@/components/metagraphed/primitives";
+import { CopyButton, ClaudeIcon, OpenAIIcon, RangeControl } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import { captureEvent } from "@/lib/analytics";
 import { buildHarnessConfig, HARNESSES, type HarnessId } from "@/lib/metagraphed/agent-harness";
@@ -34,16 +33,8 @@ export function AgentHarnessPicker({ mcp }: { mcp: AgentResources["mcp"] }) {
 
   return (
     <div>
-      <TabStrip
-        ariaLabel="MCP client"
-        size="sm"
-        className="overflow-x-auto"
-        value={harness}
-        onChange={(id) => {
-          setHarness(id);
-          captureEvent("agent_harness_selected", { harness: id });
-        }}
-        items={HARNESSES.map((h) => {
+      <RangeControl
+        options={HARNESSES.map((h) => {
           const Icon = HARNESS_ICON[h.id];
           return {
             id: h.id,
@@ -54,7 +45,14 @@ export function AgentHarnessPicker({ mcp }: { mcp: AgentResources["mcp"] }) {
               </span>
             ),
           };
-        })}
+        }).map((t) => ({ value: t.id, label: String(t.label) }))}
+        value={harness}
+        onChange={(id) => {
+          setHarness(id);
+          captureEvent("agent_harness_selected", { harness: id });
+        }}
+        label="MCP client"
+        className="overflow-x-auto"
       />
 
       <p className="mt-3 text-13 text-ink-muted">{active?.blurb}</p>

@@ -71,7 +71,7 @@ export function SelfHealthVerdict() {
   const verdict = selfData ? VERDICT_COPY[selfData.verdict] : null;
 
   return (
-    <Panel as="section">
+    <Panel>
       <div className="flex items-start gap-3">
         {verdict ? (
           <verdict.Icon
@@ -125,7 +125,7 @@ function ComponentStrip({ component }: { component: SelfHealthComponentView }) {
   const pct = component.uptime_90d != null ? `${(component.uptime_90d * 100).toFixed(2)}%` : "—";
 
   return (
-    <Panel as="div" flush className="p-3">
+    <Panel flush className="p-3">
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-13 text-ink-strong">
           {COMPONENT_LABEL[component.component] ?? component.component}

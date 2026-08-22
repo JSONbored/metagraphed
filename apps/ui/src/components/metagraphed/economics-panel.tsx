@@ -6,16 +6,8 @@ import {
   subnetStakeMovesQuery,
   subnetStakeTransfersQuery,
   subnetBurnHistoryQuery,
-  subnetTrajectoryQuery,
 } from "@/lib/metagraphed/queries";
-import {
-  StatTile,
-  MiniStack,
-  SparkLegend,
-  Sparkline,
-  RealtimeFreshness,
-  type SparklinePoint,
-} from "@jsonbored/ui-kit";
+import { type SparklinePoint, FactCell } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { stakeMovesTileModel } from "@/lib/metagraphed/stake-moves-tile";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -28,17 +20,13 @@ import { stakeTransfersTileModel } from "@/lib/metagraphed/stake-transfers-tile"
 // panel and the /subnets table Registration column share one source of truth.
 
 function Notice({ children }: { children: string }) {
-  return (
-    <Panel as="div" bodyClassName="text-13 text-ink-muted">
-      {children}
-    </Panel>
-  );
+  return <Panel bodyClassName="text-13 text-ink-muted">{children}</Panel>;
 }
 
 // #3485: re-delegation (StakeMoved) activity for this subnet over the trailing
 // 30-day window, from the already-shipped subnetStakeMovesQuery. The endpoint
 // returns a flat window aggregate (count / distinct movers / avg) rather than a
-// series, so — per the issue — it renders as a single StatTile using the
+// series, so — per the issue — it renders as a single FactCell using the
 // MiniStack + SparkLegend single-snapshot idiom instead of a literal chart. The
 // MiniStack splits the total into unique movers vs repeat moves so the lone
 // aggregate still reads as a composition.
@@ -48,29 +36,10 @@ function StakeMovesTile({ netuid }: { netuid: number }) {
   const m = stakeMovesTileModel(card);
   const value = isError ? "—" : isPending && !card ? "…" : formatNumber(m.movements);
   return (
-    <StatTile
-      eyebrow="Stake moves"
-      tone="accent"
+    <FactCell
+      label="Stake moves"
       value={value}
       hint={`${m.movers} mover${m.movers === 1 ? "" : "s"}`}
-      chart={
-        <SparkLegend
-          metric="Stake moves"
-          source={`On-chain StakeMoved (re-delegation) events for SN${netuid} over the trailing ${card?.window ?? "30d"} window — ${m.summary}.`}
-          windowLabel={card?.window ?? "30d"}
-          updatedAt={card?.observed_at ?? null}
-          staleness="Counts settle as the chain-events indexer catches up; the bar hides when no re-delegations occurred in the window."
-        >
-          <span className="flex w-[72px] items-center gap-1.5">
-            <span className="w-6 text-right text-11 tabular-nums text-ink">
-              {m.perMover != null ? `${m.perMover.toFixed(1)}×` : "—"}
-            </span>
-            <span className="max-w-[56px] flex-1">
-              <MiniStack segments={m.segments} height={6} />
-            </span>
-          </span>
-        </SparkLegend>
-      }
     />
   );
 }
@@ -78,7 +47,7 @@ function StakeMovesTile({ netuid }: { netuid: number }) {
 // #3484: recent stake-transfer activity for a subnet, 30-day window, from the
 // already-shipped subnetStakeTransfersQuery. Like the sibling stake-moves tile,
 // the endpoint returns a flat window aggregate (count / distinct senders / avg)
-// rather than a series, so it renders as a single StatTile using the MiniStack +
+// rather than a series, so it renders as a single FactCell using the MiniStack +
 // SparkLegend single-snapshot idiom. The MiniStack splits the total into unique
 // senders vs repeat transfers so the lone aggregate still reads as a composition.
 function StakeTransfersTile({ netuid }: { netuid: number }) {
@@ -87,29 +56,10 @@ function StakeTransfersTile({ netuid }: { netuid: number }) {
   const m = stakeTransfersTileModel(card);
   const value = isError ? "—" : isPending && !card ? "…" : formatNumber(m.transfers);
   return (
-    <StatTile
-      eyebrow="Stake transfers"
-      tone="accent"
+    <FactCell
+      label="Stake transfers"
       value={value}
       hint={`${m.senders} sender${m.senders === 1 ? "" : "s"}`}
-      chart={
-        <SparkLegend
-          metric="Stake transfers"
-          source={`On-chain stake-transfer events for SN${netuid} over the trailing ${card?.window ?? "30d"} window — ${m.summary}.`}
-          windowLabel={card?.window ?? "30d"}
-          updatedAt={card?.observed_at ?? null}
-          staleness="Counts settle as the chain-events indexer catches up; the bar hides when no transfers occurred in the window."
-        >
-          <span className="flex w-[72px] items-center gap-1.5">
-            <span className="w-6 text-right text-11 tabular-nums text-ink">
-              {m.perSender != null ? `${m.perSender.toFixed(1)}×` : "—"}
-            </span>
-            <span className="max-w-[56px] flex-1">
-              <MiniStack segments={m.segments} height={6} />
-            </span>
-          </span>
-        </SparkLegend>
-      }
     />
   );
 }
@@ -129,7 +79,7 @@ function RecycledTaoTile({ netuid }: { netuid: number }) {
       : recycled == null
         ? "—"
         : formatTao(recycled);
-  return <StatTile eyebrow="Recycled TAO" value={value} hint="cumulative · live RPC" />;
+  return <FactCell label="Recycled TAO" value={value} hint="cumulative · live RPC" />;
 }
 
 // #6994: stake delegated to hotkeys currently earning zero dividends (no permit
@@ -147,8 +97,8 @@ function IdleStakeTile({ netuid }: { netuid: number }) {
         ? "—"
         : formatTao(idle);
   return (
-    <StatTile
-      eyebrow="Idle stake"
+    <FactCell
+      label="Idle stake"
       value={value}
       hint={
         count != null
@@ -199,23 +149,10 @@ function RegistrationTile({
         ? "flat 7d"
         : null;
   return (
-    <StatTile
-      eyebrow="Registration"
-      tone={!allowed ? "down" : "default"}
+    <FactCell
+      label="Registration"
       value={costTao != null ? `${costTao} τ` : "—"}
       hint={[allowed ? "open" : "closed", movement].filter(Boolean).join(" · ")}
-      chart={
-        points.length > 1 ? (
-          <Sparkline
-            values={points.map((p) => p.v)}
-            points={points}
-            width={72}
-            height={28}
-            formatValue={(v) => `${v} τ`}
-            ariaLabel="Registration cost trend"
-          />
-        ) : undefined
-      }
     />
   );
 }
@@ -224,69 +161,44 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
   const { data: res, isPending } = useQuery(economicsQuery());
   const e = res?.data.find((x) => x.netuid === netuid);
 
-  // #3362: alpha-price trend for the "Alpha price" tile, from the already-shipped
-  // subnetTrajectoryQuery — same points.alpha_price_tao extraction as
-  // subnet-price-ticker.tsx. Fetched alongside economicsQuery() but never gates the
-  // panel's own loading/empty states, which stay keyed off economicsQuery() only.
-  const { data: trajRes } = useQuery(subnetTrajectoryQuery(netuid));
-  const pricePoints: SparklinePoint[] = (trajRes?.data.points ?? []).flatMap((p) =>
-    typeof p.alpha_price_tao === "number" && Number.isFinite(p.alpha_price_tao)
-      ? [{ t: p.date, v: p.alpha_price_tao }]
-      : [],
-  );
-  const priceValues = pricePoints.map((p) => p.v);
-
   if (isPending && !e) return <Notice>Loading economics…</Notice>;
   if (!e) return <Notice>No on-chain economic data for this subnet.</Notice>;
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
-        <RealtimeFreshness at={res?.meta?.generated_at} />
-      </div>
+      <div className="flex justify-end"></div>
       {/* Flex-wrap (not grid) so a trailing partial row's tiles stretch to fill
           the row instead of leaving empty column slots — grid tracks are shared
           across every row, but flex lines size independently (same pattern as
           the stat spine in subnet-masthead.tsx / operational-panel.tsx). */}
       <div className="flex flex-wrap gap-3 [&>*]:grow [&>*]:basis-[200px]">
-        <StatTile
-          eyebrow="Emission share"
-          tooltip="Stage 1 of the v440 emission pipeline: this subnet's share of alpha price (alpha_price / total), NOT the share of TAO it receives. Spec 440 separates the two by miner-burn reweighting, the Hill emission gate, the enabled filter, and the alpha injection cap."
-          tone="accent"
+        <FactCell
+          label="Emission share"
           value={e.emission_share != null ? `${(e.emission_share * 100).toFixed(3)}%` : "—"}
+          hint="Stage 1 of the v440 emission pipeline: this subnet's share of alpha price (alpha_price / total), NOT the share of TAO it receives. Spec 440 separates the two by miner-burn reweighting, the Hill emission gate, the enabled filter, and the alpha injection cap."
         />
-        <StatTile
-          eyebrow="Alpha price"
+        <FactCell
+          label="Alpha price"
           value={e.alpha_price_tao != null ? `${e.alpha_price_tao.toFixed(4)} τ` : "—"}
-          chart={
-            <Sparkline
-              values={priceValues}
-              points={pricePoints}
-              width={72}
-              height={28}
-              formatValue={(v) => `${v.toFixed(4)} τ`}
-              ariaLabel="Alpha price trend"
-            />
-          }
         />
-        <StatTile
-          eyebrow="Validators"
+        <FactCell
+          label="Validators"
           value={
             e.validator_count != null
               ? `${e.validator_count}${e.max_validators ? ` / ${e.max_validators}` : ""}`
               : "—"
           }
         />
-        <StatTile
-          eyebrow="Miners"
+        <FactCell
+          label="Miners"
           value={formatNumber(e.miner_count)}
           hint={e.max_uids ? `${e.max_uids} max UIDs` : undefined}
         />
-        <StatTile eyebrow="Total stake" value={formatTao(e.total_stake_alpha)} />
-        <StatTile eyebrow="Volume" value={formatTao(e.subnet_volume_tao)} />
-        <StatTile eyebrow="Max stake" value={formatTao(e.max_stake_tao)} />
-        <StatTile eyebrow="Market cap" value={formatTao(e.alpha_market_cap_tao)} hint="proxy" />
-        <StatTile eyebrow="FDV" value={formatTao(e.alpha_fdv_tao)} hint="proxy" />
+        <FactCell label="Total stake" value={formatTao(e.total_stake_alpha)} />
+        <FactCell label="Volume" value={formatTao(e.subnet_volume_tao)} />
+        <FactCell label="Max stake" value={formatTao(e.max_stake_tao)} />
+        <FactCell label="Market cap" value={formatTao(e.alpha_market_cap_tao)} hint="proxy" />
+        <FactCell label="FDV" value={formatTao(e.alpha_fdv_tao)} hint="proxy" />
         <RegistrationTile
           netuid={netuid}
           costTao={e.registration_cost_tao ?? null}

@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { subnetNeuronHistoryQuery } from "@/lib/metagraphed/queries";
-import { Sparkline } from "@jsonbored/ui-kit";
+import { Sparkline, RangeControl } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetNeuronHistoryPoint } from "@/lib/metagraphed/types";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
@@ -56,27 +56,12 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
   const hasData = Object.values(series).some((s) => s.length > 0);
 
   const windowSelector = (
-    <div
-      role="tablist"
-      aria-label="History window"
-      className="inline-flex rounded border border-border bg-surface p-0.5"
-    >
-      {WINDOWS.map((w) => (
-        <button
-          key={w}
-          type="button"
-          role="tab"
-          aria-selected={w === win}
-          onClick={() => setWin(w)}
-          className={classNames(
-            "px-2.5 py-1 text-11 rounded transition-colors",
-            w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
-          )}
-        >
-          {w}
-        </button>
-      ))}
-    </div>
+    <RangeControl
+      label="History window"
+      options={WINDOWS.map((w) => ({ value: w, label: String(w) }))}
+      value={win}
+      onChange={setWin}
+    />
   );
 
   return (
@@ -95,7 +80,7 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
           description="Daily snapshots for this neuron will appear here once enough chain history has accumulated."
         />
       ) : (
-        <Panel as="div" bodyClassName="space-y-3">
+        <Panel bodyClassName="space-y-3">
           {series.stake.length > 0 ? (
             <HistoryRow
               label="Stake"

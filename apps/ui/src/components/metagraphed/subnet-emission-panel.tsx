@@ -64,8 +64,8 @@ export function SubnetEmissionPanelView({
       : `block ${formatNumber(pipeline.chain_state.block)}`;
 
   return (
-    <Panel as="div">
-      {/* No heading of its own: the enclosing SectionAnchor on
+    <Panel>
+      {/* No heading of its own: the enclosing AnalyticsSection on
           /subnets/{netuid} already titles this module, and repeating it here
           rendered "Emission pipeline" twice. Only the provenance line, which
           the section subtitle does not carry, belongs at the top. */}

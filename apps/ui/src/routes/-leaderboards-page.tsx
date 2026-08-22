@@ -2,18 +2,19 @@ import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { z } from "zod";
-import { ChevronDown, Download, Scale, UserMinus, Zap } from "lucide-react";
+import { ChevronDown, Download } from "lucide-react";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { RegistryLeaderboards } from "@/components/metagraphed/registry-leaderboards";
 import {
   BrandIcon,
   TimeAgo,
-  StatTile,
   Popover,
   PopoverTrigger,
   PopoverContent,
   buildCsvDownloadUrl,
+  FactStrip,
+  FactCell,
 } from "@jsonbored/ui-kit";
 import {
   chainDeregistrationsQuery,
@@ -36,7 +37,7 @@ const WINDOW_BTN =
   "rounded border border-border bg-card px-3 py-1 text-11 text-ink-muted hover:border-ink/30";
 
 // Shaped to each board's own layout -- title, one description line, the
-// 3-tile StatTile row, and a table-shaped placeholder -- so the loading
+// 3-cell FactStrip, and a table-shaped placeholder -- so the loading
 // state doesn't visibly jump in height/columns once the real content
 // resolves (#6388). All three boards on this route share this exact shape,
 // so one skeleton covers all three Suspense fallbacks.
@@ -58,7 +59,7 @@ function LeaderboardSkeleton() {
 }
 
 // The registry-leaderboards section is a card grid (two groups of boards), a
-// different shape from the StatTile+table chain boards, so it gets its own
+// different shape from the FactStrip+table chain boards, so it gets its own
 // matching skeleton rather than borrowing LeaderboardSkeleton.
 function RegistryLeaderboardsSkeleton() {
   return (
@@ -233,27 +234,23 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatTile
-          icon={Scale}
-          eyebrow="Weight-sets"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Weight-sets"
           value={formatNumber(network.weight_sets)}
           hint={`${win} network total`}
-          tone="accent"
         />
-        <StatTile
-          icon={Scale}
-          eyebrow="Distinct setters"
+        <FactCell
+          label="Distinct setters"
           value={formatNumber(network.distinct_setters)}
           hint="network-wide unique validators"
         />
-        <StatTile
-          icon={Scale}
-          eyebrow="Per setter"
+        <FactCell
+          label="Per setter"
           value={network.sets_per_setter != null ? network.sets_per_setter.toFixed(2) : "—"}
           hint="network intensity"
         />
-      </div>
+      </FactStrip>
 
       {dist ? (
         <p className="text-13 text-ink-muted">
@@ -292,7 +289,7 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
               const subnet = subnetById.get(row.netuid);
               const name = subnet?.name ?? `Subnet ${row.netuid}`;
               return (
-                <Panel as="div" key={row.netuid}>
+                <Panel key={row.netuid}>
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       to="/subnets/$netuid"
@@ -410,17 +407,14 @@ function EmissionsLeaderboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatTile
-          icon={Zap}
-          eyebrow="Subnets emitting"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Subnets emitting"
           value={formatNumber(ranked.length)}
           hint="with an emission share"
-          tone="accent"
         />
-        <StatTile
-          icon={Zap}
-          eyebrow="Top emitter"
+        <FactCell
+          label="Top emitter"
           value={ranked.length > 0 ? pct(ranked[0].emission_share) : "—"}
           hint={
             ranked.length > 0
@@ -428,13 +422,8 @@ function EmissionsLeaderboard() {
               : "no data"
           }
         />
-        <StatTile
-          icon={Zap}
-          eyebrow="Top 10 share"
-          value={pct(topShare)}
-          hint="combined network emissions"
-        />
-      </div>
+        <FactCell label="Top 10 share" value={pct(topShare)} hint="combined network emissions" />
+      </FactStrip>
 
       {ranked.length === 0 ? (
         <EmptyState
@@ -454,7 +443,7 @@ function EmissionsLeaderboard() {
               const subnet = subnetById.get(row.netuid);
               const name = subnet?.name ?? row.name ?? `Subnet ${row.netuid}`;
               return (
-                <Panel as="div" key={row.netuid}>
+                <Panel key={row.netuid}>
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       to="/subnets/$netuid"
@@ -544,23 +533,19 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatTile
-          icon={UserMinus}
-          eyebrow="Deregistrations"
+      <FactStrip variant="grid">
+        <FactCell
+          label="Deregistrations"
           value={formatNumber(network.deregistrations)}
           hint={`${win} network total`}
-          tone="accent"
         />
-        <StatTile
-          icon={UserMinus}
-          eyebrow="Distinct hotkeys"
+        <FactCell
+          label="Distinct hotkeys"
           value={formatNumber(network.distinct_deregistered_hotkeys)}
           hint="network-wide unique"
         />
-        <StatTile
-          icon={UserMinus}
-          eyebrow="Per hotkey"
+        <FactCell
+          label="Per hotkey"
           value={
             network.deregistrations_per_hotkey != null
               ? network.deregistrations_per_hotkey.toFixed(2)
@@ -568,7 +553,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
           }
           hint="network intensity"
         />
-      </div>
+      </FactStrip>
 
       {board.subnet_count === 0 || board.subnets.length === 0 ? (
         <EmptyState
@@ -596,7 +581,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
               const subnet = subnetById.get(row.netuid);
               const name = subnet?.name ?? `Subnet ${row.netuid}`;
               return (
-                <Panel as="div" key={row.netuid}>
+                <Panel key={row.netuid}>
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       to="/subnets/$netuid"

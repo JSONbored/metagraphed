@@ -54,7 +54,7 @@ describe("settings-summary", () => {
     expect(kpis[1]).toMatchObject({ value: "1", hint: "subnets" });
   });
 
-  it("builds StatTile rows with an accent create tile", () => {
+  it("builds fact rows with an accent create tile", () => {
     const tiles = buildSettingsSummaryTiles();
     expect(tiles).toHaveLength(3);
     expect(tiles[0]).toEqual({

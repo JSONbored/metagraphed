@@ -11,13 +11,13 @@ import {
 } from "@/lib/metagraphed/queries";
 import { formatNumber, subnetAgeDays, formatSubnetAge } from "@/lib/metagraphed/format";
 import {
-  SectionAnchor,
   KeyChip,
   CurationChip,
   TimeAgo,
   Donut,
   DonutLegend,
   Definition,
+  AnalyticsSection,
 } from "@jsonbored/ui-kit";
 import type { Endpoint } from "@/lib/metagraphed/types";
 
@@ -164,14 +164,13 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
   }
 
   return (
-    <SectionAnchor
+    <AnalyticsSection
       id="subnet-profile"
-      title="Subnet profile"
-      subtitle="Chain identity, AMM economics, ownership keys, and registry curation."
-      info="Joined from /api/v1/lineage · /api/v1/economics · /api/v1/subnets/{netuid}/profile"
-      tone="ink"
+      name="Subnet profile"
+      question="Chain identity, AMM economics, ownership keys, and registry curation."
+      footnote="Joined from /api/v1/lineage · /api/v1/economics · /api/v1/subnets/{netuid}/profile"
     >
-      <Panel as="div" flush className="overflow-hidden">
+      <Panel flush className="overflow-hidden">
         {/* Chain identity row */}
         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border border-b border-border">
           <Meta
@@ -417,7 +416,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
           </div>
         </div>
       </Panel>
-    </SectionAnchor>
+    </AnalyticsSection>
   );
 }
 

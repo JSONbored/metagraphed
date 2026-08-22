@@ -71,10 +71,6 @@ function formatRelative(iso) {
   }
   return past ? `${value}${unit} ago` : `in ${value}${unit}`;
 }
-function isStaleFreshness(iso, thresholdMs = 12 * 60 * 6e4) {
-  if (!isUsableTimestamp(iso)) return true;
-  return Date.now() - Date.parse(iso) > thresholdMs;
-}
 function formatFreshness(updatedAt, windowLabel) {
   const parts = [];
   if (updatedAt) {
@@ -434,152 +430,6 @@ var SheetDescription = React3__namespace.forwardRef(({ className, ...props }, re
   }
 ));
 SheetDescription.displayName = DialogPrimitive__namespace.Description.displayName;
-var TONE_CLASSES = {
-  default: "text-ink-muted",
-  muted: "text-ink-subtle-text",
-  accent: "text-accent-text",
-  warn: "text-health-warn-text",
-  down: "text-health-down"
-};
-function SectionLabel({
-  children,
-  size = "micro",
-  tone = "default",
-  icon,
-  hint,
-  as,
-  className,
-  title
-}) {
-  const Cmp = as ?? "span";
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    Cmp,
-    {
-      title,
-      className: classNames(
-        size === "micro" ? "text-10" : "text-11",
-        "inline-flex items-center gap-1.5",
-        TONE_CLASSES[tone],
-        className
-      ),
-      children: [
-        icon ? /* @__PURE__ */ jsxRuntime.jsx(
-          "span",
-          {
-            "aria-hidden": true,
-            className: "inline-flex size-3 items-center justify-center",
-            children: icon
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate", children }),
-        hint != null ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink-subtle-text normal-case", children: hint }) : null
-      ]
-    }
-  );
-}
-var TONE_STYLES = {
-  default: { border: "border-border", bg: "bg-card" },
-  accent: { border: "border-accent/40", bg: "bg-primary-soft" },
-  warn: { border: "border-health-warn/40", bg: "bg-health-warn/5" },
-  down: { border: "border-health-down/40", bg: "bg-health-down/5" },
-  ok: { border: "border-health-ok/40", bg: "bg-health-ok/5" },
-  muted: { border: "border-border", bg: "bg-surface-2" }
-};
-function Panel({
-  title,
-  action,
-  caption,
-  flush,
-  interactive,
-  tone = "default",
-  tintBorderOnly,
-  as,
-  className,
-  bodyClassName,
-  children,
-  ...rest
-}) {
-  const Cmp = as ?? "section";
-  const hasHeader = title != null || action != null || caption != null;
-  const padClass = flush ? "mg-panel-pad-flush" : "mg-panel-pad";
-  const toneStyle = TONE_STYLES[tone];
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    Cmp,
-    {
-      ...rest,
-      className: classNames(
-        "rounded border",
-        toneStyle.border,
-        tintBorderOnly ? "bg-card" : toneStyle.bg,
-        interactive ? "mg-hover-lift" : null,
-        className
-      ),
-      children: [
-        hasHeader ? /* @__PURE__ */ jsxRuntime.jsxs(
-          "header",
-          {
-            className: "flex items-start justify-between gap-3 border-b border-border mg-panel-pad",
-            style: {
-              paddingTop: "var(--mg-space-sm)",
-              paddingBottom: "var(--mg-space-sm)"
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-                title != null ? /* @__PURE__ */ jsxRuntime.jsx(SectionLabel, { children: title }) : null,
-                caption != null ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1 text-13 text-ink-muted", children: caption }) : null
-              ] }),
-              action != null ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
-            ]
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: classNames(padClass, bodyClassName), children })
-      ]
-    }
-  );
-}
-function SegmentedToggle({
-  options,
-  value,
-  onChange,
-  ariaLabel,
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    Panel,
-    {
-      as: "div",
-      flush: true,
-      role: "tablist",
-      "aria-label": ariaLabel,
-      className,
-      bodyClassName: "inline-flex items-center p-0.5",
-      children: options.map(
-        ({ value: v, label, Icon, ariaLabel: optionAriaLabel, title }) => {
-          const active = v === value;
-          return /* @__PURE__ */ jsxRuntime.jsxs(
-            "button",
-            {
-              type: "button",
-              role: "tab",
-              "aria-selected": active,
-              "aria-label": optionAriaLabel ?? label,
-              onClick: () => onChange(v),
-              className: classNames(
-                "inline-flex items-center gap-1.5 rounded px-2 py-1 text-13 font-medium transition-colors min-h-8",
-                active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
-              ),
-              children: [
-                Icon ? /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-3.5" }) : null,
-                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "hidden sm:inline", children: label })
-              ]
-            },
-            v
-          );
-        }
-      )
-    }
-  );
-}
 var Toaster = ({ ...props }) => {
   return /* @__PURE__ */ jsxRuntime.jsx(
     sonner.Toaster,
@@ -599,44 +449,6 @@ var Toaster = ({ ...props }) => {
 };
 function Skeleton({ className = "h-4 w-full" }) {
   return /* @__PURE__ */ jsxRuntime.jsx("div", { className: `animate-pulse rounded bg-surface-2 ${className}` });
-}
-function AccentBand({
-  children,
-  pattern = false,
-  className,
-  innerClassName
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "section",
-    {
-      className: classNames(
-        // Full-bleed without using 100vw — escape the <main> padding only.
-        // `-mx-4 md:-mx-10` matches AppShell's <main> padding so the band
-        // reaches the viewport edges without ever exceeding document width.
-        "mg-accent-band relative -mx-4 md:-mx-10",
-        className
-      ),
-      children: [
-        pattern ? /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            className: "absolute inset-0 opacity-40 pointer-events-none",
-            "aria-hidden": true
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            className: classNames(
-              "relative max-w-shell-max mx-auto px-4 md:px-8 py-12 md:py-20",
-              innerClassName
-            ),
-            children
-          }
-        )
-      ]
-    }
-  );
 }
 var defaultFormat = (n) => new Intl.NumberFormat("en-US").format(Math.round(n));
 function prefersReducedMotion() {
@@ -1856,65 +1668,6 @@ function ExternalLink({
     }
   );
 }
-function FreshnessIndicator({
-  at,
-  thresholdMs,
-  className,
-  dotOnly
-}) {
-  const [mounted, setMounted] = React3.useState(false);
-  React3.useEffect(() => setMounted(true), []);
-  const missing = at == null;
-  const stale = !missing && isStaleFreshness(at, thresholdMs);
-  const cls = missing ? "bg-health-unknown" : stale ? "bg-health-warn" : "bg-health-ok";
-  const rel = mounted ? formatRelative(at) : "";
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "span",
-    {
-      className: classNames("inline-flex items-center gap-1.5", className),
-      suppressHydrationWarning: true,
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsx("span", { className: classNames("size-1.5 rounded-full mg-dot", cls) }),
-        !dotOnly ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-10 text-ink-muted", suppressHydrationWarning: true, children: rel }) : null
-      ]
-    }
-  );
-}
-function tierFreshnessLabel(tier, at) {
-  if (at == null) return "No freshness data";
-  const prefix = tier === "realtime" ? "Live chain read" : "Daily rollup snapshot";
-  return `${prefix} \u2014 updated ${formatRelative(at)}`;
-}
-function DailyRollupFreshness({
-  at,
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
-    /* @__PURE__ */ jsxRuntime.jsx(FreshnessIndicator, { at, dotOnly: true }),
-    /* @__PURE__ */ jsxRuntime.jsx(
-      Definition,
-      {
-        term: "Daily tier",
-        sentence: tierFreshnessLabel("daily", at)
-      }
-    )
-  ] });
-}
-function RealtimeFreshness({
-  at,
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
-    /* @__PURE__ */ jsxRuntime.jsx(FreshnessIndicator, { at, dotOnly: true }),
-    /* @__PURE__ */ jsxRuntime.jsx(
-      Definition,
-      {
-        term: "Live chain read",
-        sentence: tierFreshnessLabel("realtime", at)
-      }
-    )
-  ] });
-}
 
 // src/components/metagraphed/interaction/active-entity-logic.ts
 function reduceActiveEntity(state, action) {
@@ -2152,8 +1905,8 @@ function ChartTooltip({
   const ref = React3.useRef(null);
   const mobile = useIsMobile();
   const [left, setLeft] = React3.useState(null);
-  const [, mounted] = React3.useState(false);
-  React3.useLayoutEffect(() => mounted(true), []);
+  const [, mounted2] = React3.useState(false);
+  React3.useLayoutEffect(() => mounted2(true), []);
   const host = React3.useRef(null);
   const container = host.current?.parentElement ?? null;
   const anchored = active !== null && active.element !== null && container !== null && container.contains(active.element);
@@ -2273,6 +2026,400 @@ function RawCode({
         className: "absolute top-1 right-1"
       }
     )
+  ] });
+}
+function AnalyticsSection({
+  id,
+  name,
+  question,
+  visual,
+  legend,
+  footnote,
+  controls,
+  children,
+  className
+}) {
+  const headingId = `${id}-heading`;
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "section",
+    {
+      id,
+      className: classNames("mg-section", className),
+      "aria-labelledby": headingId,
+      "data-mg-section": "",
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-section-head", children: [
+          /* @__PURE__ */ jsxRuntime.jsxs("h2", { id: headingId, className: "mg-section-h", children: [
+            /* @__PURE__ */ jsxRuntime.jsx("strong", { children: typeof name === "string" ? name.replace(/\.?$/, ".") : name }),
+            question ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+              " ",
+              question
+            ] }) : null
+          ] }),
+          controls ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-section-controls", children: controls }) : null
+        ] }),
+        visual ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-section-visual", children: visual }) : null,
+        children,
+        legend ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-section-legend", children: legend }) : null,
+        footnote ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-section-note", children: footnote }) : null
+      ]
+    }
+  );
+}
+function SectionHead({
+  id,
+  name,
+  question,
+  controls,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: classNames("mg-section-head", className), children: [
+    /* @__PURE__ */ jsxRuntime.jsxs("h2", { id, className: "mg-section-h", children: [
+      /* @__PURE__ */ jsxRuntime.jsx("strong", { children: typeof name === "string" ? name.replace(/\.?$/, ".") : name }),
+      question ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+        " ",
+        question
+      ] }) : null
+    ] }),
+    controls ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-section-controls", children: controls }) : null
+  ] });
+}
+function pickActiveSection(ids, visible, current) {
+  return ids.find((id) => visible.has(id)) ?? current;
+}
+function useActiveSection(ids) {
+  const [active, setActive] = React3.useState(ids[0] ?? null);
+  React3.useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const visible = /* @__PURE__ */ new Map();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.set(e.target.id, e.intersectionRatio);
+          else visible.delete(e.target.id);
+        }
+        setActive(
+          (current) => pickActiveSection(ids, new Set(visible.keys()), current)
+        );
+      },
+      { rootMargin: "-80px 0px -60% 0px", threshold: [0, 0.25, 0.5] }
+    );
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, [ids]);
+  return active;
+}
+function SectionNav({ items, link, className }) {
+  const anchors = items.filter((i) => !i.href).map((i) => i.id);
+  const active = useActiveSection(anchors);
+  if (items.length === 0) return null;
+  const LinkCmp = link ?? DefaultLink;
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "nav",
+    {
+      className: classNames("mg-section-nav", className),
+      "aria-label": "Sections",
+      "data-mg-section-nav": "",
+      children: /* @__PURE__ */ jsxRuntime.jsx("ul", { children: items.map(
+        (item) => item.href ? /* @__PURE__ */ jsxRuntime.jsx("li", { children: /* @__PURE__ */ jsxRuntime.jsx(
+          LinkCmp,
+          {
+            href: item.href,
+            "aria-current": item.current ? "page" : void 0,
+            children: item.name
+          }
+        ) }, item.id) : /* @__PURE__ */ jsxRuntime.jsx("li", { children: /* @__PURE__ */ jsxRuntime.jsx(
+          "a",
+          {
+            href: `#${item.id}`,
+            "aria-current": active === item.id ? "location" : void 0,
+            children: item.name
+          }
+        ) }, item.id)
+      ) })
+    }
+  );
+}
+var DefaultLink = ({ href, children, ...rest }) => /* @__PURE__ */ jsxRuntime.jsx("a", { href, ...rest, children });
+var MAX_SECTIONS = 7;
+function sectionItems(children) {
+  const items = [];
+  React3.Children.forEach(children, (child) => {
+    if (!React3.isValidElement(child)) return;
+    if (child.type === AnalyticsSection) {
+      const props = child.props;
+      items.push({
+        id: props.id,
+        name: typeof props.name === "string" ? props.name : props.id
+      });
+    }
+  });
+  return items;
+}
+function AnalyticsPage({
+  hero,
+  children,
+  className
+}) {
+  const items = sectionItems(children);
+  if (items.length > MAX_SECTIONS && process.env.NODE_ENV !== "production") {
+    throw new Error(
+      `AnalyticsPage: ${items.length} sections; a page answers at most ${MAX_SECTIONS} questions (#11607)`
+    );
+  }
+  return /* @__PURE__ */ jsxRuntime.jsx(ActiveEntityProvider, { children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: classNames("mg-page", className), "data-mg-page": "", children: [
+    hero,
+    /* @__PURE__ */ jsxRuntime.jsx(SectionNav, { items }),
+    children
+  ] }) });
+}
+function FactStrip({
+  cells,
+  children,
+  variant = "row",
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "dl",
+    {
+      className: classNames("mg-facts", className),
+      "data-variant": variant,
+      "data-count": cells?.length,
+      children: [
+        cells?.map((cell) => /* @__PURE__ */ jsxRuntime.jsx(FactCell, { ...cell }, cell.label)),
+        children
+      ]
+    }
+  );
+}
+function FactCell({
+  label,
+  value,
+  delta,
+  hint,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: classNames("mg-fact", className), children: [
+    /* @__PURE__ */ jsxRuntime.jsxs("dt", { children: [
+      label,
+      typeof hint === "string" ? /* @__PURE__ */ jsxRuntime.jsx(Definition, { term: label, sentence: hint }) : null
+    ] }),
+    /* @__PURE__ */ jsxRuntime.jsxs("dd", { children: [
+      /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-fact-value", children: value }),
+      delta ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-fact-delta", "data-tone": delta.tone, children: delta.text }) : null
+    ] })
+  ] });
+}
+function Fact({
+  children,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx("span", { className: classNames("mg-fact-chip", className), children });
+}
+function FactSentence({ children, className }) {
+  return /* @__PURE__ */ jsxRuntime.jsx("p", { className: classNames("mg-fact-sentence", className), children });
+}
+var LiveTickerContext = React3.createContext(null);
+function LiveTickerProvider({ children }) {
+  const [tick, setTick] = React3.useState(0);
+  React3.useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 1e3);
+    return () => clearInterval(id);
+  }, []);
+  return /* @__PURE__ */ jsxRuntime.jsx(LiveTickerContext.Provider, { value: tick, children });
+}
+function useLiveTicker() {
+  return React3.useContext(LiveTickerContext);
+}
+function timeAgoTickDelayMs(ageMs) {
+  return ageMs < 6e4 ? 1e3 : 6e4;
+}
+function TimeAgo({
+  at,
+  className,
+  fallback = "\u2014"
+}) {
+  const [mounted2, setMounted] = React3.useState(false);
+  const [, forceTick] = React3.useState(0);
+  const sharedTicker = useLiveTicker();
+  const hasSharedTicker = sharedTicker !== null;
+  React3.useEffect(() => setMounted(true), []);
+  React3.useEffect(() => {
+    if (!mounted2 || !at || hasSharedTicker) return void 0;
+    const ts = new Date(at).getTime();
+    if (!Number.isFinite(ts)) return void 0;
+    let timeoutId;
+    const schedule = () => {
+      timeoutId = setTimeout(
+        () => {
+          forceTick((n) => n + 1);
+          schedule();
+        },
+        timeAgoTickDelayMs(Date.now() - ts)
+      );
+    };
+    schedule();
+    return () => clearTimeout(timeoutId);
+  }, [mounted2, at, hasSharedTicker]);
+  const text = !at ? fallback : mounted2 ? formatRelative(at) : "";
+  return /* @__PURE__ */ jsxRuntime.jsx("span", { className, suppressHydrationWarning: true, children: text });
+}
+var mounted = 0;
+function LiveMeta({
+  updatedAt,
+  onRefresh,
+  refreshing,
+  source,
+  className
+}) {
+  React3.useEffect(() => {
+    mounted += 1;
+    if (mounted > 1 && process.env.NODE_ENV !== "production") {
+      throw new Error("LiveMeta: only one liveness line per page (#11607)");
+    }
+    return () => {
+      mounted -= 1;
+    };
+  }, []);
+  return /* @__PURE__ */ jsxRuntime.jsxs("p", { className: classNames("mg-live-meta", className), "data-mg-live-meta": "", children: [
+    updatedAt ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+      "Updated ",
+      /* @__PURE__ */ jsxRuntime.jsx(TimeAgo, { at: updatedAt })
+    ] }) : "Updated \u2014",
+    source ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+      " \xB7 ",
+      source
+    ] }) : null,
+    onRefresh ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+      " \xB7 ",
+      /* @__PURE__ */ jsxRuntime.jsx(
+        "button",
+        {
+          type: "button",
+          onClick: onRefresh,
+          disabled: refreshing,
+          className: "mg-live-meta-refresh",
+          children: refreshing ? "refreshing\u2026" : "refresh"
+        }
+      )
+    ] }) : null
+  ] });
+}
+function nextTabIndex(current, key, count) {
+  if (count <= 0) return null;
+  switch (key) {
+    case "ArrowRight":
+    case "ArrowDown":
+      return (current + 1) % count;
+    case "ArrowLeft":
+    case "ArrowUp":
+      return (current - 1 + count) % count;
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return null;
+  }
+}
+function rovingTabIndex(index, activeIndex) {
+  return index === activeIndex ? 0 : -1;
+}
+function useRovingGroup(count, onSelect) {
+  const refs = React3.useRef([]);
+  const itemRef = React3.useCallback(
+    (index) => (el) => {
+      refs.current[index] = el;
+    },
+    []
+  );
+  const onKeyDown = React3.useCallback(
+    (index) => (e) => {
+      const next = nextTabIndex(index, e.key, count);
+      if (next == null) return;
+      e.preventDefault();
+      refs.current[next]?.focus();
+      onSelect(next);
+    },
+    [count, onSelect]
+  );
+  return { itemRef, onKeyDown };
+}
+function RangeControl({
+  options,
+  value,
+  onChange,
+  label,
+  className
+}) {
+  const id = React3.useId();
+  const activeIndex = Math.max(
+    0,
+    options.findIndex((o) => o.value === value)
+  );
+  const select = React3.useCallback(
+    (index) => {
+      const next = options[index];
+      if (next && next.value !== value) onChange(next.value);
+    },
+    [options, value, onChange]
+  );
+  const { itemRef, onKeyDown } = useRovingGroup(options.length, select);
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "div",
+    {
+      role: "radiogroup",
+      "aria-label": label,
+      id,
+      className: classNames("mg-range", className),
+      "data-mg-range": "",
+      children: options.map((o, i) => /* @__PURE__ */ jsxRuntime.jsx(
+        "button",
+        {
+          ref: itemRef(i),
+          type: "button",
+          role: "radio",
+          "aria-checked": o.value === value,
+          tabIndex: rovingTabIndex(i, activeIndex),
+          onClick: () => select(i),
+          onKeyDown: onKeyDown(i),
+          className: "mg-range-option",
+          children: o.label
+        },
+        o.value
+      ))
+    }
+  );
+}
+function EntityHero({
+  crumbs,
+  name,
+  avatar,
+  action,
+  secondary,
+  sentence,
+  cells,
+  facts,
+  live,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("header", { className: classNames("mg-hero", className), "data-mg-hero": "", children: [
+    crumbs && crumbs.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("nav", { className: "mg-hero-crumbs", "aria-label": "Breadcrumb", children: crumbs.map((c, i) => /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-hero-crumb", children: c.href ? /* @__PURE__ */ jsxRuntime.jsx("a", { href: c.href, children: c.label }) : c.label }, `${c.label}-${i}`)) }) : null,
+    /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-hero-title", children: [
+      avatar ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-hero-avatar", children: avatar }) : null,
+      /* @__PURE__ */ jsxRuntime.jsx("h1", { children: name }),
+      action || secondary ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-hero-actions", children: [
+        secondary,
+        action
+      ] }) : null
+    ] }),
+    sentence,
+    cells ? /* @__PURE__ */ jsxRuntime.jsx(FactStrip, { cells }) : null,
+    facts,
+    live ? /* @__PURE__ */ jsxRuntime.jsx(LiveMeta, { ...live }) : null
   ] });
 }
 
@@ -2489,336 +2636,6 @@ function LoadMore({
     ) : /* @__PURE__ */ jsxRuntime.jsx("span", { className: "opacity-60", children: "end of list" })
   ] });
 }
-function PageHero({
-  eyebrow,
-  live,
-  title,
-  description,
-  actions,
-  kpis,
-  aside,
-  caption = "registry / v1",
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "section",
-    {
-      className: classNames(
-        "mg-hero-slab relative mb-12 md:mb-16 pt-12 md:pt-20 pb-10 md:pb-12",
-        className
-      ),
-      children: [
-        caption ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "absolute right-0 top-4 hidden md:block", children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-hero-caption", children: caption }) }) : null,
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end", children: [
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0 max-w-3xl", children: [
-            eyebrow ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "text-13 text-ink-muted inline-flex items-center gap-2", children: [
-              live ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-live-dot" }) : null,
-              eyebrow
-            ] }) : null,
-            /* @__PURE__ */ jsxRuntime.jsx("h1", { className: "mt-4 font-display text-40 sm:text-40 md:text-64 font-semibold leading-[1.02] text-ink-strong", children: title }),
-            description ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-4 max-w-xl text-16 md:text-16 text-ink-muted leading-relaxed", children: description }) : null,
-            actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-6 flex flex-wrap items-center gap-2", children: actions }) : null
-          ] }),
-          aside ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "hidden md:block shrink-0", children: aside }) : null
-        ] }),
-        kpis && kpis.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-kpi-strip mt-12 md:mt-16", children: kpis.map((k) => /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-13 text-ink-muted", children: k.label }),
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-1.5 flex items-baseline gap-2", children: [
-            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "font-display text-28 md:text-28 font-semibold tabular-nums text-ink-strong leading-none", children: k.value }),
-            k.hint ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-11 text-ink-muted", children: k.hint }) : null
-          ] }),
-          k.chart ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-2.5 -ml-0.5", children: k.chart }) : null
-        ] }, k.label)) }) : null
-      ]
-    }
-  );
-}
-function EntityHero({
-  eyebrow,
-  live,
-  icon,
-  title,
-  subtitle,
-  description,
-  chips,
-  links,
-  actions,
-  banner,
-  aside,
-  stats,
-  caption,
-  size = "compact",
-  className
-}) {
-  const visibleStats = (stats ?? []).filter(
-    (s) => s.value !== void 0 && s.value !== null && s.value !== ""
-  );
-  const display = size === "display";
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "header",
-    {
-      className: classNames(
-        "mg-hero-slab relative",
-        display ? "mb-12 md:mb-16 pt-12 md:pt-20 pb-10 md:pb-12" : "pt-8 md:pt-12 pb-8 md:pb-10 mb-6",
-        className
-      ),
-      children: [
-        caption ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "absolute right-0 top-4 hidden md:block", children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-hero-caption", children: caption }) }) : null,
-        banner ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mb-4", children: banner }) : null,
-        /* @__PURE__ */ jsxRuntime.jsxs(
-          "div",
-          {
-            className: classNames(
-              "grid md:grid-cols-[minmax(0,1fr)_auto]",
-              display ? "gap-10 md:items-end" : "gap-6 md:items-start"
-            ),
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-start gap-4 min-w-0 max-w-3xl", children: [
-                icon ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 mt-1", children: icon }) : null,
-                /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-                  eyebrow ? /* @__PURE__ */ jsxRuntime.jsxs(
-                    "div",
-                    {
-                      className: classNames(
-                        "text-10 text-ink-muted inline-flex items-center gap-2",
-                        display ? "" : "mb-2"
-                      ),
-                      children: [
-                        live ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-live-dot" }) : null,
-                        eyebrow
-                      ]
-                    }
-                  ) : null,
-                  /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex flex-wrap items-baseline gap-x-4 gap-y-1", children: [
-                    /* @__PURE__ */ jsxRuntime.jsx(
-                      "h1",
-                      {
-                        className: classNames(
-                          "font-display font-semibold text-ink-strong",
-                          display ? "mt-4 text-40 sm:text-40 md:text-64 leading-[1.02]" : "text-28 md:text-40"
-                        ),
-                        children: title
-                      }
-                    ),
-                    !display && subtitle ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "font-mono text-13 md:text-13 text-ink-muted", children: subtitle }) : null
-                  ] }),
-                  description ? /* @__PURE__ */ jsxRuntime.jsx(
-                    "p",
-                    {
-                      className: classNames(
-                        "text-ink-muted leading-relaxed",
-                        display ? "mt-4 max-w-xl text-16 md:text-16" : "mt-3 max-w-3xl text-13 md:text-16"
-                      ),
-                      children: description
-                    }
-                  ) : null,
-                  links ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-6", children: links }) : null,
-                  actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-6 flex flex-wrap items-center gap-2", children: actions }) : null
-                ] })
-              ] }),
-              chips ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-wrap items-center gap-1.5 md:justify-end shrink-0 max-w-md", children: chips }) : null,
-              aside ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "hidden md:block shrink-0", children: aside }) : null
-            ]
-          }
-        ),
-        visibleStats.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            className: classNames(
-              "mg-kpi-strip",
-              display ? "mt-12 md:mt-16" : "mt-8 md:mt-10"
-            ),
-            children: visibleStats.map((s) => /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-13 text-ink-muted", children: s.label }),
-              /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-1.5 flex items-baseline gap-2", children: [
-                /* @__PURE__ */ jsxRuntime.jsx(
-                  "span",
-                  {
-                    className: classNames(
-                      "font-display font-semibold tabular-nums text-ink-strong leading-none",
-                      display ? "text-28 md:text-28" : "text-28 md:text-28"
-                    ),
-                    children: s.value
-                  }
-                ),
-                s.hint ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-11 text-ink-muted", children: s.hint }) : null
-              ] }),
-              s.chart ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-2.5 -ml-0.5", children: s.chart }) : null
-            ] }, s.label))
-          }
-        ) : null
-      ]
-    }
-  );
-}
-function PageSection({
-  eyebrow,
-  title,
-  description,
-  actions,
-  toolbar,
-  id,
-  className,
-  divider = "hairline",
-  tone = "default",
-  children
-}) {
-  const hasHeader = !!(eyebrow || title || actions);
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "section",
-    {
-      id,
-      "data-section-anchor": id ? "" : void 0,
-      className: classNames(
-        "mg-section",
-        tone === "muted" && "rounded bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
-        className
-      ),
-      children: [
-        hasHeader ? /* @__PURE__ */ jsxRuntime.jsxs(
-          "header",
-          {
-            className: classNames(
-              "grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end",
-              divider === "hairline" && tone !== "muted" && "pt-8",
-              "pb-6"
-            ),
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-                eyebrow ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-13 text-ink-muted inline-flex items-center gap-2", children: eyebrow }) : null,
-                title ? /* @__PURE__ */ jsxRuntime.jsxs("h2", { className: "group/anchor mt-2 flex items-baseline gap-2 font-display text-28 md:text-28 font-semibold text-ink-strong", children: [
-                  /* @__PURE__ */ jsxRuntime.jsx("span", { children: title }),
-                  id ? /* @__PURE__ */ jsxRuntime.jsx(
-                    "a",
-                    {
-                      href: `#${id}`,
-                      "aria-label": "Permalink",
-                      className: "mg-anchor-btn -mb-0.5 inline-flex size-5 items-center justify-center rounded text-ink-muted hover:text-accent",
-                      children: /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Link, { className: "size-3.5" })
-                    }
-                  ) : null
-                ] }) : null,
-                description ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-2 max-w-2xl text-13 text-ink-muted leading-relaxed", children: description }) : null
-              ] }),
-              actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-wrap items-center gap-2 md:justify-end", children: actions }) : null
-            ]
-          }
-        ) : null,
-        toolbar ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mb-6 -mt-2 flex flex-wrap items-center gap-2 border-b border-border pb-4", children: toolbar }) : null,
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: hasHeader || toolbar ? "" : "", children })
-      ]
-    }
-  );
-}
-var TONE_CLASS = {
-  accent: "before:bg-accent",
-  warn: "before:bg-health-warn",
-  ink: "before:bg-ink-strong",
-  muted: "before:bg-border"
-};
-function SectionAnchor({
-  id,
-  title,
-  subtitle,
-  info,
-  right,
-  tone,
-  children
-}) {
-  const [copied, setCopied] = React3.useState(false);
-  const onCopy = async () => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    url.hash = id;
-    history.replaceState(null, "", url.toString());
-    try {
-      await navigator.clipboard.writeText(url.toString());
-      setCopied(true);
-      sonner.toast.success("Link copied", { description: `#${id}` });
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      sonner.toast.message("Link updated", { description: `#${id}` });
-    }
-  };
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "section",
-    {
-      id,
-      "data-section-anchor": true,
-      className: classNames(
-        "mg-section",
-        tone && classNames(
-          "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded before:opacity-70",
-          TONE_CLASS[tone]
-        )
-      ),
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mb-3 flex items-center gap-3", children: [
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0 flex-1", children: [
-            /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex min-w-0 max-w-full items-center gap-1.5", children: [
-              /* @__PURE__ */ jsxRuntime.jsx("h2", { className: "min-w-0 truncate font-display text-13 font-semibold text-ink-strong", children: title }),
-              info ? /* @__PURE__ */ jsxRuntime.jsx(
-                Definition,
-                {
-                  term: typeof title === "string" ? title : id,
-                  sentence: info
-                }
-              ) : null,
-              /* @__PURE__ */ jsxRuntime.jsx(
-                "button",
-                {
-                  type: "button",
-                  onClick: onCopy,
-                  "aria-label": `Copy link to ${typeof title === "string" ? title : id} section`,
-                  className: "mg-anchor-btn inline-flex shrink-0 items-center justify-center text-ink-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded min-h-11 min-w-11 p-0.5",
-                  children: copied ? /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Check, { className: "size-3.5 text-accent" }) : /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Link2, { className: "size-3.5" })
-                }
-              )
-            ] }),
-            subtitle ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-0.5 text-13 text-ink-muted", children: subtitle }) : null
-          ] }),
-          right ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0", children: right }) : null
-        ] }),
-        children
-      ]
-    }
-  );
-}
-function SectionHeading({
-  title,
-  step,
-  intro,
-  right,
-  className,
-  id
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      className: classNames(
-        "mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "max-w-2xl", children: [
-          /* @__PURE__ */ jsxRuntime.jsxs(
-            "h2",
-            {
-              id,
-              className: "font-display text-13 font-semibold text-ink-strong",
-              children: [
-                step != null ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mr-2 tabular-nums text-accent-text", children: String(step).padStart(2, "0") }) : null,
-                title
-              ]
-            }
-          ),
-          intro ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1.5 text-13 leading-relaxed text-ink-muted", children: intro }) : null
-        ] }),
-        right ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex shrink-0 items-center gap-2", children: right }) : null
-      ]
-    }
-  );
-}
 var SHARE_COPIED_EVENT = "mg:share-copied";
 function ShareButton({
   url,
@@ -2885,21 +2702,6 @@ function ShareButton({
     /* @__PURE__ */ jsxRuntime.jsx(CopyStatusRegion, { children: announcement })
   ] });
 }
-function ActionBar({
-  children,
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    Panel,
-    {
-      as: "div",
-      flush: true,
-      className,
-      bodyClassName: "inline-flex items-center gap-0.5 p-0.5",
-      children
-    }
-  );
-}
 function PagerBar({
   hasPrev,
   hasNext,
@@ -2909,7 +2711,7 @@ function PagerBar({
   nextLabel = "Older"
 }) {
   const itemCls = "inline-flex items-center gap-1 rounded px-2.5 py-1.5 min-h-9 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-muted";
-  return /* @__PURE__ */ jsxRuntime.jsxs(ActionBar, { children: [
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-actions", children: [
     /* @__PURE__ */ jsxRuntime.jsxs(
       "button",
       {
@@ -2939,51 +2741,6 @@ function PagerBar({
       }
     )
   ] });
-}
-var LiveTickerContext = React3.createContext(null);
-function LiveTickerProvider({ children }) {
-  const [tick, setTick] = React3.useState(0);
-  React3.useEffect(() => {
-    const id = setInterval(() => setTick((n) => n + 1), 1e3);
-    return () => clearInterval(id);
-  }, []);
-  return /* @__PURE__ */ jsxRuntime.jsx(LiveTickerContext.Provider, { value: tick, children });
-}
-function useLiveTicker() {
-  return React3.useContext(LiveTickerContext);
-}
-function timeAgoTickDelayMs(ageMs) {
-  return ageMs < 6e4 ? 1e3 : 6e4;
-}
-function TimeAgo({
-  at,
-  className,
-  fallback = "\u2014"
-}) {
-  const [mounted, setMounted] = React3.useState(false);
-  const [, forceTick] = React3.useState(0);
-  const sharedTicker = useLiveTicker();
-  const hasSharedTicker = sharedTicker !== null;
-  React3.useEffect(() => setMounted(true), []);
-  React3.useEffect(() => {
-    if (!mounted || !at || hasSharedTicker) return void 0;
-    const ts = new Date(at).getTime();
-    if (!Number.isFinite(ts)) return void 0;
-    let timeoutId;
-    const schedule = () => {
-      timeoutId = setTimeout(
-        () => {
-          forceTick((n) => n + 1);
-          schedule();
-        },
-        timeAgoTickDelayMs(Date.now() - ts)
-      );
-    };
-    schedule();
-    return () => clearTimeout(timeoutId);
-  }, [mounted, at, hasSharedTicker]);
-  const text = !at ? fallback : mounted ? formatRelative(at) : "";
-  return /* @__PURE__ */ jsxRuntime.jsx("span", { className, suppressHydrationWarning: true, children: text });
 }
 function hasApiErrorShape(err) {
   return typeof err === "object" && err !== null && typeof err.status === "number" && typeof err.url === "string";
@@ -3083,21 +2840,15 @@ function TableState({
 var OPTIONS = [
   {
     value: "table",
-    label: "Table",
-    Icon: lucideReact.List,
-    ariaLabel: "Switch to table view"
+    label: "Table"
   },
   {
     value: "grid",
-    label: "Grid",
-    Icon: lucideReact.LayoutGrid,
-    ariaLabel: "Switch to grid view"
+    label: "Grid"
   },
   {
     value: "matrix",
-    label: "Matrix",
-    Icon: lucideReact.Grid3x3,
-    ariaLabel: "Switch to matrix view"
+    label: "Matrix"
   }
 ];
 function ViewModeToggle({
@@ -3108,12 +2859,12 @@ function ViewModeToggle({
 }) {
   const available = OPTIONS.filter((o) => options.includes(o.value));
   return /* @__PURE__ */ jsxRuntime.jsx(
-    SegmentedToggle,
+    RangeControl,
     {
       options: available,
       value,
       onChange,
-      ariaLabel: "View mode",
+      label: "View mode",
       className
     }
   );
@@ -3375,126 +3126,6 @@ function YieldPercentileStrip({
         },
         tile.key
       )) })
-    }
-  );
-}
-function PrimaryLinksRail({
-  website,
-  docs,
-  repo,
-  dashboard,
-  extras,
-  bare
-}) {
-  const items = [
-    { label: "Website", href: website, icon: lucideReact.Globe },
-    { label: "Docs", href: docs, icon: lucideReact.BookOpen },
-    { label: "Repository", href: repo, icon: lucideReact.Github },
-    { label: "Dashboard", href: dashboard, icon: lucideReact.LayoutDashboard },
-    ...(extras ?? []).map((e) => ({
-      label: e.label,
-      href: e.href,
-      icon: e.icon ?? lucideReact.Globe
-    }))
-  ].filter((i) => safeExternalUrl(i.href));
-  if (items.length === 0) return null;
-  const segments = items.map((it) => {
-    const Icon = it.icon;
-    const href = safeExternalUrl(it.href);
-    return /* @__PURE__ */ jsxRuntime.jsx(
-      ExternalLink,
-      {
-        href,
-        bare: true,
-        title: it.label,
-        ariaLabel: it.label,
-        className: "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors",
-        children: /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-4" })
-      },
-      it.label + href
-    );
-  });
-  if (bare) return /* @__PURE__ */ jsxRuntime.jsx(jsxRuntime.Fragment, { children: segments });
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    Panel,
-    {
-      as: "div",
-      flush: true,
-      bodyClassName: "inline-flex items-center divide-x divide-border overflow-hidden",
-      children: segments
-    }
-  );
-}
-function MethodologyCallout({
-  generatedAt,
-  windowLabel,
-  stakeRisk
-}) {
-  const [open, setOpen] = React3.useState(false);
-  const freshLine = formatFreshness(generatedAt, windowLabel);
-  formatFreshnessAbsolute(generatedAt);
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "aside",
-    {
-      "aria-label": "Data freshness and methodology",
-      className: "mb-6 rounded border border-border",
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(
-          "button",
-          {
-            type: "button",
-            onClick: () => setOpen((o) => !o),
-            "aria-expanded": open,
-            className: "flex w-full items-start gap-2 px-3 py-2 text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Info, { className: "mt-0.5 size-3.5 shrink-0 text-accent" }),
-              /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "min-w-0 flex-1", children: [
-                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "block text-13 text-ink-muted", children: "Data freshness & methodology" }),
-                freshLine ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mt-0.5 block text-10 text-ink-muted/80", children: freshLine }) : null
-              ] }),
-              /* @__PURE__ */ jsxRuntime.jsx(
-                lucideReact.ChevronDown,
-                {
-                  className: classNames(
-                    "mt-0.5 size-3.5 shrink-0 text-ink-muted transition-transform",
-                    open && "rotate-180"
-                  )
-                }
-              )
-            ]
-          }
-        ),
-        open ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "grid gap-3 border-t border-border px-3 py-3 text-13 text-ink-muted md:grid-cols-2", children: [
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-13 text-ink-strong", children: "Sparklines" }),
-            /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1", children: "Uptime & latency sparklines plot the active health window (7d default, switchable to 30d). Each point is the mean across every tracked endpoint in that bucket \u2014 gaps mean no probe landed in the window, not zero." })
-          ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-13 text-ink-strong", children: "Donuts & mosaics" }),
-            /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1", children: "Pool ratio comes from on-chain AMM reserves; endpoint topology counts tracked public surfaces by kind. The mosaic in Operational status colors one cell per endpoint by its last probe result." })
-          ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-13 text-ink-strong", children: "Staleness" }),
-            /* @__PURE__ */ jsxRuntime.jsxs("p", { className: "mt-1", children: [
-              "Tiles show a ",
-              /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-health-warn-text", children: "stale" }),
-              " ",
-              "chip when the snapshot is older than the refresh budget. Visuals still render with the last known values; retry buttons re-fetch just the affected panel. Each tile carries its own",
-              " ",
-              /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink-strong", children: "updated \xB7 window" }),
-              " stamp so you can tell stale from missing at a glance."
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-13 text-ink-strong", children: "Verified vs. candidate" }),
-            /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1", children: "Only curated surfaces feed donuts and the topology breakdown. Unverified leads live in the Candidates tab and never count toward health, completeness, or pool ratios." })
-          ] }),
-          stakeRisk ? /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-13 text-ink-strong", children: "Root vs. alpha risk" }),
-            /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1", children: "Root stake (netuid 0) is TAO-denominated with no principal risk \u2014 what you stake is what you can unstake. Alpha stake is price-exposed: it's held in the subnet's own token, so a positive nominal APY can still net-lose TAO if the alpha price falls faster than the yield accrues." })
-          ] }) : null
-        ] }) : null
-      ]
     }
   );
 }
@@ -4084,245 +3715,6 @@ function Sparkline({
     }
   );
 }
-function StatTile({
-  icon: Icon,
-  eyebrow,
-  value,
-  hint,
-  chart,
-  tone = "default",
-  className,
-  truncate = true,
-  tooltip
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    Panel,
-    {
-      as: "div",
-      tintBorderOnly: true,
-      tone,
-      className,
-      bodyClassName: "flex flex-wrap items-center gap-x-3 gap-y-2",
-      children: [
-        Icon ? /* @__PURE__ */ jsxRuntime.jsx(
-          Icon,
-          {
-            "aria-hidden": true,
-            className: classNames(
-              "size-4 shrink-0",
-              tone === "accent" ? "text-accent" : tone === "ok" ? "text-health-ok" : tone === "warn" ? "text-health-warn" : tone === "down" ? "text-health-down" : "text-ink-muted"
-            )
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-[6rem] flex-1", children: [
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center gap-1 text-13 text-ink-muted", children: [
-            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "line-clamp-3 leading-tight", children: eyebrow }),
-            tooltip ? /* @__PURE__ */ jsxRuntime.jsx(
-              Definition,
-              {
-                term: typeof eyebrow === "string" ? eyebrow : "This metric",
-                sentence: tooltip,
-                className: "shrink-0"
-              }
-            ) : null
-          ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-1 flex min-w-0 items-baseline gap-1.5", children: [
-            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "shrink-0 font-display text-16 font-semibold tabular-nums leading-none text-ink-strong sm:text-28 md:text-28", children: value }),
-            hint && truncate ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 truncate text-10 text-ink-muted", children: hint }) : null
-          ] }),
-          hint && !truncate ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-0.5 text-10 leading-tight text-ink-muted", children: hint }) : null
-        ] }),
-        chart ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 opacity-80", children: chart }) : null
-      ]
-    }
-  );
-}
-function StatWithSpark({
-  label,
-  value,
-  hint,
-  full,
-  unit,
-  tone = "default",
-  viz,
-  delta,
-  className,
-  updatedAt,
-  windowLabel
-}) {
-  const freshLine = formatFreshness(updatedAt, windowLabel);
-  const freshAbs = formatFreshnessAbsolute(updatedAt);
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      className: classNames(
-        "group flex flex-col gap-1 px-3 py-2.5 min-w-0 transition-colors",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center gap-1 min-w-0", children: [
-          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-13 text-ink-muted truncate", children: label }),
-          full ? /* @__PURE__ */ jsxRuntime.jsx(Definition, { term: label, sentence: full }) : null
-        ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-baseline gap-1.5 min-w-0", children: [
-          /* @__PURE__ */ jsxRuntime.jsx(
-            "span",
-            {
-              className: classNames(
-                "font-display text-16 font-semibold tabular-nums leading-none truncate",
-                tone === "ok" && "text-health-ok",
-                tone === "warn" && "text-health-warn",
-                tone === "down" && "text-health-down",
-                tone === "default" && "text-ink-strong"
-              ),
-              children: value
-            }
-          ),
-          unit ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "shrink-0 text-11 text-ink-muted", children: unit }) : null,
-          delta
-        ] }),
-        viz ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-0.5 min-h-[18px]", children: viz }) : null,
-        hint ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-10 text-ink-muted/80 truncate", children: hint }) : null,
-        freshLine || freshAbs ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "text-10 text-ink-muted/70 truncate", children: freshLine ?? `Last checked ${freshAbs}` }) : null
-      ]
-    }
-  );
-}
-function MiniStack({
-  segments,
-  height = 8
-}) {
-  const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0);
-  if (total <= 0) {
-    return /* @__PURE__ */ jsxRuntime.jsx(
-      "div",
-      {
-        className: "w-full rounded bg-border/40",
-        style: { height },
-        "aria-hidden": true
-      }
-    );
-  }
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      className: "flex w-full overflow-hidden rounded bg-border/40",
-      style: { height },
-      role: "img",
-      "aria-label": segments.map((s) => `${s.label} ${s.value}`).join(", "),
-      children: segments.map(
-        (s) => s.value > 0 ? /* @__PURE__ */ jsxRuntime.jsx(
-          "span",
-          {
-            style: {
-              width: `${s.value / total * 100}%`,
-              background: s.color
-            }
-          },
-          s.label
-        ) : null
-      )
-    }
-  );
-}
-function MiniRadial({
-  value,
-  size = 28,
-  stroke = 4,
-  color = "var(--ink-strong)"
-}) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(1, value));
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "svg",
-    {
-      width: size,
-      height: size,
-      viewBox: `0 0 ${size} ${size}`,
-      className: "block",
-      "aria-hidden": true,
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsx(
-          "circle",
-          {
-            cx: size / 2,
-            cy: size / 2,
-            r,
-            fill: "none",
-            stroke: "var(--border)",
-            strokeWidth: stroke,
-            opacity: 0.5
-          }
-        ),
-        /* @__PURE__ */ jsxRuntime.jsx(
-          "circle",
-          {
-            cx: size / 2,
-            cy: size / 2,
-            r,
-            fill: "none",
-            stroke: color,
-            strokeWidth: stroke,
-            strokeDasharray: `${c * pct} ${c}`,
-            strokeLinecap: "round",
-            transform: `rotate(-90 ${size / 2} ${size / 2})`
-          }
-        )
-      ]
-    }
-  );
-}
-function DotRow({
-  dots
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      className: "flex items-center gap-1",
-      role: "img",
-      "aria-label": `Source coverage: ${dots.map((d) => `${d.label} ${d.on ? "present" : "missing"}`).join(", ")}`,
-      children: dots.map((d) => /* @__PURE__ */ jsxRuntime.jsx(
-        "span",
-        {
-          className: classNames(
-            "size-1.5 rounded-full mg-dot",
-            d.on ? "bg-accent" : "bg-border"
-          )
-        },
-        d.label
-      ))
-    }
-  );
-}
-function NoDataSpark({
-  updatedAt,
-  windowLabel,
-  reason = "not enough data yet",
-  height = 18
-}) {
-  const freshAbs = formatFreshnessAbsolute(updatedAt);
-  const freshLine = formatFreshness(updatedAt, windowLabel);
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      role: "img",
-      "aria-label": `${reason}${freshAbs ? `, last checked ${freshAbs}` : ", no probe samples recorded yet"}`,
-      className: "flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper px-1.5",
-      style: { height },
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsx(
-          "span",
-          {
-            "aria-hidden": true,
-            className: "inline-block size-1 rounded-full mg-dot bg-ink-muted/60"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate text-13 text-ink-muted/80", children: freshLine ?? reason })
-      ]
-    }
-  );
-}
 var sum = (ns) => ns.reduce((a, b) => a + b, 0);
 var MIN_TILE_W_FOR_LABEL = 16;
 var MIN_TILE_H_FOR_LABEL = 12;
@@ -4778,7 +4170,7 @@ function StackedAreaMini({
     }
   );
 }
-var TONE_CLASSES2 = {
+var TONE_CLASSES = {
   default: "border-border bg-paper text-ink",
   ok: "border-health-ok/40 bg-health-ok/10 text-health-ok",
   warn: "border-health-warn/40 bg-health-warn/10 text-health-warn-text",
@@ -4807,7 +4199,7 @@ function Chip({
         "inline-flex items-center gap-1.5 rounded border px-2 py-0.5",
         "text-10 leading-none whitespace-nowrap transition-colors",
         onClick ? "mg-focus-ring hover:border-ink/30 cursor-pointer" : null,
-        TONE_CLASSES2[tone],
+        TONE_CLASSES[tone],
         className
       ),
       children: [
@@ -5157,6 +4549,37 @@ function columnWidths(columns, isVisible, leading = []) {
     ...columns.filter((c) => isVisible(c.id)).map((c) => c.width ?? 100)
   ];
 }
+function Panel({
+  title,
+  action,
+  caption,
+  flush,
+  className,
+  bodyClassName,
+  children,
+  ...rest
+}) {
+  const hasHeader = title != null || action != null || caption != null;
+  return /* @__PURE__ */ jsxRuntime.jsxs("section", { ...rest, className: classNames("min-w-0", className), children: [
+    hasHeader ? /* @__PURE__ */ jsxRuntime.jsxs("header", { className: "flex items-start justify-between gap-3 mg-panel-pad pb-2", children: [
+      /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
+        title != null ? /* @__PURE__ */ jsxRuntime.jsx("h3", { className: "text-13 font-semibold text-ink-strong", children: title }) : null,
+        caption != null ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1 text-13 text-ink-muted", children: caption }) : null
+      ] }),
+      action != null ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
+    ] }) : null,
+    /* @__PURE__ */ jsxRuntime.jsx(
+      "div",
+      {
+        className: classNames(
+          flush ? "mg-panel-pad-flush" : "mg-panel-pad",
+          bodyClassName
+        ),
+        children
+      }
+    )
+  ] });
+}
 var VARIANT_ICON = {
   empty: lucideReact.Inbox,
   filtered: lucideReact.Filter,
@@ -5290,48 +4713,6 @@ function TableSkeleton({
     }
   );
 }
-var colMap = {
-  1: "grid-cols-1",
-  2: "grid-cols-2",
-  3: "grid-cols-3",
-  4: "grid-cols-4",
-  6: "grid-cols-6"
-};
-var smMap = { 2: "sm:grid-cols-2", 3: "sm:grid-cols-3" };
-var mdMap = {
-  2: "md:grid-cols-2",
-  3: "md:grid-cols-3",
-  4: "md:grid-cols-4"
-};
-var lgMap = {
-  2: "lg:grid-cols-2",
-  3: "lg:grid-cols-3",
-  4: "lg:grid-cols-4",
-  6: "lg:grid-cols-6"
-};
-var gapMap = { sm: "gap-2", md: "gap-3", lg: "gap-4" };
-function MetricGrid({
-  children,
-  cols = { base: 1, sm: 2, lg: 3 },
-  gap = "md",
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      className: cn(
-        "grid",
-        colMap[cols.base ?? 1],
-        cols.sm ? smMap[cols.sm] : void 0,
-        cols.md ? mdMap[cols.md] : void 0,
-        cols.lg ? lgMap[cols.lg] : void 0,
-        gapMap[gap],
-        className
-      ),
-      children
-    }
-  );
-}
 function PanelHeader({
   title,
   description,
@@ -5348,7 +4729,7 @@ function PanelHeader({
       ),
       children: [
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-          variant === "micro" ? /* @__PURE__ */ jsxRuntime.jsx(SectionLabel, { children: title }) : /* @__PURE__ */ jsxRuntime.jsx("h2", { className: "font-display text-16 font-medium leading-tight text-ink-strong", children: title }),
+          variant === "micro" ? /* @__PURE__ */ jsxRuntime.jsx("h3", { className: "text-13 font-semibold text-ink-strong", children: title }) : /* @__PURE__ */ jsxRuntime.jsx("h2", { className: "font-display text-16 font-medium leading-tight text-ink-strong", children: title }),
           description ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1 text-13 leading-relaxed text-ink-muted", children: description }) : null
         ] }),
         actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex shrink-0 flex-wrap items-center gap-2", children: actions }) : null
@@ -5369,141 +4750,6 @@ function Divider({
       role: "separator",
       "aria-hidden": true,
       children: pip ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "absolute left-0 top-1/2 -translate-y-1/2 size-1.5 rounded bg-accent" }) : null
-    }
-  );
-}
-function nextTabIndex(current, key, count) {
-  if (count <= 0) return null;
-  switch (key) {
-    case "ArrowRight":
-    case "ArrowDown":
-      return (current + 1) % count;
-    case "ArrowLeft":
-    case "ArrowUp":
-      return (current - 1 + count) % count;
-    case "Home":
-      return 0;
-    case "End":
-      return count - 1;
-    default:
-      return null;
-  }
-}
-function rovingTabIndex(index, activeIndex) {
-  return index === activeIndex ? 0 : -1;
-}
-function useRovingTablist(count, onSelect) {
-  const refs = React3.useRef([]);
-  const tabRef = React3.useCallback(
-    (index) => (el) => {
-      refs.current[index] = el;
-    },
-    []
-  );
-  const onKeyDown = React3.useCallback(
-    (index) => (e) => {
-      const next = nextTabIndex(index, e.key, count);
-      if (next == null) return;
-      e.preventDefault();
-      refs.current[next]?.focus();
-      onSelect(next);
-    },
-    [count, onSelect]
-  );
-  return { tabRef, onKeyDown };
-}
-function TabStrip({
-  items,
-  value,
-  onChange,
-  ariaLabel,
-  size = "md",
-  className
-}) {
-  const activeIndex = Math.max(
-    0,
-    items.findIndex((i) => i.id === value)
-  );
-  const { tabRef, onKeyDown } = useRovingTablist(items.length, (i) => {
-    const it = items[i];
-    if (it && !it.disabled) onChange(it.id);
-  });
-  const pad = size === "sm" ? "px-2 py-1.5" : "px-3 py-2";
-  const text = size === "sm" ? "text-13" : "text-13";
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      role: "tablist",
-      "aria-label": ariaLabel,
-      className: classNames(
-        "flex items-center gap-1 border-b border-border",
-        className
-      ),
-      children: items.map((it, i) => {
-        const selected = it.id === value;
-        return /* @__PURE__ */ jsxRuntime.jsxs(
-          "button",
-          {
-            ref: tabRef(i),
-            role: "tab",
-            type: "button",
-            "aria-selected": selected,
-            tabIndex: rovingTabIndex(i, activeIndex),
-            disabled: it.disabled,
-            onKeyDown: onKeyDown(i),
-            onClick: () => !it.disabled && onChange(it.id),
-            className: classNames(
-              "-mb-px inline-flex items-center gap-2 border-b-2 font-medium transition-colors",
-              pad,
-              text,
-              selected ? "border-accent text-ink-strong" : "border-transparent text-ink-muted hover:text-ink-strong",
-              it.disabled ? "opacity-50 cursor-not-allowed" : null
-            ),
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsx("span", { children: it.label }),
-              it.meta != null ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink-muted", children: it.meta }) : null
-            ]
-          },
-          it.id
-        );
-      })
-    }
-  );
-}
-function isScrolledPast(scrollY, threshold) {
-  return scrollY > threshold;
-}
-function useScrolled(threshold = 4) {
-  const [scrolled, setScrolled] = React3.useState(false);
-  React3.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onScroll = () => {
-      setScrolled(isScrolledPast(window.scrollY, threshold));
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [threshold]);
-  return scrolled;
-}
-function StickyToolbar({
-  children,
-  offset,
-  hairline = true,
-  className
-}) {
-  const scrolled = useScrolled(4);
-  const top = offset != null ? { top: offset } : { top: "var(--mg-sticky-offset, 0px)" };
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      style: top,
-      className: cn(
-        "sticky z-[var(--mg-z-raised)] -mx-4 border-b bg-paper px-4 py-2 transition-[border-color,box-shadow] sm:mx-0 sm:px-0",
-        hairline && scrolled ? "border-border" : "border-transparent",
-        className
-      ),
-      children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-wrap items-center gap-2", children })
     }
   );
 }
@@ -5644,27 +4890,6 @@ function PagerFooter({
           )
         ] })
       ]
-    }
-  );
-}
-function MetaStrip({
-  items,
-  separator = "dot",
-  className
-}) {
-  const sep = separator === "pipe" ? "|" : "\xB7";
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      className: cn(
-        "flex flex-wrap items-center gap-x-2 gap-y-1 text-13 text-ink-muted",
-        className
-      ),
-      children: items.map((it, i) => /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
-        i > 0 ? /* @__PURE__ */ jsxRuntime.jsx("span", { "aria-hidden": true, className: "text-ink-subtle-text", children: sep }) : null,
-        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-10", children: it.label }),
-        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink-strong", children: it.value })
-      ] }, i))
     }
   );
 }
@@ -5859,91 +5084,6 @@ function FilterSheet({
     ) : null
   ] });
 }
-var INLINE_FROM = {
-  sm: "sm:flex",
-  md: "md:flex",
-  lg: "lg:flex"
-};
-var HIDE_UNTIL = {
-  sm: "hidden sm:flex",
-  md: "hidden md:flex",
-  lg: "hidden lg:flex"
-};
-var SHOW_UNTIL = {
-  sm: "sm:hidden",
-  md: "md:hidden",
-  lg: "lg:hidden"
-};
-function PageActions({
-  primary,
-  secondary,
-  inlineFrom = "md",
-  className
-}) {
-  const [open, setOpen] = React3.useState(false);
-  const ref = React3.useRef(null);
-  React3.useEffect(() => {
-    if (!open) return;
-    const onClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target))
-        setOpen(false);
-    };
-    const onKey = (e) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: classNames("flex items-center gap-2", className), children: [
-    primary,
-    secondary ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-      /* @__PURE__ */ jsxRuntime.jsx(
-        "div",
-        {
-          className: classNames(
-            HIDE_UNTIL[inlineFrom],
-            INLINE_FROM[inlineFrom],
-            "items-center gap-2"
-          ),
-          children: secondary
-        }
-      ),
-      /* @__PURE__ */ jsxRuntime.jsxs(
-        "div",
-        {
-          className: classNames("relative", SHOW_UNTIL[inlineFrom]),
-          ref,
-          children: [
-            /* @__PURE__ */ jsxRuntime.jsx(
-              "button",
-              {
-                type: "button",
-                onClick: () => setOpen((v) => !v),
-                "aria-label": "More actions",
-                "aria-expanded": open,
-                "aria-haspopup": "menu",
-                className: "inline-flex size-9 items-center justify-center rounded border border-border bg-card text-ink-strong hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                children: /* @__PURE__ */ jsxRuntime.jsx(lucideReact.MoreHorizontal, { className: "size-4", "aria-hidden": true })
-              }
-            ),
-            open ? /* @__PURE__ */ jsxRuntime.jsx(
-              "div",
-              {
-                role: "menu",
-                className: "absolute right-0 top-full z-[var(--mg-z-overlay)] mt-2 min-w-[180px] rounded border border-border bg-card p-2",
-                children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-col items-stretch gap-1 [&>*]:w-full [&>*]:justify-start", children: secondary })
-              }
-            ) : null
-          ]
-        }
-      )
-    ] }) : null
-  ] });
-}
 var HEIGHT = {
   xs: "h-16",
   sm: "h-24",
@@ -5971,60 +5111,6 @@ function PanelSkeleton({
       children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "sr-only", children: label })
     }
   );
-}
-function MobileCollapse({
-  label,
-  hint,
-  trailing,
-  defaultOpen = false,
-  children,
-  className
-}) {
-  const [open, setOpen] = React3.useState(defaultOpen);
-  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className, children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: () => setOpen((v) => !v),
-        "aria-expanded": open,
-        className: classNames(
-          "md:hidden w-full flex items-center justify-between gap-3",
-          "rounded border border-border bg-card px-3 py-2 mg-focus-ring",
-          "text-left transition-colors hover:border-accent/40"
-        ),
-        children: [
-          /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "flex min-w-0 flex-1 flex-col", children: [
-            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-10 text-ink-strong", children: label }),
-            hint ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mt-0.5 truncate text-11 text-ink-muted", children: hint }) : null
-          ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "flex shrink-0 items-center gap-2", children: [
-            trailing,
-            /* @__PURE__ */ jsxRuntime.jsx(
-              lucideReact.ChevronDown,
-              {
-                "aria-hidden": true,
-                className: classNames(
-                  "size-4 text-ink-muted transition-transform",
-                  open ? "rotate-180" : "rotate-0"
-                )
-              }
-            )
-          ] })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntime.jsx(
-      "div",
-      {
-        className: classNames(
-          open ? "mt-3 block" : "hidden",
-          "md:mt-0 md:block"
-        ),
-        children
-      }
-    )
-  ] });
 }
 var tierLabels = {
   buildable: "Buildable",
@@ -6747,14 +5833,30 @@ function RoutePending({
     }
   );
 }
+function isScrolledPast(scrollY, threshold) {
+  return scrollY > threshold;
+}
+function useScrolled(threshold = 4) {
+  const [scrolled, setScrolled] = React3.useState(false);
+  React3.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onScroll = () => {
+      setScrolled(isScrolledPast(window.scrollY, threshold));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [threshold]);
+  return scrolled;
+}
 
-exports.AccentBand = AccentBand;
 exports.Accordion = Accordion;
 exports.AccordionContent = AccordionContent;
 exports.AccordionItem = AccordionItem;
 exports.AccordionTrigger = AccordionTrigger;
-exports.ActionBar = ActionBar;
 exports.ActiveEntityProvider = ActiveEntityProvider;
+exports.AnalyticsPage = AnalyticsPage;
+exports.AnalyticsSection = AnalyticsSection;
 exports.AnimatedNumber = AnimatedNumber;
 exports.BackToTop = BackToTop;
 exports.BarMini = BarMini;
@@ -6779,7 +5881,6 @@ exports.CopyButton = CopyButton;
 exports.CopyIconToggle = CopyIconToggle;
 exports.CopyableCode = CopyableCode;
 exports.CurationChip = CurationChip;
-exports.DailyRollupFreshness = DailyRollupFreshness;
 exports.Definition = Definition;
 exports.DefinitionList = DefinitionList;
 exports.DefinitionsProvider = DefinitionsProvider;
@@ -6797,19 +5898,21 @@ exports.DiscordIcon = DiscordIcon;
 exports.Divider = Divider;
 exports.Donut = Donut;
 exports.DonutLegend = DonutLegend;
-exports.DotRow = DotRow;
 exports.DownloadCsvButton = DownloadCsvButton;
 exports.EligibilityChip = EligibilityChip;
 exports.EmptyState = EmptyState;
 exports.EntityHero = EntityHero;
 exports.ExternalLink = ExternalLink;
+exports.Fact = Fact;
+exports.FactCell = FactCell;
+exports.FactSentence = FactSentence;
+exports.FactStrip = FactStrip;
 exports.FilterChipRow = FilterChipRow;
 exports.FilterField = FilterField;
 exports.FilterInput = FilterInput;
 exports.FilterSelect = FilterSelect;
 exports.FilterSheet = FilterSheet;
 exports.FilterToolbar = FilterToolbar;
-exports.FreshnessIndicator = FreshnessIndicator;
 exports.GhostButton = GhostButton;
 exports.HealthDot = HealthDot;
 exports.HealthPill = HealthPill;
@@ -6817,21 +5920,13 @@ exports.Indicator = Indicator;
 exports.Kbd = Kbd;
 exports.KeyChip = KeyChip;
 exports.ListShell = ListShell;
+exports.LiveMeta = LiveMeta;
 exports.LiveTickerProvider = LiveTickerProvider;
 exports.LoadMore = LoadMore;
 exports.LoadingPill = LoadingPill;
+exports.MAX_SECTIONS = MAX_SECTIONS;
 exports.McpToolsList = McpToolsList;
-exports.MetaStrip = MetaStrip;
-exports.MethodologyCallout = MethodologyCallout;
-exports.MetricGrid = MetricGrid;
-exports.MiniRadial = MiniRadial;
-exports.MiniStack = MiniStack;
-exports.MobileCollapse = MobileCollapse;
-exports.NoDataSpark = NoDataSpark;
 exports.OpenAIIcon = OpenAIIcon;
-exports.PageActions = PageActions;
-exports.PageHero = PageHero;
-exports.PageSection = PageSection;
 exports.PagerBar = PagerBar;
 exports.PagerFooter = PagerFooter;
 exports.Panel = Panel;
@@ -6842,14 +5937,13 @@ exports.Popover = Popover;
 exports.PopoverAnchor = PopoverAnchor;
 exports.PopoverContent = PopoverContent;
 exports.PopoverTrigger = PopoverTrigger;
-exports.PrimaryLinksRail = PrimaryLinksRail;
 exports.ProvenanceChip = ProvenanceChip;
 exports.QueryBar = QueryBar;
 exports.QueryProgress = QueryProgress;
+exports.RangeControl = RangeControl;
 exports.Raw = Raw;
 exports.RawCode = RawCode;
 exports.ReadinessGauge = ReadinessGauge;
-exports.RealtimeFreshness = RealtimeFreshness;
 exports.ResponsiveTable = ResponsiveTable;
 exports.ReviewChip = ReviewChip;
 exports.RoutePending = RoutePending;
@@ -6857,10 +5951,8 @@ exports.SCOPES = SCOPES;
 exports.SHARE_COPIED_EVENT = SHARE_COPIED_EVENT;
 exports.SankeyMini = SankeyMini;
 exports.ScrollShadow = ScrollShadow;
-exports.SectionAnchor = SectionAnchor;
-exports.SectionHeading = SectionHeading;
-exports.SectionLabel = SectionLabel;
-exports.SegmentedToggle = SegmentedToggle;
+exports.SectionHead = SectionHead;
+exports.SectionNav = SectionNav;
 exports.ShareButton = ShareButton;
 exports.Sheet = Sheet;
 exports.SheetClose = SheetClose;
@@ -6876,11 +5968,7 @@ exports.Skeleton = Skeleton;
 exports.SparkLegend = SparkLegend;
 exports.Sparkline = Sparkline;
 exports.StackedAreaMini = StackedAreaMini;
-exports.StatTile = StatTile;
-exports.StatWithSpark = StatWithSpark;
 exports.StatusBadge = StatusBadge;
-exports.StickyToolbar = StickyToolbar;
-exports.TabStrip = TabStrip;
 exports.TableColGroup = TableColGroup;
 exports.TableSkeleton = TableSkeleton;
 exports.TableState = TableState;
@@ -6901,16 +5989,18 @@ exports.layoutSankey = layoutSankey;
 exports.layoutStackedArea = layoutStackedArea;
 exports.markAriaLabel = markAriaLabel;
 exports.nextTabIndex = nextTabIndex;
+exports.pickActiveSection = pickActiveSection;
 exports.prefetchBrandIcon = prefetchBrandIcon;
 exports.rovingTabIndex = rovingTabIndex;
 exports.safeExternalUrl = safeExternalUrl;
-exports.tierFreshnessLabel = tierFreshnessLabel;
+exports.sectionItems = sectionItems;
 exports.useActiveEntity = useActiveEntity;
+exports.useActiveSection = useActiveSection;
 exports.useColumnVisibility = useColumnVisibility;
 exports.useDefinition = useDefinition;
 exports.useEntityMark = useEntityMark;
 exports.useIsActive = useIsActive;
 exports.useLiveTicker = useLiveTicker;
 exports.useQueryBarContext = useQueryBarContext;
-exports.useRovingTablist = useRovingTablist;
+exports.useRovingGroup = useRovingGroup;
 exports.useScrolled = useScrolled;

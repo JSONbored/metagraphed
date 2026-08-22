@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { classNames } from "@/lib/metagraphed/format";
-import { CopyableCode, SectionHeading } from "@jsonbored/ui-kit";
+import { CopyableCode, SectionHead } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { SettingsSummaryStrip } from "@/components/metagraphed/settings-summary-strip";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -157,10 +157,10 @@ function CreateSubscriptionSection() {
 
   return (
     <section aria-labelledby="create-subscription-heading">
-      <SectionHeading
+      <SectionHead
+        name="Create subscription"
+        question="Register a URL to receive change-feed webhooks. Creation requires a subscription token issued by a metagraphed operator — this app never bundles one."
         id="create-subscription-heading"
-        title="Create subscription"
-        intro="Register a URL to receive change-feed webhooks. Creation requires a subscription token issued by a metagraphed operator — this app never bundles one."
       />
       <form onSubmit={onSubmit} className="space-y-3 rounded border border-border bg-card p-4">
         <Field label="Webhook URL" required>
@@ -300,10 +300,10 @@ function LookupSubscriptionSection() {
 
   return (
     <section aria-labelledby="lookup-subscription-heading">
-      <SectionHeading
+      <SectionHead
+        name="Look up subscription"
+        question="Check a subscription's status and delivery health by id."
         id="lookup-subscription-heading"
-        title="Look up subscription"
-        intro="Check a subscription's status and delivery health by id."
       />
       <form
         onSubmit={onSubmit}
@@ -340,7 +340,7 @@ function LookupSubscriptionSection() {
       ) : null}
 
       {result ? (
-        <Panel as="div" className="mt-3" bodyClassName="space-y-3">
+        <Panel className="mt-3" bodyClassName="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <DeliveryStatusPill status={result.delivery.status} />
             <span
@@ -410,10 +410,10 @@ function DeleteSubscriptionSection() {
 
   return (
     <section aria-labelledby="delete-subscription-heading">
-      <SectionHeading
+      <SectionHead
+        name="Delete subscription"
+        question="Requires the one-time secret returned when the subscription was created."
         id="delete-subscription-heading"
-        title="Delete subscription"
-        intro="Requires the one-time secret returned when the subscription was created."
       />
       <form onSubmit={onSubmit} className="space-y-3 rounded border border-border bg-card p-4">
         <Field label="Subscription id" required>
