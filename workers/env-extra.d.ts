@@ -46,6 +46,10 @@ interface RuntimeSecretEnv {
   ALERT_TRIGGER_CREATE_TOKEN?: string;
   ALERT_TRIGGERS_INTERNAL_TOKEN?: string;
   API_KEY_LOOKUP_INTERNAL_TOKEN?: string;
+  /** #11565: proves a `x-metagraph-probe` marker came from one of our own
+   * scheduled sweeps. Absent on a deployment that has not provisioned it, in
+   * which case no probe marker is ever honoured -- see mcpProbeName. */
+  MCP_PROBE_TOKEN?: string;
   /** #9208: gates POST /api/v1/internal/chain-detail-sync and its head GET --
    * the live-follow decode lane's write path into the chain-detail hot tier.
    * Set via `wrangler secret put` on BOTH Workers (api.ts proxies, data-api.ts

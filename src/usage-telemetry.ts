@@ -1079,6 +1079,25 @@ function assignMcpAttribution(
   } & McpServerIdentity,
 ): void {
   properties["$mcp_source"] = MCP_ANALYTICS_SOURCE;
+  // #11565: a FIRST-PARTY probe declaring itself, so our own monitoring stops
+  // being counted as product usage. The nightly MCP conformance sweep alone was
+  // 4,990 tool calls over 30 days -- ~14% of the surface's traffic, touching
+  // all 242 tools every run, which distorts exactly the per-tool caller counts
+  // #11179 requires pricing to be chosen from.
+  //
+  // TAGGED, NOT SUPPRESSED, and the choice is deliberate. Suppression would
+  // make the sweep's own traffic unobservable at the moment we most want to
+  // know it ran, and a self-declared "do not count me" that DELETES data is
+  // strictly worse than one that labels it: a caller who mislabels itself is
+  // then invisible rather than merely excluded. Every product-facing query
+  // filters on this property; the rows stay for anyone auditing who claimed it.
+  //
+  // A DECLARED HEADER, NOT A USER-AGENT MATCH. Our sweep sets its own UA, but
+  // matching on the string would also catch `flowstacks-mcp-conformance` --
+  // observed in production, a THIRD party's conformance checker whose traffic
+  // is real usage and must not be filtered out of our numbers.
+  const probe = sanitizeLabel(event.probe);
+  if (probe !== undefined) properties["$mcp_probe"] = probe;
   // #8967: "anonymous", or the tier of the verified mg_ key. This is the one
   // dimension that makes the MCP access model measurable -- authentication
   // currently buys throughput only, and without this there is no way to ask
@@ -1188,6 +1207,15 @@ function boundedMcpPayload(value: unknown): unknown {
 export interface McpServerIdentity {
   serverName?: string;
   serverVersion?: string;
+  /**
+   * A FIRST-PARTY probe that proved itself with the probe token (#11565).
+   *
+   * Declared on the base every `$mcp_*` event extends, because it rides the
+   * shared attribution: a breakdown that excludes our own sweeps has to behave
+   * identically whichever event it starts from, which is the reason
+   * assignMcpAttribution exists at all. Undefined for every real caller.
+   */
+  probe?: string;
 }
 
 /** Where a client name came from (#8963). `client_info` is the MCP handshake's

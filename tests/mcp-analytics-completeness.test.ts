@@ -538,3 +538,68 @@ describe("the default recorders, with nothing injected", () => {
     );
   });
 });
+
+// #11565: a verified first-party probe rides the shared attribution onto the
+// event, so product metrics can exclude our own sweeps. Driven through the
+// REAL request path rather than the recorder directly, because the thing under
+// test is that the header survives buildContext -> mcpAttributionFor -> event.
+describe("$mcp_probe", () => {
+  const PROBE_TOKEN = "test-probe-token-aaaaaaaaaaaaaaaaaaaa";
+
+  async function callWithHeaders(headers: Record<string, string>, env: Row) {
+    const mcp: Row[] = [];
+    await handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...headers },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "get_contracts", arguments: {} },
+        }),
+      }),
+      env as unknown as Env,
+      makeDeps({
+        recordMcpToolCallEvent: (_e: unknown, event: Row) => {
+          mcp.push(event);
+          return true;
+        },
+      }),
+    );
+    return mcp;
+  }
+
+  test("a verified probe reaches the event", async () => {
+    const mcp = await callWithHeaders(
+      {
+        "x-metagraph-probe": "mcp-conformance",
+        "x-metagraph-probe-token": PROBE_TOKEN,
+      },
+      { ...CONFIGURED_ENV, MCP_PROBE_TOKEN: PROBE_TOKEN },
+    );
+    assert.equal(mcp[0].probe, "mcp-conformance");
+  });
+
+  test("an unverified marker does NOT reach the event", async () => {
+    // A caller who could self-declare would be opting out of being counted,
+    // and a crawler that can hide from the numbers is worse than one that
+    // shows up in them.
+    const mcp = await callWithHeaders(
+      {
+        "x-metagraph-probe": "mcp-conformance",
+        "x-metagraph-probe-token": "wrong-token",
+      },
+      { ...CONFIGURED_ENV, MCP_PROBE_TOKEN: PROBE_TOKEN },
+    );
+    assert.equal(mcp[0].probe, undefined);
+  });
+
+  test("ordinary traffic carries no probe at all", async () => {
+    const mcp = await callWithHeaders(
+      {},
+      { ...CONFIGURED_ENV, MCP_PROBE_TOKEN: PROBE_TOKEN },
+    );
+    assert.equal(mcp[0].probe, undefined);
+  });
+});
