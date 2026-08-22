@@ -13,7 +13,7 @@ import { DocsSplatPage } from "./-docs-splat-page";
 // RootProvider is scoped locally to this route rather than __root.tsx. The
 // app has no single shared provider tree -- __root.tsx's RootComponent only
 // wraps QueryClientProvider/Outlet/Toaster, and every other provider
-// (TooltipProvider, ApiSourceProvider) is wrapped per-route inside AppShell,
+// (DefinitionsProvider, ApiSourceProvider) is wrapped per-route inside AppShell,
 // which each route renders itself. This follows that same convention:
 // RootProvider only needs to be an ancestor of DocsLayout/DocsPage, not
 // literally at the application root -- React context doesn't care where in

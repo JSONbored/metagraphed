@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   ExternalLink,
-  InfoTooltip,
+  Definition,
 } from "@jsonbored/ui-kit";
 import { SchemaSnapshotSummary } from "@/components/metagraphed/schema-snapshot-summary";
 import { useCopy } from "@/hooks/use-copy";
@@ -181,7 +181,7 @@ function EvidenceSection({
     <div className="rounded border border-border p-3">
       <div className="mb-2 flex items-center gap-2 text-13 text-ink-muted">
         evidence &amp; sources
-        <InfoTooltip label="Where the snapshot diff was derived from. Open or copy these to verify the change against the source." />
+        <Definition term="Diff provenance" />
       </div>
       <ul className="space-y-1.5">
         {links.map((l) => (

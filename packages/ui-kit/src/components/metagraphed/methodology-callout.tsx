@@ -43,10 +43,7 @@ export function MethodologyCallout({
             Data freshness &amp; methodology
           </span>
           {freshLine ? (
-            <span
-              className="mt-0.5 block text-10 text-ink-muted/80"
-              title={freshAbs ?? undefined}
-            >
+            <span className="mt-0.5 block text-10 text-ink-muted/80">
               {freshLine}
             </span>
           ) : null}

@@ -379,7 +379,6 @@ function SurfaceRow({ surface, ongoing }: { surface: GlobalIncidentSurface; ongo
             ? "border-health-down/40 bg-health-down/5 text-health-down"
             : "border-border bg-paper text-ink-muted",
         )}
-        title={ongoing ? "Still failing as of the latest probe" : "Recovered"}
       >
         {ongoing ? "Ongoing" : "Resolved"}
       </span>
@@ -391,9 +390,7 @@ function SurfaceRow({ surface, ongoing }: { surface: GlobalIncidentSurface; ongo
         <span className="text-ink-muted tabular-nums">
           {surface.incident_count} {surface.incident_count === 1 ? "event" : "events"}
         </span>
-        <span className="tabular-nums" title="total downtime in window">
-          {downtime} down
-        </span>
+        <span className="tabular-nums">{downtime} down</span>
         <span>
           last <TimeAgo at={latest ? new Date(latest).toISOString() : undefined} />
         </span>

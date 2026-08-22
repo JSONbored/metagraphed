@@ -1,8 +1,8 @@
+import { Definition } from "./interaction/definition";
 import { Link2, Check } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { classNames } from "@/lib/format";
-import { InfoTooltip } from "./info-tooltip";
 
 /**
  * Section header with stable id for deep-linking, plus a hover "copy link"
@@ -75,13 +75,15 @@ export function SectionAnchor({
               #8433 drift-chip pattern: min-w-0 + truncate on the title, keep
               the full value on `title` when it's a string. */}
           <div className="flex min-w-0 max-w-full items-center gap-1.5">
-            <h2
-              className="min-w-0 truncate font-display text-13 font-semibold text-ink-strong"
-              title={typeof title === "string" ? title : undefined}
-            >
+            <h2 className="min-w-0 truncate font-display text-13 font-semibold text-ink-strong">
               {title}
             </h2>
-            {info ? <InfoTooltip label={info} /> : null}
+            {info ? (
+              <Definition
+                term={typeof title === "string" ? title : id}
+                sentence={info}
+              />
+            ) : null}
             <button
               type="button"
               onClick={onCopy}

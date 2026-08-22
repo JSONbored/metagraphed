@@ -1,3 +1,4 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { formatNumber } from "@/lib/metagraphed/format";
 
 /** Mirrors the API's `price_basis` enum (schemas-src/routes/subnet-events.ts). */
@@ -81,9 +82,19 @@ export function PriceAtTx({
   const showUsd = usd != null && Number.isFinite(usd);
   return (
     <span className="block text-10 tabular-nums text-ink-muted">
-      <span title={priceAtTxTooltip(price, basis, blockNumber)}>@ {price} τ/α</span>
+      <Definition
+        term="Price at transaction"
+        sentence={priceAtTxTooltip(price, basis, blockNumber)}
+      >
+        <span>@ {price} τ/α</span>
+      </Definition>
       {showUsd ? (
-        <span title={usdAtTxTooltip(usd, usdObservedAt, usdPoolCount)}> (≈ ${usd})</span>
+        <Definition
+          term="USD at transaction"
+          sentence={usdAtTxTooltip(usd, usdObservedAt, usdPoolCount)}
+        >
+          <span> (≈ ${usd})</span>
+        </Definition>
       ) : null}
     </span>
   );

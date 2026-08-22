@@ -34,7 +34,6 @@ export function Indicator({
   const isRow = orientation === "row";
   return (
     <span
-      title={title}
       className={classNames(
         "inline-flex min-w-0",
         isRow ? "items-baseline gap-1.5" : "flex-col gap-0.5",

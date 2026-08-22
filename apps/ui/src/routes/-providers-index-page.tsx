@@ -43,7 +43,6 @@ import {
 } from "@jsonbored/ui-kit";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { ProvidersPulseRail } from "@/components/metagraphed/providers-pulse-rail";
-import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import type { Provider } from "@/lib/metagraphed/types";
 import type { ProviderSortKey } from "./apis.providers";
 import { providerSortKeys } from "./apis.providers";
@@ -569,11 +568,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                           <TimeAgo
                             at={typeof p.updated_at === "string" ? p.updated_at : undefined}
                           />
-                          <CopyLinkButton
-                            hash={`provider-${p.slug}`}
-                            size="xs"
-                            tooltip="Copy link to provider"
-                          />
+                          <CopyLinkButton hash={`provider-${p.slug}`} size="xs" />
                         </div>
                       </td>
                     </tr>
@@ -591,94 +586,92 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
             const docsHost = maskHost(p.docs);
             const isOfficial = p.authority === "official";
             return (
-              <EntityHoverCard key={p.slug} kind="provider" slug={p.slug}>
-                <Link
-                  id={`provider-${p.slug}`}
-                  to="/providers/$slug"
-                  params={{ slug: p.slug }}
-                  className={classNames(
-                    "group block rounded border border-border bg-card p-4 transition-colors",
-                    "hover:border-accent/60",
-                    "target:border-accent/60",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <BrandIcon
-                        url={p.website ?? p.homepage}
-                        iconUrl={p.icon_url}
-                        repoUrl={p.repo}
-                        providerSlug={p.slug}
-                        name={p.name ?? p.slug}
-                        fallback={p.slug}
-                        size={36}
-                      />
-                      <div className="min-w-0">
-                        <div className="text-10 text-ink-muted">{p.kind ?? "provider"}</div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {isOfficial ? (
-                            // #6423: see hero-subnet-chips -- role="img" so the
-                            // colour-only badge announces its meaning.
-                            <span
-                              role="img"
-                              aria-label="Official provider"
-                              title="Official"
-                              className="inline-block size-1.5 rounded-full mg-dot bg-accent shrink-0"
-                            />
-                          ) : null}
-                          <div className="font-display text-16 font-semibold text-ink-strong line-clamp-2 leading-tight">
-                            {p.name ?? p.slug}
-                          </div>
-                        </div>
-                        <div className="text-10 text-ink-muted truncate">{p.slug}</div>
-                      </div>
-                    </div>
-                    {p.authority ? (
-                      <span
-                        className={classNames(
-                          "text-13 rounded border px-1.5 py-0.5 shrink-0",
-                          authorityTone(p.authority),
-                        )}
-                      >
-                        {p.authority}
-                      </span>
-                    ) : null}
-                  </div>
-                  {p.notes ? (
-                    <p className="mt-3 text-13 text-ink-muted leading-relaxed line-clamp-2">
-                      {p.notes}
-                    </p>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-13 text-ink-muted">
-                    {webHost ? (
-                      <span className="inline-flex items-center gap-1 min-w-0">
-                        <Globe className="size-3 shrink-0" />
-                        <span className="font-mono truncate max-w-[18ch]">{webHost}</span>
-                      </span>
-                    ) : null}
-                    {repoHost ? (
-                      <span className="inline-flex items-center gap-1 min-w-0">
-                        <Github className="size-3 shrink-0" />
-                        <span className="font-mono truncate max-w-[18ch]">{repoHost}</span>
-                      </span>
-                    ) : null}
-                    {docsHost ? (
-                      <span className="inline-flex items-center gap-1 min-w-0">
-                        <BookOpen className="size-3 shrink-0" />
-                        <span className="font-mono truncate max-w-[18ch]">{docsHost}</span>
-                      </span>
-                    ) : null}
-                    {!webHost && !repoHost && !docsHost ? (
-                      <span className="text-10">no public links yet</span>
-                    ) : null}
-                    <TimeAgo
-                      at={typeof p.updated_at === "string" ? p.updated_at : undefined}
-                      className="font-mono"
+              <Link
+                key={p.slug}
+                id={`provider-${p.slug}`}
+                to="/providers/$slug"
+                params={{ slug: p.slug }}
+                className={classNames(
+                  "group block rounded border border-border bg-card p-4 transition-colors",
+                  "hover:border-accent/60",
+                  "target:border-accent/60",
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <BrandIcon
+                      url={p.website ?? p.homepage}
+                      iconUrl={p.icon_url}
+                      repoUrl={p.repo}
+                      providerSlug={p.slug}
+                      name={p.name ?? p.slug}
+                      fallback={p.slug}
+                      size={36}
                     />
+                    <div className="min-w-0">
+                      <div className="text-10 text-ink-muted">{p.kind ?? "provider"}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {isOfficial ? (
+                          // #6423: see hero-subnet-chips -- role="img" so the
+                          // colour-only badge announces its meaning.
+                          <span
+                            role="img"
+                            aria-label="Official provider"
+                            className="inline-block size-1.5 rounded-full mg-dot bg-accent shrink-0"
+                          />
+                        ) : null}
+                        <div className="font-display text-16 font-semibold text-ink-strong line-clamp-2 leading-tight">
+                          {p.name ?? p.slug}
+                        </div>
+                      </div>
+                      <div className="text-10 text-ink-muted truncate">{p.slug}</div>
+                    </div>
                   </div>
-                  <ProviderCountsRow counts={counts[p.slug]} />
-                </Link>
-              </EntityHoverCard>
+                  {p.authority ? (
+                    <span
+                      className={classNames(
+                        "text-13 rounded border px-1.5 py-0.5 shrink-0",
+                        authorityTone(p.authority),
+                      )}
+                    >
+                      {p.authority}
+                    </span>
+                  ) : null}
+                </div>
+                {p.notes ? (
+                  <p className="mt-3 text-13 text-ink-muted leading-relaxed line-clamp-2">
+                    {p.notes}
+                  </p>
+                ) : null}
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-13 text-ink-muted">
+                  {webHost ? (
+                    <span className="inline-flex items-center gap-1 min-w-0">
+                      <Globe className="size-3 shrink-0" />
+                      <span className="font-mono truncate max-w-[18ch]">{webHost}</span>
+                    </span>
+                  ) : null}
+                  {repoHost ? (
+                    <span className="inline-flex items-center gap-1 min-w-0">
+                      <Github className="size-3 shrink-0" />
+                      <span className="font-mono truncate max-w-[18ch]">{repoHost}</span>
+                    </span>
+                  ) : null}
+                  {docsHost ? (
+                    <span className="inline-flex items-center gap-1 min-w-0">
+                      <BookOpen className="size-3 shrink-0" />
+                      <span className="font-mono truncate max-w-[18ch]">{docsHost}</span>
+                    </span>
+                  ) : null}
+                  {!webHost && !repoHost && !docsHost ? (
+                    <span className="text-10">no public links yet</span>
+                  ) : null}
+                  <TimeAgo
+                    at={typeof p.updated_at === "string" ? p.updated_at : undefined}
+                    className="font-mono"
+                  />
+                </div>
+                <ProviderCountsRow counts={counts[p.slug]} />
+              </Link>
             );
           })}
         </div>

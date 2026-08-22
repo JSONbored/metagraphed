@@ -313,7 +313,6 @@ function LastDeliveryPill({
   return (
     <span
       className={classNames("text-11", delivery.success ? "text-health-ok" : "text-health-down")}
-      title={delivery.status_code != null ? `HTTP ${delivery.status_code}` : undefined}
     >
       {delivery.success ? "delivered" : "failed"}{" "}
       <TimeAgo at={epochMsToIso(delivery.delivered_at)} />
@@ -361,9 +360,7 @@ function DeliveryHistory({
             <span className="text-ink-muted">{d.retry_count} retries</span>
           ) : null}
           {!d.success && d.response_snippet ? (
-            <span className="w-full truncate text-ink-muted" title={d.response_snippet}>
-              {d.response_snippet}
-            </span>
+            <span className="w-full truncate text-ink-muted">{d.response_snippet}</span>
           ) : null}
         </li>
       ))}

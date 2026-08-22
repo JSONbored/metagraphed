@@ -356,9 +356,7 @@ export function StaleBanner({
       {refreshQueryKeys?.length ? (
         <span className={`flex items-center gap-2 ${!compact && !hideText ? "ml-auto" : ""}`}>
           {state === "error" && errorMsg ? (
-            <span className="text-health-down truncate max-w-[18rem]" title={errorMsg}>
-              {errorMsg}
-            </span>
+            <span className="text-health-down truncate max-w-[18rem]">{errorMsg}</span>
           ) : null}
           {state === "ok" ? (
             <span className="inline-flex items-center gap-1 text-health-ok">
@@ -370,7 +368,6 @@ export function StaleBanner({
             type="button"
             onClick={onRefresh}
             disabled={state === "pending"}
-            title={refreshLabel}
             aria-label={refreshLabel}
             className={
               bare

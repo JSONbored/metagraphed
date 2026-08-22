@@ -1025,9 +1025,7 @@ function AdapterCandidates() {
             {r.reason ?? <span className="text-ink-muted">No recommendation recorded</span>}
           </span>
           {r.score != null ? (
-            <span className="text-11 text-ink-strong tabular-nums" title="Priority score">
-              {Math.round(r.score)}
-            </span>
+            <span className="text-11 text-ink-strong tabular-nums">{Math.round(r.score)}</span>
           ) : null}
         </li>
       ))}
@@ -1346,7 +1344,7 @@ function GapPriorityList() {
             {r.missing_kinds && r.missing_kinds.length > 0 ? r.missing_kinds.join(", ") : "—"}
           </span>
           {r.priority_score != null ? (
-            <span className="text-11 text-ink-strong tabular-nums shrink-0" title="Priority score">
+            <span className="text-11 text-ink-strong tabular-nums shrink-0">
               {Math.round(r.priority_score)}
             </span>
           ) : null}

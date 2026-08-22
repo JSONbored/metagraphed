@@ -7,7 +7,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { Tooltip, TooltipContent, TooltipTrigger, InfoTooltip } from "@jsonbored/ui-kit";
+import { Definition, ChartTooltip, useEntityMark } from "@jsonbored/ui-kit";
 import { useHydrated } from "@/hooks/use-hydrated";
 
 interface Props {
@@ -110,7 +110,7 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
       <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border bg-paper">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-13 text-ink-muted">Registry activity</span>
-          <InfoTooltip label="Daily probe samples and recorded incidents — not GitHub commits. Drives the registry's freshness signal." />
+          <Definition term="Activity heatmap" />
         </div>
         <span className="text-10 text-ink-muted">
           {activeDays}/{cells.length} active · streak {streak}d
@@ -118,37 +118,17 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
       </div>
       <div className="p-4">
         <div
-          className="grid gap-[3px]"
+          className="relative grid gap-[3px]"
           style={{ gridTemplateColumns: `repeat(${weeks}, minmax(0, 1fr))` }}
-          role="img"
+          role="group"
           aria-label={`Registry activity heatmap for the last ${weeks} weeks`}
+          data-marks
         >
+          <ChartTooltip top={0} />
           {columns.map((col, ci) => (
             <div key={ci} className="grid grid-rows-7 gap-[3px]">
               {col.map((c) => (
-                <Tooltip key={c.key} delayDuration={120}>
-                  <TooltipTrigger asChild>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className="mg-focus-ring aspect-square rounded border border-border/40"
-                      style={{ background: tone(c.score, maxScore) }}
-                      aria-label={`${c.key}: ${c.probes} probes, ${c.incidents} incidents`}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-10">
-                    <div className="text-13 text-ink-strong">{c.key}</div>
-                    <div>
-                      {c.probes} probe{c.probes === 1 ? "" : "s"}
-                    </div>
-                    {c.incidents > 0 ? (
-                      <div className="text-health-down">
-                        {c.incidents} incident{c.incidents === 1 ? "" : "s"}
-                      </div>
-                    ) : null}
-                    {c.uptime != null ? <div>uptime {(c.uptime * 100).toFixed(2)}%</div> : null}
-                  </TooltipContent>
-                </Tooltip>
+                <HeatCell key={c.key} cell={c} background={tone(c.score, maxScore)} />
               ))}
             </div>
           ))}
@@ -177,4 +157,29 @@ function tone(score: number, max: number): string {
   if (t < 0.5) return "color-mix(in oklab, var(--accent) 38%, var(--surface))";
   if (t < 0.75) return "color-mix(in oklab, var(--accent) 62%, var(--surface))";
   return "var(--accent)";
+}
+
+function HeatCell({ cell: c, background }: { cell: Cell; background: string }) {
+  const rows = [
+    { key: "probes", label: "probes", value: String(c.probes) },
+    ...(c.incidents > 0
+      ? [{ key: "incidents", label: "incidents", value: String(c.incidents) }]
+      : []),
+    ...(c.uptime != null
+      ? [{ key: "uptime", label: "uptime", value: `${(c.uptime * 100).toFixed(2)}%` }]
+      : []),
+  ];
+  const mark = useEntityMark(`day:${c.key}`, {
+    source: "activity-heatmap",
+    label: `${c.key}: ${c.probes} probes, ${c.incidents} incidents`,
+    data: { title: c.key, rows },
+  });
+  return (
+    <button
+      type="button"
+      {...mark}
+      className="aspect-square rounded border border-border/40 data-[active=true]:ring-2 data-[active=true]:ring-accent"
+      style={{ background }}
+    />
+  );
 }

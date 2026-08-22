@@ -2,10 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { ExternalLink as ExternalLinkIcon } from "lucide-react";
 import { useMemo } from "react";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
   HealthDot,
   EligibilityChip,
   TimeAgo,
@@ -14,6 +10,7 @@ import {
   CopyIconToggle,
   Sparkline,
   ExternalLink,
+  Definition,
 } from "@jsonbored/ui-kit";
 import { useCopy } from "@/hooks/use-copy";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -66,7 +63,7 @@ export function EndpointList({
   if (rows.length === 0) return null;
 
   return (
-    <TooltipProvider delayDuration={150}>
+    <>
       {/* Desktop */}
       <Panel as="div" flush className="hidden md:block overflow-hidden">
         <div className="overflow-x-auto">
@@ -132,7 +129,7 @@ export function EndpointList({
           </div>
         ))}
       </div>
-    </TooltipProvider>
+    </>
   );
 }
 
@@ -261,35 +258,23 @@ function Row({
         <div className="inline-flex items-center gap-0.5">
           {e.url ? (
             <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => copy(e.url!)}
-                    aria-label="Copy URL"
-                    className="inline-flex size-7 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-                  >
-                    <CopyIconToggle copied={copied} size={3.5} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Copy URL</TooltipContent>
-              </Tooltip>
+              <button
+                type="button"
+                onClick={() => copy(e.url!)}
+                aria-label="Copy URL"
+                className="inline-flex size-7 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+              >
+                <CopyIconToggle copied={copied} size={3.5} />
+              </button>
               {safeUrl ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <a
-                      href={safeUrl}
-                      // eslint-disable-next-line no-restricted-syntax -- must stay a raw <a>: it's the child of a Radix <TooltipTrigger asChild>, which clones it and injects a ref; <ExternalLink> is a plain function component (no forwardRef) so it can't receive that ref
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="Open URL"
-                      className="inline-flex size-7 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-                    >
-                      <ExternalLinkIcon className="size-3.5" />
-                    </a>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Open in new tab</TooltipContent>
-                </Tooltip>
+                <ExternalLink
+                  bare
+                  href={safeUrl}
+                  ariaLabel="Open URL"
+                  className="inline-flex size-7 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+                >
+                  <ExternalLinkIcon className="size-3.5" />
+                </ExternalLink>
               ) : null}
             </>
           ) : null}
@@ -394,23 +379,11 @@ function MobileCard({
 
 function HeaderHint({ label, hint }: { label: string; hint: string }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        {/* #3433: tabIndex so this trigger is reachable by keyboard at all --
-            without it, Radix's Tooltip never receives the focus event that
-            opens it, so it can't be opened (or Escape-dismissed) via
-            keyboard. Matches EligibilityChip's trigger. */}
-        <span
-          tabIndex={0}
-          className="inline-flex items-center gap-1 cursor-help rounded underline-offset-2 decoration-dotted decoration-ink-subtle hover:decoration-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {label}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs text-13">
-        {hint}
-      </TooltipContent>
-    </Tooltip>
+    <Definition term={label} sentence={hint}>
+      <span className="inline-flex items-center gap-1 rounded underline-offset-2 decoration-dotted decoration-ink-subtle hover:decoration-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {label}
+      </span>
+    </Definition>
   );
 }
 

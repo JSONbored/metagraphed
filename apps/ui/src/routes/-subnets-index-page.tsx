@@ -54,7 +54,6 @@ import {
   type ViewMode,
 } from "@jsonbored/ui-kit";
 import { useInView } from "@/hooks/use-in-view";
-import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import {
   ariaSort,
   FilterChip,
@@ -495,20 +494,17 @@ function ExcludeToggle({
   onToggle,
   label,
   count,
-  title,
 }: {
   hidden: boolean;
   onToggle: () => void;
   label: string;
   count: number;
-  title: string;
 }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-pressed={hidden}
-      title={title}
       className={classNames(
         "text-13 inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
         hidden
@@ -964,11 +960,6 @@ function SubnetsTable({ view }: { view: ViewMode }) {
               onToggle={() => setSearch({ includeRoot: !search.includeRoot })}
               label="Hide root"
               count={rootCount}
-              title={
-                search.includeRoot
-                  ? `Showing the root subnet — click to hide ${rootCount} root netuid${rootCount === 1 ? "" : "s"}`
-                  : "Root subnet hidden — click to show it again"
-              }
             />
             {view === "table" ? (
               <>
@@ -1313,7 +1304,6 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                     <th
                       className={classNames(cellPad, "mg-table-head-pinned")}
                       aria-sort={ariaSort(search.sort === "curation_level", search.order)}
-                      title="Source: how this subnet's registry entry was curated — native chain data, machine-verified, maintainer-reviewed, adapter-backed, community-seeded, or an unverified candidate."
                     >
                       <SortHeader
                         label="Source"
@@ -1328,7 +1318,6 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                     <th
                       className={classNames(cellPad, "mg-table-head-pinned text-right")}
                       aria-sort={ariaSort(search.sort === "surfaces_count", search.order)}
-                      title="Verified public surfaces registered for this subnet (APIs, docs, dashboards, data artifacts, SSE streams)."
                     >
                       <SortHeader
                         label="Surfaces"
@@ -1344,7 +1333,6 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                     <th
                       className={classNames(cellPad, "mg-table-head-pinned text-right")}
                       aria-sort={ariaSort(search.sort === "integration_readiness", search.order)}
-                      title="Profile: how complete this subnet's public-interface profile is (buildable → emerging → identity-only → dormant), based on registered surfaces and evidence."
                     >
                       <SortHeader
                         label="Profile"
@@ -1360,7 +1348,6 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                     <th
                       className={classNames(cellPad, "mg-table-head-pinned text-right")}
                       aria-sort={ariaSort(search.sort === "registration_cost_tao", search.order)}
-                      title="Current recycle/burn cost (in TAO) to register a new UID on this subnet. Dimmed when registration is closed."
                     >
                       <SortHeader
                         label="Reg. cost"
@@ -1377,7 +1364,6 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                       className={classNames(cellPad, "mg-table-head-pinned text-right")}
                       aria-sort={ariaSort(search.sort === "emission_share", search.order)}
                       // #8746: stage-1 price share, not TAO received.
-                      title="Stage 1 of the v440 emission pipeline: share of alpha price, not the share of TAO this subnet receives."
                     >
                       <SortHeader
                         label="Emission"
@@ -1405,10 +1391,7 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                     </th>
                   ) : null}
                   {columns.isVisible("priceChange") ? (
-                    <th
-                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
-                      title={`Alpha price change over the selected trend window (${trendWindow})`}
-                    >
+                    <th className={classNames(cellPad, "mg-table-head-pinned text-right")}>
                       <span>{trendWindow} %</span>
                     </th>
                   ) : null}
@@ -1484,7 +1467,6 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                     <th
                       className={classNames(cellPad, "mg-table-head-pinned text-right")}
                       aria-sort={ariaSort(search.sort === "registered_at_block", search.order)}
-                      title="Time since this subnet's registration block."
                     >
                       <SortHeader
                         label="Age"
@@ -1541,15 +1523,13 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                         <CompareToggle netuid={s.netuid} />
                       </td>
                       <td className={classNames(cellPad, "font-mono text-ink-muted", monoSize)}>
-                        <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                          <Link
-                            to="/subnets/$netuid"
-                            params={{ netuid: s.netuid }}
-                            className="hover:text-ink-strong"
-                          >
-                            {String(s.netuid).padStart(3, "0")}
-                          </Link>
-                        </EntityHoverCard>
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: s.netuid }}
+                          className="hover:text-ink-strong"
+                        >
+                          {String(s.netuid).padStart(3, "0")}
+                        </Link>
                         {/* #6643: age-in-days, estimated from the already-fetched
                         registered_at_block/block delta -- no new backend call. */}
                         <div className="text-13 font-sans text-ink-muted/70 whitespace-nowrap">
@@ -1557,24 +1537,22 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                         </div>
                       </td>
                       <td className={cellPad}>
-                        <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                          <Link
-                            to="/subnets/$netuid"
-                            params={{ netuid: s.netuid }}
-                            className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
-                          >
-                            <BrandIcon
-                              url={s.website}
-                              repoUrl={s.repo}
-                              iconUrl={s.icon_url}
-                              netuid={s.netuid}
-                              name={s.name}
-                              fallback={s.netuid}
-                              size={compact ? 18 : 20}
-                            />
-                            <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
-                          </Link>
-                        </EntityHoverCard>
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: s.netuid }}
+                          className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
+                        >
+                          <BrandIcon
+                            url={s.website}
+                            repoUrl={s.repo}
+                            iconUrl={s.icon_url}
+                            netuid={s.netuid}
+                            name={s.name}
+                            fallback={s.netuid}
+                            size={compact ? 18 : 20}
+                          />
+                          <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
+                        </Link>
                       </td>
                       {columns.isVisible("symbol") ? (
                         <td className={classNames(cellPad, "text-11 text-ink-muted")}>
@@ -1612,13 +1590,6 @@ function SubnetsTable({ view }: { view: ViewMode }) {
                             // the neutral tone — do NOT read it as "open".
                             s.registration_allowed === false ? "text-ink-muted" : "text-ink",
                           )}
-                          title={
-                            s.registration_allowed === false
-                              ? "Registration currently closed"
-                              : s.registration_allowed === true
-                                ? "Registration open"
-                                : undefined
-                          }
                         >
                           {formatTao(s.registration_cost_tao)}
                         </td>
@@ -1919,21 +1890,20 @@ function SubnetMatrix({ rows }: { rows: Subnet[] }) {
         style={{ gridTemplateColumns: "repeat(auto-fill, minmax(2.25rem, 1fr))" }}
       >
         {rows.map((s) => (
-          <EntityHoverCard key={s.netuid} kind="subnet" netuid={s.netuid}>
-            <Link
-              to="/subnets/$netuid"
-              params={{ netuid: s.netuid }}
-              aria-label={`Subnet ${s.netuid}${s.name ? ` — ${s.name}` : ""}`}
-              title={`#${s.netuid}${s.name ? ` · ${s.name}` : ""} · ${s.health ?? "unknown"}`}
-              className={classNames(
-                "mg-pulse-cell flex aspect-square items-center justify-center rounded text-10 font-medium transition-transform",
-                HEALTH_BG[s.health ?? "unknown"] ?? HEALTH_BG.unknown,
-                HEALTH_TEXT[s.health ?? "unknown"] ?? HEALTH_TEXT.unknown,
-              )}
-            >
-              {s.netuid}
-            </Link>
-          </EntityHoverCard>
+          <Link
+            key={s.netuid}
+            to="/subnets/$netuid"
+            params={{ netuid: s.netuid }}
+            aria-label={`Subnet ${s.netuid}${s.name ? ` — ${s.name}` : ""}`}
+            title={`#${s.netuid}${s.name ? ` · ${s.name}` : ""} · ${s.health ?? "unknown"}`}
+            className={classNames(
+              "mg-pulse-cell flex aspect-square items-center justify-center rounded text-10 font-medium transition-transform",
+              HEALTH_BG[s.health ?? "unknown"] ?? HEALTH_BG.unknown,
+              HEALTH_TEXT[s.health ?? "unknown"] ?? HEALTH_TEXT.unknown,
+            )}
+          >
+            {s.netuid}
+          </Link>
         ))}
       </div>
     </Panel>
@@ -2079,11 +2049,7 @@ function FinancialTrendCell({
           {usd != null || pct ? (
             <div className="text-10 text-ink-muted/80 flex items-center justify-end gap-1">
               {usd != null ? <span>{fmtUsd(usd)}</span> : null}
-              {pct ? (
-                <span className={toneClass} title={`${win} change`}>
-                  {pct}
-                </span>
-              ) : null}
+              {pct ? <span className={toneClass}>{pct}</span> : null}
             </div>
           ) : null}
         </div>
@@ -2146,7 +2112,6 @@ function SurfacesCell({ subnet }: { subnet: Subnet }) {
       windowLabel="latest snapshot"
       updatedAt={subnet.updated_at ?? subnet.freshness ?? null}
       staleness="Unverified candidates are excluded from the count; the bar shows the trust composition of manifested surfaces."
-      side="top"
     >
       <span
         className={classNames("flex items-center gap-2", compact ? "min-w-[72px]" : "min-w-[88px]")}

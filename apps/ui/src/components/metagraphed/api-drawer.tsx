@@ -10,9 +10,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   CopyableCode,
   Kbd,
   ExternalLink,
@@ -40,22 +37,14 @@ export function ApiDrawerTrigger() {
 
   if (sources.length === 0) return null;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={open}
-          aria-label="View API source for this page"
-          className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center rounded size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-        >
-          <Code2 className="size-4" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="text-13">
-        View in API · <Kbd>⌘</Kbd>
-        <Kbd>J</Kbd>
-      </TooltipContent>
-    </Tooltip>
+    <button
+      type="button"
+      onClick={open}
+      aria-label="View API source for this page"
+      className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center rounded size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+    >
+      <Code2 className="size-4" />
+    </button>
   );
 }
 

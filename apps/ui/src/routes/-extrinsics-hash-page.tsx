@@ -426,10 +426,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                         "—"
                       )}
                     </td>
-                    <td
-                      className="px-4 py-2.5 text-11 text-ink-strong"
-                      title={ev.event_kind ?? undefined}
-                    >
+                    <td className="px-4 py-2.5 text-11 text-ink-strong">
                       {eventKindLabel(ev.event_kind)}
                     </td>
                     <td className="px-4 py-2.5 text-11 text-ink-muted">

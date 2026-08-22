@@ -1,3 +1,4 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import {
@@ -8,7 +9,6 @@ import {
 } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
-import { InfoTooltip } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import {
   useTimeRange,
@@ -115,7 +115,7 @@ export function NetworkPulseBand({ className }: { className?: string }) {
             <Legend swatch="bg-health-ok" label="ok" />
             <Legend swatch="bg-health-warn" label="warn" />
             <Legend swatch="bg-health-down" label="down" />
-            <InfoTooltip label="For 7d/30d each bar is the real sample-weighted daily uptime from /api/v1/health/trends (down = 1 − uptime); 1h/24h fall back to the live current ok/warn/down snapshot. Markers indicate incident starts per bucket." />
+            <Definition term="Network pulse" />
           </div>
         </div>
         <svg

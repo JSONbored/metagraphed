@@ -65,7 +65,7 @@ export function ChainEventCard({ event }: { event: ChainEvent }) {
   return (
     <Panel as="div" className="min-h-11">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="min-w-0 truncate text-11 text-ink-strong" title={sentence ?? undefined}>
+        <span className="min-w-0 truncate text-11 text-ink-strong">
           {sentence ?? extrinsicCall(event.pallet, event.method)}
         </span>
         {s.amountTao != null ? (
@@ -275,7 +275,7 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
           const sentence = summarizeEvent(event.pallet, event.method, event.args);
           return (
             <tr key={`${event.block_number}-${event.event_index}`} className="hover:bg-surface">
-              <td className="px-4 py-2.5 text-11 text-ink-strong" title={sentence ?? undefined}>
+              <td className="px-4 py-2.5 text-11 text-ink-strong">
                 {sentence ?? extrinsicCall(event.pallet, event.method)}
               </td>
               <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink">

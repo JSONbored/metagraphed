@@ -70,7 +70,6 @@ export function ValueUnitControl() {
             type="button"
             role="tab"
             aria-selected={active}
-            title={o.title}
             onClick={() => setUnit(o.v)}
             className={
               "inline-flex items-center rounded px-2 py-1 text-13 font-medium transition-colors min-h-8" +

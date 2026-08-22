@@ -49,7 +49,7 @@ export function SudoKeyCard() {
           ) : hotkey ? (
             <AddressDisplay ss58={hotkey} fallback={<>{hotkey}</>} keep={8} linkToAccount={false} />
           ) : (
-            <span title="Root key has been renounced on-chain">Unset</span>
+            <span>Unset</span>
           )}
         </span>
         {phase === "ready" && queriedAt ? (

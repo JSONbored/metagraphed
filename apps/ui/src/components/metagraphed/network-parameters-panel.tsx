@@ -1,3 +1,4 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import {
   DefinitionList,
@@ -123,9 +124,16 @@ function toDefinitionItems(rows: ParameterRow[]): DefinitionItem[] {
   return rows.map((row) => {
     const { text, title } = formatParameterValue(row);
     return {
-      term: row.hint ? row.label : <span className="font-mono">{row.label}</span>,
+      term: row.hint ? (
+        <span className="inline-flex items-center gap-1">
+          {row.label}
+          <Definition term={row.label} sentence={row.hint} />
+        </span>
+      ) : (
+        <span className="font-mono">{row.label}</span>
+      ),
+      // `title` is the full value behind a rounded `text` -- an identifier keeps it.
       detail: <span title={title}>{text}</span>,
-      title: row.hint,
     };
   });
 }

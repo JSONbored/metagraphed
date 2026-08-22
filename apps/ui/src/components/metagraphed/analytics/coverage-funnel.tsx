@@ -1,7 +1,7 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { coverageQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
-import { InfoTooltip } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { Coverage } from "@/lib/metagraphed/types";
 
@@ -77,7 +77,7 @@ export function CoverageFunnel({ className }: { className?: string }) {
               Registry depth
             </h3>
           </div>
-          <InfoTooltip label="Each step's bar is scaled to the largest step; the % shows conversion from the previous step." />
+          <Definition term="Coverage funnel" />
         </div>
         <ol className="space-y-3">
           {steps.map((s, i) => {

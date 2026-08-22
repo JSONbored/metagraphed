@@ -1,9 +1,9 @@
+import { Definition } from "@jsonbored/ui-kit";
 import { useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { endpointsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { InfoTooltip } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { useTimeRange, RANGE_HOURS, RANGE_LABEL } from "./time-range-context";
 import type { Endpoint, HealthState } from "@/lib/metagraphed/types";
@@ -83,7 +83,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
                 </button>
               );
             })}
-            <InfoTooltip label="One tile per monitored endpoint, colored by latest probe state. Click a tile to open the host subnet." />
+            <Definition term="Status mosaic" />
           </div>
         </div>
         <div
@@ -100,9 +100,6 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
                   "block aspect-square rounded transition-transform hover:scale-110 hover:ring-1 hover:ring-accent/60",
                   TONE[state] ?? TONE.unknown,
                 )}
-                title={`${e.kind ?? "endpoint"} · ${e.provider ?? e.provider_slug ?? "—"} · ${state}${
-                  e.latency_ms != null ? ` · ${e.latency_ms}ms` : ""
-                }${e.netuid != null ? ` · SN${e.netuid}` : ""}`}
               />
             );
             return (

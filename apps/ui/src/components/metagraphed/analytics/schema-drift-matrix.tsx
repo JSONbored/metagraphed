@@ -12,7 +12,7 @@ import {
 import { schemasQuery, evidenceQuery } from "@/lib/metagraphed/queries";
 import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
 import { classNames } from "@/lib/metagraphed/format";
-import { TimeAgo, InfoTooltip, safeExternalUrl } from "@jsonbored/ui-kit";
+import { TimeAgo, safeExternalUrl, Definition } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { SchemaInfo, EvidenceItem } from "@/lib/metagraphed/types";
 
@@ -183,7 +183,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
               </button>
             );
           })}
-          <InfoTooltip label="Heuristic classification of drift_status: 'breaking' contains 'break/incompat/major'; 'additive' contains 'add/minor/patch/compat'; otherwise we mark it as unchanged or unknown." />
+          <Definition term="Drift classification" />
         </div>
       </header>
 
@@ -277,7 +277,6 @@ function DriftTile({
           "hover:ring-2",
           tone.ring,
         )}
-        title={`${tone.label} · ${label}${schema.updated_at ? ` · updated ${new Date(schema.updated_at).toISOString().slice(0, 10)}` : ""}`}
       >
         <Icon
           className={classNames(

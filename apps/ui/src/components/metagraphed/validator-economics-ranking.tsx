@@ -51,24 +51,9 @@ export function ValidatorEconomicsRanking() {
           <thead>
             <tr className="text-11 text-ink-muted">
               <th className="py-1 text-left">subnet</th>
-              <th
-                className="py-1 text-right"
-                title="Stake needed to hold a validator permit. Holding one does not mean earning from it."
-              >
-                permit floor
-              </th>
-              <th
-                className="py-1 text-right"
-                title="Stake needed to actually earn. This is the number that matters if you intend to be paid."
-              >
-                earning floor
-              </th>
-              <th
-                className="py-1 text-right"
-                title="How far above the permit floor the earning floor sits."
-              >
-                ×
-              </th>
+              <th className="py-1 text-right">permit floor</th>
+              <th className="py-1 text-right">earning floor</th>
+              <th className="py-1 text-right">×</th>
               <th className="py-1 text-right">slots</th>
             </tr>
           </thead>
@@ -81,17 +66,10 @@ export function ValidatorEconomicsRanking() {
                       figure derived under a stated degradation is not the same
                       claim as one that was not. */}
                   {r.degraded_reason ? (
-                    <span className="ml-1 text-11 text-ink-muted" title={r.degraded_reason}>
-                      degraded
-                    </span>
+                    <span className="ml-1 text-11 text-ink-muted">degraded</span>
                   ) : null}
                   {r.emission_gate_open === false ? (
-                    <span
-                      className="ml-1 text-11 text-ink-muted"
-                      title="The emission gate is shut for this subnet — a permit here earns nothing regardless of stake."
-                    >
-                      gate shut
-                    </span>
+                    <span className="ml-1 text-11 text-ink-muted">gate shut</span>
                   ) : null}
                 </td>
                 <td className="py-1 text-right tabular-nums text-ink">
@@ -105,14 +83,7 @@ export function ValidatorEconomicsRanking() {
                     ? "—"
                     : `${formatNumber(r.permit_to_earning_multiple)}×`}
                 </td>
-                <td
-                  className="py-1 text-right tabular-nums text-ink"
-                  title={
-                    r.cap_binding
-                      ? "The validator cap, not the stake floor, is holding entry back here — open slots are not the constraint."
-                      : "Open validator slots."
-                  }
-                >
+                <td className="py-1 text-right tabular-nums text-ink">
                   {formatNumber(r.validator_slots_open)}
                   {r.cap_binding ? <span className="ml-1 text-ink-muted">cap</span> : null}
                 </td>

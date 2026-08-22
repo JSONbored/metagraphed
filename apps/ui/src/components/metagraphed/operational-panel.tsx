@@ -18,7 +18,7 @@ import type {
 } from "@/lib/metagraphed/types";
 import { UptimeTimeline } from "@/components/metagraphed/analytics/uptime-timeline";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
-import { Tooltip, TooltipContent, TooltipTrigger, TimeAgo, InfoTooltip } from "@jsonbored/ui-kit";
+import { TimeAgo, Definition, ChartTooltip, useEntityMark } from "@jsonbored/ui-kit";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
 import { ErrorState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -205,43 +205,21 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-13 text-ink-muted">
                   Endpoint mosaic · {endpoints.length}
-                  <InfoTooltip label="One cell per tracked endpoint, colored by the last probe result: ok (2xx within latency budget), warn (slow / intermittent 5xx), down (consecutive failures), or unknown (no probe in window). Source: /api/v1/subnets/{netuid}/endpoints joined with /health. Stale snapshots still render — check the panel's `updated` stamp." />
+                  <Definition term="Probe mosaic" />
                 </span>
                 <span className="text-10 text-ink-muted/80">
                   one cell = one tracked endpoint, colored by last probe
                 </span>
               </div>
               <div
-                className="flex flex-wrap gap-[3px]"
-                role="img"
+                className="relative flex flex-wrap gap-[3px]"
+                role="group"
                 aria-label="Per-endpoint health mosaic"
+                data-marks
               >
+                <ChartTooltip top={20} />
                 {endpoints.map((e) => (
-                  <Tooltip key={e.id} delayDuration={120}>
-                    <TooltipTrigger asChild>
-                      <span
-                        className={classNames(
-                          // CONTRIBUTING.md documents the status-mosaic micro-radius
-                          // as a standing sub-token residual: every named step on the
-                          // approved scale is visually much larger and would
-                          // materially change this dense per-cell grid.
-                          "size-3 rounded border border-border/40",
-                          (e.health ?? "unknown") === "ok" && "bg-health-ok",
-                          (e.health ?? "") === "warn" && "bg-health-warn",
-                          (e.health ?? "") === "down" && "bg-health-down",
-                          (!e.health || e.health === "unknown") && "bg-health-unknown/40",
-                        )}
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-10">
-                      <div className="text-ink-strong">{e.kind?.toUpperCase() ?? "—"}</div>
-                      <div className="text-ink">{e.url?.replace(/^https?:\/\//, "") ?? "—"}</div>
-                      <div className="text-ink-muted">
-                        {e.health ?? "unknown"} ·{" "}
-                        {e.latency_ms != null ? `${e.latency_ms}ms` : "no latency"}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
+                  <MosaicCell key={e.id} endpoint={e} />
                 ))}
               </div>
             </div>
@@ -419,29 +397,21 @@ function Stat({
   tone?: "ok" | "warn" | "default";
 }) {
   return (
-    <Tooltip delayDuration={200}>
-      <TooltipTrigger asChild>
+    <Definition term={label} sentence={hint}>
+      <div className="px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface">
+        <div className="text-13 text-ink-muted truncate">{label}</div>
         <div
-          tabIndex={0}
-          className="px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface"
+          className={classNames(
+            "mt-1 font-display text-16 font-semibold tabular-nums leading-tight truncate",
+            tone === "ok" && "text-health-ok",
+            tone === "warn" && "text-health-warn",
+            (!tone || tone === "default") && "text-ink-strong",
+          )}
         >
-          <div className="text-13 text-ink-muted truncate">{label}</div>
-          <div
-            className={classNames(
-              "mt-1 font-display text-16 font-semibold tabular-nums leading-tight truncate",
-              tone === "ok" && "text-health-ok",
-              tone === "warn" && "text-health-warn",
-              (!tone || tone === "default") && "text-ink-strong",
-            )}
-          >
-            {value}
-          </div>
+          {value}
         </div>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-xs text-13 leading-relaxed">
-        {hint}
-      </TooltipContent>
-    </Tooltip>
+      </div>
+    </Definition>
   );
 }
 
@@ -462,25 +432,18 @@ function SegBtn({
   const active = filter.isActive(sev);
   const label = `${count} ${sev} — click to filter resources`;
   return (
-    <Tooltip delayDuration={150}>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={(e) => (e.shiftKey ? filter.toggle(sev) : filter.only(sev))}
-          aria-pressed={!filter.isAll && active}
-          aria-label={label}
-          className={classNames(
-            "h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-opacity",
-            cls,
-            !filter.isAll && !active && "opacity-30",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </TooltipTrigger>
-      <TooltipContent side="top" className="text-10">
-        {count} {sev} · click to filter (shift+click to add)
-      </TooltipContent>
-    </Tooltip>
+    <button
+      type="button"
+      onClick={(e) => (e.shiftKey ? filter.toggle(sev) : filter.only(sev))}
+      aria-pressed={!filter.isAll && active}
+      aria-label={label}
+      className={classNames(
+        "h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-opacity",
+        cls,
+        !filter.isAll && !active && "opacity-30",
+      )}
+      style={{ width: `${pct}%` }}
+    />
   );
 }
 
@@ -539,4 +502,32 @@ function durationOf(inc: FlatSurfaceIncident): string | null {
   if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
   if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
   return `${(seconds / 86400).toFixed(1)}d`;
+}
+
+function MosaicCell({ endpoint: e }: { endpoint: Endpoint }) {
+  const health = e.health ?? "unknown";
+  const url = e.url?.replace(/^https?:\/\//, "") ?? "—";
+  const latency = e.latency_ms != null ? `${e.latency_ms}ms` : "no latency";
+  const mark = useEntityMark(`endpoint:${e.id}`, {
+    source: "endpoint-mosaic",
+    label: `${e.kind?.toUpperCase() ?? "endpoint"} ${url} · ${health} · ${latency}`,
+    data: {
+      title: e.kind?.toUpperCase() ?? "—",
+      total: `${health} · ${latency}`,
+      note: url,
+    },
+  });
+  return (
+    <button
+      type="button"
+      {...mark}
+      className={classNames(
+        "size-3 rounded border border-border/40 data-[active=true]:ring-2 data-[active=true]:ring-accent",
+        health === "ok" && "bg-health-ok",
+        health === "warn" && "bg-health-warn",
+        health === "down" && "bg-health-down",
+        health === "unknown" && "bg-health-unknown/40",
+      )}
+    />
+  );
 }

@@ -260,13 +260,10 @@ function LiveSubnetRow({ sn }: { sn: Subnet }) {
           )}
         </div>
         <div className="shrink-0 flex flex-col items-end gap-0.5">
-          <span className="text-11 tabular-nums text-ink-strong" title="Latest alpha price in TAO">
+          <span className="text-11 tabular-nums text-ink-strong">
             {closes.length ? `${formatAlpha(closes.at(-1)!)} τ` : "—"}
           </span>
-          <span
-            className={`text-10 tabular-nums ${deltaTone}`}
-            title="Alpha price change over the last 7 days"
-          >
+          <span className={`text-10 tabular-nums ${deltaTone}`}>
             {deltaPct == null ? "—" : `${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(1)}%`}
           </span>
         </div>

@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { InfoTooltip, Kbd, Sparkline } from "@jsonbored/ui-kit";
-import { BLOCK_TERM_HINTS } from "@/lib/metagraphed/section-hints";
+import { Kbd, Sparkline, Definition } from "@jsonbored/ui-kit";
 import { blocksQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds, classNames } from "@/lib/metagraphed/format";
 import { ChartSkeleton, Panel } from "@/components/metagraphed/primitives";
@@ -143,7 +142,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
         <div className="mt-3 flex items-center gap-3 border-t border-border/60 pt-2.5">
           <span className="text-13 text-ink-muted shrink-0 inline-flex items-center gap-1">
             Cadence
-            <InfoTooltip label={BLOCK_TERM_HINTS.cadence} />
+            <Definition term="Block cadence" />
           </span>
           <div className="flex-1 min-w-0">
             {surroundingQuery.isPending ? (
@@ -187,7 +186,6 @@ function ArrowBtn({
     return (
       <span
         aria-disabled
-        title={direction === "prev" ? "No earlier block" : "At chain tip"}
         className="inline-flex size-9 shrink-0 items-center justify-center rounded border border-dashed border-border/60 text-ink-muted opacity-40"
       >
         <Icon className="size-4" aria-hidden />

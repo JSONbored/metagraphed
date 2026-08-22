@@ -535,9 +535,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
             const label = r.method ? `${r.pallet}.${r.method}` : r.pallet;
             return (
               <li key={label} className="grid grid-cols-[10rem_1fr_auto] items-center gap-2">
-                <span className="text-13 truncate text-ink-muted" title={label}>
-                  {label}
-                </span>
+                <span className="text-13 truncate text-ink-muted">{label}</span>
                 <span className="relative h-1.5 overflow-hidden rounded bg-surface">
                   <span
                     className="absolute inset-y-0 left-0 rounded"

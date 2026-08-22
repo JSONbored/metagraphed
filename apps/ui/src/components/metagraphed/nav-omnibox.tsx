@@ -546,7 +546,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                         id={`nav-omnibox-option-${i}`}
                         role="option"
                         aria-selected={isActive}
-                        onMouseEnter={() => setActive(i)}
+                        onPointerEnter={() => setActive(i)}
                         onClick={() => commit(n)}
                         className={classNames(
                           "w-full flex items-center gap-3 px-3 py-2.5 rounded text-left transition-colors",
@@ -600,7 +600,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                               id={`nav-omnibox-option-${idx}`}
                               role="option"
                               aria-selected={isActive}
-                              onMouseEnter={() => setActive(idx)}
+                              onPointerEnter={() => setActive(idx)}
                               onClick={() => commit({ kind: "hit", hit: h })}
                               className={classNames(
                                 "w-full flex items-center gap-3 px-3 py-2 rounded text-left transition-colors",
@@ -635,7 +635,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                     id={`nav-omnibox-option-${flat.length - 1}`}
                     role="option"
                     aria-selected={active === flat.length - 1}
-                    onMouseEnter={() => setActive(flat.length - 1)}
+                    onPointerEnter={() => setActive(flat.length - 1)}
                     onClick={() => commit({ kind: "action" })}
                     className={classNames(
                       "w-full flex items-center gap-3 px-3 py-2 rounded text-left transition-colors",

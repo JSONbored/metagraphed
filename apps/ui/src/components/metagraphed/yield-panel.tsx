@@ -27,20 +27,20 @@ const TOP_N = 15;
 function VsMedian({ vs }: { vs: SubnetYieldNeuron["vs_median"] }) {
   if (vs === "above")
     return (
-      <span className="inline-flex items-center gap-0.5 text-health-ok" title="above median">
+      <span className="inline-flex items-center gap-0.5 text-health-ok">
         <ArrowUpRight className="size-3" aria-hidden />
         <span className="sr-only">above median</span>
       </span>
     );
   if (vs === "below")
     return (
-      <span className="inline-flex items-center gap-0.5 text-ink-muted" title="below median">
+      <span className="inline-flex items-center gap-0.5 text-ink-muted">
         <ArrowDownRight className="size-3" aria-hidden />
         <span className="sr-only">below median</span>
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-0.5 text-ink-subtle-text" title="at median">
+    <span className="inline-flex items-center gap-0.5 text-ink-subtle-text">
       <Minus className="size-3" aria-hidden />
       <span className="sr-only">at median</span>
     </span>

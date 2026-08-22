@@ -293,12 +293,7 @@ function BlocksTable() {
           />
           <QueryBar.Divider />
           <QueryBar.Utility className="ml-auto">
-            <span
-              className="hidden sm:inline text-13 text-ink-muted"
-              title="Blocks are always listed newest first"
-            >
-              ↓ Newest
-            </span>
+            <span className="hidden sm:inline text-13 text-ink-muted">↓ Newest</span>
             <PageSizeSelect
               value={search.limit}
               onChange={(n) => setSearch({ limit: n, offset: 0 })}
@@ -503,10 +498,7 @@ function BlocksTable() {
                         #{formatNumber(b.block_number)}
                       </Link>
                       {gapSec != null ? (
-                        <div
-                          className={classNames("mt-0.5 text-10", gapTone)}
-                          title="Seconds since previous block"
-                        >
+                        <div className={classNames("mt-0.5 text-10", gapTone)}>
                           +{humaniseSeconds(gapSec)}
                         </div>
                       ) : null}
@@ -528,10 +520,7 @@ function BlocksTable() {
                         ) : null}
                       </span>
                     </td>
-                    <td
-                      className="px-4 py-2.5 text-11 text-ink-muted align-top"
-                      title={b.author ?? undefined}
-                    >
+                    <td className="px-4 py-2.5 text-11 text-ink-muted align-top">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <AddressDisplay
                           ss58={b.author}
@@ -545,10 +534,7 @@ function BlocksTable() {
                           }
                         />
                         {authorRepeat > 1 ? (
-                          <span
-                            className="mg-chip h-4 px-1.5 text-10 text-accent-text border-accent/40"
-                            title={`Produced ${authorRepeat} blocks on this page`}
-                          >
+                          <span className="mg-chip h-4 px-1.5 text-10 text-accent-text border-accent/40">
                             ×{authorRepeat}
                           </span>
                         ) : null}
@@ -560,10 +546,7 @@ function BlocksTable() {
                     <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink align-top">
                       <ActivityCell value={b.event_count ?? 0} max={maxEvt} tone="ink" />
                     </td>
-                    <td
-                      className="px-4 py-2.5 text-right text-11 text-ink-muted align-top"
-                      title={b.observed_at ?? undefined}
-                    >
+                    <td className="px-4 py-2.5 text-right text-11 text-ink-muted align-top">
                       <TimeAgo at={b.observed_at} />
                     </td>
                   </tr>

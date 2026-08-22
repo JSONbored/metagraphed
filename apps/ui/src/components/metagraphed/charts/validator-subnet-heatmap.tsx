@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
+import { ChartTooltip, useEntityMark } from "@jsonbored/ui-kit";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
@@ -64,71 +64,111 @@ export function ValidatorSubnetHeatmap() {
           </span>
         </div>
       </div>
-      <div className="w-full overflow-x-auto [scrollbar-gutter:stable]">
-        <TooltipProvider delayDuration={150}>
-          <table className="w-full min-w-[640px] text-11">
-            <thead>
-              <tr>
-                <th className="sticky left-0 z-[var(--mg-z-sticky)] border-b border-border bg-card px-3 py-2 text-left text-ink-muted">
-                  Validator
+      <div className="relative w-full overflow-x-auto [scrollbar-gutter:stable]" data-marks>
+        <ChartTooltip top={0} />
+        <table className="w-full min-w-[640px] text-11">
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-[var(--mg-z-sticky)] border-b border-border bg-card px-3 py-2 text-left text-ink-muted">
+                Validator
+              </th>
+              {netuids.map((n) => (
+                <th
+                  key={n}
+                  className="border-b border-border px-1.5 py-2 tabular-nums text-ink-muted"
+                >
+                  {n}
                 </th>
-                {netuids.map((n) => (
-                  <th
-                    key={n}
-                    className="border-b border-border px-1.5 py-2 tabular-nums text-ink-muted"
-                  >
-                    {n}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((v) => {
-                const byNet = new Map((v.subnets ?? []).map((s) => [s.netuid, s]));
-                return (
-                  <tr key={v.hotkey} className="border-b border-border last:border-b-0">
-                    <td className="sticky left-0 z-[var(--mg-z-sticky)] border-r border-border bg-card px-3 py-1.5 text-ink-strong">
-                      <AddressDisplay
-                        ss58={v.hotkey}
-                        fallback={<>{v.hotkey}</>}
-                        compact
-                        valueClassName="block max-w-[12ch] truncate hover:text-accent"
-                      />
-                    </td>
-                    {netuids.map((n) => {
-                      const s = byNet.get(n);
-                      const ratio = s && maxStake > 0 ? s.stake_tao / maxStake : null;
-                      const summary = s
-                        ? `${resolveAddress(v.hotkey).display} · SN${n} · stake ${taoCompact(s.stake_tao)} τ · emission ${taoCompact(s.emission_tao)} τ · trust ${s.validator_trust ?? "—"}`
-                        : `SN${n} · not in this validator's top-10 subnets`;
-                      return (
-                        <td key={n} className="p-0.5">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span
-                                tabIndex={0}
-                                role="img"
-                                aria-label={summary}
-                                className={classNames(
-                                  "block h-6 rounded cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
-                                  stakeTone(ratio),
-                                )}
-                              />
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-13">
-                              {summary}
-                            </TooltipContent>
-                          </Tooltip>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </TooltipProvider>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((v) => {
+              const byNet = new Map((v.subnets ?? []).map((s) => [s.netuid, s]));
+              return (
+                <tr key={v.hotkey} className="border-b border-border last:border-b-0">
+                  <td className="sticky left-0 z-[var(--mg-z-sticky)] border-r border-border bg-card px-3 py-1.5 text-ink-strong">
+                    <AddressDisplay
+                      ss58={v.hotkey}
+                      fallback={<>{v.hotkey}</>}
+                      compact
+                      valueClassName="block max-w-[12ch] truncate hover:text-accent"
+                    />
+                  </td>
+                  {netuids.map((n) => {
+                    const s = byNet.get(n);
+                    const ratio = s && maxStake > 0 ? s.stake_tao / maxStake : null;
+                    const summary = s
+                      ? `${resolveAddress(v.hotkey).display} · SN${n} · stake ${taoCompact(s.stake_tao)} τ · emission ${taoCompact(s.emission_tao)} τ · trust ${s.validator_trust ?? "—"}`
+                      : `SN${n} · not in this validator's top-10 subnets`;
+                    return (
+                      <td key={n} className="p-0.5">
+                        <HeatmapCell
+                          entityKey={`subnet:${n}`}
+                          label={summary}
+                          title={`SN${n}`}
+                          rows={
+                            s
+                              ? [
+                                  {
+                                    key: "stake",
+                                    label: "stake",
+                                    value: `${taoCompact(s.stake_tao)} τ`,
+                                  },
+                                  {
+                                    key: "emission",
+                                    label: "emission",
+                                    value: `${taoCompact(s.emission_tao)} τ`,
+                                  },
+                                  {
+                                    key: "trust",
+                                    label: "trust",
+                                    value: String(s.validator_trust ?? "—"),
+                                  },
+                                ]
+                              : [{ key: "stake", label: "stake", value: "not in top-10" }]
+                          }
+                          className={stakeTone(ratio)}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </Panel>
+  );
+}
+
+function HeatmapCell({
+  entityKey,
+  label,
+  title,
+  rows,
+  className,
+}: {
+  entityKey: string;
+  label: string;
+  title: string;
+  rows: Array<{ key: string; label: string; value: string }>;
+  className: string;
+}) {
+  const mark = useEntityMark(entityKey, {
+    source: "validator-subnet-heatmap",
+    label,
+    data: { title, rows },
+  });
+  return (
+    <button
+      type="button"
+      {...mark}
+      className={classNames(
+        "block h-6 w-full rounded data-[active=true]:ring-2 data-[active=true]:ring-accent",
+        className,
+      )}
+    />
   );
 }

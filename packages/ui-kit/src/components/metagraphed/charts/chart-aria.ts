@@ -36,3 +36,16 @@ export const SPARKLINE_EMPTY_ARIA_LABEL = "Sparkline chart with no data";
 export const CANDLESTICK_MINI_EMPTY_ARIA_LABEL =
   "Candlestick chart with no data";
 export const STACKED_AREA_EMPTY_ARIA_LABEL = "Stacked area chart with no data";
+
+/**
+ * Accessible name for one mark in an interactive chart (#11606): the domain
+ * label and, when the mark carries one, its total -- `"AUG 22 · 7.4T total"`.
+ * Every `useEntityMark` call should pass a label; this is the default one.
+ */
+export function markAriaLabel(
+  domain: string,
+  total?: string | number | null,
+): string {
+  if (total === undefined || total === null || total === "") return domain;
+  return `${domain} · ${total} total`;
+}
