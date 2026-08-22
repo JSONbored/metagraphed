@@ -650,6 +650,7 @@ import {
 } from "../src/response-validation-tripwire.ts";
 import { urlProjects } from "../src/projection-signal.ts";
 import {
+  handleAuthorizeConsent,
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
   isMcpCorePath,
@@ -6355,13 +6356,19 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
     return handleAccountKeysProxy(request, env);
   }
 
-  // GitHub OAuth (metagraphed#7151): the two routes @cloudflare/workers-
+  // GitHub OAuth (metagraphed#7151): the routes @cloudflare/workers-
   // oauth-provider's own authorizeEndpoint deliberately leaves to
-  // application code (see src/github-oauth.ts's header). GET-only --
-  // both are browser-redirect targets, never called by a client library
-  // directly.
+  // application code (see src/github-oauth.ts's header). Browser-redirect
+  // targets, never called by a client library directly.
+  //
+  // #11569 made /authorize a two-step: GET renders the consent screen, POST is
+  // the approval. The split is what stops ARRIVING at the URL from starting a
+  // grant -- a link, a prefetch or an <img> pointed here now renders a page.
   if (request.method === "GET" && url.pathname === "/authorize") {
     return handleAuthorizeRequest(request, env);
+  }
+  if (request.method === "POST" && url.pathname === "/authorize") {
+    return handleAuthorizeConsent(request, env);
   }
   if (request.method === "GET" && url.pathname === "/oauth/callback/github") {
     return handleGithubOAuthCallback(request, env);

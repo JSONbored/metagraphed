@@ -45,6 +45,7 @@
 // The package's real TYPES (as opposed to its runtime) have no
 // cloudflare:workers dependency, so `import type` below is safe at module
 // scope -- type-only imports are fully erased and carry no runtime cost.
+import { renderConsentPage } from "./oauth-consent.ts";
 import { asJsonObject } from "../schemas-src/json-request.ts";
 
 import type {
@@ -134,6 +135,19 @@ export function buildOAuthProviderOptions(
     },
     defaultHandler,
     authorizeEndpoint: "/authorize",
+    // #11569: prefer Client ID Metadata Documents over Dynamic Client
+    // Registration. Anthropic's guidance for anything expecting directory
+    // traffic is explicit -- DCR registers a NEW client on every fresh
+    // connection -- and this server has already accumulated 27 registered
+    // clients without being listed anywhere.
+    //
+    // The library gates this on the `global_fetch_strictly_public`
+    // compatibility flag, and correctly: honouring a CIMD means fetching a
+    // URL the caller chose, which without that flag is an SSRF primitive
+    // pointed at our own internal surfaces. The flag is set in wrangler.jsonc;
+    // without it the library declines to advertise support rather than
+    // fetching anyway.
+    clientIdMetadataDocumentEnabled: true,
     tokenEndpoint: "/oauth/token",
     clientRegistrationEndpoint: "/oauth/register",
     // S256 ONLY (#9637). OAuth 2.1 removes `plain`, and the MCP authorization
@@ -330,6 +344,89 @@ export async function handleAuthorizeRequest(
     JSON.stringify(authRequest),
     { expirationTtl: OAUTH_PENDING_TTL_SECONDS },
   );
+  // #11569: ASK, rather than redirect straight to GitHub.
+  //
+  // The user's actual decision is "do I let this client act as me", and until
+  // now the flow never showed them which client had asked -- GitHub's own page
+  // names US, not the caller. Under CIMD the client_id is a self-hosted URL and
+  // its metadata is self-asserted, so the MCP spec requires the consent screen
+  // to display that URL's HOST as the relying party. There has to be a screen
+  // for it to be displayed on.
+  //
+  // The pending request is already stashed under `nonce`, so the nonce doubles
+  // as the CSRF token: POST /authorize proceeds only for a nonce that names a
+  // request we ourselves parsed and stored moments ago.
+  return new Response(
+    renderConsentPage({
+      clientId: authRequest.clientId,
+      clientName: stringOrNull(client.clientName),
+      redirectUri: authRequest.redirectUri,
+      registeredRedirectUris: Array.isArray(client.redirectUris)
+        ? client.redirectUris.filter(
+            (uri): uri is string => typeof uri === "string",
+          )
+        : [],
+      scopes:
+        authRequest.scope.length > 0
+          ? authRequest.scope
+          : DEFAULT_CONSENT_SCOPES,
+      nonce,
+    }),
+    {
+      status: 200,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        // A consent screen must never be cached: it is bound to one pending
+        // request, and a cached copy would show a stale client to the next
+        // person through.
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "no-referrer",
+      },
+    },
+  );
+}
+
+/** Scopes named when the request asks for none, so the screen never reads as
+ * "this client will be able to: (nothing)" for a grant that still happens. */
+const DEFAULT_CONSENT_SCOPES = ["profile"] as const;
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+/**
+ * POST /authorize -- the user approved. Hand off to GitHub (#11569).
+ *
+ * Split from the GET so that ARRIVING at the page cannot itself authorize
+ * anything: a link, a prefetch, or an image tag pointed at /authorize now
+ * renders a page instead of starting a grant.
+ */
+export async function handleAuthorizeConsent(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  if (!env.OAUTH_KV || !env.GITHUB_OAUTH_CLIENT_ID) {
+    return new Response("oauth is not provisioned on this deployment", {
+      status: 503,
+    });
+  }
+  const form = await request.formData().catch(() => null);
+  const nonce = form?.get("consent_nonce");
+  if (typeof nonce !== "string" || !nonce) {
+    return new Response("missing consent token", { status: 400 });
+  }
+  // The nonce must name a request WE stashed. That is what stops a forged POST
+  // from starting a grant for a client the user never saw.
+  const pending = await env.OAUTH_KV.get(`${OAUTH_PENDING_KV_PREFIX}${nonce}`, {
+    type: "json",
+  });
+  if (!pending) {
+    return new Response(
+      "this authorization request has expired; start again from your client",
+      { status: 400 },
+    );
+  }
   const redirectUri = new URL("/oauth/callback/github", request.url).toString();
   const githubUrl = new URL(GITHUB_AUTHORIZE_URL);
   githubUrl.searchParams.set("client_id", env.GITHUB_OAUTH_CLIENT_ID);
