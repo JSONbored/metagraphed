@@ -347,7 +347,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         <DataPageModule
           kind="profile"
           title="Account state"
-          caption="The current on-chain picture. Use the sections below for history, transfers, activity, and raw API access."
+          caption="The current on-chain picture. Portfolio, activity, validator role, and raw API access are in the sections below."
           actions={
             <div className="flex flex-wrap items-center gap-3">
               {isStaleFreshness(generatedAt) ? (
@@ -745,9 +745,8 @@ function AccountKpiBand({
               icon={balanceError ? AlertCircle : Coins}
               eyebrow="Total balance"
               value={total != null ? fmtTaoCompact(total) : freeValue}
-              hint="free + staked · live RPC"
               tone={balanceError ? "down" : "accent"}
-              className="rounded mg-glass-opaque p-4 mg-card-glow-accent"
+              className={KPI_TILE}
             />
             <StatTile
               icon={Scale}
@@ -758,7 +757,6 @@ function AccountKpiBand({
                   {staked != null ? fmtTaoCompact(staked) : "—"}
                 </span>
               }
-              hint="wallet · positions"
               className={KPI_TILE}
             />
             <StatTile
@@ -781,14 +779,12 @@ function AccountKpiBand({
               icon={Clock}
               eyebrow="First seen"
               value={<TimeAgo at={account.first_seen_at ?? undefined} />}
-              hint="chain-direct index"
               className={KPI_TILE}
             />
             <StatTile
               icon={Clock}
               eyebrow="Last active"
               value={<TimeAgo at={account.last_seen_at ?? undefined} />}
-              hint="near-realtime"
               className={KPI_TILE}
             />
             <StatTile
@@ -815,7 +811,7 @@ function AccountKpiBand({
               value={fmtTaoCompact(validator?.total_stake_tao)}
               hint="validator detail · cross-subnet"
               tone="accent"
-              className="rounded mg-glass-opaque p-4 mg-card-glow-accent"
+              className={KPI_TILE}
             />
             <StatTile
               icon={Users}
@@ -851,7 +847,6 @@ function AccountKpiBand({
               icon={Clock}
               eyebrow="Last active"
               value={<TimeAgo at={account.last_seen_at ?? undefined} />}
-              hint="near-realtime"
               className={KPI_TILE}
             />
           </>
@@ -1275,7 +1270,13 @@ function fmtAlphaPrice(v: number | null | undefined): string {
   return `${v < 1 ? v.toFixed(4) : v.toFixed(3)} τ`;
 }
 
-const KPI_TILE = "rounded border-border/80 mg-glass-opaque p-4 mg-card-glow";
+// A measure, not a tile. This was a filled, shadowed panel and it is used
+// THIRTY-NINE times in this file, so every number on the account profile came
+// in its own box — the card wall the redesign exists to remove, restated once
+// per figure. A single top hairline groups them into a band instead: the same
+// treatment the validator profile got, where a rule and alignment do the
+// grouping that a border was doing badly.
+const KPI_TILE = "border-t border-border pt-3 pr-4";
 
 // Compact TAO formatter for the portfolio KPI tiles — a long raw value like
 // "338,030.153 τ" wraps + overflows a narrow StatTile, so summarise it (338.0k τ).

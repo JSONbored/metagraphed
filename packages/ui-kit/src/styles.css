@@ -5255,3 +5255,41 @@ html[data-density="compact"] .bg-card > table td {
 .mg-data-table[data-density="compact"] tbody td {
   padding: 0.35rem 1.25rem;
 }
+
+/* A StatTile in `bare` form: a measure in a band, not a tile in a grid.
+   One top hairline does the grouping a border box was doing badly. */
+.mg-stat-measure {
+  border-top: 1px solid var(--border);
+  padding-top: var(--mg-space-sm);
+  padding-right: var(--mg-space-md);
+}
+.mg-stat-measure[data-tone="accent"] {
+  border-top-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+}
+.mg-stat-measure[data-tone="ok"] {
+  border-top-color: color-mix(in oklab, var(--health-ok) 55%, var(--border));
+}
+.mg-stat-measure[data-tone="warn"] {
+  border-top-color: color-mix(in oklab, var(--health-warn) 55%, var(--border));
+}
+.mg-stat-measure[data-tone="down"] {
+  border-top-color: color-mix(in oklab, var(--health-down) 55%, var(--border));
+}
+
+/* The figure in a StatTile. One size, one weight, tabular — and it wins over
+   a type class passed in by a caller, because a band whose numerals disagree
+   reads as several unrelated readings rather than one. */
+.mg-stat-value,
+.mg-stat-value * {
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-h2);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink-strong);
+}
+/* A qualifier inside the figure — the "/" in "1.06 τ / 0 τ", a unit — stays
+   subordinate without breaking the shared size. */
+.mg-stat-value .text-ink-muted {
+  color: var(--ink-muted);
+}

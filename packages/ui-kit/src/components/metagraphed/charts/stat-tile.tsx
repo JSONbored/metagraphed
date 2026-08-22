@@ -28,6 +28,20 @@ interface Props {
    * HeroStatCell tooltip pattern.
    */
   tooltip?: string;
+  /**
+   * `bare` — the default — is a measure in a band: one top hairline, no fill,
+   * no border box. `panel` keeps the original bordered, filled tile.
+   *
+   * This component's own doc comment has always said "flat hairline"; the
+   * implementation drifted to a full `Panel` and nobody noticed, because one
+   * tile looks fine either way. There are 176 of them across the site, and at
+   * that count the difference is the whole card-wall impression: a grid of
+   * filled boxes says "here are nine objects", a grid of hairline measures
+   * says "here is one reading with nine parts".
+   *
+   * `panel` stays for a tile that floats alone with nothing to group it.
+   */
+  variant?: "bare" | "panel";
 }
 
 /**
@@ -44,22 +58,10 @@ export function StatTile({
   className,
   truncate = true,
   tooltip,
+  variant = "bare",
 }: Props) {
-  return (
-    <Panel
-      as="div"
-      dense
-      tintBorderOnly
-      tone={tone}
-      className={className}
-      // `flex-wrap` + a text-column floor: a `chart` (e.g. the APY window
-      // SegmentedToggle) is shrink-0, so in a 2-column 375px grid it took the
-      // whole row and squeezed the label/value column to *2px* — the eyebrow
-      // rendered as a vertical sliver of punctuation. Wrapping drops the chart
-      // onto its own line instead, and gap-x-3 buys back a few more pixels of
-      // an already tight column.
-      bodyClassName="flex flex-wrap items-center gap-x-3 gap-y-2"
-    >
+  const body = (
+    <>
       {Icon ? (
         <Icon
           aria-hidden
@@ -99,9 +101,14 @@ export function StatTile({
         </div>
         <div className="mt-1 flex min-w-0 items-baseline gap-1.5">
           {/* #3940: shrink-0 so the hint (already truncate-clipped) absorbs constrained width instead of the value wrapping. */}
-          <span className="shrink-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl">
-            {value}
-          </span>
+          {/* ONE size, at every breakpoint. This was `text-base sm:text-xl
+              md:text-2xl`, so a figure changed size twice between a phone and
+              a desktop, and any caller that wrapped its value in a type class
+              of its own silently opted out entirely — which is how a band of
+              six measures ended up with 24px numerals beside 12px ones. A
+              measurement band only reads as one reading if its figures are
+              one size. */}
+          <span className="mg-stat-value shrink-0">{value}</span>
           {hint && truncate ? (
             <span className="min-w-0 truncate mg-type-data-sm text-ink-muted">
               {hint}
@@ -122,6 +129,39 @@ export function StatTile({
         ) : null}
       </div>
       {chart ? <div className="shrink-0 opacity-80">{chart}</div> : null}
+    </>
+  );
+
+  if (variant === "bare") {
+    return (
+      <div
+        className={classNames(
+          "mg-stat-measure flex flex-wrap items-center gap-x-3 gap-y-2",
+          className,
+        )}
+        data-tone={tone === "default" ? undefined : tone}
+      >
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <Panel
+      as="div"
+      dense
+      tintBorderOnly
+      tone={tone}
+      className={className}
+      // `flex-wrap` + a text-column floor: a `chart` (e.g. the APY window
+      // SegmentedToggle) is shrink-0, so in a 2-column 375px grid it took the
+      // whole row and squeezed the label/value column to *2px* — the eyebrow
+      // rendered as a vertical sliver of punctuation. Wrapping drops the chart
+      // onto its own line instead, and gap-x-3 buys back a few more pixels of
+      // an already tight column.
+      bodyClassName="flex flex-wrap items-center gap-x-3 gap-y-2"
+    >
+      {body}
     </Panel>
   );
 }

@@ -4287,3 +4287,32 @@ html[data-density=compact] .bg-card > table td {
 .mg-data-table[data-density=compact] tbody td {
   padding: 0.35rem 1.25rem;
 }
+.mg-stat-measure {
+  border-top: 1px solid var(--border);
+  padding-top: var(--mg-space-sm);
+  padding-right: var(--mg-space-md);
+}
+.mg-stat-measure[data-tone=accent] {
+  border-top-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+}
+.mg-stat-measure[data-tone=ok] {
+  border-top-color: color-mix(in oklab, var(--health-ok) 55%, var(--border));
+}
+.mg-stat-measure[data-tone=warn] {
+  border-top-color: color-mix(in oklab, var(--health-warn) 55%, var(--border));
+}
+.mg-stat-measure[data-tone=down] {
+  border-top-color: color-mix(in oklab, var(--health-down) 55%, var(--border));
+}
+.mg-stat-value,
+.mg-stat-value * {
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-h2);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink-strong);
+}
+.mg-stat-value .text-ink-muted {
+  color: var(--ink-muted);
+}

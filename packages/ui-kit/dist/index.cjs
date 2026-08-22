@@ -5008,9 +5008,47 @@ function StatTile({
   tone = "default",
   className,
   truncate = true,
-  tooltip
+  tooltip,
+  variant = "bare"
 }) {
-  return /* @__PURE__ */ jsxRuntime.jsxs(
+  const body = /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+    Icon ? /* @__PURE__ */ jsxRuntime.jsx(
+      Icon,
+      {
+        "aria-hidden": true,
+        className: classNames(
+          "size-4 shrink-0",
+          tone === "accent" ? "text-accent" : tone === "ok" ? "text-health-ok" : tone === "warn" ? "text-health-warn" : tone === "down" ? "text-health-down" : "text-ink-muted"
+        )
+      }
+    ) : null,
+    /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-[6rem] flex-1", children: [
+      /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center gap-1 mg-type-caption text-ink-muted", children: [
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "line-clamp-3 leading-tight", children: eyebrow }),
+        tooltip ? /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: tooltip, className: "shrink-0" }) : null
+      ] }),
+      /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-1 flex min-w-0 items-baseline gap-1.5", children: [
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-stat-value shrink-0", children: value }),
+        hint && truncate ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 truncate mg-type-data-sm text-ink-muted", children: hint }) : null
+      ] }),
+      hint && !truncate ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-0.5 mg-type-data-sm leading-tight text-ink-muted", children: hint }) : null
+    ] }),
+    chart ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 opacity-80", children: chart }) : null
+  ] });
+  if (variant === "bare") {
+    return /* @__PURE__ */ jsxRuntime.jsx(
+      "div",
+      {
+        className: classNames(
+          "mg-stat-measure flex flex-wrap items-center gap-x-3 gap-y-2",
+          className
+        ),
+        "data-tone": tone === "default" ? void 0 : tone,
+        children: body
+      }
+    );
+  }
+  return /* @__PURE__ */ jsxRuntime.jsx(
     Panel,
     {
       as: "div",
@@ -5019,30 +5057,7 @@ function StatTile({
       tone,
       className,
       bodyClassName: "flex flex-wrap items-center gap-x-3 gap-y-2",
-      children: [
-        Icon ? /* @__PURE__ */ jsxRuntime.jsx(
-          Icon,
-          {
-            "aria-hidden": true,
-            className: classNames(
-              "size-4 shrink-0",
-              tone === "accent" ? "text-accent" : tone === "ok" ? "text-health-ok" : tone === "warn" ? "text-health-warn" : tone === "down" ? "text-health-down" : "text-ink-muted"
-            )
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-[6rem] flex-1", children: [
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center gap-1 mg-type-caption text-ink-muted", children: [
-            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "line-clamp-3 leading-tight", children: eyebrow }),
-            tooltip ? /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: tooltip, className: "shrink-0" }) : null
-          ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-1 flex min-w-0 items-baseline gap-1.5", children: [
-            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "shrink-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl", children: value }),
-            hint && truncate ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 truncate mg-type-data-sm text-ink-muted", children: hint }) : null
-          ] }),
-          hint && !truncate ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-0.5 mg-type-data-sm leading-tight text-ink-muted", children: hint }) : null
-        ] }),
-        chart ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 opacity-80", children: chart }) : null
-      ]
+      children: body
     }
   );
 }
