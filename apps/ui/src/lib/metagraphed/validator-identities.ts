@@ -52,6 +52,15 @@ export interface ValidatorIdentityIndex {
   unnamed: GlobalValidator[];
   /** Share of observed stake the named identities account for. */
   namedStakeShare: number;
+  /**
+   * Total stake across every key this snapshot reported, named or not.
+   *
+   * The denominator for any part-to-whole drawn from this index. Summing the
+   * named identities instead would silently rebase the whole onto the named
+   * subset, and a concentration chart that omits the unnamed majority states
+   * the opposite of the truth.
+   */
+  observedStakeTao: number;
 }
 
 function declaredName(validator: GlobalValidator): string | null {
@@ -135,6 +144,7 @@ export function buildValidatorIdentityIndex(
     identities,
     unnamed,
     namedStakeShare: observedStake > 0 ? namedStake / observedStake : 0,
+    observedStakeTao: observedStake,
   };
 }
 

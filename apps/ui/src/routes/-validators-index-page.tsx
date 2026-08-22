@@ -5,13 +5,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useMemo, useRef, useState } from "react";
 import { ChevronDown, Star } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import {
-  ShareButton,
-  DownloadCsvButton,
-  DensityToggle,
-  MiniStack,
-  type Density,
-} from "@jsonbored/ui-kit";
+import { ShareButton, DownloadCsvButton, DensityToggle, type Density } from "@jsonbored/ui-kit";
 import {
   AsyncPanel,
   DataPageCanvas,
@@ -21,7 +15,6 @@ import {
   DataPageStage,
   FilterSheet,
   GhostButton,
-  Panel,
   QueryBar,
   TableSkeleton,
 } from "@/components/metagraphed/primitives";
@@ -29,6 +22,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ValidatorIdentityDirectory } from "@/components/metagraphed/validator-identity-directory";
 import { DirectoryModeTabs, type DirectoryMode } from "@/components/metagraphed/primitives";
 import { ValidatorEconomicsRanking } from "@/components/metagraphed/validator-economics-ranking";
+import { ValidatorStakeConcentration } from "@/components/metagraphed/validator-stake-concentration";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
@@ -61,7 +55,6 @@ import { readKey } from "@/lib/metagraphed/read-key";
 // (same sort + limit = same cache key) and read from cache rather than firing
 // a second 2000-row fetch (#8256).
 export const ALL_VALIDATORS_LIMIT = 2000;
-const CONCENTRATION_TOP_N = 10;
 
 /** Compare is a per-key task, so the operator directory does not offer it. */
 const VALIDATOR_MODES = [
@@ -109,6 +102,18 @@ export function ValidatorsPage() {
           description="Search the live validator set by operator or key."
         />
         <DataPageCanvas>
+          {/* Before the list, the shape. Reading 149 ranked rows tells you who
+              is largest; it does not tell you that ten operators hold most of
+              the network, because past the first few rows a linear rail has
+              nothing left to draw. Same cached query as the directory. */}
+          <DataPageModule
+            title="Concentration."
+            caption="How the network's validation stake divides between operators."
+          >
+            <AsyncPanel context="validator stake concentration" fallback={<Skeleton />}>
+              <ValidatorStakeConcentration />
+            </AsyncPanel>
+          </DataPageModule>
           <DataPageModule title="Directory." caption="Who runs the network, and what they charge.">
             <DirectoryModeTabs
               mode={mode}
@@ -384,7 +389,14 @@ function ValidatorsDirectory({
           <div ref={tableScrollRef} className="mg-table-scroll mg-list-viewport">
             <table
               className={classNames(
-                "w-full min-w-[1100px] table-fixed text-left text-sm",
+                // 960, not 1,100. The old floor was sized for the nine-column
+                // set and never revisited when the set changed, so at 1280 the
+                // table was pinned 14px wider than its own container and the
+                // last column sat permanently off the right edge — clipped by
+                // a constant, not by its contents. The floor still exists: it
+                // is what makes the table scroll on a narrow screen instead of
+                // crushing nine columns into 375px.
+                "w-full min-w-[960px] table-fixed text-left text-sm",
                 compact && "[&_td]:!py-1 [&_th]:!py-1",
               )}
             >
@@ -505,74 +517,27 @@ function ValidatorsDirectory({
         />
       ) : null}
 
-      <ConcentrationSection validators={all} />
+      <ConcentrationSection />
     </div>
   );
 }
 
-// #8251: the concentration story stays calm, but each top operator needs a
-// stable categorical color. Mint remains an interface/focus signal; a single
-// mint stack for ten different operators makes the chart impossible to scan.
-// The stake-intensity heatmap remains behind an explicit disclosure.
-function ConcentrationSection({ validators }: { validators: GlobalValidator[] }) {
+/**
+ * The per-subnet stake heatmap, behind its own disclosure.
+ *
+ * This used to open with a second concentration bar, ranked by per-KEY
+ * dominance while the directory above it ranks operators. The two disagreed in
+ * public — the same page said the top ten hold 63.3% and 59.1% — because one
+ * grouped an operator's keys and the other did not, and an operator running
+ * two keys in the top ten could appear twice in the same chart. One question
+ * gets one answer, so the bar is gone and `Concentration.` at the top of the
+ * page is it: same primitive as every other composition on the site, same
+ * operator grouping as the directory it sits above.
+ */
+function ConcentrationSection() {
   const [showDetail, setShowDetail] = useState(false);
-  const ranked = useMemo(
-    () =>
-      [...validators]
-        .filter((v) => v.stake_dominance != null && v.stake_dominance > 0)
-        .sort((a, b) => (b.stake_dominance ?? 0) - (a.stake_dominance ?? 0)),
-    [validators],
-  );
-  const top = ranked.slice(0, CONCENTRATION_TOP_N);
-  if (top.length === 0) return null;
-  const topShare = top.reduce((sum, v) => sum + (v.stake_dominance ?? 0), 0);
-  const rest = Math.max(0, 1 - topShare);
-  const label = (v: GlobalValidator) =>
-    v.coldkey_identity?.has_identity && v.coldkey_identity.name
-      ? v.coldkey_identity.name
-      : (v.hotkey.slice(0, 6) ?? "validator");
-  const seriesColors = [
-    "var(--chart-1)",
-    "var(--chart-2)",
-    "var(--chart-3)",
-    "var(--chart-4)",
-    "var(--chart-5)",
-    "var(--chart-6)",
-    "var(--chart-7)",
-    "var(--chart-8)",
-    "var(--chart-9)",
-    "var(--chart-10)",
-  ];
-  const segments = [
-    ...top.map((v, i) => ({
-      label: label(v),
-      value: (v.stake_dominance ?? 0) * 100,
-      color: seriesColors[i % seriesColors.length]!,
-    })),
-    { label: "everyone else", value: rest * 100, color: "var(--border)" },
-  ];
-
   return (
     <div id="validator-dominance" className="space-y-3 pt-3">
-      <Panel as="div" dense>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <span className="mg-type-caption text-ink-muted">
-            Stake concentration · top {top.length} operators
-          </span>
-          <span className="mg-type-data-sm text-ink-muted">
-            {(topShare * 100).toFixed(1)}% of network stake
-          </span>
-        </div>
-        <MiniStack segments={segments} height={14} />
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-          {top.slice(0, 5).map((v) => (
-            <span key={v.hotkey} className="mg-type-data-sm text-ink-muted">
-              {label(v)} · {((v.stake_dominance ?? 0) * 100).toFixed(1)}%
-            </span>
-          ))}
-        </div>
-      </Panel>
-
       <button
         type="button"
         onClick={() => setShowDetail((v) => !v)}
@@ -582,7 +547,7 @@ function ConcentrationSection({ validators }: { validators: GlobalValidator[] })
         <ChevronDown
           className={classNames("size-3.5 transition-transform", showDetail && "rotate-180")}
         />
-        {showDetail ? "Hide concentration detail" : "Concentration detail"}
+        {showDetail ? "Hide stake by subnet" : "Stake by subnet"}
       </button>
       {showDetail ? (
         <div id="validator-subnet-heatmap">

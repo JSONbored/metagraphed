@@ -116,11 +116,21 @@ function Stake30dDeltaCell({ hotkey }: { hotkey: string }) {
 }
 
 // #8251 column diet: Operator (now carrying the detail link + hotkey the
-// dropped Hotkey/Coldkey columns used to) · Take · Est. APY · Active subnets
-// · Nominators · Dominance · Total stake · 30d Δ. UIDs and Total emission
-// left the directory (near-duplicates of Active subnets / Total stake for
-// ranking purposes); coldkey and the full per-subnet story live on the
-// detail page.
+// dropped Hotkey/Coldkey columns used to) · Total stake · Take · Est. APY ·
+// Subnets · Nominators · 30d Δ. UIDs and Total emission left the directory
+// (near-duplicates of Subnets / Total stake for ranking purposes); coldkey
+// and the full per-subnet story live on the detail page.
+//
+// The widths are WEIGHTS, not pixels: TableColGroup divides each by their sum
+// and emits percentages, so changing one re-proportions the table rather than
+// resizing it. What was actually clipping `30d Δ` at 1280 was a
+// `min-w-[1100px]` on the table itself, sized for the nine-column set and
+// never revisited — fixed at the call site, not here.
+//
+// They are still worth right-sizing, because the proportions were set by the
+// length of the HEADER rather than the data beneath it: "Active subnets"
+// claimed 139 parts to show a number under 128, taking room from the operator
+// name, which is the only column here that can actually run out of it.
 export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
   {
     id: "operator",
@@ -128,7 +138,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     required: true,
     defaultVisible: true,
     header: "Operator",
-    width: 350,
+    width: 280,
     thClassName: TH_BASE,
     tdClassName: TD_BASE,
     cell: (v, ctx) => {
@@ -177,13 +187,22 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     },
   },
   {
-    ...numeric("take", "Take", 72),
+    // The sorted measure sits BESIDE the name. The table sorts by total stake
+    // by default, and it used to be the sixth column — so the ranking key was
+    // four columns away from the thing being ranked, and the eye had to cross
+    // take, APY, subnets and nominators to read the order it was already in.
+    ...numeric("totalStake", "Total stake", 116),
+    sortKey: "total_stake_tao",
+    cell: (v) => taoCompact(v.total_stake_tao),
+  },
+  {
+    ...numeric("take", "Take", 68),
     sortKey: "take",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => formatTakePct(v.take),
   },
   {
-    ...numeric("apy", "Est. APY", 89),
+    ...numeric("apy", "Est. APY", 84),
     sortKey: "apy_estimate",
     // apy_estimate (#2551) is a 0..1 fraction; formatApyPct takes a percentage.
     cell: (v) => {
@@ -198,28 +217,26 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     },
   },
   {
-    ...numeric("subnets", "Active subnets", 139),
+    ...numeric("subnets", "Subnets", 88),
     sortKey: "subnet_count",
     cell: (v) => formatNumber(v.subnet_count),
   },
   {
-    ...numeric("nominators", "Nominators", 115),
+    ...numeric("nominators", "Nominators", 104),
     sortKey: "nominator_count",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => (v.nominator_count != null ? formatNumber(v.nominator_count) : "—"),
   },
   {
-    ...numeric("dominance", "Dominance", 113),
+    // Opt-in, not gone. Dominance is total stake restated as a share of the
+    // same total, so showing both spent a column on a second reading of a
+    // number already on the row.
+    ...numeric("dominance", "Dominance", 108, false),
     sortKey: "stake_dominance",
     cell: (v) => (v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"),
   },
   {
-    ...numeric("totalStake", "Total stake", 129),
-    sortKey: "total_stake_tao",
-    cell: (v) => taoCompact(v.total_stake_tao),
-  },
-  {
-    ...numeric("delta30d", "30d Δ", 75),
+    ...numeric("delta30d", "30d Δ", 78),
     tdClassName: `${TD_NUM}`,
     cell: (v) => <Stake30dDeltaCell hotkey={v.hotkey} />,
   },

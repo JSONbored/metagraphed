@@ -140,10 +140,11 @@
   --mg-space-3xl: 4rem;
   --mg-panel-pad: var(--mg-space-lg);
   --mg-panel-pad-dense: var(--mg-space-md);
-  --mg-type-micro: 9.5px;
+  --mg-type-micro: 10px;
   --mg-type-label: 11px;
   --mg-tracking-label: 0.14em;
   --mg-tracking-micro: 0.18em;
+  --mg-tracking-display: -0.03em;
   --mg-type-caption: 12px;
   --mg-type-caption-lg: 13px;
   --mg-type-body: 14px;
@@ -646,14 +647,14 @@ html[data-density=compact] .bg-card > table td {
   border-top: 1px solid color-mix(in oklab, var(--ink-strong) 12%, transparent);
 }
 .mg-display-tight {
-  letter-spacing: -0.02em;
+  letter-spacing: var(--mg-tracking-display);
 }
 .mg-chip {
   display: inline-flex;
   align-items: center;
   height: 1.5rem;
   padding: 0 0.625rem;
-  border-radius: 9999px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--paper);
   font-size: 11px;
@@ -695,7 +696,7 @@ html[data-density=compact] .bg-card > table td {
 .mg-hero-caption {
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: var(--mg-tracking-micro);
   text-transform: uppercase;
   color: var(--ink-muted);
   display: inline-flex;
@@ -791,7 +792,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--mg-tracking-label);
   color: var(--ink-muted);
 }
 @keyframes mg-orn-spin {
@@ -936,7 +937,7 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-leaderboard-list a:hover .mg-lb-value {
   transform: translateX(-2px);
-  letter-spacing: 0.01em;
+  letter-spacing: normal;
 }
 .mg-lb-value-missing {
   transition: color 160ms ease-out;
@@ -1006,7 +1007,7 @@ html[data-density=compact] .bg-card > table td {
   margin: 3.5rem 0 0;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.35em;
+  letter-spacing: var(--mg-tracking-micro);
   color: var(--ink-subtle);
   user-select: none;
 }
@@ -1394,7 +1395,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-display);
   font-size: clamp(2.7rem, 5.8vw, 4.7rem);
   font-weight: 500;
-  letter-spacing: -0.07em;
+  letter-spacing: var(--mg-tracking-display);
   line-height: 0.9;
 }
 .mg-page-hero-description {
@@ -1515,7 +1516,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-display);
   font-size: clamp(1.35rem, 2.6vw, 1.85rem);
   font-weight: 500;
-  letter-spacing: -0.05em;
+  letter-spacing: var(--mg-tracking-display);
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1580,7 +1581,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-display);
   font-size: var(--mg-type-caption-lg);
   font-weight: 600;
-  letter-spacing: -0.025em;
+  letter-spacing: var(--mg-tracking-display);
   line-height: 1.35;
 }
 .mg-page-task-copy p {
@@ -1686,7 +1687,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-mono);
   font-size: clamp(4rem, 5.4vw, 5rem);
   font-weight: 500;
-  letter-spacing: -0.065em;
+  letter-spacing: var(--mg-tracking-display);
   line-height: 0.93;
 }
 .mg-page-hero--landing[data-ambient=document] .mg-page-hero-title-line {
@@ -2097,7 +2098,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-display);
   font-size: clamp(0.98rem, 2vw, 1.15rem);
   font-weight: 600;
-  letter-spacing: -0.035em;
+  letter-spacing: var(--mg-tracking-display);
   line-height: 1.4;
 }
 .mg-page-module-caption {
@@ -2212,7 +2213,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-mono);
   font-size: 0.6rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: normal;
   line-height: 1;
   text-transform: uppercase;
   transition: color 120ms ease;
@@ -2424,7 +2425,7 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-composition-timeline {
   --mg-composition-graphite: color-mix( in srgb, var(--paper) 82%, var(--ink-strong) );
-  --mg-composition-residual: color-mix( in srgb, var(--paper) 62%, var(--ink-strong) );
+  --mg-composition-residual: color-mix( in oklab, var(--ink-strong) 20%, transparent );
   --mg-composition-surface: color-mix( in srgb, var(--paper) 94%, var(--ink-strong) );
   --mg-composition-rail: color-mix(in srgb, var(--ink-strong) 5%, transparent);
   --mg-composition-gap: 0.4rem;
@@ -2472,7 +2473,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-mono);
   font-size: 0.6rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: normal;
   line-height: 1;
   text-transform: uppercase;
   transition: color 120ms ease;
@@ -2782,7 +2783,7 @@ html[data-density=compact] .bg-card > table td {
 .mg-composition-breakdown-slice {
   display: block;
   height: 100%;
-  background: var(--mg-composition-residual, #9a9a9a);
+  background: var(--mg-composition-residual);
 }
 .mg-composition-breakdown-slice[data-tone=chart-1],
 .mg-composition-breakdown-swatch[data-tone=chart-1] {
@@ -2830,7 +2831,7 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-composition-breakdown-slice[data-tone=residual],
 .mg-composition-breakdown-swatch[data-tone=residual] {
-  background: var(--mg-composition-residual, #9a9a9a);
+  background: var(--mg-composition-residual);
 }
 .mg-composition-breakdown-grid {
   display: grid;
@@ -2881,8 +2882,6 @@ html[data-density=compact] .bg-card > table td {
   color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: var(--mg-type-micro);
-  letter-spacing: var(--mg-tracking-label);
-  text-transform: uppercase;
 }
 @media (max-width: 47.99rem) {
   .mg-composition-breakdown-bar {
@@ -2922,7 +2921,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-mono);
   font-size: clamp(1.05rem, 1.6vw, 1.35rem);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--mg-tracking-display);
   line-height: 1.1;
 }
 .mg-measure-with-control {
@@ -3198,7 +3197,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-mono);
   font-size: var(--mg-type-caption-lg);
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--mg-tracking-display);
 }
 .mg-directory-row-id {
   color: var(--ink-subtle, var(--ink-muted));
@@ -3448,7 +3447,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-display);
   font-size: clamp(1.55rem, 4vw, 2.75rem);
   font-weight: 500;
-  letter-spacing: -0.055em;
+  letter-spacing: var(--mg-tracking-display);
   line-height: 1;
 }
 @media (hover: hover) {
@@ -3568,7 +3567,7 @@ html[data-density=compact] .bg-card > table td {
   }
   .mg-page-hero--landing[data-ambient=document] h1 {
     font-size: clamp(3.25rem, 14vw, 4.4rem);
-    letter-spacing: -0.06em;
+    letter-spacing: var(--mg-tracking-display);
     line-height: 0.93;
   }
   .mg-page-hero--landing[data-ambient=document] .mg-page-hero-description {
@@ -3743,7 +3742,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-display);
   font-size: clamp(3.25rem, 8.5vw, 6.75rem);
   font-weight: 500;
-  letter-spacing: -0.07em;
+  letter-spacing: var(--mg-tracking-display);
   line-height: 0.86;
 }
 .mg-data-hero-detail {
@@ -3816,7 +3815,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-display);
   font-size: clamp(0.94rem, 2vw, 1.15rem);
   font-weight: 400;
-  letter-spacing: -0.025em;
+  letter-spacing: var(--mg-tracking-display);
   line-height: 1.55;
 }
 .mg-data-module-title strong {
@@ -3889,7 +3888,7 @@ html[data-density=compact] .bg-card > table td {
   font-family: var(--font-display);
   font-size: clamp(1rem, 2.4vw, 1.45rem);
   font-weight: 500;
-  letter-spacing: -0.045em;
+  letter-spacing: var(--mg-tracking-display);
   line-height: 1.05;
   text-overflow: ellipsis;
   white-space: nowrap;
