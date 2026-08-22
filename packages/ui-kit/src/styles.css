@@ -5273,18 +5273,28 @@ html[data-density="compact"] .bg-card > table td {
   border-collapse: collapse;
 }
 .mg-data-table thead th {
-  padding: 0.75rem 1.25rem;
+  /* Measured: 10px / 600 / uppercase / +0.5px tracking / 15px line-height, and
+     NO rule beneath the header — the reference separates rows only, so a
+     header underline plus a first-row hairline read as a double line. */
+  padding: 0.75rem 1.5rem;
+  border-bottom: 0;
   color: var(--ink-subtle, var(--ink-muted));
   font-family: var(--font-mono);
   font-size: var(--mg-type-micro);
   font-weight: 600;
-  letter-spacing: var(--mg-tracking-label);
+  letter-spacing: 0.05em;
+  line-height: 1.5;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .mg-data-table tbody td {
+  /* 13px on a 20px line, from the reference's 14px secondary cell — its face is
+     a sans, ours a mono, which runs wider at the same nominal size. Ours was
+     12px on a default line and that is most of why the rows read as cramped
+     text rather than as a data table. */
   padding: 0.75rem 1.25rem;
-  font-size: var(--mg-type-caption);
+  font-size: var(--mg-type-caption-lg);
+  line-height: 1.55;
 }
 .mg-data-table tbody tr {
   border-bottom: 1px solid var(--border);
@@ -5660,4 +5670,99 @@ html[data-density="compact"] .bg-card > table td {
 .mg-field--open {
   border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
   background: var(--mg-surface-raised-hover);
+}
+
+/* The idle sort affordance. Present on every sortable column so the control is
+   discoverable before it is used, and quiet enough that eight of them in a
+   header row do not read as decoration. */
+.mg-sort-idle {
+  opacity: 0.28;
+}
+button:hover > .mg-sort-idle,
+button:focus-visible > .mg-sort-idle {
+  opacity: 0.7;
+}
+
+/* ============================================================
+ * Data table frame
+ *
+ * The one deliberate exception to unboxed grouping. A table is a single dense
+ * object with its own internal rules; without an outer edge its header row
+ * reads as page furniture and its last row bleeds into whatever follows.
+ * Geometry from the reference's node/miner tables.
+ * ============================================================ */
+.mg-table-frame {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  /* 12px, measured. The system's 4px is right for a control; a table frame is
+     a large panel and the reference gives it a noticeably softer corner. */
+  border-radius: 0.75rem;
+  background: var(--mg-surface-raised);
+  min-width: 0;
+}
+.mg-table-frame-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mg-space-sm) var(--mg-space-md);
+  padding: var(--mg-space-md) 1.25rem;
+}
+.mg-table-frame-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--mg-space-xs);
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-caption-lg);
+  font-weight: 600;
+}
+/* The count is part of the title and set quieter, the way the reference does
+   it — "Nodes (156)" is one label, not a heading beside a statistic. */
+.mg-table-frame-count {
+  color: var(--ink-muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.mg-table-frame-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mg-space-sm);
+  min-width: 0;
+}
+/* What this data IS and how fresh — stated once, under the header, instead of
+   repeated per row or left to a tooltip. */
+.mg-table-frame-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mg-space-xs);
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding: var(--mg-space-sm) 1.25rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+}
+.mg-table-frame-body {
+  border-top: 1px solid var(--border);
+  min-width: 0;
+}
+.mg-table-frame-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mg-space-sm);
+  border-top: 1px solid var(--border);
+  padding: var(--mg-space-sm) 1.25rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+}
+/* Inside a frame the table's own edges are redundant — the frame owns them. */
+.mg-table-frame .mg-data-table tbody tr:last-child {
+  border-bottom: 0;
 }

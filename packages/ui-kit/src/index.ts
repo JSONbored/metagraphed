@@ -166,6 +166,7 @@ export {
 } from "@/components/metagraphed/entity-card";
 export { AnalyticsSection } from "@/components/metagraphed/analytics-section";
 export { ShareCell } from "@/components/metagraphed/share-cell";
+export { DataTableFrame } from "@/components/metagraphed/data-table-frame";
 export { Statement } from "@/components/metagraphed/statement";
 export { Callout, type CalloutTone } from "@/components/metagraphed/callout";
 export {

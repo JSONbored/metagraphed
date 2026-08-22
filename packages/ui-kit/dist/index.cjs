@@ -3208,6 +3208,33 @@ function ShareCell({
     /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-share-cell-value", children: label ?? `${(value * 100).toFixed(1)}%` })
   ] });
 }
+function DataTableFrame({
+  title,
+  count,
+  countLabel,
+  controls,
+  status,
+  footer,
+  children,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("section", { className: classNames("mg-table-frame", className), children: [
+    /* @__PURE__ */ jsxRuntime.jsxs("header", { className: "mg-table-frame-head", children: [
+      /* @__PURE__ */ jsxRuntime.jsxs("h3", { className: "mg-table-frame-title", children: [
+        title,
+        countLabel != null ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-table-frame-count", children: countLabel }) : count != null ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-table-frame-count", children: [
+          "(",
+          String(count).replace(/\B(?=(\d{3})+(?!\d))/g, ","),
+          ")"
+        ] }) : null
+      ] }),
+      controls ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-table-frame-controls", children: controls }) : null
+    ] }),
+    status ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-table-frame-status", children: status }) : null,
+    /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-table-frame-body", children }),
+    footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-table-frame-foot", children: footer }) : null
+  ] });
+}
 function Statement({
   index,
   eyebrow,
@@ -7818,6 +7845,7 @@ exports.DataPageSignalRail = DataPageSignalRail;
 exports.DataPageStage = DataPageStage;
 exports.DataPageTaskPaths = DataPageTaskPaths;
 exports.DataPageWindowTabs = DataPageWindowTabs;
+exports.DataTableFrame = DataTableFrame;
 exports.DefinitionList = DefinitionList;
 exports.DensityToggle = DensityToggle;
 exports.Dialog = Dialog;

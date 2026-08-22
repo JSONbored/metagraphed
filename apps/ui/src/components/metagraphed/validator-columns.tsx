@@ -41,6 +41,15 @@ export interface ValidatorCellContext {
 }
 
 export interface ValidatorColumn {
+  /**
+   * What this column means, shown as a `?` on its header.
+   *
+   * These are the definitions that used to sit in a ten-entry glossary beneath
+   * the table — a wall of prose a reader had to leave the row to consult. On
+   * the header they are one hover from the number they explain.
+   */
+  help?: string;
+
   /** Stable key for column visibility (ColumnDef-compatible). */
   id: string;
   /** ColumnDef uses `label`; kept in sync with `header` below. */
@@ -196,6 +205,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     // four columns away from the thing being ranked, and the eye had to cross
     // take, APY, subnets and nominators to read the order it was already in.
     ...numeric("totalStake", "Total stake", 116),
+    help: "The TAO backing the validator: its own stake plus TAO delegated by nominators. Stake sets how much weight the validator’s votes carry.",
     sortKey: "total_stake_tao",
     cell: (v) => taoCompact(v.total_stake_tao),
   },
@@ -205,7 +215,13 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     // share bar it answers a different question — how much of the network is
     // this one operator — at a glance, down the column, which no column of
     // percentages does.
-    ...numeric("dominance", "Share", 132),
+    // LEFT aligned, unlike the other measures. The cell is a rail followed by
+    // its percentage, so right-aligning it pushed the number hard against the
+    // next column's own right-aligned figure — two unrelated percentages
+    // touching. The rail starts at the column's left edge, the way the
+    // reference draws it, and the gap falls where it belongs.
+    ...numeric("dominance", "Share", 150),
+    help: "The validator’s share of total network stake. Higher share means more influence over consensus and emission — and more of that influence concentrated in one operator.",
     sortKey: "stake_dominance",
     tdClassName: TD_BASE,
     thClassName: TH_BASE,
@@ -213,12 +229,14 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
   },
   {
     ...numeric("take", "Take", 68),
+    help: "The validator’s commission: the fraction of delegator rewards it keeps. Lower take means nominators keep more of the emission flow.",
     sortKey: "take",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => formatTakePct(v.take),
   },
   {
     ...numeric("apy", "Est. APY", 84),
+    help: "Annualised delegator yield estimated from emission ÷ stake, net of take — the latest captured rate scaled to a year, not a forecast. Root stake is TAO-denominated; alpha stake is price-exposed, so a positive nominal APY can still net-lose TAO if alpha falls faster than the yield accrues.",
     sortKey: "apy_estimate",
     // apy_estimate (#2551) is a 0..1 fraction; formatApyPct takes a percentage.
     cell: (v) => {
@@ -234,27 +252,32 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
   },
   {
     ...numeric("subnets", "Subnets", 88),
+    help: "How many subnets this hotkey is registered and validating on. A validator may operate broadly across many subnets or concentrate on a few.",
     sortKey: "subnet_count",
     cell: (v) => formatNumber(v.subnet_count),
   },
   {
     ...numeric("nominators", "Nominators", 104),
+    help: "How many distinct coldkeys currently have stake delegated to this hotkey. Sourced from a lower-frequency chain scan than the other columns, so it can lag briefly — a dash means no count has been captured yet, not zero nominators.",
     sortKey: "nominator_count",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => (v.nominator_count != null ? formatNumber(v.nominator_count) : "—"),
   },
   {
     ...numeric("delta30d", "30d Δ", 78),
+    help: "Change in total stake over the last 30 days, from the validator’s own stake history.",
     tdClassName: `${TD_NUM}`,
     cell: (v) => <Stake30dDeltaCell hotkey={v.hotkey} />,
   },
   {
     ...numeric("emission", "Emission", 110, false),
+    help: "The TAO the validator earned over the window. Emission is split between the validator and its nominators via commission — it reflects reward flow, not profit.",
     sortKey: "total_emission_tao",
     cell: (v) => (v.total_emission_tao != null ? taoCompact(v.total_emission_tao) : "—"),
   },
   {
     ...numeric("trust", "Avg trust", 100, false),
+    help: "How consistently a subnet’s consensus scores the validator as trustworthy. Steadier trust points to reliable participation.",
     sortKey: "avg_validator_trust",
     cell: (v) =>
       v.avg_validator_trust != null ? `${(v.avg_validator_trust * 100).toFixed(1)}%` : "—",

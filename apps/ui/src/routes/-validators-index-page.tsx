@@ -5,11 +5,16 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useMemo, useRef, useState } from "react";
 import { ChevronDown, Star } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { ShareButton, DownloadCsvButton, DensityToggle, type Density } from "@jsonbored/ui-kit";
+import {
+  DataTableFrame,
+  DensityToggle,
+  DownloadCsvButton,
+  ShareButton,
+  type Density,
+} from "@jsonbored/ui-kit";
 import {
   AsyncPanel,
   DataPageCanvas,
-  DataPageDisclosure,
   DataPageHero,
   DataPageModule,
   DataPageStage,
@@ -27,13 +32,12 @@ import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/stat
 import { API_BASE } from "@/lib/metagraphed/config";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { matchesQuery, sortBy } from "@/lib/metagraphed/url-state";
 import { groupByOperator } from "@/lib/metagraphed/group-validators";
 import { useWatchlist } from "@/lib/metagraphed/watchlist";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
-import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { VALIDATOR_COLUMNS } from "@/components/metagraphed/validator-columns";
 import { ColumnCustomizer, useColumnVisibility } from "@jsonbored/ui-kit";
 import {
@@ -166,9 +170,6 @@ export function ValidatorsPage() {
                 <ValidatorsDirectory density={density} onDensityChange={onDensityChange} />
               </AsyncPanel>
             )}
-            <DataPageDisclosure label="How to read this directory">
-              <ValidatorGuide />
-            </DataPageDisclosure>
           </DataPageModule>
           <DataPageModule
             title="Entry economics."
@@ -363,36 +364,58 @@ function ValidatorsDirectory({
         />
       ) : null}
 
-      <div className="mg-directory-toolbar flex w-full flex-col gap-0 min-w-0">
-        <div className="flex w-full items-center gap-2 min-w-0">
-          <QueryBar className="min-h-11 lg:min-h-0" ariaLabel="Search validators">
-            <QueryBar.Search
-              value={search.q}
-              onChange={(v) => setSearch({ q: v })}
-              placeholder="Search operator, hotkey, or coldkey"
-              debounceMs={150}
-              className="min-h-11 lg:min-h-0"
-            />
-          </QueryBar>
-          <FilterSheet
-            className="shrink-0 [&>button]:min-h-11 lg:[&>button]:min-h-9"
-            label="Filters"
-            activeCount={activeFilterCount}
-          >
-            {directoryRefinements}
-          </FilterSheet>
-        </div>
-        <QueryBar.MetaRow
-          count={rows.length}
-          total={all.length}
-          noun="validators"
-          activeCount={activeFilterCount}
-          onReset={search.watched ? () => setSearch({ watched: false }) : undefined}
-        />
-      </div>
-
       {rows.length > 0 ? (
-        <div className="mg-directory-table hidden md:block border border-border">
+        <DataTableFrame
+          className="mg-directory-table hidden md:block"
+          title="Validators"
+          countLabel={
+            rows.length === all.length
+              ? `(${formatNumber(all.length)})`
+              : `(${formatNumber(rows.length)} of ${formatNumber(all.length)})`
+          }
+          controls={
+            <>
+              <QueryBar className="min-h-9 w-[22rem] max-w-full" ariaLabel="Search validators">
+                <QueryBar.Search
+                  value={search.q}
+                  onChange={(v) => setSearch({ q: v })}
+                  placeholder="Search operator, hotkey, or coldkey"
+                  debounceMs={150}
+                />
+              </QueryBar>
+              <FilterSheet label="Filters" activeCount={activeFilterCount}>
+                {directoryRefinements}
+              </FilterSheet>
+            </>
+          }
+          status={
+            <>
+              <span className="mg-live-dot" aria-hidden="true" />
+              <span>
+                Live validator set, ranked by {sort === "total_stake_tao" ? "total stake" : sort}.
+              </span>
+              <span aria-hidden="true">·</span>
+              <span>Every column sorts; hover a header for what it measures.</span>
+            </>
+          }
+          footer={
+            <>
+              <span>
+                {formatNumber(rows.length)} of {formatNumber(all.length)} validators
+                {activeFilterCount > 0 ? ` · ${activeFilterCount} filter applied` : ""}
+              </span>
+              {search.watched ? (
+                <button
+                  type="button"
+                  onClick={() => setSearch({ watched: false })}
+                  className="mg-focus-ring text-ink-muted hover:text-ink-strong"
+                >
+                  Clear watchlist filter
+                </button>
+              ) : null}
+            </>
+          }
+        >
           {/* ONE scroll container carrying BOTH sets of styling.
               This was split into single-axis wrappers (#8314) because a
               combined overflow-auto div left the extra columns
@@ -425,11 +448,15 @@ function ValidatorsDirectory({
             >
               {/* Pins the column tracks so they cannot be re-derived from
                   whichever virtualized rows happen to be mounted. */}
-              <TableColGroup widths={[46, 40, ...visibleColumns.map((c) => c.width)]} />
+              <TableColGroup widths={[64, ...visibleColumns.map((c) => c.width)]} />
               <thead className="mg-table-head-pinned">
                 <tr>
-                  <th className="w-6 px-3 py-2" aria-label="Watch" />
-                  <th className="w-6 px-3 py-2" aria-label="Compare" />
+                  {/* ONE leading control cell, not two. Watch and compare each
+                      had a column of their own, so every row opened with two
+                      near-empty icon cells before the first piece of data —
+                      the reference leads with a single control and gets to the
+                      name immediately. */}
+                  <th className="px-3 py-2" aria-label="Row actions" />
                   {visibleColumns.map((col) => (
                     <th
                       key={col.header}
@@ -444,6 +471,7 @@ function ValidatorsDirectory({
                           order={order}
                           onSort={onSort}
                           align={col.thClassName.includes("text-right") ? "right" : "left"}
+                          help={col.help}
                         />
                       ) : (
                         col.header
@@ -456,7 +484,7 @@ function ValidatorsDirectory({
                 {virtualPaddingTop > 0 ? (
                   <tr aria-hidden>
                     <td
-                      colSpan={VALIDATOR_COLUMNS.length + 2}
+                      colSpan={VALIDATOR_COLUMNS.length + 1}
                       style={{ height: virtualPaddingTop }}
                     />
                   </tr>
@@ -471,27 +499,27 @@ function ValidatorsDirectory({
                       className="hover:bg-surface/40"
                     >
                       <td className="px-3 py-2 align-middle">
-                        <button
-                          type="button"
-                          onClick={() => watchlist.toggle(v.hotkey)}
-                          aria-pressed={watchlist.isWatched(v.hotkey)}
-                          aria-label={
-                            watchlist.isWatched(v.hotkey)
-                              ? "Remove from watchlist"
-                              : "Add to watchlist"
-                          }
-                          className="mg-tap-target flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
-                        >
-                          <Star
-                            className={classNames(
-                              "size-3.5",
-                              watchlist.isWatched(v.hotkey) && "fill-accent text-accent",
-                            )}
-                          />
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 align-middle">
-                        <ValidatorCompareToggle hotkey={v.hotkey} />
+                        <span className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => watchlist.toggle(v.hotkey)}
+                            aria-pressed={watchlist.isWatched(v.hotkey)}
+                            aria-label={
+                              watchlist.isWatched(v.hotkey)
+                                ? "Remove from watchlist"
+                                : "Add to watchlist"
+                            }
+                            className="mg-tap-target flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
+                          >
+                            <Star
+                              className={classNames(
+                                "size-3.5",
+                                watchlist.isWatched(v.hotkey) && "fill-accent text-accent",
+                              )}
+                            />
+                          </button>
+                          <ValidatorCompareToggle hotkey={v.hotkey} />
+                        </span>
                       </td>
                       {visibleColumns.map((col) => (
                         <td key={col.header} className={col.tdClassName}>
@@ -504,7 +532,7 @@ function ValidatorsDirectory({
                 {virtualPaddingBottom > 0 ? (
                   <tr aria-hidden>
                     <td
-                      colSpan={VALIDATOR_COLUMNS.length + 2}
+                      colSpan={VALIDATOR_COLUMNS.length + 1}
                       style={{ height: virtualPaddingBottom }}
                     />
                   </tr>
@@ -512,7 +540,7 @@ function ValidatorsDirectory({
               </tbody>
             </table>
           </div>
-        </div>
+        </DataTableFrame>
       ) : (
         <EmptyState
           title={search.q ? "No validators match this search" : "No validators indexed yet"}

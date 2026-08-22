@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import type { HTMLAttributes } from "react";
-import { ArrowUp, ArrowDown, X, Filter, Search as SearchIcon } from "lucide-react";
+import { ArrowUp, ArrowDown, ChevronsUpDown, X, Filter, Search as SearchIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { classNames } from "@/lib/metagraphed/format";
+import { InfoTooltip } from "@jsonbored/ui-kit";
 
 /**
  * Maps the live sort state of a column to the WAI-ARIA `aria-sort` value for
@@ -32,6 +33,7 @@ export function SortHeader<TField extends string>({
   order,
   onSort,
   align = "left",
+  help,
 }: {
   label: string;
   field: TField;
@@ -39,16 +41,31 @@ export function SortHeader<TField extends string>({
   order?: "asc" | "desc";
   onSort: (field: TField) => void;
   align?: "left" | "right";
+  /**
+   * What this column means, revealed on hover/focus.
+   *
+   * The definitions used to live in a ten-entry glossary below the table, which
+   * a reader had to leave the row to consult and then find their way back from.
+   * Attached to the header, the explanation is one hover away from the number
+   * it explains — and the page stops carrying a wall of prose it only needs
+   * when someone asks.
+   */
+  help?: string;
 }) {
   const sortHint = active ? `, sorted ${order === "asc" ? "ascending" : "descending"}` : "";
-  return (
+  const button = (
     <button
       type="button"
       onClick={() => onSort(field)}
       aria-label={`Sort by ${label}${sortHint}`}
+      // Inherits the header cell's own type — `.mg-data-table thead th` sets
+      // the 10px uppercase treatment, and stamping `mg-type-caption` here
+      // overrode it, so a sortable column rendered in sentence case at 12px
+      // beside a non-sortable one in uppercase micro. Two typographies in one
+      // header row, decided by whether the column happened to sort.
       className={classNames(
-        "inline-flex items-center gap-1 mg-type-caption hover:text-ink-strong transition-colors",
-        active ? "text-ink-strong" : "text-ink-muted",
+        "inline-flex items-center gap-1.5 font-[inherit] text-[length:inherit] uppercase tracking-[inherit] transition-colors",
+        active ? "text-ink-strong" : "text-ink-muted hover:text-ink-strong",
         align === "right" && "justify-end w-full",
       )}
     >
@@ -59,8 +76,27 @@ export function SortHeader<TField extends string>({
         ) : (
           <ArrowDown className="size-3" aria-hidden />
         )
-      ) : null}
+      ) : (
+        // A sortable column says so before you click it. Only the ACTIVE
+        // column used to show anything, so the other seven looked inert and
+        // the affordance was discoverable only by guessing.
+        <ChevronsUpDown className="mg-sort-idle size-3" aria-hidden />
+      )}
     </button>
+  );
+
+  return help ? (
+    <span
+      className={classNames(
+        "inline-flex items-center gap-1",
+        align === "right" && "w-full justify-end",
+      )}
+    >
+      {button}
+      <InfoTooltip label={help} className="shrink-0" />
+    </span>
+  ) : (
+    button
   );
 }
 
