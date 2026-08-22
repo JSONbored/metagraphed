@@ -150,6 +150,62 @@ test.describe("#11520 subnet discovery modes", () => {
     ).toBeGreaterThan(3);
   });
 
+  test("offers the four tasks as ONE strip, rankings included", async ({ page }) => {
+    await openSubnets(page, "");
+
+    // Rankings used to be its own tablist stacked above this one, so the page
+    // opened with two nested rows of tabs both answering "what am I doing".
+    // Exactly one task strip, and it carries all four.
+    const strips = page.locator("main [role=tablist][aria-label='Subnet directory task']");
+    await expect(strips).toHaveCount(1);
+    const labels = await strips
+      .getByRole("tab")
+      .evaluateAll((nodes) => nodes.map((n) => n.textContent?.trim() ?? ""));
+    expect(labels).toEqual(["Browse", "Research", "Compare", "Rankings"]);
+
+    // No second task tablist anywhere on the page.
+    await expect(page.locator("main [role=tablist][aria-label='Subnets sections']")).toHaveCount(0);
+  });
+
+  test("switches to rankings from the same strip", async ({ page }) => {
+    await openSubnets(page, "");
+
+    // The four tabs write two different search params — three set the
+    // directory's task, the fourth switches section — and that split is
+    // exactly what a reader should never have to see.
+    await expect
+      .poll(
+        async () => {
+          await page.getByRole("tab", { name: "Rankings" }).click();
+          return new URL(page.url()).searchParams.get("section");
+        },
+        { timeout: 15_000 },
+      )
+      .toBe("rankings");
+    await expect(page.getByRole("tab", { name: "Rankings" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    // And back, without leaving the strip. Asserted on what a reader sees
+    // rather than on the query string: `section` is stripped once it returns
+    // to its default, so checking for "registry" in the URL tests the router's
+    // default-encoding, not whether the tab works.
+    await expect
+      .poll(
+        async () => {
+          await page.getByRole("tab", { name: "Browse" }).click();
+          return page.locator(".mg-directory-row").count();
+        },
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(3);
+    await expect(page.getByRole("tab", { name: "Browse" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
   test("leaves existing directory deep links working", async ({ page }) => {
     await openSubnets(page, "?view=grid&q=chain");
     const url = new URL(page.url());

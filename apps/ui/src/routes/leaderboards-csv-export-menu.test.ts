@@ -35,19 +35,31 @@ function csvMenuSource() {
 
 describe("leaderboards ActionBar CSV export", () => {
   it("renders exactly one CSV-export trigger in the rankings ActionBar, not one per board", () => {
-    const rankingsStart = host.indexOf('{search.section === "rankings" ? (');
-    const rankingsBranch = host.slice(rankingsStart, host.indexOf(") : (", rankingsStart));
-    const actionBar = rankingsBranch.slice(
-      rankingsBranch.indexOf("<ActionBar>"),
-      rankingsBranch.indexOf("</ActionBar>"),
-    );
+    // Located by what is being asserted rather than by position. The previous
+    // version indexed the first `{search.section === "rankings" ? (` in the
+    // file and sliced forward to `) : (`; when the ActionBar moved into the
+    // module's `actions` prop — same behaviour, one fewer nested tab strip —
+    // that anchor silently matched a different conditional and the slice came
+    // back empty. A source assertion should survive the file being reshuffled,
+    // which is the whole reason it reads source instead of rendering.
+
+    // Exactly one menu in the host, not one per board.
+    expect(host.match(/<LeaderboardsCsvExportMenu/g)?.length).toBe(1);
+
+    const menuAt = host.indexOf("<LeaderboardsCsvExportMenu");
+    const barOpen = host.lastIndexOf("<ActionBar>", menuAt);
+    const barClose = host.indexOf("</ActionBar>", menuAt);
+    expect(barOpen).toBeGreaterThan(-1);
+    expect(barClose).toBeGreaterThan(barOpen);
+
+    const actionBar = host.slice(barOpen, barClose);
     expect(actionBar).toContain("<LeaderboardsCsvExportMenu");
-    // Exactly one menu element -- not one per board.
-    expect(actionBar.match(/<LeaderboardsCsvExportMenu/g)?.length).toBe(1);
-    // The rankings branch owns this single menu; the registry's export lives
-    // in its local Controls sheet instead of alongside the rankings action.
-    expect(rankingsBranch).toContain('search.section === "rankings"');
     expect(actionBar).not.toContain("DownloadCsvButton");
+
+    // And that ActionBar is gated on rankings: the registry's own export lives
+    // in its local Controls sheet, not alongside the rankings action.
+    const gate = host.slice(Math.max(0, barOpen - 400), barOpen);
+    expect(gate).toContain('search.section === "rankings"');
   });
 
   it("no longer imports DownloadCsvButton -- replaced entirely by the menu", () => {

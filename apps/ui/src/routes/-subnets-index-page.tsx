@@ -29,6 +29,8 @@ import {
   DataPageModule,
   DataPageStage,
   DirectoryModeTabs,
+  DIRECTORY_MODES,
+  type DirectoryModeOption,
   DirectoryRow,
   type DirectoryMode,
   type ColumnDef,
@@ -259,6 +261,26 @@ function joinCatalog(
   });
 }
 
+/**
+ * The four sibling tasks this route serves, in the order a reader meets them.
+ *
+ * Rankings is one of them, not a separate destination — it reads the same
+ * registry and answers "which subnets lead" the way Compare answers "how do
+ * these two differ". It lived in its own tablist above the mode strip, which
+ * made the page open with two nested rows of tabs answering the same question
+ * at two levels.
+ */
+type SubnetTask = DirectoryMode | "rankings";
+
+const SUBNET_TASKS: readonly DirectoryModeOption<SubnetTask>[] = [
+  ...DIRECTORY_MODES,
+  {
+    value: "rankings",
+    label: "Rankings",
+    hint: "Live subnet leaders by emission, stake, and price movement.",
+  },
+] as const;
+
 export function SubnetsPage() {
   const search = useSearch({ from: "/subnets/" }) as SubnetsSearch;
   const navigate = useNavigate({ from: "/subnets/" });
@@ -300,6 +322,29 @@ export function SubnetsPage() {
       resetScroll: false,
     });
   const mode: DirectoryMode = search.mode;
+  // One handler for one strip. The four tabs write two different search params
+  // — three of them set the directory's task and keep the registry section,
+  // the fourth switches section — but that is a URL detail, not something a
+  // reader should have to learn from two stacked tablists.
+  const setTask = (task: SubnetTask) => {
+    if (task === "rankings") {
+      setSection("rankings");
+      return;
+    }
+    if (search.section !== "registry") {
+      navigate({
+        search: (prev: Record<string, unknown>) => ({
+          ...prev,
+          section: "registry",
+          mode: task,
+        }),
+        replace: true,
+        resetScroll: false,
+      });
+      return;
+    }
+    setMode(task);
+  };
   return (
     <AppShell>
       <DataPageStage>
@@ -317,37 +362,37 @@ export function SubnetsPage() {
         />
 
         <DataPageCanvas>
-          {/* Rankings is a sibling task, not a separate destination. */}
-          <SectionTabs
-            className="mg-directory-tabs"
-            section={search.section}
-            onChange={setSection}
-          />
-
-          {search.section === "rankings" ? (
-            <DataPageModule
-              title="Subnet rankings."
-              caption="Compare live subnet leaders without leaving the registry."
-              actions={
+          {/* ONE strip, four sibling tasks. Rankings used to be a separate
+              tablist stacked directly above this one, so the page opened with
+              two nested tab rows, a module heading and a caption between them,
+              and a third row of filter chips below — four control layers and
+              ~880px before a single subnet. The code already said "Rankings is
+              a sibling task, not a separate destination"; it just was not
+              drawn as one. */}
+          {/* The strip and what it switches share ONE module. Giving the strip
+              its own module put a rule and two lots of module padding between
+              a control and the thing it controls — a visibly empty band. */}
+          <DataPageModule
+            actions={
+              search.section === "rankings" ? (
                 <ActionBar>
                   <LeaderboardsCsvExportMenu win={search.window} />
                   <ShareButton bare />
                 </ActionBar>
-              }
-            >
+              ) : undefined
+            }
+          >
+            <DirectoryModeTabs
+              mode={search.section === "rankings" ? "rankings" : mode}
+              onChange={setTask}
+              modes={SUBNET_TASKS}
+              ariaLabel="Subnet directory task"
+            />
+
+            {search.section === "rankings" ? (
               <LeaderboardsSection win={search.window} onWindowChange={setWindow} />
-            </DataPageModule>
-          ) : (
-            <>
-              <DataPageModule
-                title="Live registry."
-                caption="Search, compare, and open a subnet dossier."
-              >
-                <DirectoryModeTabs
-                  mode={mode}
-                  onChange={setMode}
-                  ariaLabel="Subnet directory mode"
-                />
+            ) : (
+              <>
                 {/* Saved views are a research/compare affordance: a first-time
                     reader has none, and the row reads as an empty control. */}
                 {mode === "browse" ? null : <SubnetsSavedViews />}
@@ -369,8 +414,12 @@ export function SubnetsPage() {
                     onDensityChange={setDensity}
                   />
                 </AsyncPanel>
-              </DataPageModule>
+              </>
+            )}
+          </DataPageModule>
 
+          {search.section === "rankings" ? null : (
+            <>
               {/* Secondary context is available when useful, but no longer
                   delays the directory task or turns the first scroll into a
                   wall of equal-weight cards. */}
@@ -2488,55 +2537,6 @@ function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; den
         </span>
       </span>
     </SparkLegend>
-  );
-}
-
-/**
- * Registry / Rankings switch (#8311). Two sections, so a plain two-button
- * strip rather than the ProfileTabs machinery -- there's no overflow to
- * manage and no per-tab URL segment.
- */
-function SectionTabs({
-  section,
-  onChange,
-  className,
-}: {
-  section: "registry" | "rankings";
-  onChange: (s: "registry" | "rankings") => void;
-  className?: string;
-}) {
-  return (
-    <div
-      role="tablist"
-      aria-label="Subnets sections"
-      className={classNames("mb-4 flex items-center gap-1 border-b border-border", className)}
-    >
-      {(
-        [
-          ["registry", "Registry"],
-          ["rankings", "Rankings"],
-        ] as const
-      ).map(([id, label]) => {
-        const active = section === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(id)}
-            className={classNames(
-              "relative min-h-11 px-3 py-2 mg-type-caption-lg font-medium transition-colors mg-focus-ring",
-              active
-                ? "text-ink-strong after:absolute after:inset-x-2 after:-bottom-px after:h-[1.5px] after:rounded-full after:bg-accent after:content-['']"
-                : "text-ink-muted hover:text-ink-strong",
-            )}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 

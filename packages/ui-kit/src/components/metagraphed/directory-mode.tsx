@@ -15,8 +15,8 @@ import { classNames } from "@/lib/format";
  */
 export type DirectoryMode = "browse" | "research" | "compare";
 
-export interface DirectoryModeOption {
-  value: DirectoryMode;
+export interface DirectoryModeOption<T extends string = DirectoryMode> {
+  value: T;
   label: string;
   /** One short line naming the job, shown beneath the strip. */
   hint: string;
@@ -55,17 +55,23 @@ export function isDirectoryMode(value: unknown): value is DirectoryMode {
  * page's primary decision, and it should read as a heading-level choice rather
  * than as one more utility control sitting beside density and export.
  */
-export function DirectoryModeTabs({
+export function DirectoryModeTabs<T extends string = DirectoryMode>({
   mode,
   onChange,
-  modes = DIRECTORY_MODES,
+  modes = DIRECTORY_MODES as readonly DirectoryModeOption<T>[],
   ariaLabel = "Directory mode",
   className,
 }: {
-  mode: DirectoryMode;
-  onChange: (mode: DirectoryMode) => void;
-  /** Narrow the offer when a route genuinely cannot serve one of them. */
-  modes?: readonly DirectoryModeOption[];
+  mode: T;
+  onChange: (mode: T) => void;
+  /**
+   * Narrow the offer when a route cannot serve one of them — or WIDEN it when a
+   * route has a fourth sibling task. /subnets carries "Rankings" here, which
+   * used to be a second tab strip stacked directly above this one: two
+   * tablists, one nested inside the other, both answering "what am I doing".
+   * The vocabulary is per route; the composition is shared.
+   */
+  modes?: readonly DirectoryModeOption<T>[];
   ariaLabel?: string;
   className?: string;
 }) {
