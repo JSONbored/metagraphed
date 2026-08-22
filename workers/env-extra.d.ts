@@ -46,6 +46,17 @@ interface RuntimeSecretEnv {
   ALERT_TRIGGER_CREATE_TOKEN?: string;
   ALERT_TRIGGERS_INTERNAL_TOKEN?: string;
   API_KEY_LOOKUP_INTERNAL_TOKEN?: string;
+  /**
+   * infra#629: where x402 payments settle. A PUBLIC value kept in
+   * wrangler.jsonc rather than a secret, deliberately -- it is the address a
+   * payer's funds move to, so it must not be changeable without a reviewable
+   * diff. Absent means this deployment takes no payments at all.
+   */
+  X402_PAY_TO?: string;
+  /** CAIP-2 network id. Defaults to Base Sepolia. */
+  X402_NETWORK?: string;
+  /** Facilitator base URL. Defaults to the public Coinbase one. */
+  X402_FACILITATOR_URL?: string;
   /** #11565: proves a `x-metagraph-probe` marker came from one of our own
    * scheduled sweeps. Absent on a deployment that has not provisioned it, in
    * which case no probe marker is ever honoured -- see mcpProbeName. */
