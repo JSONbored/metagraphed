@@ -18,6 +18,7 @@ import {
   FEED_ROUTES,
   OPERATION_SUMMARIES,
   SHARED_PATH_PARAMETER_DESCRIPTIONS,
+  SHARED_PATH_PARAMETER_EXAMPLES,
   SHARED_QUERY_PARAMETER_DESCRIPTIONS,
   withSharedPathParameterDescription,
 } from "../src/contracts.ts";
@@ -35,6 +36,16 @@ const METHODS = ["get", "post", "put", "patch", "delete"];
  * already guarantees it matches source -- so asserting on it covers both the
  * emit logic and the commit.
  */
+/** The published document, parsed once per call site that needs it. */
+function doc(): { paths: Record<string, Row> } {
+  return JSON.parse(
+    readFileSync(
+      new URL("../public/metagraph/openapi.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { paths: Record<string, Row> };
+}
+
 function operations(): Array<{ path: string; method: string; op: Row }> {
   const doc = JSON.parse(
     readFileSync(
@@ -212,5 +223,37 @@ describe("the derived query descriptions stay grammatical without a schema", () 
   test("`days` without a default", () => {
     const text = SHARED_QUERY_PARAMETER_DESCRIPTIONS.days!({});
     assert.match(text, /history to return\.$/);
+  });
+});
+
+describe("SHARED_PATH_PARAMETER_EXAMPLES", () => {
+  test("every example names a parameter that is also described", () => {
+    // An example for a parameter nothing declares is inert -- it reads as
+    // coverage and publishes nothing, the same failure the key check above
+    // exists for.
+    const undescribed = Object.keys(SHARED_PATH_PARAMETER_EXAMPLES).filter(
+      (name) => !SHARED_PATH_PARAMETER_DESCRIPTIONS[name],
+    );
+    assert.deepEqual(undescribed, []);
+  });
+
+  test("examples reach the published document", () => {
+    const netuid = (
+      (doc().paths["/api/v1/subnets/{netuid}"]!.get as Row).parameters as Row[]
+    ).find((p) => p.name === "netuid");
+    assert.equal(netuid?.example, SHARED_PATH_PARAMETER_EXAMPLES.netuid);
+  });
+
+  test("no example is given for a value that goes stale", () => {
+    // A concrete block number or extrinsic hash starts 404ing weeks after it
+    // is written, which is worse than publishing none. Pinned so a future
+    // "let's be thorough" pass does not add one.
+    for (const unstable of ["ref", "hash", "date", "crowdloan_id"]) {
+      assert.equal(
+        SHARED_PATH_PARAMETER_EXAMPLES[unstable],
+        undefined,
+        `${unstable} is not stable enough to publish an example for`,
+      );
+    }
   });
 });
