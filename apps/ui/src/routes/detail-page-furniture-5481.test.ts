@@ -147,14 +147,29 @@ describe("#7853 breadcrumb de-duplication: AppShell crumbLabel wiring", () => {
     "utf8",
   );
 
-  it("app-shell.tsx accepts a crumbLabel prop and uses it to override only the trailing crumb", () => {
+  it("app-shell.tsx still accepts crumbLabel, and renders no breadcrumb row of its own", () => {
+    // #7853's property was de-duplication: ONE breadcrumb source, owned by the
+    // shell, with routes contributing only a label. That still holds — what
+    // changed is the count, which is now zero. The shell carried three stacked
+    // rows (identity/nav, a live registry ticker, breadcrumbs) above every page
+    // on the site; the breadcrumb row was a second navigation affordance
+    // duplicating the strip directly above it, and it is gone.
+    //
+    // The prop stays because the server-rendered BreadcrumbList JSON-LD is what
+    // actually consumes the label's intent, and 20+ routes pass it.
     expect(appShellSource).toContain("crumbLabel?: string");
-    const memo = appShellSource.slice(
-      appShellSource.indexOf("const crumbs = useMemo"),
-      appShellSource.indexOf("const parent = useMemo"),
+    expect(appShellSource).not.toContain('aria-label="Breadcrumb"');
+    expect(appShellSource).not.toContain("<RegistryTicker");
+  });
+
+  it("keeps the structured-data breadcrumb the visual row used to mirror", () => {
+    // Removing the row must not remove the claim Google reads. This is the one
+    // consequence of that deletion that is not visible in a screenshot.
+    const server = readFileSync(
+      fileURLToPath(new URL("../server.ts", import.meta.url)),
+      "utf8",
     );
-    expect(memo).toContain("buildCrumbs(pathname)");
-    expect(memo).toContain("crumbLabel");
+    expect(server).toContain("BreadcrumbList");
   });
 
   it("subnets.$netuid.tsx passes the zero-padded netuid as the shell's crumbLabel", () => {

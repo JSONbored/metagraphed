@@ -1,26 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { captureEvent } from "@/lib/analytics";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Compass,
-  Github,
-  Menu,
-  Rss,
-  Search,
-  Webhook,
-} from "lucide-react";
+import { ChevronRight, Compass, Github, Menu, Rss, Search, Webhook } from "lucide-react";
 import {
   API_BASE,
   DEFAULT_DISCORD_URL,
@@ -53,7 +36,6 @@ import { WalletConnectButton } from "./wallet-connect";
 import { classNames } from "@/lib/metagraphed/format";
 import { freshnessQuery, buildQuery } from "@/lib/metagraphed/queries";
 import { NavMegaMenu, MobileMegaMenu } from "./nav-mega-menu";
-import { RegistryTicker } from "./registry-ticker";
 import { ShortcutsPopover } from "./shortcuts-popover";
 import { CommandPalette } from "./command-palette";
 import { NavOmnibox } from "./nav-omnibox";
@@ -62,7 +44,6 @@ import { HeaderActionsMenu } from "./header-actions-menu";
 import { ApiSourceProvider } from "@/lib/metagraphed/api-source-context";
 import { IncidentStrip } from "./incident-strip";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
-import { buildCrumbs, parentCrumb } from "./breadcrumb-nav";
 import { useHydrated } from "@/hooks/use-hydrated";
 
 // Brand links resolve from build-time env constants, but still run them through
@@ -108,7 +89,12 @@ export function AppShell({
   fullBleedMain = false,
   flushTop = false,
   afterHeader,
-  crumbLabel,
+  // Still accepted, and still passed by every detail route — it named the
+  // last breadcrumb, and the breadcrumb row is gone. The prop stays because
+  // the server-rendered BreadcrumbList JSON-LD is the thing that actually
+  // consumed the label's intent, and removing it from 20+ call sites would
+  // be churn for no behavioural change.
+  crumbLabel: _crumbLabel,
   chrome = "default",
 }: {
   children: ReactNode;
@@ -168,14 +154,6 @@ export function AppShell({
       if (trigger) requestAnimationFrame(() => trigger.focus());
     }
   }, []);
-  const crumbs = useMemo(() => {
-    const base = buildCrumbs(pathname);
-    if (!crumbLabel || base.length === 0) return base;
-    const last = base[base.length - 1];
-    if (!last) return base;
-    return [...base.slice(0, -1), { ...last, label: crumbLabel }];
-  }, [pathname, crumbLabel]);
-  const parent = useMemo(() => parentCrumb(crumbs), [crumbs]);
 
   // Close mobile sheet on route change
   useEffect(() => {
@@ -351,48 +329,24 @@ export function AppShell({
                   </div>
                 </div>
               </div>
-              {chrome === "default" ? <RegistryTicker /> : null}
-              {/* Secondary breadcrumb row (desktop) / compact back affordance (mobile), hidden on home */}
-              {crumbs.length > 1 ? (
-                <>
-                  {parent ? (
-                    <div className="md:hidden border-t border-border/70 bg-paper/60">
-                      <div className="max-w-shell-max mx-auto px-4 h-9 flex items-center">
-                        <Link
-                          to={parent.to}
-                          className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink-strong transition-colors mg-type-caption"
-                        >
-                          <ChevronLeft className="size-3" />
-                          {parent.label}
-                        </Link>
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="hidden md:block border-t border-border/70 bg-paper/60">
-                    <div className="max-w-shell-max mx-auto px-4 md:px-8 h-9 flex items-center">
-                      <nav
-                        aria-label="Breadcrumb"
-                        className="flex items-center gap-1.5 text-xs text-ink-muted min-w-0"
-                      >
-                        {crumbs.map((c, i) => (
-                          <span key={c.to} className="flex items-center gap-1.5 min-w-0">
-                            {i > 0 ? <ChevronRight className="size-3 opacity-50" /> : null}
-                            <Link
-                              to={c.to}
-                              className={classNames(
-                                "truncate hover:text-ink-strong transition-colors mg-type-caption",
-                                i === crumbs.length - 1 && "text-ink-strong",
-                              )}
-                            >
-                              {c.label}
-                            </Link>
-                          </span>
-                        ))}
-                      </nav>
-                    </div>
-                  </div>
-                </>
-              ) : null}
+              {/* ONE strip.
+                  This header carried three stacked rows: the identity/nav row,
+                  a live registry ticker, and a breadcrumb row — 3 layers of
+                  chrome above every page on the site, ~110px of it, none of
+                  which answered the question the page was opened to answer.
+
+                  The ticker's figures are page content, not chrome: a network
+                  block height and market cap belong on a page about the
+                  network, where they can be read against something. The
+                  breadcrumb row went with it — its BreadcrumbList JSON-LD is
+                  emitted server-side in `server.ts` and is untouched, so the
+                  structured-data claim Google reads is unchanged; what is gone
+                  is a second navigation affordance duplicating the one in the
+                  strip above it.
+
+                  The reference does exactly this: identity at one edge, a small
+                  navigation group, utility at the other, 72px, and nothing
+                  else. */}
               {afterHeader}
             </header>
 
