@@ -198,75 +198,167 @@ export const CALL_SURFACE_METHODS = [
 ] as const;
 export const CALL_SURFACE_BODY_METHODS = ["POST", "PUT", "PATCH"] as const;
 
+/**
+ * The verb split behind the two surface-call tools (#11568).
+ *
+ * The Connectors Directory rejects a single tool whose `method` spans safe and
+ * unsafe verbs -- "do not ship a catch-all `api_request` tool with a `method`
+ * parameter" -- and says outright that documenting the split inside one
+ * description does not satisfy it. Two tools, two enums, two annotations.
+ *
+ * Derived from CALL_SURFACE_METHODS rather than restated, so a verb added
+ * there lands in exactly one of these and cannot silently appear in neither.
+ * `read` is the SAFE set in the HTTP sense (RFC 9110): no observable effect on
+ * the origin, which is what makes `readOnlyHint` truthful and lets a client run
+ * it without a per-call confirmation.
+ */
+export const CALL_SURFACE_READ_METHODS = ["GET", "HEAD"] as const;
+export const CALL_SURFACE_WRITE_METHODS = CALL_SURFACE_METHODS.filter(
+  (
+    method,
+  ): method is Exclude<
+    (typeof CALL_SURFACE_METHODS)[number],
+    (typeof CALL_SURFACE_READ_METHODS)[number]
+  > => !(CALL_SURFACE_READ_METHODS as readonly string[]).includes(method),
+);
+
+/**
+ * The fields BOTH surface-call tools share (#11568).
+ *
+ * One shape, composed twice, so the two tools cannot drift apart in what they
+ * accept for the parts that are genuinely identical -- the surface, where to
+ * send the request, and the caller's own credential.
+ */
+const surfaceCallSharedShape = {
+  surface_id: surfaceIdSchema(),
+  query: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .optional()
+    .describe(
+      "Query-string parameters to append, as a flat object of " +
+        "string/number/boolean values. Nested objects and arrays are not " +
+        "supported — encode them into `path` or `body` instead.",
+    )
+    .meta({ examples: ["inference"] }),
+  path: z
+    .string()
+    .optional()
+    .describe(
+      "Path appended to the surface's base URL, e.g. `/v1/status`. Leading slash optional.",
+    )
+    // uri-reference, not uri: this is a RELATIVE path resolved against the
+    // surface's own base URL, so `uri` (which wants a scheme) would be the
+    // wrong assertion (#9659).
+    .meta({ format: "uri-reference", examples: ["/v1/status"] }),
+  method: z
+    // PATCH and DELETE joined the four originals in #11146: across the
+    // fleet's captured specs, 184 DELETE and 53 PATCH operations were
+    // declared by subnets and unreachable through this tool purely because
+    // the verb was not in this enum. The gate is unchanged and does the real
+    // work -- the exact path+method must be declared in the surface's own
+    // captured schema, and an authenticated surface still needs the caller's
+    // own credential -- so widening the verb set grants no authority the
+    // caller did not already have calling the API directly.
+    .enum(CALL_SURFACE_READ_METHODS)
+    .optional()
+    .describe(
+      "HTTP method for the read. Only the safe verbs are available here; to " +
+        "POST/PUT/PATCH/DELETE a declared operation, use write_subnet_surface.",
+    )
+    .meta({ examples: ["GET"] }),
+  // Branch order (string, then object) mirrors the hand-written original's
+  // `type: ["string", "object"]` -- the reverse of `body` above.
+  credential: z
+    .union([z.string(), OpenObjectSchema])
+    .optional()
+    .describe(
+      "Secret for an authenticated surface: a bearer token string, or an object of header/query values. Sent to the surface and never stored unless you use store_surface_credential.",
+    )
+    .meta({ examples: ["Bearer <token>"] }),
+} as const;
+
+/** The body fields, which only the write tool has any use for. */
+const surfaceWriteBodyShape = {
+  body: z
+    .union([OpenObjectSchema, z.string()])
+    .optional()
+    .describe(
+      "Request body: an object (sent as JSON) or a pre-serialized string. " +
+        "Validated against the matched operation's declared request body.",
+    )
+    .meta({ examples: [{ prompt: "hello" }] }),
+  content_type: z
+    .string()
+    .optional()
+    .describe(
+      "Overrides the Content-Type header. Defaults to `application/json` when the body is an object.",
+    )
+    .meta({ examples: ["application/json"] }),
+} as const;
+
+/**
+ * The READ tool's arguments: safe verbs only, and no request body.
+ *
+ * Publishing no `body` is part of the point. A read tool that advertises one
+ * invites an agent to try a write through it and be refused, which is the
+ * confusion the split exists to remove.
+ */
 export const CallSubnetSurfaceInputSchema = z
-  .object({
-    surface_id: surfaceIdSchema(),
-    query: z
-      .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-      .optional()
-      .describe(
-        "Query-string parameters to append, as a flat object of " +
-          "string/number/boolean values. Nested objects and arrays are not " +
-          "supported — encode them into `path` or `body` instead.",
-      )
-      .meta({ examples: ["inference"] }),
-    path: z
-      .string()
-      .optional()
-      .describe(
-        "Path appended to the surface's base URL, e.g. `/v1/status`. Leading slash optional.",
-      )
-      // uri-reference, not uri: this is a RELATIVE path resolved against the
-      // surface's own base URL, so `uri` (which wants a scheme) would be the
-      // wrong assertion (#9659).
-      .meta({ format: "uri-reference", examples: ["/v1/status"] }),
-    method: z
-      // PATCH and DELETE joined the four originals in #11146: across the
-      // fleet's captured specs, 184 DELETE and 53 PATCH operations were
-      // declared by subnets and unreachable through this tool purely because
-      // the verb was not in this enum. The gate is unchanged and does the real
-      // work -- the exact path+method must be declared in the surface's own
-      // captured schema, and an authenticated surface still needs the caller's
-      // own credential -- so widening the verb set grants no authority the
-      // caller did not already have calling the API directly.
-      .enum(CALL_SURFACE_METHODS)
-      .optional()
-      .describe(
-        "HTTP method to use for the call. A destructive verb (PATCH/DELETE) is " +
-          "accepted only when the surface's captured schema declares that exact " +
-          "path+method, and is sent with the caller's own credential.",
-      )
-      .meta({ examples: ["GET"] }),
-    // Branch order (object, then string) mirrors the hand-written original's
-    // `type: ["object", "string"]`.
-    body: z
-      .union([OpenObjectSchema, z.string()])
-      .optional()
-      .describe(
-        "Request body: an object (sent as JSON) or a pre-serialized string.",
-      )
-      .meta({ examples: [{ prompt: "hello" }] }),
-    content_type: z
-      .string()
-      .optional()
-      .describe(
-        "Overrides the Content-Type header. Defaults to `application/json` when the body is an object.",
-      )
-      .meta({ examples: ["application/json"] }),
-    // Branch order (string, then object) mirrors the hand-written original's
-    // `type: ["string", "object"]` -- the reverse of `body` above.
-    credential: z
-      .union([z.string(), OpenObjectSchema])
-      .optional()
-      .describe(
-        "Secret for an authenticated surface: a bearer token string, or an object of header/query values. Sent to the surface and never stored unless you use store_surface_credential.",
-      )
-      .meta({ examples: ["Bearer <token>"] }),
-  })
+  .object(surfaceCallSharedShape)
   .strict();
 export type CallSubnetSurfaceInput = z.infer<
   typeof CallSubnetSurfaceInputSchema
 >;
+
+/**
+ * The WRITE tool's arguments: unsafe verbs, and a body to send with them.
+ *
+ * `path` and `method` are REQUIRED here, unlike the read tool where omitting
+ * both means "fetch the surface's own curated url". There is no curated write:
+ * a write always names a declared operation, and making that structural stops
+ * an agent discovering it by being refused.
+ */
+export const WriteSubnetSurfaceInputSchema = z
+  .object({
+    ...surfaceCallSharedShape,
+    ...surfaceWriteBodyShape,
+    path: z
+      .string()
+      .describe(
+        "Path of the operation to call, e.g. `/v1/items/abc`. Must be declared " +
+          "in the surface's captured schema for this method.",
+      )
+      .meta({ format: "uri-reference", examples: ["/v1/items/abc"] }),
+    method: z
+      .enum(CALL_SURFACE_WRITE_METHODS)
+      .describe(
+        "HTTP method for the write. Accepted only when the surface's captured " +
+          "schema declares that exact path+method, and sent with the caller's " +
+          "own credential -- so this grants no authority the caller lacks " +
+          "calling the API directly.",
+      )
+      .meta({ examples: ["POST"] }),
+  })
+  .strict();
+export type WriteSubnetSurfaceInput = z.infer<
+  typeof WriteSubnetSurfaceInputSchema
+>;
+
+/**
+ * The superset the SHARED handler operates on (#11568).
+ *
+ * Neither published schema is a superset of the other -- the read tool has no
+ * `body`, and the write tool makes `path`/`method` required -- so the one
+ * implementation behind both needs a type that admits either call. Declared
+ * rather than inferred, because widening with `Partial` of one schema would
+ * quietly re-allow the write verbs on the read tool's type and lose the very
+ * distinction this split exists to make.
+ */
+export type SubnetSurfaceCallArgs = Omit<CallSubnetSurfaceInput, "method"> & {
+  method?: (typeof CALL_SURFACE_METHODS)[number];
+  body?: WriteSubnetSurfaceInput["body"];
+  content_type?: WriteSubnetSurfaceInput["content_type"];
+};
 
 export const CallSubnetSurfaceOutputSchema = z
   .object({

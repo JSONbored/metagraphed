@@ -1938,6 +1938,20 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
     "read-only RPC proxying is intentionally disabled until endpoint scoring and abuse controls land (rpc_proxy_disabled)",
   ],
   [
+    "write_subnet_surface",
+    // #11568. Its READ sibling call_subnet_surface is swept here and validated
+    // against this exact same outputSchema, so the envelope is proven -- the
+    // two tools are one implementation and differ only in which verbs they
+    // will issue.
+    //
+    // The write half cannot be swept, and deliberately so. Succeeding would
+    // mean this gate issuing a real POST/PUT/PATCH/DELETE against a third
+    // party's host on every CI run, which is not a thing a validation sweep
+    // should do at any frequency. The hermetic fixture declares no write
+    // operation either, so the call is refused before a response exists.
+    "issuing real writes to third-party subnet hosts is not something a sweep may do; the identical response envelope is validated via its read sibling call_subnet_surface",
+  ],
+  [
     "get_deregistration_ranking",
     // NOT a gap in the tool -- this is the decline working. The committed
     // economics artifact the harness falls back to is a captured snapshot that
