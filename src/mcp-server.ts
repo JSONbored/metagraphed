@@ -1127,6 +1127,10 @@ import {
   VerifyIntegrationInputSchema,
   VerifyIntegrationOutputSchema,
   CallSubnetSurfaceInputSchema,
+  CALL_SURFACE_READ_METHODS,
+  CALL_SURFACE_WRITE_METHODS,
+  WriteSubnetSurfaceInputSchema,
+  type SubnetSurfaceCallArgs,
   CALL_SURFACE_METHODS,
   CALL_SURFACE_BODY_METHODS,
   CallSubnetSurfaceOutputSchema,
@@ -2407,7 +2411,12 @@ const TOOL_ANNOTATIONS_BY_NAME: Record<
 > = {
   // Caller-supplied method + body + credential forwarded to a third-party
   // subnet host (src/call-subnet-surface.ts). The reason #8964 exists.
-  call_subnet_surface: PROXY_WRITE_TOOL_ANNOTATIONS,
+  // #11568: SPLIT. `call_subnet_surface` now issues only GET/HEAD, which is
+  // read-only in the HTTP sense and therefore truthfully annotated as such --
+  // so a client can run a catalogue read without a per-call confirmation.
+  // Everything that can change a third-party system moved to the sibling.
+  call_subnet_surface: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  write_subnet_surface: PROXY_WRITE_TOOL_ANNOTATIONS,
 
   // Live POST to the public Finney RPC entrypoint on a KV-cache miss.
   get_account_balance: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
@@ -5650,6 +5659,501 @@ function mcpEconomicsRowReader(ctx: McpCtx, netuid: number) {
       row: subnetEconomicsRow(blob, netuid),
       generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
     };
+  };
+}
+
+/**
+ * The one implementation behind BOTH surface-call tools (#11568).
+ *
+ * ## WHY TWO TOOLS OVER ONE
+ *
+ * This was a single tool whose `method` argument spanned GET/HEAD and
+ * POST/PUT/PATCH/DELETE. The Connectors Directory review criteria name that
+ * exact shape as an automatic rejection -- "do not ship a catch-all
+ * `api_request` tool with a `method` parameter" -- and are explicit that
+ * documenting the split inside one description does not satisfy it.
+ *
+ * It is the better surface regardless of the listing: a read-only tool can run
+ * without a per-call confirmation in an MCP client, while one that MIGHT write
+ * always prompts. Merged, every catalogue read paid the write tool's
+ * interruption.
+ *
+ * ## THE VERB SPLIT IS ENFORCED HERE; THE ARGUMENT SPLIT IS NOT
+ *
+ * Dispatch rejects unknown argument NAMES against the published schema, so
+ * dropping `body`/`content_type` from the read tool genuinely stops a body
+ * reaching this function through it. It does NOT check enum VALUES or
+ * required-ness -- a caller may send `method: "DELETE"` to the read tool and
+ * reach the handler. `allowedMethods` is what holds that boundary.
+ *
+ * The refusal NAMES THE SIBLING, because an agent that guessed the wrong tool
+ * has a correct intent and a wrong address; telling it only "no" turns a
+ * one-step correction into an abandoned task.
+ */
+async function subnetSurfaceCall(
+  args: SubnetSurfaceCallArgs,
+  ctx: McpCtx,
+  allowedMethods: readonly string[],
+  siblingTool: string,
+) {
+  // Checked before anything else reads the arguments: a caller that reached the
+  // wrong tool has not earned the schema fetch below. An unrecognised verb is
+  // left alone here so the existing enum check still owns that message.
+  if (typeof args?.method === "string" && args.method.length > 0) {
+    const upper = args.method.toUpperCase();
+    if (
+      (CALL_SURFACE_METHODS as readonly string[]).includes(upper) &&
+      !allowedMethods.includes(upper)
+    ) {
+      throw toolError(
+        "invalid_params",
+        `${upper} is not available on this tool; use ${siblingTool} instead. ` +
+          `This tool accepts ${allowedMethods.join(", ")}.`,
+      );
+    }
+  }
+
+  if (typeof args?.surface_id !== "string" || !args.surface_id) {
+    throw toolError("invalid_params", "surface_id is required.");
+  }
+  if (!SURFACE_ID_PATTERN.test(args.surface_id)) {
+    throw toolError("invalid_params", "Invalid surface_id format.");
+  }
+  const hasPath = typeof args?.path === "string" && args.path.length > 0;
+  const hasMethod = typeof args?.method === "string" && args.method.length > 0;
+  if (hasPath !== hasMethod) {
+    throw toolError(
+      "invalid_params",
+      "`path` and `method` must be supplied together, or both omitted.",
+    );
+  }
+  const hasBodyArg = args?.body !== undefined && args?.body !== null;
+  const hasContentTypeArg =
+    typeof args?.content_type === "string" && args.content_type.length > 0;
+  if (
+    hasBodyArg &&
+    !(
+      typeof args.body === "string" ||
+      (typeof args.body === "object" && !Array.isArray(args.body))
+    )
+  ) {
+    throw toolError("invalid_params", "`body` must be a string or object.");
+  }
+  if (hasContentTypeArg && !hasBodyArg) {
+    throw toolError(
+      "invalid_params",
+      "`content_type` requires `body` to also be set.",
+    );
+  }
+  if (hasBodyArg && !hasPath) {
+    throw toolError(
+      "invalid_params",
+      "`body` requires `path` and `method` to also be set.",
+    );
+  }
+  let normalizedMethod: string | undefined;
+  if (hasMethod) {
+    // hasMethod already proved args.method is a non-empty string.
+    normalizedMethod = (args.method as string).toUpperCase();
+    if (
+      !(CALL_SURFACE_METHODS as readonly string[]).includes(normalizedMethod)
+    ) {
+      throw toolError(
+        "invalid_params",
+        `\`method\` must be ${CALL_SURFACE_METHODS.join(", ")}.`,
+      );
+    }
+    // DELETE joins GET/HEAD here rather than with the body-carrying verbs:
+    // a request body on DELETE is permitted by HTTP and ignored by most
+    // servers, and accepting one would mean validating it against a
+    // requestBody the operation almost never declares.
+    if (
+      hasBodyArg &&
+      !(CALL_SURFACE_BODY_METHODS as readonly string[]).includes(
+        normalizedMethod,
+      )
+    ) {
+      throw toolError(
+        "invalid_params",
+        `\`body\` is only valid with method ${CALL_SURFACE_BODY_METHODS.join(", ")}.`,
+      );
+    }
+  }
+  const surface = await findCataloguedSurface(ctx, args.surface_id);
+  if (!surface) {
+    throw await uncallableSurfaceError(ctx, args.surface_id);
+  }
+  // The catalog row's OWN id -- the credential-store key and the id echoed
+  // back in the result. A row can be matched by `surface_key` or by a
+  // deprecated alias, so it is not necessarily the id the caller asked
+  // with; falling back to that one keeps the key a string rather than
+  // storing a credential under `undefined` (#10782).
+  const surfaceId = stringOf(surface.surface_id) ?? args.surface_id;
+  const hasInBandStringCredential =
+    typeof args?.credential === "string" && args.credential.length > 0;
+  const hasInBandObjectCredential =
+    args?.credential !== null &&
+    typeof args?.credential === "object" &&
+    !Array.isArray(args?.credential);
+  const hasInBandCredential =
+    hasInBandStringCredential || hasInBandObjectCredential;
+  if (hasInBandCredential && !surface.auth_required) {
+    throw toolError(
+      "invalid_params",
+      "`credential` was supplied but this surface does not require one.",
+    );
+  }
+  // #9009: an authenticated caller can register a credential once
+  // (store_surface_credential) instead of passing it as a tool argument
+  // on every call -- a tool argument travels through client logs, the
+  // conversation transcript, and the analytics parameter capture. The
+  // in-band argument still WINS when both exist (an explicit argument
+  // must never be silently overridden by stale stored state) and stays
+  // fully supported for anonymous callers, per ADR 0027's Model B: this
+  // cleanup must not remove anonymous reach as a side effect.
+  const storeIdentity = resolveSurfaceCredentialIdentity(ctx);
+  let resolvedCredential: StoredSurfaceCredential | undefined =
+    hasInBandCredential
+      ? (args.credential as StoredSurfaceCredential)
+      : undefined;
+  let credentialSource: "argument" | "stored" | undefined = hasInBandCredential
+    ? "argument"
+    : undefined;
+  if (surface.auth_required && !hasInBandCredential && storeIdentity) {
+    const stored = await loadSurfaceCredential(
+      asCredentialStoreEnv(ctx.env),
+      storeIdentity,
+      surfaceId,
+    );
+    if (stored) {
+      resolvedCredential = stored;
+      credentialSource = "stored";
+    }
+  }
+  const hasStringCredentialArg =
+    typeof resolvedCredential === "string" && resolvedCredential.length > 0;
+  const hasObjectCredentialArg =
+    resolvedCredential !== null &&
+    typeof resolvedCredential === "object" &&
+    !Array.isArray(resolvedCredential);
+  const hasCredentialArg = hasStringCredentialArg || hasObjectCredentialArg;
+  let credentialPlacement: CallSubnetSurfaceCredential | undefined;
+  if (surface.auth_required) {
+    if (!hasCredentialArg) {
+      throw toolError(
+        "auth_required",
+        "This surface requires a credential. Supply `credential` (see this tool's description for the required format), register one first with store_surface_credential if you are authenticated, or use list_subnet_apis / how_do_i_call to see how to call it directly.",
+      );
+    }
+    // The curated auth block, read ONCE. `surface.auth?.scheme` on a bag
+    // is an `any` five times over, and one of those five (`names`) is
+    // then `Array.isArray`-checked and re-read from the bag rather than
+    // from what the check proved (#10782).
+    const auth = rowOf(surface.auth);
+    const scheme = auth?.scheme;
+    // `location` reaches `CallSubnetSurfaceCredential.location`, a union
+    // of four literals. The `!==` chains below VALIDATE it and narrow
+    // nothing -- excluding literals from `unknown` leaves `unknown` -- so
+    // it crossed into the published placement as an `any` (#10782).
+    const location = authLocationOf(auth?.location);
+    if (scheme === "bearer" || scheme === "api-key" || scheme === "basic") {
+      const name = stringOf(auth?.name);
+      if (!name || location === null || location === "body") {
+        throw toolError(
+          "credential_not_supported",
+          "This surface's auth mechanism (location/name) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
+        );
+      }
+      if (!hasStringCredentialArg) {
+        throw toolError(
+          "invalid_params",
+          `This surface's auth.scheme ("${scheme}") requires \`credential\` to be a single string, not an object.`,
+        );
+      }
+      // hasStringCredentialArg already proved this at runtime.
+      credentialPlacement = {
+        location,
+        name,
+        value: resolvedCredential as string,
+      };
+    } else if (scheme === "signature") {
+      const names = Array.isArray(auth?.names) ? auth.names : null;
+      if (!names || names.length === 0 || location === null) {
+        throw toolError(
+          "credential_not_supported",
+          "This surface's auth mechanism (location/names) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
+        );
+      }
+      if (!hasObjectCredentialArg) {
+        throw toolError(
+          "invalid_params",
+          `This surface's auth.scheme ("signature") requires \`credential\` to be an object mapping each of ${JSON.stringify(names)} to a value you have already computed -- this tool does not sign requests itself.`,
+        );
+      }
+      // hasObjectCredentialArg already proved this at runtime.
+      const credentialObj = resolvedCredential as Record<string, unknown>;
+      const suppliedNames = Object.keys(credentialObj);
+      const missing = names.filter(
+        (n: unknown) => !suppliedNames.includes(n as string),
+      );
+      const unexpected = suppliedNames.filter((n) => !names.includes(n));
+      if (missing.length > 0 || unexpected.length > 0) {
+        throw toolError(
+          "invalid_params",
+          `\`credential\` must have exactly these keys: ${JSON.stringify(names)}.` +
+            (missing.length > 0
+              ? ` Missing: ${JSON.stringify(missing)}.`
+              : "") +
+            (unexpected.length > 0
+              ? ` Unexpected: ${JSON.stringify(unexpected)}.`
+              : ""),
+        );
+      }
+      for (const [key, value] of Object.entries(credentialObj)) {
+        if (typeof value !== "string" || value.length === 0) {
+          throw toolError(
+            "invalid_params",
+            `\`credential.${key}\` must be a non-empty string.`,
+          );
+        }
+      }
+      // The loop above has just verified every value is a non-empty
+      // string, so this is Record<string, string> despite the wider
+      // Record<string, unknown> inferred from the input schema.
+      const credentialValues = credentialObj as Record<string, string>;
+      if (
+        location === "body" &&
+        !(
+          hasPath &&
+          (normalizedMethod === "POST" || normalizedMethod === "PUT")
+        )
+      ) {
+        throw toolError(
+          "invalid_params",
+          "This surface's credential is sent in the request body, which requires `path` and `method` (POST or PUT) to also be set.",
+        );
+      }
+      // metagraphed#7716: some APIs wrap the credential in its own
+      // nested object alongside the semantic payload (e.g.
+      // {"payload": {...}, "sig": {...}}) rather than a flat top-level
+      // merge -- auth.body_envelope, curated registry data, describes
+      // that shape. Only meaningful for location:"body"; malformed or
+      // absent falls back to the existing flat-merge behavior.
+      const envelope = rowOf(auth?.body_envelope);
+      const bodyEnvelope =
+        location === "body" &&
+        envelope &&
+        typeof envelope.payload_key === "string" &&
+        envelope.payload_key.length > 0 &&
+        typeof envelope.credential_key === "string" &&
+        envelope.credential_key.length > 0
+          ? {
+              payloadKey: envelope.payload_key,
+              credentialKey: envelope.credential_key,
+            }
+          : undefined;
+      credentialPlacement = {
+        location,
+        values: credentialValues,
+        ...(bodyEnvelope ? { bodyEnvelope } : {}),
+      };
+    } else {
+      throw toolError(
+        "credential_not_supported",
+        `This surface's auth scheme ("${scheme || "undocumented"}") is not one this tool can attach a credential to (only bearer/api-key/basic/signature are supported). Use list_subnet_apis / how_do_i_call to see how to call it directly.`,
+      );
+    }
+  }
+  if (rowOf(surface.probe)?.enabled === false) {
+    throw toolError(
+      "surface_unavailable",
+      "This surface is flagged as not safe to call automatically (probe.enabled:false).",
+    );
+  }
+  let requestBody;
+  let requestContentType;
+  if (hasPath) {
+    const schemaArtifactId =
+      rowOf(surface.schema_source)?.surface_id || surface.surface_id;
+    const schema = await loadOptionalArtifact(
+      ctx,
+      `/metagraph/schemas/${schemaArtifactId}.json`,
+    );
+    if (!schema) {
+      throw toolError(
+        "no_schema",
+        "This surface has no captured schema, so path/method execution is not available for it -- omit path/method to call its single declared url instead.",
+      );
+    }
+    // hasPath already proved args.path is a string; the `hasPath !==
+    // hasMethod` check above guarantees normalizedMethod is set
+    // whenever hasPath is true.
+    const match = matchSchemaOperation(
+      rowOf(schema)?.document,
+      args.path as string,
+      normalizedMethod as string,
+    );
+    if (!match) {
+      throw toolError(
+        "path_not_declared",
+        `"${normalizedMethod} ${args.path}" is not declared in this surface's captured schema. Fetch the schema with get_api_schema to see valid paths/methods.`,
+      );
+    }
+    if (
+      hasBodyArg &&
+      (normalizedMethod === "POST" || normalizedMethod === "PUT")
+    ) {
+      const declaredContent = rowOf(
+        rowOf(match.operation.requestBody)?.content,
+      );
+      const declaredMediaTypes = declaredContent
+        ? Object.keys(declaredContent)
+        : [];
+      if (declaredMediaTypes.length === 0) {
+        throw toolError(
+          "invalid_params",
+          `"${normalizedMethod} ${args.path}" does not declare a request body in its schema.`,
+        );
+      }
+      if (hasContentTypeArg) {
+        // hasContentTypeArg already proved this is a non-empty string.
+        const contentType = args.content_type as string;
+        if (!declaredMediaTypes.includes(contentType)) {
+          throw toolError(
+            "invalid_params",
+            `content_type "${contentType}" is not declared for this operation. Declared: ${declaredMediaTypes.join(", ")}.`,
+          );
+        }
+        requestContentType = contentType;
+      } else if (declaredMediaTypes.includes("application/json")) {
+        requestContentType = "application/json";
+      } else if (declaredMediaTypes.length === 1) {
+        requestContentType = declaredMediaTypes[0];
+      } else {
+        throw toolError(
+          "invalid_params",
+          `This operation declares multiple request body media types (${declaredMediaTypes.join(", ")}) and none is application/json -- supply content_type explicitly.`,
+        );
+      }
+      const isJsonContentType =
+        requestContentType === "application/json" ||
+        requestContentType.endsWith("+json");
+      if (isJsonContentType) {
+        requestBody =
+          typeof args.body === "string" ? args.body : JSON.stringify(args.body);
+      } else {
+        if (typeof args.body !== "string") {
+          throw toolError(
+            "invalid_params",
+            `body must be a string for content type "${requestContentType}".`,
+          );
+        }
+        requestBody = args.body;
+      }
+      // No separate size ceiling here: MAX_MCP_BODY_BYTES (64 KiB) already
+      // caps the ENTIRE inbound JSON-RPC request at the transport layer,
+      // before this handler ever runs -- requestBody, as one field within
+      // that request, can never exceed it. A second, larger bound (e.g.
+      // reusing MAX_RESPONSE_BYTES's 256 KiB) would be strictly weaker
+      // than the transport cap and could never fire.
+    }
+  }
+  // A body-location signature credential (#7701) is merged into the
+  // outgoing JSON body by callSubnetSurface regardless of whether the
+  // caller separately supplied `body` -- if they didn't (credential
+  // fields only), the block above never ran and requestContentType is
+  // still unset. This surface's own auth object already independently
+  // establishes that a JSON body carrying these fields is expected (the
+  // operation's OpenAPI schema frequently doesn't document it at all,
+  // which is exactly why it's scheme:signature and not something
+  // generic), so default to application/json here rather than reusing
+  // the schema-driven resolution above, which only ever runs when the
+  // caller supplied a body of their own.
+  if (credentialPlacement?.location === "body" && !requestContentType) {
+    requestContentType = "application/json";
+  }
+  // The url `callSubnetSurface` will hand to `new URL()` two frames down,
+  // checked HERE rather than assumed. The catalog is a baked artifact, so
+  // by the time a row reaches this line it is untrusted bytes; a row with
+  // no usable url declines the way every other uncallable surface does
+  // instead of throwing a TypeError inside the fetch path (#11339).
+  const surfaceUrl = stringOf(surface.url);
+  if (!surfaceUrl) {
+    throw await uncallableSurfaceError(ctx, args.surface_id);
+  }
+  const surfaceProbe = recordOrNull(surface.probe);
+  const result = await callSubnetSurface(
+    {
+      url: surfaceUrl,
+      ...(surfaceProbe
+        ? {
+            probe: {
+              ...(stringOf(surfaceProbe.method)
+                ? { method: stringOf(surfaceProbe.method) as string }
+                : {}),
+              ...(numberOrNull(surfaceProbe.timeout_ms) !== null
+                ? {
+                    timeout_ms: numberOrNull(surfaceProbe.timeout_ms) as number,
+                  }
+                : {}),
+            },
+          }
+        : {}),
+    },
+    {
+      query:
+        args.query && typeof args.query === "object" ? args.query : undefined,
+      path: hasPath ? args.path : undefined,
+      method: hasPath ? normalizedMethod : undefined,
+      body: requestBody,
+      contentType: requestContentType,
+      credential: credentialPlacement,
+      fetchImpl: globalThis.fetch,
+      isUnsafeUrl: workerResolvedUrlSafetyGuard({
+        fetchImpl: globalThis.fetch,
+      }),
+    },
+  );
+  if (!result.ok) {
+    if (
+      result.unsafe_url ||
+      result.private_redirect_blocked ||
+      result.path_origin_mismatch
+    ) {
+      throw toolError(
+        "forbidden",
+        "This surface's URL is not safe to call (private/loopback address, an unsafe redirect target, or a path that resolves outside the surface's own origin).",
+      );
+    }
+    if (result.error?.startsWith("unsupported content-type")) {
+      throw toolError("unsupported_content_type", result.error);
+    }
+    throw toolError(
+      "upstream_unavailable",
+      result.error || "The surface could not be reached.",
+    );
+  }
+  return {
+    surface_id: surfaceId,
+    url: result.url,
+    status_code: result.status_code,
+    content_type: result.content_type,
+    latency_ms: result.latency_ms,
+    body: result.body,
+    truncated: result.truncated,
+    ...(result.parse_error ? { parse_error: result.parse_error } : {}),
+    ...(credentialSource ? { credential_source: credentialSource } : {}),
+    // #9009: the deprecation window. An authenticated caller still passing
+    // the secret in-band gets told, per call, that the stored path exists
+    // -- the argument is not rejected for them yet. Anonymous callers see
+    // nothing: for them the argument is the supported mechanism, not a
+    // deprecated one, so warning them would be false.
+    ...(hasInBandCredential && storeIdentity
+      ? {
+          credential_deprecation:
+            "Passing `credential` as a tool argument is deprecated for authenticated callers: it travels through client logs and the conversation transcript. Register it once with store_surface_credential and omit the argument.",
+        }
+      : {}),
   };
 }
 
@@ -14579,462 +15083,37 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "call_subnet_surface",
     title: "Call a subnet's live API and return its response",
     description:
-      "Actually call a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET/HEAD/POST/PUT/PATCH/DELETE) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2 (#7674, #7675). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. PATCH and DELETE are reachable on the same terms as every other verb and grant no authority the caller lacks calling the API directly: the operation must be declared, and an authenticated surface still needs the caller's own credential. For POST/PUT/PATCH, `body` is validated against the matched operation's declared request body: rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, cookie, or merged into a POST/PUT/PATCH JSON body (MCP execute Phase 3-4, #7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call.",
+      "Read a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. GET and HEAD only; to POST/PUT/PATCH/DELETE a declared operation, use write_subnet_surface. Both are the same implementation behind the same gate, split so a read never carries a write's risk. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (#7014). Supplying both `path` and `method` reads a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed (#7674, #7675). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, or cookie (#7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected.",
+
     inputSchema: inputJsonSchema(CallSubnetSurfaceInputSchema),
     async handler(
       args: z.infer<typeof CallSubnetSurfaceInputSchema>,
       ctx: McpCtx,
     ) {
-      if (typeof args?.surface_id !== "string" || !args.surface_id) {
-        throw toolError("invalid_params", "surface_id is required.");
-      }
-      if (!SURFACE_ID_PATTERN.test(args.surface_id)) {
-        throw toolError("invalid_params", "Invalid surface_id format.");
-      }
-      const hasPath = typeof args?.path === "string" && args.path.length > 0;
-      const hasMethod =
-        typeof args?.method === "string" && args.method.length > 0;
-      if (hasPath !== hasMethod) {
-        throw toolError(
-          "invalid_params",
-          "`path` and `method` must be supplied together, or both omitted.",
-        );
-      }
-      const hasBodyArg = args?.body !== undefined && args?.body !== null;
-      const hasContentTypeArg =
-        typeof args?.content_type === "string" && args.content_type.length > 0;
-      if (
-        hasBodyArg &&
-        !(
-          typeof args.body === "string" ||
-          (typeof args.body === "object" && !Array.isArray(args.body))
-        )
-      ) {
-        throw toolError("invalid_params", "`body` must be a string or object.");
-      }
-      if (hasContentTypeArg && !hasBodyArg) {
-        throw toolError(
-          "invalid_params",
-          "`content_type` requires `body` to also be set.",
-        );
-      }
-      if (hasBodyArg && !hasPath) {
-        throw toolError(
-          "invalid_params",
-          "`body` requires `path` and `method` to also be set.",
-        );
-      }
-      let normalizedMethod: string | undefined;
-      if (hasMethod) {
-        // hasMethod already proved args.method is a non-empty string.
-        normalizedMethod = (args.method as string).toUpperCase();
-        if (
-          !(CALL_SURFACE_METHODS as readonly string[]).includes(
-            normalizedMethod,
-          )
-        ) {
-          throw toolError(
-            "invalid_params",
-            `\`method\` must be ${CALL_SURFACE_METHODS.join(", ")}.`,
-          );
-        }
-        // DELETE joins GET/HEAD here rather than with the body-carrying verbs:
-        // a request body on DELETE is permitted by HTTP and ignored by most
-        // servers, and accepting one would mean validating it against a
-        // requestBody the operation almost never declares.
-        if (
-          hasBodyArg &&
-          !(CALL_SURFACE_BODY_METHODS as readonly string[]).includes(
-            normalizedMethod,
-          )
-        ) {
-          throw toolError(
-            "invalid_params",
-            `\`body\` is only valid with method ${CALL_SURFACE_BODY_METHODS.join(", ")}.`,
-          );
-        }
-      }
-      const surface = await findCataloguedSurface(ctx, args.surface_id);
-      if (!surface) {
-        throw await uncallableSurfaceError(ctx, args.surface_id);
-      }
-      // The catalog row's OWN id -- the credential-store key and the id echoed
-      // back in the result. A row can be matched by `surface_key` or by a
-      // deprecated alias, so it is not necessarily the id the caller asked
-      // with; falling back to that one keeps the key a string rather than
-      // storing a credential under `undefined` (#10782).
-      const surfaceId = stringOf(surface.surface_id) ?? args.surface_id;
-      const hasInBandStringCredential =
-        typeof args?.credential === "string" && args.credential.length > 0;
-      const hasInBandObjectCredential =
-        args?.credential !== null &&
-        typeof args?.credential === "object" &&
-        !Array.isArray(args?.credential);
-      const hasInBandCredential =
-        hasInBandStringCredential || hasInBandObjectCredential;
-      if (hasInBandCredential && !surface.auth_required) {
-        throw toolError(
-          "invalid_params",
-          "`credential` was supplied but this surface does not require one.",
-        );
-      }
-      // #9009: an authenticated caller can register a credential once
-      // (store_surface_credential) instead of passing it as a tool argument
-      // on every call -- a tool argument travels through client logs, the
-      // conversation transcript, and the analytics parameter capture. The
-      // in-band argument still WINS when both exist (an explicit argument
-      // must never be silently overridden by stale stored state) and stays
-      // fully supported for anonymous callers, per ADR 0027's Model B: this
-      // cleanup must not remove anonymous reach as a side effect.
-      const storeIdentity = resolveSurfaceCredentialIdentity(ctx);
-      let resolvedCredential: StoredSurfaceCredential | undefined =
-        hasInBandCredential
-          ? (args.credential as StoredSurfaceCredential)
-          : undefined;
-      let credentialSource: "argument" | "stored" | undefined =
-        hasInBandCredential ? "argument" : undefined;
-      if (surface.auth_required && !hasInBandCredential && storeIdentity) {
-        const stored = await loadSurfaceCredential(
-          asCredentialStoreEnv(ctx.env),
-          storeIdentity,
-          surfaceId,
-        );
-        if (stored) {
-          resolvedCredential = stored;
-          credentialSource = "stored";
-        }
-      }
-      const hasStringCredentialArg =
-        typeof resolvedCredential === "string" && resolvedCredential.length > 0;
-      const hasObjectCredentialArg =
-        resolvedCredential !== null &&
-        typeof resolvedCredential === "object" &&
-        !Array.isArray(resolvedCredential);
-      const hasCredentialArg = hasStringCredentialArg || hasObjectCredentialArg;
-      let credentialPlacement: CallSubnetSurfaceCredential | undefined;
-      if (surface.auth_required) {
-        if (!hasCredentialArg) {
-          throw toolError(
-            "auth_required",
-            "This surface requires a credential. Supply `credential` (see this tool's description for the required format), register one first with store_surface_credential if you are authenticated, or use list_subnet_apis / how_do_i_call to see how to call it directly.",
-          );
-        }
-        // The curated auth block, read ONCE. `surface.auth?.scheme` on a bag
-        // is an `any` five times over, and one of those five (`names`) is
-        // then `Array.isArray`-checked and re-read from the bag rather than
-        // from what the check proved (#10782).
-        const auth = rowOf(surface.auth);
-        const scheme = auth?.scheme;
-        // `location` reaches `CallSubnetSurfaceCredential.location`, a union
-        // of four literals. The `!==` chains below VALIDATE it and narrow
-        // nothing -- excluding literals from `unknown` leaves `unknown` -- so
-        // it crossed into the published placement as an `any` (#10782).
-        const location = authLocationOf(auth?.location);
-        if (scheme === "bearer" || scheme === "api-key" || scheme === "basic") {
-          const name = stringOf(auth?.name);
-          if (!name || location === null || location === "body") {
-            throw toolError(
-              "credential_not_supported",
-              "This surface's auth mechanism (location/name) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
-            );
-          }
-          if (!hasStringCredentialArg) {
-            throw toolError(
-              "invalid_params",
-              `This surface's auth.scheme ("${scheme}") requires \`credential\` to be a single string, not an object.`,
-            );
-          }
-          // hasStringCredentialArg already proved this at runtime.
-          credentialPlacement = {
-            location,
-            name,
-            value: resolvedCredential as string,
-          };
-        } else if (scheme === "signature") {
-          const names = Array.isArray(auth?.names) ? auth.names : null;
-          if (!names || names.length === 0 || location === null) {
-            throw toolError(
-              "credential_not_supported",
-              "This surface's auth mechanism (location/names) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
-            );
-          }
-          if (!hasObjectCredentialArg) {
-            throw toolError(
-              "invalid_params",
-              `This surface's auth.scheme ("signature") requires \`credential\` to be an object mapping each of ${JSON.stringify(names)} to a value you have already computed -- this tool does not sign requests itself.`,
-            );
-          }
-          // hasObjectCredentialArg already proved this at runtime.
-          const credentialObj = resolvedCredential as Record<string, unknown>;
-          const suppliedNames = Object.keys(credentialObj);
-          const missing = names.filter(
-            (n: unknown) => !suppliedNames.includes(n as string),
-          );
-          const unexpected = suppliedNames.filter((n) => !names.includes(n));
-          if (missing.length > 0 || unexpected.length > 0) {
-            throw toolError(
-              "invalid_params",
-              `\`credential\` must have exactly these keys: ${JSON.stringify(names)}.` +
-                (missing.length > 0
-                  ? ` Missing: ${JSON.stringify(missing)}.`
-                  : "") +
-                (unexpected.length > 0
-                  ? ` Unexpected: ${JSON.stringify(unexpected)}.`
-                  : ""),
-            );
-          }
-          for (const [key, value] of Object.entries(credentialObj)) {
-            if (typeof value !== "string" || value.length === 0) {
-              throw toolError(
-                "invalid_params",
-                `\`credential.${key}\` must be a non-empty string.`,
-              );
-            }
-          }
-          // The loop above has just verified every value is a non-empty
-          // string, so this is Record<string, string> despite the wider
-          // Record<string, unknown> inferred from the input schema.
-          const credentialValues = credentialObj as Record<string, string>;
-          if (
-            location === "body" &&
-            !(
-              hasPath &&
-              (normalizedMethod === "POST" || normalizedMethod === "PUT")
-            )
-          ) {
-            throw toolError(
-              "invalid_params",
-              "This surface's credential is sent in the request body, which requires `path` and `method` (POST or PUT) to also be set.",
-            );
-          }
-          // metagraphed#7716: some APIs wrap the credential in its own
-          // nested object alongside the semantic payload (e.g.
-          // {"payload": {...}, "sig": {...}}) rather than a flat top-level
-          // merge -- auth.body_envelope, curated registry data, describes
-          // that shape. Only meaningful for location:"body"; malformed or
-          // absent falls back to the existing flat-merge behavior.
-          const envelope = rowOf(auth?.body_envelope);
-          const bodyEnvelope =
-            location === "body" &&
-            envelope &&
-            typeof envelope.payload_key === "string" &&
-            envelope.payload_key.length > 0 &&
-            typeof envelope.credential_key === "string" &&
-            envelope.credential_key.length > 0
-              ? {
-                  payloadKey: envelope.payload_key,
-                  credentialKey: envelope.credential_key,
-                }
-              : undefined;
-          credentialPlacement = {
-            location,
-            values: credentialValues,
-            ...(bodyEnvelope ? { bodyEnvelope } : {}),
-          };
-        } else {
-          throw toolError(
-            "credential_not_supported",
-            `This surface's auth scheme ("${scheme || "undocumented"}") is not one this tool can attach a credential to (only bearer/api-key/basic/signature are supported). Use list_subnet_apis / how_do_i_call to see how to call it directly.`,
-          );
-        }
-      }
-      if (rowOf(surface.probe)?.enabled === false) {
-        throw toolError(
-          "surface_unavailable",
-          "This surface is flagged as not safe to call automatically (probe.enabled:false).",
-        );
-      }
-      let requestBody;
-      let requestContentType;
-      if (hasPath) {
-        const schemaArtifactId =
-          rowOf(surface.schema_source)?.surface_id || surface.surface_id;
-        const schema = await loadOptionalArtifact(
-          ctx,
-          `/metagraph/schemas/${schemaArtifactId}.json`,
-        );
-        if (!schema) {
-          throw toolError(
-            "no_schema",
-            "This surface has no captured schema, so path/method execution is not available for it -- omit path/method to call its single declared url instead.",
-          );
-        }
-        // hasPath already proved args.path is a string; the `hasPath !==
-        // hasMethod` check above guarantees normalizedMethod is set
-        // whenever hasPath is true.
-        const match = matchSchemaOperation(
-          rowOf(schema)?.document,
-          args.path as string,
-          normalizedMethod as string,
-        );
-        if (!match) {
-          throw toolError(
-            "path_not_declared",
-            `"${normalizedMethod} ${args.path}" is not declared in this surface's captured schema. Fetch the schema with get_api_schema to see valid paths/methods.`,
-          );
-        }
-        if (
-          hasBodyArg &&
-          (normalizedMethod === "POST" || normalizedMethod === "PUT")
-        ) {
-          const declaredContent = rowOf(
-            rowOf(match.operation.requestBody)?.content,
-          );
-          const declaredMediaTypes = declaredContent
-            ? Object.keys(declaredContent)
-            : [];
-          if (declaredMediaTypes.length === 0) {
-            throw toolError(
-              "invalid_params",
-              `"${normalizedMethod} ${args.path}" does not declare a request body in its schema.`,
-            );
-          }
-          if (hasContentTypeArg) {
-            // hasContentTypeArg already proved this is a non-empty string.
-            const contentType = args.content_type as string;
-            if (!declaredMediaTypes.includes(contentType)) {
-              throw toolError(
-                "invalid_params",
-                `content_type "${contentType}" is not declared for this operation. Declared: ${declaredMediaTypes.join(", ")}.`,
-              );
-            }
-            requestContentType = contentType;
-          } else if (declaredMediaTypes.includes("application/json")) {
-            requestContentType = "application/json";
-          } else if (declaredMediaTypes.length === 1) {
-            requestContentType = declaredMediaTypes[0];
-          } else {
-            throw toolError(
-              "invalid_params",
-              `This operation declares multiple request body media types (${declaredMediaTypes.join(", ")}) and none is application/json -- supply content_type explicitly.`,
-            );
-          }
-          const isJsonContentType =
-            requestContentType === "application/json" ||
-            requestContentType.endsWith("+json");
-          if (isJsonContentType) {
-            requestBody =
-              typeof args.body === "string"
-                ? args.body
-                : JSON.stringify(args.body);
-          } else {
-            if (typeof args.body !== "string") {
-              throw toolError(
-                "invalid_params",
-                `body must be a string for content type "${requestContentType}".`,
-              );
-            }
-            requestBody = args.body;
-          }
-          // No separate size ceiling here: MAX_MCP_BODY_BYTES (64 KiB) already
-          // caps the ENTIRE inbound JSON-RPC request at the transport layer,
-          // before this handler ever runs -- requestBody, as one field within
-          // that request, can never exceed it. A second, larger bound (e.g.
-          // reusing MAX_RESPONSE_BYTES's 256 KiB) would be strictly weaker
-          // than the transport cap and could never fire.
-        }
-      }
-      // A body-location signature credential (#7701) is merged into the
-      // outgoing JSON body by callSubnetSurface regardless of whether the
-      // caller separately supplied `body` -- if they didn't (credential
-      // fields only), the block above never ran and requestContentType is
-      // still unset. This surface's own auth object already independently
-      // establishes that a JSON body carrying these fields is expected (the
-      // operation's OpenAPI schema frequently doesn't document it at all,
-      // which is exactly why it's scheme:signature and not something
-      // generic), so default to application/json here rather than reusing
-      // the schema-driven resolution above, which only ever runs when the
-      // caller supplied a body of their own.
-      if (credentialPlacement?.location === "body" && !requestContentType) {
-        requestContentType = "application/json";
-      }
-      // The url `callSubnetSurface` will hand to `new URL()` two frames down,
-      // checked HERE rather than assumed. The catalog is a baked artifact, so
-      // by the time a row reaches this line it is untrusted bytes; a row with
-      // no usable url declines the way every other uncallable surface does
-      // instead of throwing a TypeError inside the fetch path (#11339).
-      const surfaceUrl = stringOf(surface.url);
-      if (!surfaceUrl) {
-        throw await uncallableSurfaceError(ctx, args.surface_id);
-      }
-      const surfaceProbe = recordOrNull(surface.probe);
-      const result = await callSubnetSurface(
-        {
-          url: surfaceUrl,
-          ...(surfaceProbe
-            ? {
-                probe: {
-                  ...(stringOf(surfaceProbe.method)
-                    ? { method: stringOf(surfaceProbe.method) as string }
-                    : {}),
-                  ...(numberOrNull(surfaceProbe.timeout_ms) !== null
-                    ? {
-                        timeout_ms: numberOrNull(
-                          surfaceProbe.timeout_ms,
-                        ) as number,
-                      }
-                    : {}),
-                },
-              }
-            : {}),
-        },
-        {
-          query:
-            args.query && typeof args.query === "object"
-              ? args.query
-              : undefined,
-          path: hasPath ? args.path : undefined,
-          method: hasPath ? normalizedMethod : undefined,
-          body: requestBody,
-          contentType: requestContentType,
-          credential: credentialPlacement,
-          fetchImpl: globalThis.fetch,
-          isUnsafeUrl: workerResolvedUrlSafetyGuard({
-            fetchImpl: globalThis.fetch,
-          }),
-        },
+      return subnetSurfaceCall(
+        args,
+        ctx,
+        CALL_SURFACE_READ_METHODS,
+        "write_subnet_surface",
       );
-      if (!result.ok) {
-        if (
-          result.unsafe_url ||
-          result.private_redirect_blocked ||
-          result.path_origin_mismatch
-        ) {
-          throw toolError(
-            "forbidden",
-            "This surface's URL is not safe to call (private/loopback address, an unsafe redirect target, or a path that resolves outside the surface's own origin).",
-          );
-        }
-        if (result.error?.startsWith("unsupported content-type")) {
-          throw toolError("unsupported_content_type", result.error);
-        }
-        throw toolError(
-          "upstream_unavailable",
-          result.error || "The surface could not be reached.",
-        );
-      }
-      return {
-        surface_id: surfaceId,
-        url: result.url,
-        status_code: result.status_code,
-        content_type: result.content_type,
-        latency_ms: result.latency_ms,
-        body: result.body,
-        truncated: result.truncated,
-        ...(result.parse_error ? { parse_error: result.parse_error } : {}),
-        ...(credentialSource ? { credential_source: credentialSource } : {}),
-        // #9009: the deprecation window. An authenticated caller still passing
-        // the secret in-band gets told, per call, that the stored path exists
-        // -- the argument is not rejected for them yet. Anonymous callers see
-        // nothing: for them the argument is the supported mechanism, not a
-        // deprecated one, so warning them would be false.
-        ...(hasInBandCredential && storeIdentity
-          ? {
-              credential_deprecation:
-                "Passing `credential` as a tool argument is deprecated for authenticated callers: it travels through client logs and the conversation transcript. Register it once with store_surface_credential and omit the argument.",
-            }
-          : {}),
-      };
+    },
+  },
+  {
+    name: "write_subnet_surface",
+    title: "Call a declared write operation on a subnet's live API",
+    description:
+      "Issue a POST, PUT, PATCH or DELETE against a catalogued surface, and return its real response body. The write sibling of call_subnet_surface, which handles GET/HEAD -- see the MCP tool registry for that one. Both are the same implementation and enforce the same gate; they are separate tools so a read never carries a write's risk. `path` and `method` are REQUIRED: there is no curated write, so the operation is always named explicitly. The exact path+method must be declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright and never guessed (#7674, #7675, #11146). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. This grants no authority the caller lacks calling the API directly: the operation must be declared, and an authenticated surface still needs the caller's own credential. `body` is validated against the matched operation's declared request body -- rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) placed in a header, query param, cookie, or merged into the JSON body (#7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected.",
+    inputSchema: inputJsonSchema(WriteSubnetSurfaceInputSchema),
+    async handler(
+      args: z.infer<typeof WriteSubnetSurfaceInputSchema>,
+      ctx: McpCtx,
+    ) {
+      return subnetSurfaceCall(
+        args,
+        ctx,
+        CALL_SURFACE_WRITE_METHODS,
+        "call_subnet_surface",
+      );
     },
   },
   // ─── Surface-credential store (#9009) ────────────────────────────────────
@@ -15568,6 +15647,9 @@ const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
   ask: outputJsonSchema(AskOutputSchema),
   verify_integration: outputJsonSchema(VerifyIntegrationOutputSchema),
   call_subnet_surface: outputJsonSchema(CallSubnetSurfaceOutputSchema),
+  // Same envelope: the split is about which verbs a tool will issue, not about
+  // what a surface answers with.
+  write_subnet_surface: outputJsonSchema(CallSubnetSurfaceOutputSchema),
   store_surface_credential: outputJsonSchema(
     StoreSurfaceCredentialOutputSchema,
   ),

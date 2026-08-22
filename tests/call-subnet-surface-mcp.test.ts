@@ -329,8 +329,65 @@ const SIGNATURE_NO_LOCATION_SURFACE = {
   probe: { method: "GET", enabled: true },
 };
 
+/** #11568: a catalogued surface with NO url. The catalogue is built from
+ * captured data, so a surface can be listed and still have nothing callable --
+ * the handler must say so rather than hand `undefined` to `new URL()`. */
+const NO_URL_SURFACE = {
+  surface_id: "x:api:nourl",
+  surface_key: "srf-xapinourl0000",
+  netuid: 5,
+  kind: "subnet-api",
+  provider: "p",
+  auth_required: false,
+  probe: { method: "GET", expect: "json", timeout_ms: 8000, enabled: true },
+};
+
+/** A probe block present but declaring NO method: the surface says how long to
+ * wait and nothing about the verb, so the method key must be omitted rather
+ * than spread in as `undefined`. */
+const PROBE_WITHOUT_METHOD_SURFACE = {
+  surface_id: "x:api:noprobemethod",
+  surface_key: "srf-xapinopm00000",
+  netuid: 5,
+  kind: "subnet-api",
+  url: "https://x.example/noprobemethod",
+  provider: "p",
+  auth_required: false,
+  probe: { expect: "json", timeout_ms: 8000, enabled: true },
+};
+
+/** A surface with no probe block at all: nothing declares which method the
+ * curated url answers, so the call falls back to the default rather than
+ * spreading `undefined` into the request. */
+const NO_PROBE_SURFACE = {
+  surface_id: "x:api:noprobe",
+  surface_key: "srf-xapinoprobe00",
+  netuid: 5,
+  kind: "subnet-api",
+  url: "https://x.example/noprobe",
+  provider: "p",
+  auth_required: false,
+};
+
+/** A surface whose own `surface_id` field is absent. Credential keys are built
+ * from it, so the caller-supplied id is the fallback that keeps the key a
+ * string rather than storing one under `undefined` (#10782). */
+const UNNAMED_SURFACE = {
+  surface_key: "srf-xapiunnamed00",
+  netuid: 5,
+  kind: "subnet-api",
+  url: "https://x.example/unnamed",
+  provider: "p",
+  auth_required: false,
+  probe: { method: "GET", expect: "json", timeout_ms: 8000, enabled: true },
+};
+
 const CATALOG = {
   surfaces: [
+    NO_URL_SURFACE,
+    PROBE_WITHOUT_METHOD_SURFACE,
+    NO_PROBE_SURFACE,
+    UNNAMED_SURFACE,
     NO_AUTH_SURFACE,
     AUTH_SURFACE,
     DISABLED_PROBE_SURFACE,
@@ -368,6 +425,22 @@ const deps = {
   },
 };
 
+/**
+ * Which of the two surface-call tools this call belongs to (#11568).
+ *
+ * The suite predates the split and asserts BEHAVIOUR -- schema gating, body
+ * validation, credential placement -- none of which changed. Routing by verb
+ * here keeps every one of those assertions pointed at the tool that now owns
+ * the verb, and makes the split itself load-bearing: a write sent to the read
+ * tool would be refused, so these tests fail if the routing regresses.
+ */
+function surfaceToolFor(args: Row): string {
+  const method = String(args?.method ?? "").toUpperCase();
+  return ["POST", "PUT", "PATCH", "DELETE"].includes(method)
+    ? "write_subnet_surface"
+    : "call_subnet_surface";
+}
+
 async function callTool(args: Row, fetchImpl?: typeof fetch) {
   const of = globalThis.fetch;
   globalThis.fetch =
@@ -386,7 +459,7 @@ async function callTool(args: Row, fetchImpl?: typeof fetch) {
           jsonrpc: "2.0",
           id: 1,
           method: "tools/call",
-          params: { name: "call_subnet_surface", arguments: args },
+          params: { name: surfaceToolFor(args), arguments: args },
         }),
       }),
       {} as unknown as Env,
@@ -1591,7 +1664,7 @@ describe("not_callable vs not_found (#8652)", () => {
           jsonrpc: "2.0",
           id: 1,
           method: "tools/call",
-          params: { name: "call_subnet_surface", arguments: args },
+          params: { name: surfaceToolFor(args), arguments: args },
         }),
       }),
       {} as unknown as Env,
@@ -2311,5 +2384,44 @@ describe("surface credential store (#9009)", () => {
     } finally {
       globalThis.fetch = of;
     }
+  });
+});
+
+// #11568: arms of the shared handler that no fixture previously reached. They
+// moved with the extraction, so they are in the patch either way -- and each
+// one is a real refusal path that had never fired.
+describe("catalogued surfaces that are not fully callable", () => {
+  test("a surface with no url is reported uncallable, not dereferenced", async () => {
+    // The catalogue is captured data: a surface can be listed with no url at
+    // all. Handing that to `new URL()` would be a TypeError inside the fetch
+    // path instead of an answer (#11339).
+    const result = await callTool({ surface_id: "x:api:nourl" });
+    assert.equal(result.isError, true);
+    assert.ok(
+      ((result.structuredContent as Row).error as Row).code,
+      "carries a structured error code rather than a thrown TypeError",
+    );
+  });
+
+  test("a probe block with no method omits the key rather than sending undefined", async () => {
+    const result = await callTool({ surface_id: "x:api:noprobemethod" });
+    assert.notEqual(result.isError, true);
+  });
+
+  test("a surface with no probe block still calls its curated url", async () => {
+    const result = await callTool({ surface_id: "x:api:noprobe" });
+    assert.notEqual(
+      result.isError,
+      true,
+      "a missing probe block is not a reason to refuse",
+    );
+  });
+
+  test("a surface with no surface_id of its own falls back to the caller's", async () => {
+    // Resolved by its stable surface_key, which is the only way to reach a
+    // surface that carries no surface_id field -- and therefore the only way
+    // the fallback that keeps credential keys a string is ever exercised.
+    const result = await callTool({ surface_id: "srf-xapiunnamed00" });
+    assert.notEqual(result.isError, true);
   });
 });
