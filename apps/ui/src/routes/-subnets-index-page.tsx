@@ -1615,8 +1615,13 @@ function SubnetsTable({
             ? null
             : (() => {
                 const compact = density === "compact";
-                const cellPad = compact ? "px-3 py-1.5" : "px-4 py-2.5";
-                const firstPad = compact ? "pl-3 pr-1 py-1.5" : "pl-4 pr-1 py-2.5";
+                // Padding comes from `.mg-data-table` (and its compact
+                // variant) so this table shares one density with every other
+                // table on the site. These keep only what is still per-cell:
+                // the first column's tighter right side, which exists to pull
+                // the watch control against the name it belongs to.
+                const cellPad = "";
+                const firstPad = "pr-1";
                 const monoSize = compact ? "mg-type-data" : "mg-type-caption";
                 return (
                   // #8248's bounded, internally-scrolling virtualized region now
@@ -1626,7 +1631,10 @@ function SubnetsTable({
                   // owned the sticky <thead>, and the outer of the two could never
                   // scroll because the inner capped its content at the same 70vh.
                   // One viewport, one ref, one thing the header pins against.
-                  <table className="w-full min-w-[1100px] table-fixed text-left text-sm">
+                  <table
+                    className="mg-data-table w-full min-w-[1100px] table-fixed text-left"
+                    data-density={compact ? "compact" : undefined}
+                  >
                     {/* Pins the column tracks so they cannot be re-derived from
                   whichever virtualized rows happen to be mounted. */}
                     <TableColGroup

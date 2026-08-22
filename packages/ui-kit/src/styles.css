@@ -5137,3 +5137,55 @@ a:focus-visible > .mg-entity-card {
 .mg-segmented-bare-option:hover {
   color: var(--ink-strong);
 }
+
+/* ============================================================
+ * Data table
+ *
+ * Structure measured from blockmachine.io/performance, wearing this project's
+ * type and colour: 50px rows from 12px/20px cells, a tiny uppercase header in
+ * mid-grey, and horizontal hairlines only — no vertical rules, no zebra, no
+ * boxed cells. Density was the gap; ours ran 12px/8px cells with a 12px
+ * sentence-case header, which packs more rows onto a screen and makes every
+ * one of them harder to read.
+ *
+ * Alignment is deliberately NOT set here. Columns declare their own, and a
+ * `.mg-data-table thead th` rule would outrank the `text-right` a numeric
+ * column carries — magnitude columns stay right-aligned and tabular so their
+ * digits line up, which is the one place this departs from the reference.
+ * ============================================================ */
+.mg-data-table {
+  border-collapse: collapse;
+}
+.mg-data-table thead th {
+  padding: 0.75rem 1.25rem;
+  color: var(--ink-subtle, var(--ink-muted));
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  font-weight: 600;
+  letter-spacing: var(--mg-tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.mg-data-table tbody td {
+  padding: 0.75rem 1.25rem;
+  font-size: var(--mg-type-caption);
+}
+.mg-data-table tbody tr {
+  border-bottom: 1px solid var(--border);
+}
+/* The hairline belongs BETWEEN rows, so the last one does not draw a line
+   against the edge of the surface the table already sits on. */
+.mg-data-table tbody tr:last-child {
+  border-bottom: 0;
+}
+@media (hover: hover) {
+  .mg-data-table tbody tr:hover {
+    background: color-mix(in oklab, var(--ink-strong) 3%, transparent);
+  }
+}
+/* Compact keeps the reference's horizontal room and takes the vertical back,
+   which is the axis a density control is actually for. */
+.mg-data-table[data-density="compact"] thead th,
+.mg-data-table[data-density="compact"] tbody td {
+  padding: 0.35rem 1.25rem;
+}

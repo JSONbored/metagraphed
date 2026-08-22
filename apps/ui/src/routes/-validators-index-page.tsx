@@ -91,6 +91,14 @@ export function ValidatorsPage() {
       replace: true,
       resetScroll: false,
     });
+  // Shared by both modes, so a query typed while browsing operators survives
+  // the switch to the key table and keeps filtering there.
+  const setQuery = (q: string) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, q }),
+      replace: true,
+      resetScroll: false,
+    });
   return (
     <AppShell>
       <DataPageStage>
@@ -122,12 +130,27 @@ export function ValidatorsPage() {
               ariaLabel="Validator directory mode"
             />
             {mode === "browse" ? (
-              <AsyncPanel
-                context="validator operators"
-                fallback={<TableSkeleton rows={8} columns={3} />}
-              >
-                <ValidatorIdentityDirectory query={search.q} />
-              </AsyncPanel>
+              <>
+                {/* #11522 asks for search to reach the results at 375px. The
+                    operator directory has always ACCEPTED a query — it filters
+                    on `search.q` — but nothing ever rendered a box to type it
+                    into, so 149 operators were reachable only by scrolling.
+                    The filter existed; the input did not. */}
+                <QueryBar className="min-h-11 lg:min-h-0" ariaLabel="Search operators">
+                  <QueryBar.Search
+                    value={search.q}
+                    onChange={setQuery}
+                    placeholder="Search operators by name"
+                    debounceMs={200}
+                  />
+                </QueryBar>
+                <AsyncPanel
+                  context="validator operators"
+                  fallback={<TableSkeleton rows={8} columns={3} />}
+                >
+                  <ValidatorIdentityDirectory query={search.q} />
+                </AsyncPanel>
+              </>
             ) : (
               <AsyncPanel
                 context="validators"
@@ -396,7 +419,7 @@ function ValidatorsDirectory({
                 // a constant, not by its contents. The floor still exists: it
                 // is what makes the table scroll on a narrow screen instead of
                 // crushing nine columns into 375px.
-                "w-full min-w-[960px] table-fixed text-left text-sm",
+                "mg-data-table w-full min-w-[960px] table-fixed text-left",
                 compact && "[&_td]:!py-1 [&_th]:!py-1",
               )}
             >

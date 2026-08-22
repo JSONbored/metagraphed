@@ -4210,3 +4210,35 @@ a:focus-visible > .mg-entity-card {
 .mg-segmented-bare-option:hover {
   color: var(--ink-strong);
 }
+.mg-data-table {
+  border-collapse: collapse;
+}
+.mg-data-table thead th {
+  padding: 0.75rem 1.25rem;
+  color: var(--ink-subtle, var(--ink-muted));
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  font-weight: 600;
+  letter-spacing: var(--mg-tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.mg-data-table tbody td {
+  padding: 0.75rem 1.25rem;
+  font-size: var(--mg-type-caption);
+}
+.mg-data-table tbody tr {
+  border-bottom: 1px solid var(--border);
+}
+.mg-data-table tbody tr:last-child {
+  border-bottom: 0;
+}
+@media (hover: hover) {
+  .mg-data-table tbody tr:hover {
+    background: color-mix(in oklab, var(--ink-strong) 3%, transparent);
+  }
+}
+.mg-data-table[data-density=compact] thead th,
+.mg-data-table[data-density=compact] tbody td {
+  padding: 0.35rem 1.25rem;
+}

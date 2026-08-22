@@ -155,9 +155,7 @@ test.describe("#11520 subnet discovery modes", () => {
     // of the page — that is how "mobile-first" quietly becomes "mobile-less".
     await openSubnets(page, "", 375, 812);
     expect(await page.locator(".mg-entity-card").count()).toBeGreaterThan(3);
-    expect(
-      await page.locator(".mg-entity-card .mg-entity-card-meta").count(),
-    ).toBeGreaterThan(3);
+    expect(await page.locator(".mg-entity-card .mg-entity-card-meta").count()).toBeGreaterThan(3);
   });
 
   test("offers the four tasks as ONE strip, rankings included", async ({ page }) => {

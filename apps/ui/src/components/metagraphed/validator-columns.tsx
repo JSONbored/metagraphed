@@ -15,9 +15,12 @@ import {
 } from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 
-const TH_BASE = "px-3 py-2 mg-type-caption text-ink-muted";
-const TD_BASE = "px-3 py-2 mg-type-data";
-const TD_NUM = `${TD_BASE} text-right tabular-nums`;
+// Padding, size and colour now come from `.mg-data-table` so every table on
+// the site shares one density instead of each column file restating it. What
+// stays here is what is genuinely per-column: alignment and numeral style.
+const TH_BASE = "";
+const TD_BASE = "";
+const TD_NUM = "text-right tabular-nums";
 
 /**
  * One column of the global-validators table. Both the `<thead>` and every
