@@ -3707,9 +3707,14 @@ html[data-density="compact"] .bg-card > table td {
      x — and a ranked bar chart whose bars do not share a left edge cannot be
      compared by length, which is the only thing it is for. Pinning them also
      lines the names up. */
+  /* The track carries a FLOOR, and the name yields to it. In a half-width
+     container (two boards side by side) the body took its full content width
+     and the `1fr` track resolved to 0px — a ranked rail with no rail, silently.
+     The bar is the component's whole reason to exist, so it is the one column
+     that may not collapse. */
   grid-template-columns:
     1.75rem 5.25rem 1.5rem minmax(0, 30rem)
-    minmax(0, 1fr) 0.9rem;
+    minmax(5rem, 1fr) 0.9rem;
   border: 0;
   background: transparent;
   padding: 0.5rem var(--mg-space-xs);

@@ -50,9 +50,3 @@ export function formatTopActiveShare(share: number): string {
   if (share >= 0.995) return "100%";
   return `${Math.round(share * 100)}%`;
 }
-
-/** Layout class tokens for the ranked list shell. */
-export const TOP_ACTIVE_ACCOUNTS_LIST_CLASS = "flex flex-col gap-1.5";
-
-export const TOP_ACTIVE_ACCOUNT_LINK_CLASS =
-  "group flex w-full items-center justify-between gap-3 rounded border border-border bg-paper/40 px-3 py-2 mg-type-data text-ink-strong hover:border-ink/30 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 min-h-11";

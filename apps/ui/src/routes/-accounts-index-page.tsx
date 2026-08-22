@@ -1,3 +1,4 @@
+import { RankedRailList, type RankedRailItem } from "@jsonbored/ui-kit";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -72,6 +73,62 @@ export function AccountsPage() {
         />
         <DataPageCanvas>
           <DataPageModule
+            title="Account leaders."
+            caption="Compare the accounts holding the most stake or earning the most emission, then inspect current chain activity."
+          >
+            <div className="grid gap-6 md:grid-cols-2">
+              <AsyncPanel
+                context="top accounts by stake"
+                fallback={<Skeleton className="h-64 w-full" />}
+                retryQueryKeys={[accountsListQuery({ sort: "total_stake" }).queryKey]}
+              >
+                <AccountsLeaderboard
+                  sort="total_stake"
+                  title="Top by stake"
+                  blurb="Accounts holding the most stake across every subnet."
+                  metric={(a) => `${taoCompact(a.total_stake_tao)} τ`}
+                  value={(a) => a.total_stake_tao}
+                />
+              </AsyncPanel>
+              <AsyncPanel
+                context="top accounts by emission"
+                fallback={<Skeleton className="h-64 w-full" />}
+                retryQueryKeys={[accountsListQuery({ sort: "total_emission" }).queryKey]}
+              >
+                <AccountsLeaderboard
+                  sort="total_emission"
+                  title="Top by emission"
+                  blurb="Accounts earning the most emission across every subnet."
+                  metric={(a) => `${taoCompact(a.total_emission_tao)} τ`}
+                  value={(a) => a.total_emission_tao}
+                />
+              </AsyncPanel>
+            </div>
+            {/* One link, not one per board. Both panels used to end with the
+                same "Validator directory →". */}
+            <p className="mt-3">
+              <Link to="/validators" className="mg-type-data-sm text-ink-muted hover:text-accent">
+                Validator directory →
+              </Link>
+            </p>
+
+            <section className="mt-8" data-testid="top-active-accounts-section">
+              <h3 className="mg-type-label text-ink-muted">Most active accounts</h3>
+              <p className="mt-1 mb-4 mg-type-data text-ink-muted">
+                Ranked by extrinsics signed on-chain in the last {TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS}{" "}
+                days — jump straight to an account below.
+              </p>
+              <AsyncPanel
+                context="active accounts"
+                fallback={<Skeleton className="h-40 w-full" />}
+                retryQueryKeys={[chainSignersQuery().queryKey]}
+              >
+                <TopActiveAccounts />
+              </AsyncPanel>
+            </section>
+          </DataPageModule>
+
+          <DataPageModule
             title="Find an account."
             caption="Paste a hotkey, coldkey, or EVM address to jump directly to the on-chain record."
           >
@@ -117,52 +174,6 @@ export function AccountsPage() {
             caption="Read-only positions for a connected browser wallet; no transaction is constructed or signed here."
           >
             <YourWalletPanel />
-          </DataPageModule>
-
-          <DataPageModule
-            title="Account leaders."
-            caption="Compare the accounts holding the most stake or earning the most emission, then inspect current chain activity."
-          >
-            <div className="grid gap-6 md:grid-cols-2">
-              <AsyncPanel
-                context="top accounts by stake"
-                fallback={<Skeleton className="h-64 w-full" />}
-                retryQueryKeys={[accountsListQuery({ sort: "total_stake" }).queryKey]}
-              >
-                <AccountsLeaderboard
-                  sort="total_stake"
-                  title="Top by stake"
-                  blurb="Accounts holding the most stake across every subnet."
-                  metric={(a) => `${taoCompact(a.total_stake_tao)} τ`}
-                />
-              </AsyncPanel>
-              <AsyncPanel
-                context="top accounts by emission"
-                fallback={<Skeleton className="h-64 w-full" />}
-                retryQueryKeys={[accountsListQuery({ sort: "total_emission" }).queryKey]}
-              >
-                <AccountsLeaderboard
-                  sort="total_emission"
-                  title="Top by emission"
-                  blurb="Accounts earning the most emission across every subnet."
-                  metric={(a) => `${taoCompact(a.total_emission_tao)} τ`}
-                />
-              </AsyncPanel>
-            </div>
-            <section className="mt-8" data-testid="top-active-accounts-section">
-              <h3 className="mg-type-label text-ink-muted">Most active accounts</h3>
-              <p className="mt-1 mb-4 mg-type-data text-ink-muted">
-                Ranked by extrinsics signed on-chain in the last {TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS}{" "}
-                days — jump straight to an account below.
-              </p>
-              <AsyncPanel
-                context="active accounts"
-                fallback={<Skeleton className="h-40 w-full" />}
-                retryQueryKeys={[chainSignersQuery().queryKey]}
-              >
-                <TopActiveAccounts />
-              </AsyncPanel>
-            </section>
           </DataPageModule>
 
           <DataPageModule
@@ -221,39 +232,41 @@ function AccountsLeaderboard({
   title,
   blurb,
   metric,
+  value,
 }: {
   sort: string;
   title: string;
   blurb: string;
   metric: (a: { total_stake_tao: number; total_emission_tao: number }) => string;
+  value: (a: { total_stake_tao: number; total_emission_tao: number }) => number;
 }) {
   const { data } = useSuspenseQuery(accountsListQuery({ sort, limit: 10 }));
   const rows = data.data.accounts;
   if (rows.length === 0) return null;
+  // #11523: a rail, not a bordered list of right-aligned numbers. These are
+  // magnitudes — the top account holds roughly twice the second — and a column
+  // of figures made that something you work out rather than something you see.
+  const items: RankedRailItem[] = rows.map((a) => ({
+    id: a.hotkey,
+    label: (
+      <AddressDisplay
+        ss58={a.hotkey}
+        fallback="—"
+        compact
+        valueClassName="min-w-0 truncate"
+        preload="intent"
+      />
+    ),
+    value: value(a),
+    valueLabel: metric(a),
+    meta: `${formatNumber(a.subnet_count)} subnet${a.subnet_count === 1 ? "" : "s"}`,
+  }));
   return (
-    <Panel dense>
+    <section>
       <h2 className="mb-1 mg-type-label uppercase text-ink-muted">{title}</h2>
       <p className="mb-3 mg-type-data text-ink-muted">{blurb}</p>
-      <ol className="divide-y divide-border">
-        {rows.map((a, i) => (
-          <li key={a.hotkey} className="flex items-center gap-3 py-2 mg-type-data">
-            <span className="w-4 shrink-0 text-right tabular-nums text-ink-muted">{i + 1}</span>
-            <span className="min-w-0 flex-1">
-              <AddressDisplay ss58={a.hotkey} compact fallback="—" />
-            </span>
-            <span className="shrink-0 tabular-nums text-ink-muted">
-              {formatNumber(a.subnet_count)} SN
-            </span>
-            <span className="shrink-0 tabular-nums font-medium text-ink-strong">{metric(a)}</span>
-          </li>
-        ))}
-      </ol>
-      <div className="mt-2 border-t border-border pt-2">
-        <Link to="/validators" className="mg-type-data-sm text-ink-muted hover:text-accent">
-          Validator directory →
-        </Link>
-      </div>
-    </Panel>
+      <RankedRailList ariaLabel={`${title}. ${blurb}`} items={items} />
+    </section>
   );
 }
 

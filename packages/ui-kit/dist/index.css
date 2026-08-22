@@ -2957,7 +2957,7 @@ html[data-density=compact] .bg-card > table td {
   width: 100%;
   align-items: center;
   gap: var(--mg-space-sm);
-  grid-template-columns: 1.75rem 5.25rem 1.5rem minmax(0, 30rem) minmax(0, 1fr) 0.9rem;
+  grid-template-columns: 1.75rem 5.25rem 1.5rem minmax(0, 30rem) minmax(5rem, 1fr) 0.9rem;
   border: 0;
   background: transparent;
   padding: 0.5rem var(--mg-space-xs);
