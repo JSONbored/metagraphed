@@ -3030,12 +3030,24 @@ html[data-density="compact"] .bg-card > table td {
      near-white inspector surface on a graphite page. Mixing against the
      surrounding tokens makes the field correct in the light app, the dark app
      and the landing shell with one declaration. */
-  --mg-composition-graphite: color-mix(in srgb, var(--paper) 82%, var(--ink-strong));
+  --mg-composition-graphite: color-mix(
+    in srgb,
+    var(--paper) 82%,
+    var(--ink-strong)
+  );
   /* "Everything else" is not a category and must not spend a categorical
      tone. The last ramp entry is a red, which read as an alert state on a
      segment that only means "the rest of the normalised unit". */
-  --mg-composition-residual: color-mix(in srgb, var(--paper) 62%, var(--ink-strong));
-  --mg-composition-surface: color-mix(in srgb, var(--paper) 94%, var(--ink-strong));
+  --mg-composition-residual: color-mix(
+    in srgb,
+    var(--paper) 62%,
+    var(--ink-strong)
+  );
+  --mg-composition-surface: color-mix(
+    in srgb,
+    var(--paper) 94%,
+    var(--ink-strong)
+  );
   --mg-composition-rail: color-mix(in srgb, var(--ink-strong) 5%, transparent);
   --mg-composition-gap: 0.4rem;
   --mg-composition-height: clamp(11rem, 15vw, 15rem);
@@ -3150,62 +3162,74 @@ html[data-density="compact"] .bg-card > table td {
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="residual"],
 .mg-composition-timeline-swatch[data-tone="residual"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="residual"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="residual"] {
   background: var(--mg-composition-residual);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-1"],
 .mg-composition-timeline-swatch[data-tone="chart-1"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-1"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-1"] {
   background: var(--chart-1);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-2"],
 .mg-composition-timeline-swatch[data-tone="chart-2"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-2"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-2"] {
   background: var(--chart-2);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-3"],
 .mg-composition-timeline-swatch[data-tone="chart-3"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-3"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-3"] {
   background: var(--chart-3);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-4"],
 .mg-composition-timeline-swatch[data-tone="chart-4"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-4"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-4"] {
   background: var(--chart-4);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-5"],
 .mg-composition-timeline-swatch[data-tone="chart-5"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-5"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-5"] {
   background: var(--chart-5);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-6"],
 .mg-composition-timeline-swatch[data-tone="chart-6"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-6"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-6"] {
   background: var(--chart-6);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-7"],
 .mg-composition-timeline-swatch[data-tone="chart-7"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-7"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-7"] {
   background: var(--chart-7);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-8"],
 .mg-composition-timeline-swatch[data-tone="chart-8"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-8"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-8"] {
   background: var(--chart-8);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-9"],
 .mg-composition-timeline-swatch[data-tone="chart-9"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-9"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-9"] {
   background: var(--chart-9);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-10"],
 .mg-composition-timeline-swatch[data-tone="chart-10"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-10"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-10"] {
   background: var(--chart-10);
 }
 .mg-composition-timeline-segment[data-emphasis="vivid"][data-tone="chart-11"],
 .mg-composition-timeline-swatch[data-tone="chart-11"],
-.mg-composition-timeline-key-item[data-emphasis="vivid"] i[data-tone="chart-11"] {
+.mg-composition-timeline-key-item[data-emphasis="vivid"]
+  i[data-tone="chart-11"] {
   background: var(--chart-11);
 }
 

@@ -2392,9 +2392,9 @@ html[data-density=compact] .bg-card > table td {
   }
 }
 .mg-composition-timeline {
-  --mg-composition-graphite: color-mix(in srgb, var(--paper) 82%, var(--ink-strong));
-  --mg-composition-residual: color-mix(in srgb, var(--paper) 62%, var(--ink-strong));
-  --mg-composition-surface: color-mix(in srgb, var(--paper) 94%, var(--ink-strong));
+  --mg-composition-graphite: color-mix( in srgb, var(--paper) 82%, var(--ink-strong) );
+  --mg-composition-residual: color-mix( in srgb, var(--paper) 62%, var(--ink-strong) );
+  --mg-composition-surface: color-mix( in srgb, var(--paper) 94%, var(--ink-strong) );
   --mg-composition-rail: color-mix(in srgb, var(--ink-strong) 5%, transparent);
   --mg-composition-gap: 0.4rem;
   --mg-composition-height: clamp(11rem, 15vw, 15rem);
