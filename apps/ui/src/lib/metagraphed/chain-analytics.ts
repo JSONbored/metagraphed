@@ -1,4 +1,5 @@
 import type { SankeyLink, SankeyNode } from "@jsonbored/ui-kit";
+import { CHART_PALETTE } from "./chart-palette";
 import type { ChainStakeFlow, GlobalValidators } from "./types";
 
 // #8378: pure data-shaping for the Chain hub's Analytics tab. Kept separate
@@ -16,19 +17,7 @@ const OTHER_VALIDATORS_ID = "validator:other";
  * not status colors: they let a reader follow one subnet into its validator
  * holdings without mistaking a color for a health or direction signal.
  */
-export const STAKE_FLOW_SERIES_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--chart-6)",
-  "var(--chart-7)",
-  "var(--chart-8)",
-  "var(--chart-9)",
-  "var(--chart-10)",
-  "var(--chart-11)",
-] as const;
+export const STAKE_FLOW_SERIES_COLORS = CHART_PALETTE;
 
 function directionColor(direction: string): string {
   if (direction === "gaining") return "var(--accent)";

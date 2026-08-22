@@ -1,19 +1,15 @@
 import { BarMini } from "@jsonbored/ui-kit";
+import { CHART_PALETTE } from "@/lib/metagraphed/chart-palette";
 import { ChartCard } from "@/components/metagraphed/primitives";
 import { formatTao } from "@/lib/metagraphed/format";
 import type { ChainIdleStake } from "@/lib/metagraphed/types";
 
 const MAX_SHOWN = 8;
-const RANK_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--chart-6)",
-  "var(--chart-7)",
-  "var(--chart-8)",
-];
+// The first eight of the shared categorical ramp, derived rather than
+// restated. Both this and chain-network-concentration listed the same eight
+// swatches privately, so the two could drift and `validate:schema-vocabularies`
+// correctly refused to name an owner.
+const RANK_COLORS = CHART_PALETTE.slice(0, 8);
 
 /** Also a current snapshot — /api/v1/chain/idle-stake has no `window` param. */
 export function ChainIdleStakeSnapshot({ idleStake }: { idleStake: ChainIdleStake }) {

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { CHART_PALETTE } from "@/lib/metagraphed/chart-palette";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkline } from "@jsonbored/ui-kit";
 import {
@@ -23,16 +24,11 @@ import type {
 } from "@/lib/metagraphed/types";
 
 const TOP_SHOWN = 8;
-const RANK_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--chart-6)",
-  "var(--chart-7)",
-  "var(--chart-8)",
-];
+// The first eight of the shared categorical ramp, derived rather than
+// restated. Both this and chain-network-concentration listed the same eight
+// swatches privately, so the two could drift and `validate:schema-vocabularies`
+// correctly refused to name an owner.
+const RANK_COLORS = CHART_PALETTE.slice(0, 8);
 
 /**
  * Network-wide concentration is a continuous part of the analytics document,
