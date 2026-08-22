@@ -1252,6 +1252,7 @@ import {
   FREE_HISTORY_WINDOW_DAYS,
   requireTierForDepth,
 } from "./mcp-tier-gate.ts";
+import { timingSafeEqual } from "./webhooks.ts";
 import {
   oauthAccountIdFrom,
   resolveOAuthAccountTier,
@@ -2043,6 +2044,14 @@ interface McpCtx {
   // the only client signal a tools/call request carries. Always tagged as
   // `user_agent`-sourced when emitted, never presented as MCP clientInfo.
   clientName?: string;
+  /**
+   * A FIRST-PARTY probe that declared itself via the probe header (#11565).
+   *
+   * Undefined for every real caller, which is the point: product queries filter
+   * on its absence, so our own monitoring stops inflating the numbers it exists
+   * to watch.
+   */
+  probe?: string;
   clientVersion?: string;
   recordUsageEvent?: AnyFn;
   /** Keyed by {@link chainSignersCacheKey}; holds the in-flight promise so a
@@ -16548,6 +16557,61 @@ async function callTool(params: Row | null, ctx: McpCtx) {
   return result;
 }
 
+/**
+ * The header a FIRST-PARTY probe uses to name itself (#11565).
+ *
+ * Declared rather than inferred. Our nightly sweeps already set a distinctive
+ * User-Agent, but filtering on that string would also catch
+ * `flowstacks-mcp-conformance` -- observed in production, a third party's
+ * conformance checker whose calls are real usage. A marker we set is the only
+ * one that means "ours".
+ */
+export const MCP_PROBE_HEADER = "x-metagraph-probe";
+
+/** The shared secret proving a probe marker is ours. */
+export const MCP_PROBE_TOKEN_HEADER = "x-metagraph-probe-token";
+
+/** Bound on the declared probe name. Long enough for `mcp-conformance`, short
+ * enough that the header cannot become a payload. */
+export const MCP_PROBE_NAME_MAX_LENGTH = 64;
+
+/**
+ * The probe name this request declares, or undefined.
+ *
+ * ## VERIFIED, NOT SELF-DECLARED
+ *
+ * The marker excludes traffic from product metrics, so an unauthenticated one
+ * would let any caller opt out of being counted -- and a crawler that can hide
+ * from the numbers is worse than one that shows up in them. The name is
+ * honoured only when the paired token matches `MCP_PROBE_TOKEN`, compared in
+ * constant time.
+ *
+ * ## FAILS TO "NOT A PROBE", DELIBERATELY
+ *
+ * No secret configured, no token sent, or a token that does not match, all
+ * yield undefined -- the traffic counts as ordinary usage. That is the safe
+ * direction: the failure mode is our own sweep briefly appearing in the
+ * numbers, never a real caller silently vanishing from them. It also means the
+ * secret and the deploy can land in either order without a window where real
+ * traffic is dropped.
+ *
+ * Nothing else keys on this: rate limits, quota, the blocklist and every tier
+ * are untouched. It labels an analytics event and only that.
+ */
+export function mcpProbeName(
+  request: Request,
+  env: Env | undefined,
+): string | undefined {
+  const configured = env?.MCP_PROBE_TOKEN;
+  if (typeof configured !== "string" || configured === "") return undefined;
+  if (!timingSafeEqual(request.headers.get(MCP_PROBE_TOKEN_HEADER), configured))
+    return undefined;
+  const raw = request.headers.get(MCP_PROBE_HEADER);
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim().slice(0, MCP_PROBE_NAME_MAX_LENGTH);
+  return trimmed === "" ? undefined : trimmed;
+}
+
 // #8963: the client/server attribution every $mcp_* event carries. Server
 // identity comes from the same constants that feed serverInfo and
 // server.json, so an event can always be pinned to the deploy that emitted
@@ -16571,6 +16635,10 @@ function mcpAttributionFor(ctx: McpCtx) {
           clientNameSource: "user_agent" as const,
         }
       : {}),
+    // #11565: rides the SAME shared attribution every $mcp_* event calls, so a
+    // breakdown that excludes first-party probes behaves identically whichever
+    // event it starts from -- the reason this helper exists at all.
+    ...(ctx?.probe ? { probe: ctx.probe } : {}),
   };
 }
 
@@ -17663,6 +17731,9 @@ async function buildContext(
   const { clientName, clientVersion } = parseUserAgentClient(
     request.headers.get("user-agent"),
   );
+  // #11565: a first-party probe naming itself. Sanitised like every other
+  // caller-supplied label, so a hostile value is bounded rather than trusted.
+  const probe = mcpProbeName(request, env);
   return {
     env,
     domain,
@@ -17674,6 +17745,7 @@ async function buildContext(
     clientIp: mcpClientKey(request),
     clientName,
     clientVersion,
+    probe,
     // #8967: "anonymous" or the resolved key tier, from the gate that already
     // verified the bearer token. Carried on the context so the $mcp_* emission
     // chokepoint can label the event without a second key verification.
