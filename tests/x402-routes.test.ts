@@ -23,6 +23,7 @@ import { X402_RESPONSE_HEADER, X402_SIGNATURE_HEADER } from "../src/x402.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
 
 const PAY_TO = "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f";
+const PAY_TO_SOL = "EQvVxQ9WShSUjSUj8rod2PFRcQfZ4Ymejx6hJLFMsx87";
 const paid = () => mockEnv({ X402_PAY_TO: PAY_TO });
 
 function ask(headers: Record<string, string> = {}) {
@@ -177,14 +178,39 @@ describe("GET /.well-known/x402", () => {
     assert.equal(((await jsonBody(res)).error as Row).code, "not_found");
   });
 
-  test("names the address, the network, and what is free", async () => {
+  test("names every network's address, and what is free", async () => {
     const res = await manifest(paid());
     assert.equal(res.status, 200);
     const body = await jsonBody(res);
-    assert.equal(body.payTo, PAY_TO);
-    assert.equal(body.network, "eip155:84532");
+    const accepts = body.accepts as Row[];
+    assert.equal(accepts[0]!.payTo, PAY_TO);
+    assert.equal(accepts[0]!.network, "eip155:84532");
     assert.ok((body.resources as Row[]).length > 0);
     assert.match(String(body.free), /auth\.md$/);
+  });
+
+  test("advertises BOTH legs when both are configured", async () => {
+    // The thing the array exists for: an agent holding only SOL and one
+    // holding only Base USDC must both be able to read a way to pay us.
+    const res = await manifest(
+      mockEnv({ X402_PAY_TO: PAY_TO, X402_PAY_TO_SOLANA: PAY_TO_SOL }),
+    );
+    const networks = ((await jsonBody(res)).accepts as Row[]).map((a) =>
+      String(a.network),
+    );
+    assert.equal(networks.length, 2);
+    assert.ok(networks.some((n) => n.startsWith("eip155:")));
+    assert.ok(networks.some((n) => n.startsWith("solana:")));
+  });
+
+  test("a Solana-only deployment still takes payments", async () => {
+    // Legs resolve independently. A misconfigured EVM leg must not silently
+    // take the working Solana one down with it.
+    const res = await manifest(mockEnv({ X402_PAY_TO_SOLANA: PAY_TO_SOL }));
+    assert.equal(res.status, 200);
+    const accepts = (await jsonBody(res)).accepts as Row[];
+    assert.equal(accepts.length, 1);
+    assert.equal(accepts[0]!.payTo, PAY_TO_SOL);
   });
 
   test("is cacheable and cross-origin readable, like every discovery doc", async () => {

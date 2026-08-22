@@ -100,21 +100,48 @@ export const X402_VERSION = 2;
  * wants CDP API credentials) before it can be selected. Real money on the
  * public facilitator means SOLANA mainnet, not Base.
  */
-export const X402_NETWORKS: Readonly<
-  Record<string, { readonly asset: string; readonly label: string }>
-> = {
+export const X402_NETWORKS: Readonly<Record<string, X402NetworkEntry>> = {
   "eip155:84532": {
+    kind: "evm",
     asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     label: "Base Sepolia",
+    // EIP-712 domain for USDC's transferWithAuthorization.
+    extra: { name: "USDC", version: "2" },
   },
   "eip155:8453": {
+    kind: "evm",
     asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     label: "Base",
+    extra: { name: "USDC", version: "2" },
+  },
+  "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": {
+    kind: "svm",
+    // The SPL USDC mint. Confirmed against mainnet-beta on 2026-08-22:
+    // owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA, 6 decimals -- the
+    // same scale as the EVM USDC above, so the atomic arithmetic is identical.
+    asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    label: "Solana",
+    // SVM `exact` is FEE-SPONSORED: the facilitator signs as fee payer so the
+    // payer needs no SOL. Its address is part of the quote, and this is the
+    // value the public facilitator advertised on 2026-08-22. If it rotates,
+    // settlement fails closed and this table is what gets corrected.
+    extra: { feePayer: "CKPKJWNdJEqa81x7CkZ14BVPiY6y16Sxs7owznqtWYp5" },
   },
 };
 
 /** Testnet, deliberately. A first settlement bug should cost test funds. */
 export const X402_DEFAULT_NETWORK = "eip155:84532";
+
+/**
+ * The Solana network, defaulting to MAINNET -- real money, unlike the EVM leg.
+ *
+ * Not an inconsistency. The public facilitator settles Solana mainnet and does
+ * NOT settle Base mainnet, so this is the only network on which this
+ * deployment can actually collect. Defaulting the SVM leg to devnet would mean
+ * shipping two legs neither of which takes real payment.
+ */
+export const X402_DEFAULT_SOLANA_NETWORK =
+  "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
 
 /** The public facilitator Coinbase operates, and what Cloudflare's own
  * examples use. Overridable, because the counterparty is a real choice. */
@@ -144,14 +171,39 @@ export const X402_MAX_TIMEOUT_SECONDS = 60;
  */
 export const X402_ATOMIC_UNITS_PER_COST_WEIGHT = 400;
 
-export interface X402Config {
-  /** Where funds go. */
+export interface X402NetworkEntry {
+  /** Which address format and signing scheme the network uses. */
+  readonly kind: "evm" | "svm";
+  /** The USDC contract or mint on that network. */
+  readonly asset: string;
+  readonly label: string;
+  /** Scheme-specific fields the payer needs to build the transaction. */
+  readonly extra: Readonly<Record<string, string>>;
+}
+
+/** One network this deployment will accept payment on. */
+export interface X402Leg {
+  /** Where funds go, in that network's own address format. */
   readonly payTo: string;
   /** CAIP-2 id. */
   readonly network: string;
-  /** USDC contract on that network. */
   readonly asset: string;
   readonly networkLabel: string;
+  readonly extra: Readonly<Record<string, string>>;
+}
+
+/**
+ * The payment configuration for this deployment.
+ *
+ * A LIST OF LEGS, not one network. x402 v2's `accepts` is an array precisely
+ * so a server can name every method it takes and let the client pick one it
+ * can satisfy -- an agent holding only SOL and one holding only Base USDC both
+ * pay the same endpoint, from the same quote. Collapsing this to a single
+ * network would turn a protocol feature into a deployment choice, and exclude
+ * whichever half of the market we did not pick.
+ */
+export interface X402Config {
+  readonly legs: readonly X402Leg[];
   readonly facilitatorUrl: string;
 }
 
@@ -168,28 +220,99 @@ export function isEvmAddress(value: unknown): value is string {
 }
 
 /**
+ * A base58 Solana address.
+ *
+ * Format only, for the same reason as isEvmAddress: verifying that the bytes
+ * decode to a point on the ed25519 curve needs a dependency this module does
+ * not carry, and would still not tell us the address is one somebody holds a
+ * key for. The base58 alphabet excludes 0, O, I and l, which catches the
+ * transcription errors that actually happen.
+ *
+ * NOTE FOR OPERATORS: a valid address is not the same as a fundable one. SPL
+ * tokens land in an Associated Token Account, and a wallet that has never held
+ * USDC has none. See the header of resolveX402Config.
+ */
+export function isSolanaAddress(value: unknown): value is string {
+  return (
+    typeof value === "string" && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value)
+  );
+}
+
+/**
  * The payment configuration for this deployment, or null.
  *
- * Null on ANY incomplete or unrecognised input -- no payTo, a malformed
- * address, a network this build has no asset for. Never a partial config: a
- * `402` quoting an address we cannot be sure of is worse than not charging.
+ * EACH LEG RESOLVES INDEPENDENTLY, and a leg that does not resolve is simply
+ * absent. That is the one place this differs from the rest of the module's
+ * fail-closed posture, and deliberately: a deployment configured for Solana
+ * and misconfigured for Base should still take Solana payments. What must
+ * never happen is a leg quoting an address or asset we are unsure of, and that
+ * is preserved -- a leg is either fully resolved or not offered.
+ *
+ * Null only when NO leg resolves, which means this deployment takes no
+ * payments at all.
+ *
+ * ## AN ADDRESS IS NOT AN ABLE-TO-RECEIVE ADDRESS
+ *
+ * On Solana, SPL tokens land in an Associated Token Account derived from
+ * (owner, mint). A wallet that has never held USDC has no such account, and
+ * whether a transfer creates one is up to the payer's transaction -- creating
+ * it costs rent that somebody has to pay. Configuring a fresh address here is
+ * therefore not sufficient to be paid on it; the ATA has to exist. This
+ * function cannot check that (it is a chain read, and this runs in the 402
+ * path), so it is stated here instead.
  */
 export function resolveX402Config(env: Env | undefined): X402Config | null {
-  const payTo = env?.X402_PAY_TO;
-  if (!isEvmAddress(payTo)) return null;
-  const network = env?.X402_NETWORK || X402_DEFAULT_NETWORK;
+  const legs: X402Leg[] = [];
+
+  const evm = resolveLeg(
+    env?.X402_PAY_TO,
+    env?.X402_NETWORK || X402_DEFAULT_NETWORK,
+    "evm",
+  );
+  if (evm) legs.push(evm);
+
+  const svm = resolveLeg(
+    env?.X402_PAY_TO_SOLANA,
+    env?.X402_NETWORK_SOLANA || X402_DEFAULT_SOLANA_NETWORK,
+    "svm",
+  );
+  if (svm) legs.push(svm);
+
+  if (legs.length === 0) return null;
+  return {
+    legs,
+    facilitatorUrl: env?.X402_FACILITATOR_URL || X402_DEFAULT_FACILITATOR,
+  };
+}
+
+/**
+ * One leg, or null.
+ *
+ * The `kind` argument is what stops a configuration mix-up from producing a
+ * quote nobody can pay: an EVM address paired with a Solana network would be
+ * well-formed on both sides and still name a recipient that cannot exist on
+ * the chain being quoted.
+ */
+function resolveLeg(
+  payTo: unknown,
+  network: string,
+  kind: "evm" | "svm",
+): X402Leg | null {
   // Own-property lookup: `network` is configuration, and a value of
   // "constructor" or "toString" would otherwise resolve to an inherited Object
   // member and read as a configured network -- the same class of bypass
   // applyTieredRateLimit guards against for tier names.
   if (!Object.hasOwn(X402_NETWORKS, network)) return null;
   const entry = X402_NETWORKS[network]!;
+  if (entry.kind !== kind) return null;
+  const valid = kind === "evm" ? isEvmAddress(payTo) : isSolanaAddress(payTo);
+  if (!valid) return null;
   return {
-    payTo,
+    payTo: payTo as string,
     network,
     asset: entry.asset,
     networkLabel: entry.label,
-    facilitatorUrl: env?.X402_FACILITATOR_URL || X402_DEFAULT_FACILITATOR,
+    extra: entry.extra,
   };
 }
 
@@ -226,23 +349,33 @@ export interface PaymentRequirements {
   asset: string;
   payTo: string;
   maxTimeoutSeconds: number;
-  extra: { name: "USDC"; version: "2" };
+  /**
+   * Scheme-specific fields, and NOT one shape across networks: EVM carries the
+   * EIP-712 domain (`name`/`version`), SVM carries the sponsoring `feePayer`.
+   * Pinning this to the EVM shape is what would quietly drop the field a
+   * Solana payer needs to build the transaction at all.
+   */
+  extra: Readonly<Record<string, string>>;
 }
 
 /** The requirement a payer must satisfy for one call. */
 export function paymentRequirements(
   config: X402Config,
   atomicAmount: string,
-): PaymentRequirements {
-  return {
+): PaymentRequirements[] {
+  // Same price on every leg. USDC has six decimals on both Base and Solana
+  // (the mint was checked, not assumed), so one atomic amount is one price --
+  // no per-network conversion, and no chance of the two legs quoting
+  // different money for the same call.
+  return config.legs.map((leg) => ({
     scheme: "exact",
-    network: config.network,
+    network: leg.network,
     amount: atomicAmount,
-    asset: config.asset,
-    payTo: config.payTo,
+    asset: leg.asset,
+    payTo: leg.payTo,
     maxTimeoutSeconds: X402_MAX_TIMEOUT_SECONDS,
-    extra: { name: "USDC", version: "2" },
-  };
+    extra: leg.extra,
+  }));
 }
 
 function base64Json(value: unknown): string {
@@ -279,13 +412,16 @@ export function paymentRequiredResponse(
   const requirements = paymentRequirements(config, atomicAmount);
   const body = {
     x402Version: X402_VERSION,
-    error: `Payment required: ${atomicAmount} atomic USDC on ${config.networkLabel}.`,
+    error: `Payment required: ${atomicAmount} atomic USDC on ${config.legs
+      .map((leg) => leg.networkLabel)
+      .join(" or ")}.`,
     resource: {
       url: request.url,
       description,
       mimeType: "application/json",
     },
-    accepts: [requirements],
+    // EVERY leg, so the client picks. This is the array x402 v2 defined it as.
+    accepts: requirements,
     extensions: {},
   };
   return new Response(JSON.stringify(body), {
@@ -333,7 +469,7 @@ export type X402Verdict =
 export async function verifyAndSettle(
   config: X402Config,
   request: Request,
-  requirements: PaymentRequirements,
+  offered: readonly PaymentRequirements[],
   fetchImpl: typeof fetch = fetch,
 ): Promise<X402Verdict> {
   const header = request.headers.get(X402_SIGNATURE_HEADER);
@@ -346,6 +482,20 @@ export async function verifyAndSettle(
     return {
       outcome: "malformed",
       reason: `${X402_SIGNATURE_HEADER} must be base64-encoded JSON.`,
+    };
+  }
+
+  // WHICH LEG THIS PAYMENT IS FOR. The facilitator's /verify takes ONE set of
+  // requirements, so with several offered we have to say which the payer
+  // chose -- and take that from the payload rather than guessing, because
+  // verifying a Solana payment against Base requirements would compare an
+  // amount to the wrong asset on the wrong chain.
+  const requirements = selectRequirements(offered, paymentPayload);
+  if (!requirements) {
+    return {
+      outcome: "rejected",
+      reason:
+        "the payment names a network this resource does not accept; see the accepts list on the 402",
     };
   }
 
@@ -397,6 +547,31 @@ export async function verifyAndSettle(
   };
 }
 
+/**
+ * The offered requirement the payer's payload targets.
+ *
+ * A single offer is used AS-IS rather than matched. A client that omits
+ * `network` -- or names it somewhere this reader does not look -- is then
+ * answered by the facilitator on the merits of its signature, which is the
+ * behaviour before there were two legs. Matching strictly would turn a
+ * previously-working client into a rejection for a field it never had to send.
+ *
+ * With several offered there is no such fallback: an unmatched payload is
+ * rejected rather than verified against an arbitrary leg.
+ */
+function selectRequirements(
+  offered: readonly PaymentRequirements[],
+  payload: unknown,
+): PaymentRequirements | null {
+  if (offered.length === 1) return offered[0]!;
+  const network =
+    payload && typeof payload === "object"
+      ? (payload as { network?: unknown }).network
+      : undefined;
+  if (typeof network !== "string") return null;
+  return offered.find((entry) => entry.network === network) ?? null;
+}
+
 async function facilitatorCall(
   config: X402Config,
   path: "/verify" | "/settle",
@@ -438,9 +613,16 @@ export function x402Manifest(
   if (!config) return null;
   return {
     x402Version: X402_VERSION,
-    payTo: config.payTo,
-    network: config.network,
-    asset: config.asset,
+    // ONE ENTRY PER NETWORK. A reader deciding whether they can pay us needs
+    // the address in their own chain's format; a single `payTo` would answer
+    // that question for one audience and mislead the other.
+    accepts: config.legs.map((leg) => ({
+      network: leg.network,
+      networkLabel: leg.networkLabel,
+      payTo: leg.payTo,
+      asset: leg.asset,
+      scheme: "exact",
+    })),
     facilitator: config.facilitatorUrl,
     resources: X402_PAID_FAMILIES.map((family) => ({
       family,

@@ -55,6 +55,14 @@ interface RuntimeSecretEnv {
   X402_PAY_TO?: string;
   /** CAIP-2 network id. Defaults to Base Sepolia. */
   X402_NETWORK?: string;
+  /**
+   * Where Solana payments settle, base58. A SEPARATE address because the
+   * chains have separate formats -- one payTo cannot serve both legs. Absent
+   * means this deployment offers no Solana leg.
+   */
+  X402_PAY_TO_SOLANA?: string;
+  /** CAIP-2 network id for the SVM leg. Defaults to Solana MAINNET. */
+  X402_NETWORK_SOLANA?: string;
   /** Facilitator base URL. Defaults to the public Coinbase one. */
   X402_FACILITATOR_URL?: string;
   /** #11565: proves a `x-metagraph-probe` marker came from one of our own
