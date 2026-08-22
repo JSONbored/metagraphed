@@ -16,8 +16,13 @@ import { placeTooltip, tooltipPlacement } from "./chart-tooltip-logic";
  * (put it first in the container so it sits above the visual).
  */
 export interface ChartTooltipProps {
-  /** Vertical position inside the container, px. Measured default 110. */
-  top?: number;
+  /**
+   * Vertical position inside the container, px (measured default 110), or
+   * `"mark"` to hang 4px under the active mark's own row (rails, lists).
+   */
+  top?: number | "mark";
+  /** Pin the horizontal position instead of floating beside the mark. */
+  offsetLeft?: number;
   /** Fallback content when the active mark registered none. */
   fallback?: (key: string) => ActiveEntityData | null;
   className?: string;
@@ -37,6 +42,7 @@ function useIsMobile(): boolean {
 
 export function ChartTooltip({
   top = 110,
+  offsetLeft,
   fallback,
   className,
 }: ChartTooltipProps) {
@@ -44,6 +50,7 @@ export function ChartTooltip({
   const ref = useRef<HTMLDivElement>(null);
   const mobile = useIsMobile();
   const [left, setLeft] = useState<number | null>(null);
+  const [markTop, setMarkTop] = useState(0);
   const [, mounted] = useState(false);
   useLayoutEffect(() => mounted(true), []);
 
@@ -60,14 +67,14 @@ export function ChartTooltip({
       setLeft(null);
       return;
     }
+    const markRect = active.element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    setMarkTop(markRect.bottom - containerRect.top + 4);
     setLeft(
-      placeTooltip(
-        active.element.getBoundingClientRect(),
-        container.getBoundingClientRect(),
-        ref.current.offsetWidth,
-      ),
+      offsetLeft ??
+        placeTooltip(markRect, containerRect, ref.current.offsetWidth),
     );
-  }, [anchored, mobile, active, container]);
+  }, [anchored, mobile, active, container, offsetLeft]);
 
   const data = active ? (active.data ?? fallback?.(active.key) ?? null) : null;
   const show = anchored && data !== null;
@@ -87,7 +94,7 @@ export function ChartTooltip({
             mobile
               ? undefined
               : {
-                  top,
+                  top: top === "mark" ? markTop : top,
                   left: left ?? 0,
                   visibility: left === null ? "hidden" : undefined,
                 }
@@ -114,13 +121,15 @@ export function ChartTooltip({
               }
             >
               <span>
-                {row.swatch ? (
-                  <span
-                    className="mg-chart-tooltip-swatch"
-                    style={{ "--swatch": row.swatch } as React.CSSProperties}
-                    aria-hidden
-                  />
-                ) : null}
+                <i
+                  className="mg-chart-tooltip-swatch"
+                  data-empty={row.swatch ? undefined : "true"}
+                  style={
+                    row.swatch
+                      ? ({ "--swatch": row.swatch } as React.CSSProperties)
+                      : undefined
+                  }
+                />
                 <span>{row.label}</span>
               </span>
               <b>{row.value}</b>

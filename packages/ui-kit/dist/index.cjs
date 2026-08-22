@@ -1898,6 +1898,7 @@ function useIsMobile() {
 }
 function ChartTooltip({
   top = 110,
+  offsetLeft,
   fallback,
   className
 }) {
@@ -1905,6 +1906,7 @@ function ChartTooltip({
   const ref = React3.useRef(null);
   const mobile = useIsMobile();
   const [left, setLeft] = React3.useState(null);
+  const [markTop, setMarkTop] = React3.useState(0);
   const [, mounted2] = React3.useState(false);
   React3.useLayoutEffect(() => mounted2(true), []);
   const host = React3.useRef(null);
@@ -1915,14 +1917,13 @@ function ChartTooltip({
       setLeft(null);
       return;
     }
+    const markRect = active.element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    setMarkTop(markRect.bottom - containerRect.top + 4);
     setLeft(
-      placeTooltip(
-        active.element.getBoundingClientRect(),
-        container.getBoundingClientRect(),
-        ref.current.offsetWidth
-      )
+      offsetLeft ?? placeTooltip(markRect, containerRect, ref.current.offsetWidth)
     );
-  }, [anchored, mobile, active, container]);
+  }, [anchored, mobile, active, container, offsetLeft]);
   const data = active ? active.data ?? fallback?.(active.key) ?? null : null;
   const show = anchored && data !== null;
   return /* @__PURE__ */ jsxRuntime.jsx("div", { ref: host, style: { display: "contents" }, "data-mg-tooltip-host": "", children: show && data ? /* @__PURE__ */ jsxRuntime.jsxs(
@@ -1936,7 +1937,7 @@ function ChartTooltip({
       role: "status",
       "aria-live": "polite",
       style: mobile ? void 0 : {
-        top,
+        top: top === "mark" ? markTop : top,
         left: left ?? 0,
         visibility: left === null ? "hidden" : void 0
       },
@@ -1954,14 +1955,14 @@ function ChartTooltip({
             "data-muted": active && data.rows?.some((r) => r.key === active.key) && row.key !== active.key ? "true" : void 0,
             children: [
               /* @__PURE__ */ jsxRuntime.jsxs("span", { children: [
-                row.swatch ? /* @__PURE__ */ jsxRuntime.jsx(
-                  "span",
+                /* @__PURE__ */ jsxRuntime.jsx(
+                  "i",
                   {
                     className: "mg-chart-tooltip-swatch",
-                    style: { "--swatch": row.swatch },
-                    "aria-hidden": true
+                    "data-empty": row.swatch ? void 0 : "true",
+                    style: row.swatch ? { "--swatch": row.swatch } : void 0
                   }
-                ) : null,
+                ),
                 /* @__PURE__ */ jsxRuntime.jsx("span", { children: row.label })
               ] }),
               /* @__PURE__ */ jsxRuntime.jsx("b", { children: row.value })
@@ -5327,7 +5328,7 @@ function RankedRails({
             "aria-label": ariaLabel,
             "data-marks": true,
             children: [
-              /* @__PURE__ */ jsxRuntime.jsx(ChartTooltip, { top: 8 }),
+              /* @__PURE__ */ jsxRuntime.jsx(ChartTooltip, { top: "mark", offsetLeft: 268 }),
               shown.map((item) => /* @__PURE__ */ jsxRuntime.jsx(
                 Rail,
                 {

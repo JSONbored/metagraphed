@@ -610,6 +610,9 @@
     justify-self: center;
     background: var(--swatch, var(--ink-subtle));
   }
+  .mg-chart-tooltip-swatch[data-empty="true"] {
+    background: transparent;
+  }
   .mg-chart-tooltip-note {
     padding: 0 8px 8px;
     color: var(--ink-subtle);
@@ -1129,8 +1132,9 @@
     height: var(--mg-stack-h);
     min-height: 0;
     overflow: hidden;
+    box-sizing: content-box;
+    border-top: 4px solid var(--canvas);
     background: var(--canvas);
-    box-shadow: var(--canvas) 0 -4px 0 0;
   }
   .mg-stack-stack i {
     box-sizing: border-box;
@@ -1791,15 +1795,19 @@
   .mg-leader-delta[data-state="negative"] {
     color: var(--bad);
   }
+  /* 13px scaled ×13 = the reference's 168px glyph without a 7th font size
+     (the token contract allows six; a transform is not a size). */
   .mg-leader-watermark {
     position: absolute;
-    top: -24px;
-    right: -8px;
-    font-size: 168px;
+    top: 8px;
+    right: 8px;
+    font-size: 13px;
     font-weight: 600;
     line-height: 1;
     color: var(--ink);
     opacity: 0.1;
+    transform: scale(13);
+    transform-origin: top right;
     pointer-events: none;
     user-select: none;
   }

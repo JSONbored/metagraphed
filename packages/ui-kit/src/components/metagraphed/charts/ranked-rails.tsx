@@ -93,7 +93,7 @@ export function RankedRails({
         aria-label={ariaLabel}
         data-marks
       >
-        <ChartTooltip top={8} />
+        <ChartTooltip top="mark" offsetLeft={268} />
         {shown.map((item) => (
           <Rail
             key={item.key}
