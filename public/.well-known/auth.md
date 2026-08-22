@@ -4,8 +4,11 @@ The metagraphed API at `api.metagraph.sh` is **public by default and
 read-only**. No authentication is _required_ for any endpoint — every tool and
 route is callable anonymously.
 
-Authentication is **optional and additive**: it raises rate limits. It does not
-currently unlock additional endpoints, tools, or data.
+Authentication is **optional and additive**. It raises rate limits, and it
+unlocks depth. History windows longer than 90 days need a
+paid tier, and a small number of tools need an identity at all (see below). Every
+tool stays listed and callable at every tier — what a tier buys is how far back
+you may read, not what you may see.
 
 - Auth scheme: none required; `Authorization: Bearer` accepted
 - Registration: not required, but self-serve keys are available
@@ -27,8 +30,27 @@ authorization with no manual configuration:
   https://api.metagraph.sh/.well-known/oauth-authorization-server
 
 A Bearer token that cannot be validated gets `401` with a
-`WWW-Authenticate` challenge pointing at the metadata above. **An anonymous
-request is not challenged** — it is served.
+`WWW-Authenticate` challenge pointing at the metadata above.
+
+An anonymous request is **served, not challenged** — with one exception. Calling
+a tool that needs an identity returns `401` with the same challenge, so a
+spec-compliant client can offer to sign in and retry. Those tools are:
+
+- `delete_surface_credential`
+- `list_surface_credentials`
+- `store_surface_credential`
+
+They bind a stored secret to an account, which an anonymous request has none of.
+
+## What a tier buys
+
+- **Depth.** Windows up to 90 days are open to every caller.
+  Longer windows answer `payment_required`, naming the tier that clears them and
+  where to get one.
+- **Rate.** See below.
+- **Identity.** The credential store above.
+
+Nothing is hidden from an anonymous caller: a refused call says what it needs.
 
 ## Rate limits
 

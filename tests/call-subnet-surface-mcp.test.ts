@@ -1858,6 +1858,44 @@ describe("surface credential store (#9009)", () => {
     }
   }
 
+  /** The raw HTTP response, for the one assertion that is about the TRANSPORT
+   * rather than the tool result -- see the anonymous-refusal test below. */
+  async function statusAs(
+    accountId: number | null,
+    name: string,
+    args: Row,
+    env: Row,
+  ) {
+    const of = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    try {
+      return await handleMcpRequest(
+        new Request("https://metagraph.sh/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: { name, arguments: args },
+          }),
+        }),
+        env as unknown as Env,
+        {
+          ...deps,
+          executionCtx:
+            accountId === null ? undefined : { props: { accountId } },
+        },
+      );
+    } finally {
+      globalThis.fetch = of;
+    }
+  }
+
   const errorCode = (result: Row) =>
     ((result.structuredContent as Row).error as Row).code;
 
@@ -2007,17 +2045,36 @@ describe("surface credential store (#9009)", () => {
     assert.match(called.content[0].text, /store_surface_credential/);
   });
 
-  test("the store tools refuse an anonymous caller", async () => {
+  test("the store tools refuse an anonymous caller, with a challenge a client can follow", async () => {
+    // #11563: the refusal is now the HTTP status, not a tool error inside a
+    // 200. That is the whole point -- a 200 carrying `isError` produces no
+    // sign-in prompt in any MCP client, so the old shape refused the call and
+    // left the caller with no way to fix it.
     const env = credentialEnv();
     for (const [name, args] of [
       ["store_surface_credential", { surface_id: "x:api:6", credential: "x" }],
       ["list_surface_credentials", {}],
       ["delete_surface_credential", { surface_id: "x:api:6" }],
     ] as [string, Row][]) {
-      const result = await callAs(null, name, args, env);
-      assert.equal(result.isError, true, `${name} must refuse`);
-      assert.equal(errorCode(result), "auth_required");
+      const response = await statusAs(null, name, args, env);
+      assert.equal(response.status, 401, `${name} must refuse`);
+      const challenge = response.headers.get("www-authenticate");
+      assert.ok(challenge, `${name} must carry a challenge`);
+      assert.match(challenge!, /resource_metadata=/);
+      assert.match(
+        String(((await response.json()) as Row).error_description),
+        new RegExp(name),
+      );
     }
+  });
+
+  test("an authenticated caller is not challenged", async () => {
+    // The positive control: without it the assertions above would also pass if
+    // the gate refused EVERY caller.
+    const env = credentialEnv();
+    const response = await statusAs(7, "list_surface_credentials", {}, env);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("www-authenticate"), null);
   });
 
   test("the store tools refuse an unprovisioned deployment", async () => {

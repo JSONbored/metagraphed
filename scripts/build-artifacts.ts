@@ -1,3 +1,5 @@
+import { AUTH_REQUIRED_TOOL_NAMES } from "../src/mcp-server.ts";
+import { FREE_HISTORY_WINDOW_DAYS } from "../src/mcp-tier-gate.ts";
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { promisify } from "node:util";
@@ -2597,14 +2599,27 @@ await fs.writeFile(
 // vague: an integrator reading this would conclude there is no way to raise
 // their rate limit, and an OAuth-aware MCP client author would conclude there
 // is nothing to discover. Both are the opposite of the truth.
+// #11566: the two facts below are DERIVED, not restated. auth.md is the document
+// an agent reads to decide whether authenticating is worth it, and it spent a
+// release telling them it unlocked nothing -- written before the depth gate
+// (#11179 phase 3) and never revisited. A number or a tool name copied into
+// prose here drifts silently the next time the code moves.
+const AUTH_REQUIRED_TOOL_LIST = [...AUTH_REQUIRED_TOOL_NAMES]
+  .sort()
+  .map((name) => `- \`${name}\``)
+  .join("\n");
+
 const authMarkdown = `# Authentication
 
 The metagraphed API at \`${PRIMARY_DOMAIN}\` is **public by default and
 read-only**. No authentication is _required_ for any endpoint — every tool and
 route is callable anonymously.
 
-Authentication is **optional and additive**: it raises rate limits. It does not
-currently unlock additional endpoints, tools, or data.
+Authentication is **optional and additive**. It raises rate limits, and it
+unlocks depth. History windows longer than ${FREE_HISTORY_WINDOW_DAYS} days need a
+paid tier, and a small number of tools need an identity at all (see below). Every
+tool stays listed and callable at every tier — what a tier buys is how far back
+you may read, not what you may see.
 
 - Auth scheme: none required; \`Authorization: Bearer\` accepted
 - Registration: not required, but self-serve keys are available
@@ -2626,8 +2641,25 @@ authorization with no manual configuration:
   ${llmsApiBase}/.well-known/oauth-authorization-server
 
 A Bearer token that cannot be validated gets \`401\` with a
-\`WWW-Authenticate\` challenge pointing at the metadata above. **An anonymous
-request is not challenged** — it is served.
+\`WWW-Authenticate\` challenge pointing at the metadata above.
+
+An anonymous request is **served, not challenged** — with one exception. Calling
+a tool that needs an identity returns \`401\` with the same challenge, so a
+spec-compliant client can offer to sign in and retry. Those tools are:
+
+${AUTH_REQUIRED_TOOL_LIST}
+
+They bind a stored secret to an account, which an anonymous request has none of.
+
+## What a tier buys
+
+- **Depth.** Windows up to ${FREE_HISTORY_WINDOW_DAYS} days are open to every caller.
+  Longer windows answer \`payment_required\`, naming the tier that clears them and
+  where to get one.
+- **Rate.** See below.
+- **Identity.** The credential store above.
+
+Nothing is hidden from an anonymous caller: a refused call says what it needs.
 
 ## Rate limits
 
