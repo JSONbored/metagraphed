@@ -6088,9 +6088,19 @@ export interface components {
             };
             generated_at: string;
             mcp: {
+                /**
+                 * Format: uri
+                 * @description The core listing profile: 23 tools instead of 243. Filters tools/list only -- a core session can still call every tool.
+                 */
+                core_endpoint?: string;
                 /** Format: uri */
                 endpoint: string;
                 install: string;
+                /**
+                 * Format: uri
+                 * @description The endpoint a first-time caller should connect to, which `install` uses.
+                 */
+                recommended_endpoint?: string;
                 /** Format: uri */
                 server_card?: string;
                 tools: {
@@ -24657,8 +24667,10 @@ export interface operations {
                      *         },
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "mcp": {
+                     *           "core_endpoint": "https://api.metagraph.sh/example",
                      *           "endpoint": "https://api.metagraph.sh/example",
                      *           "install": "example",
+                     *           "recommended_endpoint": "https://api.metagraph.sh/example",
                      *           "server_card": "https://api.metagraph.sh/example",
                      *           "tools": [
                      *             {
