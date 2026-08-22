@@ -130,7 +130,7 @@ export function SubnetRevenuePanel({ netuid }: { netuid: number }) {
               return (
                 <li
                   key={id}
-                  className="flex flex-wrap items-center gap-2 rounded-xl border border-border/80 px-3 py-2"
+                  className="flex flex-wrap items-center gap-2 rounded border border-border/80 px-3 py-2"
                 >
                   <span className="font-mono mg-type-caption text-ink-strong">{id}</span>
                   <RevenueProvenanceChip provenance={source.provenance} />

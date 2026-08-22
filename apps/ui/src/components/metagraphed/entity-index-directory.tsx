@@ -46,7 +46,7 @@ export function EntityIndexDirectory({
 }) {
   if (count === 0) return null;
   return (
-    <details className="mt-8 rounded-xl border border-border bg-card p-4">
+    <details className="mt-8 rounded border border-border bg-card p-4">
       <summary className="cursor-pointer mg-type-label text-ink-muted hover:text-ink-strong">
         All {count} {label}
       </summary>

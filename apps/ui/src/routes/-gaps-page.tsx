@@ -379,7 +379,7 @@ function MissingKindsAtAGlance() {
       title="Missing kinds across the registry"
       description="Click a row to filter the open-gaps section by that resource kind and jump straight to it."
     >
-      <ul className="rounded-xl border border-border bg-card divide-y divide-border">
+      <ul className="rounded border border-border bg-card divide-y divide-border">
         {counts.map(([k, n]) => {
           const isActive = activeMissing.has(k);
           const pct = Math.max(2, Math.round((n / max) * 100));
@@ -806,7 +806,7 @@ function GapRow({
         hint={hintText}
         trailing={trailing}
         className={classNames(
-          "md:rounded-xl md:border md:bg-card md:p-4 md:transition-colors",
+          "md:rounded md:border md:bg-card md:p-4 md:transition-colors",
           matchedKind
             ? "rounded ring-1 ring-inset ring-accent/30 md:border-accent/50"
             : "md:border-border md:hover:border-accent/40",

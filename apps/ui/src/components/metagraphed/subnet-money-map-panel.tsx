@@ -41,7 +41,7 @@ import { formatTao } from "@/lib/metagraphed/format";
 function WalletRow({ row }: { row: WalletRowModel }) {
   const note = evidenceNote(row);
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-xl border border-border/80 px-3 py-2">
+    <li className="flex flex-wrap items-center gap-2 rounded border border-border/80 px-3 py-2">
       {/* Chain-derived vs declared, distinguishable without reading the label:
           the chain read is an accent chip, a human attribution is muted. */}
       <Chip tone={row.chainDerived ? "accent" : "muted"}>{row.role}</Chip>
@@ -129,7 +129,7 @@ export function SubnetMoneyMapPanel({ netuid }: { netuid: number }) {
         <div className="mg-type-caption text-ink-muted">Where the owner cut went</div>
         <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-5">
           {DISPOSITION_BUCKETS.map((bucket) => (
-            <div key={bucket} className="rounded-xl border border-border/80 px-3 py-2">
+            <div key={bucket} className="rounded border border-border/80 px-3 py-2">
               <div className="mg-type-caption text-ink-muted">
                 <Chip tone={bucketTone()}>{bucketLabel(bucket)}</Chip>
               </div>

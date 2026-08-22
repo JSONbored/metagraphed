@@ -71,7 +71,7 @@ export function QuickActionsRow() {
             <Link
               key={a.to}
               to={a.to}
-              className="mg-quick-tile group relative flex flex-col gap-3 rounded-xl border border-border bg-card p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              className="mg-quick-tile group relative flex flex-col gap-3 rounded border border-border bg-card p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
             >
               <div className="flex items-start justify-between">
                 <span

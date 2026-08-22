@@ -3449,7 +3449,7 @@ function PageSection({
       "data-section-anchor": id ? "" : void 0,
       className: classNames(
         "mg-section mg-route-section",
-        tone === "muted" && "rounded-xl bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
+        tone === "muted" && "rounded bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
         className
       ),
       children: [
@@ -3842,7 +3842,7 @@ function TableState({
     {
       role: variant === "error" ? "alert" : void 0,
       className: classNames(
-        "rounded-xl border bg-card px-8 py-16 text-center",
+        "rounded border bg-card px-8 py-16 text-center",
         tone,
         className
       ),
@@ -4148,7 +4148,7 @@ function fmtYield(v) {
 }
 
 // src/components/metagraphed/yield-percentile-layout.ts
-var YIELD_PERCENTILE_STRIP_CONTAINER_CLASS = "@container rounded-xl border border-border bg-card p-4";
+var YIELD_PERCENTILE_STRIP_CONTAINER_CLASS = "@container rounded border border-border bg-card p-4";
 var YIELD_PERCENTILE_STRIP_GRID_CLASS = "grid grid-cols-2 gap-3 @min-[28rem]:grid-cols-4";
 var YIELD_PERCENTILE_LABEL_CLASS = "mg-type-data-sm uppercase tracking-[0.18em] text-ink-muted";
 var YIELD_PERCENTILE_VALUE_CLASS = "mt-1 min-w-0 truncate font-display text-sm font-semibold tabular-nums text-ink-strong leading-none @min-[20rem]:text-base @min-[28rem]:text-lg";
@@ -6761,7 +6761,7 @@ function FilterSheet({
               className: classNames(
                 "relative z-[var(--mg-z-sticky)] w-full max-h-[85vh] overflow-y-auto",
                 "rounded-t-xl border-t border-border bg-card p-4",
-                "sm:max-w-md sm:rounded-xl sm:border sm:mx-4",
+                "sm:max-w-md sm:rounded sm:border sm:mx-4",
                 "mg-scroll"
               ),
               children: [
@@ -7484,7 +7484,7 @@ function PanelError({
     {
       role: "alert",
       className: classNames(
-        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded-xl",
+        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded",
         "border border-border/70 bg-card p-6 text-center",
         HEIGHTS[height],
         className

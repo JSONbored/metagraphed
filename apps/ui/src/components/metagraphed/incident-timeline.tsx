@@ -38,7 +38,7 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
           description="This subnet has a clean health history in the registry."
         />
       ) : (
-        <ol className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+        <ol className="rounded border border-border bg-card divide-y divide-border overflow-hidden">
           {incidents.slice(0, 12).map((inc, i) => {
             const open = !inc.ended_at;
             const duration = incidentDurationLabel(inc.started_at, inc.ended_at);

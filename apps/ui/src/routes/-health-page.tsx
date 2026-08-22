@@ -76,7 +76,7 @@ export function HealthPage() {
   const activeSectionId =
     VIEW_SECTION_ID[search.view] ?? (search.status !== "all" ? "incidents" : null);
   const sectionRing = (id: string) =>
-    activeSectionId === id ? "ring-1 ring-accent/40 rounded-xl" : undefined;
+    activeSectionId === id ? "ring-1 ring-accent/40 rounded" : undefined;
 
   useEffect(() => {
     if (!activeSectionId) return;
@@ -734,10 +734,7 @@ function Incidents({ interval }: { interval: number | false }) {
               const singleton = g.items.length === 1;
               if (singleton) return <IncidentCard key={g.host} incident={g.items[0]!} />;
               return (
-                <li
-                  key={g.host}
-                  className="rounded-xl border border-border bg-card overflow-hidden"
-                >
+                <li key={g.host} className="rounded border border-border bg-card overflow-hidden">
                   <button
                     type="button"
                     onClick={() => setOpenGroups((s) => ({ ...s, [g.host]: !open }))}
@@ -776,7 +773,7 @@ function Incidents({ interval }: { interval: number | false }) {
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}
-              className="block w-full rounded-xl border border-border bg-card px-3 py-2.5 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors min-h-9"
+              className="block w-full rounded border border-border bg-card px-3 py-2.5 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors min-h-9"
             >
               {showAll ? "Show fewer" : `Show all ${groups.length} grouped incidents`}
             </button>

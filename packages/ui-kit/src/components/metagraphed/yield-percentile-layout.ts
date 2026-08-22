@@ -13,7 +13,7 @@ export const YIELD_PERCENTILE_FOUR_COL_MIN_WIDTH = "28rem";
 
 /** Outer card — enables `@min-[28rem]:` container queries on descendants. */
 export const YIELD_PERCENTILE_STRIP_CONTAINER_CLASS =
-  "@container rounded-xl border border-border bg-card p-4";
+  "@container rounded border border-border bg-card p-4";
 
 /**
  * Inner stat grid. Below {@link YIELD_PERCENTILE_FOUR_COL_MIN_WIDTH} the strip

@@ -136,40 +136,69 @@ import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 // plus a bounded recent-activity preview; everything else is a full,
 // unbounded view one tap away. Mirrors -subnets-netuid-page.tsx's TABS/
 // SECTION_TO_TAB pair so cross-tab hash deep links keep working.
+/**
+ * Five sections, which is what #11523 asks for: Summary, Portfolio, Activity,
+ * Validator role, Advanced.
+ *
+ * There were seven, and three of them — Transfers, Activity, Extrinsics — were
+ * the same question asked three ways. A reader wanting "what has this account
+ * been doing" had to know in advance whether the answer was filed under a
+ * transfer, an event or an extrinsic, which is a distinction from the indexer's
+ * vocabulary rather than from theirs. History folded into Portfolio for the
+ * same reason: holdings over time IS the portfolio, seen along an axis.
+ *
+ * Validator role is new. The registration footprint and the child/parent
+ * delegation graph were living under Positions, where they read as another
+ * kind of holding; they are the answer to "is this account validating, and for
+ * whom", which is a different question from "what does it own".
+ */
 const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "positions", label: "Positions" },
-  // #8370: holdings over time — the story of the address, not just its
-  // snapshot. Named "holdings" internally because the "history" SECTION id
-  // below is already taken by the Activity tab's daily-activity anchor.
-  { id: "holdings", label: "History" },
-  { id: "transfers", label: "Transfers" },
+  { id: "summary", label: "Summary" },
+  { id: "portfolio", label: "Portfolio" },
   { id: "activity", label: "Activity" },
-  { id: "extrinsics", label: "Extrinsics" },
-  { id: "api", label: "API" },
+  { id: "validator", label: "Validator role" },
+  { id: "advanced", label: "Advanced" },
 ] as const;
 
+/**
+ * Old tab ids, kept working.
+ *
+ * These are in the wild: every section anchor on this page has been writing
+ * `?tab=` into shareable URLs since #8358, and the issue's constraint is
+ * explicit that existing routes keep working. An unknown id falls through to
+ * the default rather than rendering an empty page.
+ */
+const TAB_ALIASES: Record<string, (typeof TABS)[number]["id"]> = {
+  overview: "summary",
+  positions: "portfolio",
+  holdings: "portfolio",
+  transfers: "activity",
+  extrinsics: "activity",
+  api: "advanced",
+};
+
 const SECTION_TO_TAB: Record<string, string> = {
-  identity: "overview",
-  entities: "overview",
-  "holdings-history": "holdings",
-  portfolio: "positions",
-  "stake-flow": "positions",
-  "stake-moves": "positions",
-  footprint: "positions",
-  delegation: "positions",
+  identity: "summary",
+  entities: "summary",
+  "holdings-history": "portfolio",
+  "root-claim": "portfolio",
+  portfolio: "portfolio",
+  "stake-flow": "portfolio",
+  "stake-moves": "portfolio",
+  footprint: "validator",
+  delegation: "validator",
+  registrations: "validator",
+  deregistrations: "validator",
+  "weight-setting": "validator",
+  "endpoint-announcements": "validator",
   history: "activity",
   teardown: "activity",
-  registrations: "activity",
-  deregistrations: "activity",
-  "weight-setting": "activity",
-  "endpoint-announcements": "activity",
   kinds: "activity",
   events: "activity",
-  extrinsics: "extrinsics",
-  transfers: "transfers",
-  counterparties: "transfers",
-  call: "api",
+  extrinsics: "activity",
+  transfers: "activity",
+  counterparties: "activity",
+  call: "advanced",
 };
 
 export function AccountDetailPage() {
@@ -281,14 +310,27 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const dualRole = isDualRoleAccount(account, balance?.balance_tao);
   const [roleView, setRoleView] = useState<AccountRole>(detectedRole);
 
-  const tab = useActiveTab("overview");
+  // Aliased, so a shared `?tab=positions` link from before the regroup still
+  // lands on the section that absorbed it rather than on an empty page.
+  const rawTab = useActiveTab("summary");
+  // Alias, then VALIDATE. `?? rawTab` alone passed an unrecognised id straight
+  // through, so `?tab=nonsense` matched no branch and rendered a tab strip with
+  // nothing selected above an empty page — the exact failure the alias map
+  // exists to prevent, reintroduced one line below it.
+  const aliased = TAB_ALIASES[rawTab] ?? rawTab;
+  const tab = TABS.some((t) => t.id === aliased) ? aliased : TABS[0].id;
   useHashScroll(tab, SECTION_TO_TAB);
 
   const tabsWithCounts = TABS.map((t) => {
-    if (t.id === "positions") return { ...t, count: portfolio?.position_count || undefined };
-    if (t.id === "transfers") return { ...t, count: transfers.length || undefined };
-    if (t.id === "activity") return { ...t, count: account.event_count || undefined };
-    if (t.id === "extrinsics") return { ...t, count: signedExtrinsics.length || undefined };
+    if (t.id === "portfolio") return { ...t, count: portfolio?.position_count || undefined };
+    // Activity absorbed three tabs, so its count is the sum of what they each
+    // counted — a badge that reported only events would understate a section
+    // that also holds transfers and extrinsics.
+    if (t.id === "activity") {
+      const total = (account.event_count ?? 0) + transfers.length + signedExtrinsics.length;
+      return { ...t, count: total || undefined };
+    }
+    if (t.id === "validator") return { ...t, count: account.registrations?.length || undefined };
     return { ...t };
   });
 
@@ -368,7 +410,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         </DataPageModule>
 
         <DataPageModule kind="profile">
-          <ProfileTabs tabs={tabsWithCounts} defaultTab="overview" />
+          <ProfileTabs tabs={tabsWithCounts} defaultTab="summary" activeTab={tab} />
 
           {!hasActivity ? (
             <EmptyState
@@ -378,7 +420,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             />
           ) : null}
 
-          {tab === "overview" && (
+          {tab === "summary" && (
             <>
               {identity?.has_identity ? <AccountIdentitySection ss58={ss58} /> : null}
               <AccountRecentActivityPreview events={account.recent_events} />
@@ -386,31 +428,29 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             </>
           )}
 
-          {tab === "positions" && (
+          {tab === "portfolio" && (
             <>
-              {/* #8252: coldkey leads with what it holds; hotkey leads with its
-              registrations. Both render the same section set within this tab. */}
-              {detectedRole === "coldkey" ? (
-                <>
-                  <AccountPortfolioSection ss58={ss58} />
-                  <AccountStakeFlowSection ss58={ss58} />
-                  <AccountStakeMovesSection ss58={ss58} />
-                  <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
-                </>
-              ) : (
-                <>
-                  <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
-                  <AccountStakeFlowSection ss58={ss58} />
-                  <AccountPortfolioSection ss58={ss58} />
-                  <AccountStakeMovesSection ss58={ss58} />
-                </>
-              )}
+              <AccountPortfolioSection ss58={ss58} />
+              <AccountStakeFlowSection ss58={ss58} />
+              <AccountStakeMovesSection ss58={ss58} />
+            </>
+          )}
+
+          {/* #8252 ordered these by role — a coldkey led with what it holds, a
+              hotkey with its registrations — because both lived in one tab and
+              only the order could say which mattered. They are separate
+              sections now, so each leads its own, and the role decides which
+              tab is worth opening rather than which half of one to read
+              first. */}
+          {tab === "validator" && (
+            <>
+              <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
               {/* #6723: live child/parent-hotkey stake-weight delegation graph. */}
               <AccountDelegationSection ss58={ss58} />
             </>
           )}
 
-          {tab === "holdings" && (
+          {tab === "portfolio" && (
             <SectionAnchor
               id="holdings-history"
               title="Holdings over time"
@@ -422,7 +462,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             </SectionAnchor>
           )}
 
-          {tab === "holdings" && (
+          {tab === "portfolio" && (
             <SectionAnchor
               id="root-claim"
               title="Root claim"
@@ -433,7 +473,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             </SectionAnchor>
           )}
 
-          {tab === "transfers" && (
+          {tab === "activity" && (
             <>
               <AccountTransfersSection
                 ss58={ss58}
@@ -485,7 +525,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                     {account.event_kinds.map((entry) => (
                       <div
                         key={entry.kind}
-                        className="rounded-2xl border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
+                        className="rounded border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
                       >
                         <div className="mg-type-caption text-ink-muted">event kind</div>
                         <div className="mt-2 flex items-end justify-between gap-3">
@@ -505,7 +545,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             </>
           )}
 
-          {tab === "extrinsics" && (
+          {tab === "activity" && (
             <AccountExtrinsicsSection
               ss58={ss58}
               rows={signedExtrinsics}
@@ -516,7 +556,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             />
           )}
 
-          {tab === "api" && (
+          {tab === "advanced" && (
             <SectionAnchor
               id="call"
               title="Call this endpoint"
@@ -707,7 +747,7 @@ function AccountKpiBand({
               value={total != null ? fmtTaoCompact(total) : freeValue}
               hint="free + staked · live RPC"
               tone={balanceError ? "down" : "accent"}
-              className="rounded-2xl mg-glass-opaque p-4 mg-card-glow-accent"
+              className="rounded mg-glass-opaque p-4 mg-card-glow-accent"
             />
             <StatTile
               icon={Scale}
@@ -775,7 +815,7 @@ function AccountKpiBand({
               value={fmtTaoCompact(validator?.total_stake_tao)}
               hint="validator detail · cross-subnet"
               tone="accent"
-              className="rounded-2xl mg-glass-opaque p-4 mg-card-glow-accent"
+              className="rounded mg-glass-opaque p-4 mg-card-glow-accent"
             />
             <StatTile
               icon={Users}
@@ -847,7 +887,7 @@ function AccountRecentActivityPreview({ events }: { events: AccountEvent[] }) {
         {rows.map((ev, i) => (
           <div
             key={`${ev.block_number}-${ev.event_index}-${i}`}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
+            className="flex items-center justify-between gap-3 rounded border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
           >
             <div className="min-w-0 flex-1">
               <div
@@ -1235,7 +1275,7 @@ function fmtAlphaPrice(v: number | null | undefined): string {
   return `${v < 1 ? v.toFixed(4) : v.toFixed(3)} τ`;
 }
 
-const KPI_TILE = "rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow";
+const KPI_TILE = "rounded border-border/80 mg-glass-opaque p-4 mg-card-glow";
 
 // Compact TAO formatter for the portfolio KPI tiles — a long raw value like
 // "338,030.153 τ" wraps + overflows a narrow StatTile, so summarise it (338.0k τ).
@@ -1587,7 +1627,7 @@ function deriveDelegationStatus(
  */
 function DelegationEdgeList({ ss58, rows }: { ss58: string; rows: DelegationRow[] }) {
   return (
-    <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border/80 mg-glass-opaque">
+    <div className="divide-y divide-border overflow-hidden rounded border border-border/80 mg-glass-opaque">
       {rows.map((r, i) => {
         const pct =
           r.proportion_fraction != null && Number.isFinite(r.proportion_fraction)
@@ -2052,7 +2092,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
       </div>
 
       {bars.length > 0 ? (
-        <div className="mb-4 rounded-2xl border border-border/80 mg-glass-opaque px-4 py-4 mg-card-glow">
+        <div className="mb-4 rounded border border-border/80 mg-glass-opaque px-4 py-4 mg-card-glow">
           <div className="mb-3 mg-type-caption text-ink-muted">gross flow by subnet (τ)</div>
           <BarMini data={bars} showValue={false} />
         </div>
@@ -2114,7 +2154,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
           </table>
         </DataPanel>
       ) : (
-        <p className="rounded-2xl border border-border/80 mg-glass-opaque px-4 py-4 mg-type-data text-ink-muted">
+        <p className="rounded border border-border/80 mg-glass-opaque px-4 py-4 mg-type-data text-ink-muted">
           No stake or unstake flow recorded for this account over the {f?.window ?? window} window.
         </p>
       )}
@@ -2335,7 +2375,7 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
       tone="accent"
       info="GET /api/v1/accounts/{ss58}/identity — the coldkey's own on-chain identity, distinct from subnet identity and the validator directory's coldkey-identity join."
     >
-      <div className="rounded-2xl border border-border/80 mg-glass-opaque p-4 mg-card-glow">
+      <div className="rounded border border-border/80 mg-glass-opaque p-4 mg-card-glow">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="font-display text-lg font-semibold text-ink-strong">
             {identity.name ?? "Unnamed identity"}
@@ -2970,7 +3010,7 @@ function AccountFootprintSection({
       right={<SectionBadge>{formatNumber(rows.length)} subnets</SectionBadge>}
     >
       {staked.length > 0 ? (
-        <div className="mb-4 rounded-2xl border border-border/80 mg-glass-opaque px-4 py-4 mg-card-glow">
+        <div className="mb-4 rounded border border-border/80 mg-glass-opaque px-4 py-4 mg-card-glow">
           <div className="mb-3 mg-type-caption text-ink-muted">stake by subnet (τ)</div>
           <BarMini data={staked} showValue={false} />
         </div>
@@ -3354,7 +3394,7 @@ function DataPanel({ children, className }: { children: ReactNode; className?: s
   return (
     <div
       className={classNames(
-        "overflow-x-auto rounded-2xl border border-border/80 mg-glass-opaque mg-card-glow",
+        "overflow-x-auto rounded border border-border/80 mg-glass-opaque mg-card-glow",
         className,
       )}
     >

@@ -43,7 +43,7 @@ export function SponsoredValidatorCallout({
   );
 
   return (
-    <div className="rounded-xl border border-ink-muted/30 bg-surface/40 p-4">
+    <div className="rounded border border-ink-muted/30 bg-surface/40 p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <SponsoredBadge />
         <span className="mg-type-data-sm text-ink-muted">

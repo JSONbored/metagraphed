@@ -307,8 +307,8 @@ const RADIUS_TOKENS = [
   ["rounded-full", "pills, badges, avatars"],
   ["rounded", "inputs, buttons, chips"],
   ["rounded-md", "cards, popovers"],
-  ["rounded-xl", "drawers, modals, sheets"],
-  ["rounded-2xl", "hero tiles, mg-card-glow panels"],
+  ["rounded", "drawers, modals, sheets"],
+  ["rounded", "hero tiles, mg-card-glow panels"],
 ] as const;
 
 function TokensSection({

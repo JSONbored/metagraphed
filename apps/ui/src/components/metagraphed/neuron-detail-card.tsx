@@ -43,7 +43,7 @@ export function NeuronDetailCard({
   }
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-surface/30 p-4">
+    <div className="space-y-4 rounded border border-border bg-surface/30 p-4">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex items-baseline gap-2">
           <span className="mg-type-caption text-ink-muted">Neuron</span>

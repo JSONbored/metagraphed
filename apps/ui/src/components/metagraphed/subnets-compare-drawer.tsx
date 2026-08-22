@@ -25,7 +25,7 @@ export function SubnetsCompareDrawer() {
       <div className="max-w-shell-max mx-auto px-4 md:px-10 pb-3">
         <div
           className={classNames(
-            "pointer-events-auto rounded-xl border border-border mg-glass shadow-[var(--mg-shadow-drawer)]",
+            "pointer-events-auto rounded border border-border mg-glass shadow-[var(--mg-shadow-drawer)]",
             "mg-fade-in",
           )}
         >

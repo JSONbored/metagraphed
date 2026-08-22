@@ -86,7 +86,7 @@ export function FilterSheet({
             className={classNames(
               "relative z-[var(--mg-z-sticky)] w-full max-h-[85vh] overflow-y-auto",
               "rounded-t-xl border-t border-border bg-card p-4",
-              "sm:max-w-md sm:rounded-xl sm:border sm:mx-4",
+              "sm:max-w-md sm:rounded sm:border sm:mx-4",
               "mg-scroll",
             )}
           >

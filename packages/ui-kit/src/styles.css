@@ -204,6 +204,17 @@
      for legacy components during the route-by-route migration. */
   --radius: 0.25rem;
 
+  /* Surface layers, measured from the reference's dark palette: the page sits
+     on #161616 and a raised object on #242424, with #303030 under the pointer.
+     Named rather than inlined because "how far above the page does a card
+     sit" is one decision the whole site should share. */
+  --mg-surface-raised: color-mix(in oklab, var(--ink-strong) 6%, var(--paper));
+  --mg-surface-raised-hover: color-mix(
+    in oklab,
+    var(--ink-strong) 11%,
+    var(--paper)
+  );
+
   /* `--brand-green` is the exact fill from the shipped Metagraphed M mark
      (wordmark.tsx / favicon.svg). Keep it literal: it is the visual anchor
      for filled actions, active states, focus, and key data highlights. */
@@ -5007,26 +5018,50 @@ html[data-density="compact"] .bg-card > table td {
   height: 100%;
   min-height: 9.5rem;
   gap: var(--mg-space-sm);
+  overflow: hidden;
   padding: var(--mg-space-md);
   border: 1px solid var(--border);
   /* Square. The reference's cards are the one element on its page carrying no
      radius, and at three across the shared vertical edges read as a grid
      rather than as a row of separate lozenges. */
   border-radius: 0;
+  /* A REAL raised layer, not a 3% wash. Measured: the reference's page sits on
+     #161616 and its cards on #242424 — fourteen levels up, which is what makes
+     them read as objects on a surface rather than as slightly-tinted regions
+     of it. Ours were ~#1d1d1d and that gap is most of what read as cheap. */
   background:
     linear-gradient(
+      180deg,
       color-mix(in oklab, var(--ink-strong) 4%, transparent),
-      transparent 60%
+      transparent
     ),
-    color-mix(in oklab, var(--ink-strong) 3%, transparent);
+    var(--mg-surface-raised);
+  /* Three layers, and the first is the one that matters: a half-pixel light
+     ring that separates the card from the page far more cleanly than a border
+     alone, with two soft shadows under it for depth. This was absent
+     entirely. */
+  box-shadow:
+    0 0 0 0.5px color-mix(in oklab, var(--ink-strong) 12%, transparent),
+    0 1px 2px -1px rgb(0 0 0 / 0.32),
+    0 2px 4px rgb(0 0 0 / 0.24);
+  line-height: 1.15;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
 }
 .mg-entity-card-head {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: var(--mg-space-xs);
+  /* The card sets a tight 1.15 so its three zones stack without slack; the
+     head takes its own breathing room back, or the name reads as jammed
+     against its mark. */
+  gap: var(--mg-space-sm);
   min-width: 0;
+  line-height: 1.4;
 }
 .mg-entity-card-media {
   display: flex;
@@ -5110,9 +5145,40 @@ html[data-density="compact"] .bg-card > table td {
 .mg-entity-card-value[data-direction="down"] {
   color: var(--health-down);
 }
-a:hover > .mg-entity-card,
-a:focus-visible > .mg-entity-card {
-  border-color: color-mix(in oklab, var(--ink-strong) 24%, transparent);
+@media (hover: hover) {
+  a:hover > .mg-entity-card,
+  a:focus-visible > .mg-entity-card {
+    border-color: color-mix(in oklab, var(--ink-strong) 24%, transparent);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--ink-strong) 5%, transparent),
+        transparent
+      ),
+      var(--mg-surface-raised-hover);
+    box-shadow:
+      0 0 0 0.5px color-mix(in oklab, var(--ink-strong) 18%, transparent),
+      0 6px 16px rgb(0 0 0 / 0.34),
+      0 2px 6px rgb(0 0 0 / 0.26);
+    /* One pixel. Enough to read as a lift, small enough that a grid of them
+       does not jitter as the pointer crosses. */
+    transform: translateY(-1px);
+  }
+  /* The mark comes forward with the card rather than staying a flat wash —
+     the reference brightens its watermark on the same transition. */
+  a:hover > .mg-entity-card .mg-entity-card-watermark,
+  a:focus-visible > .mg-entity-card .mg-entity-card-watermark {
+    color: color-mix(in oklab, var(--ink-strong) 14%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-entity-card {
+    transition: none;
+  }
+  a:hover > .mg-entity-card,
+  a:focus-visible > .mg-entity-card {
+    transform: none;
+  }
 }
 
 /* Bare segmented toggle — the reference's filter control, measured: no

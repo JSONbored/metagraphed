@@ -243,7 +243,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
               return (
                 <div
                   key={pos.netuid}
-                  className="rounded-2xl border border-border/80 mg-glass px-4 py-3 mg-card-glow"
+                  className="rounded border border-border/80 mg-glass px-4 py-3 mg-card-glow"
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <Link

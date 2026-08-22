@@ -325,7 +325,7 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
             }}
             onMouseLeave={scheduleClose}
           >
-            <div className="w-[min(960px,calc(100vw-3rem))] rounded-xl mg-mega-surface mg-fade-in overflow-hidden">
+            <div className="w-[min(960px,calc(100vw-3rem))] rounded mg-mega-surface mg-fade-in overflow-hidden">
               <div className="px-6 pt-4 pb-2 flex items-center gap-2 border-b border-border/70">
                 <activePanel.icon className="size-3.5 text-accent" />
                 <span className="font-display text-sm font-semibold text-ink-strong">

@@ -107,7 +107,7 @@ function ChainThroughputCard() {
       : undefined;
 
   return (
-    <div className="mg-card-glow relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="mg-card-glow relative flex flex-col overflow-hidden rounded border border-border bg-card">
       <div className="flex items-start justify-between gap-3 px-4 pt-4">
         <div className="min-w-0">
           <div className="mg-type-caption text-ink-muted">Blocks today</div>
@@ -178,7 +178,7 @@ function LiveSubnetsCard() {
   const featured = useMemo(() => pickFeatured(subnets, 6), [subnets]);
 
   return (
-    <div className="mg-card-glow flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="mg-card-glow flex flex-col overflow-hidden rounded border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="mg-type-caption text-ink-muted">Live subnets · 7d</div>
         <Link

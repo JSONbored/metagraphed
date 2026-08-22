@@ -88,7 +88,7 @@ export function TableState({
     <div
       role={variant === "error" ? "alert" : undefined}
       className={classNames(
-        "rounded-xl border bg-card px-8 py-16 text-center",
+        "rounded border bg-card px-8 py-16 text-center",
         tone,
         className,
       )}

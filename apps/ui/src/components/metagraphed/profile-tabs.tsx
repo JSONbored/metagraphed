@@ -21,18 +21,28 @@ export interface ProfileTabSpec {
 export function ProfileTabs({
   tabs,
   defaultTab,
+  activeTab,
   trailing,
   presentation = "sticky",
 }: {
   tabs: ProfileTabSpec[];
   defaultTab?: string;
+  /**
+   * The resolved tab, when the page maps `?tab=` through aliases of its own.
+   *
+   * Without this the strip derives `active` straight from the search param, so
+   * a page that accepts retired ids renders the right CONTENT while marking no
+   * tab at all — the reader sees the section they asked for and a strip that
+   * claims they are nowhere.
+   */
+  activeTab?: string;
   trailing?: React.ReactNode;
   /** `canvas` keeps the strip inside a ruled data document without side controls. */
   presentation?: "sticky" | "canvas";
 }) {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as Record<string, unknown>;
-  const active = (search.tab as string) || defaultTab || tabs[0]?.id;
+  const active = activeTab || (search.tab as string) || defaultTab || tabs[0]?.id;
   const select = (id: string) =>
     navigate({
       to: ".",

@@ -70,6 +70,8 @@
 @theme inline { --radius-sm: calc(var(--radius) - 4px); --radius-md: calc(var(--radius) - 2px); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) + 4px); --color-background: var(--background); --color-foreground: var(--foreground); --color-paper: var(--paper); --color-surface: var(--surface); --color-surface-2: var(--surface-2); --color-ink: var(--ink); --color-ink-strong: var(--ink-strong); --color-ink-muted: var(--ink-muted); --color-ink-subtle: var(--ink-subtle); --color-ink-subtle-text: var(--ink-subtle-text); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-primary-soft: var(--primary-soft); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-accent-text: var(--accent-text); --color-destructive: var(--destructive); --color-destructive-foreground: var(--destructive-foreground); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-health-ok: var(--health-ok); --color-health-warn: var(--health-warn); --color-health-warn-text: var(--health-warn-text); --color-health-bad: var(--health-bad); --color-health-down: var(--health-down); --color-health-unknown: var(--health-unknown); --color-curation-native: var(--curation-native); --color-curation-verified: var(--curation-verified); --color-curation-pilot: var(--curation-pilot); --color-curation-candidate: var(--curation-candidate); --color-curation-seeded: var(--curation-seeded); --color-curation-machine: var(--curation-machine); --color-curation-adapter: var(--curation-adapter); --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5); --color-chart-6: var(--chart-6); --color-chart-7: var(--chart-7); --color-chart-8: var(--chart-8); --color-chart-9: var(--chart-9); --color-chart-10: var(--chart-10); --color-chart-11: var(--chart-11); --font-display: "IBM Plex Mono", "Space Grotesk", ui-monospace, monospace; --font-sans: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace; --font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace; --font-prose: "DM Sans", ui-sans-serif, system-ui, sans-serif; --spacing-section: 3rem; --color-accent-surface: color-mix(in oklab, var(--accent) 6%, transparent); --spacing-nav: 3.25rem; --spacing-section-gap: 4rem; --spacing-shell-max: 1400px; }
 :root {
   --radius: 0.25rem;
+  --mg-surface-raised: color-mix(in oklab, var(--ink-strong) 6%, var(--paper));
+  --mg-surface-raised-hover: color-mix( in oklab, var(--ink-strong) 11%, var(--paper) );
   --brand-green: #30ffc0;
   --paper: #f8f8f5;
   --surface: #ffffff;
@@ -4097,18 +4099,35 @@ html[data-density=compact] .bg-card > table td {
   height: 100%;
   min-height: 9.5rem;
   gap: var(--mg-space-sm);
+  overflow: hidden;
   padding: var(--mg-space-md);
   border: 1px solid var(--border);
   border-radius: 0;
-  background: linear-gradient(color-mix(in oklab, var(--ink-strong) 4%, transparent), transparent 60%), color-mix(in oklab, var(--ink-strong) 3%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ink-strong) 4%, transparent),
+      transparent),
+    var(--mg-surface-raised);
+  box-shadow:
+    0 0 0 0.5px color-mix(in oklab, var(--ink-strong) 12%, transparent),
+    0 1px 2px -1px rgb(0 0 0 / 0.32),
+    0 2px 4px rgb(0 0 0 / 0.24);
+  line-height: 1.15;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
 }
 .mg-entity-card-head {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: var(--mg-space-xs);
+  gap: var(--mg-space-sm);
   min-width: 0;
+  line-height: 1.4;
 }
 .mg-entity-card-media {
   display: flex;
@@ -4187,9 +4206,35 @@ html[data-density=compact] .bg-card > table td {
 .mg-entity-card-value[data-direction=down] {
   color: var(--health-down);
 }
-a:hover > .mg-entity-card,
-a:focus-visible > .mg-entity-card {
-  border-color: color-mix(in oklab, var(--ink-strong) 24%, transparent);
+@media (hover: hover) {
+  a:hover > .mg-entity-card,
+  a:focus-visible > .mg-entity-card {
+    border-color: color-mix(in oklab, var(--ink-strong) 24%, transparent);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--ink-strong) 5%, transparent),
+        transparent),
+      var(--mg-surface-raised-hover);
+    box-shadow:
+      0 0 0 0.5px color-mix(in oklab, var(--ink-strong) 18%, transparent),
+      0 6px 16px rgb(0 0 0 / 0.34),
+      0 2px 6px rgb(0 0 0 / 0.26);
+    transform: translateY(-1px);
+  }
+  a:hover > .mg-entity-card .mg-entity-card-watermark,
+  a:focus-visible > .mg-entity-card .mg-entity-card-watermark {
+    color: color-mix(in oklab, var(--ink-strong) 14%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-entity-card {
+    transition: none;
+  }
+  a:hover > .mg-entity-card,
+  a:focus-visible > .mg-entity-card {
+    transform: none;
+  }
 }
 .mg-segmented-bare {
   display: inline-flex;

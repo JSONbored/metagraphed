@@ -380,7 +380,7 @@ function SchemaExplorer() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_1fr]">
         {/* Left rail */}
-        <aside className="rounded-xl border border-border bg-card overflow-hidden flex flex-col max-h-[min(680px,70vh)]">
+        <aside className="rounded border border-border bg-card overflow-hidden flex flex-col max-h-[min(680px,70vh)]">
           <div className="border-b border-border p-3 space-y-2.5">
             {/* The shared SearchInput, which carries an aria-label (a
                 placeholder is not an accessible name), replacing the bespoke

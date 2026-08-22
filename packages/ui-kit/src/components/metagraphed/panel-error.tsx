@@ -40,7 +40,7 @@ export function PanelError({
     <div
       role="alert"
       className={classNames(
-        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded-xl",
+        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded",
         "border border-border/70 bg-card p-6 text-center",
         HEIGHTS[height],
         className,
