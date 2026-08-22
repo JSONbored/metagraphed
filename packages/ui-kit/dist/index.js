@@ -1781,7 +1781,7 @@ function ExternalLink({
     ) : null
   ] });
   const classes = classNames(
-    "inline-flex items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong",
+    "inline-flex max-w-full items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong",
     safeHref ? "hover:decoration-ink" : "cursor-default decoration-transparent",
     className
   );
