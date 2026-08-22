@@ -1898,7 +1898,11 @@ html[data-density="compact"] .bg-card > table td {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(13rem, 0.85fr);
-  align-items: end;
+  /* #11521: shared TOP edge, not a shared bottom one. Bottom-aligning a
+     280px title block against a 421px signal rail left the rail's first
+     label floating 142px above the title — technically aligned, visibly
+     wonky. The reader's eye enters at the top of both columns. */
+  align-items: start;
   gap: clamp(2rem, 8vw, 8rem);
   min-height: 10.5rem;
 }
@@ -1969,11 +1973,35 @@ html[data-density="compact"] .bg-card > table td {
   gap: var(--mg-space-sm) var(--mg-space-lg);
   margin-top: var(--mg-space-xl);
 }
+/* An icon-only hero link: a real 36px target with a visible hover, and its
+   name carried by aria-label/title rather than by text beside it. */
+.mg-hero-link {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  color: var(--ink-muted);
+  transition:
+    color 140ms ease-out,
+    border-color 140ms ease-out;
+}
+.mg-hero-link:hover {
+  border-color: var(--border);
+  color: var(--ink-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-hero-link {
+    transition: none;
+  }
+}
+
 .mg-page-hero-aside {
-  align-self: stretch;
   min-width: 0;
   display: flex;
-  align-items: end;
+  align-items: start;
 }
 
 /* A source-aware measurement rail for a dossier's decision signals. This is

@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type ReactNode } from "react";
+import { Suspense, useRef, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -35,6 +35,7 @@ import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, Skeleton, StatUnavailable, RECOVERY } from "@/components/metagraphed/states";
 import { statPhase } from "@/lib/metagraphed/stat-phase";
+import { SubnetSurfaceMix } from "@/components/metagraphed/subnet-surface-mix";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
@@ -323,6 +324,23 @@ function OverviewView({ netuid, profile }: { netuid: number; profile?: SubnetPro
             },
           ]}
         />
+      </DataPageModule>
+
+      {/* #11521: "is there anything here I can call?" is the builder's first
+          question, and the answer was a number in a paths row. Counts of
+          distinct surfaces are additive and share one unit, so unlike this
+          subnet's economics they genuinely divide a whole — this is the one
+          composition the page can honestly draw. */}
+      <DataPageModule
+        id="surface-mix"
+        title="What this subnet exposes"
+        caption="Verified public surfaces by kind. Open Build to call them."
+      >
+        <QueryErrorBoundary fallback={() => null}>
+          <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+            <SubnetSurfaceMix netuid={netuid} />
+          </Suspense>
+        </QueryErrorBoundary>
       </DataPageModule>
 
       <DataPageModule

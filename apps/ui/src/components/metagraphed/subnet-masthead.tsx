@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery, type QueryKey } from "@tanstack/react-query";
-import { BookOpen, Code2, Github, Globe, LayoutDashboard } from "lucide-react";
+import { BookOpen, Code2, Github, Globe, LayoutDashboard, Star } from "lucide-react";
 import {
   BrandIcon,
   CurationChip,
@@ -45,13 +45,6 @@ export function kindDomainSummary(
     categories.length > 0 ? categories.join(", ") : null,
   ].filter((value): value is string => Boolean(value));
   return parts.length ? parts.join(" — ") : null;
-}
-
-function reliabilityTone(uptime: number | null): "positive" | "warning" | "negative" | "neutral" {
-  if (uptime == null) return "neutral";
-  if (uptime > 99) return "positive";
-  if (uptime < 95) return "negative";
-  return "warning";
 }
 
 /**
@@ -197,7 +190,15 @@ export function SubnetMasthead({
                 "No probe window yet"
               ),
               level: uptime != null ? uptime / 100 : null,
-              tone: reliabilityTone(uptime),
+              // #11521: all three rails encode MAGNITUDE and nothing else.
+              // They used three different colour rules — availability by
+              // reliability threshold, readiness always brand, source coverage
+              // always neutral — so colour meant three things at once and a
+              // perfect 4/4 source coverage rendered grey beside a 96/100 in
+              // mint, reading as the weakest of the three. Availability's
+              // verdict is already carried by the health chip next to the
+              // title, which is where a semantic colour belongs.
+              tone: "neutral",
             },
             {
               label: "Build readiness",
@@ -211,7 +212,7 @@ export function SubnetMasthead({
                 "Profile record unavailable"
               ),
               level: readiness != null ? readiness / 100 : null,
-              tone: "brand",
+              tone: "neutral",
             },
             {
               label: "Source coverage",
@@ -232,6 +233,11 @@ export function SubnetMasthead({
       }
       footer={
         <>
+          {/* #11521: icons, not icon-plus-label. Six labelled links plus two
+              actions made the row read as a paragraph of navigation under a
+              hero that already carries three primary actions. The name lives
+              in the accessible name and the tooltip, so nothing is lost to a
+              screen reader or a hover — only the visual noise. */}
           {links.map((link) => {
             const Icon = link.icon;
             const href = safeExternalUrl(link.href);
@@ -241,29 +247,33 @@ export function SubnetMasthead({
                 key={link.label}
                 bare
                 href={href}
-                className="mg-focus-ring inline-flex items-center gap-1 text-ink-muted hover:text-ink-strong"
+                aria-label={link.label}
+                title={link.label}
+                className="mg-hero-link mg-focus-ring"
               >
-                <Icon className="size-3.5" aria-hidden="true" />
-                {link.label}
+                <Icon className="size-4" aria-hidden="true" />
               </ExternalLink>
             );
           })}
           <button
             type="button"
             onClick={openApiDrawer}
-            className="mg-focus-ring inline-flex items-center gap-1 text-ink-muted transition-colors hover:text-ink-strong"
+            aria-label="API record"
+            title="API record"
+            className="mg-hero-link mg-focus-ring"
           >
-            <Code2 className="size-3.5" aria-hidden="true" />
-            API record
+            <Code2 className="size-4" aria-hidden="true" />
           </button>
           <Link
             to="/subnets/$netuid"
             params={{ netuid }}
             search={{ tab: "records" }}
             hash="watch"
-            className="mg-focus-ring text-ink-muted hover:text-ink-strong"
+            aria-label="Watch, compare and share"
+            title="Watch, compare & share"
+            className="mg-hero-link mg-focus-ring"
           >
-            Watch, compare & share
+            <Star className="size-4" aria-hidden="true" />
           </Link>
         </>
       }
