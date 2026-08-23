@@ -12,8 +12,18 @@ export const VIEWPORT = { width: 1280, height: 800 };
 /** Font families allowed under <main>, by route prefix. */
 export const MONO = "IBM Plex Mono";
 export const PROSE = "IBM Plex Sans";
+/**
+ * The prose routes: the only pages that are an ARTICLE rather than a reading of
+ * data, and so the only ones allowed the second face.
+ *
+ * /docs and /news were the whole list until #11627 put /about, /privacy and
+ * /terms into `.mg-prose` — the rule they had always described and no route
+ * applied. Everything else is mono, which is the point of having one face.
+ */
+export const PROSE_ROUTES = ["/docs", "/news", "/about", "/privacy", "/terms"];
+
 export function allowedFamilies(route: string): string[] {
-  return route.startsWith("/docs") || route.startsWith("/news") ? [MONO, PROSE] : [MONO];
+  return PROSE_ROUTES.some((p) => route.startsWith(p)) ? [MONO, PROSE] : [MONO];
 }
 
 /** The seven sizes. 64px is the landing h1 only. */
@@ -35,3 +45,30 @@ export const RADII = new Set(["0px", "4px", "50%"]);
 export const DOT_MAX_PX = 12;
 // The one radius the contract allows; never counted as a pill however thin the element.
 export const CONTRACT_RADIUS_PX = 4;
+
+/**
+ * The page-shape rule: at most seven `section.mg-section` per route.
+ *
+ * `AnalyticsPage` enforces this at runtime outside production, but only for
+ * pages that use it. /design/primitives mounts fifteen sections by hand and is
+ * the documented exception -- it is the specimen page, and one section per
+ * primitive family is what it is for.
+ */
+export const MAX_SECTIONS_PER_ROUTE = 7;
+
+/**
+ * Routes exempt from the STRUCTURAL rules (section count, one tall table per
+ * section) — never from the token rules, which hold everywhere.
+ *
+ * /design/primitives is the only one, and the reason is what the page is: a
+ * specimen sheet. One section per primitive family is exactly its job, and a
+ * section demonstrating `DataTable` necessarily holds the specimen table AND
+ * the props table describing it. Collapsing either would make the page
+ * document less of the library than exists. It is also why the page mounts
+ * `ActiveEntityProvider` + `SectionNav` by hand rather than using
+ * `AnalyticsPage`, whose own `MAX_SECTIONS` throws at eight.
+ */
+export const SPECIMEN_ROUTES: Record<string, string> = {
+  "/design/primitives":
+    "the specimen sheet: one section per primitive family, each with its props table",
+};

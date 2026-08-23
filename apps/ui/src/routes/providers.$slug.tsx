@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
-import { RoutePending } from "@/components/metagraphed/primitives";
+import { Skeleton } from "@jsonbored/ui-kit";
 import { providerQuery } from "@/lib/metagraphed/queries";
 import {
   firstPartyLogoPath,
@@ -119,7 +119,7 @@ export const Route = createFileRoute("/providers/$slug")({
       ],
     };
   },
-  pendingComponent: () => <RoutePending panels={3} />,
+  pendingComponent: () => <Skeleton className="mx-auto my-6 h-96 w-full max-w-shell" />,
   component: ProviderDetail,
   notFoundComponent: () => (
     <AppShell>

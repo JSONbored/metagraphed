@@ -8,6 +8,7 @@
  */
 import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
+import { formatAmount, formatPct } from "@/lib/metagraphed/format";
 
 /**
  * Every validator in one request.
@@ -121,16 +122,11 @@ export function operatorRows(validators: readonly GlobalValidator[]): OperatorRo
 /** A take that may be one value or a spread across an operator's keys. */
 export function takeLabel(min: number | null, max: number | null): string {
   if (min === null || max === null) return "—";
-  const fmt = (value: number) => `${(value * 100).toFixed(1)}%`;
+  const fmt = (value: number) => `${formatPct(value, 1)}`;
   return Math.abs(max - min) < 0.0005 ? fmt(min) : `${fmt(min)}–${fmt(max)}`;
 }
 
-export const fmtStake = (value: number | null | undefined): string => {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M τ`;
-  if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1)}k τ`;
-  return `${value.toFixed(2)} τ`;
-};
+export const fmtStake = (value: number | null | undefined): string => formatAmount(value, "τ");
 
 /** The middle value, or null for an empty set — never 0, which is a reading. */
 export function median(values: readonly (number | null | undefined)[]): number | null {

@@ -69,7 +69,7 @@ import {
   TEMPORAL_PROPS,
 } from "@/components/metagraphed/design/primitive-props";
 import { DEFINITIONS } from "@/lib/metagraphed/definitions";
-import { formatTao } from "@/lib/metagraphed/format";
+import { formatDecimal, formatPct, formatTao } from "@/lib/metagraphed/format";
 
 /**
  * /design/primitives — the documentation of the design system (#11627).
@@ -115,8 +115,8 @@ const LINE_SPECIMEN = lineSpecimen(120);
 const STACKED_SPECIMEN = stackedSpecimen();
 
 const formatTokens = (value: number) => `${value}T`;
-const formatMillions = (value: number) => `${(value / 1_000_000).toFixed(2)}M τ`;
-const formatThousands = (value: number) => `${(value / 1000).toFixed(0)}k τ`;
+const formatMillions = (value: number) => `${formatDecimal(value / 1_000_000, 2)}M τ`;
+const formatThousands = (value: number) => `${formatDecimal(value / 1000, 0)}k τ`;
 
 const SOURCE_ROWS: readonly RawRow[] = [
   {
@@ -669,7 +669,7 @@ function RankSection() {
           />
           <MarkerRail
             items={MARKER_SPECIMEN}
-            formatValue={(value) => `${value.toFixed(1)}%`}
+            formatValue={(value) => `${formatDecimal(value, 1)}%`}
             columns={{ ratio: "Uptime", name: "Surface", scale: "0–100%" }}
             ariaLabel="Uptime by surface (specimen)"
             source="marker-specimen"
@@ -732,8 +732,7 @@ function CompareSection() {
                   label: "Emission share",
                   values: [0.061, 0.038],
                   better: "high",
-                  format: (value) =>
-                    `${((typeof value === "number" ? value : 0) * 100).toFixed(3)}%`,
+                  format: (value) => `${formatPct(typeof value === "number" ? value : 0, 3)}`,
                 },
                 {
                   key: "cost",

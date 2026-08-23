@@ -112,6 +112,11 @@ export function computeUnstakeAlphaCandidate(taoTarget: string, spotPriceTao: nu
   ) {
     return "0";
   }
+  // NOT display formatting: this string is parsed straight back into RAO by
+  // `taoToRao`, and 9 decimals is TAO's on-chain precision exactly. It is
+  // therefore the one place outside format.ts where `toFixed` is correct --
+  // rounding it anywhere else would change the amount a transaction moves.
+  // eslint-disable-next-line no-restricted-syntax -- transaction amount, not display
   return (target / spotPriceTao).toFixed(9);
 }
 
@@ -146,6 +151,7 @@ export function resolveUnstakeMaxAmountInput(
   // stake) and routinely carries more precision than a single rao can
   // represent, which would otherwise surface as an ugly, over-precise
   // prefilled value in the amount field.
+  // eslint-disable-next-line no-restricted-syntax -- transaction amount, not display
   return position.stake_tao.toFixed(9);
 }
 
@@ -166,6 +172,7 @@ export function isMaxUnavailableForNetuid(netuid: number): boolean {
  */
 export function resolveUnstakeValidationAmountRao(expectedOutTao: number): Rao {
   const safe = Number.isFinite(expectedOutTao) ? expectedOutTao : 0;
+  // eslint-disable-next-line no-restricted-syntax -- transaction amount, not display
   return asRao(taoToRao(safe.toFixed(9)));
 }
 

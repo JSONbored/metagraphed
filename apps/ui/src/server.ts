@@ -10,6 +10,7 @@ import {
   siteGraphNodes,
   stringifyJsonLd,
 } from "./lib/metagraphed/json-ld";
+import { formatNumber } from "@/lib/metagraphed/format";
 import { SUBNETS_ALL_LIMIT } from "./lib/metagraphed/subnet-list-limit";
 import { isoTimestamp } from "./lib/metagraphed/freshness";
 import { API_DATA_ORIGIN, API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
@@ -859,7 +860,7 @@ export function ogCardCopy(pathname: string): OgCopy {
   if (block) {
     const ref = safeDecodePathSegment(block[1]);
     return {
-      title: /^\d+$/.test(ref) ? `Block ${Number(ref).toLocaleString("en-US")}` : shortKey(ref),
+      title: /^\d+$/.test(ref) ? `Block ${formatNumber(Number(ref))}` : shortKey(ref),
       subtitle: "Extrinsics, events and timing for one Bittensor block",
       eyebrow: "Block",
     };

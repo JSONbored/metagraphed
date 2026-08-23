@@ -167,6 +167,101 @@ const SSR_SAFETY_RULES = [
   },
 ];
 
+/**
+ * Rounding lives in one module (#11628).
+ *
+ * `toFixed`, `toLocaleString` and `Intl.NumberFormat` are where a number
+ * becomes a string, and when those calls are scattered a "0.6%" in one section
+ * and a "0.57%" in another are the same number formatted by two people. The
+ * share of a page's numbers that agree with each other is a correctness
+ * property, so `src/lib/metagraphed/format.ts` owns all three and everything
+ * else imports from it. Transaction amounts are the one honest exception (a
+ * 9-decimal RAO string is parsed, not read) and carry a per-line disable
+ * saying so.
+ */
+const FORMATTING_RULES = [
+  {
+    selector: "CallExpression > MemberExpression[property.name='toFixed']",
+    message:
+      "Formatting lives in src/lib/metagraphed/format.ts. Use formatDecimal / formatPct / formatAmount / formatCompact instead of toFixed.",
+  },
+  {
+    selector: "CallExpression > MemberExpression[property.name='toLocaleString']",
+    message:
+      "Formatting lives in src/lib/metagraphed/format.ts. Use formatNumber for numbers and formatAbsoluteTime for dates.",
+  },
+  {
+    selector: "NewExpression[callee.object.name='Intl']",
+    message:
+      "Intl formatters belong in src/lib/metagraphed/format.ts, which is the module the rest of the app imports from.",
+  },
+];
+
+/**
+ * Names the v2 rebuild deleted (#11628).
+ *
+ * A branch cut before the purge, rebased after it, reintroduces an import of a
+ * component that no longer exists -- and TypeScript says "has no exported
+ * member", which reads like a build problem rather than a decision. Naming
+ * them here says what actually happened.
+ */
+const DELETED_PRIMITIVES = [
+  "AnimatedNumber",
+  "CandidateChip",
+  "CurationChip",
+  "DefinitionList",
+  "Divider",
+  "EligibilityChip",
+  "GhostButton",
+  "HealthPill",
+  "Indicator",
+  "KeyChip",
+  "LoadingPill",
+  "McpToolsList",
+  "PanelError",
+  "PanelHeader",
+  "PanelSkeleton",
+  "Provenance",
+  "ProvenanceChip",
+  "QueryProgress",
+  "ReviewChip",
+  "RoutePending",
+  "ScrollShadow",
+  "StatusBadge",
+  "TrendDelta",
+];
+
+/**
+ * Structure that belongs to one primitive.
+ *
+ * `<table>` outside DataTable and `role="tablist"` outside RangeControl are how
+ * the old grammar grew: every page that needed a table or a switch wrote its
+ * own, and the site ended up with eleven table treatments.
+ */
+const OWNERSHIP_RULES = [
+  {
+    selector: "JSXOpeningElement[name.name='table']",
+    message:
+      "Tables are DataTable's. Use <DataTable> from '@jsonbored/ui-kit' rather than a hand-rolled <table>.",
+  },
+  {
+    selector: "JSXAttribute[name.name='role'][value.value='tablist']",
+    message:
+      "A tablist is RangeControl's. Use <RangeControl> from '@jsonbored/ui-kit' rather than a hand-rolled tab strip.",
+  },
+  {
+    selector:
+      "JSXAttribute[name.name='style'] > JSXExpressionContainer > ObjectExpression > Property[key.type='Identifier']",
+    message:
+      'Inline style is only for a CSS custom property carrying data (style={{ "--fill": pct }}). Everything else is a class.',
+  },
+  {
+    selector: "Literal[value=/\\brounded-full\\b/]",
+    message:
+      "One radius, 4px. The only round element is the 8x8 status dot, which is .mg-dot / .mg-live-dot / .mg-health-dot.",
+  },
+];
+
 const DESIGN_RULES = [
   ...COLOR_RULES,
   ...TYPE_RULES,
@@ -176,6 +271,8 @@ const DESIGN_RULES = [
   ...SPACING_RULES,
   ...PRIMITIVE_STEER_RULES,
   ...SSR_SAFETY_RULES,
+  ...FORMATTING_RULES,
+  ...OWNERSHIP_RULES,
 ];
 
 export default tseslint.config(
@@ -200,6 +297,12 @@ export default tseslint.config(
         {
           paths: [
             {
+              name: "@jsonbored/ui-kit",
+              importNames: DELETED_PRIMITIVES,
+              message:
+                "This primitive was deleted in #11628. See packages/ui-kit/README.md for what replaced it.",
+            },
+            {
               name: "server-only",
               message:
                 "TanStack Start does not use the Next.js `server-only` package. Rename the module to `*.server.ts` or mark it with `@tanstack/react-start/server-only`.",
@@ -207,7 +310,9 @@ export default tseslint.config(
           ],
         },
       ],
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      // #11628: error, not warn. Every design rule in this config is at error
+      // tier now -- a warning is a rule the next contributor scrolls past.
+      "react-refresh/only-export-components": ["error", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -227,6 +332,22 @@ export default tseslint.config(
     ignores: ["src/lib/health-tokens.ts", "src/lib/og-image.ts", "src/lib/og-image.test.ts"],
     rules: {
       "no-restricted-syntax": ["error", ...DESIGN_RULES],
+    },
+  },
+  {
+    // `format.ts` IS the exemption the FORMATTING_RULES describe: it is the
+    // module that owns `toFixed` / `toLocaleString` / `Intl`, and its own tests
+    // assert the strings those produce.
+    files: [
+      "src/lib/metagraphed/format.ts",
+      "src/lib/metagraphed/format.test.ts",
+      "src/lib/metagraphed/freshness.test.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...DESIGN_RULES.filter((r) => !FORMATTING_RULES.includes(r)),
+      ],
     },
   },
   {

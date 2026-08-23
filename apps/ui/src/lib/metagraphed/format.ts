@@ -1,4 +1,14 @@
 /**
+ * `format.ts` is the ONLY module in this app allowed to call `toFixed`,
+ * `toLocaleString` or `Intl.NumberFormat` (#11628, enforced by a lint rule).
+ *
+ * Not a style rule. Those three are where rounding decisions live, and when
+ * they are scattered a "0.6%" in one section and a "0.57%" in another are the
+ * same number formatted by two people. The share of a page's numbers that
+ * agree with each other is a correctness property, so it gets one home.
+ */
+
+/**
  * Format a generic number for UI display. Nullish / non-finite → fallback.
  * Tiering mirrors formatTao's magnitude rule so dust never collapses to "0":
  *  - exactly 0 → "0"
@@ -31,12 +41,64 @@ export function formatNumber(n: number | undefined | null, fallback = "—"): st
  * two never drift.
  */
 export function formatTao(v?: number | null): string {
+  return formatAmount(v, "τ");
+}
+
+/**
+ * {@link formatTao} for any unit: the same magnitude tiering with the caller's
+ * symbol.
+ *
+ * Seven logic modules had written their own — `fmtStake`, `fmtAlpha`,
+ * `fmtCompactTao`, `fmtTaoCompact`, `fmtStake` again — each a copy of this
+ * ladder with a different suffix and, in two cases, a different threshold.
+ * Two subnets' α could therefore be tiered differently on two pages.
+ */
+export function formatAmount(v: number | null | undefined, unit: string): string {
   if (v == null || !Number.isFinite(v)) return "—";
   const magnitude = Math.abs(v);
-  if (magnitude >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
-  if (magnitude >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
-  if (magnitude >= 1) return `${v.toFixed(2)} τ`;
-  return `${v.toFixed(4)} τ`;
+  if (magnitude >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M ${unit}`;
+  if (magnitude >= 1_000) return `${(v / 1_000).toFixed(1)}k ${unit}`;
+  if (magnitude >= 1) return `${v.toFixed(2)} ${unit}`;
+  return `${v.toFixed(4)} ${unit}`;
+}
+
+/**
+ * {@link formatAmount} with no unit: `2.40M`, `4.5k`, `12.50`.
+ *
+ * Alpha and raw counts are tiered the same way TAO is but carry their unit in
+ * the column header rather than the cell.
+ */
+export function formatCompactAmount(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const magnitude = Math.abs(v);
+  if (magnitude >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
+  if (magnitude >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
+  if (magnitude >= 1) return v.toFixed(2);
+  return v.toFixed(4);
+}
+
+/** An amount at a fixed precision with its unit: `12.50 τ`. */
+export function formatAmountFixed(v: number | null | undefined, places = 2, unit = "τ"): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  return `${v.toFixed(places)} ${unit}`;
+}
+
+/**
+ * A signed amount, with an explicit `+` on the positive side.
+ *
+ * A stake delta of `12 τ` and one of `-12 τ` are opposite events, and a column
+ * that renders the first without a sign makes the reader infer direction from
+ * the absence of a character.
+ */
+export function formatSignedAmount(v: number | null | undefined, unit = "τ"): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const body = formatAmount(Math.abs(v), unit);
+  // A signed zero says nothing: "+0 τ" and "−0 τ" are the same event, and a
+  // reader scanning a column for direction reads the sign, not the digits.
+  if (v === 0) return body;
+  // U+2212 MINUS, not the hyphen: it is the width of the plus it alternates
+  // with, so a column of signed amounts stays aligned.
+  return v < 0 ? `−${body}` : `+${body}`;
 }
 
 /**
@@ -210,4 +272,69 @@ export function subnetAgeDays(
 export function formatSubnetAge(days: number | null): string {
   if (days == null) return "—";
   return `${formatNumber(days)} day${days === 1 ? "" : "s"} old`;
+}
+
+/**
+ * A ratio (0…1) as a percentage string.
+ *
+ * The single most common hand-rolled format in this app was
+ * `${(x * 100).toFixed(1)}%`, and floating point makes it wrong often enough
+ * to notice: `0.57 * 100` is `56.99999999999999`, so a naive `toFixed(2)`
+ * prints "57.00%" while `toFixed(0)` prints "57%" and a third call site
+ * printing `(x * 100).toFixed(1)` gets "57.0%". One function, one rounding.
+ *
+ * Pass `digits` for the precision the reader needs; a share of emission wants
+ * one decimal, a take rate wants two.
+ */
+export function formatPct(ratio: number | null | undefined, digits = 1, fallback = "—"): string {
+  if (ratio == null || !Number.isFinite(ratio)) return fallback;
+  const pct = ratio * 100;
+  // Round FIRST, then format: `toFixed` on the raw product carries the
+  // multiplication's error into the string.
+  const rounded = Math.round(pct * 10 ** digits) / 10 ** digits;
+  return `${rounded.toFixed(digits)}%`;
+}
+
+/**
+ * A count as a compact magnitude string: `1.23M`, `4.5k`, `812`.
+ *
+ * Tiering matches {@link formatTao}'s, by magnitude rather than by value, so a
+ * negative gets the same tier a positive of equal size would. Unlike
+ * `formatTao` it carries no unit -- the caller's label says what is being
+ * counted.
+ */
+export function formatCompact(n: number | null | undefined, fallback = "—"): string {
+  if (n == null || !Number.isFinite(n)) return fallback;
+  const magnitude = Math.abs(n);
+  if (magnitude >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (magnitude >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return formatNumber(n, fallback);
+}
+
+/**
+ * A number at a fixed number of decimals, or the fallback when it is not a
+ * number at all.
+ *
+ * The plain-`toFixed` replacement: it exists so a call site does not have to
+ * guard `Number.isFinite` itself, which was the actual bug behind every
+ * "NaN.00" this app has ever rendered.
+ */
+export function formatDecimal(n: number | null | undefined, digits = 2, fallback = "—"): string {
+  if (n == null || !Number.isFinite(n)) return fallback;
+  return n.toFixed(digits);
+}
+
+/**
+ * An absolute timestamp in the site's one locale: `Aug 23, 2026, 7:52 AM`.
+ *
+ * Dates are formatted here for the same reason numbers are: two call sites
+ * that pick their own locale render the same instant two ways, and a reader
+ * comparing a freshness stamp on one page with one on another has no way to
+ * know whether they disagree about the time or only about the format.
+ */
+export function formatAbsoluteTime(iso?: string | null): string | null {
+  if (!iso) return null;
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return null;
+  return t.toLocaleString("en-US");
 }

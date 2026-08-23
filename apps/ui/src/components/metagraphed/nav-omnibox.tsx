@@ -18,7 +18,6 @@ import {
 import { searchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { Kbd, safeExternalUrl } from "@jsonbored/ui-kit";
-import { Panel } from "@/components/metagraphed/primitives";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
 import { isChecksumValidSs58, isValidH160, normalizeH160 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -407,13 +406,12 @@ export function NavOmnibox({ onOpenPalette }: Props) {
       className="hidden md:block relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0"
     >
       {/* Input */}
-      <Panel
-        flush
+      <div
         className={classNames(
-          "w-full !rounded text-left text-13 transition-all",
-          open ? "!border-accent/60 ring-2 ring-accent/20" : "hover:border-accent/40",
+          "w-full min-w-0 rounded text-left text-13 transition-all",
+          "inline-flex items-center gap-2 pl-3 pr-2 py-2 min-h-10",
+          open ? "border-accent/60 ring-2 ring-accent/20" : "hover:border-accent/40",
         )}
-        bodyClassName="inline-flex w-full items-center gap-2 !pl-3 !pr-2 !py-2 min-h-10"
       >
         <Search className="size-3.5 shrink-0 text-ink-muted" />
         <input
@@ -434,7 +432,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
           aria-activedescendant={activeOptionId}
           className="flex-1 min-w-0 bg-transparent outline-none text-ink-strong placeholder:text-ink-muted text-13"
         />
-      </Panel>
+      </div>
 
       {/* Dropdown — wider than the input, right-aligned. Width is
           min(600px,60vw), not a flat 600px: the panel is anchored `right-0`

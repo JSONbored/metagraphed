@@ -117,7 +117,7 @@ describe("counterpartyRail", () => {
     expect(counterpartyRail(parties)[0]?.detail).toEqual([
       { key: "sent", label: "Sent", value: "1.0k τ" },
       { key: "received", label: "Received", value: "1.0k τ" },
-      { key: "net", label: "Net", value: "+0.00 τ" },
+      { key: "net", label: "Net", value: "0.0000 τ" },
       { key: "transfers", label: "Transfers", value: "8" },
     ]);
   });

@@ -11,10 +11,10 @@ import {
   type CompareGroup,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { compareQuery, compareValidatorsQuery } from "@/lib/metagraphed/queries";
-import { formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber, formatPct, formatTao } from "@/lib/metagraphed/format";
 import { resolveAddress, truncateSs58 } from "@/lib/metagraphed/resolve-address";
 import { Route, parseHotkeys, parseNetuids } from "./compare";
 import type { CompareSubnet, CompareValidator } from "@/lib/metagraphed/types";
@@ -28,13 +28,21 @@ function uptimePct(health: CompareSubnet["health"]): number | null {
 }
 
 const pct = (value: number | string) =>
-  typeof value === "number" ? `${value.toFixed(2)}%` : String(value);
+  typeof value === "number" ? `${formatDecimal(value, 2)}%` : String(value);
 const share = (value: number | string) =>
-  typeof value === "number" ? `${(value * 100).toFixed(3)}%` : String(value);
+  typeof value === "number" ? `${formatPct(value, 3)}` : String(value);
 const count = (value: number | string) =>
   typeof value === "number" ? formatNumber(value) : String(value);
 const tao = (value: number | string) =>
   typeof value === "number" ? formatTao(value) : String(value);
+
+const API_PATHS = ["/api/v1/compare", "/api/v1/compare/validators"];
+
+/** Registers the page's sources from INSIDE `AppShell`, which owns the provider. */
+function ApiSources() {
+  useRegisterApiSource(API_PATHS);
+  return null;
+}
 
 export function ComparePage() {
   const search = Route.useSearch();
@@ -45,6 +53,7 @@ export function ComparePage() {
 
   return (
     <AppShell>
+      <ApiSources />
       <EntityHero
         name="Compare"
         sentence={
@@ -79,7 +88,6 @@ export function ComparePage() {
       ) : (
         <SubnetLedger netuids={subnets} />
       )}
-      <ApiSourceFooter paths={["/api/v1/compare", "/api/v1/compare/validators"]} />
     </AppShell>
   );
 }
@@ -122,7 +130,7 @@ function SubnetLedger({ netuids }: { netuids: number[] }) {
           key: "price",
           label: "Alpha price",
           values: at((s) => s?.economics?.alpha_price_tao ?? null),
-          format: (v) => (typeof v === "number" ? `${v.toFixed(4)} τ` : String(v)),
+          format: (v) => (typeof v === "number" ? `${formatDecimal(v, 4)} τ` : String(v)),
         },
         {
           key: "stake",
@@ -319,14 +327,14 @@ function ValidatorLedger({ hotkeys }: { hotkeys: string[] }) {
           label: "Avg validator trust",
           values: at((v) => v?.avg_validator_trust ?? null),
           better: "high",
-          format: (v) => (typeof v === "number" ? v.toFixed(3) : String(v)),
+          format: (v) => (typeof v === "number" ? formatDecimal(v, 3) : String(v)),
         },
         {
           key: "max-trust",
           label: "Max validator trust",
           values: at((v) => v?.max_validator_trust ?? null),
           better: "high",
-          format: (v) => (typeof v === "number" ? v.toFixed(3) : String(v)),
+          format: (v) => (typeof v === "number" ? formatDecimal(v, 3) : String(v)),
         },
       ],
     },

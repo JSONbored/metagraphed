@@ -4,7 +4,6 @@ import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { classNames } from "@/lib/metagraphed/format";
 import { CopyableCode, RangeControl } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
 import { CHANGE_KINDS } from "@/lib/metagraphed/webhook-change-kinds";
 import type {
   WebhookDeliveryStatus,
@@ -370,7 +369,7 @@ function LookupSubscriptionSection() {
       ) : null}
 
       {result ? (
-        <Panel className="mt-3" bodyClassName="space-y-3">
+        <div className="min-w-0 mg-panel-pad mt-3 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <DeliveryStatusPill status={result.delivery.status} />
             <span
@@ -402,7 +401,7 @@ function LookupSubscriptionSection() {
               after {result.delivery.last_failure.attempts ?? "?"} attempt(s).
             </div>
           ) : null}
-        </Panel>
+        </div>
       ) : null}
     </>
   );

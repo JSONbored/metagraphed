@@ -5,7 +5,6 @@ import { ActiveEntityProvider } from "../interaction/active-entity";
 import { momentumAriaLabel } from "./chart-aria";
 import { LineWithWindow, lineSpecimen } from "./line-with-window";
 import { StackedColumns, stackedSpecimen } from "./stacked-columns";
-import { TrendDelta } from "./trend-delta";
 
 // SSR-markup checks in the suite's plain-node environment; hover, keyboard
 // and the scroll position are covered by the Playwright interaction project.
@@ -156,25 +155,5 @@ describe("momentumAriaLabel", () => {
     expect(momentumAriaLabel("tokens", null, "—", "x")).toBe(
       "Tokens: no data in the window",
     );
-  });
-});
-
-describe("TrendDelta", () => {
-  it("is a chip with the window's change and an accessible name", () => {
-    const html = renderToStaticMarkup(
-      h(TrendDelta, { values: [10, 12, 15], label: "7d price" }),
-    );
-    expect(html).toBe(
-      '<span class="mg-line-delta" data-state="positive" aria-label="7d price +50%">+50%</span>',
-    );
-    expect(
-      renderToStaticMarkup(h(TrendDelta, { values: [0, 5], label: "x" })),
-    ).toContain('data-state="positive" aria-label="x —">—<');
-    expect(
-      renderToStaticMarkup(h(TrendDelta, { values: [], label: "x" })),
-    ).toContain('data-state="empty"');
-    expect(
-      renderToStaticMarkup(h(TrendDelta, { values: [4, NaN, 2], label: "x" })),
-    ).toContain('data-state="negative" aria-label="x −50%"');
   });
 });

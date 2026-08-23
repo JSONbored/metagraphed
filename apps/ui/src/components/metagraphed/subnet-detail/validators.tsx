@@ -9,12 +9,12 @@ import {
 } from "@jsonbored/ui-kit";
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
 import { RouterLink } from "@/components/metagraphed/router-link";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { taoCompact, scoreStr } from "@/components/metagraphed/neuron-format";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 
 const pct = (v?: number | null) =>
-  typeof v === "number" && Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : "—";
+  typeof v === "number" && Number.isFinite(v) ? `${formatPct(v, 1)}` : "—";
 
 const COLUMNS: DataTableColumn<MetagraphNeuron>[] = [
   { key: "hotkey", label: "Validator", kind: "identifier", value: (row) => row.hotkey ?? "" },

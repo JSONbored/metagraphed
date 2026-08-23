@@ -3,6 +3,7 @@
  */
 import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import type { AccountListEntry, ChainSignerEntry } from "@/lib/metagraphed/types";
+import { formatAmount } from "@/lib/metagraphed/format";
 
 export type HolderMetric = "stake" | "emission" | "reach";
 
@@ -32,13 +33,7 @@ export const plural = (count: number, singular: string, plural = `${singular}s`)
 export const shortAddress = (address: string): string =>
   address.length > 14 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
 
-export const fmtTaoCompact = (value: number | null | undefined): string => {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M τ`;
-  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}k τ`;
-  return `${value.toFixed(2)} τ`;
-};
+export const fmtTaoCompact = (value: number | null | undefined): string => formatAmount(value, "τ");
 
 export interface HolderCard {
   key: string;

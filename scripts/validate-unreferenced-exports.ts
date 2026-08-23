@@ -74,8 +74,31 @@ import { repoRoot } from "./lib.ts";
  * being separate declarations. A deletion this time, and the RIGHT kind --
  * nothing lost, because the thing deleted was a copy.
  *
+ * Still 730 after #11628, which brought `apps/ui` and `packages/ui-kit` into
+ * knip's scope for the first time. Their exports are counted SEPARATELY (see
+ * {@link MAX_UNREFERENCED_EXPORTS_UI}) rather than folded in: this number has
+ * meant "the backend's unreferenced exports" through six changes, and widening
+ * what it counts would hide 154 of them behind a bigger figure instead of
+ * putting a ratchet on them.
  */
 export const MAX_UNREFERENCED_EXPORTS: number = 730;
+
+/**
+ * The same ceiling for the two UI workspaces. THE CEILING ONLY FALLS.
+ *
+ * 154 at #11628, the first measurement: 148 in `apps/ui` and 6 in
+ * `packages/ui-kit`. The purge cut ui-kit to almost nothing — what is left
+ * there is genuinely reachable only through the public barrel — while
+ * `apps/ui`'s figure is dominated by per-route `Route` objects and view-model
+ * types that a route file names but no other module imports. Neither is dead;
+ * both are worth a number that cannot grow.
+ */
+export const MAX_UNREFERENCED_EXPORTS_UI: number = 154;
+
+/** Whether a knip issue belongs to the UI workspaces rather than the backend. */
+export function isUiFile(file: string): boolean {
+  return file.startsWith("apps/") || file.startsWith("packages/");
+}
 
 /** knip's JSON shape, as much of it as this gate reads. */
 interface KnipIssue {
@@ -89,20 +112,23 @@ interface KnipReport {
 
 export function countUnreferenced(report: KnipReport): {
   total: number;
+  ui: number;
   byDirectory: Map<string, number>;
 } {
   const byDirectory = new Map<string, number>();
   let total = 0;
+  let ui = 0;
   for (const issue of report.issues ?? []) {
     const count = (issue.exports?.length ?? 0) + (issue.types?.length ?? 0);
     if (count === 0) continue;
-    total += count;
+    if (isUiFile(issue.file ?? "")) ui += count;
+    else total += count;
     // Two segments is the useful grain here: it separates `schemas-src/routes`
     // from `schemas-src/mcp-tools` without printing 245 file rows.
     const dir = (issue.file ?? "?").split("/").slice(0, 2).join("/");
     byDirectory.set(dir, (byDirectory.get(dir) ?? 0) + count);
   }
-  return { total, byDirectory };
+  return { total, ui, byDirectory };
 }
 
 const invokedDirectly =
@@ -151,7 +177,7 @@ function main(): void {
     process.exit(1);
   }
 
-  const { total, byDirectory } = countUnreferenced(report);
+  const { total, ui, byDirectory } = countUnreferenced(report);
 
   if (total > MAX_UNREFERENCED_EXPORTS) {
     console.error(
@@ -162,6 +188,28 @@ function main(): void {
           .sort((a, b) => b[1] - a[1])
           .map(([dir, n]) => `  ${String(n).padStart(4)}  ${dir}`)
           .join("\n"),
+    );
+    process.exit(1);
+  }
+
+  if (ui > MAX_UNREFERENCED_EXPORTS_UI) {
+    console.error(
+      `Unreferenced exports regressed in the UI workspaces: ${ui}, ceiling is ` +
+        `${MAX_UNREFERENCED_EXPORTS_UI}.\n` +
+        [...byDirectory]
+          .filter(([dir]) => isUiFile(dir))
+          .sort((a, b) => b[1] - a[1])
+          .map(([dir, n]) => `  ${String(n).padStart(4)}  ${dir}`)
+          .join("\n"),
+    );
+    process.exit(1);
+  }
+
+  if (ui < MAX_UNREFERENCED_EXPORTS_UI) {
+    console.error(
+      `Unreferenced exports improved in the UI workspaces: ${ui}, ceiling is ` +
+        `${MAX_UNREFERENCED_EXPORTS_UI}. Lower MAX_UNREFERENCED_EXPORTS_UI in ` +
+        `scripts/validate-unreferenced-exports.ts to ${ui} so the gain is locked in.`,
     );
     process.exit(1);
   }

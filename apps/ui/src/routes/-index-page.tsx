@@ -36,7 +36,7 @@ import {
   economicsQuery,
   subnetMoversQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 
 const SECTIONS = [
   { id: "value", name: "Value" },
@@ -137,7 +137,7 @@ export function OverviewPage() {
     { label: "Probed", value: formatNumber(healthSubnets.length) },
     {
       label: "Lowest uptime",
-      value: worst[0]?.value != null ? `${worst[0].value.toFixed(1)}%` : "—",
+      value: worst[0]?.value != null ? `${formatDecimal(worst[0].value, 1)}%` : "—",
     },
   ];
 
@@ -275,7 +275,7 @@ export function OverviewPage() {
               <MarkerRail
                 items={worst}
                 max={100}
-                formatValue={(value) => `${value.toFixed(1)}%`}
+                formatValue={(value) => `${formatDecimal(value, 1)}%`}
                 columns={{ ratio: "Uptime", name: "Subnet", scale: "0–100%" }}
                 ariaLabel="The ten lowest subnet uptimes over 7 days"
                 source="home-subnet"

@@ -27,7 +27,7 @@ import { classNames } from "@/lib/metagraphed/format";
 import { freshnessQuery } from "@/lib/metagraphed/queries";
 import { CommandPalette } from "./command-palette";
 import { NavOmnibox } from "./nav-omnibox";
-import { ApiSourceProvider } from "@/lib/metagraphed/api-source-context";
+import { ApiSourceProvider, useApiSourceCtx } from "@/lib/metagraphed/api-source-context";
 import { DEFINITIONS } from "@/lib/metagraphed/definitions";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
 import { useHydrated } from "@/hooks/use-hydrated";
@@ -380,14 +380,49 @@ function SiteFooter() {
         </FooterCol>
       </div>
       <div className="border-t border-border">
-        <div className="max-w-shell-max mx-auto px-4 md:px-10 py-4 flex flex-wrap items-center justify-between gap-2 text-11 text-ink-muted">
-          <span>
-            © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
-          </span>
-          <SourcesLine />
+        <div className="max-w-shell-max mx-auto px-4 md:px-10 py-4 flex flex-col gap-3 text-11 text-ink-muted">
+          <PageSourcesLine />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
+            </span>
+            <SourcesLine />
+          </div>
         </div>
       </div>
     </footer>
+  );
+}
+
+/**
+ * The API paths the page you are on actually reads.
+ *
+ * `useRegisterApiSource` collected these into a context whose only reader was
+ * the header's API drawer, and #11605 removed the drawer — so from then until
+ * #11628 every route declared its sources into a store nothing rendered, and
+ * three routes duplicated the same list by hand in an `ApiSourceFooter`. One
+ * line in the shell footer, fed by the registry, serves every route instead.
+ */
+function PageSourcesLine() {
+  const { sources } = useApiSourceCtx();
+  const paths = sources.map((s) => s.path);
+  if (paths.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-10 text-ink-muted">
+      <span className="shrink-0">this page reads</span>
+      {paths.map((path) => (
+        <ExternalLink
+          key={path}
+          bare
+          // A templated path like /api/v1/subnets/{netuid}/validator-economics
+          // is longer than a 375px viewport and has no space to break on.
+          className="min-w-0 max-w-full truncate hover:text-ink-strong transition-colors"
+          href={`${API_BASE}${path}`}
+        >
+          {path}
+        </ExternalLink>
+      ))}
+    </div>
   );
 }
 

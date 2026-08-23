@@ -38,7 +38,7 @@ import {
 } from "@/components/metagraphed/validators-index/validators-index-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { validatorEconomicsQuery, validatorsQuery } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { Route } from "./validators.index";
 
@@ -111,13 +111,13 @@ export function ValidatorsPage() {
     <Fact key="keys">{`${formatNumber(validators.length)} hotkeys`}</Fact>,
     <Fact key="ops">{`run by ${formatNumber(operators.length)} operators`}</Fact>,
     <Fact key="top">
-      {topShare === null ? "share unavailable" : `top 10 hold ${(topShare * 100).toFixed(1)}%`}
+      {topShare === null ? "share unavailable" : `top 10 hold ${formatPct(topShare, 1)}`}
     </Fact>,
     <Fact key="take">
-      {medianTake === null ? "take unavailable" : `median take ${(medianTake * 100).toFixed(1)}%`}
+      {medianTake === null ? "take unavailable" : `median take ${formatPct(medianTake, 1)}`}
     </Fact>,
     <Fact key="apy">
-      {medianApy === null ? "APY unavailable" : `median APY ${(medianApy * 100).toFixed(1)}%`}
+      {medianApy === null ? "APY unavailable" : `median APY ${formatPct(medianApy, 1)}`}
     </Fact>,
   ];
 
@@ -126,16 +126,16 @@ export function ValidatorsPage() {
     { label: "Operators", value: formatNumber(operators.length) },
     {
       label: "Median take",
-      value: medianTake === null ? "—" : `${(medianTake * 100).toFixed(1)}%`,
+      value: medianTake === null ? "—" : `${formatPct(medianTake, 1)}`,
     },
-    { label: "Median APY", value: medianApy === null ? "—" : `${(medianApy * 100).toFixed(1)}%` },
+    { label: "Median APY", value: medianApy === null ? "—" : `${formatPct(medianApy, 1)}` },
   ];
 
   const legend: RankGridItem[] = segments.map((segment) => ({
     key: segment.key,
     label: segment.label,
     value: fmtStake(segment.value),
-    share: listedTotal > 0 ? `${((segment.value / listedTotal) * 100).toFixed(1)}%` : undefined,
+    share: listedTotal > 0 ? `${formatPct(segment.value / listedTotal, 1)}` : undefined,
     href: segment.href,
   }));
 
@@ -167,7 +167,7 @@ export function ValidatorsPage() {
       kind: "number",
       sortable: true,
       value: (row) => row.apyEstimate,
-      format: (value) => (typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "—"),
+      format: (value) => (typeof value === "number" ? `${formatPct(value, 1)}` : "—"),
       definition: "Estimated APY",
     },
     {
@@ -201,7 +201,7 @@ export function ValidatorsPage() {
       sortable: true,
       demote: true,
       value: (row) => row.dominance,
-      format: (value) => (typeof value === "number" ? `${(value * 100).toFixed(2)}%` : "—"),
+      format: (value) => (typeof value === "number" ? `${formatPct(value, 2)}` : "—"),
       definition: "Stake dominance",
     },
     {
@@ -374,7 +374,7 @@ export function ValidatorsPage() {
                       value: fmtStake(validator.total_stake_tao),
                       share:
                         typeof validator.take === "number"
-                          ? `${(validator.take * 100).toFixed(1)}% take`
+                          ? `${formatPct(validator.take, 1)} take`
                           : undefined,
                       href: `/validators/${validator.hotkey}`,
                     }))}
@@ -413,7 +413,7 @@ export function ValidatorsPage() {
                       label: "Permit → earning",
                       value:
                         typeof row.permit_to_earning_multiple === "number"
-                          ? `${row.permit_to_earning_multiple.toFixed(2)}×`
+                          ? `${formatDecimal(row.permit_to_earning_multiple, 2)}×`
                           : "—",
                     },
                     {

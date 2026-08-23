@@ -1,7 +1,7 @@
 import { RangeControl } from "@jsonbored/ui-kit";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/metagraphed/table-controls";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 import { raoToTao, type Rao } from "@/lib/metagraphed/units";
 import type { SubnetStakeQuote } from "@/lib/metagraphed/types";
 import type { StakeFlowAction, StakeFlowUnit } from "@/hooks/use-stake-flow";
@@ -67,7 +67,7 @@ export function formatQuoteHint(quote: SubnetStakeQuote | null): string | null {
   const outUnit = quote.expected_out_unit === "tao" ? "τ" : "α";
   const impact = quote.is_root
     ? "root subnet · 1:1"
-    : `${quote.price_impact_pct.toFixed(2)}% price impact`;
+    : `${formatDecimal(quote.price_impact_pct, 2)}% price impact`;
   return `≈ ${formatNumber(quote.expected_out)} ${outUnit} · ${impact}`;
 }
 

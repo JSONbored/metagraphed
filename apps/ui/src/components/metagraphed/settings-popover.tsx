@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { Check, Globe2, Settings, Sun, Moon, Monitor } from "lucide-react";
 import { Popover, PopoverTrigger } from "@jsonbored/ui-kit";
 import { ClampedPopoverContent } from "./clamped-popover-content";
@@ -187,7 +188,15 @@ function PaletteRow({
       >
         <span className="flex shrink-0 items-center gap-1" aria-hidden>
           {swatches.map((c, i) => (
-            <span key={`${id}-${i}`} className="mg-dot" style={{ backgroundColor: c }} />
+            <span
+              key={`${id}-${i}`}
+              className="mg-dot mg-dot-swatch"
+              // The swatch colour IS the datum this row is previewing -- it
+              // comes from the palette module, not from a class, so it rides in
+              // as a custom property the way every other data-carrying value on
+              // the site does.
+              style={{ "--mg-swatch": c } as CSSProperties}
+            />
           ))}
         </span>
         <span className="flex-1 min-w-0">

@@ -90,7 +90,7 @@ data = requests.get(
 
 Unlisted query params 400 rather than being silently ignored. Feed routes clamp `limit` at 1000, `offset` at 1,000,000. `/balance` is the one rate-limited route in this group — 100 requests/60s per client IP; everything else reads the store or the lakehouse with no per-route limiter.
 
-<ApiSourceFooter
+<ApiSources
   paths={[
     "/api/v1/accounts",
     "/api/v1/accounts/{ss58}",

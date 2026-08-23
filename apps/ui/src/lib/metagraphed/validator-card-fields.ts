@@ -1,4 +1,4 @@
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 
@@ -35,7 +35,7 @@ export function resolveValidatorCard(v: GlobalValidator): ValidatorCardFields {
     subnetsLabel: formatNumber(v.subnet_count),
     uidsLabel: formatNumber(v.uid_count),
     nominatorsLabel: v.nominator_count != null ? formatNumber(v.nominator_count) : "—",
-    dominanceLabel: v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—",
-    apyLabel: v.apy_estimate != null ? `${(v.apy_estimate * 100).toFixed(1)}%` : "—",
+    dominanceLabel: v.stake_dominance != null ? `${formatPct(v.stake_dominance, 2)}` : "—",
+    apyLabel: v.apy_estimate != null ? `${formatPct(v.apy_estimate, 1)}` : "—",
   };
 }

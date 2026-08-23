@@ -2,15 +2,11 @@ import {
   AlertCircle,
   RefreshCw,
   Inbox,
-  Clock,
-  CheckCircle2,
   Database,
   ExternalLink as ExternalLinkIcon,
   Hourglass,
   WifiOff,
 } from "lucide-react";
-import { useState } from "react";
-import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { TimeAgo, safeExternalUrl, ExternalLink } from "@jsonbored/ui-kit";
 import { ApiError } from "@/lib/metagraphed/client";
 import { getNetworkPrefix } from "@/lib/metagraphed/config";
@@ -255,149 +251,6 @@ export function EmptyState({
     </div>
   );
 }
-
-/**
- * Freshness banner. Callers gate on isStaleFreshness (12h threshold).
- *
- * When a usable timestamp is present we show how old the snapshot is and,
- * optionally, a "Refresh now" button that invalidates the given query keys
- * (redesign affordance). When the timestamp is unusable/unknown we still
- * surface a quiet note so the UI never presents potentially unverified
- * snapshots as normal (production safety — finder dropped this branch).
- */
-export function StaleBanner({
-  generatedAt,
-  refreshQueryKeys,
-  refreshLabel = "Refresh now",
-  compact = false,
-  hideText = false,
-  bare = false,
-}: {
-  generatedAt?: string | null;
-  /** When provided, renders a button that invalidates these query keys. */
-  refreshQueryKeys?: QueryKey[];
-  refreshLabel?: string;
-  /**
-   * Compact single-line variant for tight contexts (e.g. a hero actions row):
-   * shorter copy and an icon-only refresh button whose label moves to a tooltip.
-   */
-  compact?: boolean;
-  /**
-   * Skip the "Snapshot from Xd ago" text entirely -- for composing just the
-   * refresh button (e.g. inside an ActionBar) while the freshness text
-   * renders separately elsewhere (e.g. next to a page title).
-   */
-  hideText?: boolean;
-  /**
-   * Borderless refresh button (no own border/rounded/bg) meant to sit inside
-   * a shared `ActionBar` alongside other `bare` buttons instead of carrying
-   * its own box.
-   */
-  bare?: boolean;
-}) {
-  const queryClient = useQueryClient();
-  const [state, setState] = useState<"idle" | "pending" | "ok" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const hasTimestamp = isUsableTimestamp(generatedAt);
-
-  // Unknown freshness: keep it visible rather than hiding the banner.
-  if (!hasTimestamp) {
-    if (hideText) return null;
-    return (
-      <p className="flex items-center gap-1.5 text-10 text-ink-muted">
-        <Clock className="size-3 shrink-0" aria-hidden />
-        Snapshot freshness unknown — verify before relying on this data.
-      </p>
-    );
-  }
-
-  const onRefresh = async () => {
-    if (!refreshQueryKeys?.length) return;
-    setState("pending");
-    setErrorMsg(null);
-    try {
-      await Promise.all(
-        refreshQueryKeys.map((key) =>
-          queryClient.invalidateQueries({ queryKey: key, refetchType: "active" }),
-        ),
-      );
-      setState("ok");
-      setTimeout(() => setState("idle"), 2000);
-    } catch (err) {
-      setState("error");
-      setErrorMsg((err as Error)?.message ?? "Refresh failed");
-    }
-  };
-
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={`flex items-center text-10 text-ink-muted ${
-        compact ? "gap-2" : "flex-wrap gap-x-3 gap-y-1.5"
-      }`}
-    >
-      {hideText ? null : (
-        <span className="inline-flex items-center gap-1.5 min-w-0">
-          <Clock className="size-3 shrink-0" aria-hidden />
-          {compact ? (
-            <>
-              Snapshot <TimeAgo at={generatedAt} />
-            </>
-          ) : (
-            <>
-              Snapshot from <TimeAgo at={generatedAt} /> — may be lagging behind live.
-            </>
-          )}
-        </span>
-      )}
-      {refreshQueryKeys?.length ? (
-        <span className={`flex items-center gap-2 ${!compact && !hideText ? "ml-auto" : ""}`}>
-          {state === "error" && errorMsg ? (
-            <span className="text-health-down truncate max-w-[18rem]">{errorMsg}</span>
-          ) : null}
-          {state === "ok" ? (
-            <span className="inline-flex items-center gap-1 text-health-ok">
-              <CheckCircle2 className="size-3" />
-              {compact ? null : " Refreshed"}
-            </span>
-          ) : null}
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={state === "pending"}
-            aria-label={refreshLabel}
-            className={
-              bare
-                ? "inline-flex items-center gap-1.5 rounded p-1 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors disabled:opacity-60 disabled:cursor-progress"
-                : `inline-flex items-center gap-1.5 rounded border border-border bg-card font-medium text-ink-strong hover:border-ink/30 disabled:opacity-60 disabled:cursor-progress ${
-                    compact ? "p-1" : "px-2 py-1"
-                  }`
-            }
-          >
-            <RefreshCw className={`size-3 ${state === "pending" ? "animate-spin" : ""}`} />
-            {compact ? null : state === "pending" ? "Refreshing…" : refreshLabel}
-          </button>
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * Standardized recovery links used by EmptyState / ErrorState across profile
- * pages. Keep labels identical everywhere so the UI feels consistent.
- */
-export const RECOVERY = {
-  schemas: { label: "Browse all schemas", href: "/apis/schemas" },
-  endpoints: { label: "Browse all endpoints", href: "/apis/endpoints" },
-  providers: { label: "Browse all providers", href: "/apis/providers" },
-  subnets: { label: "Browse all subnets", href: "/subnets" },
-  surfaces: { label: "Browse all surfaces", href: "/apis" },
-  openapi: { label: "Open API reference", href: "/schemas#openapi" },
-  gaps: { label: "Open the contributor queue", href: "/contribute" },
-} as const;
 
 export function PageHeading({
   eyebrow,

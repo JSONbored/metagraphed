@@ -1,7 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, Copy, Home, RefreshCw } from "lucide-react";
 import { reportError } from "@/lib/error-reporting";
-import { Panel } from "@/components/metagraphed/primitives";
 
 interface Props {
   children: ReactNode;
@@ -15,7 +14,7 @@ interface State {
  * Global styled error boundary. Wraps the app tree in __root so that any
  * render-time throw that escapes route-level `errorComponent` (portals,
  * event handlers that force a re-render, provider crashes) still lands on a
- * branded Bone & Ink fallback instead of a black/blank page.
+ * branded fallback in the site's own tokens instead of a black/blank page.
  *
  * On catch it stamps a `mg:last-crash` session flag so the blank-screen
  * watchdog can distinguish "genuine runtime error" from "silent blank".
@@ -91,12 +90,12 @@ export class GlobalErrorBoundary extends Component<Props, State> {
               overview, or copy the error details for a bug report.
             </p>
 
-            <Panel className="mt-6">
+            <div className="min-w-0 mg-panel-pad mt-6">
               <div className="text-10 text-ink-muted">Error message</div>
               <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-paper p-2 font-mono text-13 text-ink">
                 {message || "Unknown error"}
               </pre>
-            </Panel>
+            </div>
 
             <div className="mt-6 flex flex-wrap gap-2">
               <button

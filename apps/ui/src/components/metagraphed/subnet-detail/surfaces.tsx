@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, DataTable, MarkerRail, type DataTableColumn } from "@jsonbored/ui-kit";
 import { subnetSurfacesQuery, subnetUptimeQuery } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 import type { Surface } from "@/lib/metagraphed/types";
 import { surfaceRail, uptimeBySurface } from "./subnet-detail-logic";
 
@@ -21,7 +21,7 @@ const COLUMNS: DataTableColumn<Surface & { uptime: number | null }>[] = [
     label: "Uptime 90d",
     kind: "number",
     value: (row) => row.uptime,
-    format: (v) => (typeof v === "number" ? `${v.toFixed(1)}%` : "—"),
+    format: (v) => (typeof v === "number" ? `${formatDecimal(v, 1)}%` : "—"),
     definition: "Uptime",
   },
   {
@@ -71,7 +71,7 @@ export function SurfacesSection({ netuid, name }: { netuid: number; name?: strin
           <MarkerRail
             items={rail.slice(0, 12)}
             max={100}
-            formatValue={(v) => `${v.toFixed(1)}%`}
+            formatValue={(v) => `${formatDecimal(v, 1)}%`}
             columns={{ ratio: "Uptime", name: "Surface", scale: "0–100%" }}
             ariaLabel={`Subnet ${netuid} surface uptime over 90 days`}
             source={`sn-${netuid}-surface`}

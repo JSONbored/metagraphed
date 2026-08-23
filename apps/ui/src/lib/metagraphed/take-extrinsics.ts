@@ -42,6 +42,7 @@
 //     changed its take before).
 
 import { isValidSs58 } from "./accounts";
+import { formatDecimal } from "@/lib/metagraphed/format";
 
 /** PerU16's denominator -- take is expressed as parts-per-this-many. */
 export const TAKE_PARTS_PER_WHOLE = 65_535;
@@ -196,9 +197,9 @@ export function describeTakeValidationIssue(issue: TakeValidationIssue): string 
     case "not_owner":
       return "Your connected wallet doesn't own this hotkey.";
     case "below_min_take":
-      return `Take can't go below ${takePartsToPercent(issue.minTakeParts).toFixed(2)}%.`;
+      return `Take can't go below ${formatDecimal(takePartsToPercent(issue.minTakeParts), 2)}%.`;
     case "above_max_take":
-      return `Take can't exceed ${takePartsToPercent(issue.maxTakeParts).toFixed(2)}%.`;
+      return `Take can't exceed ${formatDecimal(takePartsToPercent(issue.maxTakeParts), 2)}%.`;
     case "not_strictly_increasing":
       return "The new take must be strictly higher than the current take.";
     case "not_strictly_decreasing":

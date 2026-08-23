@@ -20,7 +20,7 @@ import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 import {
   blockChainEventsQuery,
   blockExtrinsicsQuery,
@@ -270,7 +270,7 @@ export function BlockDetailPage() {
           points={points}
           window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
           unit="seconds between blocks"
-          formatValue={(value) => `${value.toFixed(1)}s`}
+          formatValue={(value) => `${formatDecimal(value, 1)}s`}
           formatDate={(t) => `#${formatNumber(t)}`}
           formatRange={(from, to) => `#${formatNumber(from)} → #${formatNumber(to)}`}
           marker={number}

@@ -4,44 +4,32 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
-  type RefObject,
 } from "react";
 import { dedupeApiSources, type ApiSource } from "./api-source-helpers";
 
 export type { ApiSource };
 
+/**
+ * Every API path the mounted page reads, collected from its own components.
+ *
+ * This carried a whole drawer with it until #11628: `isOpen` / `setOpen` /
+ * `open()` and a `restoreFocusRef` existed so `ApiDrawer` could return focus to
+ * the header button that opened it (#6418). #11605 cut the header to five links
+ * and the drawer went with the button, leaving a registry with no reader —
+ * every route declared its sources into a store nothing rendered. The footer
+ * reads them now, which is what the declaration was always for.
+ */
 interface Ctx {
   sources: ApiSource[];
   register: (s: ApiSource[]) => () => void;
-  isOpen: boolean;
-  setOpen: (v: boolean) => void;
-  open: () => void;
-  /**
-   * The element focused when the drawer was opened, for ApiDrawer to restore on
-   * close (#6418). The drawer's <Sheet> has no <SheetTrigger> in its own tree
-   * (the trigger is a separate component, and ⌘J can open it from anywhere), so
-   * Radix cannot return focus on its own — it drops to <body>. `open()` records
-   * document.activeElement here; ApiDrawer's onCloseAutoFocus restores it.
-   */
-  restoreFocusRef: RefObject<HTMLElement | null>;
 }
 
 const ApiSourceCtx = createContext<Ctx | null>(null);
 
 export function ApiSourceProvider({ children }: { children: ReactNode }) {
   const [registry, setRegistry] = useState<Map<symbol, ApiSource[]>>(new Map());
-  const [isOpen, setOpen] = useState(false);
-  const restoreFocusRef = useRef<HTMLElement | null>(null);
-
-  // Record the element to return focus to before opening — the header button,
-  // or whatever had focus when ⌘J fired (#6418).
-  const open = useCallback(() => {
-    restoreFocusRef.current = (document.activeElement as HTMLElement | null) ?? null;
-    setOpen(true);
-  }, []);
 
   const register = useCallback((items: ApiSource[]) => {
     const key = Symbol();
@@ -61,10 +49,7 @@ export function ApiSourceProvider({ children }: { children: ReactNode }) {
 
   const sources = useMemo(() => dedupeApiSources(registry.values()), [registry]);
 
-  const value = useMemo<Ctx>(
-    () => ({ sources, register, isOpen, setOpen, open, restoreFocusRef }),
-    [sources, register, isOpen, open],
-  );
+  const value = useMemo<Ctx>(() => ({ sources, register }), [sources, register]);
 
   return <ApiSourceCtx.Provider value={value}>{children}</ApiSourceCtx.Provider>;
 }

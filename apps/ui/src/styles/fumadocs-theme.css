@@ -1,28 +1,20 @@
 /*
- * Reskins fumadocs-ui onto the Bone & Ink design system, rather than one of
- * its 11 built-in presets (neutral/black/vitepress/...). Fumadocs ships a
- * `shadcn.css` preset specifically for this: it points its own --color-fd-*
- * variables at *standard* shadcn variable names (--background, --card,
- * --primary, --border, --accent, --ring, --destructive, ...) instead of
- * hardcoded colors. packages/ui-kit/src/styles.css already defines every one
- * of those names (it's a shadcn-derived token set itself) -- so importing
- * this preset picks up our real Bone & Ink palette automatically, no manual
- * color mapping or OKLCH->HSL conversion needed (var() indirection doesn't
- * care what color function the referenced token uses).
+ * Reskins fumadocs-ui onto our token set rather than one of its 11 built-in
+ * presets. `shadcn.css` is the preset for exactly this: it points fumadocs'
+ * own --color-fd-* variables at standard shadcn names (--background, --card,
+ * --primary, --border, --accent, --ring, --destructive), every one of which
+ * packages/ui-kit/src/styles.css already defines. No colour mapping and no
+ * OKLCH->HSL conversion: var() indirection does not care which colour
+ * function the referenced token uses. The OpenAPI preset inherits the same
+ * mapping, so content/docs/api-reference/** needs no token work of its own.
  */
 @import "fumadocs-ui/css/preset.css";
 @import "fumadocs-ui/css/shadcn.css";
-/* Same --color-fd-* variable set as the two imports above -- the OpenAPI
-   reference pages (content/docs/api-reference/**) inherit the Bone & Ink
-   mapping already established here with no separate token work. */
 @import "fumadocs-openapi/css/preset.css";
 
-/*
- * shadcn.css's own `#nd-sidebar` block references --sidebar-* variables our
- * token set doesn't define (we have no existing sidebar concept). Alias them
- * to real tokens rather than leaving them unset (which would fall through to
- * Fumadocs' own hardcoded defaults, defeating the point of this file).
- */
+/* shadcn.css's `#nd-sidebar` block references --sidebar-* names our token set
+   does not define. Aliased rather than left unset, which would fall through
+   to fumadocs' hardcoded defaults and undo the file. */
 :root,
 .dark {
   --sidebar: var(--surface);
@@ -34,11 +26,9 @@
   --sidebar-primary-foreground: var(--primary-foreground);
 }
 
-/* Map Callout semantics onto our existing health tokens where a clear
-   1:1 correspondence exists; --color-fd-error is already handled by
-   shadcn.css itself (-> --destructive). Leave info/idea at Fumadocs'
-   own defaults -- we don't have an existing "informational" semantic
-   color to borrow, and inventing one risks looking arbitrary. */
+/* Callout semantics onto our health tokens where the correspondence is 1:1.
+   info/idea stay at fumadocs' defaults: we have no "informational" semantic
+   colour, and inventing one would look arbitrary. */
 @theme static {
   --color-fd-success: var(--health-ok);
   --color-fd-warning: var(--health-warn);

@@ -22,7 +22,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { RouterLink } from "@/components/metagraphed/router-link";
-import { CopyLinkButton } from "@/components/metagraphed/primitives";
+import { CopyLinkButton } from "@/components/metagraphed/copy-link-button";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import {
   ALL_VALIDATORS_LIMIT,
@@ -50,7 +50,7 @@ import {
   validatorNominatorsQuery,
   validatorsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
 import { Route } from "./validators.$hotkey";
@@ -153,10 +153,7 @@ export function ValidatorDetailPage() {
     { label: "Total stake", value: fmtStake(detail.total_stake_tao) },
     {
       label: "Est. APY",
-      value:
-        typeof detail.apy_estimate === "number"
-          ? `${(detail.apy_estimate * 100).toFixed(1)}%`
-          : "—",
+      value: typeof detail.apy_estimate === "number" ? `${formatPct(detail.apy_estimate, 1)}` : "—",
     },
     { label: "Memberships", value: formatNumber(memberships.length) },
     { label: "Permits", value: formatNumber(permits) },
@@ -231,21 +228,21 @@ export function ValidatorDetailPage() {
       label: `Δ stake ${window}`,
       value: (() => {
         const change = changeOver(stakeSeries);
-        return change === null ? "—" : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)}%`;
+        return change === null ? "—" : `${change >= 0 ? "+" : ""}${formatPct(change, 1)}`;
       })(),
     },
     {
       label: "Yield now",
       value: (() => {
         const last = yieldSeries[yieldSeries.length - 1]?.v;
-        return typeof last === "number" ? `${(last * 100).toFixed(1)}%` : "—";
+        return typeof last === "number" ? `${formatPct(last, 1)}` : "—";
       })(),
     },
     {
       label: `Δ yield ${window}`,
       value: (() => {
         const change = changeOver(yieldSeries);
-        return change === null ? "—" : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)}%`;
+        return change === null ? "—" : `${change >= 0 ? "+" : ""}${formatPct(change, 1)}`;
       })(),
     },
   ];

@@ -10,7 +10,10 @@ import {
   RADII,
   DOT_MAX_PX,
   CONTRACT_RADIUS_PX,
+  MAX_SECTIONS_PER_ROUTE,
+  SPECIMEN_ROUTES,
 } from "./token-inventory.config.ts";
+import { NO_API_ROUTES } from "./overflow-check.config.ts";
 import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
 import { gotoThroughRestart } from "./server-restart.ts";
 
@@ -37,6 +40,12 @@ type Sweep = {
   thOffenders: string[];
   /** Text inside a compare ledger's <thead th> that is not 13px / 600 sentence case. */
   compareHeadOffenders: string[];
+  /** `section.mg-section` count -- the page-shape rule (#11604). */
+  sections: number;
+  /** Sections holding more than one table taller than 900px. */
+  stackedTables: string[];
+  /** Elements still carrying a class the v2 purge deleted (#11628). */
+  deletedClasses: string[];
   textNodes: number;
 };
 
@@ -52,15 +61,75 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
   const shadows: string[] = [];
   const thOffenders: string[] = [];
   const compareHeadOffenders: string[] = [];
+  const stackedTables: string[] = [];
+  const deletedClasses: string[] = [];
+  // Every class the v2 rebuild deleted. A page carrying one is either a stale
+  // component that survived a rebase or a hand-rolled copy of a primitive; both
+  // are the legacy grammar coming back, and neither shows up in a type error.
+  const DELETED = [
+    "mg-quick-tile",
+    "mg-reveal",
+    "mg-scanline",
+    "mg-metric-tile",
+    "mg-dot-grid",
+    "mg-leaderboard",
+    "mg-chip-rail",
+    "mg-glyph-rule",
+    "mg-section-rule",
+    "mg-display-tight",
+    "mg-fade-in",
+    "mg-route-enter",
+    "mg-row-flash",
+    "mg-ticker",
+    "mg-mega-",
+    "mg-kpi-strip",
+    "mg-hero-slab",
+    "mg-hero-caption",
+    "mg-accent-band",
+    "mg-anchor-btn",
+    "mg-hover-lift",
+    "mg-row-hover",
+    "mg-divider",
+    "mg-rule",
+    "mg-chip",
+    "mg-value-pulse",
+    "mg-skel-crossfade",
+    "mg-query-shell",
+    "mg-ghost-trigger",
+    "mg-refreshing",
+    "mg-actions",
+  ];
   let textNodes = 0;
-  const describe = (el: Element) =>
+  const describeEl = (el: Element) =>
     `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}.${String(el.className || "")
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 6)
       .join(".")}`;
+  const sectionEls = [...root.querySelectorAll<HTMLElement>("section.mg-section")];
+  const sections = sectionEls.length;
+  // Per SECTION, not per page. Three tall tables in three sections are three
+  // answers to three questions, which is what sectioning is for; two in ONE
+  // section is the data wall -- the reader cannot see the second without
+  // losing the first, and nothing on screen says why they are both there.
+  for (const section of sectionEls) {
+    const tall = [...section.querySelectorAll<HTMLElement>("table")].filter(
+      (t) => t.getBoundingClientRect().height > 900,
+    );
+    if (tall.length > 1) {
+      stackedTables.push(`${describeEl(section)} holds ${tall.length} tables over 900px`);
+    }
+  }
   for (const el of root.querySelectorAll<HTMLElement>("*")) {
     const cs = getComputedStyle(el);
+    for (const cls of String(el.className || "").split(/\s+/)) {
+      // `mg-chip` matches exactly; the `mg-mega-` entry is a prefix, so both
+      // forms are checked rather than only one.
+      if (!cls) continue;
+      if (DELETED.some((d) => (d.endsWith("-") ? cls.startsWith(d) : cls === d))) {
+        deletedClasses.push(`${cls} on ${describeEl(el)}`);
+      }
+    }
     if (cs.display === "none" || cs.visibility === "hidden") continue;
     const hasText = Array.from(el.childNodes).some(
       (n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").trim().length > 0,
@@ -86,18 +155,18 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
         !inCompare &&
         (cs.fontSize !== "10px" || cs.fontWeight !== "600" || cs.textTransform !== "uppercase")
       ) {
-        thOffenders.push(`${describe(el)} → ${cs.fontSize}/${cs.fontWeight}/${cs.textTransform}`);
+        thOffenders.push(`${describeEl(el)} → ${cs.fontSize}/${cs.fontWeight}/${cs.textTransform}`);
       }
       // The ledger's own rule: the entity name reads as a name -- 13px, 600,
       // never uppercased -- and its qualifier is the 11px muted line. The
       // visually hidden label for the metric column is exempt.
       if (isTh && inCompare && !el.closest(".sr-only") && !["13px", "11px"].includes(cs.fontSize)) {
         compareHeadOffenders.push(
-          `${describe(el)} → ${cs.fontSize}/${cs.fontWeight}/${cs.textTransform}`,
+          `${describeEl(el)} → ${cs.fontSize}/${cs.fontWeight}/${cs.textTransform}`,
         );
       }
       if (isTh && inCompare && cs.textTransform === "uppercase" && !el.closest(".sr-only")) {
-        compareHeadOffenders.push(`${describe(el)} → uppercased entity name`);
+        compareHeadOffenders.push(`${describeEl(el)} → uppercased entity name`);
       }
     }
     const r = cs.borderRadius;
@@ -121,7 +190,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
         } else {
           radii[r] = (radii[r] ?? 0) + 1;
           if (round && rect.width > rect.height + 1 && rect.width > dotMax) {
-            pills.push(describe(el));
+            pills.push(describeEl(el));
           }
         }
       }
@@ -132,7 +201,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
       const insetOnly = cs.boxShadow
         .split(/,(?![^(]*\))/)
         .every((part) => /inset/.test(part) && /\b0px\s+0px\b/.test(part.replace(/inset/, "")));
-      if (!tooltip && !insetOnly) shadows.push(`${describe(el)} → ${cs.boxShadow}`);
+      if (!tooltip && !insetOnly) shadows.push(`${describeEl(el)} → ${cs.boxShadow}`);
     }
   }
   return {
@@ -144,6 +213,9 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
     shadows,
     thOffenders,
     compareHeadOffenders,
+    sections,
+    stackedTables,
+    deletedClasses,
     textNodes,
   };
 }
@@ -151,7 +223,8 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
 for (const route of ROUTES) {
   test.describe(route, () => {
     const harPath = harPathForRoute(route);
-    if (!existsSync(harPath)) {
+    const needsFixture = !NO_API_ROUTES.has(route);
+    if (needsFixture && !existsSync(harPath)) {
       throw new Error(
         `Missing HAR fixture for ${route}: ${harPath}. Run ` +
           `\`npm run test:e2e:record-har --workspace=apps/ui\` against a live dev server first.`,
@@ -170,15 +243,17 @@ for (const route of ROUTES) {
           },
           [THEME_STORAGE_KEY, theme],
         );
-        await page.routeFromHAR(harPath, {
-          url: "**/api.metagraph.sh/**",
-          notFound: "fallback",
-          update: false,
-        });
-        for (const pattern of DATED_ENDPOINT_PATTERNS) {
-          const fixture = findHarFixture(harPath, pattern);
-          if (fixture) {
-            await page.route(pattern, (route) => route.fulfill(fixture));
+        if (needsFixture) {
+          await page.routeFromHAR(harPath, {
+            url: "**/api.metagraph.sh/**",
+            notFound: "fallback",
+            update: false,
+          });
+          for (const pattern of DATED_ENDPOINT_PATTERNS) {
+            const fixture = findHarFixture(harPath, pattern);
+            if (fixture) {
+              await page.route(pattern, (route) => route.fulfill(fixture));
+            }
           }
         }
         await gotoThroughRestart(page, route);
@@ -226,6 +301,34 @@ for (const route of ROUTES) {
         expect(
           s.compareHeadOffenders,
           `compare-ledger header text that is not a 13px/11px sentence-case name on ${route} (${theme})`,
+        ).toEqual([]);
+
+        // The page-shape rule (#11604): at most seven sections, because a page
+        // that answers eight questions is two pages. `AnalyticsPage` throws on
+        // this in development, but a route that mounts its sections by hand --
+        // /design/primitives does, deliberately -- has no runtime guard, and
+        // neither does a page whose eighth section only appears with data.
+        if (!(route in SPECIMEN_ROUTES)) {
+          expect(
+            s.sections,
+            `more than seven sections on ${route} (${theme}) -- see the page-shape rule`,
+          ).toBeLessThanOrEqual(MAX_SECTIONS_PER_ROUTE);
+        }
+
+        // One tall table per section. Two stacked inside one section is the
+        // data wall that sectioning and `LoadMore` exist to prevent.
+        if (!(route in SPECIMEN_ROUTES)) {
+          expect(
+            s.stackedTables,
+            `a section holding more than one table taller than 900px on ${route} (${theme})`,
+          ).toEqual([]);
+        }
+
+        // A class the purge deleted, rendered by a live page: a stale component
+        // survived a rebase, or someone hand-rolled a primitive.
+        expect(
+          s.deletedClasses,
+          `classes deleted by the v2 purge still rendering on ${route} (${theme})`,
         ).toEqual([]);
       });
     }

@@ -8,7 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import {
   AnalyticsSection,
   DataTable,
@@ -308,12 +308,12 @@ function RouteTransitionBar() {
   return (
     <div
       aria-hidden
-      className="fixed inset-x-0 top-0 z-[var(--mg-z-progress)] h-0.5 pointer-events-none overflow-hidden"
-      style={{ opacity: isLoading ? 1 : 0, transition: "opacity 200ms ease-out" }}
+      className="mg-progress-bar fixed inset-x-0 top-0 z-[var(--mg-z-progress)] h-0.5 pointer-events-none overflow-hidden"
+      // A CSS custom property carrying data, not a style: the bar's opacity
+      // is state, and `--mg-motion` owns the duration.
+      style={{ "--mg-progress-opacity": isLoading ? 1 : 0 } as CSSProperties}
     >
-      {isLoading ? (
-        <div className="h-full w-1/3 bg-accent animate-[mg-loader_1.1s_ease-in-out_infinite]" />
-      ) : null}
+      {isLoading ? <div className="mg-progress-track" /> : null}
     </div>
   );
 }

@@ -40,7 +40,7 @@ import {
   Zap,
 } from "lucide-react";
 import { askQuestion, searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
-import { classNames } from "@/lib/metagraphed/format";
+import { classNames, formatDecimal } from "@/lib/metagraphed/format";
 import { isChecksumValidSs58, isValidH160, normalizeH160 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
@@ -55,9 +55,8 @@ import {
   citationLabel,
   citationMeta,
   sourceCountLabel,
-} from "@/components/metagraphed/ask-box";
+} from "@/components/metagraphed/ask-labels";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
-import { Panel } from "@/components/metagraphed/primitives";
 import {
   CommandDialog,
   CommandEmpty,
@@ -1191,17 +1190,13 @@ function AskAnswerPanel({
       </div>
 
       {mutation.isPending ? (
-        <Panel
-          flush
-          className="px-3 py-3 text-13 text-ink-muted"
-          bodyClassName="flex items-center gap-2"
-        >
+        <div className="min-w-0 px-3 py-3 text-13 text-ink-muted flex items-center gap-2">
           <Loader2 className="size-4 shrink-0 animate-spin text-accent" aria-hidden />
           <span>
             {elapsedMs > 10_000 ? "Still working… " : "Thinking… "}
-            {(elapsedMs / 1000).toFixed(1)}s
+            {formatDecimal(elapsedMs / 1000, 1)}s
           </span>
-        </Panel>
+        </div>
       ) : null}
 
       {mutation.isError ? (

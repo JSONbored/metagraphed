@@ -1,6 +1,6 @@
 import { CopyableCode, truncateIdentifier, type DataTableColumn } from "@jsonbored/ui-kit";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 import type { ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
 import { cadenceTint, callLabel, eventLabel, type BlockRow } from "./chain-stream-logic";
 
@@ -60,7 +60,7 @@ export function blockColumns(): DataTableColumn<BlockRow>[] {
       width: 120,
       value: (row) => row.block_time_ms,
       tint: (row) => cadenceTint(row.block_time_ms),
-      format: (value) => (typeof value === "number" ? `${(value / 1000).toFixed(1)}s` : "—"),
+      format: (value) => (typeof value === "number" ? `${formatDecimal(value / 1000, 1)}s` : "—"),
       definition:
         "Time since the previous block, derived from consecutive observations — so the oldest row on a page has none. The tint is centred on the 12s target: pale is early, dark is late.",
     },

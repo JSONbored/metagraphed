@@ -42,10 +42,18 @@ describe("visual grammar guardrails (#8255)", () => {
     expect(offenders.map(rel)).toEqual([]);
   });
 
-  it("has no infinite translate animation, the shape a marquee always takes", () => {
+  it("has no infinite translate animation but the route-transition bar", () => {
     // Catches a re-introduction under a different name. `infinite` alone is
     // fine (spinners, pulse dots); it's the pairing with a translate keyframe
     // that makes a marquee.
+    //
+    // `mg-loader` is the one allowed moving element: the 2px route-transition
+    // strip. It was already infinite and already translating -- but it lived in
+    // an `animate-[mg-loader_1.1s_ease-in-out_infinite]` Tailwind utility, and
+    // a sweep of the STYLESHEET cannot see a utility. #11628 moved it into
+    // `.mg-progress-track`, which is what made this assertion notice it. An
+    // exemption that only says "allowed" would hide the thing that matters, so
+    // the next assertion requires it to be answered under reduced motion.
     const css = read(root("../../../../../packages/ui-kit/src/styles.css"));
     const infiniteAnimations = [...css.matchAll(/animation:\s*([\w-]+)[^;]*\binfinite\b/g)].map(
       (m) => m[1],
@@ -54,7 +62,20 @@ describe("visual grammar guardrails (#8255)", () => {
       const kf = css.match(new RegExp(`@keyframes ${name}\\s*\\{[^}]*\\}[^}]*\\}`));
       return kf ? /translateX|translateY|translate3d/.test(kf[0]) : false;
     });
-    expect(translating).toEqual([]);
+    expect(translating).toEqual(["mg-loader"]);
+  });
+
+  it("stops the route-transition bar under prefers-reduced-motion", () => {
+    // The carve-out above is only defensible because of this: the one element
+    // allowed to move stops moving for a reader who asked motion to stop.
+    const css = read(root("../../../../../packages/ui-kit/src/styles.css"));
+    // lastIndexOf, not indexOf: the stylesheet carries more than one
+    // reduced-motion query, and slicing from the first one includes the
+    // .mg-progress-track DEFINITION, which of course matches its own name.
+    const block = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(block).toContain(".mg-progress-track");
+    const rule = block.slice(block.indexOf(".mg-progress-track"));
+    expect(rule.slice(0, rule.indexOf("}"))).toMatch(/animation:\s*none/);
   });
 
   it("has no full-bleed accent fill — accent may colour a mark, not fill a region", () => {

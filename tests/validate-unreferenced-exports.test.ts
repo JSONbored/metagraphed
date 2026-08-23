@@ -11,7 +11,10 @@
 // earned, on a run that may simply have been misconfigured.
 
 import { describe, expect, it } from "vitest";
-import { countUnreferenced } from "../scripts/validate-unreferenced-exports.ts";
+import {
+  countUnreferenced,
+  isUiFile,
+} from "../scripts/validate-unreferenced-exports.ts";
 
 describe("counting a knip report", () => {
   it("sums exports and types across files", () => {
@@ -56,5 +59,39 @@ describe("counting a knip report", () => {
   // assumed both were present would throw on a perfectly ordinary report.
   it("tolerates missing exports/types keys", () => {
     expect(countUnreferenced({ issues: [{ file: "src/a.ts" }] }).total).toBe(0);
+  });
+});
+
+describe("the UI workspaces are counted separately (#11628)", () => {
+  it("splits the count on the workspace boundary", () => {
+    const { total, ui } = countUnreferenced({
+      issues: [
+        { file: "src/route-query.ts", exports: ["a"] },
+        { file: "workers/data-api.ts", types: ["B"] },
+        { file: "apps/ui/src/lib/format.ts", exports: ["c", "d"] },
+        { file: "packages/ui-kit/src/index.ts", types: ["E"] },
+      ],
+    });
+    // The backend figure has meant the same thing through six changes; folding
+    // the UI in would have hidden three exports behind a bigger number.
+    expect(total).toBe(2);
+    expect(ui).toBe(3);
+  });
+
+  it("classifies by path prefix, not by guesswork", () => {
+    expect(isUiFile("apps/ui/src/x.ts")).toBe(true);
+    expect(isUiFile("packages/ui-kit/src/x.ts")).toBe(true);
+    expect(isUiFile("packages/client/src/x.ts")).toBe(true);
+    expect(isUiFile("src/x.ts")).toBe(false);
+    expect(isUiFile("workers/x.ts")).toBe(false);
+    expect(isUiFile("schemas-src/routes/x.ts")).toBe(false);
+  });
+
+  it("counts an issue with neither exports nor types as nothing, on either side", () => {
+    const { total, ui } = countUnreferenced({
+      issues: [{ file: "apps/ui/src/x.ts" }, { file: "src/y.ts", exports: [] }],
+    });
+    expect(total).toBe(0);
+    expect(ui).toBe(0);
   });
 });

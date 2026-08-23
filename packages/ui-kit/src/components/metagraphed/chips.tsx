@@ -1,16 +1,9 @@
 import { classNames } from "@/lib/format";
 
-// Local, portable equivalents of apps/ui's schema-derived CurationLevel and
-// HealthState types -- both are already treated as `| string` at every call
-// site here (with a runtime string fallback), so a plain literal union
-// preserves identical behavior without importing the app's OpenAPI contract.
-type CurationLevel =
-  | "native"
-  | "candidate-discovered"
-  | "community-seeded"
-  | "machine-verified"
-  | "maintainer-reviewed"
-  | "adapter-backed";
+// A local, portable equivalent of apps/ui's schema-derived HealthState: it is
+// already treated as `| string` at every call site here (with a runtime string
+// fallback), so a plain literal union preserves identical behavior without
+// importing the app's OpenAPI contract.
 type HealthState = "ok" | "warn" | "down" | "unknown";
 
 /**
@@ -67,9 +60,6 @@ export function HealthDot({
   const key = normalize(state);
   const color = STATE_COLOR[key];
   const label = STATE_LABEL[key];
-  const shouldPulse =
-    key === "warn" || key === "degraded" || key === "down" || key === "offline";
-
   const dot = (
     <span
       role="img"
@@ -77,7 +67,6 @@ export function HealthDot({
       className={classNames(
         "relative inline-block size-2 rounded-full mg-dot shrink-0",
         color,
-        shouldPulse && "",
         className,
       )}
     />
@@ -89,130 +78,6 @@ export function HealthDot({
     <span className="inline-flex items-center gap-1.5">
       {dot}
       <span className="text-13 font-medium text-ink">{label}</span>
-    </span>
-  );
-}
-
-/**
- * Back-compat: HealthPill now renders as a labeled dot. Existing call sites
- * keep working; the visual is unified across the app.
- */
-export function HealthPill({
-  state,
-  label,
-}: {
-  state?: HealthState | string;
-  label?: string;
-}) {
-  if (label) {
-    return (
-      <span className="inline-flex items-center gap-1.5">
-        <HealthDot state={state} />
-        <span className="text-13 font-medium text-ink">{label}</span>
-      </span>
-    );
-  }
-  return <HealthDot state={state} variant="label" />;
-}
-
-const curationLabel: Record<CurationLevel, string> = {
-  native: "Native",
-  "candidate-discovered": "Candidate",
-  "community-seeded": "Community",
-  "machine-verified": "Machine",
-  "maintainer-reviewed": "Reviewed",
-  "adapter-backed": "Adapter",
-};
-
-const curationCls: Record<CurationLevel, string> = {
-  native: "bg-transparent text-ink-strong border-ink-strong/40",
-  "candidate-discovered":
-    "bg-transparent text-ink-muted border-dashed border-ink-subtle",
-  "community-seeded":
-    "bg-transparent text-curation-seeded border-curation-seeded/40",
-  "machine-verified": "bg-transparent text-ink-muted border-border",
-  "maintainer-reviewed":
-    "bg-primary-soft text-curation-verified border-accent/40",
-  "adapter-backed": "bg-primary-soft text-curation-pilot border-accent/50",
-};
-
-// Surfaces carry a per-surface `authority` (rather than a curation_level); give
-// those values their own readable labels + reuse the nearest curation styling.
-const authorityLabel: Record<string, string> = {
-  official: "Official",
-  "registry-observed": "Observed",
-  "provider-claimed": "Claimed",
-  community: "Community",
-  "native-chain": "Native",
-};
-
-const authorityCls: Record<string, string> = {
-  official: curationCls["maintainer-reviewed"],
-  "registry-observed": curationCls["machine-verified"],
-  "provider-claimed": curationCls["adapter-backed"],
-  community: curationCls["candidate-discovered"],
-  "native-chain": curationCls["native"],
-};
-
-export function CurationChip({ level }: { level?: CurationLevel | string }) {
-  const key = String(level ?? "");
-  const label = Object.hasOwn(curationLabel, key)
-    ? curationLabel[key as CurationLevel]
-    : Object.hasOwn(authorityLabel, key)
-      ? authorityLabel[key]
-      : level
-        ? key
-        : "—";
-  const cls = Object.hasOwn(curationCls, key)
-    ? curationCls[key as CurationLevel]
-    : Object.hasOwn(authorityCls, key)
-      ? authorityCls[key]
-      : curationCls["candidate-discovered"];
-  return (
-    <span
-      className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-13 font-medium",
-        cls,
-      )}
-    >
-      {label}
-    </span>
-  );
-}
-
-// Per-surface HUMAN review state (#1676). community-submitted is the default and
-// gets no chip (the authority chip already conveys provenance); surface only the
-// meaningful maintainer-reviewed / rejected outcomes.
-const reviewLabel: Record<string, string> = {
-  "maintainer-reviewed": "Reviewed",
-  rejected: "Rejected",
-};
-
-const reviewCls: Record<string, string> = {
-  "maintainer-reviewed": curationCls["maintainer-reviewed"],
-  rejected: "bg-transparent text-ink-muted border-ink-subtle line-through",
-};
-
-export function ReviewChip({ state }: { state?: string }) {
-  const key = String(state ?? "");
-  if (!Object.hasOwn(reviewLabel, key)) return null;
-  return (
-    <span
-      className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-13 font-medium",
-        reviewCls[key],
-      )}
-      title={`Maintainer review: ${key}`}
-    >
-      {reviewLabel[key]}
-    </span>
-  );
-}
-
-export function CandidateChip() {
-  return (
-    <span className="inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 text-13 font-medium text-ink-muted">
-      Unverified
     </span>
   );
 }

@@ -6,30 +6,18 @@ import type {
   ValidatorHistoryPoint,
   ValidatorNominatorEntry,
 } from "@/lib/metagraphed/types";
+import { formatAmount, formatDecimal } from "@/lib/metagraphed/format";
 
 export type ValidatorWindow = "7d" | "30d" | "90d";
 
 export const shortKey = (key: string): string =>
   key.length > 14 ? `${key.slice(0, 6)}…${key.slice(-4)}` : key;
 
-export const fmtStake = (value: number | null | undefined): string => {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M τ`;
-  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}k τ`;
-  return `${value.toFixed(2)} τ`;
-};
+export const fmtStake = (value: number | null | undefined): string => formatAmount(value, "τ");
 
-export const fmtAlpha = (value: number | null | undefined): string => {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M α`;
-  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}k α`;
-  return `${value.toFixed(2)} α`;
-};
+export const fmtAlpha = (value: number | null | undefined): string => formatAmount(value, "α");
 
-export const fmtScore = (value: number | null | undefined): string =>
-  typeof value === "number" && Number.isFinite(value) ? value.toFixed(3) : "—";
+export const fmtScore = (value: number | null | undefined): string => formatDecimal(value, 3);
 
 export interface StakeColumn {
   key: string;

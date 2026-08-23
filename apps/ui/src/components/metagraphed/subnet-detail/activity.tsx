@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, RankGrid, RankedRails, type RankGridItem } from "@jsonbored/ui-kit";
 import { subnetEventSummaryQuery } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { activityKindRail, categoryTotals } from "./subnet-detail-logic";
 
 /**
@@ -24,7 +24,7 @@ export function ActivitySection({ netuid }: { netuid: number }) {
     key: category.key,
     label: category.label,
     value: formatNumber(category.value),
-    share: `${(category.share * 100).toFixed(1)}%`,
+    share: `${formatPct(category.share, 1)}`,
   }));
 
   return (

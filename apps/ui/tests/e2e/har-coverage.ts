@@ -20,7 +20,7 @@
 // outage it exists to catch. Parsing the source needs nothing but the repo, so
 // it still answers while production is unreachable.
 //
-// The pairing it checks is the page's own `<ApiSourceFooter paths={[...]}>`:
+// The pairing it checks is the page's own `useRegisterApiSource(PATHS)`:
 // the list the page publishes to users as "data sources", which is the closest
 // thing to a declaration of what the route reads. It is a LOWER bound -- a
 // query whose path never reaches the footer is invisible here -- so this
@@ -103,20 +103,21 @@ export function resolveRouteFile(route: string, index: Map<string, string>): str
 /**
  * The API paths a route DECLARES, however it declares them.
  *
- * Two conventions, both live: the legacy `<ApiSourceFooter paths={[...]}>` at
- * the bottom of a page, and the v2 `useRegisterApiSource(PATHS)` that the
- * rebuilt routes call instead -- usually with a module-level `const PATHS =
- * [...]`, and sometimes one file away, because the hero/shell that registers
- * them is shared and the route passes its own list in as a prop.
+ * One convention now: `useRegisterApiSource(PATHS)` -- usually with a
+ * module-level `const PATHS = [...]`, and sometimes one file away, because the
+ * hero/shell that registers them is shared and the route passes its own list
+ * in as a prop. `<ApiSourceFooter paths={[...]}>` was the other, and #11628
+ * deleted it: the footer duplicated by hand the list its own
+ * `useRegisterApiSource` call already carried.
  *
- * Reading only the footer made this gate go blind exactly as each route was
+ * Reading only that footer made this gate go blind exactly as each route was
  * rebuilt (#11620): a v2 page declares nothing a footer regex can see, so
  * `declaredApiPaths` returned [], every declared-but-unrecorded path became
  * the empty set, and the #10938 gate reported green on a page whose fixtures
  * had gone stale. A gate that can only pass is not a gate.
  *
- * So: collect `/api/...` string literals from a footer's `paths`, from an
- * inline `useRegisterApiSource([...])`, and from any module-level array a
+ * So: collect `/api/...` string literals from an inline
+ * `useRegisterApiSource([...])` and from any module-level array a
  * `useRegisterApiSource(X)` or an `apiPaths={X}` names. Follows local
  * `./-name` imports because the convention splits them (`chain.index.tsx` is
  * the route, `-explorer-page.tsx` is the page); one hop is not always enough,
@@ -155,9 +156,6 @@ export function declaredApiPaths(
   // fixture entry no browser on that page could ever record.
   const rendered = [...whole.matchAll(/\bcomponent:\s*([A-Za-z_$][\w$]*)/g)].map((m) => m[1]);
 
-  for (const footer of src.matchAll(/<ApiSourceFooter[\s\S]{0,900}?paths=\{\[([\s\S]*?)\]\}/g)) {
-    found.push(...literals(footer[1]));
-  }
   // `useRegisterApiSource([...])` / `useRegisterApiSource([...NAME], ...)`.
   for (const call of src.matchAll(/useRegisterApiSource\(([\s\S]*?)\);/g)) {
     found.push(...literals(call[1]));
@@ -230,12 +228,25 @@ function componentBody(src: string, name: string): string {
 }
 
 /** The body of a module-level `const NAME = [ ... ]`, or "". */
+/**
+ * The text of `const NAME = [...]` or `const NAME = "..."`, for the literal
+ * scan to run over.
+ *
+ * The single-string form matters: `/graphql` declares
+ * `useRegisterApiSource([GRAPHQL_ENDPOINT_PATH])` against
+ * `const GRAPHQL_ENDPOINT_PATH = "/api/v1/graphql"`, and an array-only reader
+ * returned nothing for that route -- a page with one endpoint, declared
+ * correctly, that this gate could not see.
+ */
 function constArray(src: string, name: string): string {
-  const at = src.indexOf(`const ${name} = [`);
-  if (at === -1) return "";
-  const open = src.indexOf("[", at);
-  const close = src.indexOf("]", open);
-  return close === -1 ? "" : src.slice(open, close);
+  const arrayAt = src.indexOf(`const ${name} = [`);
+  if (arrayAt !== -1) {
+    const open = src.indexOf("[", arrayAt);
+    const close = src.indexOf("]", open);
+    return close === -1 ? "" : src.slice(open, close);
+  }
+  const stringAt = src.match(new RegExp(`const ${name} = ("[^"]*")`));
+  return stringAt ? stringAt[1] : "";
 }
 
 /** The distinct API pathnames a HAR fixture recorded, query strings dropped. */

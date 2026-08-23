@@ -11,7 +11,7 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { CopyLinkButton } from "@/components/metagraphed/primitives";
+import { CopyLinkButton } from "@/components/metagraphed/copy-link-button";
 import { PositionsSection } from "@/components/metagraphed/account-detail/positions";
 import { FlowSection } from "@/components/metagraphed/account-detail/flow";
 import { CounterpartiesSection } from "@/components/metagraphed/account-detail/counterparties";

@@ -120,4 +120,4 @@ curl -s https://api.metagraph.sh/api/v1/blocks/5000000/chain-events
 
 Four MCP tools mirror these routes for AI agents: `list_chain_events` (`GET /api/v1/chain-events`), `get_extrinsic_chain_events` (the same route scoped by `block` + `extrinsic`), `get_chain_activity` (`GET /api/v1/chain-events/stats`), and `get_block_chain_events` (`GET /api/v1/blocks/{n}/chain-events`). The MCP tools call the `DATA_API` Worker directly and return its bare JSON body; the REST routes above wrap the identical data in the standard `{ ok, data, meta }` envelope. Both hit the same 503 when the data tier isn't bound.
 
-<ApiSourceFooter paths={["/api/v1/chain-events", "/api/v1/chain-events/stats"]} />
+<ApiSources paths={["/api/v1/chain-events", "/api/v1/chain-events/stats"]} />
