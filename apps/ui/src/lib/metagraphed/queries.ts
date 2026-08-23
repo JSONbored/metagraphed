@@ -9850,6 +9850,60 @@ export const endpointsQuery = (params?: QueryParams) =>
     staleTime: STALE_MED,
   });
 
+/**
+ * The /api/v1/endpoints response's own `summary` block (#11623).
+ *
+ * `fetchList` returns the ROWS and drops everything beside them, so the fleet
+ * counters — `endpoint_count`, `monitored_count`, `by_status` — are not
+ * reachable from `endpointsQuery`. Counting them off a page of rows would be
+ * wrong twice over: the endpoint caps `limit` at 1,000 against a 3,391-row
+ * fleet, and the directory sends its facets to the server, so the rows in hand
+ * are a filtered slice by design. One cheap request for the real numbers.
+ */
+export const endpointsSummaryQuery = () =>
+  queryOptions({
+    queryKey: k("endpoints-summary"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/endpoints", {
+        params: { limit: 1 },
+        signal,
+      });
+      const data = isRecord(res.data) ? res.data : {};
+      const summary = isRecord(data.summary) ? data.summary : {};
+      return {
+        ...res,
+        data: {
+          endpoint_count: firstFiniteNumber(summary.endpoint_count) ?? 0,
+          monitored_count: firstFiniteNumber(summary.monitored_count) ?? 0,
+          by_status: isRecord(summary.by_status)
+            ? (summary.by_status as Record<string, number>)
+            : {},
+          observed_at: firstString(data.operational_observed_at) ?? firstString(data.generated_at),
+        },
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Cursor-paginated endpoints, for the directory's own server-side facets. */
+export const endpointsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
+  infiniteQueryOptions({
+    queryKey: k("endpoints-infinite", baseParams, initialCursor),
+    initialPageParam: initialCursor,
+    queryFn: async ({ pageParam, signal }) => {
+      const page = await fetchInfinitePage<unknown>(
+        "/api/v1/endpoints",
+        "endpoints",
+        baseParams,
+        pageParam as string,
+        signal,
+      );
+      return { ...page, data: page.data.map(normalizeEndpoint) } as InfinitePage<Endpoint>;
+    },
+    getNextPageParam,
+    staleTime: STALE_MED,
+  });
+
 // Pool rows are { id, kind, endpoint_count, eligible_count, best_endpoint_id,
 // endpoints[] }; the pools table reads name/members_count/proxy_enabled/
 // archive_capable. Derive those from the real fields (region is not modelled,

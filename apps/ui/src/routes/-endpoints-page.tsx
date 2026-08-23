@@ -1,1064 +1,458 @@
-import { useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
-import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
-import { StateBlock } from "@/components/metagraphed/states/state-block";
+import { useMemo } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
+  AnalyticsSection,
+  CopyableCode,
   DataTable,
   EntityHero,
-  FactCell,
+  Fact,
   FactSentence,
-  FactStrip,
+  FilterField,
+  FilterSelect,
+  LoadMore,
+  MarkerRail,
   RangeControl,
-  SectionHead,
+  RankedRails,
+  Raw,
   SectionNav,
+  type DataTableColumn,
+  type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { RouterLink } from "@/components/metagraphed/router-link";
-import { apisNav } from "@/components/metagraphed/apis/apis-logic";
-import { AsyncPanel, PanelSkeleton, QueryProgress } from "@/components/metagraphed/primitives";
-import {
-  ResetFiltersButton,
-  SearchInput,
-  SelectFilter,
-} from "@/components/metagraphed/table-controls";
-import { EndpointsPriorityStrip } from "@/components/metagraphed/endpoints-priority-strip";
-import { EndpointOperationalList } from "@/components/metagraphed/endpoint-operational-list";
-import { EndpointComparePanel } from "@/components/metagraphed/endpoint-compare-panel";
-
-import { IncidentsTimeline } from "@/components/metagraphed/analytics/incidents-timeline";
-import { LatencyRanking } from "@/components/metagraphed/charts/latency-ranking";
-import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
-import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
-import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
-import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
-import { rpcEndpointsSummaryLine } from "@/lib/metagraphed/rpc-endpoints-summary";
-
-import {
-  endpointsQuery,
-  endpointIncidentsQuery,
-  endpointPoolsQuery,
-  rpcPoolsQuery,
-  rpcEndpointsQuery,
-  statusToHealth,
-  providersQuery,
-  subnetsQuery,
-  metagraphedQueryKey,
-} from "@/lib/metagraphed/queries";
-import {
-  endpointCategory,
-  endpointEligibility,
-  indexPoolsById,
-  ELIGIBILITY_LABEL,
-  ELIGIBILITY_TONE,
-  type EndpointCategory,
-  type PoolEligibility,
-} from "@/lib/metagraphed/endpoint-pool";
-
-import type {
-  Endpoint,
-  EndpointIncident,
-  RpcPool,
-  RpcEndpoint,
-  Provider,
-  Subnet,
-} from "@/lib/metagraphed/types";
 import { HubSections } from "@/components/metagraphed/hub-prose";
-import { activeFilterCount } from "@/lib/metagraphed/filter-disclosure";
-import type { EndpointsSearch } from "./apis.endpoints";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
+import { API_BASE } from "@/lib/metagraphed/config";
+import { formatNumber } from "@/lib/metagraphed/format";
+import {
+  endpointIncidentsQuery,
+  endpointsInfiniteQuery,
+  endpointsSummaryQuery,
+  rpcPoolsQuery,
+} from "@/lib/metagraphed/queries";
+import { apisNav } from "@/components/metagraphed/apis/apis-logic";
+import {
+  LATENCY_VIEWS,
+  endpointFacts,
+  endpointRows,
+  facet,
+  filterEndpoints,
+  incidentRows,
+  latencyRails,
+  poolRows,
+  type EndpointRow,
+  type IncidentRow,
+  type LatencyView,
+} from "@/components/metagraphed/endpoints/endpoints-logic";
+import { Route } from "./apis.endpoints";
 
-// Endpoints is the primary product on this page; proxy is one surface among
-// several. Order tabs so the directory is the default landing view rather
-// than making users click past the marketing panel to reach it.
-type EndpointsTab = "endpoints" | "proxy" | "advanced" | "incidents";
-const ENDPOINTS_TABS: ReadonlyArray<{ id: EndpointsTab; label: string }> = [
-  { id: "endpoints", label: "Directory" },
-  { id: "proxy", label: "Managed RPC" },
-  { id: "advanced", label: "Pools" },
-  { id: "incidents", label: "Incidents" },
-];
+const API_PATHS = ["/api/v1/endpoints", "/api/v1/rpc/pools", "/api/v1/endpoint-incidents"];
+const PROXY_URL = `${API_BASE}/api/v1/rpc/proxy`;
+
+function ApiSources() {
+  useRegisterApiSource(API_PATHS);
+  return null;
+}
 
 /**
- * The APIs hub layout used to supply this page's shell: `AppShell`, one hero
- * and the four-entry tab strip all rendered once in apis.tsx. #11622 emptied
- * that layout -- each of the four routes answers a different question and so
- * owns its own hero -- and replaced the tab strip with a `SectionNav` of
- * `href` items. This page carries both until its own rebuild.
+ * Endpoints (#11623) — four sections.
+ *
+ * What went: a four-tab strip (`Directory / Managed RPC / Pools / Incidents`),
+ * four summary count cards, four more `DEGRADED NOW / OPEN INCIDENTS /
+ * SLOWEST ARCHIVE / FRESHLY PROBED` cards, nine `AsyncPanel`s, thirty-five
+ * bordered boxes, an incident banner, a `Share view` button and a Grid view
+ * that was a second rendering of the table. The tabs were four answers to one
+ * question, so they are four sections of one page.
+ *
+ * The managed-proxy tab is one copyable URL in the Pools footnote: it was a
+ * whole tab to say "point your client here", and the pools rail is the part a
+ * caller actually needs before doing so.
  */
 export function EndpointsPage() {
-  const hash = useRouterState({ select: (s) => s.location.hash });
-  useEffect(() => {
-    if (!hash) return;
-    const id = hash.replace(/^#/, "");
-    if (!id) return;
-    // Defer to let Suspense resolve so the target row is in the DOM.
-    const t = window.setTimeout(() => {
-      const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 220);
-    return () => window.clearTimeout(t);
-  }, [hash]);
-
-  // #5329: the page stacked ~9 full-width panels into one ~95,000px feed on
-  // mobile. Split its distinct concerns into tabs; each section fetches its own
-  // data, so only the active tab's panels mount (and query) at a time.
-  const [tab, setTab] = useState<EndpointsTab>("endpoints");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/apis/endpoints" });
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const setSearch = (patch: Record<string, unknown>) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
+      resetScroll: false,
+    });
+
+  /**
+   * The facets go to the SERVER; only the free-text one stays here.
+   *
+   * /api/v1/endpoints caps `limit` at 1,000 against a 3,391-row fleet and
+   * takes `status`, `kind` and `provider`, so filtering a loaded page
+   * client-side would answer "how many degraded" from the first thousand rows.
+   * It has no text search, so `q` is the one filter applied to the rows in
+   * hand, and the section footnote says how many are in hand.
+   */
+  const serverParams: Record<string, string | number> = { limit: 200 };
+  if (search.status && search.status !== "monitored") serverParams.status = search.status;
+  if (search.kind) serverParams.kind = search.kind;
+  if (search.provider) serverParams.provider = search.provider;
+
+  const feed = useInfiniteQuery({ ...endpointsInfiniteQuery(serverParams), retry: 0 });
+  const summaryQuery = useQuery({ ...endpointsSummaryQuery(), retry: 0 });
+  const pools = useQuery({ ...rpcPoolsQuery(), retry: 0 });
+  const incidents = useQuery({ ...endpointIncidentsQuery(), retry: 0 });
+  const rows = useMemo(
+    () => endpointRows((feed.data?.pages ?? []).flatMap((page) => page.data)),
+    [feed.data],
+  );
+  const poolList = useMemo(() => poolRows(pools.data?.data), [pools.data]);
+  const incidentList = useMemo(() => incidentRows(incidents.data?.data), [incidents.data]);
+
+  const summary = summaryQuery.data?.data;
+  const shown = useMemo(() => filterEndpoints(rows, search), [rows, search]);
+  const kinds = useMemo(() => facet(rows, (row) => row.kind), [rows]);
+  const providers = useMemo(() => facet(rows, (row) => row.provider), [rows]);
+  const rails = useMemo(
+    () => latencyRails(rows, search.latency as LatencyView),
+    [rows, search.latency],
+  );
+  const openIncidents = useMemo(() => incidentList.filter((row) => row.open), [incidentList]);
+  const shownIncidents = search.incidents === "open" ? openIncidents : incidentList;
+
+  const columns: DataTableColumn<EndpointRow>[] = [
+    { key: "provider", label: "Provider", width: 160, value: (row) => row.provider },
+    { key: "kind", label: "Kind", kind: "status", width: 150, value: (row) => row.kind },
+    {
+      key: "url",
+      label: "URL",
+      kind: "link",
+      value: (row) => row.url,
+      href: (row) => row.url ?? undefined,
+      format: (value) => (typeof value === "string" ? value.replace(/^https?:\/\//, "") : "—"),
+    },
+    {
+      key: "subnet",
+      label: "Subnet",
+      kind: "link",
+      width: 110,
+      value: (row) => row.netuid,
+      href: (row) => (row.netuid == null ? undefined : `/subnets/${row.netuid}`),
+      format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
+    },
+    { key: "status", label: "Status", kind: "status", width: 120, value: (row) => row.status },
+    {
+      key: "latency",
+      label: "p50",
+      kind: "number",
+      align: "right",
+      width: 100,
+      value: (row) => row.latencyMs,
+      format: (value) => (typeof value === "number" ? `${formatNumber(value)} ms` : "—"),
+    },
+    {
+      key: "probed",
+      label: "Last probe",
+      kind: "time",
+      width: 130,
+      value: (row) => row.lastChecked,
+    },
+    {
+      key: "ok",
+      label: "Last ok",
+      kind: "time",
+      width: 130,
+      demote: true,
+      value: (row) => row.lastOk,
+    },
+    {
+      key: "pool",
+      label: "Pool",
+      kind: "status",
+      width: 130,
+      demote: true,
+      value: (row) => (row.poolEligible ? "eligible" : "no"),
+    },
+    {
+      key: "archive",
+      label: "Archive",
+      kind: "status",
+      width: 110,
+      demote: true,
+      value: (row) => (row.archive ? "yes" : "no"),
+    },
+    {
+      key: "auth",
+      label: "Auth",
+      kind: "status",
+      width: 100,
+      demote: true,
+      value: (row) => (row.authRequired ? "required" : "open"),
+    },
+  ];
+
+  const incidentColumns: DataTableColumn<IncidentRow>[] = [
+    { key: "detected", label: "Started", kind: "time", width: 130, value: (row) => row.detectedAt },
+    { key: "provider", label: "Provider", width: 170, value: (row) => row.provider },
+    { key: "kind", label: "Kind", kind: "status", width: 150, value: (row) => row.kind },
+    {
+      key: "subnet",
+      label: "Subnet",
+      kind: "link",
+      width: 110,
+      value: (row) => row.netuid,
+      href: (row) => (row.netuid == null ? undefined : `/subnets/${row.netuid}`),
+      format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
+    },
+    { key: "reason", label: "Reason", value: (row) => row.reason },
+    {
+      key: "severity",
+      label: "Severity",
+      kind: "status",
+      width: 120,
+      value: (row) => row.severity,
+    },
+    {
+      key: "state",
+      label: "State",
+      kind: "status",
+      width: 110,
+      value: (row) => (row.open ? "open" : "resolved"),
+    },
+    {
+      key: "health",
+      label: "Probe",
+      kind: "status",
+      width: 110,
+      demote: true,
+      value: (row) => row.health,
+    },
+    {
+      key: "checked",
+      label: "Last probe",
+      kind: "time",
+      width: 130,
+      demote: true,
+      value: (row) => row.lastChecked,
+    },
+  ];
+
+  const rawRows: RawRow[] = [
+    { label: "managed RPC proxy", value: PROXY_URL, href: PROXY_URL },
+    ...API_PATHS.map((path) => ({
+      label: path.replace("/api/v1/", ""),
+      value: `${API_BASE}${path}`,
+      href: `${API_BASE}${path}`,
+    })),
+  ];
+
   return (
     <AppShell>
+      <ApiSources />
       <EntityHero
         name="Endpoints"
         sentence={
           <FactSentence>
-            Callable Subtensor and subnet endpoints — health, latency and pool eligibility.
+            What the registry can reach, and how it answered last time.{" "}
+            {endpointFacts(
+              summary as Parameters<typeof endpointFacts>[0],
+              poolList.length,
+              openIncidents.length,
+              { count: formatNumber },
+            ).map((fact) => (
+              <Fact key={fact.key}>
+                {fact.label} {fact.value}
+              </Fact>
+            ))}
           </FactSentence>
         }
+        live={{
+          updatedAt: summary?.observed_at ?? rows[0]?.lastChecked ?? null,
+          source: "probed every 15 min",
+          onRefresh: () => void feed.refetch(),
+          refreshing: feed.isFetching,
+        }}
       />
       <SectionNav items={apisNav(pathname)} link={RouterLink} />
-      <div className="space-y-section">
-        {/* Endpoint KPIs stay visible above the tabs so the tab bar has context
-            and doesn't float alone under the hero. */}
-        <AsyncPanel
-          context="endpoints overview"
-          retryQueryKeys={[metagraphedQueryKey("endpoints"), metagraphedQueryKey("rpc-pools")]}
-          fallback={
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <PanelSkeleton height="sm" />
-              <PanelSkeleton height="sm" />
-              <PanelSkeleton height="sm" />
-              <PanelSkeleton height="sm" />
-            </div>
-          }
-        >
-          <EndpointsStatStrip />
-        </AsyncPanel>
-        <RangeControl
-          options={ENDPOINTS_TABS.map((t) => ({ value: t.id, label: String(t.label) }))}
-          value={tab}
-          onChange={(v: EndpointsTab) => setTab(v)}
-          label="Endpoints sections"
-        />
 
-        {tab === "proxy" && (
-          <>
-            <section>
-              <ProxyHero />
-            </section>
-            <section>
-              <SectionHead name="Proxy usage" />
-              <AsyncPanel
-                height="md"
-                context="proxy usage"
-                retryQueryKeys={[metagraphedQueryKey("rpc-usage")]}
-              >
-                <ProxyUsagePanel />
-              </AsyncPanel>
-            </section>
-          </>
-        )}
-
-        {tab === "endpoints" && (
-          <>
-            <AsyncPanel
-              context="priority signals"
-              retryQueryKeys={[
-                metagraphedQueryKey("endpoints"),
-                metagraphedQueryKey("endpoint-incidents"),
-              ]}
-              fallback={
-                <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
-                  {[0, 1, 2, 3].map((i) => (
-                    <PanelSkeleton key={i} height="sm" />
-                  ))}
-                </div>
-              }
-            >
-              <EndpointsPriorityStrip />
-            </AsyncPanel>
-            <section>
-              <SectionHead name="Endpoint directory" />
-              <AsyncPanel
-                height="lg"
-                context="endpoints"
-                retryQueryKeys={[
-                  metagraphedQueryKey("endpoints"),
-                  metagraphedQueryKey("rpc-pools"),
-                  metagraphedQueryKey("endpoint-incidents"),
-                  metagraphedQueryKey("providers"),
-                  metagraphedQueryKey("subnets"),
-                ]}
-              >
-                <EndpointsTable />
-              </AsyncPanel>
-            </section>
-            <TimeRangeProvider>
-              <section>
-                <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
-                  <SectionHead name="Latency diagnostics" />
-                  <TimeRangeScrub />
-                </div>
-                <AsyncPanel
-                  height="lg"
-                  context="latency ranking"
-                  retryQueryKeys={[metagraphedQueryKey("endpoints")]}
-                >
-                  <LatencyRankingSection />
-                </AsyncPanel>
-              </section>
-            </TimeRangeProvider>
-          </>
-        )}
-
-        {tab === "advanced" && (
-          <>
-            <section>
-              <SectionHead name="RPC pools" />
-              <AsyncPanel
-                height="sm"
-                context="RPC pools"
-                retryQueryKeys={[metagraphedQueryKey("rpc-pools")]}
-              >
-                <PoolsTable />
-              </AsyncPanel>
-            </section>
-            <section>
-              <SectionHead name="Endpoint pools" />
-              <AsyncPanel
-                height="sm"
-                context="endpoint pools"
-                retryQueryKeys={[metagraphedQueryKey("endpoint-pools")]}
-              >
-                <EndpointPoolsTable />
-              </AsyncPanel>
-            </section>
-            <section>
-              <SectionHead name="Root RPC/WSS endpoints" />
-              <AsyncPanel
-                height="sm"
-                context="root RPC/WSS endpoints"
-                retryQueryKeys={[metagraphedQueryKey("rpc-endpoints")]}
-              >
-                <RpcEndpointsTable />
-              </AsyncPanel>
-            </section>
-          </>
-        )}
-
-        {tab === "incidents" && (
-          <>
-            <section>
-              <SectionHead name="Incidents timeline" />
-              <AsyncPanel
-                height="md"
-                context="incidents"
-                retryQueryKeys={[metagraphedQueryKey("endpoint-incidents")]}
-              >
-                <IncidentsTimeline />
-              </AsyncPanel>
-            </section>
-          </>
-        )}
-      </div>
-      <ApiSourceFooter
-        paths={[
-          "/rpc/v1/finney",
-          "/api/v1/rpc/usage",
-          "/api/v1/endpoints",
-          "/api/v1/rpc/pools",
-          "/api/v1/endpoint-pools",
-          "/api/v1/rpc/endpoints",
-          "/api/v1/endpoint-incidents",
-        ]}
+      <AnalyticsSection
+        id="pools"
+        name="Pools"
+        question="The managed RPC pools, and how much of each can be routed to."
+        visual={
+          poolList.length > 0 ? (
+            <MarkerRail
+              items={poolList.map((pool) => ({
+                key: pool.id,
+                label: pool.id,
+                value: pool.readiness,
+                detail: `${formatNumber(pool.eligible)}/${formatNumber(pool.members)} eligible${
+                  pool.archive > 0 ? ` · ${formatNumber(pool.archive)} archive` : ""
+                }${pool.p50 == null ? "" : ` · p50 ${formatNumber(pool.p50)} ms`}`,
+              }))}
+              max={100}
+              formatValue={(value) => `${value}%`}
+              columns={{ ratio: "Ready", name: "Pool", scale: "Members that can be routed to" }}
+              ariaLabel="RPC pool readiness"
+              source="rpc-pool"
+            />
+          ) : null
+        }
+        // Readiness, not health: a member can be up and still ineligible --
+        // behind on blocks, missing an RPC method, rate-limited -- and what a
+        // caller needs before pointing a client at a pool is how many members
+        // it can actually be routed to.
+        legend={
+          <p className="mg-section-note">
+            Point a client at the managed proxy and it routes to the best eligible member:{" "}
+            <CopyableCode value={PROXY_URL} className="max-w-full" />
+          </p>
+        }
+        footnote="eligible ÷ members · p50 is the median of members that reported one · probe-derived"
       />
+
+      <AnalyticsSection
+        id="latency"
+        name="Latency"
+        question="How long the last probe took, at the ends of the distribution."
+        controls={
+          <RangeControl
+            label="View"
+            options={LATENCY_VIEWS}
+            value={search.latency}
+            onChange={(latency) => setSearch({ latency })}
+          />
+        }
+        visual={
+          rails.length > 0 ? (
+            <RankedRails
+              items={rails}
+              formatValue={(value: number) => `${formatNumber(value)} ms`}
+              scale="sqrt"
+              columns={{ value: "p50", name: "Provider · kind", track: "Last probe" }}
+              ariaLabel="Endpoint latency"
+              source="endpoint-latency"
+            />
+          ) : null
+        }
+        // Only endpoints that REPORTED a latency are ranked: `latency_ms: null`
+        // means unmeasured, and ranking it as 0 would put every dead endpoint
+        // at the top of "fastest".
+        footnote="measured endpoints only · probe-derived"
+      />
+
+      <AnalyticsSection
+        id="directory"
+        name="Directory"
+        question="Every endpoint the registry knows about."
+        visual={
+          <DataTable
+            id="directory"
+            rows={shown}
+            columns={columns}
+            rowKey={(row) => row.id}
+            caption="Endpoints"
+            link={RouterLink}
+            source="endpoint"
+            storageKey="mg-endpoints-columns"
+            loading={feed.isPending}
+            search={{
+              value: search.q,
+              onChange: (q) => setSearch({ q }),
+              placeholder: "Provider, URL, kind or subnet",
+            }}
+            filters={
+              <>
+                <FilterField label="Status">
+                  <FilterSelect
+                    value={search.status}
+                    onChange={(event) => setSearch({ status: event.target.value })}
+                  >
+                    <option value="">Any status</option>
+                    <option value="monitored">Monitored only</option>
+                    <option value="ok">ok</option>
+                    <option value="degraded">degraded</option>
+                    <option value="failed">failed</option>
+                    <option value="unknown">unknown</option>
+                  </FilterSelect>
+                </FilterField>
+                <FilterField label="Kind">
+                  <FilterSelect
+                    value={search.kind}
+                    onChange={(event) => setSearch({ kind: event.target.value })}
+                  >
+                    <option value="">Any kind</option>
+                    {kinds.map((kind) => (
+                      <option key={kind} value={kind}>
+                        {kind}
+                      </option>
+                    ))}
+                  </FilterSelect>
+                </FilterField>
+                <FilterField label="Provider">
+                  <FilterSelect
+                    value={search.provider}
+                    onChange={(event) => setSearch({ provider: event.target.value })}
+                  >
+                    <option value="">Any provider</option>
+                    {providers.map((provider) => (
+                      <option key={provider} value={provider}>
+                        {provider}
+                      </option>
+                    ))}
+                  </FilterSelect>
+                </FilterField>
+              </>
+            }
+            empty="No endpoints match these filters."
+          />
+        }
+        legend={
+          <LoadMore
+            hasMore={feed.hasNextPage}
+            isLoading={feed.isFetchingNextPage}
+            onLoadMore={() => void feed.fetchNextPage()}
+            shown={rows.length}
+            total={summary?.endpoint_count}
+            error={feed.error}
+          />
+        }
+        footnote={`${formatNumber(shown.length)} shown of ${formatNumber(
+          summary?.endpoint_count ?? rows.length,
+        )} tracked · facets applied server-side · probe-derived`}
+      />
+
+      <AnalyticsSection
+        id="incidents"
+        name="Incidents"
+        question="What is failing, and what was."
+        visual={
+          <DataTable
+            id="incidents"
+            rows={shownIncidents}
+            columns={incidentColumns}
+            rowKey={(row) => row.id}
+            caption="Endpoint incidents"
+            link={RouterLink}
+            source="endpoint-incident"
+            storageKey="mg-incidents-columns"
+            loading={incidents.isPending}
+            filters={
+              <FilterField label="State">
+                <FilterSelect
+                  value={search.incidents}
+                  onChange={(event) => setSearch({ incidents: event.target.value })}
+                >
+                  <option value="open">Open now</option>
+                  <option value="all">All recorded</option>
+                </FilterSelect>
+              </FilterField>
+            }
+            empty="No endpoint incidents are open."
+          />
+        }
+        footnote={`${formatNumber(openIncidents.length)} open · probe-derived`}
+      />
+
       {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
       <HubSections path="/apis/endpoints" />
+
+      <Raw rows={rawRows} />
     </AppShell>
-  );
-}
-
-function EndpointsStatStrip() {
-  const rows = (useSuspenseQuery(endpointsQuery()).data.data ?? []) as Endpoint[];
-  const pools = (useSuspenseQuery(rpcPoolsQuery()).data.data ?? []) as RpcPool[];
-  const total = rows.length;
-  const archive = rows.filter((e) => e.archive).length;
-  const proxy = pools.filter((p) => p.proxy_enabled).length;
-  // "Healthy %" must divide by the PROBED population, not all ~1173 endpoints —
-  // most rows are unprobed directory links (health "unknown") and dragged the
-  // ratio down to ~5%. A row is probed once it has a real probe-derived health
-  // state (normalizeEndpoint leaves unprobed rows as "unknown").
-  const probed = rows.filter((e) => e.health && e.health !== "unknown");
-  const ok = probed.filter((e) => e.health === "ok").length;
-  const okPct = probed.length > 0 ? Math.round((ok / probed.length) * 100) : null;
-  return (
-    <FactStrip variant="grid">
-      <FactCell label="Endpoints" value={total} hint="tracked" />
-      <FactCell
-        label="RPC pools"
-        value={pools.length}
-        hint={proxy ? `${proxy} proxy` : undefined}
-      />
-      <FactCell label="Archive-capable" value={archive} />
-      <FactCell
-        label="Healthy"
-        value={okPct != null ? `${okPct}%` : "—"}
-        hint={`${ok}/${probed.length} probed`}
-      />
-    </FactStrip>
-  );
-}
-
-function LatencyRankingSection() {
-  const { data } = useSuspenseQuery(endpointsQuery());
-  // The callable-endpoints table below is scoped to callable kinds (rpc/wss/api/
-  // sse/data — i.e. not "other" directory links). Feed the ranking the same
-  // callable-scoped population so both describe the same set of endpoints.
-  const callable = useMemo(() => {
-    const rows = (data.data ?? []) as Endpoint[];
-    return rows.filter((e) => endpointCategory(e.kind) !== "other");
-  }, [data]);
-  return <LatencyRanking endpoints={callable} />;
-}
-
-function PoolsTable() {
-  const { data } = useSuspenseQuery(rpcPoolsQuery());
-  const rows = (data.data ?? []) as RpcPool[];
-  const stale = isStaleFreshness(data.meta?.generated_at);
-  return (
-    <div className="space-y-2">
-      {stale ? (
-        <StaleBanner
-          generatedAt={data.meta?.generated_at}
-          refreshQueryKeys={[
-            rpcPoolsQuery().queryKey,
-            endpointsQuery().queryKey,
-            endpointIncidentsQuery().queryKey,
-          ]}
-        />
-      ) : null}
-      <DataTable
-        rows={rows}
-        rowKey={(p) => p.id}
-        caption="RPC pools"
-        source="rpc-pools"
-        empty={
-          <EmptyState
-            title="No RPC pools tracked"
-            description="The proxy routes across registered pools — pool members and their eligibility appear here once registered."
-            action={{ label: "Open API", href: "/api/v1/rpc/pools", external: true }}
-          />
-        }
-        columns={[
-          { key: "name", label: "Pool", sortable: true, value: (p) => p.name ?? p.id },
-          { key: "region", label: "Region", sortable: true, value: (p) => p.region ?? null },
-          {
-            key: "members",
-            label: "Members",
-            kind: "number",
-            sortable: true,
-            value: (p) => p.members_count ?? null,
-          },
-          {
-            key: "archive",
-            label: "Archive",
-            sortable: true,
-            value: (p) => (p.archive_capable ? "yes" : null),
-          },
-          {
-            key: "eligibility",
-            label: "Eligibility",
-            sortable: true,
-            value: (p) => ELIGIBILITY_LABEL[poolEligibility(p)],
-            render: (p) => {
-              const eligibility = poolEligibility(p);
-              return (
-                <span
-                  className={classNames(
-                    "text-13 inline-flex items-center rounded border px-1.5 py-0.5",
-                    ELIGIBILITY_TONE[eligibility],
-                  )}
-                >
-                  {ELIGIBILITY_LABEL[eligibility]}
-                </span>
-              );
-            },
-          },
-        ]}
-      />
-      <p className="px-1 text-10 text-ink-muted">
-        Proxy-eligible members serve live traffic through the reverse proxy above; the proxy prefers
-        in-sync, healthy nodes and fails over automatically.
-      </p>
-    </div>
-  );
-}
-
-/** The pool's own access tier, from the two capability flags it carries. */
-function poolEligibility(p: RpcPool): PoolEligibility {
-  if (p.proxy_enabled) return "proxy-enabled";
-  if (p.archive_capable) return "archive-capable";
-  return "pool-member";
-}
-
-function EndpointPoolsTable() {
-  const { data } = useSuspenseQuery(endpointPoolsQuery());
-  const rows = (data.data ?? []) as RpcPool[];
-  const stale = isStaleFreshness(data.meta?.generated_at);
-  const endpointTotal = (p: RpcPool) =>
-    typeof p.endpoint_count === "number"
-      ? p.endpoint_count
-      : typeof p.members_count === "number"
-        ? p.members_count
-        : null;
-  return (
-    <div className="space-y-2">
-      {stale ? (
-        <StaleBanner
-          generatedAt={data.meta?.generated_at}
-          refreshQueryKeys={[
-            endpointPoolsQuery().queryKey,
-            endpointsQuery().queryKey,
-            endpointIncidentsQuery().queryKey,
-          ]}
-        />
-      ) : null}
-      <DataTable
-        rows={rows}
-        rowKey={(p) => p.id}
-        caption="Endpoint pools"
-        source="endpoint-pools"
-        empty={
-          <EmptyState
-            title="No endpoint pools tracked"
-            description="Generalized pool composition across subtensor-rpc, subtensor-wss, and archive kinds appears here once pools are scored."
-            action={{ label: "Open API", href: "/api/v1/endpoint-pools", external: true }}
-          />
-        }
-        columns={[
-          { key: "id", label: "Pool", sortable: true, value: (p) => p.id },
-          {
-            key: "kind",
-            label: "Kind",
-            sortable: true,
-            value: (p) => String(p.kind ?? "") || null,
-          },
-          {
-            key: "endpoints",
-            label: "Endpoints",
-            kind: "number",
-            sortable: true,
-            value: (p) => endpointTotal(p),
-            format: (_value, p) => {
-              const total = endpointTotal(p);
-              const eligible = typeof p.eligible_count === "number" ? p.eligible_count : null;
-              if (eligible != null && total != null) return `${eligible}/${total} eligible`;
-              return total != null ? String(total) : "—";
-            },
-          },
-          {
-            key: "best_endpoint_id",
-            label: "Best endpoint",
-            sortable: true,
-            value: (p) =>
-              typeof p.best_endpoint_id === "string" && p.best_endpoint_id.trim()
-                ? p.best_endpoint_id
-                : null,
-          },
-        ]}
-      />
-      <p className="px-1 text-10 text-ink-muted">
-        Covers all pool kinds (subtensor-rpc, subtensor-wss, archive) from the generalized
-        endpoint-pools artifact — distinct from the Bittensor RPC proxy pools above.
-      </p>
-    </div>
-  );
-}
-
-const CLASSIFICATION_TONE: Record<string, string> = {
-  live: "border-health-ok/40 text-health-ok",
-  redirected: "border-health-warn/40 text-health-warn",
-  "auth-required": "border-ink-subtle text-ink-muted",
-  dead: "border-health-down/40 text-health-down",
-  unsafe: "border-health-down/40 text-health-down",
-  unsupported: "border-ink-subtle text-ink-muted",
-  "rate-limited": "border-health-warn/40 text-health-warn",
-  unknown: "border-ink-subtle text-ink-muted",
-};
-
-function RpcEndpointsTable() {
-  const { data } = useSuspenseQuery(rpcEndpointsQuery());
-  const rows = data.data.endpoints;
-  const summaryLine = rpcEndpointsSummaryLine(data.data.summary);
-  const stale = isStaleFreshness(data.meta?.generated_at);
-  return (
-    <div className="space-y-2">
-      {stale ? (
-        <StaleBanner
-          generatedAt={data.meta?.generated_at}
-          refreshQueryKeys={[rpcEndpointsQuery().queryKey]}
-        />
-      ) : null}
-      <DataTable
-        rows={rows}
-        rowKey={(e: RpcEndpoint) => e.id}
-        caption="Root RPC/WSS endpoints"
-        source="rpc-endpoints"
-        empty={
-          <EmptyState
-            title="No RPC endpoints tracked"
-            description="The base-layer Subtensor RPC/WSS registry appears here once endpoints are registered."
-            action={{ label: "Open API", href: "/api/v1/rpc/endpoints", external: true }}
-          />
-        }
-        columns={[
-          {
-            key: "provider",
-            label: "Provider",
-            sortable: true,
-            value: (e: RpcEndpoint) => e.provider ?? null,
-          },
-          { key: "kind", label: "Kind", sortable: true, value: (e: RpcEndpoint) => e.kind ?? null },
-          {
-            key: "classification",
-            label: "Classification",
-            sortable: true,
-            value: (e: RpcEndpoint) => e.classification ?? "unknown",
-            render: (e: RpcEndpoint) => (
-              <span
-                className={classNames(
-                  "text-13 inline-flex items-center rounded border px-1.5 py-0.5",
-                  CLASSIFICATION_TONE[e.classification ?? "unknown"] ?? CLASSIFICATION_TONE.unknown,
-                )}
-              >
-                {e.classification ?? "unknown"}
-              </span>
-            ),
-          },
-          {
-            key: "status",
-            label: "Status",
-            kind: "status",
-            sortable: true,
-            value: (e: RpcEndpoint) => statusToHealth(e.status),
-          },
-          {
-            key: "archive",
-            label: "Archive",
-            sortable: true,
-            value: (e: RpcEndpoint) =>
-              e.archive_support == null ? null : e.archive_support ? "yes" : "no",
-          },
-          {
-            key: "latency",
-            label: "Latency",
-            kind: "number",
-            sortable: true,
-            value: (e: RpcEndpoint) => e.latency_ms ?? null,
-            format: (v) => (typeof v === "number" ? `${formatNumber(v)}ms` : "—"),
-          },
-        ]}
-      />
-      {summaryLine ? <p className="px-1 text-10 text-ink-muted">{summaryLine}</p> : null}
-    </div>
-  );
-}
-
-type SortKey = "netuid" | "kind" | "provider" | "region" | "health" | "latency" | "probed";
-const HEALTH_RANK: Record<string, number> = { ok: 0, warn: 1, down: 2, unknown: 3 };
-
-function endpointValue(e: Endpoint, k: SortKey): string | number | null {
-  switch (k) {
-    case "netuid":
-      return e.netuid ?? null;
-    case "kind":
-      return e.kind ?? "";
-    case "provider":
-      return e.provider ?? e.provider_slug ?? "";
-    case "region":
-      return e.region ?? "";
-    case "health":
-      return HEALTH_RANK[String(e.health ?? "unknown")] ?? 99;
-    case "latency":
-      return e.latency_ms ?? Number.POSITIVE_INFINITY;
-    case "probed":
-      return e.last_probed_at ? Date.parse(e.last_probed_at) : 0;
-  }
-}
-
-function EndpointsTable() {
-  const { data } = useSuspenseQuery(endpointsQuery());
-  const { data: poolsRes } = useSuspenseQuery(rpcPoolsQuery());
-  const { data: incRes } = useSuspenseQuery(endpointIncidentsQuery());
-  const rows = useMemo(() => (data.data ?? []) as Endpoint[], [data]);
-  const pools = useMemo(() => (poolsRes.data ?? []) as RpcPool[], [poolsRes]);
-  const incidents = useMemo(() => (incRes.data ?? []) as EndpointIncident[], [incRes]);
-  // O(1) pool lookup — index once, reuse for every endpoint's eligibility.
-  const poolsById = useMemo(() => indexPoolsById(pools), [pools]);
-  const generatedAt = data.meta?.generated_at as string | undefined;
-  const stale = isStaleFreshness(generatedAt);
-  // expandedId is URL-driven so the drawer is deep-linkable and preserved on
-  // back/forward without stacking history entries.
-
-  // Lookup maps for inline subnet + provider logos.
-  const { data: provRes } = useSuspenseQuery(providersQuery());
-  const { data: snRes } = useSuspenseQuery(subnetsQuery());
-  const providerById = useMemo(() => {
-    const m = new Map<string, Provider>();
-    for (const p of (provRes.data ?? []) as Provider[]) m.set(p.slug, p);
-    return m;
-  }, [provRes]);
-  const subnetById = useMemo(() => {
-    const m = new Map<number, Subnet>();
-    for (const s of (snRes.data ?? []) as Subnet[]) m.set(s.netuid, s);
-    return m;
-  }, [snRes]);
-
-  const search = useSearch({ from: "/apis/endpoints" }) as EndpointsSearch;
-  const navigate = useNavigate({ from: "/apis/endpoints" });
-  const expandedId = search.endpoint || null;
-  const toggleExpanded = (id: string) =>
-    navigate({
-      search: (prev: Record<string, unknown>) => ({
-        ...prev,
-        endpoint: prev.endpoint === id ? "" : id,
-      }),
-      resetScroll: false,
-      replace: true,
-    });
-
-  // Compare state: URL-driven CSV of endpoint IDs (capped at 4).
-  const COMPARE_MAX = 4;
-  const compareIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const raw of (search.compare ?? "").split(",")) {
-      const id = raw.trim();
-      if (id) set.add(id);
-      if (set.size >= COMPARE_MAX) break;
-    }
-    return set;
-  }, [search.compare]);
-  const toggleCompare = (id: string) => {
-    const next = new Set(compareIds);
-    if (next.has(id)) next.delete(id);
-    else if (next.size < COMPARE_MAX) next.add(id);
-    navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, compare: Array.from(next).join(",") }),
-      resetScroll: false,
-      replace: true,
-    });
-  };
-  const clearCompare = () =>
-    navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, compare: "" }),
-      resetScroll: false,
-      replace: true,
-    });
-
-  const setSearch = (patch: Partial<EndpointsSearch>) => {
-    // Any filter change resets page to 1 unless caller specifies otherwise.
-    const resetsPage =
-      Object.keys(patch).some((k) =>
-        [
-          "q",
-          "category",
-          "provider",
-          "health",
-          "netuid",
-          "region",
-          "eligibility",
-          "callable",
-        ].includes(k),
-      ) && patch.page == null;
-    navigate({
-      search: (prev: Record<string, unknown>) => ({
-        ...prev,
-        ...patch,
-        ...(resetsPage ? { page: 1 } : {}),
-      }),
-      // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
-      resetScroll: false,
-      replace: true,
-    });
-  };
-
-  const providers = useMemo(
-    () =>
-      Array.from(
-        new Set(rows.map((r) => r.provider ?? r.provider_slug).filter(Boolean) as string[]),
-      ).sort(),
-    [rows],
-  );
-  const regions = useMemo(
-    () => Array.from(new Set(rows.map((r) => r.region).filter(Boolean) as string[])).sort(),
-    [rows],
-  );
-
-  // Pre-compute category + eligibility per endpoint once (O(1) eligibility via
-  // the indexed pool map).
-  const enriched = useMemo(
-    () =>
-      rows.map((e) => ({
-        e,
-        cat: endpointCategory(e.kind),
-        eli: endpointEligibility(e, poolsById),
-      })),
-    [rows, poolsById],
-  );
-
-  // "Callable" = anything an agent can actually POST/GET against (rpc/wss/api/
-  // sse/data). The registry also carries non-callable directory links (websites,
-  // docs, dashboards → category "other"); those are hidden by default so the
-  // table answers "what can I call?" rather than burying it under reference URLs.
-  const directoryCount = useMemo(
-    () => enriched.filter((x) => x.cat === "other").length,
-    [enriched],
-  );
-  const scoped = useMemo(
-    () => (search.callable ? enriched.filter((x) => x.cat !== "other") : enriched),
-    [enriched, search.callable],
-  );
-
-  const netuidNum = search.netuid.trim() === "" ? null : Number(search.netuid);
-
-  // Category chip counts reflect every active filter EXCEPT category itself,
-  // so the chip count truthfully says "how many endpoints would I see if I
-  // picked this kind, with my other filters applied?".
-  const categoryCounts = useMemo(() => {
-    const needle = search.q.trim().toLowerCase();
-    const matchOther = ({ e, eli }: { e: Endpoint; cat: EndpointCategory; eli: string }) => {
-      if (search.provider && (e.provider ?? e.provider_slug) !== search.provider) return false;
-      if (search.health && (e.health ?? "unknown") !== search.health) return false;
-      if (search.region && e.region !== search.region) return false;
-      if (search.eligibility && eli !== search.eligibility) return false;
-      if (netuidNum != null && Number.isFinite(netuidNum) && e.netuid !== netuidNum) return false;
-      if (!needle) return true;
-      return [e.url, e.provider, e.provider_slug, e.region, String(e.netuid ?? ""), e.kind, e.id]
-        .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(needle));
-    };
-    const counts: Partial<Record<EndpointCategory | "all", number>> = { all: 0 };
-    for (const x of scoped) {
-      if (!matchOther(x)) continue;
-      counts.all = (counts.all ?? 0) + 1;
-      counts[x.cat] = (counts[x.cat] ?? 0) + 1;
-    }
-    return counts;
-  }, [
-    scoped,
-    search.q,
-    search.provider,
-    search.health,
-    search.region,
-    search.eligibility,
-    netuidNum,
-  ]);
-
-  const filtered = useMemo(() => {
-    const needle = search.q.trim().toLowerCase();
-    return scoped
-      .filter(({ e, cat, eli }) => {
-        if (search.category !== "all" && cat !== search.category) return false;
-        if (search.provider && (e.provider ?? e.provider_slug) !== search.provider) return false;
-        if (search.health && (e.health ?? "unknown") !== search.health) return false;
-        if (search.region && e.region !== search.region) return false;
-        if (search.eligibility && eli !== search.eligibility) return false;
-        if (netuidNum != null && Number.isFinite(netuidNum) && e.netuid !== netuidNum) return false;
-        if (!needle) return true;
-        return [e.url, e.provider, e.provider_slug, e.region, String(e.netuid ?? ""), e.kind, e.id]
-          .filter(Boolean)
-          .some((v) => String(v).toLowerCase().includes(needle));
-      })
-      .map((x) => x.e);
-  }, [
-    scoped,
-    search.q,
-    search.category,
-    search.provider,
-    search.health,
-    search.region,
-    search.eligibility,
-    netuidNum,
-  ]);
-
-  const sorted = useMemo(() => {
-    const mul = search.order === "asc" ? 1 : -1;
-    return [...filtered].sort((a, b) => {
-      const va = endpointValue(a, search.sort);
-      const vb = endpointValue(b, search.sort);
-      if (va == null && vb == null) return 0;
-      if (va == null) return 1;
-      if (vb == null) return -1;
-      if (typeof va === "number" && typeof vb === "number") return (va - vb) * mul;
-      return String(va).localeCompare(String(vb), undefined, { numeric: true }) * mul;
-    });
-  }, [filtered, search.sort, search.order]);
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / search.pageSize));
-  const safePage = Math.min(search.page, totalPages);
-  const pageRows = sorted.slice((safePage - 1) * search.pageSize, safePage * search.pageSize);
-
-  // Same mobile-disclosure treatment as /blocks and /extrinsics (#5323): this
-  // toolbar has even more controls, so an always-visible filter bar pushed the
-  // first endpoint row down on a 375px viewport (#6580). Count only the six
-  // collapsible text/select filters for the toggle badge.
-  const activeCount = activeFilterCount([
-    search.q,
-    search.netuid,
-    search.provider,
-    search.region,
-    search.health,
-    search.eligibility,
-  ]);
-
-  const sortPreset = `${search.sort}:${search.order}`;
-  const setSortPreset = (value: string) => {
-    const [sort, order] = value.split(":") as [EndpointsSearch["sort"], EndpointsSearch["order"]];
-    setSearch({ sort, order, page: 1 });
-  };
-
-  // Reset clears search/filters/sort/page but keeps page size, view, and the
-  // callable-only default (true).
-  const resetAll = () =>
-    navigate({
-      search: { pageSize: search.pageSize, view: search.view },
-      replace: true,
-    });
-
-  // Hooks must run unconditionally, before the early-empty-state return below.
-  const isFetchingRows = useIsFetching({ queryKey: metagraphedQueryKey("endpoints") }) > 0;
-
-  if (rows.length === 0)
-    return (
-      <StateBlock
-        kind="registry"
-        variant="empty"
-        title="No endpoints in the registry"
-        description="The endpoints artifact returned no rows. The source may be temporarily unavailable — inspect the raw API response or try again shortly."
-        updatedAt={generatedAt}
-        windowLabel="latest snapshot"
-        freshnessHint="Endpoint records refresh every probe cycle. A missing row means the probe hasn't reached the source yet."
-        evidenceHref="/metagraph/endpoints.json"
-        actions={[
-          {
-            label: "Open /api/v1/endpoints",
-            href: "/api/v1/endpoints",
-            external: true,
-            primary: true,
-          },
-          { label: "Browse providers", to: "/apis/providers" },
-        ]}
-      />
-    );
-
-  return (
-    <div className="space-y-3 relative">
-      <QueryProgress active={isFetchingRows} position="sticky" />
-      {/* One filter row over the whole directory: search, the six field
-          filters, the callable-only scope toggle, and the result count. */}
-      <div
-        className="sticky z-[var(--mg-z-raised)] -mx-1 bg-paper px-1 py-2"
-        style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <SearchInput
-            value={search.q}
-            onChange={(v) => setSearch({ q: v })}
-            placeholder="Search URL, provider, netuid…"
-          />
-          <SelectFilter
-            label="Kind"
-            value={search.category === "all" ? "" : search.category}
-            onChange={(v) => setSearch({ category: (v || "all") as EndpointsSearch["category"] })}
-            options={(
-              [
-                ["rpc", "RPC"],
-                ["wss", "WSS"],
-                ["api", "API"],
-                ["sse", "SSE"],
-                ["data", "Data"],
-                ["other", "Other"],
-              ] as const
-            )
-              .filter(([value]) => (categoryCounts[value] ?? 0) > 0)
-              .map(([value, label]) => ({
-                value,
-                label: `${label} · ${categoryCounts[value] ?? 0}`,
-              }))}
-          />
-          <SelectFilter
-            label="Health"
-            value={search.health}
-            onChange={(v) => setSearch({ health: v })}
-            options={["ok", "warn", "down", "unknown"].map((value) => ({ value, label: value }))}
-          />
-          <SelectFilter
-            label="Sort"
-            value={sortPreset}
-            onChange={setSortPreset}
-            allowEmpty={false}
-            options={[
-              { value: "netuid:asc", label: "Subnet number" },
-              { value: "health:asc", label: "Health first" },
-              { value: "latency:asc", label: "Fastest latency" },
-              { value: "latency:desc", label: "Slowest latency" },
-              { value: "probed:desc", label: "Newest probe" },
-              { value: "provider:asc", label: "Provider A–Z" },
-            ]}
-          />
-          <SelectFilter
-            label="Provider"
-            value={search.provider}
-            onChange={(v) => setSearch({ provider: v })}
-            options={providers.map((value) => ({ value, label: value }))}
-          />
-          <SelectFilter
-            label="Region"
-            value={search.region}
-            onChange={(v) => setSearch({ region: v })}
-            options={regions.map((value) => ({ value, label: value }))}
-          />
-          <SelectFilter
-            label="Access"
-            value={search.eligibility}
-            onChange={(v) => setSearch({ eligibility: v })}
-            options={[
-              { value: "proxy-enabled", label: "Proxy enabled" },
-              { value: "pool-member", label: "Pool member" },
-              { value: "archive-capable", label: "Archive capable" },
-              { value: "unassigned", label: "Unassigned" },
-            ]}
-          />
-          <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-13">
-            <span className="shrink-0 text-ink-muted">Subnet</span>
-            <input
-              value={search.netuid}
-              onChange={(event) => setSearch({ netuid: event.target.value.replace(/[^0-9]/g, "") })}
-              inputMode="numeric"
-              placeholder="Any"
-              className="w-20 min-w-0 rounded bg-transparent font-mono text-13 text-ink-strong placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={() =>
-              setSearch({
-                callable: !search.callable,
-                ...(!search.callable && search.category === "other"
-                  ? { category: "all" as const }
-                  : {}),
-              })
-            }
-            aria-pressed={search.callable}
-            title={
-              search.callable
-                ? `Showing callable endpoints — ${directoryCount} reference links hidden`
-                : "Showing all endpoint records"
-            }
-            className={classNames(
-              "mg-focus-ring inline-flex h-8 items-center gap-1.5 rounded px-2 text-13",
-              search.callable ? "text-accent-text" : "text-ink-muted hover:text-ink-strong",
-            )}
-          >
-            <span
-              className={classNames(
-                "size-1.5 rounded-full mg-dot",
-                search.callable ? "bg-accent" : "bg-ink-subtle",
-              )}
-              aria-hidden
-            />
-            <span>Callable</span>
-          </button>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-3 text-11 text-ink-muted">
-          <span>
-            {formatNumber(sorted.length)} of {formatNumber(scoped.length)} endpoints
-          </span>
-          <span>
-            {search.callable && directoryCount > 0
-              ? `${directoryCount} reference links hidden`
-              : "All records visible"}
-          </span>
-          <ResetFiltersButton
-            active={
-              activeCount + (search.category !== "all" ? 1 : 0) + (search.callable ? 1 : 0) > 0
-            }
-            onReset={resetAll}
-            bare
-          />
-        </div>
-      </div>
-
-      {stale ? (
-        <StaleBanner
-          generatedAt={generatedAt}
-          refreshQueryKeys={[endpointsQuery().queryKey, endpointIncidentsQuery().queryKey]}
-        />
-      ) : null}
-
-      {sorted.length === 0 ? (
-        <StateBlock
-          kind="registry"
-          variant="empty"
-          title="No endpoints match these filters"
-          description="Remove one filter at a time, or reset to see the full list. Eligibility and category chips have the biggest effect on row count."
-          actions={[
-            { label: "Reset filters", onClick: resetAll, primary: true },
-            { label: "Open API", href: "/api/v1/endpoints", external: true },
-          ]}
-          freshnessHint="Endpoint records refresh every probe cycle. Probe latency varies by region — re-check after a few minutes if a known endpoint is missing."
-          evidenceHref="/metagraph/endpoints.json"
-        />
-      ) : (
-        <>
-          {compareIds.size > 0 ? (
-            <EndpointComparePanel
-              endpoints={rows.filter((r) => compareIds.has(r.id))}
-              incidents={incidents}
-              poolsById={poolsById}
-              providerById={providerById}
-              subnetById={subnetById}
-              onRemove={toggleCompare}
-              onClear={clearCompare}
-            />
-          ) : null}
-          <EndpointOperationalList
-            rows={pageRows}
-            incidents={incidents}
-            poolsById={poolsById}
-            providerById={providerById}
-            subnetById={subnetById}
-            expandedId={expandedId}
-            onToggle={toggleExpanded}
-            compareIds={compareIds}
-            onToggleCompare={toggleCompare}
-            compareMax={4}
-          />
-          {/* The directory below is a card list, not a DataTable, so it
-              carries its own pager rather than the table's. */}
-          <div className="mg-dt-footer">
-            <span className="mg-dt-range">
-              Page {safePage} of {totalPages} · {pageRows.length} shown · {sorted.length} total
-            </span>
-            <nav className="mg-dt-pager" aria-label="Endpoint directory pages">
-              <button
-                type="button"
-                onClick={() => setSearch({ page: Math.max(1, safePage - 1) })}
-                disabled={safePage <= 1}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setSearch({ page: Math.min(totalPages, safePage + 1) })}
-                disabled={safePage >= totalPages}
-              >
-                Next
-              </button>
-            </nav>
-          </div>
-        </>
-      )}
-    </div>
   );
 }
