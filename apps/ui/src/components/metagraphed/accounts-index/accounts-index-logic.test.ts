@@ -75,9 +75,9 @@ describe("holderCards", () => {
   });
 
   it("drops a row with no address rather than linking nowhere", () => {
-    expect(
-      holderCards([{ subnet_count: 1, uid_count: 1 } as AccountListEntry], "stake"),
-    ).toEqual([]);
+    expect(holderCards([{ subnet_count: 1, uid_count: 1 } as AccountListEntry], "stake")).toEqual(
+      [],
+    );
   });
 
   it("honours the limit", () => {
