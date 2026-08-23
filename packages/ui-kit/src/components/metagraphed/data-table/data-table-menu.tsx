@@ -6,10 +6,16 @@ import {
 } from "@/components/ui/popover";
 
 /**
- * The one table menu (#11610): which columns are shown, the CSV of what is
- * currently sorted and filtered, and a link back to this view. It replaces
- * the separate column customizer, download button and share button every
- * list route used to carry above its table.
+ * The one table menu (#11610): which columns are shown, how many rows a page
+ * holds, the CSV of what is currently sorted and filtered, and a link back to
+ * this view. It replaces the separate column customizer, `per page` select,
+ * download button and share button every list route used to carry above its
+ * table.
+ *
+ * Page size is here rather than beside the pager (#11620) for the same reason
+ * the column set is: it is a preference about how the table is drawn, asked
+ * once and rarely changed, and a control that permanently occupies the
+ * caption row makes every list carry a question the reader did not ask.
  */
 export function DataTableMenu<Row>({
   columns,
@@ -19,6 +25,9 @@ export function DataTableMenu<Row>({
   filename,
   shareUrl,
   label,
+  pageSize,
+  pageSizes,
+  onPageSize,
 }: {
   columns: ReadonlyArray<{ key: string; label: string; demote?: boolean }>;
   visibleKeys: readonly string[];
@@ -27,6 +36,10 @@ export function DataTableMenu<Row>({
   filename: string;
   shareUrl?: string;
   label: string;
+  /** Current rows-per-page; omit `onPageSize` to leave the control out. */
+  pageSize?: number;
+  pageSizes?: readonly number[];
+  onPageSize?: (size: number) => void;
   /** Only here so the generic parameter is used by the props type. */
   rows?: readonly Row[];
 }) {
@@ -95,6 +108,27 @@ export function DataTableMenu<Row>({
             </li>
           ))}
         </ul>
+        {onPageSize && pageSizes && pageSizes.length > 0 ? (
+          <>
+            <p className="mg-dt-menu-heading">Rows per page</p>
+            <div
+              className="mg-dt-menu-sizes"
+              role="group"
+              aria-label={`${label} rows per page`}
+            >
+              {pageSizes.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  aria-pressed={size === pageSize}
+                  onClick={() => onPageSize(size)}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
         <div className="mg-dt-menu-actions">
           <button type="button" onClick={download}>
             Download CSV

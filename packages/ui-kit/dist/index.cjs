@@ -4513,7 +4513,10 @@ function DataTableMenu({
   csv,
   filename,
   shareUrl,
-  label
+  label,
+  pageSize,
+  pageSizes,
+  onPageSize
 }) {
   const [copied, setCopied] = React3.useState(false);
   const toggle = (key) => {
@@ -4563,6 +4566,27 @@ function DataTableMenu({
         ),
         /* @__PURE__ */ jsxRuntime.jsx("span", { children: column.label })
       ] }) }, column.key)) }),
+      onPageSize && pageSizes && pageSizes.length > 0 ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-dt-menu-heading", children: "Rows per page" }),
+        /* @__PURE__ */ jsxRuntime.jsx(
+          "div",
+          {
+            className: "mg-dt-menu-sizes",
+            role: "group",
+            "aria-label": `${label} rows per page`,
+            children: pageSizes.map((size) => /* @__PURE__ */ jsxRuntime.jsx(
+              "button",
+              {
+                type: "button",
+                "aria-pressed": size === pageSize,
+                onClick: () => onPageSize(size),
+                children: size
+              },
+              size
+            ))
+          }
+        )
+      ] }) : null,
       /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-dt-menu-actions", children: [
         /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: download, children: "Download CSV" }),
         /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: copyLink, children: copied ? "Link copied" : "Copy link" })
@@ -4718,6 +4742,8 @@ function DataTable({
   page: pageProp,
   onPage,
   pageSize = 50,
+  pageSizes,
+  onPageSize,
   paginate,
   rowHref,
   link,
@@ -4850,6 +4876,9 @@ function DataTable({
               DataTableMenu,
               {
                 columns,
+                pageSize,
+                pageSizes,
+                onPageSize,
                 visibleKeys,
                 onVisibleKeys: (keys) => {
                   setVisibleKeys(keys);

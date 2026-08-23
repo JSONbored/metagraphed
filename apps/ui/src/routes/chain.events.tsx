@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
-import { EventsPage } from "./-events-index-page";
+import { EventsPage } from "./-chain-stream-page";
 
 const eventsSearchSchema = z.object({
   // Server-side filters wired to the /api/v1/chain-events feed. `method` is only

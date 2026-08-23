@@ -4486,7 +4486,10 @@ function DataTableMenu({
   csv,
   filename,
   shareUrl,
-  label
+  label,
+  pageSize,
+  pageSizes,
+  onPageSize
 }) {
   const [copied, setCopied] = useState(false);
   const toggle = (key) => {
@@ -4536,6 +4539,27 @@ function DataTableMenu({
         ),
         /* @__PURE__ */ jsx("span", { children: column.label })
       ] }) }, column.key)) }),
+      onPageSize && pageSizes && pageSizes.length > 0 ? /* @__PURE__ */ jsxs(Fragment, { children: [
+        /* @__PURE__ */ jsx("p", { className: "mg-dt-menu-heading", children: "Rows per page" }),
+        /* @__PURE__ */ jsx(
+          "div",
+          {
+            className: "mg-dt-menu-sizes",
+            role: "group",
+            "aria-label": `${label} rows per page`,
+            children: pageSizes.map((size) => /* @__PURE__ */ jsx(
+              "button",
+              {
+                type: "button",
+                "aria-pressed": size === pageSize,
+                onClick: () => onPageSize(size),
+                children: size
+              },
+              size
+            ))
+          }
+        )
+      ] }) : null,
       /* @__PURE__ */ jsxs("div", { className: "mg-dt-menu-actions", children: [
         /* @__PURE__ */ jsx("button", { type: "button", onClick: download, children: "Download CSV" }),
         /* @__PURE__ */ jsx("button", { type: "button", onClick: copyLink, children: copied ? "Link copied" : "Copy link" })
@@ -4691,6 +4715,8 @@ function DataTable({
   page: pageProp,
   onPage,
   pageSize = 50,
+  pageSizes,
+  onPageSize,
   paginate,
   rowHref,
   link,
@@ -4823,6 +4849,9 @@ function DataTable({
               DataTableMenu,
               {
                 columns,
+                pageSize,
+                pageSizes,
+                onPageSize,
                 visibleKeys,
                 onVisibleKeys: (keys) => {
                   setVisibleKeys(keys);

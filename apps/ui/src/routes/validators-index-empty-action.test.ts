@@ -14,8 +14,14 @@ const validators = readFileSync(
   fileURLToPath(new URL("./-validators-index-page.tsx", import.meta.url)),
   "utf8",
 );
-const feed = readFileSync(
-  fileURLToPath(new URL("../components/metagraphed/chain-events-feed.tsx", import.meta.url)),
+const streams = readFileSync(
+  fileURLToPath(new URL("./-chain-stream-page.tsx", import.meta.url)),
+  "utf8",
+);
+const shell = readFileSync(
+  fileURLToPath(
+    new URL("../components/metagraphed/chain-stream/stream-shell.tsx", import.meta.url),
+  ),
   "utf8",
 );
 
@@ -47,28 +53,44 @@ describe("empty-state 'Open the API' actions", () => {
     expect(branch).toContain("No operators match these filters");
   });
 
-  // The whole `const emptyNode = (...)` declaration, however long its comments grow.
-  const emptyNodeStart = feed.indexOf("const emptyNode");
-  const feedEmpty = feed.slice(emptyNodeStart, feed.indexOf("\n  );", emptyNodeStart));
+  // #11620 folded the three chain streams into one page and one
+  // `streamEmpty(filtersActive, subject, path)` helper, so the convention is
+  // now stated once instead of three times -- and it reaches blocks and
+  // extrinsics, which had a bare string and therefore said "match these
+  // filters" to a reader who had set none.
+  const helper = shell.slice(
+    shell.indexOf("function streamEmpty"),
+    shell.indexOf("\n}", shell.indexOf("function streamEmpty")),
+  );
 
-  it("Chain events feed links its UNFILTERED empty state to /api/v1/chain-events", () => {
-    expect(feedEmpty).toContain("href: `${API_BASE}/api/v1/chain-events`");
-    expect(feedEmpty).toContain("external: true");
+  it("offers the API link ONLY on the unfiltered empty state", () => {
+    expect(helper).toContain("filtersActive ? (");
+    expect(helper).toContain("indexed yet");
+    expect(helper).toContain("action={{ label: `Open ${path}`");
+    // The filtered branch comes first and carries no `action` at all: an API
+    // link there would open the UNFILTERED endpoint, which is full.
+    const filtered = helper.slice(0, helper.indexOf(") : ("));
+    expect(filtered).toContain("match these filters");
+    expect(filtered).not.toContain("action=");
   });
 
-  it("keeps the filtered-empty chain-events cases action-less", () => {
-    // The action must be gated so a filter-empty view doesn't suggest "open the
-    // API" (it'd show unfiltered data, not the filtered subset). #8253 added a
-    // second filtered case: the noise toggle hiding every row on the page.
-    expect(feedEmpty).toMatch(/action=\{\s*filtersActive \|\| hiddenCount > 0\s*\?\s*undefined/);
-  });
-
-  it("distinguishes all-hidden-by-noise from a genuinely empty chain-events feed", () => {
-    // #8253: "we hid them" and "there are none" are different answers -- the
-    // all-hidden title names the toggle as the fix rather than claiming the
-    // backfill hasn't run.
-    expect(feedEmpty).toContain("hiddenCount > 0");
-    expect(feedEmpty).toContain("system noise");
-    expect(feedEmpty).toContain("No chain events indexed yet");
+  it("is what all three streams pass, so none of them can drift", () => {
+    // Each `empty={streamEmpty(...)}` call site, read as the whole call rather
+    // than by searching for a subject string: `"extrinsics"` also appears in
+    // `id="extrinsics"` a hundred lines earlier, and an indexOf on it would
+    // pass while pointing at the wrong place entirely.
+    const calls = [...streams.matchAll(/empty=\{streamEmpty\([\s\S]*?\)\}/g)].map((m) => m[0]);
+    expect(calls).toHaveLength(3);
+    const pairs = calls.map((call) => [
+      call.match(/"([a-z ]+)",/)?.[1],
+      call.match(/"(\/api\/v1\/[a-z-]+)"/)?.[1],
+    ]);
+    expect(pairs).toEqual([
+      ["blocks", "/api/v1/blocks"],
+      ["extrinsics", "/api/v1/extrinsics"],
+      ["chain events", "/api/v1/chain-events"],
+    ]);
+    // No fourth `empty` prop taking a bare string behind the helper's back.
+    expect(streams).not.toMatch(/empty="/);
   });
 });
