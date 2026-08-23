@@ -1,48 +1,18 @@
-import { EntityHero, FactSentence } from "@jsonbored/ui-kit";
-import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
-import { AppShell } from "@/components/metagraphed/app-shell";
-import { ApisTabs, activeApisTab } from "./-apis-hub";
+import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * APIs hub layout (#8302, part of #8245) — one destination for the registry's
- * public-interface surface, which was split across /surfaces, /endpoints,
- * /schemas and /providers.
+ * APIs hub layout (#8302, emptied by #11622).
  *
- * The masthead and tab strip render once here rather than per page, the same
- * shape the Chain hub established (#8244).
+ * It rendered a shared `AppShell`, one hero and a four-entry tab strip. Each
+ * page owns its own hero now -- they are four different questions, not four
+ * views of one -- and the tab strip is a `SectionNav` with `href` items, the
+ * same nav primitive every rebuilt page already uses for its own sections.
+ *
+ * No `component` and no `head`, both deliberately: a layout route with no
+ * component renders its `<Outlet />` anyway, and all four children set their
+ * own head, so the layout's copy was never rendered.
  *
  * Provider detail (/providers/$slug) deliberately keeps its own URL — only
  * index pages consolidate.
  */
-function ApisHubLayout() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const tab = activeApisTab(pathname);
-
-  return (
-    <AppShell>
-      <EntityHero name="APIs" sentence={<FactSentence>{tab.blurb}</FactSentence>} />
-      <ApisTabs />
-      <Outlet />
-    </AppShell>
-  );
-}
-
-export const Route = createFileRoute("/apis")({
-  head: () => ({
-    meta: [
-      { title: "APIs — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Every verified public interface across Bittensor subnets — APIs, schemas, docs and dashboards, with live endpoint health and latency.",
-      },
-      { property: "og:title", content: "APIs — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "Every verified public interface across Bittensor subnets — APIs, schemas, docs and dashboards, with live endpoint health and latency.",
-      },
-    ],
-  }),
-  component: ApisHubLayout,
-});
+export const Route = createFileRoute("/apis")({});

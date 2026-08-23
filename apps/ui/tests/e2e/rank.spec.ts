@@ -45,15 +45,18 @@ test.describe("composition cross-highlight", () => {
     await expect(tip).toBeVisible();
     await expect(tip.locator("strong")).toHaveText("Affine");
     await expect(tip.locator(".mg-chart-tooltip-row")).toHaveCount(3);
-    const fill = await rails
-      .locator('.mg-rails-row[data-entity="Affine"] .mg-rails-track > b')
-      .first()
-      .evaluate((el) => getComputedStyle(el).backgroundColor);
-    const idle = await rails
-      .locator('.mg-rails-row[data-entity="Score"] .mg-rails-track > b')
-      .first()
-      .evaluate((el) => getComputedStyle(el).backgroundColor);
-    expect(fill).not.toBe(idle);
+    // Polled, not read once: the fill is a `background` under a
+    // `transition: … var(--mg-motion)`, so a single read taken the instant
+    // after `hover()` resolves can still see the pre-transition colour. Under
+    // the full parallel suite that lost the race about one run in three while
+    // passing every time the file ran alone -- the signature of a timing race,
+    // not of a broken highlight.
+    const active = rails.locator('.mg-rails-row[data-entity="Affine"] .mg-rails-track > b').first();
+    const resting = rails.locator('.mg-rails-row[data-entity="Score"] .mg-rails-track > b').first();
+    const idle = await resting.evaluate((el) => getComputedStyle(el).backgroundColor);
+    await expect
+      .poll(() => active.evaluate((el) => getComputedStyle(el).backgroundColor))
+      .not.toBe(idle);
   });
 
   test("Show all expands the rail in place", async ({ page }) => {
