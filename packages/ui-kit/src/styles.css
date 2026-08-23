@@ -3075,6 +3075,50 @@
   .mg-prose :where(h1, h2, h3, h4, code, pre, kbd, table, th, nav, figcaption) {
     font-family: var(--font-mono);
   }
+  /* An article's own rhythm: sections separated by a rule, headings at the
+     13px the rest of the site uses for a section name, paragraphs and lists
+     spaced by the layout rather than by per-element margins. */
+  .mg-prose :where(section) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .mg-prose :where(section):first-child {
+    border-top: 0;
+  }
+  .mg-prose :where(h2) {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ink-strong);
+  }
+  .mg-prose :where(ul, ol) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-left: 20px;
+    list-style: disc;
+  }
+  .mg-prose :where(ol) {
+    list-style: decimal;
+  }
+  .mg-prose :where(a) {
+    color: var(--ink-strong);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .mg-prose :where(a):hover {
+    color: var(--accent);
+  }
+  .mg-prose :where(code) {
+    font-size: 13px;
+    color: var(--ink-strong);
+  }
+  .mg-prose :where(strong) {
+    color: var(--ink-strong);
+    font-weight: inherit;
+  }
 }
 
 /* ============================ shared utilities =========================== */

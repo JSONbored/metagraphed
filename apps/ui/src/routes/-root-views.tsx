@@ -10,22 +10,24 @@ import {
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
-  AlertTriangle,
-  ArrowRight,
-  Check,
-  Copy,
-  Home,
-  RefreshCw,
-  Search,
-  ServerCrash,
-} from "lucide-react";
-import { Toaster } from "@jsonbored/ui-kit";
+  AnalyticsSection,
+  DataTable,
+  EntityHero,
+  Fact,
+  FactSentence,
+  FilterField,
+  FilterInput,
+  Raw,
+  Toaster,
+  type DataTableColumn,
+} from "@jsonbored/ui-kit";
+import { AppShell } from "@/components/metagraphed/app-shell";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { initAnalytics, capturePageview, syncReplayPolicy } from "../lib/analytics";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 import { HEALTH_PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/health-palette";
 import { GlobalErrorBoundary } from "@/components/metagraphed/global-error-boundary";
-import { Panel } from "@/components/metagraphed/primitives";
 import { OfflineBanner } from "@/components/metagraphed/offline-banner";
 import { useServiceWorker } from "@/hooks/use-service-worker";
 import {
@@ -33,23 +35,40 @@ import {
   PRE_HYDRATION_RECOVERY_SCRIPT,
 } from "@/lib/blank-screen-watchdog";
 
+/**
+ * The five destinations a reader who missed is most likely to have wanted.
+ * Paths, not prose: the URL is the thing they typed wrong.
+ */
+const NOT_FOUND_DESTINATIONS: readonly { path: string; holds: string }[] = [
+  { path: "/subnets", holds: "Every subnet, ranked by emission." },
+  { path: "/validators", holds: "Every validator, ranked by stake." },
+  { path: "/chain", holds: "Blocks, extrinsics and events as they land." },
+  { path: "/apis/providers", holds: "Who operates the endpoints." },
+  { path: "/apis/schemas", holds: "OpenAPI coverage and schema drift." },
+  { path: "/health", holds: "What is up, and what is not." },
+];
+
+const NOT_FOUND_COLUMNS: DataTableColumn<(typeof NOT_FOUND_DESTINATIONS)[number]>[] = [
+  { key: "path", label: "Path", value: (d) => d.path },
+  { key: "holds", label: "What is there", value: (d) => d.holds },
+];
+
+/**
+ * 404 (#11627) — the site's shell, an EntityHero, one table.
+ *
+ * It used to be a standalone page with its own 40px display heading, a
+ * bordered "Attempted URL" panel, a search field with an absolutely-positioned
+ * icon, a six-card grid of example links, and a fourth row of four pill
+ * buttons — five separate visual vocabularies for "you are lost". It renders
+ * inside `AppShell` now, so the header the reader needs is simply there, and
+ * everything below it is the hero, the jump box, and a table of where to go.
+ */
 export function NotFoundComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [copied, setCopied] = useState(false);
   const attempted =
     typeof window !== "undefined" ? window.location.href : `https://metagraph.sh${pathname}`;
-
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(attempted);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* noop */
-    }
-  };
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -63,150 +82,72 @@ export function NotFoundComponent() {
     }
   };
 
-  const examples: Array<{ href: string; label: string; note: string }> = [
-    { href: "/subnets/0", label: "/subnets/0", note: "Root · Subtensor RPC/WSS" },
-    { href: "/subnets/7", label: "/subnets/7", note: "Allways · adapter-backed" },
-    { href: "/subnets/74", label: "/subnets/74", note: "Gittensor · adapter-backed" },
-    { href: "/apis/providers", label: "/apis/providers", note: "Provider directory" },
-    { href: "/apis/endpoints", label: "/apis/endpoints", note: "All public endpoints" },
-    { href: "/apis/schemas", label: "/apis/schemas", note: "OpenAPI & schema drift" },
-  ];
-
   return (
-    <div className="min-h-dvh bg-paper px-4 py-10 text-ink-strong">
-      <div className="mx-auto max-w-5xl">
-        <main aria-labelledby="nf-title">
-          <div className="text-10 text-ink-muted">Metagraphed / missing route · 404</div>
-          <h1
-            id="nf-title"
-            className="mt-3 font-display text-40 font-semibold leading-tight text-ink-strong md:text-40"
-          >
-            No registry resource at this URL.
-          </h1>
-          <p className="mt-3 max-w-2xl text-13 leading-relaxed text-ink-muted md:text-16">
-            The path you followed isn&rsquo;t a curated registry view. Search a subnet by netuid,
-            copy the attempted URL for a bug report, or jump into one of the primary indexes below.
-          </p>
+    <AppShell>
+      <EntityHero
+        name="Nothing at this URL"
+        sentence={
+          <FactSentence>
+            The path you followed is not a registry view. <Fact>404</Fact>
+            <Fact>{pathname}</Fact>
+          </FactSentence>
+        }
+      />
 
-          {/* Attempted URL + copy */}
-          <Panel className="mt-6">
-            <div className="flex items-center gap-2 text-10 text-ink-muted">
-              <AlertTriangle className="size-3.5 text-health-warn" /> Attempted URL
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded border border-border bg-paper px-2 py-1.5 font-mono text-13 text-ink">
-                {attempted}
-              </code>
-              <button
-                type="button"
-                onClick={onCopy}
-                aria-label="Copy attempted URL"
-                aria-live="polite"
-                className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-paper px-3 text-13 text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {copied ? (
-                  <Check className="size-3.5 text-health-ok" />
-                ) : (
-                  <Copy className="size-3.5" />
-                )}
-                {copied ? "Copied" : "Copy URL"}
-              </button>
-            </div>
-          </Panel>
-
-          {/* Search */}
-          <form onSubmit={onSubmit} className="mt-4" role="search" aria-label="Find a subnet">
-            <label htmlFor="nf-search" className="text-10 text-ink-muted">
-              Jump to subnet
-            </label>
-            <div className="mt-1 flex flex-wrap items-stretch gap-2">
-              <div className="relative min-w-0 flex-1">
-                <Search
-                  aria-hidden
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
-                />
-                <input
-                  id="nf-search"
-                  autoFocus
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="e.g. 7, 74, or a keyword"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  // eslint-disable-next-line no-restricted-syntax -- pl-9 (36px) clears the absolutely-positioned search icon at left-3+size; 36px is off the 4pt subset and has no --mg-space-* token (scale jumps 32→48), so snapping to either would misalign the icon (#8717 req 2 exception)
-                  className="min-h-10 w-full rounded border border-border bg-card pl-9 pr-3 text-13 text-ink-strong placeholder:text-ink-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </div>
-              <button
-                type="submit"
-                className="inline-flex min-h-10 items-center gap-2 rounded border border-accent/60 bg-primary-soft px-4 text-13 font-medium text-ink-strong hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                Go <ArrowRight className="size-4" />
-              </button>
-            </div>
-            <p className="mt-1 text-13 text-ink-muted">
-              Enter a netuid (0–1024) to deep-link to its profile, or any keyword to search the
-              registry.
-            </p>
+      <AnalyticsSection
+        id="jump"
+        name="Jump to a subnet"
+        question="A netuid deep-links to its profile; anything else searches the registry."
+        visual={
+          <form onSubmit={onSubmit} role="search" aria-label="Find a subnet">
+            <FilterField label="Subnet" htmlFor="nf-search">
+              <FilterInput
+                id="nf-search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="e.g. 7, 74, or a keyword"
+              />
+            </FilterField>
           </form>
+        }
+        footnote="netuid 0–1024, or any keyword"
+      />
 
-          {/* Example deep links */}
-          <section aria-labelledby="nf-examples" className="mt-6">
-            <h2 id="nf-examples" className="text-10 text-ink-muted">
-              Example deep links
-            </h2>
-            <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {examples.map((ex) => (
-                <li key={ex.href}>
-                  <Link
-                    to={ex.href}
-                    className="flex items-center justify-between gap-3 rounded border border-border bg-card px-3 py-2 hover:border-accent/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate font-mono text-13 text-ink-strong">
-                        {ex.label}
-                      </span>
-                      <span className="block truncate text-13 text-ink-muted">{ex.note}</span>
-                    </span>
-                    <ArrowRight aria-hidden className="size-3.5 text-ink-muted" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
+      <AnalyticsSection
+        id="destinations"
+        name="Where to go instead"
+        question="The six indexes the rest of the site hangs off."
+        visual={
+          <DataTable
+            caption="Registry indexes"
+            captionHidden
+            rows={NOT_FOUND_DESTINATIONS}
+            columns={NOT_FOUND_COLUMNS}
+            rowKey={(d) => d.path}
+            source="not-found"
+            paginate={false}
+            rowHref={(d) => d.path}
+            link={RouterLink}
+          />
+        }
+      />
 
-          <nav aria-label="Primary registry indexes" className="mt-6 flex flex-wrap gap-2">
-            <Link
-              to="/"
-              className="inline-flex min-h-10 items-center gap-2 rounded border border-border bg-card px-3 text-13 font-medium text-ink-strong hover:border-accent/60"
-            >
-              <Home className="size-4" /> Overview
-            </Link>
-            <Link
-              to="/subnets"
-              className="inline-flex min-h-10 items-center gap-2 rounded border border-border bg-card px-3 text-13 font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
-            >
-              Subnets
-            </Link>
-            <Link
-              to="/apis/providers"
-              className="inline-flex min-h-10 items-center gap-2 rounded border border-border bg-card px-3 text-13 font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
-            >
-              Providers
-            </Link>
-            <Link
-              to="/health"
-              className="inline-flex min-h-10 items-center gap-2 rounded border border-border bg-card px-3 text-13 font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
-            >
-              Health
-            </Link>
-          </nav>
-        </main>
-      </div>
-    </div>
+      {/* The attempted URL, copyable, for a bug report -- the one thing the
+          reader might need to send someone else. */}
+      <Raw rows={[{ label: "attempted", value: attempted }]} />
+    </AppShell>
   );
 }
 
+/**
+ * The route error boundary (#11627).
+ *
+ * Deliberately NOT inside `AppShell`: an error thrown by the shell itself
+ * would make that a loop. It carries its own minimal frame, but the type,
+ * the rule and the diagnostic all come from the same tokens and the same
+ * `Raw` block every other page uses, so it reads as this site rather than as
+ * a browser error page.
+ */
 export function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
@@ -216,53 +157,47 @@ export function ErrorComponent({ error, reset }: { error: Error; reset: () => vo
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-paper px-4 py-8 text-ink-strong">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl items-center">
-        <main className="w-full rounded border border-health-down/30 bg-card p-4 md:p-8">
-          <div className="flex flex-wrap items-center gap-2 text-13 text-health-down">
-            <ServerCrash className="size-4" /> Route error
-            <span className="rounded border border-border bg-paper px-1.5 py-0.5 text-ink-muted">
-              {pathname}
-            </span>
-          </div>
-          <h1 className="mt-4 font-display text-28 font-semibold leading-tight text-ink-strong md:text-40">
-            This page hit a registry UI error.
-          </h1>
-          <p className="mt-3 max-w-2xl text-13 leading-relaxed text-ink-muted md:text-16">
-            Retry reloads only the current route data. If it keeps failing, the links below let you
-            continue browsing the public registry while the error report is captured.
-          </p>
-          <div className="mt-4 rounded border border-border bg-paper p-3 text-13 text-ink-muted">
-            <div className="flex items-center gap-2 text-10 text-ink-muted">
-              <AlertTriangle className="size-3.5 text-health-warn" /> Diagnostic
-            </div>
-            <code className="mt-2 block break-words text-11">{error.message}</code>
-          </div>
-          <div className="mt-6 flex flex-wrap gap-2">
+    <div className="min-h-dvh bg-canvas px-4 py-10 text-ink">
+      <main className="mx-auto flex max-w-5xl flex-col gap-4">
+        <EntityHero
+          name="This route hit an error"
+          sentence={
+            <FactSentence>
+              Retry reloads only the current route&rsquo;s data; the report has already been
+              captured. <Fact>{pathname}</Fact>
+            </FactSentence>
+          }
+          action={
             <button
+              type="button"
               onClick={() => {
                 router.invalidate();
                 reset();
               }}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded border border-accent/60 bg-primary-soft px-4 text-13 font-medium text-ink-strong transition-colors hover:border-accent"
+              className="rounded border border-border bg-card px-3 py-1.5 text-13 text-ink-strong hover:border-ink/30"
             >
-              <RefreshCw className="size-4" /> Retry route
+              Retry route
             </button>
-            <Link
-              to="/subnets"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded border border-border bg-card px-4 text-13 font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
-            >
-              Browse subnets
-            </Link>
-            <Link
-              to="/"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded border border-border bg-card px-4 text-13 font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
-            >
-              <Home className="size-4" /> Overview
-            </Link>
-          </div>
-        </main>
-      </div>
+          }
+        />
+        <Raw
+          rows={[
+            { label: "path", value: pathname },
+            { label: "error", value: error.message },
+          ]}
+        />
+        <nav aria-label="Elsewhere" className="flex flex-wrap gap-3">
+          <Link to="/" className="text-13 text-ink-muted hover:text-ink-strong">
+            Overview
+          </Link>
+          <Link to="/subnets" className="text-13 text-ink-muted hover:text-ink-strong">
+            Subnets
+          </Link>
+          <Link to="/health" className="text-13 text-ink-muted hover:text-ink-strong">
+            Health
+          </Link>
+        </nav>
+      </main>
     </div>
   );
 }

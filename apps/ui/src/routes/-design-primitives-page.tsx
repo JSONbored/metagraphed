@@ -1,92 +1,36 @@
-import { Activity, Layers, Radio, Server } from "lucide-react";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
-  Breadcrumbs,
-  Chip,
-  EmptyState,
-  GhostButton,
-  Indicator,
-  LoadingPill,
-  Panel,
-  StatusBadge,
-} from "@/components/metagraphed/primitives";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  AnimatedNumber,
-  LineWithWindow,
-  CompositionBreakdown,
-  LeaderCards,
-  MarkerRail,
-  RankGrid,
-  RankedRails,
-  DataTable,
-  CompareLedger,
-  COMPOSITION_SPECIMEN,
-  LEADER_SPECIMEN,
-  MARKER_SPECIMEN,
-  RAIL_SPECIMEN,
-  StackedColumns,
-  TrendDelta,
-  lineSpecimen,
-  stackedSpecimen,
-  BrandIcon,
-  CandidateChip,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CopyButton,
-  CopyIconToggle,
-  CopyableCode,
-  CurationChip,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  Divider,
-  DiscordIcon,
-  EligibilityChip,
-  EntityHero,
-  ExternalLink,
-  HealthDot,
-  HealthPill,
-  Kbd,
-  SectionHead,
-  AnalyticsPage,
-  AnalyticsSection,
-  Fact,
-  FactSentence,
-  RangeControl,
   ActiveEntityProvider,
+  AnalyticsSection,
   ChartTooltip,
+  COMPOSITION_SPECIMEN,
+  CompareLedger,
+  CompositionBreakdown,
+  CopyableCode,
+  DataTable,
   Definition,
   DefinitionsProvider,
+  EntityHero,
+  Fact,
+  FactSentence,
+  FactStrip,
+  FilterField,
+  FilterInput,
+  FilterSelect,
+  LEADER_SPECIMEN,
+  LeaderCards,
+  LineWithWindow,
+  LiveMeta,
+  LoadMore,
+  MARKER_SPECIMEN,
+  MarkerRail,
+  RAIL_SPECIMEN,
+  RangeControl,
+  RankGrid,
+  RankedRails,
   Raw,
   RawCode,
-  useEntityMark,
-  useIsActive,
-  markAriaLabel,
-  KeyChip,
-  McpToolsList,
-  PanelError,
-  PanelHeader,
-  PanelSkeleton,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  ProvenanceChip,
-  QueryProgress,
-  ReviewChip,
-  RoutePending,
-  ScrollShadow,
+  SectionNav,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -94,844 +38,432 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  Skeleton,
-  TimeAgo,
-  Wordmark,
+  StackedColumns,
+  lineSpecimen,
+  markAriaLabel,
+  stackedSpecimen,
+  useEntityMark,
+  useIsActive,
+  type DataTableColumn,
+  type RawRow,
+  type SectionNavItem,
 } from "@jsonbored/ui-kit";
-import { GITHUB_REPO_URL } from "@/lib/metagraphed/identity";
+import { AppShell } from "@/components/metagraphed/app-shell";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { DESIGN_TOKENS } from "@/components/metagraphed/design/design-tokens.generated";
+import { PropsTable } from "@/components/metagraphed/design/props-table";
+import {
+  COMPARE_PROPS,
+  COPY_PROPS,
+  DATA_TABLE_PROPS,
+  DOCUMENT_PROPS,
+  FACT_PROPS,
+  FILTER_PROPS,
+  HERO_PROPS,
+  INTERACTION_PROPS,
+  LIVE_META_PROPS,
+  RANGE_PROPS,
+  RANK_PROPS,
+  RAW_PROPS,
+  SHEET_PROPS,
+  TEMPORAL_PROPS,
+} from "@/components/metagraphed/design/primitive-props";
 import { DEFINITIONS } from "@/lib/metagraphed/definitions";
 import { formatTao } from "@/lib/metagraphed/format";
 
-// A fixed sample timestamp, not `Date.now()` -- this page must render
-// deterministically (see the page description below): a live clock read at
-// render time differs between the SSR pass and client hydration, which is a
-// real hydration-mismatch footgun (docs/ssr-safety.md), not just noise.
+/**
+ * /design/primitives — the documentation of the design system (#11627).
+ *
+ * One `AnalyticsSection` per primitive, in the order of the epic
+ * (#11606–#11611), each carrying its live specimen, its props as a
+ * `DataTable`, and the measured anatomy of the thing it renders. Then the
+ * tokens, GENERATED from `packages/ui-kit/src/styles.css` so the page cannot
+ * document a colour the app has stopped shipping
+ * (`design-tokens.generated.ts`, gated by `design-tokens.test.ts`).
+ *
+ * It is not an `AnalyticsPage`: that wrapper caps a route at seven sections
+ * because a route answers at most seven questions, and this page is a
+ * reference rather than a route with a subject. It mounts the same
+ * `ActiveEntityProvider` and `SectionNav` by hand instead.
+ *
+ * Every specimen renders from a fixed sample — never `Date.now()` — because
+ * the page must render identically under SSR and hydration
+ * (docs/ssr-safety.md), and because three Playwright projects drive these
+ * specimens as the primitives' only integration test.
+ */
 const SAMPLE_UPDATED_AT = "2026-07-24T18:44:00.000Z";
 
-export function PrimitivesPreview() {
-  const updated = SAMPLE_UPDATED_AT;
+const SECTIONS: SectionNavItem[] = [
+  { id: "document", name: "Document" },
+  { id: "entity-hero", name: "Hero" },
+  { id: "facts", name: "Facts" },
+  { id: "live-meta", name: "Liveness" },
+  { id: "range-control", name: "Range" },
+  { id: "raw", name: "Raw" },
+  { id: "interaction", name: "Interaction" },
+  { id: "data-table", name: "Table" },
+  { id: "charts", name: "Charts" },
+  { id: "rank", name: "Ranking" },
+  { id: "compare", name: "Compare" },
+  { id: "filters", name: "Filters" },
+  { id: "copyable-code", name: "Copy" },
+  { id: "sheet", name: "Sheet" },
+  { id: "tokens", name: "Tokens" },
+];
 
-  return (
-    <div className="mx-auto max-w-5xl px-4 md:px-6 pb-16">
-      <div className="pt-6">
-        <Breadcrumbs
-          crumbs={[
-            { label: "Registry", to: "/" },
-            { label: "Design", to: "/design/primitives" },
-            { label: "Primitives", to: "/design/primitives" },
-          ]}
-        />
-      </div>
-      <SectionHead
-        name="Design primitives"
-        question="Every component in the kit, in both themes, with the import to copy."
-      />
-
-      <TabNav />
-
-      <TokensSection />
-      <LayoutSection updated={updated} />
-      <DataDisplaySection />
-      <ChartsSection />
-      <TableSection />
-      <CompareSection />
-      <DefinitionsProvider definitions={DEFINITIONS}>
-        <InteractionSection />
-      </DefinitionsProvider>
-      <FeedbackSection updated={updated} />
-
-      <p className="mt-10 text-13 text-ink-muted">
-        Applied on: /subnets grid cards · /endpoints card list · every route in the app
-      </p>
-    </div>
-  );
-}
-
-/* ---------- in-page nav ---------- */
-
-const NAV_SECTIONS = [
-  { id: "tokens", label: "Tokens" },
-  { id: "layout", label: "Layout" },
-  { id: "data-display", label: "Data display" },
-  { id: "charts", label: "Charts" },
-  { id: "table", label: "Table" },
-  { id: "compare", label: "Compare" },
-  { id: "interaction", label: "Interaction" },
-  { id: "feedback", label: "Feedback" },
-] as const;
-
-function TabNav() {
-  return (
-    <nav
-      aria-label="Design primitives sections"
-      className="sticky top-0 z-[var(--mg-z-sticky)] -mx-4 mb-2 flex gap-1 overflow-x-auto border-b border-border bg-paper px-4 py-2 md:mx-0 md:px-0"
-    >
-      {NAV_SECTIONS.map((s) => (
-        <a
-          key={s.id}
-          href={`#${s.id}`}
-          className="shrink-0 rounded px-2.5 py-1 text-11 text-ink-muted hover:bg-surface hover:text-ink-strong"
-        >
-          {s.label}
-        </a>
-      ))}
-    </nav>
-  );
-}
-
-/* ---------- shared showcase primitives ---------- */
-
-/** One showcased component: a label, its live render, and a copyable import line. */
-function Show({
-  name,
-  from = "@jsonbored/ui-kit",
-  children,
-}: {
-  name: string;
-  from?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="min-w-0 space-y-2 rounded border border-border bg-card p-3">
-      <div className="text-13 text-ink-muted">{name}</div>
-      <div>{children}</div>
-      <CopyableCode value={`import { ${name} } from "${from}";`} truncate={false} />
-    </div>
-  );
-}
-
-function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
-  return (
-    <section id={id} className="mt-10 scroll-mt-24">
-      <h2 className="mb-3 font-display text-16 font-semibold text-ink-strong">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function SwatchRow({ label, sample }: { label: string; sample: ReactNode }) {
-  return (
-    <div className="flex items-center gap-3 rounded border border-border bg-card px-3 py-2">
-      <span className="w-28 shrink-0 font-mono text-10 text-ink-muted">{label}</span>
-      {sample}
-    </div>
-  );
-}
-
-/* ---------- Tokens ---------- */
-
-const SPACE_TOKENS = [
-  ["--mg-space-3xs", "2px"],
-  ["--mg-space-2xs", "4px"],
-  ["--mg-space-xs", "8px"],
-  ["--mg-space-sm", "12px"],
-  ["--mg-space-md", "16px"],
-  ["--mg-space-lg", "24px"],
-  ["--mg-space-xl", "32px"],
-  ["--mg-space-2xl", "48px"],
-  ["--mg-space-3xl", "64px"],
-] as const;
-
-const TYPE_TOKENS = [
-  ["text-13", "10px micro label"],
-  ["text-11", "11px label"],
-  ["text-13", "12px caption"],
-  ["text-13", "13px caption"],
-  ["text-10", "12px tabular data"],
-  ["text-11", "13px tabular data"],
-] as const;
-
-const SHADOW_TOKENS = ["--mg-shadow-tooltip"] as const;
-
-const Z_TOKENS = [
-  ["--mg-z-sticky", "10"],
-  ["--mg-z-raised", "20"],
-  ["--mg-z-nav", "30"],
-  ["--mg-z-overlay", "40"],
-  ["--mg-z-modal", "50"],
-  ["--mg-z-progress", "60"],
-  ["--mg-z-skip-link", "100"],
-] as const;
-
-const RADIUS_TOKENS = [
-  ["rounded", "pills, badges, avatars"],
-  ["rounded", "inputs, buttons, chips"],
-  ["rounded", "cards, popovers"],
-  ["rounded", "drawers, modals, sheets"],
-  ["rounded", "hero tiles, panels"],
-] as const;
-
-function TokensSection() {
-  return (
-    <Section id="tokens" title="Tokens">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Panel title="Spacing scale" caption="--mg-space-*">
-          <div className="space-y-1.5">
-            {SPACE_TOKENS.map(([name, px]) => (
-              <SwatchRow
-                key={name}
-                label={name}
-                sample={
-                  <span
-                    className="block h-3 rounded bg-accent/70"
-                    style={{ width: `var(${name})` }}
-                    title={px}
-                  />
-                }
-              />
-            ))}
-          </div>
-        </Panel>
-        <Panel title="Type scale" caption="mg-type-*">
-          <div className="space-y-1.5">
-            {TYPE_TOKENS.map(([cls, desc]) => (
-              <SwatchRow key={cls} label={cls} sample={<span className={cls}>{desc}</span>} />
-            ))}
-          </div>
-        </Panel>
-        <Panel title="Elevation scale" caption="--mg-shadow-*">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {SHADOW_TOKENS.map((name) => (
-              <div
-                key={name}
-                className="flex h-16 items-center justify-center rounded bg-card text-13 text-ink-muted"
-                style={{ boxShadow: `var(${name})` }}
-              >
-                {name.replace("--mg-shadow-", "")}
-              </div>
-            ))}
-          </div>
-        </Panel>
-        <Panel title="Z-index layers" caption="--mg-z-*">
-          <div className="space-y-1.5">
-            {Z_TOKENS.map(([name, value]) => (
-              <SwatchRow
-                key={name}
-                label={name}
-                sample={<span className="tabular-nums text-ink">{value}</span>}
-              />
-            ))}
-          </div>
-        </Panel>
-        <Panel title="Radius scale" caption="rounded-* (#7843)">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {RADIUS_TOKENS.map(([cls]) => (
-              <div key={cls} className="flex flex-col items-center gap-1.5 p-2">
-                <span className={`size-10 border border-accent/60 bg-accent/10 ${cls}`} />
-                <span className="text-13 text-ink-muted text-center">{cls}</span>
-              </div>
-            ))}
-          </div>
-        </Panel>
-        <Panel title="Glass surfaces" caption="./ ./ .">
-          <div className="space-y-2">
-            <div className="rounded p-3 text-13 text-ink">.</div>
-            <div className="rounded p-3 text-13 text-ink">. </div>
-            <div className="rounded p-3 text-13 text-ink">. </div>
-          </div>
-        </Panel>
-      </div>
-
-      <Section title="Chips + status">
-        <div className="flex flex-wrap gap-2">
-          <Chip label="kind">REST</Chip>
-          <Chip tone="accent" label="curation">
-            Verified
-          </Chip>
-          <Chip tone="ok" dot>
-            Healthy
-          </Chip>
-          <Chip tone="warn" dot>
-            Degraded
-          </Chip>
-          <Chip tone="down" dot>
-            Down
-          </Chip>
-          <Chip tone="muted" label="src">
-            candidate
-          </Chip>
-          <StatusBadge status="ok" live />
-          <StatusBadge status="warn" />
-          <StatusBadge status="down" />
-          <StatusBadge status="unknown" />
-        </div>
-      </Section>
-
-      <Section title="Indicators (grid card row)">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 rounded border border-border bg-card p-4">
-          <Indicator icon={Layers} label="uids" value="128" title="Registered UIDs" />
-          <Indicator icon={Server} label="surfaces" value="14" hint="of 20" />
-          <Indicator icon={Radio} label="endpoints" value="7" />
-          <Indicator icon={Activity} label="health" value="99.4%" title="30d probe uptime" />
-        </div>
-      </Section>
-    </Section>
-  );
-}
-
-/* ---------- Layout ---------- */
-
-function LayoutSection({ updated }: { updated: string }) {
-  return (
-    <Section id="layout" title="Layout">
-      <div className="space-y-4">
-        <Show name="EntityHero, FactSentence, Fact, FactStrip, LiveMeta">
-          <div data-testid="hero-demo">
-            <EntityHero
-              crumbs={[{ label: "Subnets", href: "/subnets" }, { label: "SN19" }]}
-              name="Nineteen"
-              avatar={<BrandIcon size={40} name="Nineteen" fallback={19} netuid={19} />}
-              action={
-                <a className="mg-hero-action" href="/subnets/19">
-                  Open subnet
-                </a>
-              }
-              sentence={
-                <FactSentence>
-                  Ranked <Fact>#04</Fact> by emission with <Fact>4.3%</Fact> of daily emission ·{" "}
-                  <Fact>247/256</Fact> UIDs · <Fact>OK</Fact> for <Fact>75d</Fact> ·{" "}
-                  <Fact>application</Fact>
-                </FactSentence>
-              }
-              cells={[
-                { label: "Emission", value: "4.3%", delta: { text: "+0.2", tone: "good" } },
-                { label: "Alpha price", value: "0.0722 τ", delta: { text: "−1.4%", tone: "bad" } },
-                { label: "Total stake", value: "3.58M τ" },
-                { label: "UIDs", value: "247/256" },
-              ]}
-              live={{ updatedAt: updated, source: "chain", onRefresh: () => {} }}
-            />
-          </div>
-        </Show>
-        <Show name="AnalyticsPage, AnalyticsSection, SectionNav, RangeControl">
-          <div data-testid="analytics-demo">
-            <AnalyticsPage>
-              <AnalyticsSection
-                id="demo-emission"
-                name="Emission"
-                question="Which subnets the chain pays, per block."
-                controls={<RangeDemo />}
-                visual={<div className="h-24 rounded bg-layer" aria-hidden />}
-                footnote="7d · chain"
-              />
-              <AnalyticsSection
-                id="demo-stake"
-                name="Stake"
-                question="Where the TAO sits."
-                visual={<div className="h-24 rounded bg-layer" aria-hidden />}
-                footnote="latest snapshot · registry"
-              />
-            </AnalyticsPage>
-          </div>
-        </Show>
-      </div>
-    </Section>
-  );
-}
-
-/* ---------- Data display ---------- */
-
-const SPARK_VALUES = [12, 14, 13, 18, 22, 20, 26];
 const LINE_SPECIMEN = lineSpecimen(120);
 const STACKED_SPECIMEN = stackedSpecimen();
-const formatTokens = (v: number) => `${v}T`;
 
-function ChartsSection() {
-  // Its own store, like EntityDemo: the specimen must work wherever the page
-  // is mounted, and the three charts should cross-highlight each other.
-  return (
-    <ActiveEntityProvider>
-      <Section id="charts" title="Charts">
-        <div className="grid gap-4">
-          <Show name="StackedColumns">
-            <StackedColumns
-              {...STACKED_SPECIMEN}
-              ariaLabel="Daily emission by subnet (specimen)"
-              formatValue={(v) => `${v}τ`}
-            />
-          </Show>
-          <Show name="LineWithWindow">
-            <LineWithWindow
-              {...LINE_SPECIMEN}
-              unit="tokens"
-              formatValue={formatTokens}
-              ariaLabel="Momentum specimen"
-              source="line-specimen"
-            />
-          </Show>
-          <Show name="RankedRails">
-            <RankedRails
-              items={RAIL_SPECIMEN}
-              formatValue={(v) => `${(v / 1_000_000).toFixed(2)}M τ`}
-              formatSecondary={(v) => `${(v / 1000).toFixed(0)}k τ`}
-              columns={{
-                value: "Stake",
-                name: "Validator",
-                track: "0–100%",
-                secondary: "Emission",
-              }}
-              ariaLabel="Validators by stake (specimen)"
-              source="rails-specimen"
-            />
-          </Show>
-          <Show name="MarkerRail">
-            <MarkerRail
-              items={MARKER_SPECIMEN}
-              formatValue={(v) => `${v.toFixed(1)}%`}
-              columns={{ ratio: "Uptime", name: "Surface", scale: "0–100%" }}
-              ariaLabel="Uptime by surface (specimen)"
-              source="marker-specimen"
-            />
-          </Show>
-          <Show name="CompositionBreakdown, RankGrid">
-            <CompositionBreakdown
-              segments={COMPOSITION_SPECIMEN}
-              formatValue={(v) => `${v}%`}
-              legendCols={3}
-              ariaLabel="Emission split (specimen)"
-              source="composition-specimen"
-            />
-          </Show>
-          <Show name="RankGrid">
-            <RankGrid
-              items={RAIL_SPECIMEN.slice(0, 10).map((r, i) => ({
-                key: r.key,
-                label: r.label,
-                value: `${(r.value / 1_000_000).toFixed(2)}M τ`,
-                share: `${Math.round((r.value / 5_500_000) * 100)}%`,
-                swatch: `var(--chart-${i + 1})`,
-                href: `/subnets/${i + 1}`,
-                current: i === 2,
-              }))}
-              cols={5}
-              ariaLabel="Peers by emission (specimen)"
-              source="rank-grid-specimen"
-            />
-          </Show>
-          <Show name="LeaderCards">
-            <LeaderCards
-              items={LEADER_SPECIMEN}
-              ariaLabel="Top subnets (specimen)"
-              source="leaders-specimen"
-            />
-          </Show>
-          <Show name="LineWithWindow compact">
-            <LineWithWindow
-              {...LINE_SPECIMEN}
-              compact
-              unit="tokens"
-              formatValue={formatTokens}
-              ariaLabel="Momentum specimen, compact"
-              source="line-specimen-compact"
-            />
-          </Show>
-        </div>
-      </Section>
-    </ActiveEntityProvider>
-  );
-}
+const formatTokens = (value: number) => `${value}T`;
+const formatMillions = (value: number) => `${(value / 1_000_000).toFixed(2)}M τ`;
+const formatThousands = (value: number) => `${(value / 1000).toFixed(0)}k τ`;
 
-const TABLE_SPECIMEN = [
+const SOURCE_ROWS: readonly RawRow[] = [
   {
-    id: "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
-    name: "Targon",
-    stake: 1_890_000,
-    health: "ok",
-    seen: SAMPLE_UPDATED_AT,
-    change: 0.42,
+    label: "primitives",
+    value: "packages/ui-kit/src/components/metagraphed/",
+    copyLabel: "primitives path",
+  },
+  { label: "tokens", value: "packages/ui-kit/src/styles.css", copyLabel: "stylesheet path" },
+  {
+    label: "tokens table",
+    value: "apps/ui/src/components/metagraphed/design/design-tokens.generated.ts",
+    copyLabel: "generated tokens path",
   },
   {
-    id: "5CUbyC7Yx8Qk2mJvR4nHtPqLwZaEdFgTbNcVsXyU9i2XSG",
-    name: "Chutes",
-    stake: 351_600,
-    health: "degraded",
-    seen: SAMPLE_UPDATED_AT,
-    change: -0.12,
-  },
-  {
-    id: "5Ev5mQ3RtYuIoPaSdFgHjKlZxCvBnM7qWeRtYuIo8Pnh9s",
-    name: "Affine",
-    stake: 169_200,
-    health: "down",
-    seen: SAMPLE_UPDATED_AT,
-    change: 0,
+    label: "generator",
+    value: "apps/ui/scripts/generate-design-tokens.ts",
+    copyLabel: "generator path",
   },
 ];
 
-function TableSection() {
+export function PrimitivesPreview() {
   return (
-    <Section id="table" title="Table">
-      <DataTable
-        rows={TABLE_SPECIMEN}
-        rowKey={(row) => row.id}
-        caption="Validators"
-        rowHref={(row) => `/validators/${row.id}`}
-        columns={[
-          { key: "name", label: "Operator", sortable: true, value: (row) => row.name },
-          { key: "id", label: "Hotkey", kind: "identifier", value: (row) => row.id },
-          {
-            key: "stake",
-            label: "Stake",
-            kind: "number",
-            sortable: true,
-            value: (row) => row.stake,
-            format: (value) => formatTao(typeof value === "number" ? value : null),
-          },
-          { key: "health", label: "Health", kind: "status", value: (row) => row.health },
-          { key: "seen", label: "Last probe", kind: "time", value: (row) => row.seen },
-          { key: "change", label: "Δ 7d", kind: "delta", value: (row) => row.change },
-          {
-            key: "share",
-            label: "Share",
-            kind: "tint",
-            demote: true,
-            value: (row) => row.stake / 2_500_000,
-            tint: (row) => row.stake / 2_500_000,
-            format: (value) => `${Math.round((typeof value === "number" ? value : 0) * 100)}%`,
-          },
-        ]}
-      />
-    </Section>
+    <AppShell>
+      <DefinitionsProvider definitions={DEFINITIONS}>
+        <ActiveEntityProvider>
+          <EntityHero
+            crumbs={[{ label: "Design", href: "/design/primitives" }, { label: "Primitives" }]}
+            name="Design system"
+            action={
+              <RouterLink href="/docs" className="mg-hero-action">
+                Read the docs
+              </RouterLink>
+            }
+            sentence={
+              <FactSentence>
+                Every primitive the app is built from, with its live specimen, its props and its
+                measured anatomy · <Fact>14 primitives</Fact> ·{" "}
+                <Fact>{DESIGN_TOKENS.length} tokens</Fact> · <Fact>2 themes</Fact> ·{" "}
+                <Fact>1 radius</Fact>
+              </FactSentence>
+            }
+          />
+          <SectionNav items={SECTIONS} />
+
+          <DocumentSection />
+          <HeroSection />
+          <FactsSection />
+          <LiveMetaSection />
+          <RangeSection />
+          <RawSection />
+          <InteractionSection />
+          <TableSection />
+          <ChartsSection />
+          <RankSection />
+          <CompareSection />
+          <FiltersSection />
+          <CopySection />
+          <SheetSection />
+          <TokensSection />
+
+          <Raw rows={SOURCE_ROWS} />
+        </ActiveEntityProvider>
+      </DefinitionsProvider>
+    </AppShell>
   );
 }
 
-function CompareSection() {
-  return (
-    <Section id="compare" title="Compare">
-      <CompareLedger
-        ariaLabel="Comparison specimen"
-        entities={[
-          { key: "a", name: "Apex", sub: "SN1", href: "/subnets/1" },
-          { key: "b", name: "Targon", sub: "SN4", href: "/subnets/4" },
-        ]}
-        groups={[
-          {
-            label: "Economics",
-            rows: [
-              {
-                key: "emission",
-                label: "Emission share",
-                values: [0.061, 0.038],
-                better: "high",
-                format: (v) => `${((typeof v === "number" ? v : 0) * 100).toFixed(3)}%`,
-              },
-              {
-                key: "cost",
-                label: "Registration cost",
-                values: [12.4, 4.1],
-                better: "low",
-                format: (v) => formatTao(typeof v === "number" ? v : null),
-              },
-              { key: "slots", label: "Open slots", values: [3, 3], better: "high" },
-              { key: "symbol", label: "Symbol", values: ["α", "τ"] },
-            ],
-          },
-        ]}
-      />
-    </Section>
-  );
-}
+/* ---------------------------------------------------------------- document */
 
-function DataDisplaySection() {
+function DocumentSection() {
   return (
-    <Section id="data-display" title="Data display">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Show name="TrendDelta">
-          <div className="flex items-center gap-3">
-            <TrendDelta values={SPARK_VALUES} label="7d specimen" />
-            <TrendDelta values={[...SPARK_VALUES].reverse()} label="7d specimen" />
-            <TrendDelta values={[3, 3]} label="7d specimen" />
-          </div>
-        </Show>
-      </div>
-
-      <Section title="Panel">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Panel title="Coverage" caption="Verified public surfaces across all active netuids.">
-            <div className="grid grid-cols-2 gap-3">
-              <Indicator icon={Layers} label="subnets" value="129" orientation="column" />
-              <Indicator icon={Server} label="surfaces" value="284" orientation="column" />
-            </div>
-          </Panel>
-          <Panel title="Endpoint health">
-            <div className="flex flex-col gap-2">
-              <h3 className="text-13 font-semibold text-ink-strong">Live probes</h3>
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge status="ok" live />
-                <StatusBadge status="warn" />
-                <StatusBadge status="down" />
-              </div>
-            </div>
-          </Panel>
-          <Panel title="Loading" flush>
-            <Skeleton className="h-32 w-full" />
-          </Panel>
-          <Panel title="Empty state">
-            <EmptyState
-              variant="filtered"
-              title="No surfaces match this filter"
-              hint="Widen the kind filter or clear the provider constraint to see more results."
-              evidenceHref={GITHUB_REPO_URL}
-            />
-          </Panel>
+    <AnalyticsSection
+      id="document"
+      name="AnalyticsPage · AnalyticsSection"
+      question="The document layer: a route is a hero and at most seven sections, each answering one question."
+      visual={
+        <div className="rounded border border-rule">
+          <AnalyticsSection
+            id="document-specimen"
+            name="Emission"
+            question="Which subnets the chain pays, per block."
+            controls={<RangeDemo />}
+            visual={
+              <RankGrid
+                items={COMPOSITION_SPECIMEN.map((segment, index) => ({
+                  key: `doc-${segment.key}`,
+                  label: segment.label,
+                  value: `${segment.value}%`,
+                  swatch: `var(--chart-${index + 1})`,
+                }))}
+                cols={3}
+                ariaLabel="Emission split (section specimen)"
+                source="document-specimen"
+              />
+            }
+            footnote="7d · chain"
+          />
         </div>
-      </Section>
-
-      <Section title="PanelHeader">
-        <Panel>
-          <PanelHeader
-            title="Panel header"
-            description="Right-aligned actions slot, display or micro variant."
-            actions={<GhostButton size="sm">Action</GhostButton>}
-          />
-        </Panel>
-      </Section>
-    </Section>
+      }
+      legend={<PropsTable rows={DOCUMENT_PROPS} caption="Document layer props" />}
+      footnote="28px heading, 600 on the subject · 40px under it · 80/40px section padding, 64/32 at 1184, 48/24 at 640 · 1px rule between sections · 11px sticky nav"
+    />
   );
 }
 
-/* ---------- Interaction ---------- */
+/* -------------------------------------------------------------- entity hero */
 
-function InteractionSection() {
+function HeroSection() {
   return (
-    <Section id="interaction" title="Interaction">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Show name="CopyableCode, CopyButton, CopyIconToggle, KeyChip">
-          <div className="flex flex-wrap items-center gap-3">
-            <CopyableCode value="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" />
-            <CopyButton value="copy me" label="sample" />
-            <CopyIconToggle copied={false} />
-            <KeyChip value="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" />
-          </div>
-        </Show>
-        <Show name="ExternalLink">
-          <div className="flex flex-wrap gap-3">
-            <ExternalLink href="https://taostats.io">Public link</ExternalLink>
-            <ExternalLink href="https://taostats.io" authRequired>
-              Auth required
-            </ExternalLink>
-            <ExternalLink href="https://taostats.io" publicSafe>
-              Public-safe
-            </ExternalLink>
-          </div>
-        </Show>
-
-        <Show name="ScrollShadow">
-          <ScrollShadow>
-            <div className="flex w-max items-center gap-2 py-1">
-              {Array.from({ length: 24 }, (_, i) => (
-                <span
-                  key={i}
-                  className="whitespace-nowrap rounded border border-border bg-surface px-2 py-1 text-13 text-ink-muted"
-                >
-                  scrollable item {i + 1}
-                </span>
-              ))}
-            </div>
-          </ScrollShadow>
-        </Show>
-        <Show name="Kbd, Definition">
-          <div className="flex flex-wrap items-center gap-4" data-testid="definition-demo">
-            <span className="text-13 text-ink-muted">
-              Press <Kbd>⌘</Kbd> <Kbd>K</Kbd>
-            </span>
-            <span className="inline-flex items-center gap-1 text-13">
-              Emission share <Definition term="Emission share" />
-            </span>
-            <Definition term="Validator take">
-              <span className="rounded border border-rule px-1.5 text-11">take 18%</span>
-            </Definition>
-          </div>
-        </Show>
-        <Show name="ActiveEntityProvider, useEntityMark, ChartTooltip">
-          <EntityDemo />
-        </Show>
-        <Show name="Popover">
-          <Popover>
-            <PopoverTrigger asChild>
-              <GhostButton size="sm">Open popover</GhostButton>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-3 text-13">Popover content.</PopoverContent>
-          </Popover>
-        </Show>
-        <Show name="Raw, RawCode">
-          <Raw
-            defaultOpen
-            rows={[
-              { label: "Coldkey", value: "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9" },
-              {
-                label: "OpenAPI",
-                value: "https://api.metagraph.sh/openapi.json",
-                href: "https://api.metagraph.sh/openapi.json",
-              },
+    <AnalyticsSection
+      id="entity-hero"
+      name="EntityHero"
+      question="The masthead every entity route opens with: crumbs, name, one action, the sentence, the strip."
+      visual={
+        <div className="rounded border border-rule">
+          <EntityHero
+            crumbs={[{ label: "Subnets", href: "/subnets" }, { label: "SN19" }]}
+            name="Nineteen"
+            action={
+              <RouterLink href="/subnets/19" className="mg-hero-action">
+                Open subnet
+              </RouterLink>
+            }
+            sentence={
+              <FactSentence>
+                Ranked <Fact>#04</Fact> by emission with <Fact>4.3%</Fact> of daily emission ·{" "}
+                <Fact>247/256</Fact> UIDs · <Fact>OK</Fact> for <Fact>75d</Fact>
+              </FactSentence>
+            }
+            cells={[
+              { label: "Emission", value: "4.3%", delta: { text: "+0.2", tone: "good" } },
+              { label: "Alpha price", value: "0.0722 τ", delta: { text: "−1.4%", tone: "bad" } },
+              { label: "Total stake", value: "3.58M τ" },
+              { label: "UIDs", value: "247/256" },
             ]}
-          >
-            <RawCode label="curl">{"curl https://api.metagraph.sh/api/v1/subnets/1"}</RawCode>
-          </Raw>
-        </Show>
-        <Show name="Dialog">
-          <Dialog>
-            <DialogTrigger asChild>
-              <GhostButton size="sm">Open dialog</GhostButton>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Sample dialog</DialogTitle>
-                <DialogDescription>Static demo content, no network dependency.</DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <GhostButton size="sm">Close</GhostButton>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </Show>
-        <Show name="Sheet">
-          <Sheet>
-            <SheetTrigger asChild>
-              <GhostButton size="sm">Open sheet</GhostButton>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Sample sheet</SheetTitle>
-                <SheetDescription>Slide-in panel, static demo content.</SheetDescription>
-              </SheetHeader>
-              <SheetFooter>
-                <GhostButton size="sm">Close</GhostButton>
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
-        </Show>
-        <Show name="Command">
-          <Command className="rounded border border-border">
-            <CommandInput placeholder="Type a command…" />
-            <CommandList>
-              <CommandEmpty>No results.</CommandEmpty>
-              <CommandGroup heading="Sample">
-                <CommandItem>Item one</CommandItem>
-                <CommandItem>Item two</CommandItem>
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </Show>
-        <Show name="Accordion">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="a">
-              <AccordionTrigger>Sample accordion item</AccordionTrigger>
-              <AccordionContent>Static demo content.</AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </Show>
-      </div>
-    </Section>
+          />
+        </div>
+      }
+      legend={<PropsTable rows={HERO_PROPS} caption="EntityHero props" />}
+      // No `live` on the specimen: LiveMeta throws on a second mount, and the
+      // page's one liveness line belongs to the section that documents it.
+      footnote="10px crumb chips · 40px name, 500 · 40px avatar · 32px action · 16px sentence · 4px radius · the hero renders LiveMeta, so a page has exactly one"
+    />
   );
 }
 
-/* ---------- Feedback ---------- */
+/* -------------------------------------------------------------------- facts */
 
-function FeedbackSection({ updated }: { updated: string }) {
+function FactsSection() {
   return (
-    <Section id="feedback" title="Feedback">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Show name="Skeleton, PanelSkeleton">
-          <div className="space-y-3">
-            <Skeleton className="h-4 w-2/3" />
-            <PanelSkeleton height="sm" />
-          </div>
-        </Show>
-        <Show name="PanelError">
-          <PanelError
-            title="Couldn't load this panel"
-            errorId="demo-1234"
-            onRetry={() => undefined}
-            height="sm"
+    <AnalyticsSection
+      id="facts"
+      name="FactSentence · Fact · FactStrip"
+      question="The two ways an entity states its numbers: one sentence of chips, then a row of bordered cells."
+      visual={
+        <div className="space-y-6">
+          <FactSentence>
+            <Fact>129</Fact> subnets · <Fact>284</Fact> verified surfaces · <Fact>OK</Fact> for{" "}
+            <Fact>75d</Fact> · <Fact>application</Fact>
+          </FactSentence>
+          <FactStrip
+            cells={[
+              { label: "Emission", value: "4.3%", delta: { text: "+0.2", tone: "good" } },
+              { label: "Alpha price", value: "0.0722 τ", delta: { text: "−1.4%", tone: "bad" } },
+              { label: "Total stake", value: "3.58M τ" },
+              { label: "UIDs", value: "247/256" },
+            ]}
           />
-        </Show>
-        <Show name="EmptyState">
-          <div className="space-y-3">
-            <EmptyState variant="filtered" title="No rows match this filter" />
-            <EmptyState variant="error" title="Failed to load" />
-          </div>
-        </Show>
-        <Show name="QueryProgress">
-          <div className="relative h-6 rounded border border-border bg-card">
-            <QueryProgress active position="absolute" />
-          </div>
-        </Show>
-        <Show name="LoadingPill">
-          <LoadingPill>Refreshing…</LoadingPill>
-        </Show>
-
-        <Show name="AnimatedNumber">
-          <AnimatedNumber value={12_456} className="font-mono text-16 text-ink-strong" />
-        </Show>
-        <Show name="BackToTop">
-          <p className="text-13 text-ink-muted">
-            Renders a scroll-triggered "back to top" button — not shown inline since it needs page
-            scroll to appear; used in every long-form detail page.
-          </p>
-        </Show>
-        <Show name="McpToolsList">
-          <McpToolsList
-            tools={[{ name: "get_subnet" }, { name: "list_endpoints" }, { name: "search_subnets" }]}
+          <FactStrip
+            variant="grid"
+            cells={[
+              { label: "Registered", value: "247" },
+              { label: "Serving", value: "231" },
+              { label: "Validators", value: "16" },
+              { label: "Immunity", value: "5,000" },
+              { label: "Tempo", value: "360" },
+              { label: "Burn", value: "1.42 τ" },
+            ]}
           />
-        </Show>
-        <Show name="ProvenanceChip, CurationChip, ReviewChip, CandidateChip">
-          <div className="flex flex-wrap gap-2">
-            <ProvenanceChip level="native" />
-            <CurationChip level="maintainer-reviewed" />
-            <ReviewChip state="approved" />
-            <CandidateChip />
-          </div>
-        </Show>
-        <Show name="EligibilityChip">
-          <div className="flex flex-wrap gap-2">
-            <EligibilityChip eligibility="proxy-enabled" />
-            <EligibilityChip eligibility="pool-member" />
-          </div>
-        </Show>
-        <Show name="HealthDot, HealthPill">
-          <div className="flex flex-wrap items-center gap-3">
-            <HealthDot state="ok" />
-            <HealthDot state="warn" variant="label" />
-            <HealthPill state="ok" />
-            <HealthPill state="down" />
-          </div>
-        </Show>
-
-        <Show name="RoutePending">
-          <div className="max-h-40 overflow-hidden rounded border border-border">
-            <RoutePending panels={2} panelHeight="sm" />
-          </div>
-        </Show>
-
-        <Show name="BrandIcon">
-          <div className="flex items-center gap-3">
-            <BrandIcon name="Apex" fallback={1} netuid={1} size={32} />
-            <BrandIcon name="Metagraphed" fallback="M" size={32} />
-          </div>
-        </Show>
-        <Show name="Wordmark, DiscordIcon">
-          <div className="flex items-center gap-4 text-ink-strong">
-            <Wordmark className="h-6" />
-            <DiscordIcon className="size-5" />
-          </div>
-        </Show>
-        <Show name="TimeAgo">
-          <TimeAgo at={updated} />
-        </Show>
-        <Show name="Divider">
-          <div className="space-y-3">
-            <Divider />
-            <Divider tone="accent" pip />
-          </div>
-        </Show>
-      </div>
-    </Section>
+        </div>
+      }
+      legend={<PropsTable rows={FACT_PROPS} caption="Fact props" />}
+      footnote="16px sentence · 11px chips on --layer, 18px line · 11px cell labels · 28px values, 500, tabular · 10px delta chip · shared cell edges, 4px radius on the outer box only"
+    />
   );
 }
+
+/* ---------------------------------------------------------------- liveness */
+
+function LiveMetaSection() {
+  return (
+    <AnalyticsSection
+      id="live-meta"
+      name="LiveMeta"
+      question="The page's one liveness line — how old the data is, where it came from, and how to ask again."
+      visual={
+        // The page's ONLY LiveMeta. A second mount throws in development, by
+        // design: a route cannot grow a second clock.
+        <LiveMeta updatedAt={SAMPLE_UPDATED_AT} source="chain" onRefresh={() => {}} />
+      }
+      legend={<PropsTable rows={LIVE_META_PROPS} caption="LiveMeta props" />}
+      footnote="11px muted · `Updated 9s ago · source · refresh` · one per page, enforced at runtime in development"
+    />
+  );
+}
+
+/* ------------------------------------------------------------ range control */
+
+function RangeSection() {
+  return (
+    <AnalyticsSection
+      id="range-control"
+      name="RangeControl"
+      question="The one segmented control: a window, a unit, a mode — never a dropdown, never a tab bar."
+      visual={
+        <div className="flex flex-wrap items-start gap-6">
+          <RangeDemo />
+          <UnitDemo />
+        </div>
+      }
+      legend={<PropsTable rows={RANGE_PROPS} caption="RangeControl props" />}
+      footnote="28px track on --layer, 2px padding, 2px gap · 11px options · active option on --raised · 4px radius · role=radiogroup, arrow keys, one Tab stop"
+    />
+  );
+}
+
+function RangeDemo() {
+  const [range, setRange] = useState<"7d" | "30d" | "90d">("7d");
+  return (
+    <RangeControl
+      label="Window"
+      options={[
+        { value: "7d", label: "7d" },
+        { value: "30d", label: "30d" },
+        { value: "90d", label: "90d" },
+      ]}
+      value={range}
+      onChange={setRange}
+    />
+  );
+}
+
+function UnitDemo() {
+  const [unit, setUnit] = useState<"tao" | "alpha" | "usd">("tao");
+  return (
+    <RangeControl
+      label="Value unit"
+      options={[
+        { value: "tao", label: "TAO" },
+        { value: "alpha", label: "α" },
+        { value: "usd", label: "USD" },
+      ]}
+      value={unit}
+      onChange={setUnit}
+    />
+  );
+}
+
+/* ---------------------------------------------------------------------- raw */
+
+function RawSection() {
+  return (
+    <AnalyticsSection
+      id="raw"
+      name="Raw · RawRow · RawCode"
+      question="The disclosure that is the only place a full hotkey, an API URL or a curl line may live outside a table cell."
+      visual={
+        <Raw
+          defaultOpen
+          rows={[
+            { label: "Coldkey", value: "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9" },
+            {
+              label: "OpenAPI",
+              value: "https://api.metagraph.sh/openapi.json",
+              href: "https://api.metagraph.sh/openapi.json",
+            },
+          ]}
+        >
+          <RawCode label="curl">{"curl https://api.metagraph.sh/api/v1/subnets/19"}</RawCode>
+        </Raw>
+      }
+      legend={<PropsTable rows={RAW_PROPS} caption="Raw props" />}
+      footnote="13px summary with a 6px disclosure square · 10px RAW chip · 13px rows, wrapping, never truncated · 11px code block · mounted last on a page"
+    />
+  );
+}
+
+/* -------------------------------------------------------------- interaction */
 
 const DEMO_KEYS = Array.from({ length: 12 }, (_, i) => `m-${i + 1}`);
 const DEMO_VALUES = [42, 58, 35, 71, 64, 29, 80, 53, 47, 66, 38, 75];
+
+function InteractionSection() {
+  return (
+    <AnalyticsSection
+      id="interaction"
+      name="ActiveEntity · ChartTooltip · Definition"
+      question="One active entity per page: hover, focus or tap any mark and every element carrying that key lights up."
+      visual={
+        <div className="space-y-6">
+          <EntityDemo />
+          <div className="flex flex-wrap items-center gap-6" data-testid="definition-demo">
+            <span className="inline-flex items-center gap-1.5 text-13">
+              Emission share <Definition term="Emission share" />
+            </span>
+            <Definition term="Validator take">
+              <span className="mg-fact-chip">take 18%</span>
+            </Definition>
+          </div>
+        </div>
+      }
+      legend={<PropsTable rows={INTERACTION_PROPS} caption="Interaction props" />}
+      footnote="192px tooltip, 11px rows at 16px, the one shadow · 16×16 definition button, 192px tip at 11px · roving tabindex: one Tab stop per [data-marks] group, arrows inside it, Escape clears"
+    />
+  );
+}
+
+function EntityDemo() {
+  const [activated, setActivated] = useState<string>("");
+  return (
+    // Its own store: the twelve demo marks are a closed group, and the e2e
+    // asserts that hovering one lights exactly two elements page-wide.
+    <ActiveEntityProvider>
+      <div data-testid="entity-demo" className="space-y-3">
+        <button type="button" data-testid="entity-demo-before" className="text-11 text-ink-muted">
+          before the group
+        </button>
+        <div className="relative" data-marks>
+          <ChartTooltip top={8} />
+          <div className="flex h-32 items-end gap-1">
+            {DEMO_KEYS.map((key, i) => (
+              <DemoBar key={key} index={i} onActivate={setActivated} />
+            ))}
+          </div>
+        </div>
+        <ul className="divide-y divide-rule border-y border-rule text-13">
+          {DEMO_KEYS.map((key, i) => (
+            <DemoRow key={key} index={i} />
+          ))}
+        </ul>
+        <p className="text-11 text-ink-muted">
+          activated: <span data-testid="entity-demo-activated">{activated}</span>
+        </p>
+      </div>
+    </ActiveEntityProvider>
+  );
+}
 
 function DemoBar({ index, onActivate }: { index: number; onActivate: (key: string) => void }) {
   const key = DEMO_KEYS[index]!;
@@ -963,35 +495,6 @@ function DemoBar({ index, onActivate }: { index: number; onActivate: (key: strin
   );
 }
 
-function EntityDemo() {
-  const [activated, setActivated] = useState<string>("");
-  return (
-    <ActiveEntityProvider>
-      <div data-testid="entity-demo" className="space-y-3">
-        <button type="button" data-testid="entity-demo-before" className="text-11 text-ink-muted">
-          before the group
-        </button>
-        <div className="relative" data-marks>
-          <ChartTooltip top={8} />
-          <div className="flex h-32 items-end gap-1">
-            {DEMO_KEYS.map((_, i) => (
-              <DemoBar key={DEMO_KEYS[i]} index={i} onActivate={setActivated} />
-            ))}
-          </div>
-        </div>
-        <ul className="divide-y divide-rule border-y border-rule text-13">
-          {DEMO_KEYS.map((key, i) => (
-            <DemoRow key={key} index={i} />
-          ))}
-        </ul>
-        <p className="text-11 text-ink-muted">
-          activated: <span data-testid="entity-demo-activated">{activated}</span>
-        </p>
-      </div>
-    </ActiveEntityProvider>
-  );
-}
-
 function DemoRow({ index }: { index: number }) {
   const active = useIsActive(DEMO_KEYS[index]!);
   return (
@@ -1013,18 +516,425 @@ function DemoRow({ index }: { index: number }) {
   );
 }
 
-function RangeDemo() {
-  const [range, setRange] = useState<"7d" | "30d" | "90d">("7d");
+/* -------------------------------------------------------------------- table */
+
+interface TableRow {
+  id: string;
+  name: string;
+  stake: number;
+  health: string;
+  seen: string;
+  change: number;
+}
+
+const TABLE_SPECIMEN: TableRow[] = [
+  {
+    id: "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
+    name: "Targon",
+    stake: 1_890_000,
+    health: "ok",
+    seen: SAMPLE_UPDATED_AT,
+    change: 0.42,
+  },
+  {
+    id: "5CUbyC7Yx8Qk2mJvR4nHtPqLwZaEdFgTbNcVsXyU9i2XSG",
+    name: "Chutes",
+    stake: 351_600,
+    health: "degraded",
+    seen: SAMPLE_UPDATED_AT,
+    change: -0.12,
+  },
+  {
+    id: "5Ev5mQ3RtYuIoPaSdFgHjKlZxCvBnM7qWeRtYuIo8Pnh9s",
+    name: "Affine",
+    stake: 169_200,
+    health: "down",
+    seen: SAMPLE_UPDATED_AT,
+    change: 0,
+  },
+];
+
+const TABLE_COLUMNS: DataTableColumn<TableRow>[] = [
+  { key: "name", label: "Operator", sortable: true, value: (row) => row.name },
+  { key: "id", label: "Hotkey", kind: "identifier", value: (row) => row.id },
+  {
+    key: "stake",
+    label: "Stake",
+    kind: "number",
+    sortable: true,
+    value: (row) => row.stake,
+    format: (value) => formatTao(typeof value === "number" ? value : null),
+  },
+  { key: "health", label: "Health", kind: "status", value: (row) => row.health },
+  { key: "seen", label: "Last probe", kind: "time", value: (row) => row.seen },
+  { key: "change", label: "Δ 7d", kind: "delta", value: (row) => row.change },
+  {
+    key: "share",
+    label: "Share",
+    kind: "tint",
+    demote: true,
+    value: (row) => row.stake / 2_500_000,
+    tint: (row) => row.stake / 2_500_000,
+    format: (value) => `${Math.round((typeof value === "number" ? value : 0) * 100)}%`,
+  },
+];
+
+function TableSection() {
   return (
-    <RangeControl
-      label="Window"
-      options={[
-        { value: "7d", label: "7d" },
-        { value: "30d", label: "30d" },
-        { value: "90d", label: "90d" },
-      ]}
-      value={range}
-      onChange={setRange}
+    <AnalyticsSection
+      id="data-table"
+      name="DataTable"
+      question="Every list in the app: eight cell kinds, sorting, paging, a column menu, CSV, and cards below 640px."
+      visual={
+        <DataTable
+          id="table-specimen"
+          rows={TABLE_SPECIMEN}
+          rowKey={(row) => row.id}
+          caption="Validators"
+          source="table-specimen"
+          rowHref={(row) => `/validators/${row.id}`}
+          link={RouterLink}
+          columns={TABLE_COLUMNS}
+        />
+      }
+      legend={<PropsTable rows={DATA_TABLE_PROPS} caption="DataTable props" />}
+      footnote="44px caption row · 10px uppercase headers, the one place tracking exists · 13px cells in 44px rows, 28px dense · 28px search and menu · head pins inside a 70vh viewport past 20 rows · 4px radius"
+    />
+  );
+}
+
+/* ------------------------------------------------------------------- charts */
+
+function ChartsSection() {
+  return (
+    <AnalyticsSection
+      id="charts"
+      name="StackedColumns · LineWithWindow"
+      question="The two temporal charts: composition over periods, and one series' history with a window drawn over it."
+      visual={
+        <div className="space-y-10">
+          <StackedColumns
+            {...STACKED_SPECIMEN}
+            ariaLabel="Daily emission by subnet (specimen)"
+            formatValue={(value) => `${value}τ`}
+          />
+          <LineWithWindow
+            {...LINE_SPECIMEN}
+            unit="tokens"
+            formatValue={formatTokens}
+            ariaLabel="Momentum specimen"
+            source="line-specimen"
+          />
+          {/* The compact variant renders after the full one on purpose: the
+              e2e reads `[data-mg-line]` first and asserts the summary, the
+              months row and the three markers only the full plot has. */}
+          <LineWithWindow
+            {...LINE_SPECIMEN}
+            compact
+            unit="tokens"
+            formatValue={formatTokens}
+            ariaLabel="Momentum specimen, compact"
+            source="line-specimen-compact"
+          />
+        </div>
+      }
+      legend={<PropsTable rows={TEMPORAL_PROPS} caption="Temporal chart props" />}
+      footnote="344px plot, 15px bars, 12px gap, 40px rotated axis, 8 series + Other · 370px line plot, 120px compact, three 6px markers, a delta chip at the window end · no gridlines, no fill, no y-axis"
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ ranking */
+
+function RankSection() {
+  return (
+    <AnalyticsSection
+      id="rank"
+      name="RankedRails · MarkerRail · RankGrid · LeaderCards · CompositionBreakdown"
+      question="Five answers to “which is largest?” — and they share entity keys, so hovering one lights all of them."
+      visual={
+        <div className="space-y-10">
+          <RankedRails
+            items={RAIL_SPECIMEN}
+            formatValue={formatMillions}
+            formatSecondary={formatThousands}
+            columns={{
+              value: "Stake",
+              name: "Validator",
+              track: "0–100%",
+              secondary: "Emission",
+            }}
+            ariaLabel="Validators by stake (specimen)"
+            source="rails-specimen"
+          />
+          <MarkerRail
+            items={MARKER_SPECIMEN}
+            formatValue={(value) => `${value.toFixed(1)}%`}
+            columns={{ ratio: "Uptime", name: "Surface", scale: "0–100%" }}
+            ariaLabel="Uptime by surface (specimen)"
+            source="marker-specimen"
+          />
+          <CompositionBreakdown
+            segments={COMPOSITION_SPECIMEN}
+            formatValue={(value) => `${value}%`}
+            legendCols={3}
+            ariaLabel="Emission split (specimen)"
+            source="composition-specimen"
+          />
+          <RankGrid
+            items={RAIL_SPECIMEN.slice(0, 10).map((rail, index) => ({
+              key: rail.key,
+              label: rail.label,
+              value: formatMillions(rail.value),
+              share: `${Math.round((rail.value / 5_500_000) * 100)}%`,
+              swatch: `var(--chart-${index + 1})`,
+              href: `/subnets/${index + 1}`,
+              current: index === 2,
+            }))}
+            cols={5}
+            ariaLabel="Peers by emission (specimen)"
+            source="rank-grid-specimen"
+          />
+          <LeaderCards
+            items={LEADER_SPECIMEN}
+            ariaLabel="Top subnets (specimen)"
+            source="leaders-specimen"
+          />
+        </div>
+      }
+      legend={<PropsTable rows={RANK_PROPS} caption="Ranking props" />}
+      footnote="28px rail rows with a 5px track, 2px apart, 10 before “Show all” · 7px marker rail with ticks every 20% · 30px rank-grid rows with a 6px swatch · 154px featured cards then 88px rows · 24px composition bar with 2px canvas gaps"
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ compare */
+
+function CompareSection() {
+  return (
+    <AnalyticsSection
+      id="compare"
+      name="CompareLedger"
+      question="Two or three entities side by side, with the row saying which direction wins and the winner tinted."
+      visual={
+        <CompareLedger
+          ariaLabel="Comparison specimen"
+          entities={[
+            { key: "a", name: "Apex", sub: "SN1", href: "/subnets/1" },
+            { key: "b", name: "Targon", sub: "SN4", href: "/subnets/4" },
+          ]}
+          groups={[
+            {
+              label: "Economics",
+              rows: [
+                {
+                  key: "emission",
+                  label: "Emission share",
+                  values: [0.061, 0.038],
+                  better: "high",
+                  format: (value) =>
+                    `${((typeof value === "number" ? value : 0) * 100).toFixed(3)}%`,
+                },
+                {
+                  key: "cost",
+                  label: "Registration cost",
+                  values: [12.4, 4.1],
+                  better: "low",
+                  format: (value) => formatTao(typeof value === "number" ? value : null),
+                },
+                { key: "slots", label: "Open slots", values: [3, 3], better: "high" },
+                { key: "symbol", label: "Symbol", values: ["α", "τ"] },
+              ],
+            },
+          ]}
+        />
+      }
+      legend={<PropsTable rows={COMPARE_PROPS} caption="CompareLedger props" />}
+      footnote="64px column heads · 36px group rows · 13px labels and values · a tie has no winner, so nothing is tinted · the label column stays pinned when the entities scroll below 640px"
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ filters */
+
+const FILTER_KINDS = ["REST", "GraphQL", "SSE", "MCP"];
+
+function FiltersSection() {
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState("");
+  const [shown, setShown] = useState(20);
+  return (
+    <AnalyticsSection
+      id="filters"
+      name="FilterField · FilterInput · FilterSelect · LoadMore"
+      question="The controls a list narrows itself with, and the strip that fetches the next page of one."
+      visual={
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-end gap-3">
+            <FilterField label="Search" grow>
+              <FilterInput
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Subnet, operator or surface"
+              />
+            </FilterField>
+            <FilterField label="Kind" hint="4">
+              <FilterSelect value={kind} onChange={(event) => setKind(event.target.value)}>
+                <option value="">Any kind</option>
+                {FILTER_KINDS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </FilterSelect>
+            </FilterField>
+          </div>
+          <div className="rounded border border-rule">
+            <LoadMore
+              hasMore={shown < 284}
+              isLoading={false}
+              onLoadMore={() => setShown((current) => Math.min(284, current + 20))}
+              shown={shown}
+              total={284}
+            />
+          </div>
+        </div>
+      }
+      legend={<PropsTable rows={FILTER_PROPS} caption="Filter props" />}
+      footnote="36px controls · 10px field labels · 13px values · 4px radius · LoadMore is an 11px strip above a 1px rule, with skeleton rows while a page is in flight"
+    />
+  );
+}
+
+/* --------------------------------------------------------------------- copy */
+
+function CopySection() {
+  return (
+    <AnalyticsSection
+      id="copyable-code"
+      name="CopyableCode"
+      question="A value you are meant to take with you: shown as code, copied on click, announced to assistive tech."
+      visual={
+        <div className="flex flex-wrap items-center gap-3">
+          <CopyableCode value="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" />
+          <CopyableCode label="api" value="https://api.metagraph.sh/api/v1/subnets/19" />
+          <CopyableCode
+            truncate={false}
+            value="claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core"
+          />
+        </div>
+      }
+      legend={<PropsTable rows={COPY_PROPS} caption="CopyableCode props" />}
+      footnote="11px chip on --card · 12px copy glyph that swaps for a check on success · 1px border, 4px radius · truncates by default, wraps from 640px up"
+    />
+  );
+}
+
+/* -------------------------------------------------------------------- sheet */
+
+function SheetSection() {
+  return (
+    <AnalyticsSection
+      id="sheet"
+      name="Sheet"
+      question="The one slide-in panel: mobile navigation, a row's detail, a form that must not lose the list behind it."
+      visual={
+        <Sheet>
+          <SheetTrigger asChild>
+            <button type="button" className="mg-hero-action">
+              Open sheet
+            </button>
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Sample sheet</SheetTitle>
+              <SheetDescription>
+                A slide-in panel with static content — no network dependency.
+              </SheetDescription>
+            </SheetHeader>
+            <SheetFooter>
+              <CopyableCode label="netuid" value="19" />
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      }
+      legend={<PropsTable rows={SHEET_PROPS} caption="Sheet props" />}
+      footnote="slides from the right by default · 75% wide to a 384px maximum · 24px padding · overlay and panel at --mg-z-modal · Escape and the overlay close it, focus returns to the trigger"
+    />
+  );
+}
+
+/* ------------------------------------------------------------------- tokens */
+
+interface TokenRow {
+  name: string;
+  light: string;
+  dark: string;
+  theme: string;
+  refs: number;
+}
+
+const TOKEN_ROWS: TokenRow[] = DESIGN_TOKENS.map((token) => ({
+  name: token.name,
+  light: token.light,
+  // "=" and not a repeat of the light value: the ~30 tokens that actually
+  // change between themes are the answer this column exists to give, and
+  // restating the other 60 buries them.
+  dark: token.dark ?? "=",
+  theme: token.theme ?? "—",
+  refs: token.refs,
+}));
+
+const TOKEN_COLUMNS: DataTableColumn<TokenRow>[] = [
+  { key: "name", label: "Token", width: 200, sortable: true, value: (row) => row.name },
+  { key: "light", label: "Light", width: 200, value: (row) => row.light },
+  { key: "dark", label: "Dark", width: 200, value: (row) => row.dark },
+  { key: "theme", label: "Tailwind bridge", width: 200, value: (row) => row.theme },
+  {
+    key: "refs",
+    label: "Reads in CSS",
+    kind: "number",
+    sortable: true,
+    width: 110,
+    value: (row) => row.refs,
+  },
+];
+
+function TokensSection() {
+  const [query, setQuery] = useState("");
+  const rows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return TOKEN_ROWS;
+    return TOKEN_ROWS.filter((row) =>
+      `${row.name} ${row.light} ${row.dark} ${row.theme}`.toLowerCase().includes(needle),
+    );
+  }, [query]);
+  const themed = DESIGN_TOKENS.filter((token) => token.dark !== null).length;
+  return (
+    <AnalyticsSection
+      id="tokens"
+      name="Tokens"
+      question="Every custom property the theme declares, with the value it takes in each theme."
+      visual={
+        <DataTable
+          id="tokens"
+          rows={rows}
+          columns={TOKEN_COLUMNS}
+          rowKey={(row) => row.name}
+          caption="Design tokens"
+          source="design-token"
+          total={TOKEN_ROWS.length}
+          paginate={false}
+          dense
+          mobile="cards"
+          search={{ value: query, onChange: setQuery, placeholder: "Token, value or bridge" }}
+          empty="No token matches this search."
+        />
+      }
+      // Not a prop table: tokens have no props. The row that would sit here is
+      // the one fact a reader needs about the table itself -- that it is
+      // generated, and from what.
+      footnote={`${TOKEN_ROWS.length} tokens · ${themed} change between light and dark · “Reads in CSS” counts var() in packages/ui-kit/src/styles.css only, so a token a component reads through Tailwind shows 0 · generated by apps/ui/scripts/generate-design-tokens.ts and gated by design-tokens.test.ts`}
     />
   );
 }

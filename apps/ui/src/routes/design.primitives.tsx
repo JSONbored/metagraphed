@@ -4,11 +4,11 @@ import { PrimitivesPreview } from "./-design-primitives-page";
 export const Route = createFileRoute("/design/primitives")({
   head: () => ({
     meta: [
-      { title: "Primitives · Metagraphed" },
+      { title: "Design system · Metagraphed" },
       {
         name: "description",
         content:
-          "Shared registry UI primitives: chips, status badges, filters, freshness, breadcrumbs, density, columns.",
+          "The design system: the fourteen primitives with their specimens, props and measured anatomy, and every design token with its light and dark value.",
       },
       { name: "robots", content: "noindex,nofollow" },
     ],

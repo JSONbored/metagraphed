@@ -73,7 +73,7 @@ const MUST_BE_301: ReadonlyArray<readonly [from: string, to: string, carries?: s
   ["/endpoints", "/apis/endpoints"],
   ["/providers", "/apis/providers"],
   ["/gaps", "/contribute"],
-  ["/portfolio", "/accounts"],
+  ["/portfolio", "/settings", "#wallet"],
   ["/sudo", "/chain", "#governance"],
   // #11625 merged /status into /health: the self-health verdict is its fourth
   // section, so the redirect lands on that section rather than the top.

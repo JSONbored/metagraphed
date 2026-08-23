@@ -386,38 +386,6 @@ export function StaleBanner({
 }
 
 /**
- * Compact inline "Unavailable" indicator for a KPI/stat cell whose source query
- * failed — a distinct error affordance so failure reads differently from a
- * loading skeleton or a legitimately-empty "—". Used in the homepage KPI panels
- * (#3964) and the About "At a glance" sidebar (#3968).
- *
- * `h-[1em]` matches the parent value line's font-size (e.g. FactCell's
- * font-display text-28) so an error tile stays the same height as its
- * numeric neighbours instead of collapsing to text-13 metrics (#8818).
- *
- * `variant="inline"` drops the alert icon and inherits the parent type size —
- * for compact masthead strips (Active / Healthy / Total stake) where an icon
- * next to "Unavailable" reads as a broken chip rather than a missing figure.
- */
-export function StatUnavailable({
-  iconClassName = "size-3.5",
-  variant = "default",
-}: {
-  iconClassName?: string;
-  variant?: "default" | "inline";
-}) {
-  if (variant === "inline") {
-    return <span className="font-medium text-health-down">Unavailable</span>;
-  }
-  return (
-    <span className="inline-flex h-[1em] max-w-full items-center gap-1 text-13 font-medium leading-none text-health-down">
-      <AlertCircle className={`shrink-0 ${iconClassName}`} aria-hidden />
-      <span className="min-w-0 truncate">Unavailable</span>
-    </span>
-  );
-}
-
-/**
  * Standardized recovery links used by EmptyState / ErrorState across profile
  * pages. Keep labels identical everywhere so the UI feels consistent.
  */

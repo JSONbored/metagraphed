@@ -52,7 +52,7 @@ const clientLoader = browserCollections.docs.createClientLoader<{ markdownUrl: s
               service to fetch itself. */}
           <ViewOptionsPopover markdownUrl={markdownUrl} />
         </div>
-        <DocsBody>
+        <DocsBody className="mg-prose">
           {/* getMDXComponents, not the useMDXComponents alias -- this
               `component` callback is a plain object method (fumadocs'
               createClientLoader API contract fixes that name), so

@@ -2,11 +2,10 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { classNames } from "@/lib/metagraphed/format";
-import { CopyableCode, SectionHead } from "@jsonbored/ui-kit";
+import { CopyableCode, RangeControl } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { SettingsSummaryStrip } from "@/components/metagraphed/settings-summary-strip";
 import { Panel } from "@/components/metagraphed/primitives";
-import { CHANGE_KINDS } from "@/lib/metagraphed/settings-summary";
+import { CHANGE_KINDS } from "@/lib/metagraphed/webhook-change-kinds";
 import type {
   WebhookDeliveryStatus,
   WebhookSubscriptionCreated,
@@ -68,13 +67,54 @@ function describeApiError(error: unknown): string {
   return "Request failed.";
 }
 
+type WebhookMode = "create" | "lookup" | "delete";
+
+const WEBHOOK_MODES: { value: WebhookMode; label: string; question: string }[] = [
+  {
+    value: "create",
+    label: "Create",
+    question:
+      "Register a URL to receive change-feed webhooks. Creation requires a subscription token issued by a metagraphed operator — this app never bundles one.",
+  },
+  {
+    value: "lookup",
+    label: "Look up",
+    question: "Check a subscription's status and delivery health by id.",
+  },
+  {
+    value: "delete",
+    label: "Delete",
+    question: "Requires the one-time secret returned when the subscription was created.",
+  },
+];
+
+/**
+ * Three operations, one at a time (#11627).
+ *
+ * These used to be three stacked `<section>`s, each with its own heading, so
+ * the Webhooks section of /settings was four headings deep and every reader
+ * scrolled past two forms they were not filling in. There is no subscription
+ * list to show — no account model — so the honest shape is a mode switch over
+ * one form, and the strip of three tiles that announced "Create POST · Look up
+ * GET · Delete DELETE" above them is gone with it: it restated the three
+ * buttons directly beneath it and carried no measurement at all.
+ */
 export function WebhookSubscriptionManager() {
+  const [mode, setMode] = useState<WebhookMode>("create");
+  const active = WEBHOOK_MODES.find((m) => m.value === mode) ?? WEBHOOK_MODES[0];
+
   return (
-    <div className="space-y-8">
-      <SettingsSummaryStrip />
-      <CreateSubscriptionSection />
-      <LookupSubscriptionSection />
-      <DeleteSubscriptionSection />
+    <div className="flex flex-col gap-3">
+      <RangeControl
+        label="Subscription"
+        options={WEBHOOK_MODES.map((m) => ({ value: m.value, label: m.label }))}
+        value={mode}
+        onChange={(next) => setMode(next as WebhookMode)}
+      />
+      <p className="text-13 text-ink-muted">{active.question}</p>
+      {mode === "create" ? <CreateSubscriptionSection /> : null}
+      {mode === "lookup" ? <LookupSubscriptionSection /> : null}
+      {mode === "delete" ? <DeleteSubscriptionSection /> : null}
     </div>
   );
 }
@@ -156,12 +196,7 @@ function CreateSubscriptionSection() {
   const result = mutation.data;
 
   return (
-    <section aria-labelledby="create-subscription-heading">
-      <SectionHead
-        name="Create subscription"
-        question="Register a URL to receive change-feed webhooks. Creation requires a subscription token issued by a metagraphed operator — this app never bundles one."
-        id="create-subscription-heading"
-      />
+    <>
       <form onSubmit={onSubmit} className="space-y-3 rounded border border-border bg-card p-4">
         <Field label="Webhook URL" required>
           <input
@@ -273,7 +308,7 @@ function CreateSubscriptionSection() {
           </div>
         </div>
       ) : null}
-    </section>
+    </>
   );
 }
 
@@ -299,12 +334,7 @@ function LookupSubscriptionSection() {
   const result = mutation.data;
 
   return (
-    <section aria-labelledby="lookup-subscription-heading">
-      <SectionHead
-        name="Look up subscription"
-        question="Check a subscription's status and delivery health by id."
-        id="lookup-subscription-heading"
-      />
+    <>
       <form
         onSubmit={onSubmit}
         className="flex flex-wrap items-end gap-2 rounded border border-border bg-card p-4"
@@ -374,7 +404,7 @@ function LookupSubscriptionSection() {
           ) : null}
         </Panel>
       ) : null}
-    </section>
+    </>
   );
 }
 
@@ -409,12 +439,7 @@ function DeleteSubscriptionSection() {
   }
 
   return (
-    <section aria-labelledby="delete-subscription-heading">
-      <SectionHead
-        name="Delete subscription"
-        question="Requires the one-time secret returned when the subscription was created."
-        id="delete-subscription-heading"
-      />
+    <>
       <form onSubmit={onSubmit} className="space-y-3 rounded border border-border bg-card p-4">
         <Field label="Subscription id" required>
           <input
@@ -456,7 +481,7 @@ function DeleteSubscriptionSection() {
           Subscription {mutation.data.id} deleted.
         </div>
       ) : null}
-    </section>
+    </>
   );
 }
 
