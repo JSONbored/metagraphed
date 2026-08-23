@@ -26,10 +26,8 @@ import { useWatchlist } from "@/lib/metagraphed/watchlist";
 import { ValidatorSubnetCoverage } from "@/components/metagraphed/charts/validator-subnet-coverage";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { VALIDATOR_COLUMNS } from "@/components/metagraphed/validator-columns";
-import {
-  ValidatorsCompareDrawer,
-  ValidatorCompareToggle,
-} from "@/components/metagraphed/validators-compare-drawer";
+import { ValidatorCompareToggle } from "@/components/metagraphed/compare-toggle";
+import { ValidatorCompareBar } from "@/components/metagraphed/compare-bar";
 import { HubSections, hubLede } from "@/components/metagraphed/hub-prose";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 import { readKey } from "@/lib/metagraphed/read-key";
@@ -69,7 +67,7 @@ export function ValidatorsPage() {
         <ValidatorEconomicsRanking />
       </section>
       <ApiSourceFooter paths={["/api/v1/validators", "/api/v1/validators/economics"]} />
-      <ValidatorsCompareDrawer />
+      <ValidatorCompareBar />
       {/* Below the table on purpose -- see hub-prose.tsx. */}
       <HubSections path="/validators" />
     </AppShell>

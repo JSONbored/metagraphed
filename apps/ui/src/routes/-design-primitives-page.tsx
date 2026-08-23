@@ -23,6 +23,7 @@ import {
   RankGrid,
   RankedRails,
   DataTable,
+  CompareLedger,
   COMPOSITION_SPECIMEN,
   LEADER_SPECIMEN,
   MARKER_SPECIMEN,
@@ -133,6 +134,7 @@ export function PrimitivesPreview() {
       <DataDisplaySection />
       <ChartsSection />
       <TableSection />
+      <CompareSection />
       <DefinitionsProvider definitions={DEFINITIONS}>
         <InteractionSection />
       </DefinitionsProvider>
@@ -153,6 +155,7 @@ const NAV_SECTIONS = [
   { id: "data-display", label: "Data display" },
   { id: "charts", label: "Charts" },
   { id: "table", label: "Table" },
+  { id: "compare", label: "Compare" },
   { id: "interaction", label: "Interaction" },
   { id: "feedback", label: "Feedback" },
 ] as const;
@@ -585,6 +588,43 @@ function TableSection() {
             value: (row) => row.stake / 2_500_000,
             tint: (row) => row.stake / 2_500_000,
             format: (value) => `${Math.round((typeof value === "number" ? value : 0) * 100)}%`,
+          },
+        ]}
+      />
+    </Section>
+  );
+}
+
+function CompareSection() {
+  return (
+    <Section id="compare" title="Compare">
+      <CompareLedger
+        ariaLabel="Comparison specimen"
+        entities={[
+          { key: "a", name: "Apex", sub: "SN1", href: "/subnets/1" },
+          { key: "b", name: "Targon", sub: "SN4", href: "/subnets/4" },
+        ]}
+        groups={[
+          {
+            label: "Economics",
+            rows: [
+              {
+                key: "emission",
+                label: "Emission share",
+                values: [0.061, 0.038],
+                better: "high",
+                format: (v) => `${((typeof v === "number" ? v : 0) * 100).toFixed(3)}%`,
+              },
+              {
+                key: "cost",
+                label: "Registration cost",
+                values: [12.4, 4.1],
+                better: "low",
+                format: (v) => formatTao(typeof v === "number" ? v : null),
+              },
+              { key: "slots", label: "Open slots", values: [3, 3], better: "high" },
+              { key: "symbol", label: "Symbol", values: ["α", "τ"] },
+            ],
           },
         ]}
       />

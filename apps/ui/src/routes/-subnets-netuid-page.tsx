@@ -126,7 +126,6 @@ import { SubnetProfilePanel } from "@/components/metagraphed/subnet-profile-pane
 import { SubnetPriorityHighlights } from "@/components/metagraphed/subnet-priority-highlights";
 import { SubnetValidatorsPreview } from "@/components/metagraphed/subnet-validators-preview";
 import { SubnetFilterProvider } from "@/components/metagraphed/subnet-filter-context";
-import { SubnetCompareDrawer } from "@/components/metagraphed/subnet-compare-drawer";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { WatchSubnetAlert } from "@/components/metagraphed/watch-subnet-alert";
 import { SubnetWindowProvider, SubnetWindowToggle } from "@/lib/metagraphed/subnet-window";
@@ -227,7 +226,15 @@ function ProfileShell({ netuid }: { netuid: number }) {
                 <WatchEntitySheet netuid={netuid} name={profile?.name ?? undefined} />
                 <SubnetWindowToggle />
                 <CopyLinkButton />
-                <SubnetCompareDrawer netuid={netuid} />
+                {/* #11611: the comparison is a page with a shareable URL,
+                    not a second sheet with its own peer picker. */}
+                <Link
+                  to="/compare"
+                  search={{ subnets: String(netuid) }}
+                  className="inline-flex h-7 items-center rounded border border-rule px-2.5 text-11 text-ink-muted hover:text-ink-strong"
+                >
+                  Compare
+                </Link>
               </div>
             </div>
           </div>

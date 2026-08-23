@@ -5204,5 +5204,78 @@ function buildCsvDownloadUrl(url) {
   parsed.searchParams.set("format", "csv");
   return parsed.toString();
 }
+function bestIndices(row) {
+  if (!row.better) return [];
+  const numeric = row.values.map(
+    (v) => typeof v === "number" && Number.isFinite(v) ? v : null
+  );
+  const present = numeric.filter((v) => v !== null);
+  if (present.length < 2) return [];
+  const best = row.better === "high" ? Math.max(...present) : Math.min(...present);
+  const winners = numeric.flatMap((v, i) => v === best ? [i] : []);
+  return winners.length === present.length ? [] : winners;
+}
+var defaultFormat5 = (value) => typeof value === "number" ? value.toLocaleString("en-US") : value;
+function CompareLedger({
+  entities,
+  groups,
+  highlightBest = true,
+  ariaLabel,
+  className
+}) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      className: classNames("mg-compare", className),
+      "data-mg-compare": "",
+      style: { "--mg-compare-cols": entities.length },
+      children: /* @__PURE__ */ jsx("div", { className: "mg-compare-scroll", children: /* @__PURE__ */ jsxs("table", { "aria-label": ariaLabel, children: [
+        /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsxs("tr", { children: [
+          /* @__PURE__ */ jsx("th", { scope: "col", children: /* @__PURE__ */ jsx("span", { className: "sr-only", children: "Metric" }) }),
+          entities.map((entity) => /* @__PURE__ */ jsx("th", { scope: "col", children: /* @__PURE__ */ jsxs("span", { className: "mg-compare-entity", children: [
+            entity.avatar ? /* @__PURE__ */ jsx("span", { className: "mg-compare-avatar", children: entity.avatar }) : null,
+            /* @__PURE__ */ jsxs("span", { className: "mg-compare-names", children: [
+              entity.href ? /* @__PURE__ */ jsx("a", { href: entity.href, children: entity.name }) : /* @__PURE__ */ jsx("strong", { children: entity.name }),
+              entity.sub ? /* @__PURE__ */ jsx("span", { children: entity.sub }) : null
+            ] }),
+            entity.onChange ? /* @__PURE__ */ jsx(
+              "button",
+              {
+                type: "button",
+                className: "mg-compare-change",
+                onClick: entity.onChange,
+                children: "Change"
+              }
+            ) : null
+          ] }) }, entity.key))
+        ] }) }),
+        groups.map((group) => /* @__PURE__ */ jsxs("tbody", { children: [
+          /* @__PURE__ */ jsx("tr", { className: "mg-compare-group", children: /* @__PURE__ */ jsx("th", { scope: "colgroup", colSpan: entities.length + 1, children: group.label }) }),
+          group.rows.map((row) => {
+            const winners = highlightBest ? bestIndices(row) : [];
+            const format = row.format ?? defaultFormat5;
+            return /* @__PURE__ */ jsxs("tr", { children: [
+              /* @__PURE__ */ jsx("th", { scope: "row", children: row.label }),
+              entities.map((entity, i) => {
+                const value = row.values[i] ?? null;
+                return /* @__PURE__ */ jsxs(
+                  "td",
+                  {
+                    "data-best": winners.includes(i) ? "true" : void 0,
+                    children: [
+                      /* @__PURE__ */ jsx("span", { className: "mg-compare-value", children: value === null ? "\u2014" : format(value) }),
+                      row.spark?.[i] ? /* @__PURE__ */ jsx("span", { className: "mg-compare-spark", children: row.spark[i] }) : null
+                    ]
+                  },
+                  entity.key
+                );
+              })
+            ] }, row.key);
+          })
+        ] }, group.label))
+      ] }) })
+    }
+  );
+}
 
-export { Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActiveEntityProvider, AnalyticsPage, AnalyticsSection, AnimatedNumber, BackToTop, BrandIcon, CHART_RAMP_SIZE, COMPOSITION_SPECIMEN, CandidateChip, ChartTooltip, Chip, ClaudeIcon, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompositionBreakdown, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DataTable, Definition, DefinitionList, DefinitionsProvider, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, EligibilityChip, EmptyState, EntityHero, ExternalLink, Fact, FactCell, FactSentence, FactStrip, FilterField, FilterInput, FilterSelect, GhostButton, HealthDot, HealthPill, Indicator, Kbd, KeyChip, LEADER_SPECIMEN, LINE_VIEWBOX, LeaderCards, LineWithWindow, LiveMeta, LiveTickerProvider, LoadMore, LoadingPill, MARKER_SPECIMEN, MAX_SECTIONS, MarkerRail, McpToolsList, OTHER_COLOR, OTHER_KEY, OpenAIIcon, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, Provenance, ProvenanceChip, QueryProgress, RAIL_SPECIMEN, RangeControl, RankGrid, RankedRails, Raw, RawCode, ReviewChip, RoutePending, SCOPES, ScrollShadow, SectionHead, SectionNav, SeriesPaletteRegistry, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, StackedColumns, StatusBadge, TimeAgo, Toaster, TrendDelta, Wordmark, buildCsvDownloadUrl, classNames, cn, collapseOther, compareValues, csvField, defaultVisibleKeys, deltaLabel, fmtYield, formatLineDate, isMissing, isScrolledPast, lineSpecimen, markAriaLabel, markerPosition, momentumAriaLabel, monthTicks, nextSort, nextTabIndex, pageCount, pageSlice, pageWindow, pickActiveSection, pickMobileMode, placePoints, prefetchBrandIcon, provenanceSentence, railFill, rangeLabel, resolveVisibleKeys, rovingTabIndex, safeExternalUrl, sectionItems, shouldBoundViewport, smoothPath, sortRows, stackedSpecimen, statusTone, toCsv, trendDeltaOf, truncateIdentifier, useActiveEntity, useActiveSection, useDefinition, useEntityMark, useIsActive, useLiveTicker, useRovingGroup, useScrolled, windowDelta, windowPoints };
+export { Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActiveEntityProvider, AnalyticsPage, AnalyticsSection, AnimatedNumber, BackToTop, BrandIcon, CHART_RAMP_SIZE, COMPOSITION_SPECIMEN, CandidateChip, ChartTooltip, Chip, ClaudeIcon, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompareLedger, CompositionBreakdown, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DataTable, Definition, DefinitionList, DefinitionsProvider, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, EligibilityChip, EmptyState, EntityHero, ExternalLink, Fact, FactCell, FactSentence, FactStrip, FilterField, FilterInput, FilterSelect, GhostButton, HealthDot, HealthPill, Indicator, Kbd, KeyChip, LEADER_SPECIMEN, LINE_VIEWBOX, LeaderCards, LineWithWindow, LiveMeta, LiveTickerProvider, LoadMore, LoadingPill, MARKER_SPECIMEN, MAX_SECTIONS, MarkerRail, McpToolsList, OTHER_COLOR, OTHER_KEY, OpenAIIcon, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, Provenance, ProvenanceChip, QueryProgress, RAIL_SPECIMEN, RangeControl, RankGrid, RankedRails, Raw, RawCode, ReviewChip, RoutePending, SCOPES, ScrollShadow, SectionHead, SectionNav, SeriesPaletteRegistry, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, StackedColumns, StatusBadge, TimeAgo, Toaster, TrendDelta, Wordmark, bestIndices, buildCsvDownloadUrl, classNames, cn, collapseOther, compareValues, csvField, defaultVisibleKeys, deltaLabel, fmtYield, formatLineDate, isMissing, isScrolledPast, lineSpecimen, markAriaLabel, markerPosition, momentumAriaLabel, monthTicks, nextSort, nextTabIndex, pageCount, pageSlice, pageWindow, pickActiveSection, pickMobileMode, placePoints, prefetchBrandIcon, provenanceSentence, railFill, rangeLabel, resolveVisibleKeys, rovingTabIndex, safeExternalUrl, sectionItems, shouldBoundViewport, smoothPath, sortRows, stackedSpecimen, statusTone, toCsv, trendDeltaOf, truncateIdentifier, useActiveEntity, useActiveSection, useDefinition, useEntityMark, useIsActive, useLiveTicker, useRovingGroup, useScrolled, windowDelta, windowPoints };

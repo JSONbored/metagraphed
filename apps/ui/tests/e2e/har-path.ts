@@ -7,7 +7,18 @@ import { fileURLToPath } from "node:url";
 export const HAR_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "har");
 
 export function harPathForRoute(route) {
-  const slug = route === "/" ? "home" : route.replace(/^\//, "").replace(/\//g, "-");
+  const slug =
+    route === "/"
+      ? "home"
+      : route
+          .replace(/^\//, "")
+          .replace(/\//g, "-")
+          // A swept route may carry a query string (`/compare?subnets=1,19`);
+          // `?`, `=` and `,` are legal in a filename on the platforms CI runs
+          // but make one awkward to type, quote and grep. Every existing
+          // fixture is already alphanumeric, so this renames nothing.
+          .replace(/[^A-Za-z0-9._-]+/g, "-")
+          .replace(/-+$/, "");
   return path.join(HAR_DIR, `${slug}.har`);
 }
 

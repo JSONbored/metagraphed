@@ -539,7 +539,15 @@ async function main() {
     console.log(`\n12 screenshots written to ${outDir}`);
 
     if (args.push) {
-      const files = (await readdir(outDir)).filter((f) => f.endsWith(".png"));
+      // Only this run's own captures. `outDir` is routinely reused across
+      // several runs of this script (one per route in a multi-route PR), and
+      // a bare readdir() then pushes every other run's PNGs *and* mixes them
+      // into the markdown table below -- the table keys on viewport+theme, so
+      // a foreign prefix silently wins the `before` cell.
+      const runPrefix = args.prefix ? `${args.prefix}-` : "";
+      const files = (await readdir(outDir))
+        .filter((f) => f.endsWith(".png") && f.startsWith(runPrefix))
+        .sort();
       await pushScreenshots(outDir, files);
     }
   } finally {

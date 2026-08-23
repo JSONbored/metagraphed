@@ -5231,6 +5231,79 @@ function buildCsvDownloadUrl(url) {
   parsed.searchParams.set("format", "csv");
   return parsed.toString();
 }
+function bestIndices(row) {
+  if (!row.better) return [];
+  const numeric = row.values.map(
+    (v) => typeof v === "number" && Number.isFinite(v) ? v : null
+  );
+  const present = numeric.filter((v) => v !== null);
+  if (present.length < 2) return [];
+  const best = row.better === "high" ? Math.max(...present) : Math.min(...present);
+  const winners = numeric.flatMap((v, i) => v === best ? [i] : []);
+  return winners.length === present.length ? [] : winners;
+}
+var defaultFormat5 = (value) => typeof value === "number" ? value.toLocaleString("en-US") : value;
+function CompareLedger({
+  entities,
+  groups,
+  highlightBest = true,
+  ariaLabel,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "div",
+    {
+      className: classNames("mg-compare", className),
+      "data-mg-compare": "",
+      style: { "--mg-compare-cols": entities.length },
+      children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-compare-scroll", children: /* @__PURE__ */ jsxRuntime.jsxs("table", { "aria-label": ariaLabel, children: [
+        /* @__PURE__ */ jsxRuntime.jsx("thead", { children: /* @__PURE__ */ jsxRuntime.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "col", children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "sr-only", children: "Metric" }) }),
+          entities.map((entity) => /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "col", children: /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-compare-entity", children: [
+            entity.avatar ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-compare-avatar", children: entity.avatar }) : null,
+            /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-compare-names", children: [
+              entity.href ? /* @__PURE__ */ jsxRuntime.jsx("a", { href: entity.href, children: entity.name }) : /* @__PURE__ */ jsxRuntime.jsx("strong", { children: entity.name }),
+              entity.sub ? /* @__PURE__ */ jsxRuntime.jsx("span", { children: entity.sub }) : null
+            ] }),
+            entity.onChange ? /* @__PURE__ */ jsxRuntime.jsx(
+              "button",
+              {
+                type: "button",
+                className: "mg-compare-change",
+                onClick: entity.onChange,
+                children: "Change"
+              }
+            ) : null
+          ] }) }, entity.key))
+        ] }) }),
+        groups.map((group) => /* @__PURE__ */ jsxRuntime.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntime.jsx("tr", { className: "mg-compare-group", children: /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "colgroup", colSpan: entities.length + 1, children: group.label }) }),
+          group.rows.map((row) => {
+            const winners = highlightBest ? bestIndices(row) : [];
+            const format = row.format ?? defaultFormat5;
+            return /* @__PURE__ */ jsxRuntime.jsxs("tr", { children: [
+              /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "row", children: row.label }),
+              entities.map((entity, i) => {
+                const value = row.values[i] ?? null;
+                return /* @__PURE__ */ jsxRuntime.jsxs(
+                  "td",
+                  {
+                    "data-best": winners.includes(i) ? "true" : void 0,
+                    children: [
+                      /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-compare-value", children: value === null ? "\u2014" : format(value) }),
+                      row.spark?.[i] ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-compare-spark", children: row.spark[i] }) : null
+                    ]
+                  },
+                  entity.key
+                );
+              })
+            ] }, row.key);
+          })
+        ] }, group.label))
+      ] }) })
+    }
+  );
+}
 
 exports.Accordion = Accordion;
 exports.AccordionContent = AccordionContent;
@@ -5257,6 +5330,7 @@ exports.CommandItem = CommandItem;
 exports.CommandList = CommandList;
 exports.CommandSeparator = CommandSeparator;
 exports.CommandShortcut = CommandShortcut;
+exports.CompareLedger = CompareLedger;
 exports.CompositionBreakdown = CompositionBreakdown;
 exports.CopyButton = CopyButton;
 exports.CopyIconToggle = CopyIconToggle;
@@ -5351,6 +5425,7 @@ exports.TimeAgo = TimeAgo;
 exports.Toaster = Toaster;
 exports.TrendDelta = TrendDelta;
 exports.Wordmark = Wordmark;
+exports.bestIndices = bestIndices;
 exports.buildCsvDownloadUrl = buildCsvDownloadUrl;
 exports.classNames = classNames;
 exports.cn = cn;

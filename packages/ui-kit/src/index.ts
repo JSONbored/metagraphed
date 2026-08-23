@@ -265,3 +265,11 @@ export {
   FilterSelect,
 } from "@/components/metagraphed/filter-controls";
 export { buildCsvDownloadUrl } from "@/lib/csv";
+export {
+  CompareLedger,
+  bestIndices,
+  type CompareEntity,
+  type CompareGroup,
+  type CompareLedgerProps,
+  type CompareRow,
+} from "@/components/metagraphed/compare-ledger";

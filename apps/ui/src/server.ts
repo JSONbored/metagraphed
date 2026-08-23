@@ -654,6 +654,11 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
     subtitle: "Balances, positions and on-chain activity by address",
     eyebrow: "Registry",
   },
+  "/compare": {
+    title: "Compare",
+    subtitle: "Two or three subnets or validators, side by side",
+    eyebrow: "Registry",
+  },
   "/leaderboards": {
     title: "Leaderboards",
     subtitle: "Ranked subnets, validators and endpoints across the network",

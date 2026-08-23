@@ -36,7 +36,10 @@ export const ROUTES_DIR = path.join(HERE, "../../src/routes");
 /** Trailing slash carries no routing meaning here but TanStack's index routes
  * declare one (`createFileRoute("/subnets/")`) while ROUTES lists `/subnets`. */
 function normalize(pattern: string): string {
-  return pattern.length > 1 ? pattern.replace(/\/+$/, "") : pattern;
+  // A swept entry may carry the query string that makes the page worth
+  // sweeping (`/compare?subnets=1,19`); the route that serves it is the path.
+  const path = pattern.split("?")[0]!;
+  return path.length > 1 ? path.replace(/\/+$/, "") : path;
 }
 
 /** Every `createFileRoute("...")` in the routes directory, pattern -> filename. */

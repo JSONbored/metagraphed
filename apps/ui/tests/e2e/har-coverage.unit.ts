@@ -51,6 +51,9 @@ const KNOWN_UNCOVERED: Record<string, string[]> = {
   "/status": ["/api/v1/feeds/incidents", "/api/v1/self-health"],
   "/settings": ["/api/v1/keys", "/api/v1/watch/triggers", "/api/v1/webhooks/subscriptions"],
   "/apis/schemas": ["/api/v1/contracts", "/api/v1/schemas"],
+  // The sweep visits the SUBNET comparison; the validator ledger is the same
+  // page under `?validators=`, and its path is declared for that view.
+  "/compare?subnets=1,19": ["/api/v1/compare/validators"],
   "/chain/blocks": ["/api/v1/blocks/summary", "/api/v1/chain/activity"],
   "/chain/events": ["/api/v1/chain-events/stats"],
   "/chain/extrinsics": ["/api/v1/chain/fees", "/api/v1/extrinsics"],

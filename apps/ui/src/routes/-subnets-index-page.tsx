@@ -30,10 +30,8 @@ import { RouterLink } from "@/components/metagraphed/router-link";
 import { useInView } from "@/hooks/use-in-view";
 import { FilterChip, ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import { SubnetsSavedViews } from "@/components/metagraphed/subnets-saved-views";
-import {
-  SubnetsCompareDrawer,
-  CompareToggle,
-} from "@/components/metagraphed/subnets-compare-drawer";
+import { CompareToggle } from "@/components/metagraphed/compare-toggle";
+import { SubnetCompareBar } from "@/components/metagraphed/compare-bar";
 import {
   SUBNETS_ALL_LIMIT,
   subnetsQuery,
@@ -292,7 +290,7 @@ export function SubnetsPage() {
       </p>
       {/* Below the table on purpose -- see hub-prose.tsx. */}
       <HubSections path="/subnets" />
-      <SubnetsCompareDrawer />
+      <SubnetCompareBar />
       <BackToTop />
     </AppShell>
   );
