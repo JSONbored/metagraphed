@@ -2257,6 +2257,42 @@
   .mg-dt-menu-columns input {
     accent-color: var(--accent);
   }
+  /* Rows per page (#11620) — three segments under the column list, set like
+     the column labels. A group of buttons rather than a <select> so it reads
+     as the same kind of switch as the range control on a section head, and so
+     the current size is stated by aria-pressed rather than only by colour. */
+  .mg-dt-menu-sizes {
+    display: flex;
+    gap: 2px;
+    margin-top: 4px;
+  }
+  .mg-dt-menu-sizes button {
+    flex: 1;
+    padding: 4px 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink-muted);
+    font: inherit;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    cursor: pointer;
+    transition:
+      color var(--mg-motion),
+      border-color var(--mg-motion);
+  }
+  .mg-dt-menu-sizes button:hover {
+    color: var(--ink);
+  }
+  .mg-dt-menu-sizes button:focus-visible {
+    outline: 1px solid var(--focus);
+    outline-offset: 1px;
+  }
+  .mg-dt-menu-sizes button[aria-pressed="true"] {
+    border-color: var(--rule-strong);
+    color: var(--ink-strong);
+  }
   .mg-dt-menu-actions {
     display: grid;
     gap: 2px;
@@ -2283,6 +2319,16 @@
   .mg-dt-viewport {
     min-width: 0;
     overflow: auto;
+    /* A containing block, not decoration (#11620). Absolutely positioned
+       descendants -- the copy button's icon, every `.sr-only` label -- resolve
+       against the nearest POSITIONED ancestor, and a static scroll container
+       is not one. They escaped the clip, were laid out against the page, and
+       pushed `documentElement.scrollHeight` a thousand pixels past the body:
+       /chain/blocks measured 2688 against a 1674px page, so a third of every
+       capture and every "scroll to the end" was blank canvas. The overflow
+       gate cannot see this (nothing overflows horizontally) and neither can a
+       screenshot of the top of the page. */
+    position: relative;
   }
   /* Both axes on ONE element: `overflow-y: auto` coerces `overflow-x` to
      auto (CSS Overflow 3 §3), so a nested horizontal scroller would steal

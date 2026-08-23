@@ -1930,6 +1930,36 @@
   .mg-dt-menu-columns input {
     accent-color: var(--accent);
   }
+  .mg-dt-menu-sizes {
+    display: flex;
+    gap: 2px;
+    margin-top: 4px;
+  }
+  .mg-dt-menu-sizes button {
+    flex: 1;
+    padding: 4px 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink-muted);
+    font: inherit;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    cursor: pointer;
+    transition: color var(--mg-motion), border-color var(--mg-motion);
+  }
+  .mg-dt-menu-sizes button:hover {
+    color: var(--ink);
+  }
+  .mg-dt-menu-sizes button:focus-visible {
+    outline: 1px solid var(--focus);
+    outline-offset: 1px;
+  }
+  .mg-dt-menu-sizes button[aria-pressed=true] {
+    border-color: var(--rule-strong);
+    color: var(--ink-strong);
+  }
   .mg-dt-menu-actions {
     display: grid;
     gap: 2px;
@@ -1956,6 +1986,7 @@
   .mg-dt-viewport {
     min-width: 0;
     overflow: auto;
+    position: relative;
   }
   .mg-dt-viewport-bounded {
     max-height: var(--mg-list-viewport-max, 70vh);

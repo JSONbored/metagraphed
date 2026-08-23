@@ -94,6 +94,13 @@ export interface DataTableProps<Row> {
   page?: number;
   onPage?: (page: number) => void;
   pageSize?: number;
+  /**
+   * Rows-per-page choices, offered in the table menu. Pass `onPageSize` with
+   * them; without a handler the control is left out rather than rendered
+   * inert, because a switch that does nothing is worse than no switch.
+   */
+  pageSizes?: readonly number[];
+  onPageSize?: (size: number) => void;
   /** `false` renders every row (a crawlable index); the viewport still bounds it. */
   paginate?: boolean;
   /** Whole-row link. */
@@ -196,6 +203,8 @@ export function DataTable<Row>({
   page: pageProp,
   onPage,
   pageSize = 50,
+  pageSizes,
+  onPageSize,
   paginate,
   rowHref,
   link,
@@ -351,6 +360,9 @@ export function DataTable<Row>({
           {filters}
           <DataTableMenu
             columns={columns}
+            pageSize={pageSize}
+            pageSizes={pageSizes}
+            onPageSize={onPageSize}
             visibleKeys={visibleKeys}
             onVisibleKeys={(keys) => {
               setVisibleKeys(keys);

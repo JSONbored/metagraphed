@@ -1,7 +1,7 @@
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { ExtrinsicsPage } from "./-extrinsics-index-page";
+import { ExtrinsicsPage } from "./-chain-stream-page";
 
 const extrinsicsSearchSchema = z.object({
   limit: z.number().int().min(1).max(100).catch(50).default(50),

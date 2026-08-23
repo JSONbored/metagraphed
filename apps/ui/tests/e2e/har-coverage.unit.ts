@@ -50,22 +50,24 @@ const index = routeFileIndex();
  * reach under the parallel sweep).
  */
 const KNOWN_UNCOVERED: Record<string, string[]> = {
-  "/status": ["/api/v1/feeds/incidents", "/api/v1/self-health"],
+  // #11620 emptied six of the nine entries this list carried. None of them was
+  // ever a real live-production dependency: `harRecordedPaths` counted only
+  // the browser HAR, while api-stub.ts replays har/ssr-supplement.json as well,
+  // so every SSR-only read looked uncovered no matter how often it was
+  // re-recorded. Counting the supplement -- the other half of the same fixture
+  // set -- cleared /status's self-health, /apis/schemas entirely, and all three
+  // chain streams. What remains is genuinely unrecorded.
+  "/status": ["/api/v1/feeds/incidents"],
   "/settings": ["/api/v1/keys", "/api/v1/watch/triggers", "/api/v1/webhooks/subscriptions"],
-  "/apis/schemas": ["/api/v1/contracts", "/api/v1/schemas"],
   // The sweep visits the SUBNET comparison; the validator ledger is the same
   // page under `?validators=`, and its path is declared for that view.
   "/compare?subnets=1,19": ["/api/v1/compare/validators"],
-  "/chain/blocks": ["/api/v1/blocks/summary", "/api/v1/chain/activity"],
-  "/chain/events": ["/api/v1/chain-events/stats"],
-  "/chain/extrinsics": ["/api/v1/chain/fees", "/api/v1/extrinsics"],
   // #11615 emptied this: the rebuilt hub reads /api/v1/accounts and
   // /api/v1/chain/signers, and the recorded fixture covers both. The two
   // entries it no longer reads at all -- top-holders and the per-account
   // detail, which the wallet module and the holders panel fetched -- went
   // with those components.
 };
-
 describe("every swept route resolves to a page", () => {
   // Guards the guard: coverageForRoute reports "nothing declared" both for a
   // page that declares nothing and for a page it failed to find, and those
