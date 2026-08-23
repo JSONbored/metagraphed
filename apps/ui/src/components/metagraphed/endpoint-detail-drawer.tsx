@@ -277,14 +277,17 @@ export function EndpointDetailDrawer({
                     className="flex items-start gap-2 scroll-mt-32 rounded border border-border/60 bg-paper px-2 py-1.5 target:border-accent/60"
                   >
                     <span
-                      className={
-                        "mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full mg-dot" +
-                        (String(inc.state) === "down"
+                      // classNames, not `+`: the concatenated form had no
+                      // trailing space, so it emitted `mg-dotbg-health-down`
+                      // and every incident dot rendered uncoloured.
+                      className={classNames(
+                        "mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full mg-dot",
+                        String(inc.state) === "down"
                           ? "bg-health-down"
                           : String(inc.state) === "warn" || String(inc.state) === "degraded"
                             ? "bg-health-warn"
-                            : "bg-ink-subtle")
-                      }
+                            : "bg-ink-subtle",
+                      )}
                       aria-hidden
                     />
                     <div className="min-w-0 flex-1">

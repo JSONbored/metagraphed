@@ -918,8 +918,18 @@ function normalizeSubnetMover(raw: unknown): SubnetMover | null {
     stake_delta_alpha: coerceFiniteNumber(raw.stake_delta_alpha) ?? 0,
     stake_pct_change: coerceFiniteNumber(raw.stake_pct_change) ?? null,
     stake_share_pct: coerceFiniteNumber(raw.stake_share_pct) ?? null,
+    emission_start_alpha: coerceFiniteNumber(raw.emission_start_alpha) ?? 0,
+    emission_end_alpha: coerceFiniteNumber(raw.emission_end_alpha) ?? 0,
     emission_delta_alpha: coerceFiniteNumber(raw.emission_delta_alpha) ?? 0,
+    // `?? null`, not `?? 0`: a subnet with no emission at the start of the
+    // window has no percentage change, and zero would read as "unchanged".
+    emission_pct_change: coerceFiniteNumber(raw.emission_pct_change) ?? null,
+    emission_share_pct: coerceFiniteNumber(raw.emission_share_pct) ?? null,
+    validators_start: coerceFiniteNumber(raw.validators_start) ?? 0,
+    validators_end: coerceFiniteNumber(raw.validators_end) ?? 0,
     validators_delta: coerceFiniteNumber(raw.validators_delta) ?? 0,
+    neurons_start: coerceFiniteNumber(raw.neurons_start) ?? 0,
+    neurons_end: coerceFiniteNumber(raw.neurons_end) ?? 0,
     neurons_delta: coerceFiniteNumber(raw.neurons_delta) ?? 0,
   };
 }
@@ -1860,7 +1870,7 @@ export function normalizeSubnet(raw: unknown): Subnet {
  */
 // Re-exported from its new home so every existing importer keeps working.
 // Moved because server.ts needs it too and cannot import this module.
-export { SUBNETS_ALL_LIMIT } from "./subnet-categories";
+export { SUBNETS_ALL_LIMIT } from "./subnet-list-limit";
 
 export const subnetsQuery = (params?: QueryParams) =>
   queryOptions({

@@ -848,7 +848,8 @@
     position: relative;
     display: flex;
     flex: 1 1 0;
-    min-width: 0;
+    min-width: calc(var(--mg-stack-bar) + var(--mg-stack-gap));
+    max-width: var(--mg-stack-bar-max, 88px);
     align-items: center;
     justify-content: center;
     height: 40px;
@@ -891,6 +892,7 @@
     box-sizing: border-box;
     flex: 1 1 0;
     min-width: calc(var(--mg-stack-bar) + var(--mg-stack-gap));
+    max-width: var(--mg-stack-bar-max, 88px);
     height: 100%;
     padding: 0 calc(var(--mg-stack-gap) / 2);
     border: 0;

@@ -19,7 +19,13 @@ import { describe, expect, it } from "vitest";
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
 
 const appStyles = read("../../styles.css");
+// #11613 split the page into a hero and four section components; the
+// directory's DataTable lives in its own module, and the page itself now
+// declares no table at all. Both halves are read, because the property is
+// about the pair: the section owns the one table, and the page owns no
+// scroll container that could nest a second bounded scroller inside it.
 const subnetsPage = read("../../routes/-subnets-index-page.tsx");
+const subnetsDirectory = read("./subnets-index/directory.tsx");
 const kitStyles = read("../../../../../packages/ui-kit/src/styles.css");
 
 // #11610: there is now exactly ONE way a table header sticks -- DataTable's
@@ -41,9 +47,16 @@ describe("sticky table header anchoring", () => {
     // DataTable, which owns its one bounded scrollport. The property to hold
     // is unchanged: the page declares no scroll container of its own, so
     // there is exactly one element for the header to pin to.
-    expect(subnetsPage).toContain("<DataTable");
-    expect(subnetsPage).not.toContain("mg-list-viewport");
-    expect(subnetsPage).not.toContain("max-h-");
+    expect(subnetsDirectory).toContain("<DataTable");
+    for (const [name, src] of [
+      ["the page", subnetsPage],
+      ["the directory section", subnetsDirectory],
+    ] as const) {
+      expect(src, `${name} declares a scroll container of its own`).not.toContain(
+        "mg-list-viewport",
+      );
+      expect(src, `${name} declares a height cap of its own`).not.toContain("max-h-");
+    }
     // DataTable bounds its viewport the same way, off the same token, and
     // contains scroll chaining -- without that, scrolling past the last row
     // drags the viewport (and the header pinned to its top) up under the app

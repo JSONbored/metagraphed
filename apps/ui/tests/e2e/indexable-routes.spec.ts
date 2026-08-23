@@ -52,8 +52,17 @@ const MUST_BE_200 = [
   "/docs",
 ];
 
-/** Retired paths: permanent moves, every one documented as such in its route. */
-const MUST_BE_301 = [
+/**
+ * Retired paths: permanent moves, every one documented as such in its route.
+ *
+ * `carries` is the piece of the Location header proving the destination kept
+ * the section or filter the retired page WAS. A link to one category that
+ * landed on the unfiltered registry would still be a 301 to the right pathname
+ * and would still have lost the question. Asserted as a substring rather than
+ * as a whole URL so the check does not also pin param order or a trailing
+ * slash, neither of which is the property under test.
+ */
+const MUST_BE_301: ReadonlyArray<readonly [from: string, to: string, carries?: string]> = [
   ["/explorer", "/chain"],
   ["/blocks", "/chain/blocks"],
   ["/events", "/chain/events"],
@@ -67,7 +76,17 @@ const MUST_BE_301 = [
   ["/portfolio", "/accounts"],
   ["/sudo", "/chain/governance"],
   ["/tools/ss58", "/accounts"],
-] as const;
+  // #11613 folded five more routes into the rebuilt /subnets index. Each one
+  // ranked, faceted or grouped subnets, which is what that page now does in
+  // sections and filters — so they are retired the same way every other
+  // consolidation above was, and asserted here for the same reason: the status
+  // code IS the property, and a 307 would leave the old URL in the index.
+  ["/revenue", "/subnets", "#rankings"],
+  ["/leaderboards", "/subnets", "#rankings"],
+  ["/subnets/category", "/subnets", "#domains"],
+  ["/subnets/category/inference", "/subnets", "domain=inference"],
+  ["/subnets/with-api", "/subnets", "api=true"],
+];
 
 test.describe("#11204 indexable routes answer, retired routes redirect permanently", () => {
   for (const path of MUST_BE_200) {
@@ -83,8 +102,8 @@ test.describe("#11204 indexable routes answer, retired routes redirect permanent
     });
   }
 
-  for (const [from, to] of MUST_BE_301) {
-    test(`${from} is a permanent redirect to ${to}`, async ({ request }) => {
+  for (const [from, to, carries] of MUST_BE_301) {
+    test(`${from} is a permanent redirect to ${to}${carries ?? ""}`, async ({ request }) => {
       const response = await request.get(from, { maxRedirects: 0 });
       // 301, not the framework's 307 default: these routes are retired, and a
       // temporary redirect tells a search engine to keep the old URL and keep
@@ -92,6 +111,12 @@ test.describe("#11204 indexable routes answer, retired routes redirect permanent
       expect(response.status(), `${from} should be 301 (permanent)`).toBe(301);
       const location = response.headers()["location"] ?? "";
       expect(new URL(location, "http://localhost").pathname).toBe(to);
+      if (carries) {
+        expect(
+          location,
+          `${from} redirects to the right page but drops the ${carries} it was retired into`,
+        ).toContain(carries);
+      }
     });
   }
 });
@@ -270,61 +295,31 @@ test.describe("#11294 the markdown twin is reachable, and a stale one 404s", () 
   }
 });
 
-test.describe("#11316 the faceted page earns its URL", () => {
-  // The epic proposed THREE faceted pages. Two did not survive measurement:
-  // `gpu_required` is set on zero of 129 subnets and `status` is uniformly
-  // "active" — one empty URL and one duplicate of /subnets. Shipping them would
-  // have been the July mistake, which is what §3 of #11313 exists to prevent.
+test.describe("#11613 the retired facets do not shadow the subnet detail route", () => {
+  // /subnets/with-api and /subnets/category/$slug were pages until #11613 and
+  // are redirects now, but they are still STATIC and PARAM segments declared
+  // beside /subnets/$netuid. Precedence is the thing that must not move: if it
+  // ever flipped, every one of the 129 detail pages would answer 301 to the
+  // index instead of rendering.
   //
-  // These assertions are what stop this page decaying into the same thing.
+  // netuid 1, not 64: the e2e stub's fixture carries subnet 1 and not 64, so
+  // asserting on 64 would test the fixture rather than the routing.
+  test("a netuid is served by the detail route, not by a retired facet", async ({ request }) => {
+    // The positive control first: without it, "did not answer 301" would also
+    // be true of a route that stopped answering at all.
+    const real = await request.get("/subnets/1", { maxRedirects: 0 });
+    expect(real.status(), "/subnets/1 no longer renders — a facet segment is shadowing it").toBe(
+      200,
+    );
 
-  test("selects a real subset rather than duplicating /subnets", async ({ request }) => {
-    const html = await (await request.get("/subnets/with-api")).text();
-    const listed = new Set([...html.matchAll(/href="\/subnets\/(\d+)"/g)].map((m) => m[1]!));
-    // A facet that selects everything is a canonical duplicate of the hub, and
-    // a facet that selects nothing is a page with no reason to be crawled.
-    expect(listed.size, "the facet lists no subnets").toBeGreaterThan(10);
-    expect(listed.size, "the facet lists every subnet — it is not a facet").toBeLessThan(120);
-  });
-
-  test("leads with synthesis, not a bare table", async ({ request }) => {
-    // The rule every new URL in this epic ships under: the numbers above the
-    // list are derived from probe data no competitor holds, and they are what
-    // makes this a page rather than a query string.
-    const html = await (await request.get("/subnets/with-api")).text();
-    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-    expect(text).toContain("catalogued subnets publish a machine-readable API");
-    expect(text).toContain("15-minute probe cycle");
-  });
-
-  test("is reachable from /subnets, not sitemap-only", async ({ request }) => {
-    // Sitemap-only is the textbook profile for "Crawled – currently not
-    // indexed" (#11277) — discoverable, with nothing saying it matters.
-    const html = await (await request.get("/subnets")).text();
-    expect(html, "/subnets does not link the faceted page").toContain('href="/subnets/with-api"');
-  });
-
-  test("is in the sitemap and answers without a redirect", async ({ request }) => {
-    const xml = await (await request.get("/sitemap.xml")).text();
-    expect(xml).toContain("<loc>https://metagraph.sh/subnets/with-api</loc>");
-    const res = await request.get("/subnets/with-api", { maxRedirects: 0 });
-    expect(res.status()).toBe(200);
-  });
-
-  test("does not shadow the subnet detail route", async ({ request }) => {
-    // A static segment beside /subnets/$netuid. If precedence ever flipped,
-    // every one of the 129 detail pages would resolve to this one.
-    //
-    // netuid 1, not 64: the e2e stub's fixture carries subnet 1 and not 64, so
-    // asserting on 64 tests the fixture rather than the routing.
-    const res = await request.get("/subnets/1", { maxRedirects: 0 });
-    expect(res.status()).toBe(200);
-    const html = await res.text();
-    expect(html).not.toContain("catalogued subnets publish a machine-readable API");
-    // And an unknown netuid must still reach the detail route's not-found, not
-    // fall through to the facet page.
-    const missing = await (await request.get("/subnets/999999")).text();
-    expect(missing).not.toContain("catalogued subnets publish a machine-readable API");
+    // An unknown netuid must reach the detail route's own not-found rather
+    // than being swallowed by a facet redirect, which is what a precedence
+    // flip would look like from outside.
+    const unknown = await request.get("/subnets/999999", { maxRedirects: 0 });
+    expect(
+      unknown.status(),
+      "an unknown netuid was answered by a retired facet's redirect",
+    ).not.toBe(301);
   });
 });
 
@@ -505,8 +500,6 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
     "/apis/endpoints": 2200,
     "/apis/schemas": 700,
     "/chain": 240,
-    // #11316: a filtered projection of 66 rows, so it is small by construction.
-    "/subnets/with-api": 300,
   };
 
   for (const path of Object.keys(HUB_COPY) as Array<keyof typeof HUB_COPY>) {
@@ -669,9 +662,10 @@ test.describe("#11319 the SEO invariants are derived, not listed", () => {
         })
         .filter((node) => node["@type"] === "Dataset");
       for (const node of nodes) {
-        // A facet page describes a live selection and carries no single publish
-        // timestamp of its own; every per-entity record has one.
-        if (!node.dateModified && !String(node.identifier ?? "").startsWith("subnets-with-api")) {
+        // No exemptions since #11613: the one Dataset that carried no publish
+        // timestamp of its own was the /subnets/with-api facet, and that page
+        // is a filter on /subnets now rather than a URL emitting its own node.
+        if (!node.dateModified) {
           failures.push(`${family} (${path}): Dataset "${node.identifier}" has no dateModified`);
         }
       }
@@ -713,66 +707,27 @@ test.describe("#11319 the SEO invariants are derived, not listed", () => {
   });
 });
 
-test.describe("#11342 the category pages answer a query nothing else does", () => {
-  // We published 129 pages for "what is subnet 64" and nothing for the query
-  // sitting directly above it — "which Bittensor subnets do inference" — even
-  // though the registry has computed derived_categories all along.
-  //
-  // Derived from the sitemap, so a category the registry stops deriving stops
-  // being tested and one it starts deriving is covered the moment it clears the
-  // threshold.
-
-  async function categoryPaths(request: import("@playwright/test").APIRequestContext) {
+test.describe("#11613 the sitemap stops advertising the retired routes", () => {
+  // The category pages and the API facet were sitemap entries until they folded
+  // into /subnets. A sitemap that keeps listing them asks a crawler to spend
+  // budget on a redirect and refills the "Page with redirect" bucket #11204
+  // emptied — so this is the half of the retirement that the 301s above cannot
+  // prove on their own.
+  test("no retired URL is offered for indexing", async ({ request }) => {
     const xml = await (await request.get("/sitemap.xml")).text();
-    const paths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]
-      .map((m) => new URL(m[1]!).pathname)
-      .filter((p) => p.startsWith("/subnets/category/"));
-    expect(paths.length, "no category pages in the sitemap").toBeGreaterThan(3);
-    return paths;
-  }
+    const paths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]!).pathname);
+    // The positive control: an empty or truncated sitemap would satisfy every
+    // assertion below while proving nothing.
+    expect(paths.length, "the sitemap is empty — nothing below is meaningful").toBeGreaterThan(100);
+    expect(paths, "the subnet index is missing from the sitemap").toContain("/subnets");
 
-  test("every category page lists a real comparison set", async ({ request }) => {
-    // Below MIN_CATEGORY_SUBNETS a page is a near-duplicate of the one subnet
-    // it lists, which is why storage (1), search (2) and privacy (2) are not
-    // generated. A page in the sitemap must clear that bar.
-    const failures: string[] = [];
-    for (const path of await categoryPaths(request)) {
-      const html = await (await request.get(path)).text();
-      const listed = new Set([...html.matchAll(/href="\/subnets\/(\d+)"/g)].map((m) => m[1]!));
-      if (listed.size < 3) failures.push(`${path}: ${listed.size} subnets`);
-    }
-    expect(
-      failures,
-      `category pages below the comparison threshold:\n${failures.join("\n")}`,
-    ).toStrictEqual([]);
-  });
-
-  test("each says something specific, not one template with a noun swapped", async ({
-    request,
-  }) => {
-    // A family of pages differing only by a substituted word is thin by nature
-    // however many words it counts — the property that put 5,797 URLs in
-    // "Crawled – currently not indexed".
-    const descriptions = new Set<string>();
-    for (const path of await categoryPaths(request)) {
-      const html = await (await request.get(path)).text();
-      const description = /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? "";
-      expect(description, `${path} has no description`).not.toBe("");
-      descriptions.add(description);
-    }
-    const paths = await categoryPaths(request);
-    expect(descriptions.size, "category descriptions are not distinct").toBe(paths.length);
-  });
-
-  test("the hub links every category it generates", async ({ request }) => {
-    // Sitemap-only is the profile that lands a URL in "Crawled – currently not
-    // indexed" (#11277). The links are derived from the same rows the sitemap
-    // is, so the two cannot disagree.
-    const html = await (await request.get("/subnets")).text();
-    const linked = new Set(
-      [...html.matchAll(/href="\/subnets\/category\/([^"]+)"/g)].map((m) => m[1]!),
+    const retired = paths.filter(
+      (p) =>
+        p === "/revenue" ||
+        p === "/leaderboards" ||
+        p === "/subnets/with-api" ||
+        p.startsWith("/subnets/category"),
     );
-    const sitemapped = (await categoryPaths(request)).map((p) => p.split("/").pop()!);
-    expect([...sitemapped].sort()).toStrictEqual([...linked].sort());
+    expect(retired, `the sitemap lists ${retired.length} retired URL(s)`).toStrictEqual([]);
   });
 });

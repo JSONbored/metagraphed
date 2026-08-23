@@ -1102,8 +1102,11 @@
   .mg-stack-axis > div {
     position: relative;
     display: flex;
+    /* Matches .mg-stack-col exactly, or the axis ticks drift off the bars
+       they name the moment the cap engages. */
     flex: 1 1 0;
-    min-width: 0;
+    min-width: calc(var(--mg-stack-bar) + var(--mg-stack-gap));
+    max-width: var(--mg-stack-bar-max, 88px);
     align-items: center;
     justify-content: center;
     height: 40px;
@@ -1146,8 +1149,16 @@
   .mg-stack-col {
     position: relative;
     box-sizing: border-box;
+    /* A ceiling as well as a floor. With `flex: 1 1 0` alone a five-column
+       series stretched each bar to ~200px, which reads as a set of panels
+       rather than a chart -- the geometry stops saying "these are comparable
+       magnitudes" once a bar is wider than it is informative. The cap is
+       generous (a 90-day series never reaches it) and the bars stay
+       left-packed, which is also how a short series should read: the axis
+       ends where the data does. */
     flex: 1 1 0;
     min-width: calc(var(--mg-stack-bar) + var(--mg-stack-gap));
+    max-width: var(--mg-stack-bar-max, 88px);
     height: 100%;
     padding: 0 calc(var(--mg-stack-gap) / 2);
     border: 0;

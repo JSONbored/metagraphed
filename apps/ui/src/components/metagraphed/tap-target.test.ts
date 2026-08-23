@@ -12,7 +12,6 @@ const css = readFileSync(
   "utf8",
 );
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
-const subnets = read("../../routes/-subnets-index-page.tsx");
 const validators = read("../../routes/-validators-index-page.tsx");
 
 describe("mg-tap-target (#8254)", () => {
@@ -41,14 +40,17 @@ describe("mg-tap-target (#8254)", () => {
     // now pin a number that says nothing; the bar is per-CONTROL: every
     // watchlist toggle in these files carries the utility, however many the
     // page happens to render.
+    //
+    // /subnets dropped out of this list in #11613: its directory carries the
+    // columns that decide between subnets and nothing else, and following one
+    // is an action you take on the subnet's own page. /validators still ships
+    // the control, so the assertion still has a subject -- the guard below
+    // fails loudly if that stops being true.
     const watchToggles = (src: string) =>
       [...src.matchAll(/<button[\s\S]{0,900}?<\/button>/g)]
         .map((match) => match[0])
         .filter((button) => /aria-label=\{[\s\S]*?watchlist/.test(button));
-    for (const [name, src] of [
-      ["subnets", subnets],
-      ["validators", validators],
-    ] as const) {
+    for (const [name, src] of [["validators", validators]] as const) {
       const toggles = watchToggles(src);
       // Guard the guard: a rename of the aria-label would otherwise empty the
       // set and pass on nothing.
