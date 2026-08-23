@@ -12,7 +12,7 @@ import {
   feePoints,
   pipelineRails,
   pipelineTally,
-  flowColumns,
+  flowRails,
   fmtCount,
   fmtShare,
   fmtTao,
@@ -73,28 +73,54 @@ describe("feePoints", () => {
   });
 });
 
-describe("flowColumns", () => {
+describe("flowRails", () => {
   const subnets = [
     { netuid: 1, total_staked_tao: 10, total_unstaked_tao: 1 },
     { netuid: 2, total_staked_tao: 0, total_unstaked_tao: 50 },
     { netuid: 3, total_staked_tao: 0, total_unstaked_tao: 0 },
   ] as ChainStakeFlowSubnet[];
+  const fmt = (value: number) => `${value} t`;
 
-  it("ranks by gross movement and keeps both directions on every column", () => {
-    const columns = flowColumns(subnets, nameOf);
-    expect(columns.map((c) => c.key)).toEqual(["sn-2", "sn-1"]);
-    // A subnet that only saw exits still shows the bar that says so; a
+  it("keeps both directions on every row", () => {
+    // A subnet that only saw exits still shows the track that says so; a
     // net-only view renders it as a small negative indistinguishable from a
     // quiet subnet.
-    expect(columns[0]?.segments).toEqual([
-      { key: "staked", label: "Staked in", value: 0 },
-      { key: "unstaked", label: "Unstaked out", value: 50 },
+    expect(flowRails(subnets, nameOf, fmt).find((rail) => rail.key === "sn-2")).toMatchObject({
+      value: 0,
+      secondary: 50,
+    });
+  });
+
+  it("cuts by gross movement but orders by the leading value", () => {
+    // Gross decides who makes the cut -- an exits-only subnet belongs in
+    // "where stake moved" -- and the inflow column decides the order, because
+    // a ranked rail whose first column is not monotonic reads as broken.
+    expect(flowRails(subnets, nameOf, fmt).map((rail) => rail.key)).toEqual(["sn-1", "sn-2"]);
+    expect(flowRails(subnets, nameOf, fmt, 1).map((rail) => rail.key)).toEqual(["sn-2"]);
+  });
+
+  it("names the row rather than leaving it to an axis label", () => {
+    // The whole point of the rail: the stacked columns this replaced put a
+    // rotated "SN2" over one bar in fourteen and named none of the rest.
+    expect(flowRails(subnets, nameOf, fmt)[0]?.label).toBe(nameOf(1));
+    expect(flowRails(subnets, nameOf, fmt)[0]?.href).toBe("/subnets/1");
+  });
+
+  it("carries in, out and net for the tooltip", () => {
+    expect(flowRails(subnets, nameOf, fmt)[0]?.detail).toEqual([
+      { key: "in", label: "Staked in", value: "10 t" },
+      { key: "out", label: "Unstaked out", value: "1 t" },
+      { key: "net", label: "Net", value: "9 t" },
     ]);
   });
 
   it("drops a subnet nothing moved on and honours the ceiling", () => {
-    expect(flowColumns(subnets, nameOf).some((c) => c.key === "sn-3")).toBe(false);
-    expect(flowColumns(subnets, nameOf, 1)).toHaveLength(1);
+    expect(flowRails(subnets, nameOf, fmt).some((rail) => rail.key === "sn-3")).toBe(false);
+    expect(flowRails(subnets, nameOf, fmt, 1)).toHaveLength(1);
+  });
+
+  it("does not leak the sort key into the rail", () => {
+    expect(flowRails(subnets, nameOf, fmt)[0]).not.toHaveProperty("total");
   });
 });
 

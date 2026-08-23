@@ -7,13 +7,12 @@ import {
   type FactCells,
 } from "@jsonbored/ui-kit";
 import { subnetHistoryQuery, subnetOhlcQuery } from "@/lib/metagraphed/queries";
-import { formatTao } from "@/lib/metagraphed/format";
+import { deltaCell, formatTao } from "@/lib/metagraphed/format";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import {
   WINDOW_OPTIONS,
   changeOver,
   closePoints,
-  deltaCell,
   seriesOf,
   trailing,
   volumeOver,
@@ -52,15 +51,23 @@ export function MomentumSection({
   const volume = volumeOver(candles, days);
   const latest = historyPoints[historyPoints.length - 1];
 
+  // The WINDOW'S OPENING level, not the current one (#11693). Both of these
+  // cells used to print the window's last point under the same label the hero
+  // prints two inches above -- and the stake read a different series from the
+  // hero's, so the page said "Total stake 2.63M α" and "Total stake 2.62M α"
+  // about one subnet at one moment. The hero owns where a number IS; this
+  // section owns where it CAME FROM and how far it moved.
+  const opening = points[0];
+  const openingStake = historyPoints[0];
   const cells: FactCells = [
     {
-      label: "Alpha price",
-      value: points.length > 0 ? formatTao(points[points.length - 1]!.v) : "—",
+      label: `Alpha price ${window} ago`,
+      value: opening ? formatTao(opening.v) : "—",
       delta: deltaCell(priceChange),
     },
     {
-      label: "Total stake",
-      value: latest ? `${taoCompact(latest.total_stake_alpha)} α` : "—",
+      label: `Total stake ${window} ago`,
+      value: openingStake ? `${taoCompact(openingStake.total_stake_alpha)} α` : "—",
       delta: deltaCell(stakeChange),
     },
     {

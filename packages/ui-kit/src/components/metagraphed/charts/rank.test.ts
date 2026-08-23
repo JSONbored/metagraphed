@@ -67,6 +67,34 @@ describe("RankedRails", () => {
     );
   });
 
+  it("scales the second track against its own largest when asked", () => {
+    // Shared is right for commensurate series (stake in / stake out). It is
+    // wrong when they are not: a validator's stake beside its emission is
+    // four orders of magnitude apart, so on a shared cap every emission track
+    // drew the same flat line and carried no information.
+    const items = [
+      { key: "a", label: "A", value: 1_000_000, secondary: 120 },
+      { key: "b", label: "B", value: 500_000, secondary: 60 },
+    ];
+    const shared = render(
+      h(RankedRails, { items, formatValue: String, ariaLabel: "x" }),
+    );
+    const own = render(
+      h(RankedRails, {
+        items,
+        formatValue: String,
+        secondaryScale: "own",
+        ariaLabel: "x",
+      }),
+    );
+    // Shared: both emissions round to nothing against a 1,000,000 cap.
+    expect((shared.match(/--fill:0%/g) ?? []).length).toBe(2);
+    // Own: the largest emission fills its track and the other is half of it.
+    expect(own).toContain("--fill:100%");
+    expect(own).toContain("--fill:50%");
+    expect(own).not.toContain("--fill:0%");
+  });
+
   it("pins the scale to `max` and renders links as anchors", () => {
     const html = render(
       h(RankedRails, {

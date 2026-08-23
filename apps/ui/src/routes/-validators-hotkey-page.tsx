@@ -13,11 +13,9 @@ import {
   RankGrid,
   RankedRails,
   Raw,
-  StackedColumns,
   type DataTableColumn,
   type FactCells,
   type FactNodes,
-  type RankGridItem,
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -50,7 +48,7 @@ import {
   validatorNominatorsQuery,
   validatorsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber, formatPct } from "@/lib/metagraphed/format";
+import { deltaCell, formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
 import { Route } from "./validators.$hotkey";
@@ -116,7 +114,7 @@ export function ValidatorDetailPage() {
   }, [subnets.data]);
 
   const memberships = detail.subnets ?? [];
-  const columns = stakeBySubnet(memberships, nameOf);
+  const stakeRails = stakeBySubnet(memberships, nameOf, (value) => fmtAlpha(value));
   const points = history.data?.data.points ?? [];
   const stakeSeries = historyPoints(points, (point) => point.total_stake_tao);
   const yieldSeries = apyPoints(points);
@@ -134,19 +132,15 @@ export function ValidatorDetailPage() {
 
   const permits = memberships.filter((membership) => membership.validator_permit).length;
 
+  // The sentence carries IDENTITY, the strip carries the numbers (#11693).
+  // Four of the six chips here restated a cell verbatim -- "116 memberships"
+  // above "Memberships 116" -- so the hero said the same thing twice before a
+  // reader reached the first chart.
   const sentence: FactNodes = [
     <Fact key="hotkey">{`hotkey ${shortKey(hotkey)}`}</Fact>,
     <Fact key="coldkey">
       {detail.coldkey ? `coldkey ${shortKey(detail.coldkey)}` : "no coldkey"}
     </Fact>,
-    <Fact key="subnets">{`${formatNumber(memberships.length)} memberships`}</Fact>,
-    <Fact key="permits">{`${formatNumber(permits)} with a permit`}</Fact>,
-    <Fact key="noms">
-      {detail.nominator_count == null
-        ? "nominators unavailable"
-        : `${formatNumber(detail.nominator_count)} nominators`}
-    </Fact>,
-    <Fact key="trust">{`avg trust ${fmtScore(detail.avg_validator_trust)}`}</Fact>,
   ];
 
   const cells: FactCells = [
@@ -155,8 +149,14 @@ export function ValidatorDetailPage() {
       label: "Est. APY",
       value: typeof detail.apy_estimate === "number" ? `${formatPct(detail.apy_estimate, 1)}` : "—",
     },
-    { label: "Memberships", value: formatNumber(memberships.length) },
-    { label: "Permits", value: formatNumber(permits) },
+    {
+      // One cell, not two: "Memberships 116" beside "Permits 116" reads as the
+      // same number typed twice, and the fact worth having is the RATIO --
+      // how many of the memberships carry a permit. Slashed like the subnet
+      // hero's "Miners / Validators".
+      label: "Memberships / permits",
+      value: `${formatNumber(memberships.length)} / ${formatNumber(permits)}`,
+    },
     {
       label: "Nominators",
       value: detail.nominator_count == null ? "—" : formatNumber(detail.nominator_count),
@@ -215,35 +215,21 @@ export function ValidatorDetailPage() {
     },
   ];
 
-  const legend: RankGridItem[] = columns.slice(0, 12).map((column) => ({
-    key: column.key,
-    label: column.label,
-    value: fmtAlpha(column.segments[0]?.value ?? 0),
-    share: fmtAlpha(column.segments[1]?.value ?? 0),
-  }));
-
+  // The WINDOW'S OPENING level and what it did, not the current one (#11693).
+  // "Stake now" printed the same number as the hero's "Total stake" and
+  // "Yield now" the same as its "Est. APY" -- four cells that between them
+  // carried two facts the hero already stated and two it did not. The hero
+  // owns where a number IS; this section owns where it came from.
   const momentumCells: FactCells = [
-    { label: "Stake now", value: fmtStake(stakeSeries[stakeSeries.length - 1]?.v) },
     {
-      label: `Δ stake ${window}`,
-      value: (() => {
-        const change = changeOver(stakeSeries);
-        return change === null ? "—" : `${change >= 0 ? "+" : ""}${formatPct(change, 1)}`;
-      })(),
+      label: `Stake ${window} ago`,
+      value: fmtStake(stakeSeries[0]?.v),
+      delta: deltaCell(changeOver(stakeSeries)),
     },
     {
-      label: "Yield now",
-      value: (() => {
-        const last = yieldSeries[yieldSeries.length - 1]?.v;
-        return typeof last === "number" ? `${formatPct(last, 1)}` : "—";
-      })(),
-    },
-    {
-      label: `Δ yield ${window}`,
-      value: (() => {
-        const change = changeOver(yieldSeries);
-        return change === null ? "—" : `${change >= 0 ? "+" : ""}${formatPct(change, 1)}`;
-      })(),
+      label: `Yield ${window} ago`,
+      value: typeof yieldSeries[0]?.v === "number" ? `${formatPct(yieldSeries[0].v, 1)}` : "—",
+      delta: deltaCell(changeOver(yieldSeries)),
     },
   ];
 
@@ -294,7 +280,11 @@ export function ValidatorDetailPage() {
                 className="mg-hero-icon-action"
               />
             }
-            sentence={<FactSentence>{sentence}</FactSentence>}
+            sentence={
+              <FactSentence>
+                Where this operator validates, what it takes, and who delegates to it. {sentence}
+              </FactSentence>
+            }
             cells={cells}
             live={{
               updatedAt: detailResult.meta?.generated_at ?? null,
@@ -309,22 +299,24 @@ export function ValidatorDetailPage() {
           name="Stake by subnet"
           question="Where the stake is, and what it earns there."
           visual={
-            columns.length > 0 ? (
-              <StackedColumns
-                columns={columns}
-                seriesOrder={["stake", "emission"]}
+            stakeRails.length > 0 ? (
+              <RankedRails
+                items={stakeRails}
                 formatValue={(value) => fmtAlpha(value)}
+                formatSecondary={(value) => fmtAlpha(value)}
+                scale="sqrt"
+                // Emission gets its OWN scale: it is three to four orders of
+                // magnitude below the stake beside it, so on a shared one
+                // every row drew the same flat line (#11693).
+                secondaryScale="own"
+                columns={{
+                  value: "Stake",
+                  name: "Subnet",
+                  track: "Stake, against the largest",
+                  secondary: "Emission, against the largest",
+                }}
+                limit={12}
                 ariaLabel="Stake and emission by subnet"
-                columnSource="validator-subnet"
-              />
-            ) : null
-          }
-          legend={
-            legend.length > 0 ? (
-              <RankGrid
-                items={legend}
-                cols={4}
-                ariaLabel="Stake and emission per subnet"
                 source="validator-subnet"
               />
             ) : null
@@ -332,7 +324,7 @@ export function ValidatorDetailPage() {
           // Not a time series: /validators/{hotkey}/history publishes daily
           // NETWORK-WIDE totals with netuid: null, so there is no per-subnet
           // series to stack. Momentum below carries the time dimension.
-          footnote={`the ${formatNumber(columns.length)} largest of ${formatNumber(
+          footnote={`the ${formatNumber(stakeRails.length)} largest of ${formatNumber(
             memberships.length,
           )} memberships · a snapshot, not a series · chain-direct`}
         />

@@ -23,7 +23,6 @@ export const ROUTES = [
   // -- and named the fixture for a URL the app no longer serves.
   "/apis/endpoints",
   "/settings",
-  "/explorer",
   // #8357: the three templates the 2026-07-27 instrumented audit found
   // escaping the viewport (extrinsic signer row, schemas drift chip,
   // validators table header) -- a real hash/no-param route each so the
@@ -59,9 +58,16 @@ export const ROUTES = [
   // redirect route renders nothing, so sweeping it would measure /subnets
   // twice — once through a fixture recorded against a page that no longer
   // exists.
+  //
+  // /explorer and /portfolio sat in this list doing exactly that until #11693.
+  // Both are `statusCode: 301` route files; Playwright follows the hop, so the
+  // sweep loaded /chain and /settings a second time each while replaying
+  // explorer.har and portfolio.har — fixtures recorded against the pages those
+  // redirects replaced, whose request sets no longer intersect the targets'.
+  // `token-inventory-coverage.unit.ts` asserts the rule now, in both
+  // directions: a redirect is exempt from being swept AND barred from it.
   "/accounts",
   "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
-  "/portfolio",
   "/apis/providers",
   "/apis",
   // #11628: the three routes that read no API at all, so they need no HAR

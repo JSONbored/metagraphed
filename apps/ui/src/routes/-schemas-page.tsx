@@ -7,7 +7,6 @@ import {
   EntityHero,
   Fact,
   FactSentence,
-  MarkerRail,
   RankedRails,
   Raw,
   SectionNav,
@@ -20,10 +19,9 @@ import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber } from "@/lib/metagraphed/format";
-import { coverageQuery, schemasQuery } from "@/lib/metagraphed/queries";
+import { schemasQuery } from "@/lib/metagraphed/queries";
 import {
   apisNav,
-  coverageMarkers,
   driftRails,
   schemaFacts,
   schemaRows,
@@ -32,7 +30,7 @@ import {
   type SchemaRow,
 } from "@/components/metagraphed/apis/apis-logic";
 
-const API_PATHS = ["/api/v1/schemas", "/api/v1/coverage", "/api/v1/subnets/{netuid}/evidence"];
+const API_PATHS = ["/api/v1/schemas", "/api/v1/subnets/{netuid}/evidence"];
 
 function ApiSources() {
   useRegisterApiSource(
@@ -63,7 +61,6 @@ export function SchemasPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [showAllDrift, setShowAllDrift] = useState(false);
   const schemas = useQuery({ ...schemasQuery(), retry: 0 });
-  const coverage = useQuery({ ...coverageQuery(), retry: 0 });
 
   // `schemasQuery` returns the flat schema ARRAY -- its normalizer keeps the
   // rows and drops the response envelope -- so there is no `.schemas` and no
@@ -79,18 +76,6 @@ export function SchemasPage() {
     () => rows.filter((row) => row.status === "captured" && (row.paths ?? 0) > 0),
     [rows],
   );
-  const markers = useMemo(
-    () =>
-      coverageMarkers(
-        (
-          coverage.data?.data.completeness as
-            { dimension_coverage?: Record<string, { pct?: number; present?: number }> } | undefined
-        )?.dimension_coverage,
-        { count: formatNumber },
-      ),
-    [coverage.data],
-  );
-
   const driftShown = showAllDrift ? rows : rows.filter((row) => row.drift !== "unchanged");
 
   const columns: DataTableColumn<SchemaRow>[] = [
@@ -283,29 +268,6 @@ export function SchemasPage() {
         // data can answer, and the one that says whether a subnet's "has an
         // OpenAPI" is three paths or three hundred.
         footnote="current snapshot · no per-week history is published · snapshot"
-      />
-
-      <AnalyticsSection
-        id="coverage"
-        name="Coverage"
-        question="What share of subnets publish each kind of surface."
-        visual={
-          markers.length > 0 ? (
-            <MarkerRail
-              items={markers}
-              max={100}
-              formatValue={(value) => `${value}%`}
-              columns={{ ratio: "Covered", name: "Surface kind", scale: "Share of subnets" }}
-              ariaLabel="Subnets publishing each kind of surface"
-              source="coverage-dimension"
-            />
-          ) : null
-        }
-        // From `completeness.dimension_coverage`, a real ratio over the subnet
-        // set. The retired page drew this against `domain_coverage`, which
-        // counts how many subnets are IN each domain and is not a coverage
-        // figure at all -- an 11-subnet "agents" domain is not 11% covered.
-        footnote="share of subnets publishing each kind · registry"
       />
 
       {/* #11320: below the data on purpose -- see hub-prose.tsx. */}

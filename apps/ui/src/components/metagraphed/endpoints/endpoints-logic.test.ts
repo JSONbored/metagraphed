@@ -180,6 +180,42 @@ describe("incidentRows", () => {
     ).toBe("2026-08-23T07:00:00.000Z");
   });
 
+  it("names the surface, so two incidents on one provider are two rows", () => {
+    // Without it, three concurrent opentensor RPC incidents rendered as three
+    // byte-identical lines: same provider, kind, subnet, reason and severity.
+    const rows = incidentRows([
+      {
+        id: "i7",
+        provider: "opentensor",
+        kind: "subtensor-rpc",
+        surface_id: "opentensor-lite-rpc",
+      },
+      {
+        id: "i8",
+        provider: "opentensor",
+        kind: "subtensor-rpc",
+        surface_id: "opentensor-finney-rpc",
+      },
+    ] as unknown[] as EndpointIncident[]);
+    expect(rows.map((row) => row.surface)).toEqual([
+      "opentensor-lite-rpc",
+      "opentensor-finney-rpc",
+    ]);
+    expect(new Set(rows.map((row) => row.surface)).size).toBe(rows.length);
+  });
+
+  it("falls back through surface_key and the endpoint id for the surface", () => {
+    expect(
+      incidentRows([{ id: "i9", surface_key: "srf-2d33" }] as unknown[] as EndpointIncident[])[0]!
+        .surface,
+    ).toBe("srf-2d33");
+    expect(
+      incidentRows([{ id: "i10", endpoint_id: "endpoint-srf-2d33" }] as EndpointIncident[])[0]!
+        .surface,
+    ).toBe("endpoint-srf-2d33");
+    expect(incidentRows([{ id: "i11" }] as EndpointIncident[])[0]!.surface).toBeNull();
+  });
+
   it("falls back through message, reason and classification", () => {
     expect(
       incidentRows([{ id: "i5", classification: "dead" }] as EndpointIncident[])[0]!.reason,

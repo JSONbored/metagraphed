@@ -106,17 +106,13 @@ export function ValidatorsPage() {
     navigate({ search: (prev) => ({ ...prev, ...next }), replace: true });
   };
 
+  // Nothing the strip below states appears here too (#11693). The operator
+  // count, the median take and the median APY were chips AND cells, so the
+  // hero said each of them twice, a line apart, in two type sizes.
   const sentence: FactNodes = [
     <Fact key="keys">{`${formatNumber(validators.length)} hotkeys`}</Fact>,
-    <Fact key="ops">{`run by ${formatNumber(operators.length)} operators`}</Fact>,
     <Fact key="top">
       {topShare === null ? "share unavailable" : `top 10 hold ${formatPct(topShare, 1)}`}
-    </Fact>,
-    <Fact key="take">
-      {medianTake === null ? "take unavailable" : `median take ${formatPct(medianTake, 1)}`}
-    </Fact>,
-    <Fact key="apy">
-      {medianApy === null ? "APY unavailable" : `median APY ${formatPct(medianApy, 1)}`}
     </Fact>,
   ];
 
@@ -249,7 +245,11 @@ export function ValidatorsPage() {
         hero={
           <EntityHero
             name="Validators"
-            sentence={<FactSentence>{sentence}</FactSentence>}
+            sentence={
+              <FactSentence>
+                Every hotkey holding a validator permit, and the operator running it. {sentence}
+              </FactSentence>
+            }
             cells={cells}
             live={{
               updatedAt: listed.meta?.generated_at ?? null,

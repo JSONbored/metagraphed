@@ -27,8 +27,12 @@ describe("#8818 the /accounts figures never fabricate a zero", () => {
   });
 
   it("renders a dash for an unresolved count, not a number", () => {
-    expect(source).toContain('positionCount === null ? "—"');
-    expect(source).toContain('subnetCount === null ? "—"');
+    // #11693 merged the two cells into one "Positions / subnets", so the guard
+    // is now a single expression over both reads -- the PROPERTY is unchanged
+    // and is what this asserts: neither count reaches the strip without having
+    // been tested against null first.
+    expect(source).toMatch(/positionCount === null \|\| subnetCount === null\s*\?\s*"—"/);
+    expect(source).toContain('label: "Positions / subnets"');
   });
 
   it("never coerces a positions field to zero", () => {

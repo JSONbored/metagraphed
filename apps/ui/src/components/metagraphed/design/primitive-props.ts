@@ -275,6 +275,12 @@ export const RANK_PROPS: PropRow[] = [
     ["formatSecondary", "(value: number) => string", false, "The second track; defaults to above."],
     ["scale", '"linear" | "sqrt"', false, 'Default "linear"; "sqrt" for heavy tails.'],
     ["max", "number", false, "Pins the scale; defaults to the largest value."],
+    [
+      "secondaryScale",
+      '"shared" | "own"',
+      false,
+      'Default "shared"; "own" when the two series are not commensurate.',
+    ],
     ["columns", "{ value, name, track, secondary? }", false, "Header labels; omitted = no header."],
     ["limit", "number", false, 'Rows before "Show all"; defaults to 10.'],
     ["ariaLabel", "string", true, "Group name for the rows."],

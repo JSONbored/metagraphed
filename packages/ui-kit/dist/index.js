@@ -3084,6 +3084,7 @@ function RankedRails({
   formatSecondary,
   scale = "linear",
   max,
+  secondaryScale = "shared",
   columns,
   limit = 10,
   ariaLabel,
@@ -3095,6 +3096,7 @@ function RankedRails({
   const cap = max ?? Math.max(0, ...items.map((i) => Math.max(i.value, i.secondary ?? 0)));
   const shown = expanded ? items : items.slice(0, limit);
   const hasSecondary = items.some((i) => i.secondary !== void 0);
+  const secondaryCap = secondaryScale === "own" ? Math.max(0, ...items.map((i) => i.secondary ?? 0)) : cap;
   return /* @__PURE__ */ jsxs(
     "div",
     {
@@ -3122,6 +3124,7 @@ function RankedRails({
                 {
                   item,
                   cap,
+                  secondaryCap,
                   scale,
                   formatValue,
                   formatSecondary: formatSecondary ?? formatValue,
@@ -3153,6 +3156,7 @@ function RankedRails({
 function Rail({
   item,
   cap,
+  secondaryCap,
   scale,
   formatValue,
   formatSecondary,
@@ -3190,7 +3194,7 @@ function Rail({
           "b",
           {
             style: {
-              "--fill": `${railFill(item.secondary ?? 0, cap, scale)}%`
+              "--fill": `${railFill(item.secondary ?? 0, secondaryCap, scale)}%`
             }
           }
         )

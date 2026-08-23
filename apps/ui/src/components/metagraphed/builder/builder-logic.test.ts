@@ -4,7 +4,7 @@ import {
   agentFacts,
   connectSnippets,
   contributeFacts,
-  coverageColumns,
+  coverageMarkers,
   facet,
   filterTools,
   gapRows,
@@ -94,39 +94,43 @@ describe("contributeFacts", () => {
   });
 });
 
-describe("coverageColumns", () => {
+describe("coverageMarkers", () => {
   const dimensions = {
     docs: { pct: 100, present: 129 },
     openapi: { pct: 52, present: 67 },
     community: { pct: 72, present: 93 },
   };
 
-  it("splits each kind into published and missing against the whole set", () => {
-    const columns = coverageColumns(dimensions, 129);
-    expect(columns[0]).toMatchObject({ key: "docs", total: 129 });
-    expect(columns[0]!.segments).toEqual([
-      { key: "present", label: "published", value: 129 },
-      { key: "missing", label: "missing", value: 0 },
+  it("uses the real percentage, largest first, and tags the count", () => {
+    expect(coverageMarkers({ docs: { pct: 100, present: 129 } }, fmt)).toEqual([
+      { key: "docs", label: "docs", value: 100, tag: "129 subnets" },
     ]);
   });
 
-  it("orders most-published first", () => {
-    expect(coverageColumns(dimensions, 129).map((c) => c.key)).toEqual([
+  // `tag` is the field `MarkerRailItem` declares; `detail` -- what this
+  // returned before #11693 -- is not one, so the subnet count was an excess
+  // property TypeScript accepted and the rail never drew.
+  it("carries the count in a field the rail renders", () => {
+    const [first] = coverageMarkers(dimensions, fmt);
+    expect(first).toHaveProperty("tag");
+    expect(first).not.toHaveProperty("detail");
+  });
+
+  it("orders most-covered first", () => {
+    expect(coverageMarkers(dimensions, fmt).map((marker) => marker.key)).toEqual([
       "docs",
       "community",
       "openapi",
     ]);
   });
 
-  it("never renders a negative missing count", () => {
-    // A dimension reporting more present than the total is a bad reading, not
-    // a reason to draw a bar below zero.
-    expect(coverageColumns({ odd: { present: 200 } }, 129)[0]!.segments[1]!.value).toBe(0);
+  it("drops a dimension with no percentage rather than plotting it at zero", () => {
+    expect(coverageMarkers({ mystery: { present: 4 } }, fmt)).toEqual([]);
   });
 
-  it("is empty with no dimensions or no total", () => {
-    expect(coverageColumns(null, 129)).toEqual([]);
-    expect(coverageColumns(dimensions, 0)).toEqual([]);
+  it("is empty for nothing", () => {
+    expect(coverageMarkers(null, fmt)).toEqual([]);
+    expect(coverageMarkers(undefined, fmt)).toEqual([]);
   });
 });
 

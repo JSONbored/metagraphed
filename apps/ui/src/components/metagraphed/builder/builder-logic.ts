@@ -1,3 +1,4 @@
+import type { MarkerRailItem } from "@jsonbored/ui-kit";
 import type { Gap } from "@/lib/metagraphed/types";
 
 /**
@@ -76,54 +77,39 @@ export function gapRows(raw: readonly Gap[] | null | undefined): GapRow[] {
     .sort((a, b) => b.priority - a.priority || b.gapCount - a.gapCount || a.netuid - b.netuid);
 }
 
-export interface Segment {
-  key: string;
-  label: string;
-  value: number;
-}
-
-export interface DomainColumn {
-  key: string;
-  label: string;
-  total: number;
-  segments: Segment[];
-}
-
 /**
- * Each surface kind as complete / partial / missing across the subnet set.
+ * How many subnets publish each kind of surface, as a share of the set.
  *
- * By KIND, not by domain. The issue asked for 17 domain columns, and
- * `/api/v1/coverage`'s `domain_coverage` is a count of subnets per domain, not
- * a completeness reading — an 11-subnet "agents" domain is not 11% complete,
- * it is eleven subnets. `completeness.dimension_coverage` IS a completeness
- * reading, per surface kind, over the whole set: docs 129 of 129, openapi 67.
- * That answers "how complete is each thing a contributor could add", which is
- * the question the section is for.
+ * From /api/v1/coverage's `completeness.dimension_coverage`, a real ratio over
+ * the subnet set. NOT `domain_coverage`, which counts how many subnets are IN
+ * each domain and is not a completeness reading at all -- an 11-subnet
+ * "agents" domain is not 11% covered, it is eleven subnets.
+ *
+ * This used to exist twice. `coverageColumns` here fed a `StackedColumns` on
+ * /contribute and `coverageMarkers` in apis-logic fed a `MarkerRail` on
+ * /apis/schemas -- two functions over one field drawing one answer two ways,
+ * and the stacked one drew eight KINDS along an axis that thins labels like
+ * dates, so six of the eight bars were unlabelled (#11693). One function, one
+ * rail, and /contribute is its home because "what share of subnets publish
+ * each kind" is the contributor's map of what is missing.
  */
-export function coverageColumns(
+export function coverageMarkers(
   dimensions: Record<string, { pct?: number; present?: number }> | null | undefined,
-  total: number,
-): DomainColumn[] {
-  if (!dimensions || total <= 0) return [];
+  fmt: { count: (n: number) => string },
+): MarkerRailItem[] {
+  if (!dimensions) return [];
   return Object.entries(dimensions)
-    .filter(([, value]) => typeof value?.present === "number")
-    .map(([key, value]) => {
-      const present = value.present as number;
-      return {
-        key,
-        label: key,
-        total,
-        segments: [
-          { key: "present", label: "published", value: present },
-          { key: "missing", label: "missing", value: Math.max(0, total - present) },
-        ],
-      };
-    })
-    .sort((a, b) => {
-      const ap = a.segments[0]!.value;
-      const bp = b.segments[0]!.value;
-      return bp - ap || a.key.localeCompare(b.key);
-    });
+    .filter(([, value]) => typeof value?.pct === "number")
+    .map(([key, value]) => ({
+      key,
+      label: key,
+      value: value.pct as number,
+      // `tag`, not `detail`. `MarkerRailItem` has no `detail` field, so the
+      // subnet count this carried was an excess property TypeScript accepted
+      // and the rail never drew. `tag` is the chip the primitive does render.
+      tag: typeof value.present === "number" ? `${fmt.count(value.present)} subnets` : undefined,
+    }))
+    .sort((a, b) => b.value - a.value || a.key.localeCompare(b.key));
 }
 
 export interface Fact {

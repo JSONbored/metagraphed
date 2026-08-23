@@ -9,11 +9,9 @@ import {
   FactSentence,
   FilterField,
   FilterSelect,
-  RankGrid,
+  MarkerRail,
   Raw,
-  StackedColumns,
   type DataTableColumn,
-  type RankGridItem,
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -24,7 +22,7 @@ import { formatNumber } from "@/lib/metagraphed/format";
 import { coverageQuery, gapsQuery } from "@/lib/metagraphed/queries";
 import {
   contributeFacts,
-  coverageColumns,
+  coverageMarkers,
   facet,
   gapRows,
   type GapRow,
@@ -83,16 +81,10 @@ export function GapsPage() {
       }
     | undefined;
   const total = (coverage.data?.data.chain_subnet_count as number | undefined) ?? 0;
-  const columns = useMemo(
-    () => coverageColumns(completeness?.dimension_coverage, total),
-    [completeness, total],
+  const markers = useMemo(
+    () => coverageMarkers(completeness?.dimension_coverage, { count: formatNumber }),
+    [completeness],
   );
-  const legend: RankGridItem[] = columns.map((column, i) => ({
-    key: column.key,
-    rank: i + 1,
-    label: column.key,
-    value: `${formatNumber(column.segments[0]!.value)}/${formatNumber(column.total)}`,
-  }));
 
   const tableColumns: DataTableColumn<GapRow>[] = [
     {
@@ -261,25 +253,24 @@ export function GapsPage() {
       <AnalyticsSection
         id="coverage"
         name="Coverage"
-        question="How many subnets publish each kind of surface."
+        question="What share of subnets publish each kind of surface."
         visual={
-          columns.length > 0 ? (
-            <StackedColumns
-              columns={columns}
-              seriesOrder={["present", "missing"]}
-              formatValue={(value) => formatNumber(value)}
-              ariaLabel="Subnets publishing each surface kind"
-              columnSource="coverage-kind"
+          markers.length > 0 ? (
+            <MarkerRail
+              items={markers}
+              max={100}
+              formatValue={(value) => `${value}%`}
+              columns={{ ratio: "Covered", name: "Surface kind", scale: "Share of subnets" }}
+              ariaLabel="Subnets publishing each kind of surface"
+              source="coverage-dimension"
             />
           ) : null
-        }
-        legend={
-          legend.length > 0 ? <RankGrid items={legend} cols={4} ariaLabel="Surface kinds" /> : null
         }
         // By KIND, not by domain. `domain_coverage` counts subnets per domain
         // and is not a completeness reading at all; `dimension_coverage` is
         // one, per surface kind, over the whole set -- which is the question a
-        // contributor is asking.
+        // contributor is asking. The rail is the only rendering of it now:
+        // /apis/schemas drew the same field on the same day (#11693).
         footnote={`of ${formatNumber(total)} subnets · registry`}
       />
 

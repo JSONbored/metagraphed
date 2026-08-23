@@ -19,29 +19,38 @@ export const fmtAlpha = (value: number | null | undefined): string => formatAmou
 
 export const fmtScore = (value: number | null | undefined): string => formatDecimal(value, 3);
 
-export interface StakeColumn {
+export interface StakeRail {
   key: string;
   label: string;
-  axisLabel: string;
-  total: number;
-  segments: { key: string; label: string; value: number }[];
+  value: number;
+  secondary: number;
+  href: string;
+  detail: { key: string; label: string; value: string }[];
 }
 
 /**
- * Stake by subnet as one column per membership, biggest first.
+ * Stake by subnet as one ranked row per membership, biggest first.
  *
  * NOT a time series. `/validators/{hotkey}/history` publishes network-wide
  * daily totals with `netuid: null` -- there is no per-subnet daily series to
  * stack, and drawing one would mean inventing it. What the data supports is
  * the composition right now, which is the question "where is the stake"
  * actually asks. Momentum below carries the time dimension.
+ *
+ * A RAIL, not stacked columns (#11693). Stacking put stake (2.65M α) and
+ * emission (124 α) in one bar four orders of magnitude apart, so the emission
+ * segment was 0.005% of it and never visible; the axis, built to thin dates,
+ * labelled two of twelve subnets and rotated both; and the section had to
+ * repeat all twelve underneath in a `RankGrid` just to name them. One rail
+ * carries the name, the two tracks and the values in a single reading.
  */
 export function stakeBySubnet(
   subnets: readonly ValidatorDetailSubnet[],
   nameOf: (netuid: number) => string,
+  fmt: (value: number) => string,
   top = 12,
-): StakeColumn[] {
-  const rows = subnets
+): StakeRail[] {
+  return subnets
     .map((subnet) => ({
       netuid: subnet.netuid,
       stake: typeof subnet.stake_alpha === "number" ? subnet.stake_alpha : 0,
@@ -49,18 +58,18 @@ export function stakeBySubnet(
     }))
     .filter((row) => row.stake > 0 || row.emission > 0)
     .sort((a, b) => b.stake - a.stake)
-    .slice(0, top);
-
-  return rows.map((row) => ({
-    key: `sn-${row.netuid}`,
-    label: nameOf(row.netuid),
-    axisLabel: `SN${row.netuid}`,
-    total: row.stake + row.emission,
-    segments: [
-      { key: "stake", label: "Stake", value: row.stake },
-      { key: "emission", label: "Emission", value: row.emission },
-    ],
-  }));
+    .slice(0, top)
+    .map((row) => ({
+      key: `sn-${row.netuid}`,
+      label: nameOf(row.netuid),
+      value: row.stake,
+      secondary: row.emission,
+      href: `/subnets/${row.netuid}`,
+      detail: [
+        { key: "stake", label: "Stake", value: fmt(row.stake) },
+        { key: "emission", label: "Emission", value: fmt(row.emission) },
+      ],
+    }));
 }
 
 /** History points → chronological line points for one measured field. */

@@ -124,6 +124,23 @@ describe("the design sweep covers every route the router serves", () => {
     ).toEqual([]);
   });
 
+  // The inverse of the rule above, which nothing asserted until #11693.
+  // `/explorer` and `/portfolio` are `statusCode: 301` route files and both sat
+  // in ROUTES: Playwright follows the hop, so the design sweep loaded /chain
+  // and /settings twice each and replayed a HAR recorded against the page the
+  // redirect had replaced. `har-coverage` could not catch it either -- a
+  // redirect file declares no API paths, so its declared-but-unrecorded set is
+  // empty and the check passes on a route it never measured.
+  it("sweeps no route that only redirects", () => {
+    const redirects = ROUTES.map((route) => route.split("?")[0]!).filter(isRedirectOnly);
+    expect(
+      redirects,
+      "these swept routes throw a redirect instead of rendering, so the sweep " +
+        "measures their TARGET -- twice, and through the wrong fixture. Sweep " +
+        "the target instead.",
+    ).toEqual([]);
+  });
+
   it("lists no exemption for a route that no longer exists", () => {
     const known = new Set(routerPaths());
     expect(Object.keys(NOT_SWEPT).filter((p) => !known.has(p))).toEqual([]);

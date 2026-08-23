@@ -76,45 +76,67 @@ export function feePoints(days: readonly ChainFeeDay[]): { t: number; v: number 
     .sort((a, b) => a.t - b.t);
 }
 
-export interface FlowColumn {
+export interface FlowRail {
   key: string;
   label: string;
-  axisLabel: string;
-  total: number;
-  segments: { key: string; label: string; value: number }[];
+  value: number;
+  secondary: number;
+  href: string;
+  detail: { key: string; label: string; value: string }[];
 }
 
 /**
  * Stake movement per subnet over the window, busiest first.
  *
- * Both directions on every column: a subnet that only saw exits still shows
- * the bar that says so, and a net-only view would render it as a small
- * negative indistinguishable from a quiet one.
+ * A RANKED RAIL, not stacked columns (#11693). `/chain/stake-flow` publishes a
+ * per-subnet total for the window and no time series, so the columns were
+ * SUBNETS on an axis built to thin DATE labels: fourteen bars, two rotated
+ * "SN25"/"SN4" labels between them, and no legend -- a reader could not name a
+ * single bar. Rails put the name on the row and give both directions their own
+ * track.
+ *
+ * Both directions on every row: a subnet that only saw exits still shows the
+ * track that says so, and a net-only view would render it as a small negative
+ * indistinguishable from a quiet one.
  */
-export function flowColumns(
+export function flowRails(
   subnets: readonly ChainStakeFlowSubnet[],
   nameOf: (netuid: number) => string,
+  fmt: (value: number) => string,
   top = 12,
-): FlowColumn[] {
-  return subnets
-    .map((subnet) => {
-      const staked = typeof subnet.total_staked_tao === "number" ? subnet.total_staked_tao : 0;
-      const unstaked =
-        typeof subnet.total_unstaked_tao === "number" ? subnet.total_unstaked_tao : 0;
-      return {
-        key: `sn-${subnet.netuid}`,
-        label: nameOf(subnet.netuid),
-        axisLabel: `SN${subnet.netuid}`,
-        total: staked + unstaked,
-        segments: [
-          { key: "staked", label: "Staked in", value: staked },
-          { key: "unstaked", label: "Unstaked out", value: unstaked },
-        ],
-      };
-    })
-    .filter((column) => column.total > 0)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, top);
+): FlowRail[] {
+  return (
+    subnets
+      .map((subnet) => {
+        const staked = typeof subnet.total_staked_tao === "number" ? subnet.total_staked_tao : 0;
+        const unstaked =
+          typeof subnet.total_unstaked_tao === "number" ? subnet.total_unstaked_tao : 0;
+        return {
+          key: `sn-${subnet.netuid}`,
+          label: nameOf(subnet.netuid),
+          value: staked,
+          secondary: unstaked,
+          href: `/subnets/${subnet.netuid}`,
+          total: staked + unstaked,
+          detail: [
+            { key: "in", label: "Staked in", value: fmt(staked) },
+            { key: "out", label: "Unstaked out", value: fmt(unstaked) },
+            { key: "net", label: "Net", value: fmt(staked - unstaked) },
+          ],
+        };
+      })
+      .filter((rail) => rail.total > 0)
+      // GROSS decides which subnets make the cut -- a subnet that only saw exits
+      // belongs in a section called "where stake moved" -- and the LEADING VALUE
+      // decides the order among them. A ranked rail whose first column is not
+      // monotonic reads as broken: ranked by gross, the inflow column ran
+      // 18,988 / 18,651 / 17,186 / 17,836 and a reader cannot tell a deliberate
+      // ordering from a bug (#11693).
+      .sort((a, b) => b.total - a.total)
+      .slice(0, top)
+      .sort((a, b) => b.value - a.value || b.secondary - a.secondary)
+      .map(({ total: _total, ...rail }) => rail)
+  );
 }
 
 export interface GovernanceRow {

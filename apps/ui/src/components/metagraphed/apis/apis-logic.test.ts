@@ -3,7 +3,6 @@ import type { SchemaInfo, Surface } from "@/lib/metagraphed/types";
 import {
   apisNav,
   catalogFacts,
-  coverageMarkers,
   driftRails,
   facet,
   kindSegments,
@@ -207,26 +206,6 @@ describe("shortHash", () => {
   it("is an em-dash for nothing", () => {
     expect(shortHash(null)).toBe("—");
     expect(shortHash(undefined)).toBe("—");
-  });
-});
-
-describe("coverageMarkers", () => {
-  it("uses the real percentage, largest first, and carries the count", () => {
-    expect(
-      coverageMarkers({ docs: { pct: 100, present: 129 }, openapi: { pct: 52, present: 67 } }, fmt),
-    ).toEqual([
-      { key: "docs", label: "docs", value: 100, detail: "129 subnets" },
-      { key: "openapi", label: "openapi", value: 52, detail: "67 subnets" },
-    ]);
-  });
-
-  it("drops a dimension with no percentage rather than plotting it at zero", () => {
-    expect(coverageMarkers({ mystery: { present: 4 } }, fmt)).toEqual([]);
-  });
-
-  it("is empty for nothing", () => {
-    expect(coverageMarkers(null, fmt)).toEqual([]);
-    expect(coverageMarkers(undefined, fmt)).toEqual([]);
   });
 });
 

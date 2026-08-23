@@ -16,7 +16,6 @@ import {
   RangeControl,
   RankedRails,
   Raw,
-  StackedColumns,
   type DataTableColumn,
   type FactCells,
   type FactNodes,
@@ -28,7 +27,7 @@ import {
   CHAIN_WINDOWS,
   callSegments,
   feePoints,
-  flowColumns,
+  flowRails,
   fmtCount,
   fmtShare,
   fmtTao,
@@ -114,7 +113,9 @@ export function ExplorerPage() {
   const latest = lastCompleteDay(days);
   const segments = callSegments(calls.data?.data.calls ?? []);
   const points = feePoints(fees.data?.data.daily ?? []);
-  const columns = flowColumns(flow.data?.data.subnets ?? [], nameOf);
+  const flowRailItems = flowRails(flow.data?.data.subnets ?? [], nameOf, (value) =>
+    fmtTao(value, 0),
+  );
   const summary = blocks.data?.data;
   const stake = concentration.data?.data.stake;
 
@@ -139,15 +140,10 @@ export function ExplorerPage() {
     navigate({ search: (prev) => ({ ...prev, window: next }), replace: true });
   };
 
+  // The head block and the block time were chips AND cells -- and at two
+  // different precisions, "12s blocks" above "Block time p50 12.0s", which
+  // reads as two measurements of one thing (#11693). The strip keeps them.
   const sentence: FactNodes = [
-    <Fact key="head">
-      {summary?.last_block ? `head #${formatNumber(summary.last_block)}` : "head —"}
-    </Fact>,
-    <Fact key="time">
-      {summary?.block_time?.p50_ms
-        ? `${formatDecimal(summary.block_time.p50_ms / 1000, 0)}s blocks`
-        : "—"}
-    </Fact>,
     <Fact key="per">
       {summary?.throughput?.mean_extrinsics_per_block
         ? `${formatDecimal(summary.throughput.mean_extrinsics_per_block, 1)} extrinsics/block`
@@ -257,7 +253,11 @@ export function ExplorerPage() {
         hero={
           <EntityHero
             name="Chain"
-            sentence={<FactSentence>{sentence}</FactSentence>}
+            sentence={
+              <FactSentence>
+                What the chain is doing right now, and what it charged for it. {sentence}
+              </FactSentence>
+            }
             cells={cells}
             live={{
               updatedAt: activity.data.observed_at ?? null,
@@ -347,17 +347,25 @@ export function ExplorerPage() {
           name="Stake flow"
           question="Where stake moved."
           visual={
-            columns.length > 0 ? (
-              <StackedColumns
-                columns={columns}
-                seriesOrder={["staked", "unstaked"]}
+            flowRailItems.length > 0 ? (
+              <RankedRails
+                items={flowRailItems}
                 formatValue={(value) => fmtTao(value, 0)}
+                formatSecondary={(value) => fmtTao(value, 0)}
+                scale="sqrt"
+                columns={{
+                  value: "Staked in",
+                  name: "Subnet",
+                  track: "Against the largest inflow",
+                  secondary: "Unstaked out",
+                }}
+                limit={12}
                 ariaLabel="Stake moved per subnet"
-                columnSource="chain-flow"
+                source="chain-flow"
               />
             ) : null
           }
-          footnote={`${window} · net ${fmtTao(
+          footnote={`${window} · the 12 busiest, ordered by inflow · net ${fmtTao(
             flow.data?.data.network?.net_flow_tao,
             0,
           )} across ${formatNumber(flow.data?.data.subnet_count ?? 0)} subnets · chain-direct`}
