@@ -4,7 +4,7 @@ import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { extrinsicQuery } from "@/lib/metagraphed/queries";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall, isValidExtrinsicHash } from "@/lib/metagraphed/extrinsics";
-import { ExtrinsicDetailPage } from "./-extrinsics-hash-page";
+import { ExtrinsicDetailPage } from "./-extrinsic-detail-page";
 import {
   entityNotFoundMeta,
   isMissingEntityError,

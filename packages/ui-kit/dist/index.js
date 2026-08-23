@@ -3767,6 +3767,8 @@ function LineWithWindow({
   keyOf,
   source = "line",
   compact = false,
+  marker,
+  markerLabel,
   className
 }) {
   const placed = useMemo(() => placePoints(points), [points]);
@@ -3776,6 +3778,7 @@ function LineWithWindow({
   const keyFor = keyOf ?? ((p) => `${source}:${p.t}`);
   const { active } = useActiveEntity();
   const activePoint = active ? placed.find((p) => keyFor(p) === active.key) : void 0;
+  const markerPoint = typeof marker === "number" ? placed.find((p) => p.t === marker) : void 0;
   const first = placed[0];
   const wStart = inside[0];
   const wEnd = inside[inside.length - 1];
@@ -3826,6 +3829,16 @@ function LineWithWindow({
                   children: [
                     /* @__PURE__ */ jsx("path", { className: "mg-line-muted", d: smoothPath(placed) }),
                     /* @__PURE__ */ jsx("path", { className: "mg-line-active", d: smoothPath(inside) }),
+                    markerPoint ? /* @__PURE__ */ jsx(
+                      "line",
+                      {
+                        className: "mg-line-subject",
+                        x1: markerPoint.x,
+                        x2: markerPoint.x,
+                        y1: 0,
+                        y2: LINE_VIEWBOX.height
+                      }
+                    ) : null,
                     activePoint ? /* @__PURE__ */ jsx(
                       "line",
                       {
@@ -3858,6 +3871,18 @@ function LineWithWindow({
                   style: {
                     "--mg-line-x": pct(activePoint.x, LINE_VIEWBOX.width),
                     "--mg-line-y": pct(activePoint.y, LINE_VIEWBOX.height)
+                  }
+                }
+              ) : null,
+              markerPoint && markerLabel ? /* @__PURE__ */ jsx(
+                "i",
+                {
+                  className: "mg-line-marker mg-line-marker-subject",
+                  "aria-label": markerLabel,
+                  role: "img",
+                  style: {
+                    "--mg-line-x": pct(markerPoint.x, LINE_VIEWBOX.width),
+                    "--mg-line-y": pct(markerPoint.y, LINE_VIEWBOX.height)
                   }
                 }
               ) : null,

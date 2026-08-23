@@ -6,11 +6,18 @@ import { gotoThroughRestart } from "./server-restart.ts";
 
 // #6426: extrinsics.$hash.tsx's "Related Multisig calls" section had no isError
 // branch. A failed relatedQuery fetch left `data` undefined, so relatedCalls
-// became [] and the section rendered the SAME "No other extrinsics reference
-// this call_hash yet." copy as a genuine zero-row result -- a reader could not
-// tell "no siblings" from "we couldn't find out". The fix adds an isError
-// branch rendering TableState variant="error"; these tests pin both directions
-// and the first fails on the pre-fix code, which is the point.
+// became [] and the section rendered the SAME "no siblings" copy as a genuine
+// zero-row result -- a reader could not tell "there are none" from "we could
+// not find out". These tests pin both directions and the first fails on the
+// pre-fix code, which is the point.
+//
+// #11621 rebuilt the page as three sections and folded this one into the
+// third: a Multisig call carrying a call_hash asks "what else references this
+// call", and anything else asks "what else has this signer been doing". Same
+// question, same lookup, same id -- and the error/empty distinction is now
+// structural rather than hand-written, because `DataTable` takes `error` and
+// `empty` as separate slots. The copy moved with it, so the strings below did
+// too; what is being pinned is unchanged.
 //
 // Deterministic by design, mirroring evidence-deep-link.spec.ts: every
 // api.metagraph.sh request is fulfilled locally (no live chain data), so a
@@ -73,7 +80,7 @@ async function openExtrinsic(
   await gotoThroughRestart(page, ROUTE);
   // The client retries a failed query 3x with backoff (router.tsx), so give the
   // error state time to settle rather than asserting on a mid-retry skeleton.
-  const section = page.locator("section#multisig-chain");
+  const section = page.locator("#multisig-chain");
   await expect(section).toBeVisible({ timeout: RENDER_TIMEOUT_MS });
 }
 
@@ -87,15 +94,17 @@ test.describe("#6426 Related Multisig calls error state", () => {
       }),
     );
 
-    const section = page.locator("section#multisig-chain");
+    const section = page.locator("#multisig-chain");
     // The client retries a failed query 3x with backoff before isError flips
     // (router.tsx), so allow well past that window rather than the 5s default.
-    await expect(section.getByText("Couldn't load related Multisig calls")).toBeVisible({
+    await expect(
+      section.getByText("Couldn't look up the calls referencing this hash."),
+    ).toBeVisible({
       timeout: RENDER_TIMEOUT_MS,
     });
     // The whole point: a fetch failure must NOT read as "no related calls".
     await expect(
-      section.getByText("No other extrinsics reference this call_hash yet."),
+      section.getByText("No other extrinsics reference this call hash yet."),
     ).toHaveCount(0);
   });
 
@@ -108,10 +117,12 @@ test.describe("#6426 Related Multisig calls error state", () => {
       }),
     );
 
-    const section = page.locator("section#multisig-chain");
+    const section = page.locator("#multisig-chain");
     await expect(
-      section.getByText("No other extrinsics reference this call_hash yet."),
+      section.getByText("No other extrinsics reference this call hash yet."),
     ).toBeVisible({ timeout: RENDER_TIMEOUT_MS });
-    await expect(section.getByText("Couldn't load related Multisig calls")).toHaveCount(0);
+    await expect(
+      section.getByText("Couldn't look up the calls referencing this hash."),
+    ).toHaveCount(0);
   });
 });

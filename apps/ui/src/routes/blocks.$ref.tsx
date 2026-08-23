@@ -3,7 +3,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { blockQuery } from "@/lib/metagraphed/queries";
 import { isValidBlockRef } from "@/lib/metagraphed/blocks";
-import { BlockDetailPage } from "./-blocks-ref-page";
+import { BlockDetailPage } from "./-block-detail-page";
 import {
   entityNotFoundMeta,
   isMissingEntityError,

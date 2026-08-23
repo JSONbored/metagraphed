@@ -27,6 +27,14 @@ export const ROUTES = [
   // validators table header) -- a real hash/no-param route each so the
   // fixed elements actually render, not an empty/not-found fallback.
   "/extrinsics/0x986f1f7da3d93882e8c19bbe3b303ef8ba5454062272446598d17aa599ca4428",
+  // #11621: the block detail page, the last chain template outside the sweep.
+  // A fixed, historical block rather than the head: a fixture recorded against
+  // whatever block was current would be a different page on every re-record,
+  // and the row counts that stress the layout would change with it. 8,713,384
+  // is the block the swept extrinsic above was included in, so the two
+  // fixtures describe the same moment of the chain and the block page's
+  // contents table lists a call the extrinsic page also renders.
+  "/blocks/8713384",
   "/apis/schemas",
   "/validators",
   // #11617: the validator detail page, the last entity template in the sweep.
