@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { z } from "zod";
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
+import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { economicsQuery, subnetProfileQuery } from "@/lib/metagraphed/queries";
@@ -28,7 +28,7 @@ import { API_BASE } from "@/lib/metagraphed/config";
  * on the next parse, and a link that carries one is silently rewritten.
  */
 export const subnetSearchSchema = z.object({
-  window: z.enum(["7d", "30d", "90d"]).catch("30d").default("30d"),
+  window: z.enum(TRAILING_WINDOWS).catch("30d").default("30d"),
 });
 
 export type SearchParams = z.infer<typeof subnetSearchSchema>;

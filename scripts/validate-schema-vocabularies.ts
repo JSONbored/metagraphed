@@ -75,10 +75,23 @@ const COINCIDENT_BY_DOMAIN: Record<string, string[]> = {
     "schemas-src/routes/subnet-turnover.ts",
   ],
   "30d|7d|90d": [
-    // The UI's two deliberate literals, each with its reason in-file: the
-    // subnet page's control drives several routes at once, and the APY
-    // basis's overlap with route windows is coincidence, not lineage (#10994).
-    "apps/ui/src/lib/metagraphed/subnet-window-helpers.ts",
+    // The UI's two deliberate literals, each with its reason in-file.
+    //
+    // url-state.ts is the OWNER, not a coincidence: #11612 replaced the two
+    // route-level copies of this set (the subnet dossier and the subnets hub)
+    // with one exported `TRAILING_WINDOWS` that both import, which is exactly
+    // what this gate asks for. It is pinned here because the gate cannot tell
+    // an owner apart from a stray by shape -- the entry replaces
+    // `subnet-window-helpers.ts`, which held this set until #11612 deleted
+    // it, so the list does not grow.
+    //
+    // Note for anyone editing this comment: the scanner reads raw source, so
+    // writing the set out as an array literal here -- even inside a comment --
+    // makes THIS file a declaration site and fails the gate.
+    //
+    // The APY basis's overlap with route windows is coincidence, not lineage
+    // (#10994) -- it keeps its own literal deliberately.
+    "apps/ui/src/lib/metagraphed/url-state.ts",
     "apps/ui/src/routes/-validators-hotkey-page.tsx",
     "schemas-src/routes/account-activity-registrations.ts",
     "schemas-src/routes/account-activity.ts",
