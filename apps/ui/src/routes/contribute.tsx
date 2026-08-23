@@ -3,34 +3,20 @@ import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { GapsPage } from "./-gaps-page";
 
-export const STATUS_OPTIONS = ["all", "open", "in-review", "resolved", "wont-fix"] as const;
-export const TARGET_OPTIONS = [
-  "all",
-  "native",
-  "candidate-discovered",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-] as const;
-export const MISSING_KINDS = [
-  "docs",
-  "repo",
-  "openapi",
-  "endpoint",
-  "dashboard",
-  "data",
-  "sdk",
-  "example",
-  "rpc",
-] as const;
-export const SORT_OPTIONS = ["priority", "netuid", "updated"] as const;
-
+/**
+ * #11626 cut this from five params to three.
+ *
+ * `status` and `target` filtered an enrichment queue and an attribution
+ * funnel that this PR deletes -- neither maps to anything /api/v1/gaps
+ * publishes. `sort` was the page's own ordering over the registry's
+ * `gap_priority`, which is the curation lane's answer to "what next" and is
+ * used as given now: a page that re-ranked gaps would send contributors
+ * somewhere the lane did not ask them to go.
+ */
 const searchSchema = z.object({
-  status: z.enum(STATUS_OPTIONS).catch("all").default("all"),
-  target: z.enum(TARGET_OPTIONS).catch("all").default("all"),
-  missing: z.string().catch("").default(""), // comma-separated
   q: z.string().catch("").default(""),
-  sort: z.enum(SORT_OPTIONS).catch("priority").default("priority"),
+  missing: z.string().catch("").default(""),
+  severity: z.string().catch("").default(""),
 });
 
 export type ContributeSearch = z.infer<typeof searchSchema>;
