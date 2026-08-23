@@ -465,6 +465,22 @@
     line-height: 1.45;
     color: var(--ink-muted);
   }
+  .mg-section-more {
+    font: inherit;
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--rule-strong);
+    cursor: pointer;
+    transition: text-decoration-color var(--mg-motion);
+  }
+  .mg-section-more:hover {
+    text-decoration-color: var(--ink);
+  }
+  .mg-section-more:focus-visible {
+    outline: 1px solid var(--focus);
+    outline-offset: 2px;
+  }
   @media (max-width: 767px) {
     .mg-section-head {
       flex-direction: column;
@@ -743,6 +759,36 @@
   .mg-hero-action:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
+  }
+  .mg-hero-icon-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink-muted);
+    font: inherit;
+    font-size: 13px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color var(--mg-motion), color var(--mg-motion);
+  }
+  .mg-hero-icon-action:hover {
+    border-color: var(--rule-strong);
+    color: var(--ink);
+  }
+  .mg-hero-icon-action:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  @media (pointer: coarse) {
+    .mg-hero-icon-action,
+    .mg-hero-action {
+      min-height: 44px;
+    }
   }
   @media (max-width: 639px) {
     .mg-hero-title h1 {
@@ -1108,7 +1154,7 @@
   }
   .mg-marker-rail .mg-rails-head,
   .mg-marker-rail .mg-rails-row {
-    grid-template-columns: 56px 180px minmax(0, 1fr);
+    grid-template-columns: 56px 280px minmax(0, 1fr);
   }
   .mg-rails-head {
     height: 24px;

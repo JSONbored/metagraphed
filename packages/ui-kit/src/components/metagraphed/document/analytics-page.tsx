@@ -25,6 +25,17 @@ export interface AnalyticsPageProps {
   hero?: ReactNode;
   /** `AnalyticsSection` elements. */
   children: ReactNode;
+  /**
+   * The nav, stated rather than inferred.
+   *
+   * `sectionItems` can only see an `AnalyticsSection` that is a DIRECT child.
+   * A route whose sections are components -- each owning its own queries, as
+   * every non-trivial one is -- has children of its own types, so inference
+   * silently finds nothing and the page renders with no nav at all. Passing
+   * the list is how such a page declares what it contains; the `MAX_SECTIONS`
+   * ceiling applies to it exactly as it does to the inferred list.
+   */
+  sections?: readonly SectionNavItem[];
   className?: string;
 }
 
@@ -46,9 +57,10 @@ export function sectionItems(children: ReactNode): SectionNavItem[] {
 export function AnalyticsPage({
   hero,
   children,
+  sections,
   className,
 }: AnalyticsPageProps) {
-  const items = sectionItems(children);
+  const items = sections ? [...sections] : sectionItems(children);
   if (items.length > MAX_SECTIONS && process.env.NODE_ENV !== "production") {
     throw new Error(
       `AnalyticsPage: ${items.length} sections; a page answers at most ${MAX_SECTIONS} questions (#11607)`,

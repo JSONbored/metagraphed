@@ -47,14 +47,13 @@ interface MatrixRow {
   cells: Record<Kind, Cell>;
 }
 
-/** One kind's verdict, as a link into that subnet's surfaces tab. */
+/** One kind's verdict, as a link to that subnet. */
 function CellLink({ row, kind }: { row: MatrixRow; kind: Kind }) {
   const tone = CELL_TONE[row.cells[kind]];
   return (
     <Link
       to="/subnets/$netuid"
       params={{ netuid: row.netuid }}
-      search={{ tab: "surfaces" }}
       className={classNames(
         "block h-6 w-full rounded transition-all hover:ring-2",
         tone.bg,

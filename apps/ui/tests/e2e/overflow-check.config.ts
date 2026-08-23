@@ -11,6 +11,11 @@ export const ROUTES = [
   // harPathForRoute, so a route being listed here is what makes one exist.
   "/subnets",
   "/subnets/1",
+  // #11612: a SECOND subnet detail page, because the rebuilt route renders
+  // from data that differs per subnet in ways that change its layout -- SN19
+  // has 37 surfaces and no registry domain, SN1 has few surfaces and sits in
+  // a domain. One netuid cannot sweep both shapes.
+  "/subnets/19",
   // #11611: the comparison is a route now, so it is swept like any other.
   "/compare?subnets=1,19",
   "/endpoints",
