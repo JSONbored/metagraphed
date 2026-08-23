@@ -20,6 +20,7 @@ import {
   CHAIN_METRICS,
   chainPoints,
   emissionRails,
+  fmtAlpha,
   fmtCount,
   fmtShare,
   healthRail,
@@ -225,7 +226,7 @@ export function OverviewPage() {
             rails.length > 0 ? (
               <RankedRails
                 items={rails}
-                formatValue={(value) => `${fmtCount(value)} α`}
+                formatValue={(value) => fmtAlpha(value)}
                 scale="sqrt"
                 columns={{ value: "Emission", name: "Subnet", track: "Share of the top 15" }}
                 ariaLabel={`Subnets by emission over ${emissionWindow}`}

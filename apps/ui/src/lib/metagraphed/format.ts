@@ -308,6 +308,14 @@ export function formatCompact(n: number | null | undefined, fallback = "—"): s
   const magnitude = Math.abs(n);
   if (magnitude >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (magnitude >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  // A non-integer below a thousand is capped at two decimals rather than
+  // handed to `formatNumber`, which keeps four (#11681). That fall-through put
+  // "295.2016" in a column whose other rows read "5.9k" and "1.2k" -- three
+  // precisions in one column, from the formatter whose entire job is to be
+  // compact. A whole number still renders bare, because a COUNT of 812 is
+  // "812" and not "812.00"; that is the only thing this differs from
+  // {@link formatCompactAmount} in, and the reason both exist.
+  if (magnitude >= 1 && !Number.isInteger(n)) return n.toFixed(2);
   return formatNumber(n, fallback);
 }
 

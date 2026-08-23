@@ -3,7 +3,7 @@
  */
 import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import type { ChainActivityDay, SubnetEconomics, SubnetMover } from "@/lib/metagraphed/types";
-import { formatCompact, formatDecimal, formatPct } from "@/lib/metagraphed/format";
+import { formatCompact, formatAmount, formatDecimal, formatPct } from "@/lib/metagraphed/format";
 
 export type EmissionWindow = "7d" | "30d" | "90d";
 export type ChainMetric = "extrinsics" | "events" | "blocks";
@@ -14,7 +14,22 @@ export const CHAIN_METRICS = [
   { value: "blocks", label: "Blocks" },
 ] as const;
 
+/**
+ * A COUNT: blocks, extrinsics, events. Whole numbers, so an integer under a
+ * thousand renders bare ("812", never "812.00").
+ */
 export const fmtCount = (value: number | null | undefined): string => formatCompact(value);
+
+/**
+ * An AMOUNT of alpha, which is continuous rather than counted.
+ *
+ * Separate from `fmtCount` because the two want different sub-thousand
+ * behaviour, and the emission rail used the count formatter until #11681: a
+ * subnet emitting 295.2016 α rendered every one of those four decimals, in a
+ * column whose other rows read "5.9k α" and "1.2k α". Three precisions in one
+ * column, and the long one wrapped onto a second line.
+ */
+export const fmtAlpha = (value: number | null | undefined): string => formatAmount(value, "α");
 
 export const fmtShare = (fraction: number | null | undefined, places = 2): string =>
   formatPct(fraction, places);
