@@ -9564,6 +9564,30 @@ export const chainEventsInfiniteQuery = (baseParams: QueryParams = {}, initialCu
     staleTime: STALE_SHORT,
   });
 
+/**
+ * Cursor-paginated first-party events for ONE account, newest first.
+ *
+ * The account page reads its whole activity stream through this rather than
+ * the bounded `accountEventsQuery`: the three tabs it replaced (Transfers,
+ * Activity, Extrinsics) were filtered views of this one feed, and a reader
+ * who scrolls past the first page should not hit a wall (#11614).
+ */
+export const accountEventsInfiniteQuery = (ss58: string, baseParams: QueryParams = {}) =>
+  infiniteQueryOptions({
+    queryKey: k("account-events-infinite", ss58, baseParams),
+    initialPageParam: "",
+    queryFn: async ({ pageParam, signal }) =>
+      fetchInfinitePage<AccountEvent>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/events`,
+        "events",
+        baseParams,
+        pageParam,
+        signal,
+      ),
+    getNextPageParam,
+    staleTime: STALE_SHORT,
+  });
+
 /** Alias for {@link chainEventsInfiniteQuery} — raw /api/v1/chain-events paginator. */
 export const chainEventsQuery = chainEventsInfiniteQuery;
 
