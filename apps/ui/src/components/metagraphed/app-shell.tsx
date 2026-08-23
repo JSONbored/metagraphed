@@ -351,13 +351,16 @@ function SiteFooter() {
           <FooterLink to="/status">Status</FooterLink>
           <FooterLink to="/contribute">Contribute</FooterLink>
         </FooterCol>
+        {/* Governance and Runtime were links here until #11619 retired those
+            routes into sections of /chain. The four that remain are the three
+            record lists plus the page that now holds the rest — a footer link
+            to a 301 would have sent the reader (and a crawler) through a hop to
+            reach a heading on a page this column already links. */}
         <FooterCol title="Chain">
           <FooterLink to="/chain">Overview</FooterLink>
           <FooterLink to="/chain/blocks">Blocks</FooterLink>
           <FooterLink to="/chain/extrinsics">Extrinsics</FooterLink>
           <FooterLink to="/chain/events">Events</FooterLink>
-          <FooterLink to="/chain/governance">Governance</FooterLink>
-          <FooterLink to="/chain/runtime">Runtime</FooterLink>
         </FooterCol>
         <FooterCol title="APIs">
           <FooterLink to="/apis">Catalog</FooterLink>

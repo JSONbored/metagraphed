@@ -37,7 +37,7 @@ export interface DigestItem {
   ts: number;
   tone: "default" | "accent" | "warn" | "down";
   /** In-app deep link. Absent when the event has no page of its own. */
-  href?: { to: string; params?: Record<string, string> };
+  href?: { to: string; params?: Record<string, string>; hash?: string };
 }
 
 export interface DigestDay {
@@ -132,7 +132,11 @@ export function buildDigestItems(sources: DigestSources, cutoffMs: number): Dige
       at: t.observed_at,
       ts,
       tone: "accent",
-      href: { to: "/chain/runtime" },
+      // #11619 retired /chain/runtime into the governance section of /chain,
+      // where the upgrade sits in one feed with the sudo calls and config
+      // changes it belongs beside. Deep-linked at the section rather than the
+      // old URL so the item does not cost the reader a 301 to open.
+      href: { to: "/chain", hash: "governance" },
     });
   }
 

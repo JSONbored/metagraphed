@@ -40,9 +40,6 @@ export const ROUTES = [
   "/chain/blocks",
   "/chain/events",
   "/chain/extrinsics",
-  "/chain/analytics",
-  "/chain/governance",
-  "/chain/runtime",
   // #8539: extend the matrix to the account, portfolio, provider and
   // APIs-index routes. A measurement change, not a fix. /accounts/$ss58 uses
   // a real, stable top-stake account so the detail page renders real content
@@ -108,7 +105,4 @@ export const EMPTY_LIST_ALLOWED = new Set([
   "/chain/extrinsics@375",
   "/chain/extrinsics@768",
   "/chain/extrinsics@1024",
-  "/chain/governance@375",
-  "/chain/governance@768",
-  "/chain/governance@1024",
 ]);

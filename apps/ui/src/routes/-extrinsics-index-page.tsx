@@ -3,10 +3,13 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { SelectFilter } from "@/components/metagraphed/table-controls";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
+  EntityHero,
+  FactSentence,
   CopyableCode,
   DataTable,
   LineWithWindow,
@@ -35,9 +38,32 @@ function extrinsicsQueryParams(search: ExtrinsicsSearch): Record<string, string 
   return queryParams;
 }
 
+/**
+ * The chain-hub layout used to supply this page's shell: `AppShell`, the
+ * `EntityHero` and the nine-tab strip all rendered once in chain.tsx, and
+ * every stream page returned a bare fragment into its `<Outlet />`. #11619
+ * emptied that layout -- four of the tabs are sections of /chain now, and a
+ * tab strip whose tabs are anchors on the page below it is two navigations
+ * for one destination -- so each remaining stream page owns its own shell.
+ *
+ * Self-contained rather than a smaller shared layout on purpose: three pages
+ * is not enough shape to name a layer, and a layout that exists only to hold
+ * a heading is the thing that just came out. The crumb back to /chain is the
+ * whole of what the tab strip was actually load-bearing for.
+ */
 export function ExtrinsicsPage() {
   return (
-    <>
+    <AppShell>
+      <EntityHero
+        crumbs={[{ label: "Chain", href: "/chain" }]}
+        name="Extrinsics"
+        sentence={
+          <FactSentence>
+            Recent transactions indexed directly from the chain — newest first, with call, signer
+            and result.
+          </FactSentence>
+        }
+      />
       <AsyncPanel
         context="fees trend"
         fallback={<Skeleton className="mb-6 h-24 w-full" />}
@@ -52,7 +78,7 @@ export function ExtrinsicsPage() {
         paths={["/api/v1/extrinsics", "/api/v1/chain/fees"]}
         artifacts={["/metagraph/extrinsics.json"]}
       />
-    </>
+    </AppShell>
   );
 }
 

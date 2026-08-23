@@ -86,8 +86,8 @@ export function resolveRouteFile(route: string, index: Map<string, string>): str
  * The `<ApiSourceFooter paths={[...]}>` entries reachable from one route file.
  *
  * Follows local `./-name` imports because the convention splits them:
- * `chain.analytics.tsx` is the route and `-chain-analytics-page.tsx` renders
- * the footer. One hop is not enough (`-chain-hub.tsx` sits between some), so
+ * `chain.index.tsx` is the route and `-explorer-page.tsx` renders the footer.
+ * One hop is not always enough — a page module may import a second one — so
  * this walks transitively with a visited set.
  */
 export function declaredApiPaths(

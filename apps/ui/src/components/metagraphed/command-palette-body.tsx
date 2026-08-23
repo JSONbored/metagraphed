@@ -26,7 +26,6 @@ import {
   GitBranch,
   Hash,
   History,
-  KeyRound,
   Layers,
   Loader2,
   Network,
@@ -34,7 +33,6 @@ import {
   RotateCcw,
   Rss,
   Search,
-  SlidersHorizontal,
   Sparkles,
   Star,
   User,
@@ -187,6 +185,18 @@ const STATIC_ROUTES_TAIL: RouteEntry[] = [
   },
   { label: "About", to: "/about", hint: "Methodology & scope", icon: Compass, scope: "route" },
   {
+    label: "Chain",
+    // #11619: one entry where Sudo, Admin changes and Runtime used to be three.
+    // All three pointed at tabs that are sections of /chain now, and a palette
+    // that navigated to a redirect would have cost the reader a hop for each.
+    // The hub itself had never been listed here, so this also stops the palette
+    // being the one place on the site with no way to reach it.
+    to: "/chain",
+    hint: "Throughput, fees, emission, governance & runtime",
+    icon: GitBranch,
+    scope: "route",
+  },
+  {
     label: "Blocks",
     to: "/chain/blocks",
     hint: "Chain block explorer",
@@ -212,27 +222,6 @@ const STATIC_ROUTES_TAIL: RouteEntry[] = [
     to: "/accounts",
     hint: "Hotkey & coldkey activity",
     icon: User,
-    scope: "route",
-  },
-  {
-    label: "Sudo",
-    to: "/chain/governance",
-    hint: "Root-origin calls + current key",
-    icon: KeyRound,
-    scope: "route",
-  },
-  {
-    label: "Admin changes",
-    to: "/chain/governance",
-    hint: "AdminUtils config-change feed",
-    icon: SlidersHorizontal,
-    scope: "route",
-  },
-  {
-    label: "Runtime",
-    to: "/chain/runtime",
-    hint: "Spec-version upgrade history",
-    icon: GitBranch,
     scope: "route",
   },
   {

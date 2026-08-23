@@ -111,8 +111,10 @@ const SITEMAP_STATIC_PATHS = [
   "/chain/blocks",
   "/chain/extrinsics",
   "/chain/events",
-  "/chain/governance",
-  "/chain/runtime",
+  // #11619 dropped /chain/governance and /chain/runtime: both are sections of
+  // /chain now and answer 301. A sitemap must only ask a crawler to index a URL
+  // that answers 200 — listing a redirect refills the "Page with redirect"
+  // bucket #11204 emptied and spends the budget getting there.
   "/health",
   "/status",
   "/apis/schemas",
@@ -600,8 +602,8 @@ export function buildJsonLd(pathname: string): string {
  * This covers every real section so a shared link says what it is.
  *
  * A retired route gets no entry: #11613 folded /leaderboards, /revenue,
- * /domains and the two subnet facets into /subnets, and a 301 has nothing to
- * unfurl.
+ * /domains and the two subnet facets into /subnets, and #11619 folded the four
+ * /chain tabs into /chain. A 301 has nothing to unfurl.
  *
  * `eyebrow` renders as the pill beside the wordmark, matching the entity
  * cards' treatment. Home is deliberately absent: its card is the brand
@@ -689,16 +691,6 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
     subtitle: "Live Bittensor base-layer activity, blocks and economics",
     eyebrow: "Explorer",
   },
-  "/chain/analytics": {
-    title: "Chain analytics",
-    subtitle: "Stake flow, concentration and emission trends across the network",
-    eyebrow: "Explorer",
-  },
-  "/chain/emissions": {
-    title: "Emissions",
-    subtitle: "Where each block's TAO goes, decomposed per subnet",
-    eyebrow: "Explorer",
-  },
   "/chain/blocks": {
     title: "Blocks",
     subtitle: "Recent Bittensor blocks, extrinsics and events",
@@ -712,16 +704,6 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
   "/chain/extrinsics": {
     title: "Extrinsics",
     subtitle: "Signed extrinsics, fees and call data",
-    eyebrow: "Explorer",
-  },
-  "/chain/governance": {
-    title: "Governance",
-    subtitle: "Runtime parameters, sudo activity and config changes",
-    eyebrow: "Explorer",
-  },
-  "/chain/runtime": {
-    title: "Runtime",
-    subtitle: "Spec versions and runtime upgrade history",
     eyebrow: "Explorer",
   },
   "/blocks": {
