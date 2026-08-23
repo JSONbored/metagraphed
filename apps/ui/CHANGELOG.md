@@ -9,6 +9,56 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [1.2.0](https://github.com/JSONbored/metagraphed/compare/ui-v1.1.0...ui-v1.2.0) (2026-08-23)
+
+
+### Features
+
+* **api:** a paid bulk-export tier, and the family that requires payment ([2b946cc](https://github.com/JSONbored/metagraphed/commit/2b946cc6d303af3722c65c23f4faebec4d3745ad))
+* **api:** a paid bulk-export tier, and the family that requires payment ([db1b990](https://github.com/JSONbored/metagraphed/commit/db1b990b240b3614a1c3d7c46f3523e75a39a283))
+* **ui-kit:** a compare ledger primitive, and one /compare route that uses it ([fda1f13](https://github.com/JSONbored/metagraphed/commit/fda1f13fcd4a096213565571e6831f3a0b9eeb3e))
+* **ui-kit:** a compare ledger primitive, and one /compare route that uses it ([582231f](https://github.com/JSONbored/metagraphed/commit/582231fadee518d4ecaec6865768ed13c65d5468)), closes [#11611](https://github.com/JSONbored/metagraphed/issues/11611)
+* **ui-kit:** active-entity store, ChartTooltip, Definition and Raw ([b171393](https://github.com/JSONbored/metagraphed/commit/b1713932c0313094e67150ed275ae0fcd64ffd93))
+* **ui-kit:** active-entity store, ChartTooltip, Definition and Raw ([cb72407](https://github.com/JSONbored/metagraphed/commit/cb724071a1f0dc663690be537bf9432d12a55970))
+* **ui-kit:** AnalyticsSection, FactStrip, EntityHero, LiveMeta, RangeControl ([9270a40](https://github.com/JSONbored/metagraphed/commit/9270a40b5817a6883be698013adf1931aa0fae1f))
+* **ui-kit:** AnalyticsSection, FactStrip, EntityHero, LiveMeta, RangeControl ([c0149cb](https://github.com/JSONbored/metagraphed/commit/c0149cbb0c84299214033ecb61fca90e7f0559fc))
+* **ui-kit:** one table, and the 45 hand-rolled ones retired ([9335119](https://github.com/JSONbored/metagraphed/commit/9335119a4d199266092879778c1c33f9c389abce))
+* **ui-kit:** one table, and the 45 hand-rolled ones retired ([84a4fdc](https://github.com/JSONbored/metagraphed/commit/84a4fdc8bcaae2d0a2af7567ccd2f5057e9f6c39)), closes [#11610](https://github.com/JSONbored/metagraphed/issues/11610)
+* **ui-kit:** the ranking and composition charts, and every call site moved onto them ([265a88d](https://github.com/JSONbored/metagraphed/commit/265a88d578457a42ea59ccb4ff3fb541c4ad4db7))
+* **ui-kit:** the ranking and composition charts, and every call site moved onto them ([d4e359d](https://github.com/JSONbored/metagraphed/commit/d4e359d2161ea0a54336640315b0608a160a0a19)), closes [#11609](https://github.com/JSONbored/metagraphed/issues/11609)
+* **ui-kit:** the temporal charts, and every chart call site moved onto them ([ba5a93e](https://github.com/JSONbored/metagraphed/commit/ba5a93e783b100842ea17049fbdac88a33685f33))
+* **ui-kit:** the temporal charts, and every chart call site moved onto them ([d48f42d](https://github.com/JSONbored/metagraphed/commit/d48f42dbada930db00ed9bfab6d93e6a68cb8539)), closes [#11608](https://github.com/JSONbored/metagraphed/issues/11608)
+* **ui:** design-system v2 token contract, shell and token-inventory gate ([30a4d61](https://github.com/JSONbored/metagraphed/commit/30a4d61b0e5eb21fa65b9a09765123ad18a2b317))
+* **ui:** design-system v2 token contract, shell and token-inventory gate ([2490ca7](https://github.com/JSONbored/metagraphed/commit/2490ca7e3eff6d27c81bcf6d2f6af3cf46b3fb9e))
+* **ui:** publish a privacy policy and terms of use ([356a548](https://github.com/JSONbored/metagraphed/commit/356a54849bec904a558d12d4e9c8870edb3efa34))
+* **ui:** publish a privacy policy and terms of use ([60aab20](https://github.com/JSONbored/metagraphed/commit/60aab20420a0cab38cc09fc085dc39a409e884ae)), closes [#11567](https://github.com/JSONbored/metagraphed/issues/11567)
+* **ui:** rebuild / as a five-section data landing page ([866e6b2](https://github.com/JSONbored/metagraphed/commit/866e6b2a456c9c1ecc5228ef6b64d752e4d58a95))
+* **ui:** rebuild / as a five-section data landing page ([606e3e3](https://github.com/JSONbored/metagraphed/commit/606e3e356f00d16754920e664ce89b5d81dfe377)), closes [#11618](https://github.com/JSONbored/metagraphed/issues/11618)
+* **ui:** rebuild /accounts as holders, concentration and a lookup ([bc5e1a3](https://github.com/JSONbored/metagraphed/commit/bc5e1a3afb6c25b0cfeee689d4f5d47b0df360d5))
+* **ui:** rebuild /accounts as holders, concentration and a lookup ([90a983d](https://github.com/JSONbored/metagraphed/commit/90a983d9163f7ab30cb14fa39f10e8f258f5f3e8)), closes [#11615](https://github.com/JSONbored/metagraphed/issues/11615)
+* **ui:** rebuild /accounts/$ss58 as a five-section visual document ([ca8fdc6](https://github.com/JSONbored/metagraphed/commit/ca8fdc6054a81b35a710fafeaf664424a2b0ae2c))
+* **ui:** rebuild /accounts/$ss58 as a five-section visual document ([a19922c](https://github.com/JSONbored/metagraphed/commit/a19922cd41c181044d70f52f13f9df5e55414166)), closes [#11614](https://github.com/JSONbored/metagraphed/issues/11614)
+* **ui:** rebuild /chain as a six-section analytics page ([8d26ab5](https://github.com/JSONbored/metagraphed/commit/8d26ab541f6dc5f0d6be3d21c0bc3d113cd718e7))
+* **ui:** rebuild /chain as a six-section analytics page ([5ce5907](https://github.com/JSONbored/metagraphed/commit/5ce590747eac01dbfab13318845c12fb8995a31b)), closes [#11619](https://github.com/JSONbored/metagraphed/issues/11619)
+* **ui:** rebuild /subnets as one directory plus three analytical sections ([d1cabaf](https://github.com/JSONbored/metagraphed/commit/d1cabaf3d33d9619a867b0e7de17a10d02747227))
+* **ui:** rebuild /subnets as one directory plus three analytical sections ([1d129ce](https://github.com/JSONbored/metagraphed/commit/1d129ce7ce44cf4c6b0e469db8b456dadb2045b5)), closes [#11613](https://github.com/JSONbored/metagraphed/issues/11613)
+* **ui:** rebuild /subnets/$netuid as a seven-section visual document ([634ce40](https://github.com/JSONbored/metagraphed/commit/634ce4060b5f8353abd8916e0bece18979003d92))
+* **ui:** rebuild /subnets/$netuid as a seven-section visual document ([99405db](https://github.com/JSONbored/metagraphed/commit/99405db9ebcfd0f6dbf441e87c178ccb86b510b2)), closes [#11612](https://github.com/JSONbored/metagraphed/issues/11612)
+* **ui:** rebuild /validators as concentration plus one operator table ([522aacc](https://github.com/JSONbored/metagraphed/commit/522aacc4f9209ddcb910edda89b027d6f6031f70))
+* **ui:** rebuild /validators as concentration plus one operator table ([2547fb4](https://github.com/JSONbored/metagraphed/commit/2547fb48a9f6f6df5415503cb8b4c927975c77cb)), closes [#11616](https://github.com/JSONbored/metagraphed/issues/11616)
+* **ui:** rebuild /validators/$hotkey as a five-section visual document ([e1facbc](https://github.com/JSONbored/metagraphed/commit/e1facbc8a84d3c7df4ab715494eb4ec113b20ac2))
+* **ui:** rebuild /validators/$hotkey as a five-section visual document ([75e89ee](https://github.com/JSONbored/metagraphed/commit/75e89eeb8845583eb9f48e57958bc5c8e4be8cb1)), closes [#11617](https://github.com/JSONbored/metagraphed/issues/11617)
+* **ui:** rebuild the three chain streams as one DataTable page ([5b82302](https://github.com/JSONbored/metagraphed/commit/5b8230268ea89bcaba8829c063b4e5284a1d984d))
+* **ui:** rebuild the three chain streams as one DataTable page ([4425751](https://github.com/JSONbored/metagraphed/commit/44257519cd5981385017705cca27f24a9fd5e863)), closes [#11620](https://github.com/JSONbored/metagraphed/issues/11620)
+
+
+### Bug Fixes
+
+* **openapi:** publish operation prose as `description`, not `summary` ([d7a6b53](https://github.com/JSONbored/metagraphed/commit/d7a6b5396d84d5bbf18243918d5ce2dcd48ba830))
+* **openapi:** publish operation prose as `description`, not `summary` ([85fcef5](https://github.com/JSONbored/metagraphed/commit/85fcef5f344c8e9ca3fb30e534f2d45bfe0460bd)), closes [#11592](https://github.com/JSONbored/metagraphed/issues/11592)
+* **ui:** give the trailing-window vocabulary one owner ([018b346](https://github.com/JSONbored/metagraphed/commit/018b346f6a5b979509eafb6227c2723e4b13f687))
+* **ui:** the sitemap fetched its data from production, not from this build ([4be84ca](https://github.com/JSONbored/metagraphed/commit/4be84cadb4e02b0791175d4478da99a315782915))
+
 ## [1.1.0](https://github.com/JSONbored/metagraphed/compare/ui-v1.0.0...ui-v1.1.0) (2026-08-17)
 
 
