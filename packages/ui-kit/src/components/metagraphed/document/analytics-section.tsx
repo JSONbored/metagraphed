@@ -30,6 +30,21 @@ export interface AnalyticsSectionProps {
   controls?: ReactNode;
   /** Content that is not yet a `visual` (a route mid-migration). */
   children?: ReactNode;
+  /**
+   * What to say when there is nothing to draw.
+   *
+   * A section whose `visual` resolves to `null` still renders its heading and
+   * its footnote, so the reader gets a sentence promising an answer and then
+   * blank space before the next rule. #11686 measured it against an API
+   * serving empty collections: `/chain` left two of six sections that way,
+   * `/health` three, `/subnets` three -- every route had at least one.
+   *
+   * Defaults to a quiet line rather than nothing, because the honest answer to
+   * "what is the chain's throughput" over a window with no extrinsics is "no
+   * data in this window", not silence. Pass a string to say it better, or
+   * `false` for the rare section whose footnote already says it.
+   */
+  empty?: ReactNode;
   className?: string;
 }
 
@@ -42,9 +57,16 @@ export function AnalyticsSection({
   footnote,
   controls,
   children,
+  empty,
   className,
 }: AnalyticsSectionProps) {
   const headingId = `${id}-heading`;
+  // `null` and `false` are what a page passes for "no data"; `0` and `""` are
+  // not, so this checks for the two rather than for falsiness.
+  const blank = (node: ReactNode) =>
+    node === null || node === undefined || node === false;
+  const showEmpty =
+    blank(visual) && blank(children) && blank(legend) && empty !== false;
   return (
     <section
       id={id}
@@ -66,6 +88,9 @@ export function AnalyticsSection({
       {visual ? <div className="mg-section-visual">{visual}</div> : null}
       {children}
       {legend ? <div className="mg-section-legend">{legend}</div> : null}
+      {showEmpty ? (
+        <p className="mg-section-empty">{empty ?? "No data in this window."}</p>
+      ) : null}
       {footnote ? <p className="mg-section-note">{footnote}</p> : null}
     </section>
   );

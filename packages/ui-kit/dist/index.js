@@ -1726,9 +1726,12 @@ function AnalyticsSection({
   footnote,
   controls,
   children,
+  empty,
   className
 }) {
   const headingId = `${id}-heading`;
+  const blank = (node) => node === null || node === void 0 || node === false;
+  const showEmpty = blank(visual) && blank(children) && blank(legend) && empty !== false;
   return /* @__PURE__ */ jsxs(
     "section",
     {
@@ -1750,6 +1753,7 @@ function AnalyticsSection({
         visual ? /* @__PURE__ */ jsx("div", { className: "mg-section-visual", children: visual }) : null,
         children,
         legend ? /* @__PURE__ */ jsx("div", { className: "mg-section-legend", children: legend }) : null,
+        showEmpty ? /* @__PURE__ */ jsx("p", { className: "mg-section-empty", children: empty ?? "No data in this window." }) : null,
         footnote ? /* @__PURE__ */ jsx("p", { className: "mg-section-note", children: footnote }) : null
       ]
     }

@@ -24,7 +24,7 @@ export const DESIGN_TOKENS: readonly DesignToken[] = [
     refs: 60,
   },
   { name: "--ink", light: "#4a4a47", dark: "#d4d4d4", theme: "--color-ink", refs: 26 },
-  { name: "--ink-muted", light: "#6b6b67", dark: "#a3a3a3", theme: "--color-ink-muted", refs: 52 },
+  { name: "--ink-muted", light: "#6b6b67", dark: "#a3a3a3", theme: "--color-ink-muted", refs: 53 },
   {
     name: "--ink-subtle",
     light: "#8c8c87",
