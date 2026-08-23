@@ -490,7 +490,11 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
   // change that inflates the document, which is what it is for.
   const MAX_HTML_KIB: Record<keyof typeof HUB_COPY, number> = {
     "/": 130,
-    "/subnets": 560,
+    // #11612 lowered this from 560. Dropping `github_commits_weekly` (52
+    // weekly objects per subnet, 74 KB of the 331 KB this page inlined as SSR
+    // dehydration) and `github_languages` from the list rows took the document
+    // from 555 to 479 KiB. Nothing rendered either field.
+    "/subnets": 490,
     "/validators": 1300,
     "/apis": 620,
     "/apis/providers": 400,

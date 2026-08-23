@@ -88,7 +88,6 @@ import { summarizeCall } from "@/lib/metagraphed/chain-summaries";
 import { ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
-import { subnetPositionSearch } from "@/lib/metagraphed/subnet-position-link";
 import {
   accountRole,
   isDualRoleAccount,
@@ -2820,9 +2819,6 @@ function AccountFootprintSection({
                 <Link
                   to="/subnets/$netuid"
                   params={{ netuid: row.netuid }}
-                  // Same deep-link as SubnetPerformanceTable: this row already
-                  // knows its uid, so land on the neuron card, not the overview.
-                  search={subnetPositionSearch(row.uid)}
                   className="inline-flex items-center rounded border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
                 >
                   SN{row.netuid}

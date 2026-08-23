@@ -7,18 +7,19 @@ import { gotoThroughRestart } from "./server-restart.ts";
 // preview embedded in the Overview tab and the full section under a dedicated
 // Evidence tab, both claiming id="evidence" with SECTION_TO_TAB mapping that
 // id to "overview" -- so a reader who opened the Evidence tab with #evidence
-// bounced straight back to Overview. The fix gave the Overview embed its own
-// `evidence-preview` id and pointed the bare `evidence` id at the tab that
-// actually owned it.
+// bounced straight back to Overview.
 //
-// #8247 retired the Overview preview embed entirely (Overview is now a
-// one-screen page of only the highest-signal facts, and a second, lower-
-// density copy of the same primary-sources list the About tab already owns
-// is exactly the kind of duplicate-fact the redesign removed) and folded the
-// dedicated Evidence tab into the broader About tab. `evidence-preview` stays
-// in SECTION_TO_TAB pointing at "overview" so an old bookmarked link degrades
-// gracefully (lands on Overview, finds no matching element, no-ops) rather
-// than erroring -- but there is no longer a section to assert visible there.
+// #11612 rebuilt the route as seven sections on one page with no tab bar at
+// all, so the class of bug this file was opened for cannot recur: there is
+// nothing left to switch. What it still guards is the invariant that made the
+// bug possible -- that a hash deep link is a PLAIN in-page anchor. Nothing may
+// translate a fragment into a search param, and the sections the nav names
+// must be the sections the document contains.
+//
+// The evidence section itself is gone; its primary-source URLs live in the
+// page's `Raw` block, and every URL on the page lives there. An old
+// `#evidence` bookmark degrades to the page top, which is asserted below
+// rather than assumed.
 //
 // Deterministic by design, mirroring responsive-overflow.spec.ts: the route
 // replays tests/e2e/har/subnets-1.har rather than hitting live chain data, so
@@ -59,27 +60,38 @@ async function openWithHar(page: import("@playwright/test").Page, url: string) {
   }
 }
 
-test.describe("#6434 evidence deep links (every section on one page since #11607)", () => {
-  test("#evidence scrolls to the evidence section; there is no tab to switch", async ({ page }) => {
-    await openWithHar(page, `${ROUTE}#evidence`);
-
-    // The subnet profile renders all of its sections on one page under a
-    // SectionNav (#11607), so a hash deep link is a plain in-page anchor: the
-    // URL keeps its hash, no `tab` search param is written, and the section
-    // the hash names is on the page.
-    await expect(page).toHaveURL(/#evidence$/);
-    await expect(page).not.toHaveURL(/[?&]tab=/);
-    await expect(page.locator("section#evidence")).toBeVisible({ timeout: 15_000 });
-  });
-
-  test("#evidence-preview lands on Overview without erroring (the preview embed itself was retired)", async ({
+test.describe("#6434 hash deep links on the subnet page (no tab bar since #11612)", () => {
+  test("a hash names a real section, and nothing rewrites it into a search param", async ({
     page,
   }) => {
-    await openWithHar(page, `${ROUTE}#evidence-preview`);
+    await openWithHar(page, `${ROUTE}#surfaces`);
 
-    // An old bookmarked link to the retired preview section degrades to the
-    // page top: nothing rewrites the URL and no such section exists.
-    await expect(page).not.toHaveURL(/[?&]tab=(about|evidence)/);
-    await expect(page.locator("section#evidence-preview")).toHaveCount(0);
+    await expect(page).toHaveURL(/#surfaces$/);
+    await expect(page).not.toHaveURL(/[?&]tab=/);
+    await expect(page.locator("section#surfaces")).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("every section the nav offers is a section the document has", async ({ page }) => {
+    await openWithHar(page, ROUTE);
+
+    const targets = await page
+      .locator('[data-mg-section-nav] a[href^="#"]')
+      .evaluateAll((links) => links.map((a) => a.getAttribute("href")!.slice(1)));
+    expect(targets.length).toBeGreaterThan(0);
+    for (const id of targets) {
+      await expect(page.locator(`section#${id}`)).toHaveCount(1);
+    }
+  });
+
+  test("a retired section id degrades to the page top instead of erroring", async ({ page }) => {
+    // `#evidence` and `#evidence-preview` both named sections that no longer
+    // exist. Nothing rewrites the URL, no such section is found, and the page
+    // renders exactly as it would without the hash.
+    for (const hash of ["evidence", "evidence-preview"]) {
+      await openWithHar(page, `${ROUTE}#${hash}`);
+      await expect(page).not.toHaveURL(/[?&]tab=/);
+      await expect(page.locator(`section#${hash}`)).toHaveCount(0);
+      await expect(page.locator("[data-mg-hero]")).toBeVisible();
+    }
   });
 });

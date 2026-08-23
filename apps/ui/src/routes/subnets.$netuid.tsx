@@ -1,4 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { z } from "zod";
+import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { economicsQuery, subnetProfileQuery } from "@/lib/metagraphed/queries";
@@ -16,44 +18,24 @@ import { stringifyJsonLd, subnetDatasetJsonLd } from "@/lib/metagraphed/json-ld"
 import { repoSlugFrom, SITE_ORIGIN } from "@/lib/metagraphed/seo-meta";
 import { API_BASE } from "@/lib/metagraphed/config";
 
-export type SearchParams = {
-  tab?: string;
-  sev?: string;
-  uid?: number;
-  ev_kind?: string;
-  window?: "7d" | "30d" | "90d";
-  /**
-   * Peer netuid for SubnetCompareDrawer.
-   *
-   * It was missing, and `validateSearch` REPLACES the search object rather
-   * than patching it -- so every key not listed here is dropped. The drawer
-   * writes `?compare=`, this function discarded it on the very next parse, and
-   * the comparison the drawer's own doc comment calls "shareable and survives
-   * page reloads" did neither.
-   */
-  compare?: number;
-};
+/**
+ * The page has one control -- the momentum window -- and one URL key for it.
+ *
+ * The seven-tab bar, the severity filter, the metagraph UID deep link, the
+ * event-kind filter and the compare drawer's peer netuid all went with the
+ * UI that read them (#11612). `validateSearch` REPLACES the search object,
+ * so a key that no longer has a reader is not merely unused: it is dropped
+ * on the next parse, and a link that carries one is silently rewritten.
+ */
+export const subnetSearchSchema = z.object({
+  window: z.enum(TRAILING_WINDOWS).catch("30d").default("30d"),
+});
+
+export type SearchParams = z.infer<typeof subnetSearchSchema>;
 
 export const Route = createFileRoute("/subnets/$netuid")({
-  validateSearch: (s: Record<string, unknown>): SearchParams => {
-    const uidNum = Number(s.uid);
-    const win = s.window;
-    // Number() coerces the string a URL always delivers, and NaN falls through
-    // to undefined -- so `?compare=7` and a programmatic `compare: 7` both
-    // land as 7, which is what the drawer reads back.
-    const compareNum = Number(s.compare);
-    return {
-      tab: typeof s.tab === "string" ? s.tab : undefined,
-      sev: typeof s.sev === "string" ? s.sev : undefined,
-      uid: Number.isInteger(uidNum) && uidNum >= 0 ? uidNum : undefined,
-      ev_kind: typeof s.ev_kind === "string" && s.ev_kind ? s.ev_kind : undefined,
-      window: win === "7d" || win === "30d" || win === "90d" ? win : undefined,
-      compare:
-        s.compare != null && Number.isInteger(compareNum) && compareNum >= 0
-          ? compareNum
-          : undefined,
-    };
-  },
+  validateSearch: subnetSearchSchema,
+  search: { middlewares: [stripDefaultSearchParams(subnetSearchSchema)] },
   parseParams: ({ netuid }) => {
     const n = Number(netuid);
     if (!Number.isFinite(n) || n < 0) throw notFound();

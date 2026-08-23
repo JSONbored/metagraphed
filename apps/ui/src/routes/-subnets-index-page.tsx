@@ -87,7 +87,7 @@ type SubnetRow = Subnet & {
   // Emission column (and its sort) can read it off the row.
   emission_share?: number;
   alpha_price_tao?: number;
-  total_stake_tao?: number;
+  total_stake_alpha?: number;
   alpha_market_cap_tao?: number;
 };
 
@@ -109,7 +109,7 @@ const SUBNET_SORT_FIELD: Record<string, string> = {
   registration: "registration_cost_tao",
   emission: "emission_share",
   alphaPrice: "alpha_price_tao",
-  totalStake: "total_stake_tao",
+  totalStake: "total_stake_alpha",
   marketCap: "alpha_market_cap_tao",
   participants: "participants",
   updated: "updated_at",
@@ -904,12 +904,12 @@ function SubnetsTable() {
         kind: "number",
         width: 123,
         sortable: true,
-        value: (s) => s.total_stake_tao ?? null,
+        value: (s) => s.total_stake_alpha ?? null,
         render: (s) => (
           <TrendValue
             netuid={s.netuid}
-            field="total_stake_tao"
-            current={s.total_stake_tao}
+            field="total_stake_alpha"
+            current={s.total_stake_alpha}
             window={trendWindow}
             symbol={s.netuid === 0 ? "τ" : (s.symbol ?? "α")}
           />
@@ -1219,7 +1219,7 @@ function TrendValue({
   symbol,
 }: {
   netuid: number;
-  field: "alpha_price_tao" | "total_stake_tao" | "alpha_market_cap_tao";
+  field: "alpha_price_tao" | "total_stake_alpha" | "alpha_market_cap_tao";
   current?: number;
   window: "7d" | "30d" | "90d";
   usdPerTao?: number;

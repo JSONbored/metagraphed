@@ -16,18 +16,14 @@ const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.met
 
 // #8249: hero-subnet-chips.tsx (the "chip marquee") was retired along with
 // the rest of the home page's auto-scrolling/rail elements -- its role="img"
-// health-dot entry goes with it. The remaining two sites still exercise the
-// same pattern this suite exists to pin.
+// health-dot entry goes with it. #11612 retired resource-explorer.tsx with
+// the subnet dossier's tab bar, taking the blocked-URL span with it. One site
+// remains, and it still exercises the pattern this suite exists to pin.
 const SITES: Array<[string, string, string]> = [
   [
     "providers.index (official-provider badge)",
     "../../routes/-providers-index-page.tsx",
     'aria-label="Official provider"',
-  ],
-  [
-    "resource-explorer (blocked unsafe URL)",
-    "./resource-explorer.tsx",
-    'aria-label="Blocked unsafe endpoint URL"',
   ],
 ];
 
@@ -59,17 +55,6 @@ describe("colour-only status indicators expose their label", () => {
       read("../../routes/-providers-index-page.tsx"),
       'aria-label="Official provider"',
     );
-    expect(el).toContain('role="img"');
-  });
-
-  it("the blocked-URL state has no other AT-reachable carrier, so the role matters", () => {
-    // The span is deliberately not focusable, unlike its safeUrl ExternalLink
-    // sibling — so the aria-label is the only thing a screen reader can reach
-    // (there is no tooltip any more, #11606).
-    const source = read("./resource-explorer.tsx");
-    expect(source).toContain('ariaLabel="Open endpoint"');
-    const el = elementCarrying(source, 'aria-label="Blocked unsafe endpoint URL"');
-    expect(el).not.toContain("tabIndex");
     expect(el).toContain('role="img"');
   });
 });

@@ -192,6 +192,7 @@ import type {
   SubnetAxonRemovals,
   SubnetDeregistrations,
   SubnetEventCategorySummary,
+  SubnetEventKindSummary,
   SubnetEventSummary,
   SubnetStakeMoves,
   SubnetServing,
@@ -429,7 +430,15 @@ function normalizeEconomicsSubnets(value: unknown): SubnetEconomics[] {
         max_validators: optionalNumber(item.max_validators),
         miner_count: optionalNumber(item.miner_count),
         max_uids: optionalNumber(item.max_uids),
-        total_stake_tao: optionalNumber(item.total_stake_tao),
+        // ALPHA, not TAO. /api/v1/economics serves `total_stake_alpha` and
+        // has no `total_stake_tao` at all -- 0 of 129 rows carried one when
+        // this was checked against production (2026-08-23), so the old
+        // mapping resolved to undefined on every subnet and every reader of
+        // it rendered a dash. There is no honest conversion to add here: the
+        // TAO value of a subnet's alpha stake needs that subnet's price, and
+        // multiplying it in silently would publish a derived number as a
+        // measured one.
+        total_stake_alpha: optionalNumber(item.total_stake_alpha),
         max_stake_tao: optionalNumber(item.max_stake_tao),
         subnet_volume_tao: optionalNumber(item.subnet_volume_tao),
         registration_cost_tao: optionalNumber(item.registration_cost_tao),
@@ -1805,8 +1814,17 @@ function firstFiniteNumber(...values: unknown[]): number | undefined {
 export function normalizeSubnet(raw: unknown): Subnet {
   if (!raw || typeof raw !== "object") return raw as Subnet;
   const s = raw as Record<string, unknown>;
+  // Dropped, not merely unread: `github_commits_weekly` is 52 weekly objects
+  // per subnet and measured 74 KB of the 331 KB that /subnets inlines into
+  // the document as SSR dehydration -- 22% of the page, for a field the app
+  // stopped rendering when the subnet dossier's dev-activity panel went
+  // (#11612). `github_languages` is another 7 KB with the same story. Same
+  // reasoning as validatorsQuery's `subnets: false` (#11315): the fetch
+  // happens during SSR and never crosses the user's wire, so the only cost
+  // left is the copy the browser parses.
+  const { github_commits_weekly: _weekly, github_languages: _languages, ...rest } = s;
   return {
-    ...(s as object),
+    ...(rest as object),
     netuid: firstFiniteNumber(s.netuid) ?? (s.netuid as number),
     // `name` is the curated identity; fall back to the on-chain `native_name`
     // (a distinct field, not a legacy alias — both are emitted).
@@ -5011,10 +5029,6 @@ export function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProf
     // dev activity (#8379) — present on both `profile` and the embedded
     // `subnet` sub-object (mergeSubnet's own spread, #6639); prefer `profile`,
     // fall back to `subnet` for older cached payloads mid-rollout.
-    github_languages:
-      (profile.github_languages as Record<string, number> | null | undefined) ??
-      (subnet.github_languages as Record<string, number> | null | undefined) ??
-      null,
     github_last_push_at:
       pickStr(profile.github_last_push_at as string, subnet.github_last_push_at as string) ?? null,
     github_stars:
@@ -5023,10 +5037,6 @@ export function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProf
         : typeof subnet.github_stars === "number"
           ? (subnet.github_stars as number)
           : null,
-    github_commits_weekly:
-      (profile.github_commits_weekly as { week: string; count: number }[] | null | undefined) ??
-      (subnet.github_commits_weekly as { week: string; count: number }[] | null | undefined) ??
-      null,
     github_unreachable: Boolean(profile.github_unreachable ?? subnet.github_unreachable),
     // embedded
     surfaces: (root.surfaces as Surface[]) ?? [],
@@ -7771,11 +7781,36 @@ function normalizeSubnetEventCategory(raw: unknown): SubnetEventCategorySummary 
   };
 }
 
+function normalizeSubnetEventKind(raw: unknown): SubnetEventKindSummary | null {
+  if (!isRecord(raw)) return null;
+  const kind = firstString(raw.event_kind);
+  if (!kind) return null;
+  return {
+    event_kind: kind,
+    category: firstString(raw.category) ?? "other",
+    event_count: firstFiniteNumber(raw.event_count) ?? 0,
+    hotkey_count: firstFiniteNumber(raw.hotkey_count) ?? 0,
+    coldkey_count: firstFiniteNumber(raw.coldkey_count) ?? 0,
+    amount_tao: firstFiniteNumber(raw.amount_tao) ?? 0,
+    alpha_amount: firstFiniteNumber(raw.alpha_amount) ?? 0,
+    first_block: firstFiniteNumber(raw.first_block) ?? null,
+    last_block: firstFiniteNumber(raw.last_block) ?? null,
+    first_observed_at: firstString(raw.first_observed_at) ?? null,
+    last_observed_at: firstString(raw.last_observed_at) ?? null,
+  };
+}
+
 export function normalizeSubnetEventSummary(netuid: number, raw: unknown): SubnetEventSummary {
   const rec = isRecord(raw) ? raw : {};
   const categories = Array.isArray(rec.categories)
     ? rec.categories.flatMap((c) => {
         const normalized = normalizeSubnetEventCategory(c);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  const eventKinds = Array.isArray(rec.event_kinds)
+    ? rec.event_kinds.flatMap((k) => {
+        const normalized = normalizeSubnetEventKind(k);
         return normalized ? [normalized] : [];
       })
     : [];
@@ -7789,6 +7824,7 @@ export function normalizeSubnetEventSummary(netuid: number, raw: unknown): Subne
     category_count: firstFiniteNumber(rec.category_count) ?? 0,
     limit: firstFiniteNumber(rec.limit) ?? 0,
     categories,
+    event_kinds: eventKinds,
   };
 }
 
@@ -8961,6 +8997,10 @@ function normalizeEmissionSplitPoint(raw: unknown): EmissionSplitPoint | null {
     validator_share: coerceFiniteNumber(raw.validator_share) ?? null,
     miner_share: coerceFiniteNumber(raw.miner_share) ?? null,
     total_alpha: coerceFiniteNumber(raw.total_alpha) ?? null,
+    owner_alpha: coerceFiniteNumber(raw.owner_alpha) ?? null,
+    validator_alpha: coerceFiniteNumber(raw.validator_alpha) ?? null,
+    miner_alpha: coerceFiniteNumber(raw.miner_alpha) ?? null,
+    burned_alpha: coerceFiniteNumber(raw.burned_alpha) ?? null,
   };
 }
 

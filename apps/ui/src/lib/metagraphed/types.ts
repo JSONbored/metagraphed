@@ -244,11 +244,11 @@ export interface SubnetProfile extends Subnet {
   gap_notes?: string[];
   primary_app_surface?: PrimaryAppSurface;
   // dev activity (#8379, extends #6639) — null/undefined for a subnet with no
-  // resolved source repo, or one not yet captured.
-  github_languages?: Record<string, number> | null;
+  // resolved source repo, or one not yet captured. `github_languages` and
+  // `github_commits_weekly` are deliberately absent: nothing renders them and
+  // the weekly series alone was 74 KB of every /subnets document (#11612).
   github_last_push_at?: string | null;
   github_stars?: number | null;
-  github_commits_weekly?: { week: string; count: number }[] | null;
   github_unreachable?: boolean;
   // embedded
   surfaces?: Surface[];
@@ -2503,6 +2503,25 @@ export interface SubnetEventCategorySummary {
  * companion to the raw per-event feed the Activity tab renders. Zeroed/empty
  * when the account_events tier is cold, never an error.
  */
+/**
+ * One event kind inside a category. `/event-summary` publishes the per-KIND
+ * breakdown alongside the per-category one; the category totals alone cannot
+ * say whether "consensus" means weights being set or weights being revealed.
+ */
+export interface SubnetEventKindSummary {
+  event_kind: string;
+  category: string;
+  event_count: number;
+  hotkey_count: number;
+  coldkey_count: number;
+  amount_tao: number;
+  alpha_amount: number;
+  first_block: number | null;
+  last_block: number | null;
+  first_observed_at: string | null;
+  last_observed_at: string | null;
+}
+
 export interface SubnetEventSummary {
   schema_version: number;
   netuid: number;
@@ -2513,6 +2532,7 @@ export interface SubnetEventSummary {
   category_count: number;
   limit: number;
   categories: SubnetEventCategorySummary[];
+  event_kinds: SubnetEventKindSummary[];
 }
 
 /**
@@ -3078,6 +3098,18 @@ export interface EmissionSplitPoint {
   validator_share?: number | null;
   miner_share?: number | null;
   total_alpha?: number | null;
+  /**
+   * The measured alpha each recipient class received that day. The shares
+   * above are ratios of `total_alpha`; a stacked view needs the absolute
+   * amounts, and deriving them by multiplication reintroduces the rounding
+   * the API already did for us. `burned_alpha` is a first-class member here,
+   * not `1 - the others`: a residual cannot tell "burned nothing" from
+   * "the day is missing a class".
+   */
+  owner_alpha?: number | null;
+  validator_alpha?: number | null;
+  miner_alpha?: number | null;
+  burned_alpha?: number | null;
 }
 
 export interface SubnetEmissionSplitHistory {

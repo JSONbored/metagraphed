@@ -2165,9 +2165,10 @@ function sectionItems(children) {
 function AnalyticsPage({
   hero,
   children,
+  sections,
   className
 }) {
-  const items = sectionItems(children);
+  const items = sections ? [...sections] : sectionItems(children);
   if (items.length > MAX_SECTIONS && process.env.NODE_ENV !== "production") {
     throw new Error(
       `AnalyticsPage: ${items.length} sections; a page answers at most ${MAX_SECTIONS} questions (#11607)`

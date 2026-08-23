@@ -1,6 +1,18 @@
 import { z } from "zod";
 import { stripSearchParams } from "@tanstack/react-router";
 
+/**
+ * The trailing windows a route offers when it offers three.
+ *
+ * Declared ONCE and imported at each site: `validate:schema-vocabularies`
+ * fails a value set restated in more than one schema file with no owner, and
+ * it is right to — two copies of a window list drift the moment one route
+ * gains a fourth option. Routes that serve a DIFFERENT set (24h, 1y, all)
+ * declare their own; this is not a base to extend.
+ */
+export const TRAILING_WINDOWS = ["7d", "30d", "90d"] as const;
+export type TrailingWindow = (typeof TRAILING_WINDOWS)[number];
+
 /** Common URL-driven table state schema for /subnets and /surfaces. */
 export const tableSearchSchema = z.object({
   q: z.string().catch("").default(""),

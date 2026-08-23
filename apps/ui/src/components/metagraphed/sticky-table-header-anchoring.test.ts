@@ -109,18 +109,59 @@ describe("sticky table header anchoring", () => {
     // there up. The old rule sat inside `@media (min-width: 1024px)`,
     // leaving 768-1023px with a static header that scrolled out of the
     // bounded box entirely -- a full-height table of unlabelled columns.
-    // Assert the declaration sits at the top level of the sheet: count the
-    // media queries opened before it against the block-closing braces.
+    // Assert the declaration is not inside a media query, by MATCHING braces
+    // rather than counting two different things.
+    //
+    // This counted every `@media` before the rule against every `}` that
+    // began a line at column 0, and passed only because those two numbers
+    // happened to be equal. They measure different sets: the rules live
+    // inside `@layer components`, so their closing braces are indented and
+    // never counted, and the balance was an accident of the sheet's shape.
+    // Adding one indented media query anywhere earlier in the file -- for a
+    // rule with nothing to do with tables -- turned it red (#11612).
     for (const selector of [".mg-dt-viewport-bounded thead th {"]) {
       const ruleAt = kitStyles.indexOf(selector);
       expect(ruleAt, `${selector} is not in the kit stylesheet`).toBeGreaterThan(-1);
-      const before = kitStyles.slice(0, ruleAt);
-      const opens = (before.match(/@media/g) ?? []).length;
-      const closes = (before.match(/^}/gm) ?? []).length;
       expect(
-        opens,
-        `the ${selector} rule is nested inside an unclosed @media block`,
-      ).toBeLessThanOrEqual(closes);
+        enclosingBlocks(kitStyles, ruleAt).filter((header) => header.includes("@media")),
+        `the ${selector} rule is nested inside an @media block`,
+      ).toEqual([]);
     }
   });
 });
+
+/**
+ * The headers of every block still open at `index`, outermost first.
+ *
+ * A real brace walk: text between the previous block boundary and a `{` is
+ * that block's header, and a `}` pops one. Comments and strings are the two
+ * places a brace can appear without opening a block, so both are skipped.
+ */
+function enclosingBlocks(css: string, index: number): string[] {
+  const stack: string[] = [];
+  let headerStart = 0;
+  for (let i = 0; i < index; i += 1) {
+    if (css.startsWith("/*", i)) {
+      const end = css.indexOf("*/", i + 2);
+      i = end === -1 ? css.length : end + 1;
+      continue;
+    }
+    const ch = css[i];
+    if (ch === '"' || ch === "'") {
+      let j = i + 1;
+      while (j < css.length && css[j] !== ch) j += css[j] === "\\" ? 2 : 1;
+      i = j;
+      continue;
+    }
+    if (ch === "{") {
+      stack.push(css.slice(headerStart, i).trim());
+      headerStart = i + 1;
+    } else if (ch === "}") {
+      stack.pop();
+      headerStart = i + 1;
+    } else if (ch === ";") {
+      headerStart = i + 1;
+    }
+  }
+  return stack;
+}
