@@ -2639,7 +2639,19 @@
   /* Cards below 640px, from the same markup: the head goes, every row
      becomes a bordered block and each cell prints its own label. */
   @media (max-width: 639px) {
-    .mg-dt[data-mobile="cards"] .mg-dt-viewport {
+    /* A SHORT table flows into the page; a long one keeps the same bounded,
+       internally-scrolling viewport it has on a desktop.
+       This used to drop the bound for every cards table, and the cost was
+       enormous: /validators renders all 604 operators into the DOM (that is
+       deliberate -- a crawler must see every row), and the desktop viewport
+       clips them to 70vh. Without the clip each row becomes a stack of seven
+       label/value lines, and the table measured 111,939px -- 131 phone screens
+       for one table, against 633px for the same markup on a desktop.
+       `:not(.mg-dt-viewport-bounded)` is the whole fix: `shouldBoundViewport`
+       already decides which tables are long enough to need clipping, so cards
+       mode simply stops overriding that decision. The DOM is untouched, so the
+       crawler still sees all 604 rows. */
+    .mg-dt[data-mobile="cards"] .mg-dt-viewport:not(.mg-dt-viewport-bounded) {
       overflow: visible;
       max-height: none;
     }
@@ -3181,10 +3193,30 @@
 /* ------------------------------------------------------------- a11y / touch */
 /* Expands a small control's touch area to the 44×44 minimum without changing
    its painted size (#8254). Gated to coarse pointers. */
-.mg-tap-target {
+.mg-tap-target,
+.mg-dt-disclosure,
+.mg-range-option,
+.mg-dt-menu-trigger,
+.mg-dt-pager button,
+.mg-section-more,
+.mg-section-nav a {
   position: relative;
 }
-.mg-tap-target::after {
+/* The three controls that are always too small on a phone, given the same
+   expansion (#11683). Measured on a Pixel 5: /validators renders 25
+   `.mg-dt-disclosure` row-expanders under 44px, and a `RangeControl`'s
+   segments, a table's menu trigger, its pager buttons, the "Show all"
+   link and the section nav's own links are under it on nearly every route.
+   None of them paints any differently -- the ::after is an invisible hit
+   area on coarse pointers only -- so the design contract is untouched and
+   only the thing a thumb has to hit changes. */
+.mg-tap-target::after,
+.mg-dt-disclosure::after,
+.mg-range-option::after,
+.mg-dt-menu-trigger::after,
+.mg-dt-pager button::after,
+.mg-section-more::after,
+.mg-section-nav a::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -3196,7 +3228,13 @@
   height: 100%;
 }
 @media (pointer: fine) {
-  .mg-tap-target::after {
+  .mg-tap-target::after,
+  .mg-dt-disclosure::after,
+  .mg-range-option::after,
+  .mg-dt-menu-trigger::after,
+  .mg-dt-pager button::after,
+  .mg-section-more::after,
+  .mg-section-nav a::after {
     display: none;
   }
 }

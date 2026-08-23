@@ -14,14 +14,12 @@ import {
   LineWithWindow,
   MarkerRail,
   RangeControl,
-  RankGrid,
   RankedRails,
   Raw,
   StackedColumns,
   type DataTableColumn,
   type FactCells,
   type FactNodes,
-  type RankGridItem,
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -184,13 +182,6 @@ export function ExplorerPage() {
     { label: "Signers", value: fmtCount(latest?.unique_signers) },
   ];
 
-  const callLegend: RankGridItem[] = segments.map((segment) => ({
-    key: segment.key,
-    label: segment.label,
-    value: fmtCount(segment.value),
-    share: fmtShare(segment.value / (calls.data?.data.total_extrinsics || 1)),
-  }));
-
   const feeCells: FactCells = [
     {
       label: `Fees ${window}`,
@@ -297,11 +288,6 @@ export function ExplorerPage() {
                 ariaLabel="Extrinsics by call module"
                 source="chain-call"
               />
-            ) : null
-          }
-          legend={
-            callLegend.length > 0 ? (
-              <RankGrid items={callLegend} cols={4} ariaLabel="Call modules" source="chain-call" />
             ) : null
           }
           // Per-module totals for the window, not an hourly series:
