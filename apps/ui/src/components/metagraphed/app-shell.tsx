@@ -52,6 +52,12 @@ const PRIMARY_NAV: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/apis", label: "APIs" },
 ];
 
+/** The element to return focus to when an overlay opened from the keyboard closes. */
+function activeElement(): HTMLElement | null {
+  const el = document.activeElement;
+  return el instanceof HTMLElement && el !== document.body ? el : null;
+}
+
 function isActive(pathname: string, to: string): boolean {
   if (to === "/chain") return pathname === "/chain" || pathname.startsWith("/chain/");
   if (to === "/apis")
@@ -117,7 +123,10 @@ export function AppShell({
     if (!open) {
       const trigger = paletteTriggerRef.current;
       paletteTriggerRef.current = null;
-      if (trigger) requestAnimationFrame(() => trigger.focus());
+      // `isConnected` guards a trigger that was unmounted while the palette was
+      // open (a route change closes it), which would otherwise focus a detached
+      // node and drop focus to <body> anyway.
+      if (trigger?.isConnected) requestAnimationFrame(() => trigger.focus());
     }
   }, []);
 
@@ -156,13 +165,17 @@ export function AppShell({
         tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable);
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        paletteTriggerRef.current = null;
+        // What had focus IS the thing to come back to (#11689). Setting this to
+        // null meant a keyboard user who pressed Escape landed on <body>, so
+        // the next Tab restarted from the top of the document -- back through
+        // the skip link and the whole nav to wherever they had been.
+        paletteTriggerRef.current = activeElement();
         setPaletteOpen((v) => !v);
         return;
       }
       if (e.key === "/" && !inField) {
         e.preventDefault();
-        paletteTriggerRef.current = null;
+        paletteTriggerRef.current = activeElement();
         setPaletteOpen(true);
       }
     }
@@ -296,6 +309,13 @@ export function AppShell({
 
             <main
               id="main-content"
+              // Focusable so the skip link actually skips (#11689). `<main>` is
+              // not focusable by default, so activating the link scrolled the
+              // page and left focus on the link itself -- the very next Tab
+              // went back into the nav the reader had just asked to skip, which
+              // made the control decorative. -1 keeps it out of the tab order
+              // while letting the hash jump land focus here.
+              tabIndex={-1}
               key={pathname}
               className={classNames(
                 "flex-1 w-full",
