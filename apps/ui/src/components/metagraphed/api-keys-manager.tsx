@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
-import { CopyableCode, SectionHead, LineWithWindow } from "@jsonbored/ui-kit";
+import { CopyableCode, DataTable, LineWithWindow, type DataTableColumn } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { useWallet } from "@/hooks/use-wallet";
@@ -64,9 +64,16 @@ function describeApiError(error: unknown): string {
   return "Request failed.";
 }
 
-function formatTimestamp(ms: number | null): string {
-  if (!ms) return "never";
-  return new Date(ms).toLocaleString("en-US");
+/**
+ * Epoch millis as an ISO string, or null.
+ *
+ * `kind: "time"` renders a relative age from an ISO timestamp; this endpoint
+ * publishes epoch millis, and handing the cell a raw number would print the
+ * number. Null stays null so the cell falls to its own em-dash rather than to
+ * the string "never", which sorts and exports as text.
+ */
+function isoFrom(ms: number | null | undefined): string | null {
+  return typeof ms === "number" && Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
 /**
@@ -76,17 +83,56 @@ function formatTimestamp(ms: number | null): string {
  * immediately. Tier changes are an operator action, not something this UI
  * exposes -- see workers/data-api.ts's handleAccountTierPromote.
  */
+/** The revoke control lives in the row it acts on, not behind a menu. */
+function keyColumns(revoke: {
+  mutate: (id: string) => void;
+  isPending: boolean;
+  variables?: string;
+}): DataTableColumn<ApiKeyRow>[] {
+  return [
+    { key: "id", label: "Key", kind: "identifier", value: (key) => key.key_id },
+    {
+      key: "created",
+      label: "Created",
+      kind: "time",
+      width: 140,
+      value: (key) => isoFrom(key.created_at),
+    },
+    {
+      key: "used",
+      label: "Last used",
+      kind: "time",
+      width: 140,
+      value: (key) => isoFrom(key.last_used_at),
+    },
+    {
+      key: "revoke",
+      label: "",
+      width: 110,
+      align: "right",
+      render: (key) => (
+        <button
+          type="button"
+          onClick={() => revoke.mutate(key.key_id)}
+          disabled={revoke.isPending && revoke.variables === key.key_id}
+          className="mg-section-more"
+        >
+          {revoke.isPending && revoke.variables === key.key_id ? "Revoking…" : "Revoke"}
+        </button>
+      ),
+    },
+  ];
+}
+
 export function ApiKeysManager() {
   const { wallet, status: walletStatus } = useWallet();
   const apiSession = useApiSession(wallet);
 
+  // No `SectionHead` and no `<section>` of its own: /settings wraps each
+  // manager in an `AnalyticsSection` now (#11627), and two headings for one
+  // list is exactly the doubling that rebuild removes.
   return (
-    <section aria-labelledby="api-keys-heading">
-      <SectionHead
-        name="API keys"
-        question="Real fullnode RPC access, plus a higher rate-limit tier on the general API (currently: the chain-events/deep-history routes, more to follow). The keyless API keeps working exactly as-is -- a key buys headroom, it never gates the base. Requires a wallet-signed login; no invite code."
-        id="api-keys-heading"
-      />
+    <>
       <Panel>
         {walletStatus !== "connected" || !wallet ? (
           <EmptyState
@@ -107,7 +153,7 @@ export function ApiKeysManager() {
           />
         )}
       </Panel>
-    </section>
+    </>
   );
 }
 
@@ -293,30 +339,17 @@ function ApiKeysPanel({
         {!listQuery.isPending && !listQuery.isError && activeKeys.length === 0 ? (
           <EmptyState title="No active keys" description="Generate one above to get started." />
         ) : null}
-        {activeKeys.map((key) => (
-          <div
-            key={key.key_id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-surface px-3 py-2"
-          >
-            <div className="min-w-0">
-              <div className="font-mono text-13 text-ink-strong truncate">{key.key_id}</div>
-              <div className="text-13 text-ink-muted">
-                Created {formatTimestamp(key.created_at)} · Last used{" "}
-                {formatTimestamp(key.last_used_at)}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => revokeMutation.mutate(key.key_id)}
-              disabled={revokeMutation.isPending && revokeMutation.variables === key.key_id}
-              className="shrink-0 rounded border border-health-down/40 bg-health-down/5 px-2 py-1 text-13 font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
-            >
-              {revokeMutation.isPending && revokeMutation.variables === key.key_id
-                ? "Revoking…"
-                : "Revoke"}
-            </button>
-          </div>
-        ))}
+        <DataTable
+          id="api-keys"
+          rows={activeKeys}
+          columns={keyColumns(revokeMutation)}
+          rowKey={(key) => key.key_id}
+          caption="Active keys"
+          source="api-key"
+          paginate={false}
+          loading={listQuery.isPending}
+          empty="No active keys — generate one above."
+        />
       </div>
 
       {activeKeys.length > 0 ? <UsageDashboard usage={usageQuery.data} token={token} /> : null}

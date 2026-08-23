@@ -1,277 +1,193 @@
-import { Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Github,
-  ArrowUpRight,
-  FileCode2,
-  Network as NetworkIcon,
-  Activity,
-  Clock,
-} from "lucide-react";
+  AnalyticsSection,
+  DataTable,
+  EntityHero,
+  ExternalLink,
+  Fact,
+  FactSentence,
+  Raw,
+  type DataTableColumn,
+  type FactCells,
+  type RawRow,
+} from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CopyableCode, ExternalLink, EntityHero, FactSentence } from "@jsonbored/ui-kit";
-import { Panel } from "@/components/metagraphed/primitives";
+import { Link } from "@tanstack/react-router";
+import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
+import {
+  COVERAGE_LEVELS,
+  CURATION_LEVELS,
+  SCOPE_EXCLUSIONS,
+  aboutFacts,
+  type TaxonomyLevel,
+} from "@/components/metagraphed/about/about-logic";
 import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
 import { coverageQuery, freshnessQuery, healthQuery } from "@/lib/metagraphed/queries";
-import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
-import { Skeleton, StatUnavailable } from "@/components/metagraphed/states";
-import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 
+const API_PATHS = ["/api/v1/coverage", "/api/v1/health", "/api/v1/freshness"];
+
+/** Registers the page's sources from INSIDE `AppShell`, which owns the provider. */
+function ApiSources() {
+  useRegisterApiSource(API_PATHS);
+  return null;
+}
+
+const LEVEL_COLUMNS: DataTableColumn<TaxonomyLevel>[] = [
+  { key: "name", label: "Level", value: (l) => l.name },
+  { key: "meaning", label: "What it means", value: (l) => l.meaning },
+];
+
+/**
+ * About (#11627) — the one page on the site that is mostly words.
+ *
+ * It used to be a two-column layout: prose on the left in the mono body face,
+ * an "At a glance" panel of four linked stat tiles on the right. The tiles are
+ * the hero's fact cells now (four numbers belong in the strip every other
+ * entity page puts them in), and the prose is the site's only `.mg-prose`
+ * body — 16px IBM Plex Sans on a 68ch measure, which is the whole reason that
+ * second face is loaded at all.
+ *
+ * The two taxonomies were `<dl>`s of hand-styled term/description pairs. They
+ * are vocabularies with a fixed number of members and one sentence each,
+ * which is a table — and being a table means they sort, export, and read the
+ * same as every other list of records on the site.
+ */
 export function AboutPage() {
+  const coverage = useQuery(coverageQuery());
+  const health = useQuery(healthQuery());
+  const freshness = useQuery(freshnessQuery());
+
+  const cells = useMemo<FactCells>(() => {
+    const facts = aboutFacts({
+      coverage: (coverage.data?.data ?? null) as Record<string, unknown> | null,
+      health: (health.data?.data ?? null) as Record<string, unknown> | null,
+      freshness: (freshness.data?.data ?? null) as Record<string, unknown> | null,
+    });
+    // Four sources, four cells, one shape: a cell whose query has not landed
+    // (or failed) shows an em dash rather than a zero, because a zero here
+    // would be a claim.
+    const [active, adapters, healthy, fresh] = facts.map((fact) => ({
+      label: fact.label,
+      value: (
+        <Link to={fact.href} className="text-ink-strong hover:text-accent">
+          {fact.value ?? "—"}
+        </Link>
+      ),
+    }));
+    return [active, adapters, healthy, fresh] as FactCells;
+  }, [coverage.data, health.data, freshness.data]);
+
+  const rawRows: RawRow[] = [
+    { label: "REST", value: `${API_BASE}/api/v1`, href: `${API_BASE}/api/v1` },
+    { label: "GraphQL", value: `${API_BASE}/api/v1/graphql` },
+    { label: "MCP", value: `${API_BASE}/mcp` },
+    {
+      label: "OpenAPI",
+      value: `${API_BASE}/api/v1/openapi.json`,
+      href: `${API_BASE}/api/v1/openapi.json`,
+    },
+    { label: "Artifacts", value: `${API_BASE}/metagraph/`, href: `${API_BASE}/metagraph/` },
+  ];
+
   return (
     <AppShell>
+      <ApiSources />
       <EntityHero
         name="Methodology & scope"
-        action={
-          <ExternalLink
-            href={GITHUB_REPO}
-            bare
-            className="inline-flex items-center gap-1.5 rounded bg-ink-strong px-4 py-2 text-13 font-medium text-paper hover:opacity-90 transition-opacity"
-          >
-            <Github className="size-3.5" /> View on GitHub
-            <ArrowUpRight className="size-3.5" />
-          </ExternalLink>
-        }
+        action={<ExternalLink href={GITHUB_REPO}>Source on GitHub</ExternalLink>}
         sentence={
           <FactSentence>
             An unofficial, public explorer and integration registry for Bittensor — blocks, subnets,
-            validators, and accounts alongside the public interfaces each subnet exposes, all
-            machine-readable for developers and AI agents.
+            validators and accounts alongside the public interfaces each subnet exposes, every one
+            of them machine-readable. <Fact>unofficial</Fact>
+            <Fact>non-custodial</Fact>
+            <Fact>open source</Fact>
           </FactSentence>
         }
+        cells={cells}
       />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-8 min-w-0">
-          <Section title="What this is">
+
+      <AnalyticsSection
+        id="scope"
+        name="What this is"
+        question="Two halves — an explorer over the chain, and a registry over what subnets publish."
+        visual={
+          <div className="mg-prose flex flex-col gap-2">
             <p>
-              An unofficial, public explorer and integration registry for Bittensor. The explorer
-              reads chain-direct data — blocks, subnets, validators, and accounts — with endpoint
-              health, schema drift, and freshness. The registry maps every public interface a subnet
-              exposes — APIs, OpenAPI schemas, docs, repos, SSE streams, data artifacts, and
-              providers — with source evidence and the curation gaps still to fill. Everything is
-              machine-readable, served over REST, GraphQL, and MCP for developers and AI agents
-              alike.
+              The explorer reads chain-direct data — blocks, subnets, validators and accounts — with
+              endpoint health, schema drift and freshness alongside it. The registry maps every
+              public interface a subnet exposes: APIs, OpenAPI schemas, docs, repos, SSE streams,
+              data artifacts and the providers behind them, each with the source evidence that
+              proves it and the curation gaps still to fill.
             </p>
-          </Section>
-          <Section title="What this is not">
-            <ul className="list-disc pl-6 space-y-1.5">
-              <li>
-                Not an OpenTensor or Bittensor Foundation product — an independent, unofficial
-                project.
-              </li>
-              <li>
-                Not a custodial wallet or exchange — non-custodial by design: your keys and funds
-                never leave your own wallet, and any signing stays local, never on our servers.
-              </li>
-              <li>No private keys, PATs, or token-gated data are ever requested or displayed.</li>
-              <li>Endpoint pool eligibility is metadata only — proxy routing is future-scoped.</li>
+            <p>
+              Everything is served over REST, GraphQL and MCP, and published as static JSON
+              artifacts, so a human, a script and an agent all read the same numbers.
+            </p>
+          </div>
+        }
+        footnote="registry truth lives in version control, reviewed in the open — there is no in-app submission flow"
+      />
+
+      <AnalyticsSection
+        id="not"
+        name="What this is not"
+        question="Four claims worth making outright rather than leaving to inference."
+        visual={
+          <div className="mg-prose">
+            <ul>
+              {SCOPE_EXCLUSIONS.map((claim) => (
+                <li key={claim}>{claim}</li>
+              ))}
             </ul>
-          </Section>
-          <Section title="Curation levels">
-            <dl className="grid gap-2.5">
-              <Term name="Native" desc="Sourced directly from the Bittensor chain." />
-              <Term
-                name="Candidate-discovered"
-                desc="Leads from public sources, not yet verified."
-              />
-              <Term
-                name="Machine-verified"
-                desc="Reachable and shape-checked by automated probes."
-              />
-              <Term name="Maintainer-reviewed" desc="A human reviewer accepted the overlay." />
-              <Term
-                name="Adapter-backed"
-                desc="A typed adapter publishes live metrics (e.g. SN7, SN74)."
-              />
-            </dl>
-          </Section>
-          <Section title="Coverage levels">
-            <dl className="grid gap-2.5">
-              <Term name="Native-only" desc="Chain identity present, no curated overlay yet." />
-              <Term name="Manifested" desc="Curated overlay with at least one public surface." />
-              <Term
-                name="Probed"
-                desc="Surfaces or endpoints actively probed for health and freshness."
-              />
-            </dl>
-          </Section>
-          <Section title="Contributing">
-            <p>
-              Corrections, new candidate leads, and maintainer review happen through the public
-              repository. There is no in-app submission flow — registry truth lives in version
-              control, reviewed in the open.
-            </p>
-            <div className="mt-3">
-              <ExternalLink href={GITHUB_REPO}>{GITHUB_REPO}</ExternalLink>
-            </div>
-          </Section>
-          <Section title="API & artifacts">
-            <p className="mb-3">
-              JSON Schema is canonical; OpenAPI and the typed clients are projections of it. Every
-              public list and detail view is reachable over REST, GraphQL, and MCP — or as a static
-              JSON artifact — so a human, a script, or an agent all read the same data.
-            </p>
-            <div className="space-y-2">
-              <CopyableCode
-                label="REST"
-                value={`${API_BASE}/api/v1`}
-                truncate={false}
-                className="w-full"
-              />
-              <CopyableCode
-                label="GraphQL"
-                value={`${API_BASE}/api/v1/graphql`}
-                truncate={false}
-                className="w-full"
-              />
-              <CopyableCode
-                label="MCP"
-                value={`${API_BASE}/mcp`}
-                truncate={false}
-                className="w-full"
-              />
-              <CopyableCode
-                label="OpenAPI"
-                value={`${API_BASE}/api/v1/openapi.json`}
-                truncate={false}
-                className="w-full"
-              />
-              <CopyableCode
-                label="Artifacts"
-                value={`${API_BASE}/metagraph/`}
-                truncate={false}
-                className="w-full"
-              />
-            </div>
-          </Section>
-        </div>
+          </div>
+        }
+      />
 
-        <aside className="lg:sticky lg:top-24 h-fit">
-          <AtAGlance />
-        </aside>
-      </div>
-      <ApiSourceFooter paths={["/api/v1", "/api/v1/openapi.json", "/api/v1/build"]} />
+      <AnalyticsSection
+        id="curation"
+        name="Curation levels"
+        question="How a subnet's overlay came to exist, from chain identity to a typed adapter."
+        visual={
+          <DataTable
+            caption="Curation levels"
+            captionHidden
+            rows={CURATION_LEVELS}
+            columns={LEVEL_COLUMNS}
+            rowKey={(level) => level.name}
+            source="curation-levels"
+            paginate={false}
+          />
+        }
+        footnote="a subnet's level is the highest rung any of its surfaces has reached"
+      />
+
+      <AnalyticsSection
+        id="coverage"
+        name="Coverage levels"
+        question="How far through that ladder a subnet has got."
+        visual={
+          <DataTable
+            caption="Coverage levels"
+            captionHidden
+            rows={COVERAGE_LEVELS}
+            columns={LEVEL_COLUMNS}
+            rowKey={(level) => level.name}
+            source="coverage-levels"
+            paginate={false}
+          />
+        }
+        footnote="counted per level on /health and in the coverage artifact"
+      />
+
+      <AnalyticsSection
+        id="interfaces"
+        name="Interfaces"
+        question="The same registry, four ways in."
+        visual={<Raw title="Endpoints" rows={rawRows} defaultOpen />}
+        footnote="JSON Schema is canonical — OpenAPI and the typed clients are projections of it"
+      />
     </AppShell>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="font-display text-13 font-semibold text-ink-strong mb-2">{title}</h2>
-      <div className="text-13 leading-relaxed text-ink space-y-2">{children}</div>
-    </section>
-  );
-}
-
-function Term({ name, desc }: { name: string; desc: string }) {
-  return (
-    <div className="grid grid-cols-[auto_1fr] gap-3 items-baseline">
-      <dt className="text-11 text-ink-strong whitespace-nowrap">{name}</dt>
-      <dd className="text-13 text-ink-muted">{desc}</dd>
-    </div>
-  );
-}
-
-function AtAGlance() {
-  // Track each source query's own loading/error state so the sidebar can
-  // distinguish "still loading" (skeleton) and "failed" (error glyph) from a
-  // legitimately-null value ("—"), instead of collapsing all three to a dash.
-  const coverageResult = useQuery(coverageQuery());
-  const freshnessResult = useQuery(freshnessQuery());
-  const healthResult = useQuery(healthQuery());
-  const coverageRaw = (coverageResult.data?.data ?? {}) as Record<string, unknown>;
-  const coverage = coverageRaw as Record<string, number | undefined>;
-  const freshness = (freshnessResult.data?.data ?? {}) as Record<string, number | undefined>;
-  const health = (healthResult.data?.data ?? {}) as Record<string, number | undefined>;
-  // The accurate adapter-backed count is curation_level_counts['adapter-backed']
-  // (=2). coverage.adapter_backed does not exist; the old fallback path could
-  // surface first_party_subnet_count (73), which is a different metric.
-  const curationCounts = (coverageRaw.curation_level_counts ?? {}) as Record<string, number>;
-  const adapterBacked = curationCounts["adapter-backed"];
-  const stats: Array<{
-    icon: React.ElementType;
-    label: string;
-    value: string;
-    to: string;
-    phase: StatPhase;
-  }> = [
-    {
-      icon: NetworkIcon,
-      label: "Active subnets",
-      value: coverage.netuids_active != null ? formatNumber(coverage.netuids_active) : "—",
-      to: "/subnets",
-      phase: statPhase(coverageResult),
-    },
-    {
-      icon: FileCode2,
-      label: "Adapter-backed",
-      value: adapterBacked != null ? formatNumber(adapterBacked) : "—",
-      to: "/apis/providers",
-      phase: statPhase(coverageResult),
-    },
-    {
-      icon: Activity,
-      label: "Healthy",
-      value: health.ok != null && health.total ? `${health.ok}/${health.total}` : "—",
-      to: "/health",
-      phase: statPhase(healthResult),
-    },
-    {
-      icon: Clock,
-      label: "Avg freshness",
-      value: freshness.avg_age_seconds != null ? humaniseSeconds(freshness.avg_age_seconds) : "—",
-      to: "/health",
-      phase: statPhase(freshnessResult),
-    },
-  ];
-  return (
-    <Panel>
-      <div className="text-10 text-ink-muted mb-3 inline-flex items-center gap-2">
-        <span className="mg-live-dot" /> At a glance
-      </div>
-      <ul className="space-y-2.5">
-        {stats.map(({ icon: Icon, label, value, to, phase }) => (
-          <li key={label}>
-            <Link
-              to={to}
-              className="group flex items-center gap-3 rounded border border-transparent hover:border-border hover:bg-surface px-2 py-1.5 -mx-2 transition-colors"
-            >
-              <span className="inline-flex size-7 items-center justify-center rounded bg-surface text-ink shrink-0">
-                <Icon className="size-3.5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-10 text-ink-muted">{label}</div>
-                <div className="font-display text-16 font-semibold text-ink-strong tabular-nums">
-                  {phase === "pending" ? (
-                    <Skeleton className="mt-1 h-4 w-16" />
-                  ) : phase === "error" ? (
-                    <StatUnavailable />
-                  ) : (
-                    value
-                  )}
-                </div>
-              </div>
-              <ArrowUpRight className="size-3.5 text-ink-muted group-hover:text-ink-strong transition-colors" />
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-4 border-t border-border pt-3 grid gap-1.5">
-        <Link
-          to="/apis/schemas"
-          className="text-11 text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
-        >
-          → API & schemas
-        </Link>
-        <Link
-          to="/contribute"
-          className="text-11 text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
-        >
-          → Registry gaps
-        </Link>
-      </div>
-    </Panel>
   );
 }

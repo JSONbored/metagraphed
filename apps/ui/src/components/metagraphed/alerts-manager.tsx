@@ -4,9 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { PushDevicesManager } from "@/components/metagraphed/push-devices-manager";
 import { classNames } from "@/lib/metagraphed/format";
-import { TimeAgo, SectionHead } from "@jsonbored/ui-kit";
+import { DataTable, TimeAgo, type DataTableColumn } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
 import { useWallet } from "@/hooks/use-wallet";
 import { useWatchToken } from "@/hooks/use-watch-token";
 
@@ -113,29 +112,25 @@ export function AlertsManager() {
   const watchToken = useWatchToken(wallet);
 
   return (
-    <section aria-labelledby="alerts-heading">
-      <SectionHead
-        name="Alerts"
-        question="Chain alert triggers you've created with a verified wallet -- pause, edit, or delete, and see recent delivery attempts. Re-verify with your wallet to view (read scope only, never a transaction)."
-        id="alerts-heading"
-      />
-      <Panel>
-        {walletStatus !== "connected" || !wallet ? (
-          <EmptyState
-            title="Connect your wallet"
-            description="Connect a wallet from the header above to sign in and manage your alerts."
-          />
-        ) : watchToken.status === "active" && watchToken.token ? (
-          <AlertsPanel token={watchToken.token} onSignOut={watchToken.clear} />
-        ) : (
-          <AlertsSignInPrompt
-            signingIn={watchToken.status === "issuing"}
-            error={watchToken.error}
-            onSignIn={watchToken.issue}
-          />
-        )}
-      </Panel>
-    </section>
+    // No `SectionHead` and no `<section>` of its own: /settings wraps each
+    // manager in an `AnalyticsSection` now (#11627), and two headings for one
+    // list is exactly the doubling that rebuild removes.
+    <>
+      {walletStatus !== "connected" || !wallet ? (
+        <EmptyState
+          title="Connect your wallet"
+          description="Connect a wallet from the header above to sign in and manage your alerts."
+        />
+      ) : watchToken.status === "active" && watchToken.token ? (
+        <AlertsPanel token={watchToken.token} onSignOut={watchToken.clear} />
+      ) : (
+        <AlertsSignInPrompt
+          signingIn={watchToken.status === "issuing"}
+          error={watchToken.error}
+          onSignIn={watchToken.issue}
+        />
+      )}
+    </>
   );
 }
 
@@ -200,35 +195,90 @@ function AlertsPanel({ token, onSignOut }: { token: string; onSignOut: () => voi
 
   const triggers = listQuery.data ?? [];
 
+  const columns: DataTableColumn<OwnerAlertTriggerView>[] = [
+    {
+      key: "name",
+      label: "Trigger",
+      render: (t) => (
+        <span className="text-13 text-ink-strong">{t.name || summarizeTriggerFilter(t)}</span>
+      ),
+      value: (t) => t.name || summarizeTriggerFilter(t),
+    },
+    {
+      key: "scope",
+      label: "Scope",
+      render: (t) => <TriggerEntityChip trigger={t} />,
+      value: (t) => (t.netuid != null ? `SN${t.netuid}` : t.account ? "account" : "network-wide"),
+    },
+    { key: "channel", label: "Channel", value: (t) => t.channel },
+    {
+      key: "matches",
+      label: "Matches",
+      kind: "number",
+      align: "right",
+      value: (t) => t.match_count,
+    },
+    {
+      key: "last_matched",
+      label: "Last match",
+      kind: "time",
+      value: (t) => epochMsToIso(t.last_matched_at),
+    },
+    {
+      key: "state",
+      label: "State",
+      kind: "status",
+      value: (t) => (t.active ? "active" : "paused"),
+    },
+    {
+      key: "destination",
+      label: "Destination",
+      kind: "identifier",
+      demote: true,
+      value: (t) => t.destination,
+    },
+    {
+      key: "created",
+      label: "Created",
+      kind: "time",
+      demote: true,
+      value: (t) => epochMsToIso(t.created_at),
+    },
+  ];
+
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3">
       {/* #8385: device management for the webpush channel, inside the
           already-verified panel so the T6 token is reused, not re-issued. */}
       <PushDevicesManager token={token} />
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-13 text-ink-muted">
-          {triggers.length} alert{triggers.length === 1 ? "" : "s"}
-        </span>
-        <button
-          type="button"
-          onClick={onSignOut}
-          className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
-        >
-          Sign out
-        </button>
-      </div>
 
-      {listQuery.isPending ? <Skeleton className="h-16 w-full" /> : null}
-      {listQuery.isError ? <ErrorPanel message={describeApiError(listQuery.error)} /> : null}
-      {!listQuery.isPending && !listQuery.isError && triggers.length === 0 ? (
-        <AlertsEmptyState />
-      ) : null}
-
-      <div className="space-y-2">
-        {triggers.map((trigger) => (
-          <TriggerRow key={trigger.id} trigger={trigger} token={token} listQueryKey={queryKey} />
-        ))}
-      </div>
+      <DataTable
+        caption="Alert triggers"
+        rows={triggers}
+        columns={columns}
+        rowKey={(t) => t.id}
+        source="alerts"
+        storageKey="mg.alerts.columns"
+        loading={listQuery.isPending}
+        error={
+          listQuery.isError ? <ErrorPanel message={describeApiError(listQuery.error)} /> : null
+        }
+        empty={<AlertsEmptyState />}
+        // Every trigger has controls and a delivery log, so every row expands
+        // -- the pause / edit / delete cluster that used to sit in each row's
+        // right margin lives under the row now, which is what took the list
+        // from five competing controls per line to one.
+        expand={(t) => <TriggerControls trigger={t} token={token} listQueryKey={queryKey} />}
+        filters={
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
+          >
+            Sign out
+          </button>
+        }
+      />
     </div>
   );
 }
@@ -236,21 +286,21 @@ function AlertsPanel({ token, onSignOut }: { token: string; onSignOut: () => voi
 /** #8375 requirement 4: no triggers -> the two entry points as links, not prose. */
 function AlertsEmptyState() {
   return (
-    <div className="rounded border border-dashed border-ink-subtle bg-surface p-6 text-center space-y-3">
-      <div className="font-display text-13 font-medium text-ink-strong">No alerts yet</div>
-      <p className="text-13 text-ink-muted max-w-md mx-auto">
+    <div className="flex flex-col items-center gap-3 p-6 text-center">
+      <div className="text-13 text-ink-strong">No alerts yet</div>
+      <p className="text-13 text-ink-muted">
         Watch a subnet or a validator to get pinged the moment something changes.
       </p>
       <div className="flex items-center justify-center gap-2">
         <Link
           to="/subnets"
-          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong hover:border-ink/30"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 text-ink-strong hover:border-ink/30"
         >
           Watch a subnet
         </Link>
         <Link
           to="/validators"
-          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong hover:border-ink/30"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 text-ink-strong hover:border-ink/30"
         >
           Watch a validator
         </Link>
@@ -265,7 +315,7 @@ function TriggerEntityChip({ trigger }: { trigger: OwnerAlertTriggerView }) {
       <Link
         to="/subnets/$netuid"
         params={{ netuid: trigger.netuid }}
-        className="inline-flex shrink-0 items-center rounded border border-border bg-paper px-2 py-0.5 text-10 text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
+        className="text-13 text-ink-muted hover:text-accent"
       >
         SN{trigger.netuid}
       </Link>
@@ -276,48 +326,13 @@ function TriggerEntityChip({ trigger }: { trigger: OwnerAlertTriggerView }) {
       <Link
         to="/accounts/$ss58"
         params={{ ss58: trigger.account }}
-        className="inline-flex shrink-0 items-center rounded border border-border bg-paper px-2 py-0.5 text-10 text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
+        className="text-13 text-ink-muted hover:text-accent"
       >
         account
       </Link>
     );
   }
-  return (
-    <span className="inline-flex shrink-0 items-center rounded border border-border bg-paper px-2 py-0.5 text-10 text-ink-muted">
-      network-wide
-    </span>
-  );
-}
-
-function ChannelBadge({ channel }: { channel: OwnerAlertTriggerView["channel"] }) {
-  return (
-    <span className="inline-flex shrink-0 items-center rounded border border-border bg-card px-1.5 py-0.5 text-13 text-ink-muted">
-      {channel}
-    </span>
-  );
-}
-
-function LastDeliveryPill({
-  delivery,
-  isLoading,
-}: {
-  delivery: DeliveryRecordView | null;
-  isLoading: boolean;
-}) {
-  if (isLoading) {
-    return <span className="text-11 text-ink-muted">…</span>;
-  }
-  if (!delivery) {
-    return <span className="text-11 text-ink-muted">no deliveries yet</span>;
-  }
-  return (
-    <span
-      className={classNames("text-11", delivery.success ? "text-health-ok" : "text-health-down")}
-    >
-      {delivery.success ? "delivered" : "failed"}{" "}
-      <TimeAgo at={epochMsToIso(delivery.delivered_at)} />
-    </span>
-  );
+  return <span className="text-13 text-ink-muted">network-wide</span>;
 }
 
 function DeliveryHistory({
@@ -335,18 +350,15 @@ function DeliveryHistory({
   if (isError) return <ErrorPanel message={describeApiError(error)} />;
   if (deliveries.length === 0) {
     return (
-      <p className="text-13 text-ink-muted px-1 py-2">
+      <p className="text-13 text-ink-muted">
         No deliveries recorded yet -- this trigger hasn't matched a live event since it was created.
       </p>
     );
   }
   return (
-    <ul className="space-y-1 px-1 py-2">
+    <ul className="flex flex-col gap-1">
       {deliveries.map((d) => (
-        <li
-          key={d.id}
-          className="flex flex-wrap items-center gap-2 rounded border border-border/60 bg-card px-2 py-1 text-11"
-        >
+        <li key={d.id} className="flex flex-wrap items-center gap-2 text-11">
           <span className={d.success ? "text-health-ok" : "text-health-down"}>
             {d.success ? "ok" : "failed"}
           </span>
@@ -354,7 +366,7 @@ function DeliveryHistory({
             <TimeAgo at={epochMsToIso(d.delivered_at)} />
           </span>
           {d.status_code != null ? (
-            <span className="font-mono text-ink-muted">HTTP {d.status_code}</span>
+            <span className="text-ink-muted">HTTP {d.status_code}</span>
           ) : null}
           {d.retry_count > 0 ? (
             <span className="text-ink-muted">{d.retry_count} retries</span>
@@ -368,7 +380,15 @@ function DeliveryHistory({
   );
 }
 
-function TriggerRow({
+/**
+ * Everything you can do to one trigger, under the row rather than inside it.
+ *
+ * The deliveries query lives here, so it only runs for the trigger the reader
+ * opened -- the old row fired one per trigger on mount to paint a "delivered
+ * 3h ago" pill, which is `match_count` and `last_matched_at` on the trigger
+ * itself, two columns that cost nothing.
+ */
+function TriggerControls({
   trigger,
   token,
   listQueryKey,
@@ -378,14 +398,12 @@ function TriggerRow({
   listQueryKey: unknown[];
 }) {
   const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [destinationInput, setDestinationInput] = useState(trigger.destination);
 
-  const deliveriesQueryKey = ["watch-trigger-deliveries", trigger.id, token];
   const deliveriesQuery = useQuery({
-    queryKey: deliveriesQueryKey,
+    queryKey: ["watch-trigger-deliveries", trigger.id, token],
     queryFn: async (): Promise<DeliveryRecordView[]> => {
       const res = await apiFetch<{ deliveries: DeliveryRecordView[] }>(
         `/api/v1/watch/triggers/${encodeURIComponent(trigger.id)}/deliveries`,
@@ -394,7 +412,6 @@ function TriggerRow({
       return res.data.deliveries;
     },
   });
-  const deliveries = deliveriesQuery.data ?? [];
 
   function invalidateList() {
     queryClient.invalidateQueries({ queryKey: listQueryKey });
@@ -454,90 +471,64 @@ function TriggerRow({
   }
 
   return (
-    <div className="rounded border border-border bg-surface">
-      <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">
-        <TriggerEntityChip trigger={trigger} />
-        <span className="min-w-0 flex-1 truncate text-13 text-ink-strong">
-          {trigger.name || summarizeTriggerFilter(trigger)}
-        </span>
-        <ChannelBadge channel={trigger.channel} />
-        <span className="shrink-0 text-11 text-ink-muted">
-          <TimeAgo at={epochMsToIso(trigger.created_at)} />
-        </span>
-        <LastDeliveryPill delivery={deliveries[0] ?? null} isLoading={deliveriesQuery.isPending} />
-        {!trigger.active ? (
-          <span className="shrink-0 rounded border border-health-warn/30 bg-health-warn/10 px-1.5 py-0.5 text-13 text-health-warn">
-            paused
-          </span>
-        ) : null}
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => toggleActiveMutation.mutate()}
-            disabled={toggleActiveMutation.isPending}
-            className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:opacity-50"
-          >
-            {trigger.active ? "Pause" : "Resume"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditing((v) => !v)}
-            className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
-          >
-            Edit
-          </button>
-          {confirmingDelete ? (
-            <>
-              <button
-                type="button"
-                onClick={() => deleteMutation.mutate()}
-                disabled={deleteMutation.isPending}
-                className="rounded border border-health-down/40 bg-health-down/5 px-2 py-1 text-13 font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
-              >
-                {deleteMutation.isPending ? "Deleting…" : "Confirm delete"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(false)}
-                className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong"
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => toggleActiveMutation.mutate()}
+          disabled={toggleActiveMutation.isPending}
+          className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:opacity-50"
+        >
+          {trigger.active ? "Pause" : "Resume"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing((v) => !v)}
+          className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
+        >
+          Edit destination
+        </button>
+        {confirmingDelete ? (
+          <>
             <button
               type="button"
-              onClick={() => setConfirmingDelete(true)}
-              className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-health-down hover:border-health-down/40"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="rounded border border-health-down/40 bg-health-down/5 px-2 py-1 text-13 text-health-down hover:bg-health-down/10 disabled:opacity-50"
             >
-              Delete
+              {deleteMutation.isPending ? "Deleting…" : "Confirm delete"}
             </button>
-          )}
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
           <button
             type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-ink/30"
+            onClick={() => setConfirmingDelete(true)}
+            className="rounded border border-border bg-card px-2 py-1 text-13 text-ink-muted hover:text-health-down hover:border-health-down/40"
           >
-            {expanded ? "Hide history" : "History"}
+            Delete
           </button>
-        </div>
+        )}
       </div>
 
       {editing ? (
-        <form
-          onSubmit={onSubmitDestination}
-          className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-2.5"
-        >
+        <form onSubmit={onSubmitDestination} className="flex flex-wrap items-center gap-2">
           <span className="text-13 text-ink-muted">Delivery destination</span>
           <input
             value={destinationInput}
             onChange={(e) => setDestinationInput(e.target.value)}
-            className={classNames(inputCls, "flex-1 min-w-[16rem] font-mono")}
+            className={classNames(inputCls, "flex-1")}
           />
           <button
             type="submit"
             disabled={editDestinationMutation.isPending}
-            className="rounded border border-accent/40 bg-primary-soft px-2.5 py-1 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+            className="rounded border border-accent/40 bg-primary-soft px-2.5 py-1 text-13 text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
           >
             {editDestinationMutation.isPending ? "Saving…" : "Save"}
           </button>
@@ -550,26 +541,18 @@ function TriggerRow({
       ) : null}
 
       {toggleActiveMutation.isError ? (
-        <div className="border-t border-border px-3 py-2">
-          <ErrorPanel message={describeApiError(toggleActiveMutation.error)} />
-        </div>
+        <ErrorPanel message={describeApiError(toggleActiveMutation.error)} />
       ) : null}
       {deleteMutation.isError ? (
-        <div className="border-t border-border px-3 py-2">
-          <ErrorPanel message={describeApiError(deleteMutation.error)} />
-        </div>
+        <ErrorPanel message={describeApiError(deleteMutation.error)} />
       ) : null}
 
-      {expanded ? (
-        <div className="border-t border-border">
-          <DeliveryHistory
-            deliveries={deliveries}
-            isPending={deliveriesQuery.isPending}
-            isError={deliveriesQuery.isError}
-            error={deliveriesQuery.error}
-          />
-        </div>
-      ) : null}
+      <DeliveryHistory
+        deliveries={deliveriesQuery.data ?? []}
+        isPending={deliveriesQuery.isPending}
+        isError={deliveriesQuery.isError}
+        error={deliveriesQuery.error}
+      />
     </div>
   );
 }

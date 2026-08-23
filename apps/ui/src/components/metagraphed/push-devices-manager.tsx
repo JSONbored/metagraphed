@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellRing, Loader2, Trash2 } from "lucide-react";
-import { TimeAgo } from "@jsonbored/ui-kit";
+import { DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import {
   describeDevice,
@@ -142,45 +142,53 @@ export function PushDevicesManager({ token }: { token: string }) {
         </p>
       ) : null}
 
-      {devices.length > 0 ? (
-        <ul className="space-y-1">
-          {devices.map((device) => (
-            <li
-              key={device.id}
-              className="flex items-center justify-between gap-2 rounded border border-border bg-card px-2.5 py-2"
-            >
-              <span className="min-w-0">
-                <span className="block text-13 font-medium text-ink-strong">
-                  {describeDevice(device.user_agent)}
-                </span>
-                <span className="block text-13 text-ink-muted">
-                  {/* TimeAgo takes an ISO string; these columns are epoch ms. */}
-                  added <TimeAgo at={toIso(device.created_at)} />
-                  {device.last_used_at ? (
-                    <>
-                      {" · last alert "}
-                      <TimeAgo at={toIso(device.last_used_at)} />
-                    </>
-                  ) : null}
-                </span>
-              </span>
-              <button
-                type="button"
-                aria-label={`Remove ${describeDevice(device.user_agent)}`}
-                onClick={() => removeMutation.mutate(device)}
-                disabled={removeMutation.isPending}
-                className="inline-flex shrink-0 items-center justify-center rounded border border-border bg-card p-1.5 text-ink-muted transition-colors hover:border-health-down/40 hover:text-health-down disabled:opacity-50"
-              >
-                <Trash2 className="size-3.5" aria-hidden />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-13 text-ink-muted">
-          No devices yet. Enable push to get alerts without a page open.
-        </p>
-      )}
+      <DataTable
+        caption="Push devices"
+        captionHidden
+        rows={devices}
+        columns={deviceColumns(removeMutation)}
+        rowKey={(device) => device.id}
+        source="push-devices"
+        paginate={false}
+        loading={devicesQuery.isPending}
+        empty={
+          <p className="text-13 text-ink-muted">
+            No devices yet. Enable push to get alerts without a page open.
+          </p>
+        }
+      />
     </div>
   );
+}
+
+/**
+ * Three rows at most (the server caps the fleet), but the same table the rest
+ * of /settings uses -- a hand-rolled list here would be the one place on the
+ * page where a row of records is drawn differently.
+ */
+function deviceColumns(remove: {
+  mutate: (device: PushDevice) => void;
+  isPending: boolean;
+}): DataTableColumn<PushDevice>[] {
+  return [
+    { key: "device", label: "Device", value: (d) => describeDevice(d.user_agent) },
+    { key: "added", label: "Added", kind: "time", value: (d) => toIso(d.created_at) },
+    { key: "last_alert", label: "Last alert", kind: "time", value: (d) => toIso(d.last_used_at) },
+    {
+      key: "remove",
+      label: "",
+      align: "right",
+      render: (d) => (
+        <button
+          type="button"
+          aria-label={`Remove ${describeDevice(d.user_agent)}`}
+          onClick={() => remove.mutate(d)}
+          disabled={remove.isPending}
+          className="inline-flex items-center justify-center rounded border border-border bg-card p-1.5 text-ink-muted transition-colors hover:border-health-down/40 hover:text-health-down disabled:opacity-50"
+        >
+          <Trash2 className="size-3.5" aria-hidden />
+        </button>
+      ),
+    },
+  ];
 }
