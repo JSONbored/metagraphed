@@ -5,6 +5,7 @@ import {
   formatSignedAmount,
   formatPct,
   formatCompact,
+  formatCompactAmount,
   formatDecimal,
   isUsableTimestamp,
   humaniseSeconds,
@@ -435,5 +436,52 @@ describe("formatAmount / formatAmountFixed / formatSignedAmount", () => {
   it("falls back on nullish or non-finite input", () => {
     expect(formatAmount(null, "τ")).toBe("—");
     expect(formatSignedAmount(Number.NaN)).toBe("—");
+  });
+});
+
+describe("formatCompact never leaks precision below a thousand (#11681)", () => {
+  it("caps a non-integer at two decimals", () => {
+    // The defect: the home page's emission rail rendered "295.2016 α" beside
+    // "5.9k α" because this fell through to formatNumber's four.
+    expect(formatCompact(295.2016)).toBe("295.20");
+    expect(formatCompact(1.005)).toBe("1.00");
+    expect(formatCompact(999.999)).toBe("1000.00");
+  });
+
+  it("still renders a whole number bare, which is what a count wants", () => {
+    expect(formatCompact(812)).toBe("812");
+    expect(formatCompact(999)).toBe("999");
+    expect(formatCompact(1)).toBe("1");
+  });
+
+  it("keeps significant digits below one, so dust does not round to nothing", () => {
+    expect(formatCompact(0.0001662)).toBe("0.0001662");
+    expect(formatCompact(0)).toBe("0");
+  });
+
+  it("agrees with formatCompactAmount wherever a count and an amount agree", () => {
+    // The tiers above a thousand, and any non-integer between one and a
+    // thousand, are the same number either way.
+    for (const v of [295.2016, 4_500, 2_400_000, -47.5001]) {
+      expect(formatCompact(v)).toBe(formatCompactAmount(v));
+    }
+  });
+
+  it("diverges exactly where a count and an amount should disagree", () => {
+    // A whole number: a COUNT of 812 is "812"; an AMOUNT of 812 is "812.00",
+    // so a column of amounts keeps its decimal point aligned.
+    expect(formatCompact(812)).toBe("812");
+    expect(formatCompactAmount(812)).toBe("812.00");
+    // Below one: a count keeps significant digits so dust stays visible; an
+    // amount pads to the four decimals the rest of its column shows.
+    expect(formatCompact(0.5)).toBe("0.5");
+    expect(formatCompactAmount(0.5)).toBe("0.5000");
+  });
+
+  it("never returns more than two decimals for a magnitude at or above one", () => {
+    for (const v of [1.23456, 295.2016, 12.999999, -47.5001, 999.9999]) {
+      const decimals = (formatCompact(v).split(".")[1] ?? "").length;
+      expect(decimals, `formatCompact(${v}) = ${formatCompact(v)}`).toBeLessThanOrEqual(2);
+    }
   });
 });

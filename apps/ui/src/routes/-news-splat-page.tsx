@@ -19,7 +19,7 @@ const clientLoader = browserCollections.news.createClientLoader({
       <DocsPage toc={toc}>
         <DocsTitle>{frontmatter.title}</DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
-        <DocsBody>
+        <DocsBody className="mg-prose">
           {/* getMDXComponents rather than the useMDXComponents alias, for the
               same hooks-naming reason -docs-splat-page.tsx documents. */}
           <MDX components={getMDXComponents()} />

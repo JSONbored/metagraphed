@@ -287,6 +287,33 @@ function subjectIndexPage(netuid: number | null, entries: WeeklyDigest[]): strin
   ].join("\n");
 }
 
+/**
+ * The sidebar's order, written explicitly because fumadocs' default is the
+ * filesystem's.
+ *
+ * 124 subject folders sort as strings without this, so the reader saw
+ * `sn1, sn10, sn100 … sn109, sn11, sn110 …` and had to scroll past a hundred
+ * entries to reach subnet 2 (#11681). The API reference already writes a
+ * `meta.json` for exactly this reason (`generate-openapi-docs.ts`); this is the
+ * same fix for the same defect on the sibling tree.
+ *
+ * `network` leads because it is the only subject that is not a subnet, and the
+ * rest go in numeric order.
+ */
+function rootMeta(digests: readonly WeeklyDigest[]): string {
+  const netuids = [...new Set(digests.map((d) => d.netuid))]
+    .filter((n): n is number => n !== null)
+    .sort((a, b) => a - b);
+  return JSON.stringify(
+    {
+      title: "Weekly digests",
+      pages: ["index", "network", ...netuids.map((n) => `sn${n}`)],
+    },
+    null,
+    2,
+  );
+}
+
 async function main() {
   const raw = await readFile(STORE_PATH, "utf8").catch(() => null);
   const store = raw ? (JSON.parse(raw) as { digests?: WeeklyDigest[] }) : { digests: [] };
@@ -300,6 +327,7 @@ async function main() {
   const format = (source: string) => prettier.format(source, { parser: "mdx" });
 
   await writeFile(path.join(OUTPUT_DIR, "index.mdx"), await format(indexPage(digests)), "utf8");
+  await writeFile(path.join(OUTPUT_DIR, "meta.json"), `${rootMeta(digests)}\n`, "utf8");
 
   // One index per subject folder, so the digest breadcrumb's parent link
   // resolves -- see subjectIndexPage.
