@@ -13,7 +13,6 @@ import { stripSearchParams } from "@tanstack/react-router";
 export const TRAILING_WINDOWS = ["7d", "30d", "90d"] as const;
 export type TrailingWindow = (typeof TRAILING_WINDOWS)[number];
 
-
 /** Common URL-driven table state schema for /subnets and /surfaces. */
 export const tableSearchSchema = z.object({
   q: z.string().catch("").default(""),
