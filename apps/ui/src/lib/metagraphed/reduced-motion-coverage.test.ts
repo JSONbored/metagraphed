@@ -1,6 +1,22 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+
+/** Every .ts/.tsx under apps/ui/src, for the tree-wide sweeps below. */
+function sourceFiles(): string[] {
+  const root = fileURLToPath(new URL("../..", import.meta.url));
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry.name) && !entry.name.includes(".test.")) out.push(full);
+    }
+  };
+  walk(root);
+  return out;
+}
 
 // #8367. The watchlist row pulse shipped in #8446 as the Tailwind pair
 // `transition-colors duration-1000` + `bg-accent/15`. Every
@@ -107,20 +123,18 @@ describe("reduced-motion coverage (#8367)", () => {
     expect(answered).toContain(".mg-value-pulse");
   });
 
-  it("does not reintroduce an unguarded Tailwind pulse on watchlist rows", () => {
-    const mod = readFileSync(
-      fileURLToPath(
-        new URL("../../components/metagraphed/home-watched-module.tsx", import.meta.url),
-      ),
-      "utf8",
-    );
-    // Comments stripped first: the file documents the old defect by name, and
-    // matching that prose would fail the moment the explanation is written
-    // down. Only real class strings should count.
-    const code = mod.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-    // The exact shape of the original defect: a bare colour transition driving
-    // the flash instead of the reduced-motion-aware class.
-    expect(code).not.toMatch(/transition-colors[^"'`]*duration-1000/);
-    expect(code).toContain("");
+  it("does not reintroduce an unguarded Tailwind pulse anywhere", () => {
+    // #8367's original defect was a bare colour transition driving a flash on
+    // the home page's watchlist rows instead of the reduced-motion-aware
+    // class. #11618 deleted that module with the rest of the home page, so
+    // this now sweeps the whole tree rather than naming one file -- which is
+    // the stronger guard, and cannot go stale when a component moves.
+    const offenders = sourceFiles().filter((file) => {
+      const code = readFileSync(file, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "");
+      return /transition-colors[^"'`]*duration-1000/.test(code);
+    });
+    expect(offenders).toEqual([]);
   });
 });

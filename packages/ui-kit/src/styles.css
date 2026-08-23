@@ -956,6 +956,66 @@
     gap: 16px;
     padding: var(--mg-section-y) var(--mg-section-x) 40px;
   }
+  /* The landing hero: the one place 64px and the dotted plane are allowed
+     (#11618). The plane is a static 2px dot grid clipped to the hero, so it
+     costs nothing to a reader with reduced motion -- there is no motion. */
+  .mg-landing {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: var(--mg-section-y) var(--mg-section-x);
+    max-height: 350px;
+  }
+  .mg-landing::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(var(--rule-strong) 1px, transparent 1px);
+    background-size: 6px 6px;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .mg-landing > * {
+    position: relative;
+  }
+  .mg-landing h1 {
+    margin: 0;
+    font-size: var(--text-64);
+    line-height: 1.05;
+    font-weight: 600;
+    color: var(--ink-strong);
+    text-wrap: balance;
+  }
+  /* A solid cut-out so the sentence reads against the plane rather than
+     through it. */
+  .mg-landing-lede {
+    align-self: flex-start;
+    margin: 0;
+    padding: 4px 8px;
+    background: var(--canvas);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ink);
+    max-width: 60ch;
+  }
+  .mg-landing-meta {
+    align-self: flex-start;
+    padding: 2px 6px;
+    background: var(--canvas);
+    font-size: 10px;
+    line-height: 16px;
+    color: var(--ink-muted);
+  }
+  @media (max-width: 767px) {
+    .mg-landing {
+      max-height: none;
+    }
+    .mg-landing h1 {
+      font-size: var(--text-40);
+    }
+  }
   .mg-hero-crumbs {
     display: flex;
     flex-wrap: wrap;
