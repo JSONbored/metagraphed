@@ -108,10 +108,11 @@ python -m unittest discover -s tests` (the `[test]` extra pulls in httpx so the 
   no wiring, but a `scripts/test_*.py` whose subject is deleted now fails at import here** (#9473 —
   four of them sat unrun and broken for two weeks before this step existed). Node-independent, so
   neither adds wall-clock to the long poles.
-- **`ui`** — lint + typecheck + test + three Playwright e2e projects: `responsive-overflow` (baseline-diffed
-  against `apps/ui/tests/e2e/overflow-baseline.json` — fails only on a NEW element escaping the
-  viewport, not the pre-existing tracked backlog like #3930/#3931/#3985; regenerate the baseline via
-  `npm run test:e2e:update-baseline --workspace=apps/ui` after a real fix or an accepted new layout), `interaction` (sticky headers, crawlability, offline, deep links) and `token-inventory` (#11605/#11628 — the design-system contract measured in the rendered page: font families (mono everywhere; Plex Sans only on the prose routes in `PROSE_ROUTES`), the seven sizes, `letter-spacing: normal`, one 4px radius, zero pills, no resting shadow, **at most seven `section.mg-section` per route**, **at most one table over 900px inside one section**, and **zero elements carrying a class the v2 purge deleted**; absolute, never baseline-diffed),
+- **`ui`** — lint + typecheck + test + three Playwright e2e projects: `responsive-overflow` (**zero tolerance** at
+  four widths — nothing may escape the viewport. It was baseline-diffed against
+  `overflow-baseline.json` while the app carried the #3930/#3931/#3985 backlog; the v2 rebuild
+  emptied that file completely, so #11678 deleted it, its generator and
+  `test:e2e:update-baseline` — there is no longer any way to record an overflow bug as accepted), `interaction` (sticky headers, crawlability, offline, deep links) and `token-inventory` (#11605/#11628 — the design-system contract measured in the rendered page: font families (mono everywhere; Plex Sans only on the prose routes in `PROSE_ROUTES`), the seven sizes, `letter-spacing: normal`, one 4px radius, zero pills, no resting shadow, **at most seven `section.mg-section` per route**, **at most one table over 900px inside one section**, and **zero elements carrying a class the v2 purge deleted** — measured at 375 / 768 / 1280 since #11678, because a phone was previously only proven not to OVERFLOW, never to be the same design; absolute, never baseline-diffed),
   build, and bundle-size-budget for `apps/ui` (the TanStack Start/Vite frontend, folded into this
   repo as an npm workspace — #3062), plus a `packages/client/dist` drift check (rebuild fresh,
   `git diff --exit-code` against the committed runtime bundle — #3066/#3294) and, the same way, a

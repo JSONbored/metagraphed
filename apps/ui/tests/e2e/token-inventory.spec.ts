@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 import {
   ROUTES,
   THEMES,
-  VIEWPORT,
+  VIEWPORTS,
   allowedFamilies,
   allowedSizes,
   TRACKING_NORMAL,
@@ -230,107 +230,113 @@ for (const route of ROUTES) {
           `\`npm run test:e2e:record-har --workspace=apps/ui\` against a live dev server first.`,
       );
     }
-    for (const theme of THEMES) {
-      test(`token inventory holds in ${theme}`, async ({ page }) => {
-        await page.setViewportSize(VIEWPORT);
-        await page.addInitScript(
-          ([key, value]) => {
-            try {
-              window.localStorage.setItem(key as string, value as string);
-            } catch {
-              /* storage blocked */
-            }
-          },
-          [THEME_STORAGE_KEY, theme],
-        );
-        if (needsFixture) {
-          await page.routeFromHAR(harPath, {
-            url: "**/api.metagraph.sh/**",
-            notFound: "fallback",
-            update: false,
-          });
-          for (const pattern of DATED_ENDPOINT_PATTERNS) {
-            const fixture = findHarFixture(harPath, pattern);
-            if (fixture) {
-              await page.route(pattern, (route) => route.fulfill(fixture));
+    for (const viewport of VIEWPORTS) {
+      for (const theme of THEMES) {
+        test(`token inventory holds at ${viewport.name} in ${theme}`, async ({ page }) => {
+          await page.setViewportSize({ width: viewport.width, height: viewport.height });
+          await page.addInitScript(
+            ([key, value]) => {
+              try {
+                window.localStorage.setItem(key as string, value as string);
+              } catch {
+                /* storage blocked */
+              }
+            },
+            [THEME_STORAGE_KEY, theme],
+          );
+          if (needsFixture) {
+            await page.routeFromHAR(harPath, {
+              url: "**/api.metagraph.sh/**",
+              notFound: "fallback",
+              update: false,
+            });
+            for (const pattern of DATED_ENDPOINT_PATTERNS) {
+              const fixture = findHarFixture(harPath, pattern);
+              if (fixture) {
+                await page.route(pattern, (route) => route.fulfill(fixture));
+              }
             }
           }
-        }
-        await gotoThroughRestart(page, route);
-        await page.waitForLoadState("networkidle").catch(() => {});
-        await page.waitForTimeout(300);
+          await gotoThroughRestart(page, route);
+          await page.waitForLoadState("networkidle").catch(() => {});
+          await page.waitForTimeout(300);
 
-        const s = await page.evaluate(sweepMain, [DOT_MAX_PX, CONTRACT_RADIUS_PX] as [
-          number,
-          number,
-        ]);
-        const pretty = JSON.stringify(s, null, 1);
-        expect(s.textNodes, `no text rendered on ${route}`).toBeGreaterThan(0);
+          const s = await page.evaluate(sweepMain, [DOT_MAX_PX, CONTRACT_RADIUS_PX] as [
+            number,
+            number,
+          ]);
+          const pretty = JSON.stringify(s, null, 1);
+          expect(s.textNodes, `no text rendered on ${route}`).toBeGreaterThan(0);
 
-        const families = Object.keys(s.families);
-        const allowed = allowedFamilies(route);
-        expect(
-          families.filter((f) => !allowed.includes(f)),
-          `font families outside the contract on ${route} (${theme}):\n${pretty}`,
-        ).toEqual([]);
-
-        const sizes = Object.keys(s.sizes);
-        const okSizes = allowedSizes(route);
-        expect(
-          sizes.filter((v) => !okSizes.has(v)),
-          `font sizes outside the contract on ${route} (${theme}):\n${pretty}`,
-        ).toEqual([]);
-
-        expect(
-          Object.keys(s.tracking).filter((v) => v !== TRACKING_NORMAL && v !== "th"),
-          `letter-spacing outside the contract on ${route} (${theme}):\n${pretty}`,
-        ).toEqual([]);
-
-        expect(
-          Object.keys(s.radii).filter((v) => !RADII.has(v)),
-          `border radii outside the contract on ${route} (${theme}):\n${pretty}`,
-        ).toEqual([]);
-
-        expect(s.pills, `pill-shaped elements on ${route} (${theme})`).toEqual([]);
-        expect(s.shadows, `resting box-shadows on ${route} (${theme})`).toEqual([]);
-        expect(
-          s.thOffenders,
-          `table-header text that is not 10px / 600 / uppercase on ${route} (${theme})`,
-        ).toEqual([]);
-
-        expect(
-          s.compareHeadOffenders,
-          `compare-ledger header text that is not a 13px/11px sentence-case name on ${route} (${theme})`,
-        ).toEqual([]);
-
-        // The page-shape rule (#11604): at most seven sections, because a page
-        // that answers eight questions is two pages. `AnalyticsPage` throws on
-        // this in development, but a route that mounts its sections by hand --
-        // /design/primitives does, deliberately -- has no runtime guard, and
-        // neither does a page whose eighth section only appears with data.
-        if (!(route in SPECIMEN_ROUTES)) {
+          const families = Object.keys(s.families);
+          const allowed = allowedFamilies(route);
           expect(
-            s.sections,
-            `more than seven sections on ${route} (${theme}) -- see the page-shape rule`,
-          ).toBeLessThanOrEqual(MAX_SECTIONS_PER_ROUTE);
-        }
-
-        // One tall table per section. Two stacked inside one section is the
-        // data wall that sectioning and `LoadMore` exist to prevent.
-        if (!(route in SPECIMEN_ROUTES)) {
-          expect(
-            s.stackedTables,
-            `a section holding more than one table taller than 900px on ${route} (${theme})`,
+            families.filter((f) => !allowed.includes(f)),
+            `font families outside the contract on ${route} (${viewport.name}, ${theme}):\n${pretty}`,
           ).toEqual([]);
-        }
 
-        // A class the purge deleted, rendered by a live page: a stale component
-        // survived a rebase, or someone hand-rolled a primitive.
-        expect(
-          s.deletedClasses,
-          `classes deleted by the v2 purge still rendering on ${route} (${theme})`,
-        ).toEqual([]);
-      });
+          const sizes = Object.keys(s.sizes);
+          const okSizes = allowedSizes(route);
+          expect(
+            sizes.filter((v) => !okSizes.has(v)),
+            `font sizes outside the contract on ${route} (${viewport.name}, ${theme}):\n${pretty}`,
+          ).toEqual([]);
+
+          expect(
+            Object.keys(s.tracking).filter((v) => v !== TRACKING_NORMAL && v !== "th"),
+            `letter-spacing outside the contract on ${route} (${viewport.name}, ${theme}):\n${pretty}`,
+          ).toEqual([]);
+
+          expect(
+            Object.keys(s.radii).filter((v) => !RADII.has(v)),
+            `border radii outside the contract on ${route} (${viewport.name}, ${theme}):\n${pretty}`,
+          ).toEqual([]);
+
+          expect(s.pills, `pill-shaped elements on ${route} (${viewport.name}, ${theme})`).toEqual(
+            [],
+          );
+          expect(s.shadows, `resting box-shadows on ${route} (${viewport.name}, ${theme})`).toEqual(
+            [],
+          );
+          expect(
+            s.thOffenders,
+            `table-header text that is not 10px / 600 / uppercase on ${route} (${viewport.name}, ${theme})`,
+          ).toEqual([]);
+
+          expect(
+            s.compareHeadOffenders,
+            `compare-ledger header text that is not a 13px/11px sentence-case name on ${route} (${viewport.name}, ${theme})`,
+          ).toEqual([]);
+
+          // The page-shape rule (#11604): at most seven sections, because a page
+          // that answers eight questions is two pages. `AnalyticsPage` throws on
+          // this in development, but a route that mounts its sections by hand --
+          // /design/primitives does, deliberately -- has no runtime guard, and
+          // neither does a page whose eighth section only appears with data.
+          if (!(route in SPECIMEN_ROUTES)) {
+            expect(
+              s.sections,
+              `more than seven sections on ${route} (${viewport.name}, ${theme}) -- see the page-shape rule`,
+            ).toBeLessThanOrEqual(MAX_SECTIONS_PER_ROUTE);
+          }
+
+          // One tall table per section. Two stacked inside one section is the
+          // data wall that sectioning and `LoadMore` exist to prevent.
+          if (!(route in SPECIMEN_ROUTES)) {
+            expect(
+              s.stackedTables,
+              `a section holding more than one table taller than 900px on ${route} (${viewport.name}, ${theme})`,
+            ).toEqual([]);
+          }
+
+          // A class the purge deleted, rendered by a live page: a stale component
+          // survived a rebase, or someone hand-rolled a primitive.
+          expect(
+            s.deletedClasses,
+            `classes deleted by the v2 purge still rendering on ${route} (${viewport.name}, ${theme})`,
+          ).toEqual([]);
+        });
+      }
     }
   });
 }

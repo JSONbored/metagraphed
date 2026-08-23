@@ -49,7 +49,15 @@ Every page in this directory obeys the design contract in
   `eslint.config.ts` as `no-restricted-imports`, and their CSS classes are
   asserted absent by the same e2e sweep. Build from the fourteen primitives.
 
+- **600 lines.** No page module in this directory goes over it. The one that
+  did — `-design-primitives-page.tsx` at 939 — had its fifteen specimens moved
+  to `components/metagraphed/design/*-specimens.tsx` (#11678); a page module
+  that cannot be read in one sitting stops showing you the page's shape.
+
 A new route must also be reachable by the design gate: add it to
 `tests/e2e/overflow-check.config.ts` with a HAR fixture, or — if it renders no
 page of ours — name it in `NOT_SWEPT` with a reason.
-`token-inventory-coverage.unit.ts` fails on a route that is neither.
+`token-inventory-coverage.unit.ts` fails on a route that is neither. Both
+sweeps then measure it: `responsive-overflow` at four widths with **zero
+tolerance** (there is no baseline to record a violation into), and
+`token-inventory` at 375 / 768 / 1280 in both themes.

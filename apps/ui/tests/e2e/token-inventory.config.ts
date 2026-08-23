@@ -1,13 +1,36 @@
 // The design-system v2 contract, as numbers (#11605). token-inventory.spec.ts
-// measures every route in ROUTES at 1280×800 in both themes and asserts these.
-// Absolute, not baseline-diffed: a route either meets the contract or CI is red.
+// measures every route in ROUTES at every VIEWPORT in both themes and asserts
+// these. Absolute, not baseline-diffed: a route either meets the contract or
+// CI is red.
 import { ROUTES as OVERFLOW_ROUTES } from "./overflow-check.config.ts";
 
 export const ROUTES = OVERFLOW_ROUTES;
 
 export const THEMES = ["light", "dark"] as const;
 
-export const VIEWPORT = { width: 1280, height: 800 };
+/**
+ * Every width the contract is measured at.
+ *
+ * It was 1280 alone until #11678. `responsive-overflow` had always swept four
+ * widths, so a phone was proven not to OVERFLOW -- and that is the whole of
+ * what was ever checked there. Nothing asserted that a phone renders the same
+ * type scale, the same radii, the same section count, or no pills; a route
+ * could satisfy the design system on a desktop and quietly be a different
+ * design on a phone, which is where most of the traffic is.
+ *
+ * 375 and 768 rather than the overflow sweep's four: 1024 and 1280 are the same
+ * layout branch on every route (the tables never become cards, the grids never
+ * collapse), so the third and fourth widths would triple the run time to
+ * re-measure what 1280 already covers. 375 is below every `sm:`/`md:` breakpoint
+ * and 768 is exactly `md`, so between them they exercise both branches.
+ */
+export const VIEWPORTS = [
+  { name: "mobile", width: 375, height: 812 },
+  { name: "tablet", width: 768, height: 1024 },
+  { name: "desktop", width: 1280, height: 800 },
+] as const;
+
+export type ContractViewport = (typeof VIEWPORTS)[number];
 
 /** Font families allowed under <main>, by route prefix. */
 export const MONO = "IBM Plex Mono";
