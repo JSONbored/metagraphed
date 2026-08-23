@@ -1,9 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  useQuery,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import {
   AnalyticsPage,
   AnalyticsSection,
@@ -95,18 +91,12 @@ export function ValidatorDetailPage() {
 
   const { data: detailResult } = useSuspenseQuery(validatorDetailQuery(hotkey));
   const detail = detailResult.data;
-  const history = useQuery({
-    ...validatorHistoryQuery(hotkey, window),
-    retry: 0,
-  });
+  const history = useQuery({ ...validatorHistoryQuery(hotkey, window), retry: 0 });
   const nominators = useQuery({
     ...validatorNominatorsQuery(hotkey, { limit: 200 }),
     retry: 0,
   });
-  const subnets = useQuery({
-    ...subnetsQuery({ limit: SUBNETS_ALL_LIMIT }),
-    retry: 0,
-  });
+  const subnets = useQuery({ ...subnetsQuery({ limit: SUBNETS_ALL_LIMIT }), retry: 0 });
   const allValidators = useQuery({
     ...validatorsQuery({
       sort: "total_stake",
@@ -134,19 +124,15 @@ export function ValidatorDetailPage() {
 
   const operator = detail.coldkey_identity?.name?.trim() || shortKey(hotkey);
   const peers = useMemo(() => {
-    const ranked = operatorRows(allValidators.data?.data.validators ?? []).map(
-      (row) => ({
-        hotkey: row.primaryHotkey,
-        name: row.name,
-        totalStakeTao: row.totalStakeTao,
-      }),
-    );
+    const ranked = operatorRows(allValidators.data?.data.validators ?? []).map((row) => ({
+      hotkey: row.primaryHotkey,
+      name: row.name,
+      totalStakeTao: row.totalStakeTao,
+    }));
     return peerWindow(ranked, hotkey);
   }, [allValidators.data, hotkey]);
 
-  const permits = memberships.filter(
-    (membership) => membership.validator_permit,
-  ).length;
+  const permits = memberships.filter((membership) => membership.validator_permit).length;
 
   const sentence: FactNodes = [
     <Fact key="hotkey">{`hotkey ${shortKey(hotkey)}`}</Fact>,
@@ -176,10 +162,7 @@ export function ValidatorDetailPage() {
     { label: "Permits", value: formatNumber(permits) },
     {
       label: "Nominators",
-      value:
-        detail.nominator_count == null
-          ? "—"
-          : formatNumber(detail.nominator_count),
+      value: detail.nominator_count == null ? "—" : formatNumber(detail.nominator_count),
     },
     { label: "Avg trust", value: fmtScore(detail.avg_validator_trust) },
   ];
@@ -193,13 +176,7 @@ export function ValidatorDetailPage() {
       value: (row) => nameOf(row.netuid),
       href: (row) => `/subnets/${row.netuid}`,
     },
-    {
-      key: "uid",
-      label: "UID",
-      kind: "number",
-      sortable: true,
-      value: (row) => row.uid,
-    },
+    { key: "uid", label: "UID", kind: "number", sortable: true, value: (row) => row.uid },
     {
       key: "stake_alpha",
       label: "Stake",
@@ -249,17 +226,12 @@ export function ValidatorDetailPage() {
   }));
 
   const momentumCells: FactCells = [
-    {
-      label: "Stake now",
-      value: fmtStake(stakeSeries[stakeSeries.length - 1]?.v),
-    },
+    { label: "Stake now", value: fmtStake(stakeSeries[stakeSeries.length - 1]?.v) },
     {
       label: `Δ stake ${window}`,
       value: (() => {
         const change = changeOver(stakeSeries);
-        return change === null
-          ? "—"
-          : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)}%`;
+        return change === null ? "—" : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)}%`;
       })(),
     },
     {
@@ -273,9 +245,7 @@ export function ValidatorDetailPage() {
       label: `Δ yield ${window}`,
       value: (() => {
         const change = changeOver(yieldSeries);
-        return change === null
-          ? "—"
-          : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)}%`;
+        return change === null ? "—" : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)}%`;
       })(),
     },
   ];
@@ -306,10 +276,7 @@ export function ValidatorDetailPage() {
         sections={SECTIONS}
         hero={
           <EntityHero
-            crumbs={[
-              { label: "Validators", href: "/validators" },
-              { label: operator },
-            ]}
+            crumbs={[{ label: "Validators", href: "/validators" }, { label: operator }]}
             name={operator}
             action={
               <StakeUnstakeModal
@@ -317,11 +284,7 @@ export function ValidatorDetailPage() {
                 netuid={memberships[0]?.netuid ?? 0}
                 validatorName={operator}
                 trigger={(open) => (
-                  <button
-                    type="button"
-                    className="mg-hero-action"
-                    onClick={open}
-                  >
+                  <button type="button" className="mg-hero-action" onClick={open}>
                     Delegate
                   </button>
                 )}
@@ -339,8 +302,7 @@ export function ValidatorDetailPage() {
             live={{
               updatedAt: detailResult.meta?.generated_at ?? null,
               source: "chain-direct index",
-              onRefresh: () =>
-                void queryClient.invalidateQueries({ queryKey: ["mg"] }),
+              onRefresh: () => void queryClient.invalidateQueries({ queryKey: ["mg"] }),
             }}
           />
         }
@@ -407,16 +369,10 @@ export function ValidatorDetailPage() {
           visual={
             nominatorRows.length > 0 ? (
               <RankedRails
-                items={
-                  showAllNominators ? nominatorRows : nominatorRows.slice(0, 10)
-                }
+                items={showAllNominators ? nominatorRows : nominatorRows.slice(0, 10)}
                 formatValue={(value) => fmtStake(value)}
                 scale="sqrt"
-                columns={{
-                  value: "Moved",
-                  name: "Delegator",
-                  track: "Share of delegation",
-                }}
+                columns={{ value: "Moved", name: "Delegator", track: "Share of delegation" }}
                 ariaLabel="Nominators by stake moved"
                 source="validator-nominator"
               />
@@ -449,10 +405,7 @@ export function ValidatorDetailPage() {
               options={WINDOWS}
               value={window}
               onChange={(next: ValidatorWindow) =>
-                void navigate({
-                  search: (prev) => ({ ...prev, window: next }),
-                  replace: true,
-                })
+                void navigate({ search: (prev) => ({ ...prev, window: next }), replace: true })
               }
             />
           }
@@ -461,10 +414,7 @@ export function ValidatorDetailPage() {
               <LineWithWindow
                 id={`validator-${hotkey}-stake`}
                 points={stakeSeries}
-                window={{
-                  from: stakeSeries[0]!.t,
-                  to: stakeSeries[stakeSeries.length - 1]!.t,
-                }}
+                window={{ from: stakeSeries[0]!.t, to: stakeSeries[stakeSeries.length - 1]!.t }}
                 unit="τ"
                 formatValue={(value) => fmtStake(value)}
                 ariaLabel={`Total stake, ${window}`}
