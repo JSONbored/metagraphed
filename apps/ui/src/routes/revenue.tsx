@@ -1,43 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
-import { z } from "zod";
-import { RevenuePage } from "./-revenue-page";
-import { COVERAGE_SORT_FIELDS } from "@/lib/metagraphed/coverage-leaderboard-model";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-// Sort/filter state lives in the URL so a specific view ("the probe-derived
-// subnets, by revenue") is shareable — the same reason /chain/emissions puts
-// its own sort there.
-//
-// #10927: the default is `revenue_usd`, not `subsidy_multiple`. `isMeasured`
-// partitions on `revenue_usd`, so it is the one column non-null for every row
-// in the ranked group BY CONSTRUCTION. `subsidy_multiple` is a derived ratio
-// needing both a revenue figure and a priced emission side, so a subnet that
-// was measured but whose emission failed to price sorts to the BOTTOM of a
-// table it legitimately belongs in — ranked last on a column it cannot answer.
-const revenueSearchSchema = z.object({
-  sort: z.enum(COVERAGE_SORT_FIELDS).catch("revenue_usd").default("revenue_usd"),
-  dir: z.enum(["asc", "desc"]).catch("desc").default("desc"),
-  // Empty means every tier, which is the default: the counts beside each tier
-  // are how a reader learns the headline-eligible set is two subnets wide, and
-  // defaulting to a filtered view would hide exactly that.
-  provenance: z.string().catch("").default(""),
-});
-
-export type RevenueSearch = z.infer<typeof revenueSearchSchema>;
-
-const DESCRIPTION =
-  "What every Bittensor subnet earns from outside the network, against the TAO the network emits to it. Only chain-verified and probe-derived readings reach the ratio; subnets with no observable external revenue are listed separately rather than ranked as zero.";
-
+/**
+ * /revenue retired into the /subnets rankings section (#11613).
+ *
+ * The page ranked subnets by what they earn outside Bittensor against what the
+ * network emits to them. That is a ranking OF SUBNETS, which is what the
+ * rankings section of /subnets is for — keeping it as its own top-level route
+ * split one question across two pages and made the reader find the second one.
+ *
+ * A permanent redirect rather than a deletion: this URL is in the sitemap, in
+ * llms.txt, and in whatever agents and inbound links already point at it, so
+ * deleting the route would answer them with a 404 instead of the page that now
+ * holds the answer. 301 and not the framework's 307 default because the route
+ * is RETIRED rather than temporarily moved — a temporary redirect tells a
+ * search engine to keep the old URL and re-check it, while a permanent one
+ * transfers the signals to /subnets and lets the old URL drop out.
+ *
+ * The sort/provenance search params are deliberately not forwarded. They named
+ * columns of a table that no longer exists, so carrying them across would put
+ * state on /subnets that nothing there can read.
+ */
 export const Route = createFileRoute("/revenue")({
-  validateSearch: revenueSearchSchema,
-  search: { middlewares: [stripDefaultSearchParams(revenueSearchSchema)] },
-  head: () => ({
-    meta: [
-      { title: "Revenue coverage — Metagraphed" },
-      { name: "description", content: DESCRIPTION },
-      { property: "og:title", content: "Revenue coverage — Metagraphed" },
-      { property: "og:description", content: DESCRIPTION },
-    ],
-  }),
-  component: RevenuePage,
+  beforeLoad: () => {
+    throw redirect({ to: "/subnets", hash: "rankings", replace: true, statusCode: 301 });
+  },
 });

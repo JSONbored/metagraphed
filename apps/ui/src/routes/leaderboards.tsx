@@ -1,28 +1,23 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
-import { z } from "zod";
 
-export const leaderboardsSearchSchema = z.object({
-  window: z.enum(["7d", "30d"]).catch("7d").default("7d"),
-});
-
-// #8311: /leaderboards retired into /subnets?section=rankings. Every board
-// ranks subnets, so they belong on the subnets page rather than behind a
-// separate top-level route. `window` is forwarded so an existing shared link
-// lands on the same range it named.
+/**
+ * /leaderboards retired into the /subnets rankings section (#11613).
+ *
+ * #8311 folded the boards themselves into /subnets and left this route
+ * redirecting at `?section=rankings`. The rebuilt index does not read that
+ * search param — the sections are anchored headings now — so the destination
+ * is the `rankings` hash, and the `window` range is owned by the section's own
+ * control rather than carried in from a route that no longer renders anything.
+ *
+ * A permanent redirect rather than a deletion: this URL is in the sitemap, in
+ * llms.txt, and in whatever agents and inbound links already point at it. 301
+ * and not the framework's 307 default because the route is RETIRED rather than
+ * temporarily moved — a temporary redirect tells a search engine to keep the
+ * old URL and re-check it, while a permanent one transfers the signals to
+ * /subnets and lets the old URL drop out.
+ */
 export const Route = createFileRoute("/leaderboards")({
-  validateSearch: leaderboardsSearchSchema,
-  search: { middlewares: [stripDefaultSearchParams(leaderboardsSearchSchema)] },
-  beforeLoad: ({ search }) => {
-    throw redirect({
-      to: "/subnets",
-      search: { section: "rankings", window: search.window },
-      replace: true,
-      // 301, not the 307 default: this route is RETIRED, not temporarily
-      // moved. A temporary redirect tells a search engine to keep the old URL
-      // and re-check it; a permanent one transfers the signals to /subnets and
-      // lets the old URL drop out.
-      statusCode: 301,
-    });
+  beforeLoad: () => {
+    throw redirect({ to: "/subnets", hash: "rankings", replace: true, statusCode: 301 });
   },
 });

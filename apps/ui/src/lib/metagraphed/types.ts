@@ -1689,6 +1689,15 @@ export interface SubnetEconomics {
   /** Proxy metrics (#3361): alpha_price × total_stake, and alpha_price × ALPHA_MAX_SUPPLY. */
   alpha_market_cap_tao?: number;
   alpha_fdv_tao?: number;
+  /**
+   * PERCENTAGES, not fractions: `-2.3` is −2.3%, and the live range across
+   * the registry is −100 … +334. `emission_share` on this same row is a
+   * fraction, so the two units sit side by side and a renderer that assumes
+   * one gets the other 100× wrong (#11613).
+   */
+  alpha_price_change_1d?: number;
+  alpha_price_change_7d?: number;
+  alpha_price_change_1m?: number;
   [key: string]: unknown;
 }
 
@@ -2443,8 +2452,21 @@ export interface SubnetMover {
   stake_delta_alpha: number;
   stake_pct_change: number | null;
   stake_share_pct: number | null;
+  /**
+   * The emission side of the same window. `/subnets/movers` publishes it in
+   * the same shape as the stake side; only the delta was ever mapped, so a
+   * board ranked by emission had no value to show beside its change (#11613).
+   */
+  emission_start_alpha: number;
+  emission_end_alpha: number;
   emission_delta_alpha: number;
+  emission_pct_change: number | null;
+  emission_share_pct: number | null;
+  validators_start: number;
+  validators_end: number;
   validators_delta: number;
+  neurons_start: number;
+  neurons_end: number;
   neurons_delta: number;
 }
 

@@ -238,43 +238,6 @@ export const HUB_COPY = {
       ],
     },
   },
-  /**
-   * #11316. NOT a hub — a faceted index, and the only one of the three this
-   * epic proposed that survived measurement. `gpu_required` is set on **zero**
-   * of 129 subnets and `status` is uniformly "active", so those two pages
-   * would have been one empty URL and one duplicate of /subnets.
-   *
-   * It lives in HUB_COPY because the gate iterates these keys: adding it here
-   * is what subjects it to the title, description and heading budgets rather
-   * than leaving a new page family uncovered — which is how /news shipped 285
-   * pages with no BreadcrumbList (#11303).
-   */
-  "/subnets/with-api": {
-    title: `Bittensor subnets with an OpenAPI spec${BRAND}`,
-    description:
-      "Bittensor subnets that publish a machine-readable API spec: first-party or not, " +
-      "integration readiness, and whether each answered our last probe.",
-    intro: {
-      lede: {
-        heading: "Subnets you can actually call",
-        body: "Every subnet answers a probe; far fewer publish a contract you can generate a client from. These are the ones with a machine-readable API specification, scored on how completely they document it and checked against a live probe rather than a claim.",
-      },
-      sections: [
-        {
-          heading: "What counts as an API here",
-          body: "A subnet qualifies when it publishes a machine-readable specification — an OpenAPI document — not merely an endpoint that returns something. That distinction is the whole point: an address you can reach tells you nothing about what to send it, and a contract you can generate a client from is the difference between an integration and an afternoon of guessing.",
-        },
-        {
-          heading: "Integration readiness",
-          body: "The readiness score is ours, derived from what a subnet actually publishes: whether the specification exists, whether examples accompany it, whether the endpoints it declares answer when probed, and whether the operator rather than a harvester is the source. It describes documentation quality, not the quality of the subnet's work.",
-        },
-        {
-          heading: "How to read the probe column",
-          body: "Health is measured on a 15-minute cycle and recorded as observed — no operator sets it and neither do we. A subnet that publishes a perfect specification and fails its probe is telling you something real, and it is shown that way rather than quietly excluded.",
-        },
-      ],
-    },
-  },
   "/chain": {
     // "block explorer" is the phrase that competes with taostats, so it leads.
     // "events" over "extrinsics" because the tag had two characters spare and

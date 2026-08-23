@@ -7,80 +7,57 @@ import { describe, expect, it } from "vitest";
 // static latest value instead of an actual trend, (2) cramming a 5th tile
 // into a fixed-column grid producing an orphaned single tile at mobile/tablet
 // widths, and (3) an out-of-sync Suspense fallback skeleton count causing a
-// layout shift when data loads. The original fix (`SubnetsStatStrip`) reused
-// economics-panel.tsx's tile+sparkline+flex-wrap pattern.
+// layout shift when data loads.
 //
-// #8248 replaced that whole 5-tile card strip (plus the separate
-// SubnetsHighlights ops-card row above it) with `SubnetsCompactStats` -- a
-// single inline text line (Active / Healthy / Total stake / a freshness chip
-// shown only when stale) per the redesign's "masthead trim, ≤4 facts, no
-// cards" requirement. The total-stake figure itself is still a real number
-// sourced live (now summed from economicsQuery(), the same rows the table's
-// own Total stake column reads, instead of the trend endpoint) rather than a
-// hardcoded placeholder -- these assertions pin THAT property surviving the
-// redesign, not the retired card-strip's specific shape.
+// #8248 replaced the card strip with `SubnetsCompactStats`, an inline text
+// line. #11613 replaced THAT with the hero's `FactStrip`, so the specific
+// shape this file used to pin -- an AsyncPanel, a statPhase ternary, a Coins
+// glyph -- is gone twice over.
 //
-// `subnets.index.tsx` composes TanStack Router/Query context a rendered test
-// can't easily stand up, so this suite is node-environment source assertions,
-// mirroring leaderboards-csv-export-menu.test.ts's own convention.
-const source = readFileSync(
-  fileURLToPath(new URL("./-subnets-index-page.tsx", import.meta.url)),
-  "utf8",
-);
+// What survives every one of those rewrites is the PROPERTY the six closed
+// PRs kept getting wrong, and it is the only thing asserted here now: the
+// total-stake figure is summed from the economics rows the page already
+// holds, and it is never a hardcoded number.
+//
+// Source assertions rather than a render: the page composes TanStack
+// Router/Query context a node-environment test cannot stand up.
+const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
+const page = read("./-subnets-index-page.tsx");
 
-const strip = source.slice(
-  source.indexOf("function SubnetsCompactStats"),
-  source.indexOf("function SubnetsDomainsRollup"),
-);
-
-describe("subnets.index.tsx compact masthead stats (post-#8248)", () => {
-  it("no longer renders the retired card-strip components", () => {
-    expect(source).not.toContain("function SubnetsStatStrip");
-    expect(source).not.toContain("<SubnetsHighlights");
-    expect(source).not.toContain("<SubnetsStatStrip");
+describe("#6271 the /subnets stake figure is measured, not written down", () => {
+  it("sums it from the economics rows rather than stating a number", () => {
+    expect(page).toContain("economicsQuery()");
+    expect(page).toMatch(/const totalStake = econRows\.reduce\(/);
+    expect(page).toContain("row.total_stake_alpha ?? 0");
   });
 
-  it("renders Total stake as a real live figure, not a static placeholder", () => {
-    expect(strip).toContain("Total stake");
-    expect(strip).toContain("economicsQuery()");
-    expect(strip).toContain("formatTao(totalStake)");
+  it("reads the ALPHA field, which is the one /api/v1/economics serves", () => {
+    // The TAO twin does not exist on that route -- 0 of 129 rows carried one
+    // when this was checked against production -- and reading it resolved
+    // undefined for every subnet (#11612).
+    expect(page).not.toContain("total_stake_tao");
   });
 
-  it("phases Total stake via statPhase so a failed economics query cannot fabricate 0 τ (#8818)", () => {
-    expect(strip).toContain("statPhase(economicsRes)");
-    expect(strip).toContain('StatUnavailable variant="inline"');
-    expect(strip).toContain("economicsRows.length === 0 ? (");
-    // formatTao must sit behind the ready branch, not on an unguarded path
-    expect(strip).toMatch(/economicsPhase === "error"[\s\S]*formatTao\(totalStake\)/);
-    // Coins glyph only accompanies a real figure — never beside StatUnavailable
-    // (desktop/tablet double-icon look that closed #8933).
-    expect(strip).toMatch(
-      /economicsPhase === "error"[\s\S]*<>\s*<Coins[\s\S]*formatTao\(totalStake\)/,
-    );
-    const errorBranch = strip.slice(
-      strip.indexOf('economicsPhase === "error"'),
-      strip.indexOf("economicsRows.length === 0"),
-    );
-    expect(errorBranch).not.toContain("<Coins");
+  it("never hardcodes a stake figure", () => {
+    // A literal with a τ or α beside it is the failure mode the six closed
+    // PRs kept reintroducing.
+    expect(page).not.toMatch(/["'`]\s*[\d,.]+\s*[MkK]?\s*[τα]/);
   });
 
-  it("caps the masthead at Active / Healthy / Total stake, plus a freshness chip shown only when stale", () => {
-    expect(strip).toContain("active");
-    expect(strip).toContain("Healthy");
-    expect(strip).toContain("isStaleFreshness(generatedAt)");
-    expect(strip).toContain("stale ? (");
+  it("keeps the retired card strip and its successor both gone", () => {
+    for (const retired of [
+      "function SubnetsStatStrip",
+      "<SubnetsHighlights",
+      "<SubnetsStatStrip",
+      "function SubnetsCompactStats",
+      "<AsyncPanel",
+      "<PanelSkeleton",
+    ]) {
+      expect(page, `${retired} is back on /subnets`).not.toContain(retired);
+    }
   });
 
-  it("renders as an inline text row, not a card/grid layout that could produce an orphaned tile", () => {
-    expect(strip).not.toMatch(/grid grid-cols-\d/);
-    expect(strip).not.toContain("<FactStrip");
-  });
-
-  it("the Suspense fallback for the compact-stats AsyncPanel is a single skeleton, not a per-tile count that can drift out of sync", () => {
-    const fallback = source.slice(
-      source.indexOf('context="subnets summary"'),
-      source.indexOf("<SubnetsCompactStats"),
-    );
-    expect((fallback.match(/<PanelSkeleton/g) ?? []).length).toBe(1);
+  it("states the figure once, in the hero, so no second copy can drift", () => {
+    expect((page.match(/label: "Total stake"/g) ?? []).length).toBe(1);
   });
 });

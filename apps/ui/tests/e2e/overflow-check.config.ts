@@ -39,14 +39,18 @@ export const ROUTES = [
   "/chain/analytics",
   "/chain/governance",
   "/chain/runtime",
-  // #8539: extend the matrix to the account, portfolio, leaderboard, provider
-  // and APIs-index routes. A measurement change, not a fix. /accounts/$ss58 uses
+  // #8539: extend the matrix to the account, portfolio, provider and
+  // APIs-index routes. A measurement change, not a fix. /accounts/$ss58 uses
   // a real, stable top-stake account so the detail page renders real content
   // rather than a not-found fallback (same reasoning #8433 gives for a real hash).
+  //
+  // /leaderboards was swept here until #11613 retired it into /subnets. A
+  // redirect route renders nothing, so sweeping it would measure /subnets
+  // twice — once through a fixture recorded against a page that no longer
+  // exists.
   "/accounts",
   "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
   "/portfolio",
-  "/leaderboards",
   "/providers",
   "/apis",
 ];

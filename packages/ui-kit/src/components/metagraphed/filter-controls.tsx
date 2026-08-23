@@ -46,10 +46,18 @@ export function FilterField({
   );
 }
 
-const CONTROL_CLASSES =
-  "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 text-13" +
-  "text-ink-strong placeholder:text-ink-subtle-text mg-focus-ring" +
-  "hover:border-ink/25 transition-colors";
+// Written as an array rather than concatenated string literals: the previous
+// form joined three lines with no trailing spaces, so it emitted
+// `text-13text-ink-strong` and `mg-focus-ringhover:border-ink/25` -- four
+// class names that never existed. Every filter input and select on the site
+// therefore rendered with no size token, no ink colour, no hover and,
+// worst, NO VISIBLE FOCUS RING. Prettier keeps reformatting the line breaks
+// of a concatenation; it cannot reformat an array's elements together.
+const CONTROL_CLASSES = [
+  "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5",
+  "text-13 text-ink-strong placeholder:text-ink-subtle-text",
+  "mg-focus-ring hover:border-ink/25 transition-colors",
+].join(" ");
 
 export function FilterInput({
   className,

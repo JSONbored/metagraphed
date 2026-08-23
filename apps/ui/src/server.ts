@@ -10,11 +10,7 @@ import {
   siteGraphNodes,
   stringifyJsonLd,
 } from "./lib/metagraphed/json-ld";
-import {
-  categoryPath,
-  MIN_CATEGORY_SUBNETS,
-  SUBNETS_ALL_LIMIT,
-} from "./lib/metagraphed/subnet-categories";
+import { SUBNETS_ALL_LIMIT } from "./lib/metagraphed/subnet-list-limit";
 import { isoTimestamp } from "./lib/metagraphed/freshness";
 import { API_DATA_ORIGIN, API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
 import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
@@ -108,10 +104,6 @@ export const SEO_DEFAULT_TAGS =
 const SITEMAP_STATIC_PATHS = [
   "/",
   "/subnets",
-  // #11316: the one faceted page this epic shipped. Sitemap-only is the profile
-  // that lands a URL in "Crawled - currently not indexed" (#11277), so it is
-  // also linked from /subnets rather than relying on this entry alone.
-  "/subnets/with-api",
   "/apis/providers",
   "/apis",
   "/apis/endpoints",
@@ -368,47 +360,28 @@ async function buildSitemap(): Promise<Response> {
     // News source unavailable — omit rather than fail the whole sitemap.
   }
   try {
-    // The SAME limit the hub uses, so both derive their category set from one
-    // page of subnets. A hard-coded 500 here made the sitemap and the hub two
+    // The SAME limit the subnet surfaces use, so the sitemap and the page
+    // derive their set from one request. A hard-coded 500 here made the two
     // different requests, which the e2e stub answers with two different
     // recordings.
+    //
+    // #11613 removed the `/subnets/category/{slug}` entries this loop also
+    // emitted: the taxonomy is a filter on /subnets now, so those URLs are
+    // permanent redirects and a sitemap must only ask a crawler to index a URL
+    // that answers 200.
     const res = await fetch(`${API_DATA_ORIGIN}/api/v1/subnets?limit=${SUBNETS_ALL_LIMIT}`, {
       headers: { accept: "application/json" },
     });
     if (res.ok) {
       const payload = (await res.json()) as {
-        data?: {
-          subnets?: Array<{
-            netuid?: unknown;
-            updated_at?: unknown;
-            derived_categories?: unknown;
-          }>;
-        };
+        data?: { subnets?: Array<{ netuid?: unknown; updated_at?: unknown }> };
       };
-      // #11342: category pages are derived from the SAME response, so the
-      // sitemap can never advertise a category the registry stopped deriving,
-      // nor miss one it started. Counted first, because a category below the
-      // threshold renders a "not enough to compare" page and must not be
-      // offered to a crawler as though it were a listing.
-      const categoryCounts = new Map<string, number>();
       for (const subnet of payload.data?.subnets ?? []) {
         if (Number.isInteger(subnet?.netuid)) {
           entries.push({
             loc: `${SITE_ORIGIN}/subnets/${String(subnet.netuid)}`,
             lastmod: sitemapLastmod(subnet?.updated_at),
           });
-        }
-        for (const category of Array.isArray(subnet?.derived_categories)
-          ? subnet.derived_categories
-          : []) {
-          if (typeof category === "string" && category) {
-            categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
-          }
-        }
-      }
-      for (const [category, count] of [...categoryCounts].sort()) {
-        if (count >= MIN_CATEGORY_SUBNETS) {
-          entries.push({ loc: `${SITE_ORIGIN}${categoryPath(category)}` });
         }
       }
     }
@@ -622,10 +595,13 @@ export function buildJsonLd(pathname: string): string {
  * Per-section OG card copy, keyed by exact pathname (#8489).
  *
  * Previously nine entries against ~49 routes, with everything else falling
- * through to a bare "Metagraphed" — so /agents, /leaderboards, /explorer,
- * /chain/*, /events, /blocks, /docs and most of the app unfurled IDENTICALLY
- * to the home page. This covers every real section so a shared link says what
- * it is.
+ * through to a bare "Metagraphed" — so /agents, /explorer, /chain/*, /events,
+ * /blocks, /docs and most of the app unfurled IDENTICALLY to the home page.
+ * This covers every real section so a shared link says what it is.
+ *
+ * A retired route gets no entry: #11613 folded /leaderboards, /revenue,
+ * /domains and the two subnet facets into /subnets, and a 301 has nothing to
+ * unfurl.
  *
  * `eyebrow` renders as the pill beside the wordmark, matching the entity
  * cards' treatment. Home is deliberately absent: its card is the brand
@@ -657,16 +633,6 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
   "/compare": {
     title: "Compare",
     subtitle: "Two or three subnets or validators, side by side",
-    eyebrow: "Registry",
-  },
-  "/leaderboards": {
-    title: "Leaderboards",
-    subtitle: "Ranked subnets, validators and endpoints across the network",
-    eyebrow: "Registry",
-  },
-  "/domains": {
-    title: "Domains",
-    subtitle: "Subnets grouped by what they actually do",
     eyebrow: "Registry",
   },
 
@@ -731,13 +697,6 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
   "/chain/emissions": {
     title: "Emissions",
     subtitle: "Where each block's TAO goes, decomposed per subnet",
-    eyebrow: "Explorer",
-  },
-  "/revenue": {
-    title: "Revenue coverage",
-    // "not observed", not "0%" -- the card is the most-shared surface this
-    // page has, and it must not assert a measurement nobody made (#10478).
-    subtitle: "What each subnet earns outside Bittensor, against what it is emitted",
     eyebrow: "Explorer",
   },
   "/chain/blocks": {

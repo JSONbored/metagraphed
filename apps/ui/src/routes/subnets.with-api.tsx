@@ -1,37 +1,29 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { hubMeta } from "@/lib/metagraphed/hub-copy";
-import { stringifyJsonLd, registryFacetDatasetJsonLd } from "@/lib/metagraphed/json-ld";
-import { SubnetsWithApiPage } from "./-subnets-with-api-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-// #11316: the one faceted page of the three this epic proposed that survived
-// measurement. See -subnets-with-api-page.tsx for why the other two did not.
-//
-// A STATIC segment beside /subnets/$netuid: the router prefers it over the
-// param route, the same precedence /docs/raw relies on (#11294). Nothing else
-// is needed to keep /subnets/64 working.
+/**
+ * /subnets/with-api retired into the /subnets API filter (#11613).
+ *
+ * #11316 shipped this as the one faceted page of the three that epic proposed
+ * that survived measurement — the subnets publishing a machine-readable API
+ * specification. It survived as a PAGE because the index had no way to express
+ * the selection; the rebuilt index does, so the facet is a filter on the
+ * registry table and the synthesis it led with belongs to that table's own
+ * header rather than to a second URL that lists a subset of the same rows.
+ *
+ * A permanent redirect rather than a deletion: this URL is in the sitemap, in
+ * llms.txt, and linked from /subnets itself, so deleting the route would answer
+ * a crawler that already indexed it with a 404. 301 and not the framework's 307
+ * default because the route is RETIRED rather than temporarily moved — a
+ * temporary redirect tells a search engine to keep the old URL and re-check it,
+ * while a permanent one transfers the signals to /subnets and lets the old URL
+ * drop out.
+ *
+ * The static segment stays declared here, so it keeps winning precedence over
+ * /subnets/$netuid the way it did as a page (#11294) and no netuid is shadowed
+ * by the redirect.
+ */
 export const Route = createFileRoute("/subnets/with-api")({
-  head: () => ({
-    meta: hubMeta("/subnets/with-api"),
-    // The page is a registry projection, so it gets the same Dataset treatment
-    // every other registry record has -- a filtered view of the catalog is
-    // still a dataset, and saying so is what ties it to the catalog node the
-    // site graph already publishes.
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: stringifyJsonLd(
-          registryFacetDatasetJsonLd({
-            name: "Bittensor subnets publishing a machine-readable API specification",
-            identifier: "subnets-with-api",
-            description:
-              "The subset of Bittensor subnets that publish an OpenAPI specification, with " +
-              "integration-readiness scores and probe-derived health for each.",
-            path: "/subnets/with-api",
-            apiUrl: "/api/v1/agent-catalog",
-          }),
-        ),
-      },
-    ],
-  }),
-  component: SubnetsWithApiPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/subnets", search: { api: true }, replace: true, statusCode: 301 });
+  },
 });
