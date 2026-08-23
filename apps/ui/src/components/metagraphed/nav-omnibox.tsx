@@ -406,11 +406,25 @@ export function NavOmnibox({ onOpenPalette }: Props) {
       className="hidden md:block relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0"
     >
       {/* Input */}
+      {/* The resting state carries a border and a surface, like every other
+          field on the site (`CONTROL_CLASSES` in filter-controls.tsx). It did
+          not until #11689: the wrapper set `border-accent/60` when open and no
+          border WIDTH at any point, so the computed width was 0px in both
+          states and the site's primary control rendered as an icon and some
+          placeholder text floating in the header, with nothing to say it was
+          an input. The `!border-accent/60` this inherited was already inert --
+          the `Panel` it overrode had had no border for some time. */}
       <div
         className={classNames(
-          "w-full min-w-0 rounded text-left text-13 transition-all",
+          "w-full min-w-0 rounded border bg-card text-left text-13 transition-colors",
           "inline-flex items-center gap-2 pl-3 pr-2 py-2 min-h-10",
-          open ? "border-accent/60 ring-2 ring-accent/20" : "hover:border-accent/40",
+          // `focus-within`, not the `open` state: a composed field shows ONE
+          // indicator and it belongs on the field, not on the bare <input>
+          // inside it. Driving it from CSS also means it cannot drift out of
+          // step with focus the way an `open`-derived ring can -- `open` is set
+          // by onFocus today, and nothing guarantees it stays that way.
+          "focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/20",
+          open ? "border-accent/60" : "border-border hover:border-ink/25",
         )}
       >
         <Search className="size-3.5 shrink-0 text-ink-muted" />
