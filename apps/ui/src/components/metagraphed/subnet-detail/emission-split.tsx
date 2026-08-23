@@ -17,6 +17,7 @@ import {
   windowDays,
   type Window,
 } from "./subnet-detail-logic";
+import { formatPct } from "@/lib/metagraphed/format";
 
 /**
  * Section 2 — where the day's emission actually lands.
@@ -45,7 +46,7 @@ export function EmissionSplitSection({ netuid, window }: { netuid: number; windo
     key: total.key,
     label: total.label,
     value: `${taoCompact(total.value)} α`,
-    share: `${(total.share * 100).toFixed(1)}%`,
+    share: `${formatPct(total.share, 1)}`,
     swatch: palette.colorOf(total.key),
   }));
 

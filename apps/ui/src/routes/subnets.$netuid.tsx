@@ -4,7 +4,7 @@ import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/ur
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { economicsQuery, subnetProfileQuery } from "@/lib/metagraphed/queries";
-import { formatTao } from "@/lib/metagraphed/format";
+import { formatPct, formatTao } from "@/lib/metagraphed/format";
 import { firstPartyLogoPath, logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import {
   entityNotFoundMeta,
@@ -171,7 +171,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
               ? [
                   {
                     label: "Emission",
-                    value: `${(loaderData.emissionShare * 100).toFixed(2)}%`,
+                    value: `${formatPct(loaderData.emissionShare, 2)}`,
                   },
                 ]
               : []),

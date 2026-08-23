@@ -11,6 +11,7 @@ import type {
   ConcentrationMetrics,
   ScoreDistribution,
 } from "@/lib/metagraphed/types";
+import { formatDecimal, formatPct } from "@/lib/metagraphed/format";
 
 /** KPI border/icon tone — concentration reads "worse" as it climbs. */
 export type DecentralizationTone = "ok" | "warn" | "down" | "default";
@@ -44,13 +45,11 @@ function num(v: number | null | undefined): number | null {
 }
 
 function numStr(v: number | null | undefined, digits = 3): string {
-  const n = num(v);
-  return n == null ? "—" : n.toFixed(digits);
+  return formatDecimal(num(v), digits);
 }
 
 function pctStr(v: number | null | undefined, digits = 1): string {
-  const n = num(v);
-  return n == null ? "—" : `${(n * 100).toFixed(digits)}%`;
+  return formatPct(num(v), digits);
 }
 
 function intStr(v: number | null | undefined): string {
@@ -108,14 +107,14 @@ function concentrationTiles(
       key: "stake-gini",
       label: "Stake Gini",
       value: numStr(stake?.gini),
-      hint: emissionGini == null ? undefined : `emission ${emissionGini.toFixed(3)}`,
+      hint: emissionGini == null ? undefined : `emission ${formatDecimal(emissionGini, 3)}`,
       tone: giniTone(stake?.gini),
     },
     {
       key: "stake-hhi",
       label: "Stake HHI",
       value: numStr(stake?.hhi),
-      hint: stakeHhiNorm == null ? undefined : `norm ${stakeHhiNorm.toFixed(3)}`,
+      hint: stakeHhiNorm == null ? undefined : `norm ${formatDecimal(stakeHhiNorm, 3)}`,
       tone: giniTone(stake?.hhi),
     },
     {
@@ -129,14 +128,14 @@ function concentrationTiles(
       key: "stake-entropy",
       label: "Stake entropy",
       value: numStr(stake?.entropy_normalized),
-      hint: stakeEntropy == null ? undefined : `${stakeEntropy.toFixed(2)} nats`,
+      hint: stakeEntropy == null ? undefined : `${formatDecimal(stakeEntropy, 2)} nats`,
       tone: entropyTone(stake?.entropy_normalized),
     },
     {
       key: "stake-top1",
       label: "Top 1% stake",
       value: pctStr(stake?.top_1pct_share),
-      hint: stakeTop10 == null ? undefined : `top 10% ${(stakeTop10 * 100).toFixed(1)}%`,
+      hint: stakeTop10 == null ? undefined : `top 10% ${formatPct(stakeTop10, 1)}`,
       tone: shareTone(stake?.top_1pct_share),
     },
     {
@@ -165,21 +164,21 @@ function scoreTiles(
       key: "trust-median",
       label: "Trust median",
       value: numStr(trust?.p50),
-      hint: trustMean == null ? undefined : `mean ${trustMean.toFixed(3)}`,
+      hint: trustMean == null ? undefined : `mean ${formatDecimal(trustMean, 3)}`,
       tone: "default",
     },
     {
       key: "consensus-median",
       label: "Consensus median",
       value: numStr(consensus?.p50),
-      hint: consensusMean == null ? undefined : `mean ${consensusMean.toFixed(3)}`,
+      hint: consensusMean == null ? undefined : `mean ${formatDecimal(consensusMean, 3)}`,
       tone: "default",
     },
     {
       key: "validator-trust-median",
       label: "Val-trust median",
       value: numStr(validatorTrust?.p50),
-      hint: valTrustP90 == null ? undefined : `p90 ${valTrustP90.toFixed(3)}`,
+      hint: valTrustP90 == null ? undefined : `p90 ${formatDecimal(valTrustP90, 3)}`,
       tone: "default",
     },
   ];

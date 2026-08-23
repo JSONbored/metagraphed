@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/metagraphed/client";
-import { Panel } from "@/components/metagraphed/primitives";
 import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
 
 /** Mirrors src/alert-triggers.ts. */
@@ -59,7 +58,7 @@ export function AlertTriggerLookup() {
   const t = lookup.data;
 
   return (
-    <Panel>
+    <div className="min-w-0 mg-panel-pad">
       <h3 className="mb-1 text-11 text-ink-muted">Look up a trigger</h3>
       <p className="mb-3 max-w-2xl text-13 text-ink-muted">
         Check whether an alert you created is still active and whether it has ever fired. Needs the
@@ -120,7 +119,7 @@ export function AlertTriggerLookup() {
           />
         </dl>
       ) : null}
-    </Panel>
+    </div>
   );
 }
 

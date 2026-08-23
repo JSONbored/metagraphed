@@ -5,7 +5,7 @@ import {
   subnetDeregistrationsQuery,
   subnetRegistrationsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { formatNumber, formatPct, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetEconomics } from "@/lib/metagraphed/types";
 
 /**
@@ -66,7 +66,7 @@ export function ParticipationSection({
       label: "Miners earning nothing",
       value:
         typeof zeroPct === "number"
-          ? `${(zeroPct * 100).toFixed(0)}%`
+          ? `${formatPct(zeroPct, 0)}`
           : formatNumber(deregistrations.data?.data.deregistrations ?? null),
       delta:
         typeof zeroPct === "number" && zeroPct > 0.5

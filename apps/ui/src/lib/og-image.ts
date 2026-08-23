@@ -13,7 +13,7 @@
 // (api.metagraph.sh) is a mint poster: one headline, no data. These per-page
 // cards carry three to five lines of dense entity text, and a full-bleed mint
 // field behind that much copy reads as a marketing banner rather than a data
-// card. Light is also what a visitor actually lands on -- "Bone & Ink" is the
+// card. Light is also what a visitor actually lands on -- the light palette is the
 // DEFAULT theme (packages/ui-kit/src/styles.css: light in `:root`, dark under
 // `.dark`), so a dark card promised a page the reader doesn't get.
 //
@@ -47,7 +47,7 @@ const OG_PATH = "/og";
 const SUBTITLE = "The Bittensor subnet integration registry";
 const WORDMARK = "Metagraphed";
 
-// Palette -- the app's OWN light theme ("Bone & Ink"), not an approximation of
+// Palette -- the app's OWN light theme, not an approximation of
 // it. satori has no oklch, no color-mix and no oklab interpolation, so every
 // token below is the styles.css `:root` value converted to sRGB with the same
 // maths a browser uses (see scripts/render-og-preview.ts's sibling note): the

@@ -11,7 +11,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ROUTES } from "./overflow-check.config.ts";
+import { NO_API_ROUTES, ROUTES } from "./overflow-check.config.ts";
 import { harPathForRoute } from "./har-path.ts";
 import {
   coverageForRoute,
@@ -87,6 +87,15 @@ describe("no route grows a NEW live-production dependency", () => {
   // on e1bd435ab, a backend-only commit that could not touch any page.
   it.each(ROUTES)("%s", (route) => {
     const harPath = harPathForRoute(route);
+    // A route that declares no API path fetches nothing, so there is nothing
+    // to record and no live-production dependency to grow. Requiring a fixture
+    // from those pages is what kept /privacy, /terms and /design/primitives
+    // out of the design sweep entirely (#11628) -- a gate demanding evidence
+    // of something that cannot happen.
+    if (NO_API_ROUTES.has(route)) {
+      expect(declaredApiPaths(resolveRouteFile(route, index))).toEqual([]);
+      return;
+    }
     expect(existsSync(harPath), `no HAR fixture at ${harPath}`).toBe(true);
     const { missing } = coverageForRoute(route, harPath, index);
     const known = KNOWN_UNCOVERED[route] ?? [];
@@ -161,10 +170,10 @@ describe("the detector can fail", () => {
     // paths here and call the fixture complete.
     const routeFile = resolveRouteFile(FIXTURE_ROUTE, index);
     const routeSource = readFileSync(path.join(ROUTES_DIR, routeFile), "utf8");
-    // The positive control the old form was missing: without it, "found the
-    // paths" would also be true of a route file carrying its own footer, and
-    // the import hop -- the thing under test -- would never be exercised.
-    expect(routeSource).not.toContain("ApiSourceFooter");
+    // The positive control: without it, "found the paths" would also be true
+    // of a route file that declared them itself, and the import hop -- the
+    // thing under test -- would never be exercised.
+    expect(routeSource).not.toContain("useRegisterApiSource");
     expect(declaredApiPaths(routeFile)).toContain("/api/v1/blocks/summary");
   });
 });

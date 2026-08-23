@@ -6,6 +6,7 @@ import {
   VIEWPORTS,
   ERROR_STATE_ALLOWED,
   EMPTY_LIST_ALLOWED,
+  NO_API_ROUTES,
 } from "./overflow-check.config.ts";
 import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
 import { gotoThroughRestart } from "./server-restart.ts";
@@ -45,7 +46,10 @@ function fingerprint(v: { tag: string; cls: string }): string {
 for (const route of ROUTES) {
   test.describe(route, () => {
     const harPath = harPathForRoute(route);
-    if (!existsSync(harPath)) {
+    // A route that reads no API has nothing to replay; requiring a fixture is
+    // what kept /privacy, /terms and /design/primitives outside this sweep.
+    const needsFixture = !NO_API_ROUTES.has(route);
+    if (needsFixture && !existsSync(harPath)) {
       throw new Error(
         `Missing HAR fixture for ${route}: ${harPath}. Run ` +
           `\`npm run test:e2e:record-har --workspace=apps/ui\` against a live dev server first.`,
@@ -85,20 +89,24 @@ for (const route of ROUTES) {
         // needs IS in the recording (the record script waits for networkidle
         // before saving), so the fixture still fully determines what is on
         // screen when this check reads the DOM.
-        await page.routeFromHAR(harPath, {
-          url: "**/api.metagraph.sh/**",
-          notFound: "fallback",
-          update: false,
-        });
+        if (needsFixture) {
+          await page.routeFromHAR(harPath, {
+            url: "**/api.metagraph.sh/**",
+            notFound: "fallback",
+            update: false,
+          });
+        }
         // Registered AFTER routeFromHAR (Playwright matches the most-recently
         // registered handler first), so a dated endpoint's fixture is served
         // regardless of which date the live app requests today -- otherwise
         // it would miss the HAR's exact-URL match and fall back to live data
         // (see DATED_ENDPOINT_PATTERNS in har-path.js for why).
-        for (const pattern of DATED_ENDPOINT_PATTERNS) {
-          const fixture = findHarFixture(harPath, pattern);
-          if (fixture) {
-            await page.route(pattern, (route) => route.fulfill(fixture));
+        if (needsFixture) {
+          for (const pattern of DATED_ENDPOINT_PATTERNS) {
+            const fixture = findHarFixture(harPath, pattern);
+            if (fixture) {
+              await page.route(pattern, (route) => route.fulfill(fixture));
+            }
           }
         }
         await page.setViewportSize({ width: viewport.width, height: viewport.height });

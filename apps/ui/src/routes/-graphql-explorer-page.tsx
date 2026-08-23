@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { CopyableCode, EntityHero, FactSentence } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { GraphiqlExplorer } from "@/components/metagraphed/graphiql-explorer";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { toGraphqlSubscriptionUrl } from "@/lib/metagraphed/graphql-subscription-url";
@@ -13,9 +13,16 @@ const GRAPHQL_ENDPOINT_PATH = "/api/v1/graphql";
 const ENDPOINT_URL = `${API_BASE}${GRAPHQL_ENDPOINT_PATH}`;
 const SUBSCRIPTION_URL = toGraphqlSubscriptionUrl(ENDPOINT_URL) ?? undefined;
 
+/** Registers the page's source from INSIDE `AppShell`, which owns the provider. */
+function ApiSources() {
+  useRegisterApiSource([GRAPHQL_ENDPOINT_PATH]);
+  return null;
+}
+
 export function GraphqlExplorerPage() {
   return (
     <AppShell>
+      <ApiSources />
       <Link
         to="/docs/$"
         params={{ _splat: "graphql" }}
@@ -35,7 +42,7 @@ export function GraphqlExplorerPage() {
         className="mt-2"
       />
 
-      {/* Same CopyableCode row treatment as EndpointSnippet / ApiSourceFooter —
+      {/* Same CopyableCode row treatment as EndpointSnippet —
           one labeled chip per transport, each with its own copy control. */}
       <div className="mt-4 space-y-2" data-testid="graphql-explorer-endpoints">
         <CopyableCode
@@ -61,8 +68,6 @@ export function GraphqlExplorerPage() {
           heightClassName="h-[70vh] min-h-[520px] max-h-[900px]"
         />
       </div>
-
-      <ApiSourceFooter paths={[GRAPHQL_ENDPOINT_PATH]} />
     </AppShell>
   );
 }

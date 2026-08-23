@@ -18,7 +18,10 @@ export const ROUTES = [
   "/subnets/19",
   // #11611: the comparison is a route now, so it is swept like any other.
   "/compare?subnets=1,19",
-  "/endpoints",
+  // #11628: the CANONICAL paths, not the retired aliases. /endpoints and
+  // /providers are 301s now, so sweeping them measured the target after a hop
+  // -- and named the fixture for a URL the app no longer serves.
+  "/apis/endpoints",
   "/settings",
   "/explorer",
   // #8357: the three templates the 2026-07-27 instrumented audit found
@@ -59,9 +62,35 @@ export const ROUTES = [
   "/accounts",
   "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
   "/portfolio",
-  "/providers",
+  "/apis/providers",
   "/apis",
+  // #11628: the three routes that read no API at all, so they need no HAR
+  // fixture -- the sweep skips replay for a route with nothing to replay. They
+  // were outside the design gate purely because the gate required a fixture,
+  // which is the wrong reason for a page to go unmeasured.
+  "/privacy",
+  "/terms",
+  "/design/primitives",
+  // #11628: the five remaining pages the design gate had never loaded. Each is
+  // a route a reader reaches from the header, the footer or a redirect, and
+  // each was outside the sweep only because nobody had recorded its fixture.
+  "/about",
+  "/health",
+  "/contribute",
+  "/agents",
+  // The provider detail template. `lium` is a real provider with 156
+  // endpoints, so the widths this stresses are a real operator page's rather
+  // than a one-row stub's.
+  "/providers/lium",
 ];
+
+/**
+ * Routes that issue no API request, so `harPathForRoute` has nothing to point
+ * at. Derived rather than asserted: `declaredApiPaths` (har-coverage.ts) reads
+ * each route's own `useRegisterApiSource`, and a route that declares nothing
+ * genuinely fetches nothing.
+ */
+export const NO_API_ROUTES = new Set(["/privacy", "/terms", "/design/primitives"]);
 
 export const VIEWPORTS = [
   { name: "mobile", width: 375, height: 812 },

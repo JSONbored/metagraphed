@@ -12,6 +12,12 @@ import type {
   AccountPosition,
   AccountStakeFlowSubnet,
 } from "@/lib/metagraphed/types";
+import {
+  formatAmount,
+  formatAmountFixed,
+  formatPct,
+  formatSignedAmount,
+} from "@/lib/metagraphed/format";
 
 export type FlowWindow = "7d" | "30d" | "90d";
 
@@ -31,21 +37,13 @@ export const FLOW_WINDOWS = [
 export const EVENT_SCAN_CAP = 5000;
 
 export const fmtTao = (value: number | null | undefined, places = 2): string =>
-  typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(places)} τ` : "—";
+  formatAmountFixed(value, places);
 
-export const fmtCompactTao = (value: number | null | undefined): string => {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M τ`;
-  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}k τ`;
-  return `${value.toFixed(2)} τ`;
-};
+export const fmtCompactTao = (value: number | null | undefined): string => formatAmount(value, "τ");
 
 /** A signed TAO figure, for a net-flow reading where the sign is the point. */
 export const fmtSignedTao = (value: number | null | undefined): string =>
-  typeof value === "number" && Number.isFinite(value)
-    ? `${value >= 0 ? "+" : "−"}${fmtCompactTao(Math.abs(value))}`
-    : "—";
+  formatSignedAmount(value, "τ");
 
 export interface PositionRow {
   key: string;
@@ -244,7 +242,7 @@ export function relatedKeys(
         href: `/validators/${hotkey}`,
         value:
           typeof entry.proportion_fraction === "number"
-            ? `${(entry.proportion_fraction * 100).toFixed(1)}%`
+            ? `${formatPct(entry.proportion_fraction, 1)}`
             : undefined,
       });
     }

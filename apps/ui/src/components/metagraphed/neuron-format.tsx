@@ -1,3 +1,4 @@
+import { formatCompactAmount, formatDecimal } from "@/lib/metagraphed/format";
 /**
  * Pure neuron/validator formatting helpers, deliberately split out of
  * `neuron-table.tsx`. That file also pulls in `StakeUnstakeModal` (wallet
@@ -11,18 +12,13 @@
 /** Format a TAO value compactly. Stake can run into the millions; emission and
  * incentive are sub-unit. Null/non-finite collapses to an em-dash. */
 export function taoCompact(v?: number | null): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
-  if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
-  if (Math.abs(v) >= 1) return v.toFixed(2);
   if (v === 0) return "0";
-  return v.toFixed(4);
+  return formatCompactAmount(v);
 }
 
 /** Format a 0..1 score (trust, consensus, incentive) to three decimals. */
 export function scoreStr(v?: number | null): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  return v.toFixed(3);
+  return formatDecimal(v, 3);
 }
 
 /**

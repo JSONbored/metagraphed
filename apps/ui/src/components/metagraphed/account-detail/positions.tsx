@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, DataTable, RankedRails, type DataTableColumn } from "@jsonbored/ui-kit";
 import { accountPositionsQuery } from "@/lib/metagraphed/queries";
 import { RouterLink } from "@/components/metagraphed/router-link";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatPct } from "@/lib/metagraphed/format";
 import type { AccountPosition } from "@/lib/metagraphed/types";
 import { fmtCompactTao, fmtTao, positionsBySubnet } from "./account-detail-logic";
 
@@ -50,7 +50,7 @@ export function PositionsSection({
       kind: "number",
       sortable: true,
       value: (row) => row.share_fraction ?? null,
-      format: (value) => (typeof value === "number" ? `${(value * 100).toFixed(4)}%` : "—"),
+      format: (value) => (typeof value === "number" ? `${formatPct(value, 4)}` : "—"),
     },
   ];
 
@@ -71,7 +71,7 @@ export function PositionsSection({
                 {
                   key: "share",
                   label: "Share of holdings",
-                  value: `${(row.share * 100).toFixed(1)}%`,
+                  value: `${formatPct(row.share, 1)}`,
                 },
                 { key: "hotkeys", label: "Hotkeys", value: String(row.hotkeys) },
                 { key: "stake", label: "Stake", value: fmtTao(row.value, 4) },

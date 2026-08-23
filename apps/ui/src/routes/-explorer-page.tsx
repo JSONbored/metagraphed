@@ -56,7 +56,7 @@ import {
   runtimeVersionHistoryQuery,
   sudoCallsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { Route } from "./chain.index";
 
@@ -147,12 +147,12 @@ export function ExplorerPage() {
     </Fact>,
     <Fact key="time">
       {summary?.block_time?.p50_ms
-        ? `${(summary.block_time.p50_ms / 1000).toFixed(0)}s blocks`
+        ? `${formatDecimal(summary.block_time.p50_ms / 1000, 0)}s blocks`
         : "—"}
     </Fact>,
     <Fact key="per">
       {summary?.throughput?.mean_extrinsics_per_block
-        ? `${summary.throughput.mean_extrinsics_per_block.toFixed(1)} extrinsics/block`
+        ? `${formatDecimal(summary.throughput.mean_extrinsics_per_block, 1)} extrinsics/block`
         : "—"}
     </Fact>,
     <Fact key="nakamoto">
@@ -175,7 +175,7 @@ export function ExplorerPage() {
     {
       label: "Block time p50",
       value: summary?.block_time?.p50_ms
-        ? `${(summary.block_time.p50_ms / 1000).toFixed(1)}s`
+        ? `${formatDecimal(summary.block_time.p50_ms / 1000, 1)}s`
         : "—",
     },
     // The last COMPLETE day, not the one in progress -- see lastCompleteDay.
@@ -385,7 +385,7 @@ export function ExplorerPage() {
               <MarkerRail
                 items={concentrationRail}
                 max={100}
-                formatValue={(value) => `${value.toFixed(1)}%`}
+                formatValue={(value) => `${formatDecimal(value, 1)}%`}
                 columns={{ ratio: "Share", name: "Measure", scale: "0–100%" }}
                 ariaLabel="Stake concentration measures"
                 source="chain-concentration"

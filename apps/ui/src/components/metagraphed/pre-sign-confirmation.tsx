@@ -1,5 +1,5 @@
 import { ArrowRight, Loader2, ShieldCheck } from "lucide-react";
-import { classNames } from "@/lib/metagraphed/format";
+import { classNames, formatDecimal } from "@/lib/metagraphed/format";
 import { resolveAddress, truncateSs58 } from "@/lib/metagraphed/resolve-address";
 
 // The primary blind-signing mitigation (#5239, native-staking epic #5229).
@@ -94,7 +94,7 @@ export function PreSignConfirmation({
           value={`${expectedOut.amount} ${expectedOut.unit === "tao" ? "τ" : "α"}`}
           detail={
             priceImpactPct !== undefined
-              ? `${priceImpactPct.toFixed(2)}% price impact · protected to ±${tolerancePct}%`
+              ? `${formatDecimal(priceImpactPct, 2)}% price impact · protected to ±${tolerancePct}%`
               : `protected to ±${tolerancePct}%`
           }
         />

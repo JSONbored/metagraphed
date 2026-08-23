@@ -77,6 +77,9 @@ describe("historyPoints / apyPoints / changeOver", () => {
   it("annualises the daily reward rate simply, not compounded", () => {
     // The series is a reward per 1,000 τ per day; compounding it would state a
     // return the validator did not produce.
+    // Rounding here is the ASSERTION's, not the app's -- it compares floats
+    // without pinning IEEE-754 noise, so it is arithmetic rather than display.
+    // eslint-disable-next-line no-restricted-syntax -- float comparison, not display
     expect(apyPoints(points).map((p) => Number(p.v.toFixed(4)))).toEqual([0.365, 0.73]);
   });
 

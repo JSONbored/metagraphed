@@ -9,6 +9,7 @@ import type {
   Extrinsic,
   RuntimeTransition,
 } from "@/lib/metagraphed/types";
+import { formatAmountFixed, formatCompact, formatPct } from "@/lib/metagraphed/format";
 
 export type ChainWindowValue = "7d" | "30d";
 
@@ -22,21 +23,13 @@ export const FEE_WINDOWS = [
   { value: "30d", label: "30d" },
 ] as const;
 
-export const fmtCount = (value: number | null | undefined): string => {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
-  return String(Math.round(value));
-};
+export const fmtCount = (value: number | null | undefined): string => formatCompact(value);
 
 export const fmtTao = (value: number | null | undefined, places = 2): string =>
-  typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(places)} τ` : "—";
+  formatAmountFixed(value, places);
 
 export const fmtShare = (fraction: number | null | undefined, places = 1): string =>
-  typeof fraction === "number" && Number.isFinite(fraction)
-    ? `${(fraction * 100).toFixed(places)}%`
-    : "—";
+  formatPct(fraction, places);
 
 export interface CallSegment {
   key: string;
@@ -224,7 +217,7 @@ export function pipelineRails(
           label: "Gate gave/took",
           value:
             typeof subnet.gate_delta === "number"
-              ? `${subnet.gate_delta >= 0 ? "+" : ""}${(subnet.gate_delta * 100).toFixed(3)}%`
+              ? `${subnet.gate_delta >= 0 ? "+" : ""}${formatPct(subnet.gate_delta, 3)}`
               : "—",
         },
       ],

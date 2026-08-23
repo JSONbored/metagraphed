@@ -7,7 +7,7 @@ import {
   describeAskError,
   formatScore,
   sourceCountLabel,
-} from "./ask-box";
+} from "./ask-labels";
 
 function citation(overrides: Partial<AskCitation> = {}): AskCitation {
   return {

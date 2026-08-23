@@ -115,12 +115,19 @@ describe("reduced-motion coverage (#8367)", () => {
     expect(unanswered).toEqual([]);
   });
 
-  it("covers the two liveness cues specifically", () => {
-    const answered = reducedMotionBlocks.join("\n");
-    // Named explicitly so the intent survives even if the generic sweep above
-    // is ever loosened.
-    expect(answered).toContain(".");
-    expect(answered).toContain(".mg-value-pulse");
+  it("names at least one real class, so the sweep above has something to answer", () => {
+    // A positive control for the assertion above: `unanswered` being empty is
+    // only meaningful if `animated` was non-empty AND the reduced-motion block
+    // actually names classes. This test used to pin two liveness cues by name
+    // -- `.mg-value-pulse` and, through a `toContain(".")` that is true of
+    // every string, nothing at all. #11628 deleted `.mg-value-pulse` (no
+    // component had used it since the v2 rebuild) and the vacuous half with
+    // it.
+    const named = reducedMotionBlocks
+      .join("\n")
+      .match(/\.(mg-[\w-]+)/g)
+      ?.map((m) => m.slice(1));
+    expect(named?.length ?? 0).toBeGreaterThan(0);
   });
 
   it("does not reintroduce an unguarded Tailwind pulse anywhere", () => {

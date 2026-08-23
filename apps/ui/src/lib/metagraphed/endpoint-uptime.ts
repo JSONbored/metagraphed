@@ -1,4 +1,5 @@
 import type { EndpointIncident } from "./types";
+import { formatDecimal } from "@/lib/metagraphed/format";
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -44,7 +45,7 @@ export function sevenDayUptime(
 
 /** `98.6%`, or `—` when unknown. */
 export function formatUptime(pct: number | null): string {
-  return pct === null ? "—" : `${pct.toFixed(1)}%`;
+  return pct === null ? "—" : `${formatDecimal(pct, 1)}%`;
 }
 
 /** The health text token for an uptime percentage (the 99% / 95% bands every uptime view uses). */

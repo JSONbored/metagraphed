@@ -1,5 +1,6 @@
 import { isNoiseEvent } from "@/lib/metagraphed/chain-event-summary";
 import type { Block, ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
+import { formatPct } from "@/lib/metagraphed/format";
 
 /**
  * The derivations behind /chain/blocks, /chain/extrinsics and /chain/events
@@ -193,7 +194,7 @@ export function extrinsicsFacts(
     facts.push({
       key: "ok",
       label: "succeeded",
-      value: `${((ok / stated.length) * 100).toFixed(1)}%`,
+      value: `${formatPct(ok / stated.length, 1)}`,
     });
   }
   const top = topBy(rows, (row) => row.call_module);

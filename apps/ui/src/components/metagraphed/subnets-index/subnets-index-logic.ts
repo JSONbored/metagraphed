@@ -10,6 +10,7 @@ import type {
   SubnetLifecycleEntry,
   SubnetMover,
 } from "@/lib/metagraphed/types";
+import { formatCompactAmount, formatDecimal, formatPct } from "@/lib/metagraphed/format";
 
 export type RankMetric = "emission" | "stake" | "price" | "validators";
 export type RankWindow = "7d" | "30d" | "90d";
@@ -67,17 +68,10 @@ export interface RankedSubnet {
 const pctToFraction = (pct: number | null | undefined): number | undefined =>
   typeof pct === "number" && Number.isFinite(pct) ? pct / 100 : undefined;
 
-export const fmtAlpha = (value: number | null | undefined): string => {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
-  if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
-  return value.toFixed(2);
-};
+export const fmtAlpha = (value: number | null | undefined): string => formatCompactAmount(value);
 
 export const fmtPct = (fraction: number | null | undefined, places = 2): string =>
-  typeof fraction === "number" && Number.isFinite(fraction)
-    ? `${(fraction * 100).toFixed(places)}%`
-    : "—";
+  formatPct(fraction, places);
 
 /** Which movers sort dimension a metric ranks along. */
 export const MOVERS_SORT: Record<Exclude<RankMetric, "price">, string> = {
@@ -139,7 +133,12 @@ export function rankSubnets(
       );
       if (typeof price !== "number" || !Number.isFinite(price)) continue;
       if (moved === undefined) continue;
-      rows.push({ netuid: row.netuid, sort: moved, value: `${price.toFixed(4)} τ`, delta: moved });
+      rows.push({
+        netuid: row.netuid,
+        sort: moved,
+        value: `${formatDecimal(price, 4)} τ`,
+        delta: moved,
+      });
       continue;
     }
     if (metric === "emission") {

@@ -2,9 +2,6 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHydrated } from "@/hooks/use-hydrated";
 import {
-  getApiBase,
-  setApiBase,
-  onApiBaseChange,
   DEFAULT_API_BASE,
   getNetwork,
   setNetwork,
@@ -26,26 +23,6 @@ export function isDefaultApiBase(base: string): boolean {
 
 export function isDefaultChainNetwork(network: ChainNetwork): boolean {
   return network.id === DEFAULT_NETWORK.id;
-}
-
-/**
- * Subscribe to the runtime API base. Returns the current value plus a
- * `change()` helper that persists, broadcasts, and invalidates queries
- * so all consumers refetch against the new origin.
- */
-export function useApiBase() {
-  const [base, setBase] = useState<string>(() => getApiBase());
-  const qc = useQueryClient();
-
-  useEffect(() => onApiBaseChange((next) => setBase(next)), []);
-
-  const change = (next: string) => {
-    setApiBase(next);
-    // Drop everything; we just changed origins.
-    qc.invalidateQueries(metagraphedQueryInvalidationTarget());
-  };
-
-  return { base, change, isDefault: isDefaultApiBase(base) };
 }
 
 /**

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
+  formatAmount,
+  formatAmountFixed,
+  formatSignedAmount,
+  formatPct,
+  formatCompact,
+  formatDecimal,
   isUsableTimestamp,
   humaniseSeconds,
   durationLabel,
@@ -315,5 +321,119 @@ describe("formatUsdApprox (#8815)", () => {
 
   it("keeps 2dp for dollar-scale amounts", () => {
     expect(formatUsdApprox(2.345, 1)).toBe("$2.35");
+  });
+});
+
+describe("formatPct", () => {
+  it("rounds before formatting, so the multiplication's error never reaches the string", () => {
+    // 0.57 * 100 === 56.99999999999999 in IEEE-754.
+    expect(formatPct(0.57, 2)).toBe("57.00%");
+    expect(formatPct(0.57, 1)).toBe("57.0%");
+    expect(formatPct(0.57, 0)).toBe("57%");
+  });
+
+  it("defaults to one decimal", () => {
+    expect(formatPct(0.1234)).toBe("12.3%");
+  });
+
+  it("keeps the sign", () => {
+    expect(formatPct(-0.045, 1)).toBe("-4.5%");
+  });
+
+  it("reports an exact zero rather than the fallback", () => {
+    expect(formatPct(0)).toBe("0.0%");
+  });
+
+  it("falls back on nullish or non-finite input", () => {
+    expect(formatPct(null)).toBe("—");
+    expect(formatPct(undefined)).toBe("—");
+    expect(formatPct(Number.NaN)).toBe("—");
+    expect(formatPct(Number.POSITIVE_INFINITY)).toBe("—");
+    expect(formatPct(null, 1, "n/a")).toBe("n/a");
+  });
+
+  it("handles ratios above 1", () => {
+    expect(formatPct(2.5, 0)).toBe("250%");
+  });
+});
+
+describe("formatCompact", () => {
+  it("tiers at a million and at a thousand", () => {
+    expect(formatCompact(2_400_000)).toBe("2.40M");
+    expect(formatCompact(4_500)).toBe("4.5k");
+    expect(formatCompact(812)).toBe("812");
+  });
+
+  it("tiers by magnitude, so a negative gets the tier its size deserves", () => {
+    expect(formatCompact(-2_000_000)).toBe("-2.00M");
+    expect(formatCompact(-4_500)).toBe("-4.5k");
+  });
+
+  it("hands sub-thousand values to formatNumber, keeping its grouping", () => {
+    expect(formatCompact(999)).toBe("999");
+    expect(formatCompact(0)).toBe("0");
+  });
+
+  it("falls back on nullish or non-finite input", () => {
+    expect(formatCompact(null)).toBe("—");
+    expect(formatCompact(Number.NaN)).toBe("—");
+    expect(formatCompact(undefined, "?")).toBe("?");
+  });
+});
+
+describe("formatDecimal", () => {
+  it("fixes the requested number of decimals", () => {
+    expect(formatDecimal(1.005, 2)).toBe("1.00");
+    expect(formatDecimal(3, 3)).toBe("3.000");
+    expect(formatDecimal(2.5)).toBe("2.50");
+  });
+
+  it("guards non-numbers rather than rendering NaN", () => {
+    expect(formatDecimal(Number.NaN)).toBe("—");
+    expect(formatDecimal(null)).toBe("—");
+    expect(formatDecimal(undefined)).toBe("—");
+    expect(formatDecimal(Number.NEGATIVE_INFINITY)).toBe("—");
+  });
+
+  it("reports zero, which is a number", () => {
+    expect(formatDecimal(0, 1)).toBe("0.0");
+  });
+});
+
+describe("formatAmount / formatAmountFixed / formatSignedAmount", () => {
+  it("tiers any unit the way formatTao tiers τ", () => {
+    expect(formatAmount(2_400_000, "α")).toBe("2.40M α");
+    expect(formatAmount(4_500, "α")).toBe("4.5k α");
+    expect(formatAmount(12.5, "α")).toBe("12.50 α");
+    expect(formatAmount(0.48213, "α")).toBe("0.4821 α");
+  });
+
+  it("agrees with formatTao on τ, which is now defined in terms of it", () => {
+    for (const v of [0, 0.5, 1, 999.99, 1_000, 2_400_000, -0.48213, -2_000_000]) {
+      expect(formatAmount(v, "τ")).toBe(formatTao(v));
+    }
+  });
+
+  it("formatAmountFixed keeps the caller's precision and unit", () => {
+    expect(formatAmountFixed(12.5, 2)).toBe("12.50 τ");
+    expect(formatAmountFixed(12.5, 0, "α")).toBe("13 α");
+    expect(formatAmountFixed(null)).toBe("—");
+  });
+
+  it("formatSignedAmount marks direction with a typographic minus", () => {
+    expect(formatSignedAmount(1_000)).toBe("+1.0k τ");
+    expect(formatSignedAmount(-1_000)).toBe("−1.0k τ");
+    // U+2212, not the ASCII hyphen.
+    expect(formatSignedAmount(-1_000)).toContain("−");
+  });
+
+  it("formatSignedAmount leaves an exact zero unsigned", () => {
+    expect(formatSignedAmount(0)).toBe("0.0000 τ");
+    expect(formatSignedAmount(-0)).toBe("0.0000 τ");
+  });
+
+  it("falls back on nullish or non-finite input", () => {
+    expect(formatAmount(null, "τ")).toBe("—");
+    expect(formatSignedAmount(Number.NaN)).toBe("—");
   });
 });

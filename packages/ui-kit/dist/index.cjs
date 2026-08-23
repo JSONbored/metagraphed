@@ -2,12 +2,11 @@
 
 var clsx = require('clsx');
 var tailwindMerge = require('tailwind-merge');
-var React3 = require('react');
-var AccordionPrimitive = require('@radix-ui/react-accordion');
-var lucideReact = require('lucide-react');
-var jsxRuntime = require('react/jsx-runtime');
+var React2 = require('react');
 var cmdk = require('cmdk');
-var DialogPrimitive = require('@radix-ui/react-dialog');
+var lucideReact = require('lucide-react');
+var SheetPrimitive = require('@radix-ui/react-dialog');
+var jsxRuntime = require('react/jsx-runtime');
 var PopoverPrimitive = require('@radix-ui/react-popover');
 var classVarianceAuthority = require('class-variance-authority');
 var sonner = require('sonner');
@@ -33,9 +32,8 @@ function _interopNamespace(e) {
 }
 
 var clsx__default = /*#__PURE__*/_interopDefault(clsx);
-var React3__namespace = /*#__PURE__*/_interopNamespace(React3);
-var AccordionPrimitive__namespace = /*#__PURE__*/_interopNamespace(AccordionPrimitive);
-var DialogPrimitive__namespace = /*#__PURE__*/_interopNamespace(DialogPrimitive);
+var React2__namespace = /*#__PURE__*/_interopNamespace(React2);
+var SheetPrimitive__namespace = /*#__PURE__*/_interopNamespace(SheetPrimitive);
 var PopoverPrimitive__namespace = /*#__PURE__*/_interopNamespace(PopoverPrimitive);
 
 // src/lib/format.ts
@@ -71,79 +69,13 @@ function formatRelative(iso) {
   }
   return past ? `${value}${unit} ago` : `in ${value}${unit}`;
 }
-function formatFreshness(updatedAt, windowLabel) {
-  const parts = [];
-  if (updatedAt) {
-    const t = new Date(updatedAt);
-    if (!Number.isNaN(t.getTime())) {
-      const diffMs = Date.now() - t.getTime();
-      parts.push(`updated ${relative(diffMs)}`);
-    }
-  }
-  if (windowLabel) parts.push(`${windowLabel} window`);
-  return parts.length ? parts.join(" \xB7 ") : null;
-}
-function formatFreshnessAbsolute(updatedAt) {
-  if (!updatedAt) return null;
-  const t = new Date(updatedAt);
-  if (Number.isNaN(t.getTime())) return null;
-  return t.toLocaleString();
-}
-function relative(diffMs) {
-  const sec = Math.max(0, Math.round(diffMs / 1e3));
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.round(min / 60);
-  if (hr < 48) return `${hr}h ago`;
-  const day = Math.round(hr / 24);
-  return `${day}d ago`;
-}
 function cn(...inputs) {
   return tailwindMerge.twMerge(clsx__default.default(...inputs));
 }
-var Accordion = AccordionPrimitive__namespace.Root;
-var AccordionItem = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
-  AccordionPrimitive__namespace.Item,
-  {
-    ref,
-    className: cn("border-b", className),
-    ...props
-  }
-));
-AccordionItem.displayName = "AccordionItem";
-var AccordionTrigger = React3__namespace.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(AccordionPrimitive__namespace.Header, { className: "flex", children: /* @__PURE__ */ jsxRuntime.jsxs(
-  AccordionPrimitive__namespace.Trigger,
-  {
-    ref,
-    className: cn(
-      "flex flex-1 items-center justify-between py-4 text-13 font-medium cursor-pointer transition-all hover:underline text-left [&[data-state=open]>svg]:rotate-180",
-      className
-    ),
-    ...props,
-    children: [
-      children,
-      /* @__PURE__ */ jsxRuntime.jsx(lucideReact.ChevronDown, { className: "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" })
-    ]
-  }
-) }));
-AccordionTrigger.displayName = AccordionPrimitive__namespace.Trigger.displayName;
-var AccordionContent = React3__namespace.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
-  AccordionPrimitive__namespace.Content,
-  {
-    ref,
-    className: "overflow-hidden text-13 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
-    ...props,
-    children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: cn("pb-4 pt-0", className), children })
-  }
-));
-AccordionContent.displayName = AccordionPrimitive__namespace.Content.displayName;
-var Dialog = DialogPrimitive__namespace.Root;
-var DialogTrigger = DialogPrimitive__namespace.Trigger;
-var DialogPortal = DialogPrimitive__namespace.Portal;
-var DialogClose = DialogPrimitive__namespace.Close;
-var DialogOverlay = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
-  DialogPrimitive__namespace.Overlay,
+var Dialog = SheetPrimitive__namespace.Root;
+var DialogPortal = SheetPrimitive__namespace.Portal;
+var DialogOverlay = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+  SheetPrimitive__namespace.Overlay,
   {
     ref,
     className: cn(
@@ -153,11 +85,11 @@ var DialogOverlay = React3__namespace.forwardRef(({ className, ...props }, ref) 
     ...props
   }
 ));
-DialogOverlay.displayName = DialogPrimitive__namespace.Overlay.displayName;
-var DialogContent = React3__namespace.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsxs(DialogPortal, { children: [
+DialogOverlay.displayName = SheetPrimitive__namespace.Overlay.displayName;
+var DialogContent = React2__namespace.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsxs(DialogPortal, { children: [
   /* @__PURE__ */ jsxRuntime.jsx(DialogOverlay, {}),
   /* @__PURE__ */ jsxRuntime.jsxs(
-    DialogPrimitive__namespace.Content,
+    SheetPrimitive__namespace.Content,
     {
       ref,
       className: cn(
@@ -167,7 +99,7 @@ var DialogContent = React3__namespace.forwardRef(({ className, children, ...prop
       ...props,
       children: [
         children,
-        /* @__PURE__ */ jsxRuntime.jsxs(DialogPrimitive__namespace.Close, { className: "absolute right-4 top-4 rounded opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground", children: [
+        /* @__PURE__ */ jsxRuntime.jsxs(SheetPrimitive__namespace.Close, { className: "absolute right-4 top-4 rounded opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground", children: [
           /* @__PURE__ */ jsxRuntime.jsx(lucideReact.X, { className: "h-4 w-4" }),
           /* @__PURE__ */ jsxRuntime.jsx("span", { className: "sr-only", children: "Close" })
         ] })
@@ -175,7 +107,7 @@ var DialogContent = React3__namespace.forwardRef(({ className, children, ...prop
     }
   )
 ] }));
-DialogContent.displayName = DialogPrimitive__namespace.Content.displayName;
+DialogContent.displayName = SheetPrimitive__namespace.Content.displayName;
 var DialogHeader = ({
   className,
   ...props
@@ -204,25 +136,25 @@ var DialogFooter = ({
   }
 );
 DialogFooter.displayName = "DialogFooter";
-var DialogTitle = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
-  DialogPrimitive__namespace.Title,
+var DialogTitle = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+  SheetPrimitive__namespace.Title,
   {
     ref,
     className: cn("text-16 font-semibold leading-none", className),
     ...props
   }
 ));
-DialogTitle.displayName = DialogPrimitive__namespace.Title.displayName;
-var DialogDescription = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
-  DialogPrimitive__namespace.Description,
+DialogTitle.displayName = SheetPrimitive__namespace.Title.displayName;
+var DialogDescription = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+  SheetPrimitive__namespace.Description,
   {
     ref,
     className: cn("text-13 text-muted-foreground", className),
     ...props
   }
 ));
-DialogDescription.displayName = DialogPrimitive__namespace.Description.displayName;
-var Command = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+DialogDescription.displayName = SheetPrimitive__namespace.Description.displayName;
+var Command = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
   cmdk.Command,
   {
     ref,
@@ -237,7 +169,7 @@ Command.displayName = cmdk.Command.displayName;
 var CommandDialog = ({ children, ...props }) => {
   return /* @__PURE__ */ jsxRuntime.jsx(Dialog, { ...props, children: /* @__PURE__ */ jsxRuntime.jsx(DialogContent, { className: "overflow-hidden p-0 max-w-[calc(100vw-2rem)] sm:max-w-lg", children: /* @__PURE__ */ jsxRuntime.jsx(Command, { className: "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5", children }) }) });
 };
-var CommandInput = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center border-b px-3", "cmdk-input-wrapper": "", children: [
+var CommandInput = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center border-b px-3", "cmdk-input-wrapper": "", children: [
   /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Search, { className: "mr-2 h-4 w-4 shrink-0 opacity-50" }),
   /* @__PURE__ */ jsxRuntime.jsx(
     cmdk.Command.Input,
@@ -252,7 +184,7 @@ var CommandInput = React3__namespace.forwardRef(({ className, ...props }, ref) =
   )
 ] }));
 CommandInput.displayName = cmdk.Command.Input.displayName;
-var CommandList = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+var CommandList = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
   cmdk.Command.List,
   {
     ref,
@@ -261,7 +193,7 @@ var CommandList = React3__namespace.forwardRef(({ className, ...props }, ref) =>
   }
 ));
 CommandList.displayName = cmdk.Command.List.displayName;
-var CommandEmpty = React3__namespace.forwardRef((props, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+var CommandEmpty = React2__namespace.forwardRef((props, ref) => /* @__PURE__ */ jsxRuntime.jsx(
   cmdk.Command.Empty,
   {
     ref,
@@ -270,7 +202,7 @@ var CommandEmpty = React3__namespace.forwardRef((props, ref) => /* @__PURE__ */ 
   }
 ));
 CommandEmpty.displayName = cmdk.Command.Empty.displayName;
-var CommandGroup = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+var CommandGroup = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
   cmdk.Command.Group,
   {
     ref,
@@ -282,7 +214,7 @@ var CommandGroup = React3__namespace.forwardRef(({ className, ...props }, ref) =
   }
 ));
 CommandGroup.displayName = cmdk.Command.Group.displayName;
-var CommandSeparator = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+var CommandSeparator = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
   cmdk.Command.Separator,
   {
     ref,
@@ -291,7 +223,7 @@ var CommandSeparator = React3__namespace.forwardRef(({ className, ...props }, re
   }
 ));
 CommandSeparator.displayName = cmdk.Command.Separator.displayName;
-var CommandItem = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+var CommandItem = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
   cmdk.Command.Item,
   {
     ref,
@@ -318,8 +250,7 @@ var CommandShortcut = ({
 CommandShortcut.displayName = "CommandShortcut";
 var Popover = PopoverPrimitive__namespace.Root;
 var PopoverTrigger = PopoverPrimitive__namespace.Trigger;
-var PopoverAnchor = PopoverPrimitive__namespace.Anchor;
-var PopoverContent = React3__namespace.forwardRef(({ className, align = "center", sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(PopoverPrimitive__namespace.Portal, { children: /* @__PURE__ */ jsxRuntime.jsx(
+var PopoverContent = React2__namespace.forwardRef(({ className, align = "center", sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(PopoverPrimitive__namespace.Portal, { children: /* @__PURE__ */ jsxRuntime.jsx(
   PopoverPrimitive__namespace.Content,
   {
     ref,
@@ -333,12 +264,11 @@ var PopoverContent = React3__namespace.forwardRef(({ className, align = "center"
   }
 ) }));
 PopoverContent.displayName = PopoverPrimitive__namespace.Content.displayName;
-var Sheet = DialogPrimitive__namespace.Root;
-var SheetTrigger = DialogPrimitive__namespace.Trigger;
-var SheetClose = DialogPrimitive__namespace.Close;
-var SheetPortal = DialogPrimitive__namespace.Portal;
-var SheetOverlay = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
-  DialogPrimitive__namespace.Overlay,
+var Sheet = SheetPrimitive__namespace.Root;
+var SheetTrigger = SheetPrimitive__namespace.Trigger;
+var SheetPortal = SheetPrimitive__namespace.Portal;
+var SheetOverlay = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+  SheetPrimitive__namespace.Overlay,
   {
     className: cn(
       "fixed inset-0 z-[var(--mg-z-modal)] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -348,7 +278,7 @@ var SheetOverlay = React3__namespace.forwardRef(({ className, ...props }, ref) =
     ref
   }
 ));
-SheetOverlay.displayName = DialogPrimitive__namespace.Overlay.displayName;
+SheetOverlay.displayName = SheetPrimitive__namespace.Overlay.displayName;
 var sheetVariants = classVarianceAuthority.cva(
   "fixed z-[var(--mg-z-modal)] gap-4 bg-background p-6 transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
   {
@@ -365,16 +295,16 @@ var sheetVariants = classVarianceAuthority.cva(
     }
   }
 );
-var SheetContent = React3__namespace.forwardRef(({ side = "right", className, children, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsxs(SheetPortal, { children: [
+var SheetContent = React2__namespace.forwardRef(({ side = "right", className, children, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsxs(SheetPortal, { children: [
   /* @__PURE__ */ jsxRuntime.jsx(SheetOverlay, {}),
   /* @__PURE__ */ jsxRuntime.jsxs(
-    DialogPrimitive__namespace.Content,
+    SheetPrimitive__namespace.Content,
     {
       ref,
       className: cn(sheetVariants({ side }), className),
       ...props,
       children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(DialogPrimitive__namespace.Close, { className: "absolute right-4 top-4 rounded opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary", children: [
+        /* @__PURE__ */ jsxRuntime.jsxs(SheetPrimitive__namespace.Close, { className: "absolute right-4 top-4 rounded opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary", children: [
           /* @__PURE__ */ jsxRuntime.jsx(lucideReact.X, { className: "h-4 w-4" }),
           /* @__PURE__ */ jsxRuntime.jsx("span", { className: "sr-only", children: "Close" })
         ] }),
@@ -383,7 +313,7 @@ var SheetContent = React3__namespace.forwardRef(({ side = "right", className, ch
     }
   )
 ] }));
-SheetContent.displayName = DialogPrimitive__namespace.Content.displayName;
+SheetContent.displayName = SheetPrimitive__namespace.Content.displayName;
 var SheetHeader = ({
   className,
   ...props
@@ -412,24 +342,24 @@ var SheetFooter = ({
   }
 );
 SheetFooter.displayName = "SheetFooter";
-var SheetTitle = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
-  DialogPrimitive__namespace.Title,
+var SheetTitle = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+  SheetPrimitive__namespace.Title,
   {
     ref,
     className: cn("text-16 font-semibold text-foreground", className),
     ...props
   }
 ));
-SheetTitle.displayName = DialogPrimitive__namespace.Title.displayName;
-var SheetDescription = React3__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
-  DialogPrimitive__namespace.Description,
+SheetTitle.displayName = SheetPrimitive__namespace.Title.displayName;
+var SheetDescription = React2__namespace.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(
+  SheetPrimitive__namespace.Description,
   {
     ref,
     className: cn("text-13 text-muted-foreground", className),
     ...props
   }
 ));
-SheetDescription.displayName = DialogPrimitive__namespace.Description.displayName;
+SheetDescription.displayName = SheetPrimitive__namespace.Description.displayName;
 var Toaster = ({ ...props }) => {
   return /* @__PURE__ */ jsxRuntime.jsx(
     sonner.Toaster,
@@ -450,70 +380,10 @@ var Toaster = ({ ...props }) => {
 function Skeleton({ className = "h-4 w-full" }) {
   return /* @__PURE__ */ jsxRuntime.jsx("div", { className: `animate-pulse rounded bg-surface-2 ${className}` });
 }
-var defaultFormat = (n) => new Intl.NumberFormat("en-US").format(Math.round(n));
-function prefersReducedMotion() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-}
-function AnimatedNumber({
-  value,
-  format = defaultFormat,
-  fallback = "\u2014",
-  duration = 600,
-  flashOnChange = true,
-  className
-}) {
-  const safe = typeof value === "number" && Number.isFinite(value) ? value : null;
-  const [display, setDisplay] = React3.useState(safe);
-  const [flash, setFlash] = React3.useState("");
-  const fromRef = React3.useRef(safe);
-  const rafRef = React3.useRef(null);
-  React3.useEffect(() => {
-    if (safe === null) {
-      setDisplay(null);
-      fromRef.current = null;
-      return;
-    }
-    const from = fromRef.current;
-    if (from === null || prefersReducedMotion() || from === safe) {
-      setDisplay(safe);
-      fromRef.current = safe;
-      return;
-    }
-    if (flashOnChange) {
-      setFlash(safe > from ? "" : "");
-      window.setTimeout(() => setFlash(""), 720);
-    }
-    const start = performance.now();
-    const delta = safe - from;
-    const step = (now) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setDisplay(from + delta * eased);
-      if (t < 1) rafRef.current = requestAnimationFrame(step);
-      else fromRef.current = safe;
-    };
-    rafRef.current = requestAnimationFrame(step);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, [safe, duration, flashOnChange]);
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "span",
-    {
-      className: classNames(
-        "tabular-nums inline-block px-0.5",
-        flash,
-        className
-      ),
-      children: display === null ? fallback : format(display)
-    }
-  );
-}
 var BOTTOM_HIDE_GAP = 96;
 function BackToTop({ threshold = 600 }) {
-  const [visible, setVisible] = React3.useState(false);
-  React3.useEffect(() => {
+  const [visible, setVisible] = React2.useState(false);
+  React2.useEffect(() => {
     if (typeof window === "undefined") return;
     function onScroll() {
       const scrolledPast = window.scrollY > threshold;
@@ -596,9 +466,9 @@ function apply(choice) {
   return resolved;
 }
 function useTheme() {
-  const [choice, setChoiceState] = React3.useState(() => readChoice());
-  const [resolved, setResolved] = React3.useState("light");
-  React3.useEffect(() => {
+  const [choice, setChoiceState] = React2.useState(() => readChoice());
+  const [resolved, setResolved] = React2.useState("light");
+  React2.useEffect(() => {
     setResolved(apply(choice));
     if (choice !== "system" || typeof window === "undefined") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -606,7 +476,7 @@ function useTheme() {
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, [choice]);
-  const setChoice = React3.useCallback((next) => {
+  const setChoice = React2.useCallback((next) => {
     if (typeof document !== "undefined") {
       document.documentElement.classList.add("theme-transition");
       window.setTimeout(
@@ -914,48 +784,48 @@ function BrandIcon({
   netuid
 }) {
   const { resolved: theme } = useTheme();
-  const host = React3.useMemo(() => extractHost(url), [url]);
-  const lookup = React3.useMemo(
+  const host = React2.useMemo(() => extractHost(url), [url]);
+  const lookup = React2.useMemo(
     () => ({ providerSlug, subnetSlug, netuid }),
     [providerSlug, subnetSlug, netuid]
   );
-  const chain = React3.useMemo(
+  const chain = React2.useMemo(
     () => buildCandidateChain({ url, iconUrl, repoUrl, lookup, theme, size }),
     [url, iconUrl, repoUrl, lookup, theme, size]
   );
-  const initialIndex = React3.useMemo(() => {
+  const initialIndex = React2.useMemo(() => {
     if (!host) return 0;
     const winner = winnerByHost.get(host);
     if (!winner) return 0;
     const idx = chain.indexOf(winner);
     return idx >= 0 ? idx : 0;
   }, [host, chain]);
-  const [index, setIndex] = React3.useState(initialIndex);
-  const [loaded, setLoaded] = React3.useState(false);
-  const [needsContrastTile, setNeedsContrastTile] = React3.useState(false);
-  React3.useEffect(() => {
+  const [index, setIndex] = React2.useState(initialIndex);
+  const [loaded, setLoaded] = React2.useState(false);
+  const [needsContrastTile, setNeedsContrastTile] = React2.useState(false);
+  React2.useEffect(() => {
     setIndex(initialIndex);
     setLoaded(false);
     setNeedsContrastTile(false);
   }, [initialIndex, chain]);
   const candidate = chain[index] ?? null;
   const exhausted = !candidate;
-  React3.useEffect(() => {
+  React2.useEffect(() => {
     if (candidate && loadedUrls.has(candidate)) setLoaded(true);
     if (candidate && isDarkLogo.has(candidate)) {
       setNeedsContrastTile(theme === "dark" && isDarkLogo.get(candidate));
     }
   }, [candidate, theme]);
-  const advance = React3.useCallback(() => {
+  const advance = React2.useCallback(() => {
     setIndex((i) => i + 1);
     setLoaded(false);
     setNeedsContrastTile(false);
   }, []);
-  const onImgError = React3.useCallback(() => {
+  const onImgError = React2.useCallback(() => {
     if (candidate) failedUrls.add(candidate);
     advance();
   }, [candidate, advance]);
-  const onImgLoad = React3.useCallback(
+  const onImgLoad = React2.useCallback(
     (e) => {
       const img = e.currentTarget;
       const min = isProxiedIcon(candidate) ? 16 : Math.max(16, Math.floor(size * 0.9));
@@ -1091,7 +961,6 @@ function HealthDot({
   const key = normalize(state);
   const color = STATE_COLOR[key];
   const label = STATE_LABEL[key];
-  const shouldPulse = key === "warn" || key === "degraded" || key === "down" || key === "offline";
   const dot = /* @__PURE__ */ jsxRuntime.jsx(
     "span",
     {
@@ -1100,7 +969,6 @@ function HealthDot({
       className: classNames(
         "relative inline-block size-2 rounded-full mg-dot shrink-0",
         color,
-        shouldPulse && "",
         className
       )
     }
@@ -1110,89 +978,6 @@ function HealthDot({
     dot,
     /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-13 font-medium text-ink", children: label })
   ] });
-}
-function HealthPill({
-  state,
-  label
-}) {
-  if (label) {
-    return /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
-      /* @__PURE__ */ jsxRuntime.jsx(HealthDot, { state }),
-      /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-13 font-medium text-ink", children: label })
-    ] });
-  }
-  return /* @__PURE__ */ jsxRuntime.jsx(HealthDot, { state, variant: "label" });
-}
-var curationLabel = {
-  native: "Native",
-  "candidate-discovered": "Candidate",
-  "community-seeded": "Community",
-  "machine-verified": "Machine",
-  "maintainer-reviewed": "Reviewed",
-  "adapter-backed": "Adapter"
-};
-var curationCls = {
-  native: "bg-transparent text-ink-strong border-ink-strong/40",
-  "candidate-discovered": "bg-transparent text-ink-muted border-dashed border-ink-subtle",
-  "community-seeded": "bg-transparent text-curation-seeded border-curation-seeded/40",
-  "machine-verified": "bg-transparent text-ink-muted border-border",
-  "maintainer-reviewed": "bg-primary-soft text-curation-verified border-accent/40",
-  "adapter-backed": "bg-primary-soft text-curation-pilot border-accent/50"
-};
-var authorityLabel = {
-  official: "Official",
-  "registry-observed": "Observed",
-  "provider-claimed": "Claimed",
-  community: "Community",
-  "native-chain": "Native"
-};
-var authorityCls = {
-  official: curationCls["maintainer-reviewed"],
-  "registry-observed": curationCls["machine-verified"],
-  "provider-claimed": curationCls["adapter-backed"],
-  community: curationCls["candidate-discovered"],
-  "native-chain": curationCls["native"]
-};
-function CurationChip({ level }) {
-  const key = String(level ?? "");
-  const label = Object.hasOwn(curationLabel, key) ? curationLabel[key] : Object.hasOwn(authorityLabel, key) ? authorityLabel[key] : level ? key : "\u2014";
-  const cls = Object.hasOwn(curationCls, key) ? curationCls[key] : Object.hasOwn(authorityCls, key) ? authorityCls[key] : curationCls["candidate-discovered"];
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "span",
-    {
-      className: classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-13 font-medium",
-        cls
-      ),
-      children: label
-    }
-  );
-}
-var reviewLabel = {
-  "maintainer-reviewed": "Reviewed",
-  rejected: "Rejected"
-};
-var reviewCls = {
-  "maintainer-reviewed": curationCls["maintainer-reviewed"],
-  rejected: "bg-transparent text-ink-muted border-ink-subtle line-through"
-};
-function ReviewChip({ state }) {
-  const key = String(state ?? "");
-  if (!Object.hasOwn(reviewLabel, key)) return null;
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "span",
-    {
-      className: classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-13 font-medium",
-        reviewCls[key]
-      ),
-      title: `Maintainer review: ${key}`,
-      children: reviewLabel[key]
-    }
-  );
-}
-function CandidateChip() {
-  return /* @__PURE__ */ jsxRuntime.jsx("span", { className: "inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 text-13 font-medium text-ink-muted", children: "Unverified" });
 }
 function truncateCopyPreview(value, max = 64) {
   return value.length > max ? value.slice(0, max) + "\u2026" : value;
@@ -1208,9 +993,9 @@ function shouldUseNavigatorClipboard(navigatorValue) {
 }
 function useCopy(opts = {}) {
   const { label, resetAfter = 1400, toastOnSuccess = true } = opts;
-  const [copied, setCopied] = React3.useState(false);
-  const timer = React3.useRef(null);
-  const copy = React3.useCallback(
+  const [copied, setCopied] = React2.useState(false);
+  const timer = React2.useRef(null);
+  const copy = React2.useCallback(
     async (value) => {
       if (!value) return false;
       try {
@@ -1410,140 +1195,6 @@ function CopyableCode({
     /* @__PURE__ */ jsxRuntime.jsx(CopyStatusRegion, { children: copied ? `${label ?? "Value"} copied to clipboard` : "" })
   ] });
 }
-var DefinitionsContext = React3.createContext({});
-function DefinitionsProvider({
-  definitions,
-  children
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(DefinitionsContext.Provider, { value: definitions, children });
-}
-function useDefinition(term) {
-  return React3.useContext(DefinitionsContext)[term];
-}
-function Definition({
-  term,
-  sentence,
-  align = "start",
-  className,
-  children
-}) {
-  const fromGlossary = useDefinition(term);
-  const text = sentence ?? fromGlossary;
-  const id = React3.useId();
-  const [open, setOpen] = React3.useState(false);
-  const rootRef = React3.useRef(null);
-  const pointerType = React3.useRef("mouse");
-  const close = React3.useCallback(() => setOpen(false), []);
-  React3.useEffect(() => {
-    if (!open) return;
-    const onKey = (event) => {
-      if (event.key === "Escape") close();
-    };
-    const onPointerDown = (event) => {
-      const root = rootRef.current;
-      if (root && event.target instanceof Node && !root.contains(event.target))
-        close();
-    };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onPointerDown, true);
-    };
-  }, [open, close]);
-  if (!text) return children ? /* @__PURE__ */ jsxRuntime.jsx(jsxRuntime.Fragment, { children }) : null;
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "span",
-    {
-      ref: rootRef,
-      className: ["mg-definition", className].filter(Boolean).join(" "),
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsx(
-          "button",
-          {
-            type: "button",
-            className: children ? "mg-definition-trigger" : "mg-definition-button",
-            "aria-label": children ? void 0 : `What is ${term}`,
-            "aria-describedby": open ? id : void 0,
-            "aria-expanded": open,
-            onPointerDown: (event) => {
-              pointerType.current = event.pointerType || "mouse";
-            },
-            onPointerEnter: (event) => {
-              if (event.pointerType !== "touch") setOpen(true);
-            },
-            onPointerLeave: (event) => {
-              if (event.pointerType !== "touch") setOpen(false);
-            },
-            onFocus: () => setOpen(true),
-            onBlur: () => setOpen(false),
-            onClick: () => {
-              if (pointerType.current === "touch") setOpen((v) => !v);
-            },
-            children: children ?? "?"
-          }
-        ),
-        open ? /* @__PURE__ */ jsxRuntime.jsxs(
-          "span",
-          {
-            id,
-            role: "tooltip",
-            className: "mg-definition-tip",
-            "data-align": align,
-            "data-mg-tooltip": "",
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsx("strong", { children: term }),
-              text
-            ]
-          }
-        ) : null
-      ]
-    }
-  );
-}
-var ELIGIBILITY_LABEL = {
-  "proxy-enabled": "Proxy",
-  "pool-member": "Pool",
-  "archive-capable": "Archive",
-  unassigned: "Unassigned"
-};
-var TONE = {
-  "proxy-enabled": "border-accent/50 text-curation-pilot before:bg-accent",
-  "pool-member": "border-curation-machine/50 text-curation-machine before:bg-curation-machine",
-  "archive-capable": "border-curation-verified/50 text-curation-verified before:bg-curation-verified",
-  unassigned: "border-border text-ink-muted before:bg-ink-subtle"
-};
-var RULE = {
-  "proxy-enabled": "Routable through the Metagraphed pool when proxy is enabled backend-side. Routing remains future-scoped.",
-  "pool-member": "Curated member of an RPC pool \u2014 eligible for routing once proxy is enabled.",
-  "archive-capable": "Historical block data supported \u2014 suitable for archival reads beyond head depth.",
-  unassigned: "Not assigned to any pool yet. Eligible for pooling once verification metadata is added."
-};
-function EligibilityChip({
-  eligibility,
-  size = "sm"
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    Definition,
-    {
-      term: ELIGIBILITY_LABEL[eligibility],
-      sentence: RULE[eligibility],
-      children: /* @__PURE__ */ jsxRuntime.jsx(
-        "span",
-        {
-          className: classNames(
-            "inline-flex items-center gap-1.5 rounded border bg-transparent whitespace-nowrap transition-colors",
-            "mg-dot-before",
-            "hover:bg-surface",
-            size === "xs" ? "px-2 py-0 h-5 text-11" : "px-2.5 py-0 h-6 text-11",
-            TONE[eligibility]
-          ),
-          children: ELIGIBILITY_LABEL[eligibility]
-        }
-      )
-    }
-  );
-}
 var SAFE_EXTERNAL_PROTOCOLS = /* @__PURE__ */ new Set(["http:", "https:"]);
 function isBlockedIpv42(hostname) {
   const parts = hostname.split(".");
@@ -1677,27 +1328,27 @@ function markTabIndex(options) {
   if (options.disabled) return -1;
   return options.active || options.first ? 0 : -1;
 }
-var ActiveEntityContext = React3.createContext(
+var ActiveEntityContext = React2.createContext(
   null
 );
 function ActiveEntityProvider({ children }) {
-  const [state, dispatch] = React3.useReducer(reduceActiveEntity, {
+  const [state, dispatch] = React2.useReducer(reduceActiveEntity, {
     active: null,
     pinned: false
   });
-  const set = React3.useCallback(
+  const set = React2.useCallback(
     (entity) => dispatch({ type: "set", entity }),
     []
   );
-  const pin = React3.useCallback(
+  const pin = React2.useCallback(
     (entity) => dispatch({ type: "pin", entity }),
     []
   );
-  const clear = React3.useCallback(
+  const clear = React2.useCallback(
     (options) => dispatch({ type: "clear", force: options?.force }),
     []
   );
-  React3.useEffect(() => {
+  React2.useEffect(() => {
     if (!state.pinned || !state.active) return;
     const key = state.active.key;
     const onPointerDown = (event) => {
@@ -1710,7 +1361,7 @@ function ActiveEntityProvider({ children }) {
     document.addEventListener("pointerdown", onPointerDown, true);
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [state.pinned, state.active]);
-  const value = React3.useMemo(
+  const value = React2.useMemo(
     () => ({ active: state.active, pinned: state.pinned, set, pin, clear }),
     [state.active, state.pinned, set, pin, clear]
   );
@@ -1727,7 +1378,7 @@ var NOOP_CONTEXT = {
   }
 };
 function useActiveEntity() {
-  return React3.useContext(ActiveEntityContext) ?? NOOP_CONTEXT;
+  return React2.useContext(ActiveEntityContext) ?? NOOP_CONTEXT;
 }
 function useIsActive(key) {
   return useActiveEntity().active?.key === key;
@@ -1744,51 +1395,51 @@ function siblingsOf(el) {
 function useEntityMark(key, opts = {}) {
   const ctx = useActiveEntity();
   const { source = "mark", label, data, onActivate, disabled = false } = opts;
-  const elRef = React3.useRef(null);
-  const [isFirst, setIsFirst] = React3.useState(false);
-  const lastPointerType = React3.useRef("mouse");
+  const elRef = React2.useRef(null);
+  const [isFirst, setIsFirst] = React2.useState(false);
+  const lastPointerType = React2.useRef("mouse");
   const isActive = ctx.active?.key === key;
   const isPinnedHere = isActive && ctx.pinned;
-  const ref = React3.useCallback((el) => {
+  const ref = React2.useCallback((el) => {
     elRef.current = el;
   }, []);
-  React3.useLayoutEffect(() => {
+  React2.useLayoutEffect(() => {
     const el = elRef.current;
     if (!el) return;
     const group = el.closest(MARKS_SELECTOR);
     const head = group ? group.querySelector(MARK_SELECTOR) : null;
     setIsFirst(head === el || head === null);
   }, [key]);
-  const entity = React3.useCallback(
+  const entity = React2.useCallback(
     () => ({ key, source, element: elRef.current, data }),
     [key, source, data]
   );
-  const onPointerDown = React3.useCallback((event) => {
+  const onPointerDown = React2.useCallback((event) => {
     lastPointerType.current = event.pointerType || "mouse";
   }, []);
-  const onPointerEnter = React3.useCallback(
+  const onPointerEnter = React2.useCallback(
     (event) => {
       if (disabled || event.pointerType === "touch") return;
       ctx.set(entity());
     },
     [ctx, entity, disabled]
   );
-  const onPointerLeave = React3.useCallback(
+  const onPointerLeave = React2.useCallback(
     (event) => {
       if (event.pointerType === "touch") return;
       ctx.clear();
     },
     [ctx]
   );
-  const onFocus = React3.useCallback(() => {
+  const onFocus = React2.useCallback(() => {
     if (disabled) return;
     if (lastPointerType.current === "touch") return;
     ctx.set(entity());
   }, [ctx, entity, disabled]);
-  const onBlur = React3.useCallback(() => {
+  const onBlur = React2.useCallback(() => {
     ctx.clear();
   }, [ctx]);
-  const onClick = React3.useCallback(
+  const onClick = React2.useCallback(
     (event) => {
       if (disabled) {
         event.preventDefault();
@@ -1803,7 +1454,7 @@ function useEntityMark(key, opts = {}) {
     },
     [ctx, entity, disabled, isPinnedHere, onActivate]
   );
-  const onKeyDown = React3.useCallback(
+  const onKeyDown = React2.useCallback(
     (event) => {
       const el = elRef.current;
       if (!el) return;
@@ -1857,8 +1508,8 @@ function tooltipPlacement(viewportWidth) {
   return viewportWidth < 640 ? "static" : "float";
 }
 function useIsMobile() {
-  const [mobile, setMobile] = React3.useState(false);
-  React3.useLayoutEffect(() => {
+  const [mobile, setMobile] = React2.useState(false);
+  React2.useLayoutEffect(() => {
     const update = () => setMobile(tooltipPlacement(window.innerWidth) === "static");
     update();
     window.addEventListener("resize", update);
@@ -1873,16 +1524,16 @@ function ChartTooltip({
   className
 }) {
   const { active } = useActiveEntity();
-  const ref = React3.useRef(null);
+  const ref = React2.useRef(null);
   const mobile = useIsMobile();
-  const [left, setLeft] = React3.useState(null);
-  const [markTop, setMarkTop] = React3.useState(0);
-  const [, mounted2] = React3.useState(false);
-  React3.useLayoutEffect(() => mounted2(true), []);
-  const host = React3.useRef(null);
+  const [left, setLeft] = React2.useState(null);
+  const [markTop, setMarkTop] = React2.useState(0);
+  const [, mounted2] = React2.useState(false);
+  React2.useLayoutEffect(() => mounted2(true), []);
+  const host = React2.useRef(null);
   const container = host.current?.parentElement ?? null;
   const anchored = active !== null && active.element !== null && container !== null && container.contains(active.element);
-  React3.useLayoutEffect(() => {
+  React2.useLayoutEffect(() => {
     if (!anchored || mobile || !ref.current || !active?.element || !container) {
       setLeft(null);
       return;
@@ -1945,6 +1596,97 @@ function ChartTooltip({
     }
   ) : null });
 }
+var DefinitionsContext = React2.createContext({});
+function DefinitionsProvider({
+  definitions,
+  children
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(DefinitionsContext.Provider, { value: definitions, children });
+}
+function useDefinition(term) {
+  return React2.useContext(DefinitionsContext)[term];
+}
+function Definition({
+  term,
+  sentence,
+  align = "start",
+  className,
+  children
+}) {
+  const fromGlossary = useDefinition(term);
+  const text = sentence ?? fromGlossary;
+  const id = React2.useId();
+  const [open, setOpen] = React2.useState(false);
+  const rootRef = React2.useRef(null);
+  const pointerType = React2.useRef("mouse");
+  const close = React2.useCallback(() => setOpen(false), []);
+  React2.useEffect(() => {
+    if (!open) return;
+    const onKey = (event) => {
+      if (event.key === "Escape") close();
+    };
+    const onPointerDown = (event) => {
+      const root = rootRef.current;
+      if (root && event.target instanceof Node && !root.contains(event.target))
+        close();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [open, close]);
+  if (!text) return children ? /* @__PURE__ */ jsxRuntime.jsx(jsxRuntime.Fragment, { children }) : null;
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "span",
+    {
+      ref: rootRef,
+      className: ["mg-definition", className].filter(Boolean).join(" "),
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsx(
+          "button",
+          {
+            type: "button",
+            className: children ? "mg-definition-trigger" : "mg-definition-button",
+            "aria-label": children ? void 0 : `What is ${term}`,
+            "aria-describedby": open ? id : void 0,
+            "aria-expanded": open,
+            onPointerDown: (event) => {
+              pointerType.current = event.pointerType || "mouse";
+            },
+            onPointerEnter: (event) => {
+              if (event.pointerType !== "touch") setOpen(true);
+            },
+            onPointerLeave: (event) => {
+              if (event.pointerType !== "touch") setOpen(false);
+            },
+            onFocus: () => setOpen(true),
+            onBlur: () => setOpen(false),
+            onClick: () => {
+              if (pointerType.current === "touch") setOpen((v) => !v);
+            },
+            children: children ?? "?"
+          }
+        ),
+        open ? /* @__PURE__ */ jsxRuntime.jsxs(
+          "span",
+          {
+            id,
+            role: "tooltip",
+            className: "mg-definition-tip",
+            "data-align": align,
+            "data-mg-tooltip": "",
+            children: [
+              /* @__PURE__ */ jsxRuntime.jsx("strong", { children: term }),
+              text
+            ]
+          }
+        ) : null
+      ]
+    }
+  );
+}
 function Raw({
   title = "Raw identifiers & sources",
   rows = [],
@@ -2000,43 +1742,6 @@ function RawCode({
       }
     )
   ] });
-}
-function provenanceSentence({
-  source,
-  windowLabel,
-  updatedAt,
-  staleness
-}) {
-  const fresh = formatFreshness(updatedAt, windowLabel);
-  const freshAbs = formatFreshnessAbsolute(updatedAt);
-  return [
-    source.replace(/\.?$/, "."),
-    staleness ? `Staleness: ${staleness.replace(/\.?$/, ".")}` : null,
-    fresh || freshAbs ? `${fresh ?? ""}${freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""}.` : null
-  ].filter(Boolean).join(" ");
-}
-function Provenance({
-  children,
-  metric,
-  source,
-  windowLabel,
-  updatedAt,
-  staleness
-}) {
-  const term = windowLabel ? `${metric} \xB7 ${windowLabel}` : metric;
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    Definition,
-    {
-      term,
-      sentence: provenanceSentence({
-        source,
-        windowLabel,
-        updatedAt,
-        staleness
-      }),
-      children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "inline-flex max-w-full items-center", children })
-    }
-  );
 }
 function AnalyticsSection({
   id,
@@ -2098,8 +1803,8 @@ function pickActiveSection(ids, visible, current) {
   return ids.find((id) => visible.has(id)) ?? current;
 }
 function useActiveSection(ids) {
-  const [active, setActive] = React3.useState(ids[0] ?? null);
-  React3.useEffect(() => {
+  const [active, setActive] = React2.useState(ids[0] ?? null);
+  React2.useEffect(() => {
     if (typeof IntersectionObserver === "undefined") return;
     const visible = /* @__PURE__ */ new Map();
     const observer = new IntersectionObserver(
@@ -2157,8 +1862,8 @@ var DefaultLink = ({ href, children, ...rest }) => /* @__PURE__ */ jsxRuntime.js
 var MAX_SECTIONS = 7;
 function sectionItems(children) {
   const items = [];
-  React3.Children.forEach(children, (child) => {
-    if (!React3.isValidElement(child)) return;
+  React2.Children.forEach(children, (child) => {
+    if (!React2.isValidElement(child)) return;
     if (child.type === AnalyticsSection) {
       const props = child.props;
       items.push({
@@ -2233,17 +1938,17 @@ function Fact({
 function FactSentence({ children, className }) {
   return /* @__PURE__ */ jsxRuntime.jsx("p", { className: classNames("mg-fact-sentence", className), children });
 }
-var LiveTickerContext = React3.createContext(null);
+var LiveTickerContext = React2.createContext(null);
 function LiveTickerProvider({ children }) {
-  const [tick, setTick] = React3.useState(0);
-  React3.useEffect(() => {
+  const [tick, setTick] = React2.useState(0);
+  React2.useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 1e3);
     return () => clearInterval(id);
   }, []);
   return /* @__PURE__ */ jsxRuntime.jsx(LiveTickerContext.Provider, { value: tick, children });
 }
 function useLiveTicker() {
-  return React3.useContext(LiveTickerContext);
+  return React2.useContext(LiveTickerContext);
 }
 function timeAgoTickDelayMs(ageMs) {
   return ageMs < 6e4 ? 1e3 : 6e4;
@@ -2253,12 +1958,12 @@ function TimeAgo({
   className,
   fallback = "\u2014"
 }) {
-  const [mounted2, setMounted] = React3.useState(false);
-  const [, forceTick] = React3.useState(0);
+  const [mounted2, setMounted] = React2.useState(false);
+  const [, forceTick] = React2.useState(0);
   const sharedTicker = useLiveTicker();
   const hasSharedTicker = sharedTicker !== null;
-  React3.useEffect(() => setMounted(true), []);
-  React3.useEffect(() => {
+  React2.useEffect(() => setMounted(true), []);
+  React2.useEffect(() => {
     if (!mounted2 || !at || hasSharedTicker) return void 0;
     const ts = new Date(at).getTime();
     if (!Number.isFinite(ts)) return void 0;
@@ -2286,7 +1991,7 @@ function LiveMeta({
   source,
   className
 }) {
-  React3.useEffect(() => {
+  React2.useEffect(() => {
     mounted += 1;
     if (mounted > 1 && process.env.NODE_ENV !== "production") {
       throw new Error("LiveMeta: only one liveness line per page (#11607)");
@@ -2340,14 +2045,14 @@ function rovingTabIndex(index, activeIndex) {
   return index === activeIndex ? 0 : -1;
 }
 function useRovingGroup(count, onSelect) {
-  const refs = React3.useRef([]);
-  const itemRef = React3.useCallback(
+  const refs = React2.useRef([]);
+  const itemRef = React2.useCallback(
     (index) => (el) => {
       refs.current[index] = el;
     },
     []
   );
-  const onKeyDown = React3.useCallback(
+  const onKeyDown = React2.useCallback(
     (index) => (e) => {
       const next = nextTabIndex(index, e.key, count);
       if (next == null) return;
@@ -2366,12 +2071,12 @@ function RangeControl({
   label,
   className
 }) {
-  const id = React3.useId();
+  const id = React2.useId();
   const activeIndex = Math.max(
     0,
     options.findIndex((o) => o.value === value)
   );
-  const select = React3.useCallback(
+  const select = React2.useCallback(
     (index) => {
       const next = options[index];
       if (next && next.value !== value) onChange(next.value);
@@ -2459,42 +2164,6 @@ function Kbd({
       children
     }
   );
-}
-function KeyChip({
-  value,
-  label = "value",
-  head = 8,
-  tail = 6,
-  className
-}) {
-  const { copied, copy } = useCopy({ label });
-  const short = value.length > head + tail + 1 ? `${value.slice(0, head)}\u2026${value.slice(-tail)}` : value;
-  return /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: () => copy(value),
-        title: value,
-        "aria-label": copied ? `${label} copied` : `Copy ${label}: ${value}`,
-        className: classNames(
-          "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left text-11 text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
-          className
-        ),
-        children: [
-          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate tabular-nums", children: short }),
-          /* @__PURE__ */ jsxRuntime.jsx(
-            CopyIconToggle,
-            {
-              copied,
-              className: "text-ink-muted group-hover:text-ink"
-            }
-          )
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntime.jsx(CopyStatusRegion, { children: copied ? `${label} copied to clipboard` : "" })
-  ] });
 }
 function Wordmark({ className }) {
   return /* @__PURE__ */ jsxRuntime.jsxs(
@@ -2647,57 +2316,6 @@ var SCOPES = [
   { key: "provider", label: "Providers" },
   { key: "schema", label: "Schemas" }
 ];
-var PREVIEW_COUNT = 24;
-function visibleTools(tools, open) {
-  return open ? tools : tools.slice(0, PREVIEW_COUNT);
-}
-function McpToolsList({
-  tools
-}) {
-  const [open, setOpen] = React3.useState(false);
-  const hasMore = tools.length > PREVIEW_COUNT;
-  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-2", children: [
-    /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-wrap gap-1.5", children: visibleTools(tools, open).map((t) => /* @__PURE__ */ jsxRuntime.jsx(
-      "span",
-      {
-        className: "inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 text-10 text-ink-muted",
-        children: t.name
-      },
-      t.name
-    )) }),
-    hasMore ? /* @__PURE__ */ jsxRuntime.jsx(
-      "button",
-      {
-        type: "button",
-        onClick: () => setOpen((v) => !v),
-        "aria-expanded": open,
-        className: classNames(
-          "mt-2 inline-flex items-center gap-1 text-10 text-ink-muted",
-          "hover:text-accent transition-colors"
-        ),
-        children: open ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntime.jsx(lucideReact.ChevronUp, { className: "size-3" }),
-          " Show fewer"
-        ] }) : /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntime.jsx(lucideReact.ChevronDown, { className: "size-3" }),
-          " Show all ",
-          tools.length,
-          " tools"
-        ] })
-      }
-    ) : null
-  ] });
-}
-
-// src/components/metagraphed/yield-format.ts
-function fmtYield(v) {
-  if (v == null || !Number.isFinite(v)) return "\u2014";
-  if (v === 0) return "0%";
-  const pct = v * 100;
-  if (Math.abs(pct) >= 1) return `${pct.toFixed(2)}%`;
-  if (Math.abs(pct) >= 1e-3) return `${pct.toPrecision(5)}%`;
-  return `${pct.toExponential(2)}%`;
-}
 var TONE_CLASSES = {
   default: "border-border bg-paper text-ink",
   ok: "border-health-ok/40 bg-health-ok/10 text-health-ok",
@@ -2748,76 +2366,6 @@ function Chip({
         ) : null,
         label ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "opacity-70", children: label }) : null,
         children != null ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink-strong normal-case", children }) : null
-      ]
-    }
-  );
-}
-var STATUS_LABEL = {
-  ok: "Healthy",
-  warn: "Degraded",
-  down: "Down",
-  unknown: "Unknown"
-};
-var STATUS_TONE = {
-  ok: "ok",
-  warn: "warn",
-  down: "down",
-  unknown: "muted"
-};
-function StatusBadge({
-  status,
-  label,
-  live,
-  title,
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    Chip,
-    {
-      tone: STATUS_TONE[status],
-      dot: live,
-      title: title ?? STATUS_LABEL[status],
-      className,
-      children: label ?? STATUS_LABEL[status]
-    }
-  );
-}
-function Indicator({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  title,
-  className,
-  orientation = "row"
-}) {
-  const isRow = orientation === "row";
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "span",
-    {
-      className: classNames(
-        "inline-flex min-w-0",
-        isRow ? "items-baseline gap-1.5" : "flex-col gap-0.5",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(
-          "span",
-          {
-            className: classNames(
-              "inline-flex items-center gap-1 text-10 text-ink-muted",
-              isRow ? "self-center" : null
-            ),
-            children: [
-              Icon ? /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-3", "aria-hidden": true }) : null,
-              label
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "text-11 tabular-nums text-ink-strong truncate", children: [
-          value,
-          hint ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "ml-1 text-ink-muted normal-case", children: hint }) : null
-        ] })
       ]
     }
   );
@@ -2922,466 +2470,6 @@ function EmptyState({
     }
   );
 }
-function PanelHeader({
-  title,
-  description,
-  actions,
-  variant = "display",
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      className: cn(
-        "flex flex-wrap items-start justify-between gap-3",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-          variant === "micro" ? /* @__PURE__ */ jsxRuntime.jsx("h3", { className: "text-13 font-semibold text-ink-strong", children: title }) : /* @__PURE__ */ jsxRuntime.jsx("h2", { className: "font-display text-16 font-medium leading-tight text-ink-strong", children: title }),
-          description ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1 text-13 leading-relaxed text-ink-muted", children: description }) : null
-        ] }),
-        actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex shrink-0 flex-wrap items-center gap-2", children: actions }) : null
-      ]
-    }
-  );
-}
-function Divider({
-  tone = "default",
-  pip = false,
-  className
-}) {
-  const bar = tone === "accent" ? "bg-accent/40" : "bg-border";
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      className: cn("relative h-px w-full", bar, className),
-      role: "separator",
-      "aria-hidden": true,
-      children: pip ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "absolute left-0 top-1/2 -translate-y-1/2 size-1.5 rounded bg-accent" }) : null
-    }
-  );
-}
-function DefinitionList({
-  items,
-  layout = "inline",
-  className
-}) {
-  if (layout === "grid") {
-    return /* @__PURE__ */ jsxRuntime.jsx(
-      "dl",
-      {
-        className: cn(
-          "grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2",
-          className
-        ),
-        children: items.map((it, i) => /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-          /* @__PURE__ */ jsxRuntime.jsx("dt", { className: "text-10 text-ink-muted", children: it.term }),
-          /* @__PURE__ */ jsxRuntime.jsx("dd", { className: "mt-1 truncate text-13 text-ink-strong", children: it.detail })
-        ] }, i))
-      }
-    );
-  }
-  if (layout === "stacked") {
-    return /* @__PURE__ */ jsxRuntime.jsx("dl", { className: cn("space-y-3", className), children: items.map((it, i) => /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-      /* @__PURE__ */ jsxRuntime.jsx("dt", { className: "text-10 text-ink-muted", children: it.term }),
-      /* @__PURE__ */ jsxRuntime.jsx("dd", { className: "mt-1 text-13 text-ink-strong", children: it.detail })
-    ] }, i)) });
-  }
-  return /* @__PURE__ */ jsxRuntime.jsx("dl", { className: cn("divide-y divide-border/70", className), children: items.map((it, i) => /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      className: "flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0",
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsx("dt", { className: "text-11 shrink-0 text-ink-muted", children: it.term }),
-        /* @__PURE__ */ jsxRuntime.jsx("dd", { className: "min-w-0 truncate text-right text-13 text-ink-strong", children: it.detail })
-      ]
-    },
-    i
-  )) });
-}
-function LoadingPill({
-  children = "Loading",
-  tone = "muted",
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    Chip,
-    {
-      tone,
-      icon: /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Loader2, { className: "size-3 animate-spin" }),
-      className,
-      children
-    }
-  );
-}
-var SIZE = {
-  sm: "min-h-8 px-2.5 text-13",
-  md: "min-h-10 px-4 text-13",
-  lg: "min-h-11 px-4 text-13"
-};
-var TONE2 = {
-  default: "border-border text-ink-muted hover:border-accent/60 hover:text-ink-strong",
-  accent: "border-accent/60 bg-primary-soft text-ink-strong hover:border-accent",
-  warn: "border-health-warn/60 text-health-warn-text hover:border-health-warn",
-  down: "border-health-down/60 text-health-down hover:border-health-down"
-};
-var GhostButton = React3.forwardRef(
-  function GhostButton2({
-    size = "sm",
-    tone = "default",
-    icon,
-    iconRight,
-    className,
-    children,
-    type,
-    ...rest
-  }, ref) {
-    return /* @__PURE__ */ jsxRuntime.jsxs(
-      "button",
-      {
-        ref,
-        type: type ?? "button",
-        className: cn(
-          "inline-flex items-center justify-center gap-1.5 rounded border bg-card transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-          SIZE[size],
-          TONE2[tone],
-          className
-        ),
-        ...rest,
-        children: [
-          icon,
-          children != null ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 truncate", children }) : null,
-          iconRight
-        ]
-      }
-    );
-  }
-);
-function ScrollShadow({
-  orientation = "horizontal",
-  className,
-  innerClassName,
-  children
-}) {
-  const ref = React3.useRef(null);
-  const [state, setState] = React3.useState({ start: false, end: false });
-  React3.useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const update = () => {
-      if (orientation === "horizontal") {
-        setState({
-          start: el.scrollLeft > 2,
-          end: el.scrollLeft + el.clientWidth < el.scrollWidth - 2
-        });
-      } else {
-        setState({
-          start: el.scrollTop > 2,
-          end: el.scrollTop + el.clientHeight < el.scrollHeight - 2
-        });
-      }
-    };
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", update);
-      ro.disconnect();
-    };
-  }, [orientation]);
-  const isH = orientation === "horizontal";
-  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: classNames("relative", className), children: [
-    /* @__PURE__ */ jsxRuntime.jsx(
-      "div",
-      {
-        ref,
-        className: classNames(
-          isH ? "overflow-x-auto" : "overflow-y-auto",
-          "mg-scroll overscroll-contain",
-          innerClassName
-        ),
-        style: isH ? { overflowY: "hidden", scrollbarWidth: "none" } : { overflowX: "hidden" },
-        children
-      }
-    ),
-    state.start ? /* @__PURE__ */ jsxRuntime.jsx(
-      "div",
-      {
-        "aria-hidden": true,
-        className: classNames(
-          "pointer-events-none absolute z-[var(--mg-z-sticky)]",
-          isH ? "left-0 top-0 h-full w-6 bg-gradient-to-r from-card to-transparent" : "left-0 top-0 h-6 w-full bg-gradient-to-b from-card to-transparent"
-        )
-      }
-    ) : null,
-    state.end ? /* @__PURE__ */ jsxRuntime.jsx(
-      "div",
-      {
-        "aria-hidden": true,
-        className: classNames(
-          "pointer-events-none absolute z-[var(--mg-z-sticky)]",
-          isH ? "right-0 top-0 h-full w-6 bg-gradient-to-l from-card to-transparent" : "bottom-0 left-0 h-6 w-full bg-gradient-to-t from-card to-transparent"
-        )
-      }
-    ) : null
-  ] });
-}
-var HEIGHT = {
-  xs: "h-16",
-  sm: "h-24",
-  md: "h-32",
-  lg: "h-48",
-  xl: "h-64"
-};
-function PanelSkeleton({
-  height = "md",
-  label = "Loading panel\u2026",
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      role: "status",
-      "aria-live": "polite",
-      "aria-busy": "true",
-      className: classNames(
-        "w-full rounded border border-border bg-card overflow-hidden",
-        "animate-pulse",
-        HEIGHT[height],
-        className
-      ),
-      children: /* @__PURE__ */ jsxRuntime.jsx("span", { className: "sr-only", children: label })
-    }
-  );
-}
-var provenance = {
-  native: {
-    label: "Native",
-    description: "Native chain metadata",
-    className: "border-ink-strong/40 text-ink-strong"
-  },
-  "candidate-discovered": {
-    label: "Candidate",
-    description: "Discovered lead; not yet verified",
-    className: "border-dashed border-ink-subtle text-ink-muted"
-  },
-  "community-seeded": {
-    label: "Community",
-    description: "Community-sourced registry metadata",
-    className: "border-curation-seeded/45 text-curation-seeded"
-  },
-  "machine-verified": {
-    label: "Machine",
-    description: "Automatically verified registry metadata",
-    className: "border-curation-machine/45 text-curation-machine"
-  },
-  "maintainer-reviewed": {
-    label: "Reviewed",
-    description: "Reviewed by a registry maintainer",
-    className: "border-curation-verified/45 bg-primary-soft text-curation-verified"
-  },
-  "adapter-backed": {
-    label: "Adapter",
-    description: "Backed by a first-party registry adapter",
-    className: "border-curation-adapter/45 text-curation-adapter"
-  }
-};
-function ProvenanceChip({
-  level,
-  className
-}) {
-  const item = provenance[level ?? ""] ?? {
-    label: level || "Unknown",
-    description: "Curation provenance not classified",
-    className: "border-border text-ink-muted"
-  };
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "span",
-    {
-      tabIndex: 0,
-      "aria-label": `${item.label}: ${item.description}`,
-      className: classNames(
-        "mg-focus-ring inline-flex items-center rounded border bg-transparent px-1.5 py-0.5 text-10",
-        item.className,
-        className
-      ),
-      children: item.label
-    }
-  );
-}
-var HEIGHTS = {
-  sm: "min-h-[120px]",
-  md: "min-h-[200px]",
-  lg: "min-h-[320px]"
-};
-function PanelError({
-  title = "Couldn't load this panel",
-  message = "Something went wrong fetching this data. Retry, or try again in a moment.",
-  errorId,
-  onRetry,
-  height = "md",
-  trailing,
-  className
-}) {
-  const [copied, setCopied] = React3.useState(false);
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      role: "alert",
-      className: classNames(
-        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded",
-        "border border-border/70 bg-card p-6 text-center",
-        HEIGHTS[height],
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "grid size-9 place-items-center rounded bg-surface-2 text-health-warn", children: /* @__PURE__ */ jsxRuntime.jsx(lucideReact.AlertTriangle, { className: "size-4", "aria-hidden": true }) }),
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "max-w-sm space-y-1", children: [
-          /* @__PURE__ */ jsxRuntime.jsx("div", { className: "font-display text-13 font-semibold text-ink-strong", children: title }),
-          /* @__PURE__ */ jsxRuntime.jsx("p", { className: "text-13 leading-relaxed text-ink-muted", children: message })
-        ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex flex-wrap items-center justify-center gap-2 pt-1", children: [
-          onRetry ? /* @__PURE__ */ jsxRuntime.jsx(
-            GhostButton,
-            {
-              size: "sm",
-              onClick: onRetry,
-              icon: /* @__PURE__ */ jsxRuntime.jsx(lucideReact.RefreshCw, { className: "size-3" }),
-              children: "Retry"
-            }
-          ) : null,
-          errorId ? /* @__PURE__ */ jsxRuntime.jsxs(
-            "button",
-            {
-              type: "button",
-              onClick: () => {
-                void navigator.clipboard.writeText(errorId).then(() => {
-                  setCopied(true);
-                  window.setTimeout(() => setCopied(false), 1400);
-                });
-              },
-              className: "mg-focus-ring inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-10 text-ink-muted hover:text-ink-strong",
-              "aria-label": `Copy error id ${errorId}`,
-              children: [
-                copied ? /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Check, { className: "size-3", "aria-hidden": true }) : /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Copy, { className: "size-3", "aria-hidden": true }),
-                /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "normal-case", children: [
-                  "id \xB7 ",
-                  errorId.slice(0, 8)
-                ] })
-              ]
-            }
-          ) : null,
-          trailing
-        ] })
-      ]
-    }
-  );
-}
-function QueryProgress({
-  active,
-  position = "absolute",
-  className,
-  ariaLabel = "Updating results"
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      role: "progressbar",
-      "aria-label": ariaLabel,
-      "aria-hidden": !active,
-      className: classNames(
-        "mg-query-progress pointer-events-none overflow-hidden",
-        position === "absolute" && "absolute inset-x-0 top-0 z-[var(--mg-z-sticky)]",
-        position === "fixed" && "fixed inset-x-0 top-0 z-[var(--mg-z-modal)]",
-        position === "sticky" && "sticky top-0 z-[var(--mg-z-sticky)] -mt-px",
-        "h-[2px]",
-        active ? "opacity-100" : "opacity-0 transition-opacity duration-300",
-        className
-      ),
-      children: /* @__PURE__ */ jsxRuntime.jsx(
-        "div",
-        {
-          className: classNames(
-            "h-full w-1/3 rounded",
-            active && "mg-query-progress-track"
-          ),
-          style: {
-            background: "linear-gradient(90deg, transparent, color-mix(in oklab, var(--accent) 90%, transparent), transparent)"
-          }
-        }
-      )
-    }
-  );
-}
-function RoutePending({
-  title,
-  panels = 2,
-  panelHeight = "md",
-  header,
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
-    {
-      "aria-busy": "true",
-      "aria-live": "polite",
-      className: classNames(
-        "mg-route-pending mx-auto w-full max-w-shell px-4 py-6 md:px-6",
-        className
-      ),
-      children: [
-        header ?? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mb-6 space-y-3", children: [
-          /* @__PURE__ */ jsxRuntime.jsx(
-            "div",
-            {
-              className: "h-3 w-32 animate-pulse rounded bg-surface-2",
-              "aria-hidden": true
-            }
-          ),
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-baseline gap-3", children: [
-            /* @__PURE__ */ jsxRuntime.jsx(
-              "div",
-              {
-                className: "h-7 w-64 animate-pulse rounded bg-surface-2",
-                "aria-hidden": true
-              }
-            ),
-            title ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "sr-only", children: [
-              "Loading ",
-              title
-            ] }) : /* @__PURE__ */ jsxRuntime.jsx("span", { className: "sr-only", children: "Loading page" })
-          ] }),
-          /* @__PURE__ */ jsxRuntime.jsx(
-            "div",
-            {
-              className: "h-3 w-96 max-w-full animate-pulse rounded bg-surface-2/70",
-              "aria-hidden": true
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "space-y-4", children: Array.from({ length: panels }).map((_, i) => /* @__PURE__ */ jsxRuntime.jsx(PanelSkeleton, { height: panelHeight }, i)) })
-      ]
-    }
-  );
-}
-function isScrolledPast(scrollY, threshold) {
-  return scrollY > threshold;
-}
-function useScrolled(threshold = 4) {
-  const [scrolled, setScrolled] = React3.useState(false);
-  React3.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onScroll = () => {
-      setScrolled(isScrolledPast(window.scrollY, threshold));
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [threshold]);
-  return scrolled;
-}
 
 // src/components/metagraphed/charts/series-palette.ts
 var CHART_RAMP_SIZE = 10;
@@ -3439,7 +2527,7 @@ function collapseOther(segments, registry, label = OTHER_KEY) {
     kept.push({ key: OTHER_KEY, label: residualLabel ?? label, value: other });
   return kept;
 }
-var defaultFormat2 = (v) => String(v);
+var defaultFormat = (v) => String(v);
 var BAR_PX = 15;
 function StackedColumns({
   id,
@@ -3447,25 +2535,25 @@ function StackedColumns({
   seriesOrder,
   registry,
   other = OTHER_KEY,
-  formatValue = defaultFormat2,
+  formatValue = defaultFormat,
   ariaLabel,
   columnSource = "stacked-columns",
   className
 }) {
-  const ownRegistry = React3.useRef(null);
+  const ownRegistry = React2.useRef(null);
   if (!registry && !ownRegistry.current)
     ownRegistry.current = new SeriesPaletteRegistry();
   const reg = registry ?? ownRegistry.current;
   reg.assign(seriesOrder);
   const palette = reg.palette();
-  const rows = React3.useMemo(
+  const rows = React2.useMemo(
     () => columns.map((c) => ({
       ...c,
       segments: collapseOther(c.segments, reg, other)
     })),
     [columns, reg, other]
   );
-  const seriesKeys = React3.useMemo(() => {
+  const seriesKeys = React2.useMemo(() => {
     const keys = reg.keys().filter((k) => rows.some((r) => r.segments.some((s) => s.key === k)));
     if (rows.some((r) => r.segments.some((s) => s.key === OTHER_KEY)))
       keys.push(OTHER_KEY);
@@ -3473,10 +2561,10 @@ function StackedColumns({
   }, [reg, rows]);
   const { active } = useActiveEntity();
   const activeSeries = active && seriesKeys.includes(active.key) ? active.key : null;
-  const scrollRef = React3.useRef(null);
-  const [cadence, setCadence] = React3.useState(7);
-  const [gap, setGap] = React3.useState(12);
-  React3.useLayoutEffect(() => {
+  const scrollRef = React2.useRef(null);
+  const [cadence, setCadence] = React2.useState(7);
+  const [gap, setGap] = React2.useState(12);
+  React2.useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const update = () => {
@@ -3490,7 +2578,7 @@ function StackedColumns({
     ro.observe(el);
     return () => ro.disconnect();
   }, [rows.length]);
-  React3.useEffect(() => {
+  React2.useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollLeft = el.scrollWidth;
   }, [rows.length]);
@@ -3572,8 +2660,8 @@ function Column({
   source
 }) {
   const { set } = useActiveEntity();
-  const [focusedSeries, setFocusedSeries] = React3.useState(-1);
-  const data = React3.useMemo(
+  const [focusedSeries, setFocusedSeries] = React2.useState(-1);
+  const data = React2.useMemo(
     () => ({
       title: c.label,
       total: `${formatValue(c.total)} total`,
@@ -3591,8 +2679,8 @@ function Column({
     label: markAriaLabel(c.label, formatValue(c.total)),
     data
   });
-  const elRef = React3.useRef(null);
-  const ref = React3.useCallback(
+  const elRef = React2.useRef(null);
+  const ref = React2.useCallback(
     (el) => {
       elRef.current = el;
       mark.ref(el);
@@ -3769,7 +2857,7 @@ function monthTicks(points) {
   }
   return out;
 }
-var defaultFormat3 = (v) => String(v);
+var defaultFormat2 = (v) => String(v);
 var dateFormat = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
@@ -3787,7 +2875,7 @@ function LineWithWindow({
   points,
   window: window2,
   unit,
-  formatValue = defaultFormat3,
+  formatValue = defaultFormat2,
   formatDate = formatLineDate,
   formatRange,
   ariaLabel,
@@ -3798,10 +2886,10 @@ function LineWithWindow({
   markerLabel,
   className
 }) {
-  const placed = React3.useMemo(() => placePoints(points), [points]);
-  const inside = React3.useMemo(() => windowPoints(placed, window2), [placed, window2]);
-  const delta = React3.useMemo(() => windowDelta(points, window2), [points, window2]);
-  const months = React3.useMemo(() => monthTicks(points), [points]);
+  const placed = React2.useMemo(() => placePoints(points), [points]);
+  const inside = React2.useMemo(() => windowPoints(placed, window2), [placed, window2]);
+  const delta = React2.useMemo(() => windowDelta(points, window2), [points, window2]);
+  const months = React2.useMemo(() => monthTicks(points), [points]);
   const keyFor = keyOf ?? ((p) => `${source}:${p.t}`);
   const { active } = useActiveEntity();
   const activePoint = active ? placed.find((p) => keyFor(p) === active.key) : void 0;
@@ -3972,7 +3060,7 @@ function Hit({
   left,
   width
 }) {
-  const elRef = React3.useRef(null);
+  const elRef = React2.useRef(null);
   const mark = useEntityMark(entityKey, {
     source,
     label: markAriaLabel(label, value),
@@ -4006,25 +3094,6 @@ function lineSpecimen(days = 120) {
     window: { from: t0 + (days - 56) * day, to: t0 + (days - 1) * day }
   };
 }
-function trendDeltaOf(values) {
-  const points = values.filter((v) => typeof v === "number" && Number.isFinite(v)).map((v, i) => ({ t: i, v }));
-  return windowDelta(points, {
-    from: 0,
-    to: Math.max(0, points.length - 1)
-  });
-}
-function TrendDelta({ values, label, className }) {
-  const delta = trendDeltaOf(values);
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "span",
-    {
-      className: classNames("mg-line-delta", className),
-      "data-state": delta.state,
-      "aria-label": `${label} ${delta.label}`,
-      children: delta.label
-    }
-  );
-}
 function railFill(value, max, scale = "linear") {
   if (!(max > 0) || !(value > 0)) return 0;
   const ratio = Math.min(1, value / max);
@@ -4043,7 +3112,7 @@ function RankedRails({
   onActivate,
   className
 }) {
-  const [expanded, setExpanded] = React3.useState(false);
+  const [expanded, setExpanded] = React2.useState(false);
   const cap = max ?? Math.max(0, ...items.map((i) => Math.max(i.value, i.secondary ?? 0)));
   const shown = expanded ? items : items.slice(0, limit);
   const hasSecondary = items.some((i) => i.secondary !== void 0);
@@ -4389,7 +3458,7 @@ function CompositionBreakdown({
   onActivate,
   className
 }) {
-  const own = React3.useRef(null);
+  const own = React2.useRef(null);
   if (!registry && !own.current) own.current = new SeriesPaletteRegistry();
   const reg = registry ?? own.current;
   const isResidual = (key) => key === OTHER_KEY || key === RESIDUAL_KEY;
@@ -4404,7 +3473,7 @@ function CompositionBreakdown({
   const shown = collapseOther(ordered, reg, other).filter((s) => s.value > 0);
   const total = shown.reduce((sum, s) => sum + s.value, 0);
   const { active, set, clear } = useActiveEntity();
-  const barRef = React3.useRef(null);
+  const barRef = React2.useRef(null);
   const activeKey = active && shown.some((s) => s.key === active.key) ? active.key : null;
   const legend = shown.map((s) => ({
     key: s.key,
@@ -4543,7 +3612,7 @@ function DataTableMenu({
   pageSizes,
   onPageSize
 }) {
-  const [copied, setCopied] = React3.useState(false);
+  const [copied, setCopied] = React2.useState(false);
   const toggle = (key) => {
     const next = visibleKeys.includes(key) ? visibleKeys.filter((k) => k !== key) : columns.filter((c) => c.key === key || visibleKeys.includes(c.key)).map((c) => c.key);
     if (next.length > 0) onVisibleKeys(next);
@@ -4722,7 +3791,7 @@ var numberFormat = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2
 });
 var DefaultLink2 = ({ href, children, ...rest }) => /* @__PURE__ */ jsxRuntime.jsx("a", { href, ...rest, children });
-function defaultFormat4(kind, value) {
+function defaultFormat3(kind, value) {
   if (value === null || value === void 0 || value === "") return "\u2014";
   if (kind === "number" || kind === "tint") {
     return typeof value === "number" ? numberFormat.format(value) : String(value);
@@ -4787,23 +3856,23 @@ function DataTable({
   className,
   id
 }) {
-  const captionId = React3.useId();
-  const [ownSort, setOwnSort] = React3.useState(null);
-  const [ownPage, setOwnPage] = React3.useState(1);
-  const [visibleKeys, setVisibleKeys] = React3.useState(
+  const captionId = React2.useId();
+  const [ownSort, setOwnSort] = React2.useState(null);
+  const [ownPage, setOwnPage] = React2.useState(1);
+  const [visibleKeys, setVisibleKeys] = React2.useState(
     () => defaultVisibleKeys(columns)
   );
-  const [expanded, setExpanded] = React3.useState(null);
-  const viewportRef = React3.useRef(null);
+  const [expanded, setExpanded] = React2.useState(null);
+  const viewportRef = React2.useRef(null);
   const columnSignature = columns.map((c) => `${c.key}:${c.demote ? 1 : 0}`).join(",");
-  const columnSpec = React3.useMemo(
+  const columnSpec = React2.useMemo(
     () => columnSignature.split(",").filter(Boolean).map((part) => {
       const [key, demoted] = part.split(":");
       return { key, demote: demoted === "1" };
     }),
     [columnSignature]
   );
-  React3.useEffect(() => {
+  React2.useEffect(() => {
     if (!storageKey || typeof window === "undefined") return;
     try {
       const raw = window.localStorage.getItem(`mg-columns:${storageKey}`);
@@ -4817,7 +3886,7 @@ function DataTable({
       setVisibleKeys(defaultVisibleKeys(columnSpec));
     }
   }, [storageKey, columnSpec]);
-  React3.useEffect(() => {
+  React2.useEffect(() => {
     if (storageKey) return;
     setVisibleKeys((current) => {
       const known = new Set(columnSpec.map((c) => c.key));
@@ -4827,24 +3896,24 @@ function DataTable({
   }, [storageKey, columnSpec]);
   const sort = onSort ? sortProp ?? null : ownSort;
   const page = onPage ? pageProp ?? 1 : ownPage;
-  const valueOf = React3.useCallback(
+  const valueOf = React2.useCallback(
     (row, key) => {
       const column = columns.find((c) => c.key === key);
       return column?.value ? column.value(row) : void 0;
     },
     [columns]
   );
-  const shown = React3.useMemo(
+  const shown = React2.useMemo(
     () => columns.filter((c) => visibleKeys.includes(c.key)),
     [columns, visibleKeys]
   );
-  const sorted = React3.useMemo(
+  const sorted = React2.useMemo(
     () => onSort ? [...rows] : sortRows(rows, sort, valueOf),
     [rows, sort, valueOf, onSort]
   );
   const pages = pageCount(total ?? sorted.length, pageSize);
   const paging = paginate ?? (!onPage ? sorted.length > pageSize : true);
-  const visibleRows = React3.useMemo(
+  const visibleRows = React2.useMemo(
     () => onPage || !paging ? sorted : pageSlice(sorted, page, pageSize),
     [sorted, page, pageSize, onPage, paging]
   );
@@ -5105,7 +4174,7 @@ function Cell({
   disclosure
 }) {
   const raw = column.value ? column.value(row) : void 0;
-  const text = column.format ? column.format(raw, row) : defaultFormat4(column.kind, raw);
+  const text = column.format ? column.format(raw, row) : defaultFormat3(column.kind, raw);
   const align = column.align ?? (column.kind === "number" || column.kind === "delta" || column.kind === "tint" ? "right" : void 0);
   const tint = column.kind === "tint" ? column.tint?.(row) ?? null : null;
   let body;
@@ -5326,13 +4395,6 @@ function FilterSelect({
     }
   );
 }
-
-// src/lib/csv.ts
-function buildCsvDownloadUrl(url) {
-  const parsed = new URL(url);
-  parsed.searchParams.set("format", "csv");
-  return parsed.toString();
-}
 function bestIndices(row) {
   if (!row.better) return [];
   const numeric = row.values.map(
@@ -5344,7 +4406,7 @@ function bestIndices(row) {
   const winners = numeric.flatMap((v, i) => v === best ? [i] : []);
   return winners.length === present.length ? [] : winners;
 }
-var defaultFormat5 = (value) => typeof value === "number" ? value.toLocaleString("en-US") : value;
+var defaultFormat4 = (value) => typeof value === "number" ? value.toLocaleString("en-US") : value;
 function CompareLedger({
   entities,
   groups,
@@ -5382,7 +4444,7 @@ function CompareLedger({
           /* @__PURE__ */ jsxRuntime.jsx("tr", { className: "mg-compare-group", children: /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "colgroup", colSpan: entities.length + 1, children: group.label }) }),
           group.rows.map((row) => {
             const winners = highlightBest ? bestIndices(row) : [];
-            const format = row.format ?? defaultFormat5;
+            const format = row.format ?? defaultFormat4;
             return /* @__PURE__ */ jsxRuntime.jsxs("tr", { children: [
               /* @__PURE__ */ jsxRuntime.jsx("th", { scope: "row", children: row.label }),
               entities.map((entity, i) => {
@@ -5407,19 +4469,13 @@ function CompareLedger({
   );
 }
 
-exports.Accordion = Accordion;
-exports.AccordionContent = AccordionContent;
-exports.AccordionItem = AccordionItem;
-exports.AccordionTrigger = AccordionTrigger;
 exports.ActiveEntityProvider = ActiveEntityProvider;
 exports.AnalyticsPage = AnalyticsPage;
 exports.AnalyticsSection = AnalyticsSection;
-exports.AnimatedNumber = AnimatedNumber;
 exports.BackToTop = BackToTop;
 exports.BrandIcon = BrandIcon;
 exports.CHART_RAMP_SIZE = CHART_RAMP_SIZE;
 exports.COMPOSITION_SPECIMEN = COMPOSITION_SPECIMEN;
-exports.CandidateChip = CandidateChip;
 exports.ChartTooltip = ChartTooltip;
 exports.Chip = Chip;
 exports.ClaudeIcon = ClaudeIcon;
@@ -5437,24 +4493,16 @@ exports.CompositionBreakdown = CompositionBreakdown;
 exports.CopyButton = CopyButton;
 exports.CopyIconToggle = CopyIconToggle;
 exports.CopyableCode = CopyableCode;
-exports.CurationChip = CurationChip;
 exports.DataTable = DataTable;
 exports.Definition = Definition;
-exports.DefinitionList = DefinitionList;
 exports.DefinitionsProvider = DefinitionsProvider;
 exports.Dialog = Dialog;
-exports.DialogClose = DialogClose;
 exports.DialogContent = DialogContent;
 exports.DialogDescription = DialogDescription;
 exports.DialogFooter = DialogFooter;
 exports.DialogHeader = DialogHeader;
-exports.DialogOverlay = DialogOverlay;
-exports.DialogPortal = DialogPortal;
 exports.DialogTitle = DialogTitle;
-exports.DialogTrigger = DialogTrigger;
 exports.DiscordIcon = DiscordIcon;
-exports.Divider = Divider;
-exports.EligibilityChip = EligibilityChip;
 exports.EmptyState = EmptyState;
 exports.EntityHero = EntityHero;
 exports.ExternalLink = ExternalLink;
@@ -5465,12 +4513,8 @@ exports.FactStrip = FactStrip;
 exports.FilterField = FilterField;
 exports.FilterInput = FilterInput;
 exports.FilterSelect = FilterSelect;
-exports.GhostButton = GhostButton;
 exports.HealthDot = HealthDot;
-exports.HealthPill = HealthPill;
-exports.Indicator = Indicator;
 exports.Kbd = Kbd;
-exports.KeyChip = KeyChip;
 exports.LEADER_SPECIMEN = LEADER_SPECIMEN;
 exports.LINE_VIEWBOX = LINE_VIEWBOX;
 exports.LeaderCards = LeaderCards;
@@ -5478,25 +4522,16 @@ exports.LineWithWindow = LineWithWindow;
 exports.LiveMeta = LiveMeta;
 exports.LiveTickerProvider = LiveTickerProvider;
 exports.LoadMore = LoadMore;
-exports.LoadingPill = LoadingPill;
 exports.MARKER_SPECIMEN = MARKER_SPECIMEN;
 exports.MAX_SECTIONS = MAX_SECTIONS;
 exports.MarkerRail = MarkerRail;
-exports.McpToolsList = McpToolsList;
 exports.OTHER_COLOR = OTHER_COLOR;
 exports.OTHER_KEY = OTHER_KEY;
 exports.OpenAIIcon = OpenAIIcon;
 exports.Panel = Panel;
-exports.PanelError = PanelError;
-exports.PanelHeader = PanelHeader;
-exports.PanelSkeleton = PanelSkeleton;
 exports.Popover = Popover;
-exports.PopoverAnchor = PopoverAnchor;
 exports.PopoverContent = PopoverContent;
 exports.PopoverTrigger = PopoverTrigger;
-exports.Provenance = Provenance;
-exports.ProvenanceChip = ProvenanceChip;
-exports.QueryProgress = QueryProgress;
 exports.RAIL_SPECIMEN = RAIL_SPECIMEN;
 exports.RESIDUAL_KEY = RESIDUAL_KEY;
 exports.RangeControl = RangeControl;
@@ -5504,32 +4539,23 @@ exports.RankGrid = RankGrid;
 exports.RankedRails = RankedRails;
 exports.Raw = Raw;
 exports.RawCode = RawCode;
-exports.ReviewChip = ReviewChip;
-exports.RoutePending = RoutePending;
 exports.SCOPES = SCOPES;
-exports.ScrollShadow = ScrollShadow;
 exports.SectionHead = SectionHead;
 exports.SectionNav = SectionNav;
 exports.SeriesPaletteRegistry = SeriesPaletteRegistry;
 exports.Sheet = Sheet;
-exports.SheetClose = SheetClose;
 exports.SheetContent = SheetContent;
 exports.SheetDescription = SheetDescription;
 exports.SheetFooter = SheetFooter;
 exports.SheetHeader = SheetHeader;
-exports.SheetOverlay = SheetOverlay;
-exports.SheetPortal = SheetPortal;
 exports.SheetTitle = SheetTitle;
 exports.SheetTrigger = SheetTrigger;
 exports.Skeleton = Skeleton;
 exports.StackedColumns = StackedColumns;
-exports.StatusBadge = StatusBadge;
 exports.TimeAgo = TimeAgo;
 exports.Toaster = Toaster;
-exports.TrendDelta = TrendDelta;
 exports.Wordmark = Wordmark;
 exports.bestIndices = bestIndices;
-exports.buildCsvDownloadUrl = buildCsvDownloadUrl;
 exports.classNames = classNames;
 exports.cn = cn;
 exports.collapseOther = collapseOther;
@@ -5537,10 +4563,8 @@ exports.compareValues = compareValues;
 exports.csvField = csvField;
 exports.defaultVisibleKeys = defaultVisibleKeys;
 exports.deltaLabel = deltaLabel;
-exports.fmtYield = fmtYield;
 exports.formatLineDate = formatLineDate;
 exports.isMissing = isMissing;
-exports.isScrolledPast = isScrolledPast;
 exports.lineSpecimen = lineSpecimen;
 exports.markAriaLabel = markAriaLabel;
 exports.markerPosition = markerPosition;
@@ -5555,7 +4579,6 @@ exports.pickActiveSection = pickActiveSection;
 exports.pickMobileMode = pickMobileMode;
 exports.placePoints = placePoints;
 exports.prefetchBrandIcon = prefetchBrandIcon;
-exports.provenanceSentence = provenanceSentence;
 exports.railFill = railFill;
 exports.rangeLabel = rangeLabel;
 exports.resolveVisibleKeys = resolveVisibleKeys;
@@ -5568,15 +4591,12 @@ exports.sortRows = sortRows;
 exports.stackedSpecimen = stackedSpecimen;
 exports.statusTone = statusTone;
 exports.toCsv = toCsv;
-exports.trendDeltaOf = trendDeltaOf;
 exports.truncateIdentifier = truncateIdentifier;
 exports.useActiveEntity = useActiveEntity;
 exports.useActiveSection = useActiveSection;
 exports.useDefinition = useDefinition;
 exports.useEntityMark = useEntityMark;
 exports.useIsActive = useIsActive;
-exports.useLiveTicker = useLiveTicker;
 exports.useRovingGroup = useRovingGroup;
-exports.useScrolled = useScrolled;
 exports.windowDelta = windowDelta;
 exports.windowPoints = windowPoints;

@@ -1,7 +1,7 @@
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { RoutePending } from "@/components/metagraphed/primitives";
+import { Skeleton } from "@jsonbored/ui-kit";
 import { ProvidersPage } from "./-providers-index-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
@@ -28,6 +28,6 @@ export const Route = createFileRoute("/apis/providers")({
   head: () => ({
     meta: hubMeta("/apis/providers"),
   }),
-  pendingComponent: () => <RoutePending panels={3} />,
+  pendingComponent: () => <Skeleton className="mx-auto my-6 h-96 w-full max-w-shell" />,
   component: ProvidersPage,
 });

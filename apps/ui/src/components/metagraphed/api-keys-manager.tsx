@@ -1,8 +1,9 @@
+import type { CSSProperties } from "react";
+import { formatNumber } from "@/lib/metagraphed/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { CopyableCode, DataTable, LineWithWindow, type DataTableColumn } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
 import { useWallet } from "@/hooks/use-wallet";
 import { useApiSession } from "@/hooks/use-api-session";
 import { toLinePoints } from "@/components/metagraphed/metric-history";
@@ -133,7 +134,7 @@ export function ApiKeysManager() {
   // list is exactly the doubling that rebuild removes.
   return (
     <>
-      <Panel>
+      <div className="min-w-0 mg-panel-pad">
         {walletStatus !== "connected" || !wallet ? (
           <EmptyState
             title="Connect your wallet"
@@ -152,7 +153,7 @@ export function ApiKeysManager() {
             onSignIn={apiSession.signIn}
           />
         )}
-      </Panel>
+      </div>
     </>
   );
 }
@@ -425,8 +426,7 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
           <div className="flex items-baseline justify-between gap-2 text-13">
             <span className="text-ink-muted">Daily quota</span>
             <span className="font-mono text-ink-strong">
-              {quota.units_spent.toLocaleString("en-US")} /{" "}
-              {quota.daily_units.toLocaleString("en-US")} units
+              {formatNumber(quota.units_spent)} / {formatNumber(quota.daily_units)} units
             </span>
           </div>
           <div
@@ -440,16 +440,17 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
             <div
               className={
                 usedPct >= 90
-                  ? "h-full bg-health-down"
+                  ? "mg-meter-fill bg-health-down"
                   : usedPct >= 70
-                    ? "h-full bg-health-warn"
-                    : "h-full bg-accent"
+                    ? "mg-meter-fill bg-health-warn"
+                    : "mg-meter-fill bg-accent"
               }
-              style={{ width: `${usedPct}%` }}
+              // The fill IS the datum, carried as a custom property (#11628).
+              style={{ "--mg-fill": `${usedPct}%` } as CSSProperties}
             />
           </div>
           <p className="text-13 text-ink-subtle">
-            {quota.remaining.toLocaleString("en-US")} units left · resets{" "}
+            {formatNumber(quota.remaining)} units left · resets{" "}
             {new Date(quota.resets_at).toLocaleTimeString("en-US", {
               hour: "numeric",
               minute: "2-digit",
@@ -471,7 +472,7 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
 
       {usage.rejected_total > 0 ? (
         <p className="text-13 text-health-warn">
-          {usage.rejected_total.toLocaleString("en-US")} request
+          {formatNumber(usage.rejected_total)} request
           {usage.rejected_total === 1 ? " was" : "s were"} rate-limited in this window. Rate-limited
           requests are not counted against your quota.
         </p>
@@ -483,7 +484,7 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
           points={requestPoints}
           window={{ from: requestPoints[0]!.t, to: requestPoints[requestPoints.length - 1]!.t }}
           unit="requests per day"
-          formatValue={(v) => v.toLocaleString("en-US")}
+          formatValue={(v) => formatNumber(v)}
           ariaLabel={`Daily request count, last ${usage.window_days} days`}
           source="api-key-usage"
         />
@@ -498,7 +499,7 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
                 className="flex items-center justify-between gap-2 text-13 text-ink-muted"
               >
                 <span className="font-mono text-ink-strong">{r.route}</span>
-                <span>{r.count.toLocaleString("en-US")}</span>
+                <span>{formatNumber(r.count)}</span>
               </li>
             ))}
           </ul>

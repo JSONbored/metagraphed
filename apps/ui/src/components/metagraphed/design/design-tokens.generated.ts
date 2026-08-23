@@ -12,9 +12,9 @@
 import type { DesignToken } from "./parse-design-tokens";
 
 export const DESIGN_TOKENS: readonly DesignToken[] = [
-  { name: "--radius", light: "4px", dark: null, theme: "--radius-sm", refs: 48 },
-  { name: "--canvas", light: "#f8f8f5", dark: "#161616", theme: "--color-canvas", refs: 28 },
-  { name: "--layer", light: "#f0f0ec", dark: "#1f1f1f", theme: "--color-layer", refs: 27 },
+  { name: "--radius", light: "4px", dark: null, theme: "--radius-sm", refs: 47 },
+  { name: "--canvas", light: "#f8f8f5", dark: "#161616", theme: "--color-canvas", refs: 27 },
+  { name: "--layer", light: "#f0f0ec", dark: "#1f1f1f", theme: "--color-layer", refs: 25 },
   { name: "--raised", light: "#e6e6e1", dark: "#2a2a2a", theme: "--color-raised", refs: 11 },
   {
     name: "--ink-strong",
@@ -24,7 +24,7 @@ export const DESIGN_TOKENS: readonly DesignToken[] = [
     refs: 60,
   },
   { name: "--ink", light: "#4a4a47", dark: "#d4d4d4", theme: "--color-ink", refs: 26 },
-  { name: "--ink-muted", light: "#6b6b67", dark: "#a3a3a3", theme: "--color-ink-muted", refs: 53 },
+  { name: "--ink-muted", light: "#6b6b67", dark: "#a3a3a3", theme: "--color-ink-muted", refs: 52 },
   {
     name: "--ink-subtle",
     light: "#8c8c87",
@@ -44,17 +44,17 @@ export const DESIGN_TOKENS: readonly DesignToken[] = [
     light: "rgba(22, 22, 22, 0.11)",
     dark: "rgba(255, 255, 255, 0.11)",
     theme: "--color-rule",
-    refs: 54,
+    refs: 45,
   },
   {
     name: "--rule-strong",
     light: "rgba(22, 22, 22, 0.24)",
     dark: "rgba(255, 255, 255, 0.24)",
     theme: "--color-rule-strong",
-    refs: 34,
+    refs: 31,
   },
   { name: "--brand", light: "#30ffc0", dark: null, theme: "--color-brand", refs: 2 },
-  { name: "--accent", light: "#0f8f66", dark: "#3ddc97", theme: "--color-accent", refs: 15 },
+  { name: "--accent", light: "#0f8f66", dark: "#3ddc97", theme: "--color-accent", refs: 16 },
   {
     name: "--accent-text",
     light: "#0f8f66",
@@ -255,7 +255,7 @@ export const DESIGN_TOKENS: readonly DesignToken[] = [
   { name: "--mg-row", light: "28px", dark: null, theme: null, refs: 0 },
   { name: "--mg-table-row", light: "44px", dark: null, theme: null, refs: 0 },
   { name: "--mg-panel-pad", light: "var(--mg-space-lg)", dark: null, theme: null, refs: 1 },
-  { name: "--mg-motion", light: "140ms ease", dark: null, theme: null, refs: 53 },
+  { name: "--mg-motion", light: "140ms ease", dark: null, theme: null, refs: 41 },
   { name: "--mg-ease-out", light: "ease", dark: null, theme: null, refs: 0 },
   {
     name: "--mg-shadow-tooltip",

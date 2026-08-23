@@ -18,7 +18,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import { WatchEntitySheet } from "@/components/metagraphed/watch-entity-sheet";
-import { CopyLinkButton } from "@/components/metagraphed/primitives";
+import { CopyLinkButton } from "@/components/metagraphed/copy-link-button";
 import { apiSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { MomentumSection } from "@/components/metagraphed/subnet-detail/momentum";
@@ -41,7 +41,7 @@ import {
   subnetValidatorsQuery,
 } from "@/lib/metagraphed/queries";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
-import { formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber, formatPct, formatTao } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { SubnetOwnershipChange } from "@/lib/metagraphed/types";
 import { Route } from "./subnets.$netuid";
@@ -138,7 +138,7 @@ export function SubnetDetailPage() {
       {row?.max_uids ? `${formatNumber(activeUids)}/${formatNumber(row.max_uids)} UIDs` : "—"}
     </Fact>,
     <Fact key="up">
-      {uptimePct != null ? `${uptimePct.toFixed(1)}% up over 90d` : "Never probed"}
+      {uptimePct != null ? `${formatDecimal(uptimePct, 1)}% up over 90d` : "Never probed"}
     </Fact>,
     <Fact key="registration">
       {row?.registration_allowed === false ? "Registration closed" : "Registration open"}
@@ -150,15 +150,14 @@ export function SubnetDetailPage() {
     { label: "Alpha price", value: row ? formatTao(row.alpha_price_tao) : "—" },
     {
       label: "Emission share",
-      value:
-        typeof row?.emission_share === "number" ? `${(row.emission_share * 100).toFixed(3)}%` : "—",
+      value: typeof row?.emission_share === "number" ? `${formatPct(row.emission_share, 3)}` : "—",
     },
     { label: "Total stake", value: row ? `${taoCompact(row.total_stake_alpha)} α` : "—" },
     {
       label: "Miners / Validators",
       value: `${formatNumber(row?.miner_count ?? null)} / ${formatNumber(row?.validator_count ?? null)}`,
     },
-    { label: "Uptime 90d", value: uptimePct != null ? `${uptimePct.toFixed(1)}%` : "—" },
+    { label: "Uptime 90d", value: uptimePct != null ? `${formatDecimal(uptimePct, 1)}%` : "—" },
     {
       label: "Readiness",
       value:

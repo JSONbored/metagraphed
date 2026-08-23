@@ -10,7 +10,7 @@ import {
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { SubnetCompareBar } from "@/components/metagraphed/compare-bar";
 import { CompareToggle } from "@/components/metagraphed/compare-toggle";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { fmtAlpha, type DirectoryRow } from "./subnets-index-logic";
 
 export interface DirectoryFilters {
@@ -90,7 +90,7 @@ export function DirectorySection({
         kind: "number",
         sortable: true,
         value: (row) => (row.emission_share == null ? null : row.emission_share * 100),
-        format: (value) => (typeof value === "number" ? `${value.toFixed(3)}%` : "—"),
+        format: (value) => (typeof value === "number" ? `${formatDecimal(value, 3)}%` : "—"),
         definition: "Emission share",
       },
       {
@@ -99,7 +99,7 @@ export function DirectorySection({
         kind: "number",
         sortable: true,
         value: (row) => row.alpha_price_tao ?? null,
-        format: (value) => (typeof value === "number" ? `${value.toFixed(4)} τ` : "—"),
+        format: (value) => (typeof value === "number" ? `${formatDecimal(value, 4)} τ` : "—"),
       },
       {
         key: "priceChange",
@@ -108,7 +108,7 @@ export function DirectorySection({
         sortable: true,
         value: (row) => row.alpha_price_change_7d ?? null,
         format: (value) =>
-          typeof value === "number" ? `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%` : "—",
+          typeof value === "number" ? `${value >= 0 ? "+" : ""}${formatPct(value, 1)}` : "—",
       },
       {
         key: "stake",

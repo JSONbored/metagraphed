@@ -34,6 +34,9 @@ function ApiSources({
   return null;
 }
 
+/** The push counterpart to these three polling pages. */
+const CHAIN_STREAM_PATH = "/api/v1/chain/stream";
+
 export function StreamShell({
   name,
   lede,
@@ -66,6 +69,15 @@ export function StreamShell({
       value: `${API_BASE}${path}`,
       href: `${API_BASE}${path}`,
     })),
+    // The same activity as a live feed. These three pages poll; a reader who
+    // wants it pushed has the SSE endpoint here rather than only in the API
+    // reference, which is where it had ended up once the app's own
+    // `use-chain-stream` hook went unused and was deleted (#11628).
+    {
+      label: "stream (SSE)",
+      value: `${API_BASE}${CHAIN_STREAM_PATH}`,
+      href: `${API_BASE}${CHAIN_STREAM_PATH}`,
+    },
   ];
   return (
     <AppShell>

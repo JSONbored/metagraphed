@@ -159,11 +159,20 @@ export function ApisCatalogPage() {
     },
   ];
 
-  const rawRows: RawRow[] = API_PATHS.map((path) => ({
-    label: path.replace("/api/v1/", ""),
-    value: `${API_BASE}${path}`,
-    href: `${API_BASE}${path}`,
-  }));
+  const rawRows: RawRow[] = [
+    ...API_PATHS.map((path) => ({
+      label: path.replace("/api/v1/", ""),
+      value: `${API_BASE}${path}`,
+      href: `${API_BASE}${path}`,
+    })),
+    // Probe one surface on demand. The table above reports what the last
+    // scheduled probe found; this is how a reader checks a surface RIGHT NOW,
+    // which is the question a stale "verified 6h ago" cell provokes.
+    {
+      label: "surfaces/{surface_id}/verify",
+      value: `${API_BASE}/api/v1/surfaces/{surface_id}/verify`,
+    },
+  ];
 
   return (
     <AppShell>

@@ -9,6 +9,7 @@ import {
 import { domainsQuery } from "@/lib/metagraphed/queries";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import type { SubnetEconomics } from "@/lib/metagraphed/types";
+import { formatPct } from "@/lib/metagraphed/format";
 import { domainPeers, emissionNeighbours } from "./subnet-detail-logic";
 
 /**
@@ -37,9 +38,7 @@ export function PeersSection({
     label: peer.name ?? `SN${peer.netuid}`,
     value: `${taoCompact(peer.total_stake_alpha)} α`,
     share:
-      typeof peer.emission_share === "number"
-        ? `${(peer.emission_share * 100).toFixed(2)}%`
-        : undefined,
+      typeof peer.emission_share === "number" ? `${formatPct(peer.emission_share, 2)}` : undefined,
     href: `/subnets/${peer.netuid}`,
     current: peer.netuid === netuid,
   }));
@@ -51,10 +50,7 @@ export function PeersSection({
       key: String(peer.netuid),
       name: peer.name ?? `SN${peer.netuid}`,
       sub: `SN${peer.netuid}`,
-      value:
-        typeof peer.emission_share === "number"
-          ? `${(peer.emission_share * 100).toFixed(2)}%`
-          : "—",
+      value: typeof peer.emission_share === "number" ? `${formatPct(peer.emission_share, 2)}` : "—",
       href: `/compare?subnets=${netuid},${peer.netuid}`,
       // The subnet's own mark, not initials: "SN124" does not fit a 14px
       // avatar and rendered as clipped text in the corner of every card.

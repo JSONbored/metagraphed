@@ -2,8 +2,8 @@
 @source "../src";
 /* source(none) above disables Tailwind automatic scanning and the
    package-relative auto-detection an un-annotated import would otherwise
-   get for packages/ui-kit own directory (its import of ui-kit styles.css
-   below carries no Tailwind bootstrap of its own, see that file header
+   get for packages/ui-kit's own directory (its import of ui-kit styles.css
+   below carries no Tailwind bootstrap of its own, see that file's header
    comment), so without this line every utility class used only inside
    packages/ui-kit/src (never duplicated verbatim in apps/ui/src) was
    silently absent from the built CSS. */
@@ -13,45 +13,12 @@
 @import "@jsonbored/ui-kit/styles.css";
 @import "./styles/fumadocs-theme.css";
 
-/* Hash-nav focus target (useHashScroll focuses the heading/section).
-   Programmatic focus fires `:focus` but not `:focus-visible`, so both. */
-.mg-hash-focus:focus-visible,
-.mg-hash-focus:focus {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-  border-radius: var(--radius);
-}
-
-/* Page gutter. The section rhythm tokens (--mg-section-*) live in ui-kit. */
-.mg-gutter-x {
-  padding-left: var(--mg-section-x);
-  padding-right: var(--mg-section-x);
-}
-
-/* Horizontal scroll fade for mobile tables — apply to overflow-x containers
-   to hint at scrollable content off-canvas. */
-.mg-x-scroll-fade {
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 24px,
-    #000 calc(100% - 24px),
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 24px,
-    #000 calc(100% - 24px),
-    transparent 100%
-  );
-}
-@media (min-width: 768px) {
-  .mg-x-scroll-fade {
-    mask-image: none;
-    -webkit-mask-image: none;
-  }
-}
+/* #11628: this file used to carry the page masthead, the query-progress
+   track, a hash-focus ring, a page gutter and a mobile scroll fade -- 129
+   lines of route-specific CSS for components the v2 rebuild deleted. What is
+   left is the two rules that are genuinely this APP's rather than the design
+   system's: a scroll container's chrome, and a defensive rule about Radix
+   portals. Everything else lives in packages/ui-kit/src/styles.css. */
 
 /* Horizontal rails never allocate a cross-axis gutter. */
 .mg-scroll {
@@ -71,59 +38,4 @@
   pointer-events: none !important;
   opacity: 0 !important;
   animation: none !important;
-}
-
-/* Compact page masthead (PageMasthead). Replaced by EntityHero in #11607;
-   the hairline grid survives here until then. */
-.mg-masthead {
-  background: transparent;
-}
-.mg-masthead-kpi {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem 1.25rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--rule);
-}
-@media (min-width: 640px) {
-  .mg-masthead-kpi {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-@media (min-width: 1024px) {
-  .mg-masthead-kpi {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-}
-.mg-masthead-kpi > * + * {
-  padding-left: 1rem;
-  border-left: 1px solid var(--rule);
-}
-@media (max-width: 639.98px) {
-  .mg-masthead-kpi > * + * {
-    padding-left: 0;
-    border-left: 0;
-  }
-  .mg-masthead-kpi > *:nth-child(odd) {
-    padding-right: 0.5rem;
-    border-right: 1px solid var(--rule);
-  }
-}
-
-/* Loading / progress (QueryProgress). Respects prefers-reduced-motion. */
-@keyframes mg-query-progress-track {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(400%);
-  }
-}
-.mg-query-progress-track {
-  animation: mg-query-progress-track 1.2s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .mg-query-progress-track {
-    animation: none;
-  }
 }

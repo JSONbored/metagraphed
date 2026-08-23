@@ -3,6 +3,7 @@
  */
 import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import type { ChainActivityDay, SubnetEconomics, SubnetMover } from "@/lib/metagraphed/types";
+import { formatCompact, formatDecimal, formatPct } from "@/lib/metagraphed/format";
 
 export type EmissionWindow = "7d" | "30d" | "90d";
 export type ChainMetric = "extrinsics" | "events" | "blocks";
@@ -13,18 +14,10 @@ export const CHAIN_METRICS = [
   { value: "blocks", label: "Blocks" },
 ] as const;
 
-export const fmtCount = (value: number | null | undefined): string => {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
-  return String(Math.round(value));
-};
+export const fmtCount = (value: number | null | undefined): string => formatCompact(value);
 
 export const fmtShare = (fraction: number | null | undefined, places = 2): string =>
-  typeof fraction === "number" && Number.isFinite(fraction)
-    ? `${(fraction * 100).toFixed(places)}%`
-    : "—";
+  formatPct(fraction, places);
 
 export interface ValueSegment {
   key: string;
@@ -104,7 +97,7 @@ export function emissionRails(
           label: "Change",
           value:
             typeof mover.emission_pct_change === "number"
-              ? `${mover.emission_pct_change >= 0 ? "+" : ""}${mover.emission_pct_change.toFixed(1)}%`
+              ? `${mover.emission_pct_change >= 0 ? "+" : ""}${formatDecimal(mover.emission_pct_change, 1)}%`
               : "—",
         },
         { key: "validators", label: "Validators", value: String(mover.validators_end) },

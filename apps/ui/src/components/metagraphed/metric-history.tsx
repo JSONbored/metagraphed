@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { LineWithWindow, RangeControl, type LinePoint } from "@jsonbored/ui-kit";
+import type { LinePoint } from "@jsonbored/ui-kit";
 
 /**
  * One `LineWithWindow` with a metric picker (#11608): the replacement for
@@ -39,43 +38,4 @@ export function toLinePoints<T>(
     out.push({ t, v });
   }
   return out.sort((a, b) => a.t - b.t);
-}
-
-export function MetricHistory({
-  id,
-  metrics,
-  ariaLabel,
-}: {
-  /** Entity-key namespace; also the picker's accessible-name prefix. */
-  id: string;
-  metrics: readonly MetricHistorySeries[];
-  /** "Subnet 1 history" — the chart is named `${ariaLabel}: ${metric}`. */
-  ariaLabel: string;
-}) {
-  const usable = metrics.filter((m) => m.points.length > 0);
-  const [picked, setPicked] = useState<string | null>(null);
-  const current = usable.find((m) => m.key === picked) ?? usable[0];
-  if (!current) return null;
-  const first = current.points[0]!;
-  const last = current.points[current.points.length - 1]!;
-  return (
-    <div className="space-y-3">
-      {usable.length > 1 ? (
-        <RangeControl
-          label={`${ariaLabel} metric`}
-          options={usable.map((m) => ({ value: m.key, label: m.label }))}
-          value={current.key}
-          onChange={setPicked}
-        />
-      ) : null}
-      <LineWithWindow
-        points={current.points}
-        window={{ from: first.t, to: last.t }}
-        unit={current.unit}
-        formatValue={current.format}
-        ariaLabel={`${ariaLabel}: ${current.label}`}
-        source={`${id}:${current.key}`}
-      />
-    </div>
-  );
 }

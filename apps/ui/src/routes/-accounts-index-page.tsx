@@ -35,7 +35,7 @@ import {
 } from "@/components/metagraphed/accounts-index/accounts-index-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { accountsListQuery, chainSignersQuery } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { Route } from "./accounts.index";
 
@@ -91,7 +91,7 @@ export function AccountsPage() {
         <Fact key="share">
           {topShare === null
             ? "share unavailable"
-            : `top 10 hold ${(topShare * 100).toFixed(1)}% of them`}
+            : `top 10 hold ${formatPct(topShare, 1)} of them`}
         </Fact>,
         <Fact key="signers">{`${formatNumber(active.length)} signing accounts this week`}</Fact>,
         <Fact key="h160">{`looking up ${shortAddress(h160)}`}</Fact>,
@@ -101,14 +101,14 @@ export function AccountsPage() {
         <Fact key="share">
           {topShare === null
             ? "share unavailable"
-            : `top 10 hold ${(topShare * 100).toFixed(1)}% of them`}
+            : `top 10 hold ${formatPct(topShare, 1)} of them`}
         </Fact>,
         <Fact key="signers">{`${formatNumber(active.length)} signing accounts this week`}</Fact>,
       ];
 
   const cells: FactCells = [
     { label: "Stake listed", value: fmtTaoCompact(listedTotal) },
-    { label: "Top 10 share", value: topShare === null ? "—" : `${(topShare * 100).toFixed(1)}%` },
+    { label: "Top 10 share", value: topShare === null ? "—" : `${formatPct(topShare, 1)}` },
     { label: "Signers 7d", value: formatNumber(active.length) },
   ];
 
@@ -116,7 +116,7 @@ export function AccountsPage() {
     key: segment.key,
     label: segment.label,
     value: fmtTaoCompact(segment.value),
-    share: listedTotal > 0 ? `${((segment.value / listedTotal) * 100).toFixed(1)}%` : undefined,
+    share: listedTotal > 0 ? `${formatPct(segment.value / listedTotal, 1)}` : undefined,
     href: segment.href,
   }));
 

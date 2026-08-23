@@ -64,7 +64,7 @@ const SERVER_POLL_INTERVAL_MS = 500;
 
 function parseArgs(argv) {
   const parsed = {
-    route: null,
+    routes: [] as string[],
     baseRef: null,
     section: null,
     fallbackSection: null,
@@ -80,7 +80,16 @@ function parseArgs(argv) {
   };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
-    if (a === "--route") parsed.route = argv[++i];
+    if (a === "--route") parsed.routes.push(argv[++i]);
+    // #11628: one PR routinely touches several routes, and running this script
+    // once per route re-launches Chromium and re-warms both servers each time.
+    else if (a === "--routes")
+      parsed.routes.push(
+        ...argv[++i]
+          .split(",")
+          .map((r) => r.trim())
+          .filter(Boolean),
+      );
     else if (a === "--base-ref") parsed.baseRef = argv[++i];
     else if (a === "--section") parsed.section = argv[++i];
     else if (a === "--fallback-section") parsed.fallbackSection = argv[++i];
@@ -101,7 +110,8 @@ function printHelp() {
   console.log(`Usage: node tests/e2e/capture-pr-screenshots.ts --route <path> [options]
 
 Required:
-  --route <path>            Route to capture, e.g. /status or /subnets/1
+  --route <path>            Route to capture, e.g. /status or /subnets/1 (repeatable)
+  --routes <a,b,c>          Several routes in one run, one browser, one warm-up
 
 Options:
   --base-ref <ref>          Base ref for "before" (default: merge-base with main)
@@ -462,7 +472,7 @@ async function pushScreenshots(outDir, files) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.help || !args.route) {
+  if (args.help || args.routes.length === 0) {
     printHelp();
     process.exit(args.help ? 0 : 1);
   }
@@ -503,40 +513,55 @@ async function main() {
       // Vite transforms each route's module graph lazily, on first hit. Pay
       // that cold-start cost here (best-effort, errors ignored) instead of on
       // the first real capture attempt below.
-      console.log(`Warming up ${args.route} on both servers...`);
-      await Promise.all([
-        fetch(`${beforeUrl}${args.route}`).catch(() => {}),
-        fetch(`${afterUrl}${args.route}`).catch(() => {}),
-      ]);
+      console.log(`Warming up ${args.routes.join(", ")} on both servers...`);
+      await Promise.all(
+        args.routes.flatMap((route) => [
+          fetch(`${beforeUrl}${route}`).catch(() => {}),
+          fetch(`${afterUrl}${route}`).catch(() => {}),
+        ]),
+      );
     }
 
-    console.log(`\nCapturing "before" (${beforeUrl})...`);
+    // One browser for every route: launching Chromium per route was the whole
+    // cost of a multi-route PR's evidence.
     const browser = await chromium.launch();
-    await captureVariant({
-      browser,
-      baseUrl: beforeUrl,
-      variant: "before",
-      route: args.route,
-      section: args.section,
-      fallbackSection: args.fallbackSection,
-      outDir,
-      prefix: args.prefix,
-    });
+    for (const route of args.routes) {
+      // A per-route prefix when several are captured into one directory, so a
+      // second route does not overwrite the first's twelve files.
+      const prefix =
+        args.routes.length > 1
+          ? [args.prefix, route.replace(/^\//, "").replace(/\//g, "-") || "home"]
+              .filter(Boolean)
+              .join("-")
+          : args.prefix;
 
-    console.log(`\nCapturing "after" (${afterUrl})...`);
-    await captureVariant({
-      browser,
-      baseUrl: afterUrl,
-      variant: "after",
-      route: args.route,
-      section: args.section,
-      fallbackSection: null,
-      outDir,
-      prefix: args.prefix,
-    });
+      console.log(`\nCapturing "before" for ${route} (${beforeUrl})...`);
+      await captureVariant({
+        browser,
+        baseUrl: beforeUrl,
+        variant: "before",
+        route,
+        section: args.section,
+        fallbackSection: args.fallbackSection,
+        outDir,
+        prefix,
+      });
+
+      console.log(`\nCapturing "after" for ${route} (${afterUrl})...`);
+      await captureVariant({
+        browser,
+        baseUrl: afterUrl,
+        variant: "after",
+        route,
+        section: args.section,
+        fallbackSection: null,
+        outDir,
+        prefix,
+      });
+    }
     await browser.close();
 
-    console.log(`\n12 screenshots written to ${outDir}`);
+    console.log(`\n${12 * args.routes.length} screenshots written to ${outDir}`);
 
     if (args.push) {
       // Only this run's own captures. `outDir` is routinely reused across

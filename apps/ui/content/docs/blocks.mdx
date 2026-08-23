@@ -79,7 +79,7 @@ data = requests.get("https://api.metagraph.sh/api/v1/blocks/summary").json()["da
 
 `/blocks/{ref}` caches 600s once resolved (finalized blocks are immutable) and 60s while unknown; every other route here caches 60s.
 
-<ApiSourceFooter
+<ApiSources
   paths={[
     "/api/v1/blocks",
     "/api/v1/blocks/summary",

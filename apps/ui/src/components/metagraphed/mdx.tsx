@@ -3,7 +3,7 @@ import type { MDXComponents } from "mdx/types";
 import { createOpenAPIPageBase } from "fumadocs-openapi/ui/base";
 import type { OpenAPIPageProps_Preloaded } from "fumadocs-openapi/ui";
 import type { GeneratedPageProps } from "fumadocs-openapi";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { ApiSources } from "@/components/metagraphed/api-sources";
 import { useOpenAPIPreload } from "@/lib/openapi-preload-context";
 import { openapiShikiFactory } from "@/lib/openapi-shiki";
 
@@ -49,12 +49,13 @@ function APIPage(props: GeneratedPageProps) {
 export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
-    // Registers a page's canonical data-source paths with the global
-    // ApiSourceProvider (powers the header's API drawer) -- same component
-    // every hand-rolled docs page already used, now usable directly in MDX:
-    // <ApiSourceFooter paths={["/api/v1/..."]} />.
-    ApiSourceFooter,
     APIPage,
+    // A docs page declares the endpoints it documents; the shell footer draws
+    // them, and the HAR-coverage gate reads the declaration. This was
+    // `ApiSourceFooter`, which also drew its own copy of the list at the
+    // bottom of the page -- the same list twice, once the footer started
+    // showing it on every route (#11628).
+    ApiSources,
     ...components,
   } satisfies MDXComponents;
 }

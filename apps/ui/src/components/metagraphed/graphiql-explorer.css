@@ -1,5 +1,5 @@
 /*
- * Harmonizes the embedded GraphiQL widget (#3499) with the Bone & Ink design
+ * Harmonizes the embedded GraphiQL widget (#3499) with the site's design
  * system. GraphiQL toggles `body.graphiql-light` / `body.graphiql-dark`
  * itself when the `forcedTheme` prop is set, and portals its dialogs and
  * tooltips to <body>, so the overrides target those body classes directly

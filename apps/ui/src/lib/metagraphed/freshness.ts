@@ -1,4 +1,4 @@
-import { relativeFromDiff } from "./format";
+import { formatAbsoluteTime, relativeFromDiff } from "./format";
 
 /**
  * Centralized freshness formatter — used by the fact cells,
@@ -22,10 +22,7 @@ export function formatFreshness(
 }
 
 export function formatFreshnessAbsolute(updatedAt?: string | null): string | null {
-  if (!updatedAt) return null;
-  const t = new Date(updatedAt);
-  if (Number.isNaN(t.getTime())) return null;
-  return t.toLocaleString("en-US");
+  return formatAbsoluteTime(updatedAt);
 }
 
 /**

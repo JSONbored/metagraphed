@@ -3,13 +3,13 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CopyButton } from "@/components/metagraphed/copy-button";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { KeyChip } from "@/components/metagraphed/key-chip";
 
 // #6370/#6371/#6372: every copy control should be keyboard-focus-visible and
 // should announce the copy result to a screen reader. The share and CSV
 // buttons this once also covered were retired with the list toolbars in
 // #11610 -- copying a link and exporting a table now live in DataTable's own
-// menu -- so the rule holds for the copy controls that remain.
+// menu -- and KeyChip went with the legacy grammar in #11628, so the rule
+// holds for the two copy controls that remain.
 //
 // Rendered via react-dom/server: this package's suite is node-environment with
 // no jsdom, and class lists + the live region are both present in static markup.
@@ -25,7 +25,6 @@ describe("copy/share controls are keyboard-focus-visible (#6370, #6371)", () => 
       React.createElement(CopyButton, { value: VALUE, compact: true }),
     ],
     ["CopyableCode", React.createElement(CopyableCode, { value: VALUE })],
-    ["KeyChip", React.createElement(KeyChip, { value: VALUE })],
   ];
 
   for (const [name, element] of cases) {
@@ -39,7 +38,6 @@ describe("copy controls announce the result to screen readers (#6372)", () => {
   const cases: Array<[string, React.ReactElement]> = [
     ["CopyButton", React.createElement(CopyButton, { value: VALUE })],
     ["CopyableCode", React.createElement(CopyableCode, { value: VALUE })],
-    ["KeyChip", React.createElement(KeyChip, { value: VALUE })],
   ];
 
   for (const [name, element] of cases) {

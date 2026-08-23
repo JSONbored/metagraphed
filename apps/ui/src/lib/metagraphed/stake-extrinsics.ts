@@ -78,6 +78,9 @@ export function computeLimitPrice({
   // taoToRao's BigInt parse is the single point where a decimal price becomes
   // an exact on-chain integer; doing the multiply here in float and rounding
   // separately would risk float error at the last, most consequential step.
+  // A limit price, not a label: 9 decimals is TAO's on-chain precision and the
+  // string is submitted, not shown. See use-stake-flow.ts for the same rule.
+  // eslint-disable-next-line no-restricted-syntax -- transaction amount, not display
   const limitPriceTao = (spotPriceTao * factor).toFixed(9);
   return taoToRao(limitPriceTao);
 }

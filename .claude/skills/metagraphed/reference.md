@@ -111,13 +111,21 @@ python -m unittest discover -s tests` (the `[test]` extra pulls in httpx so the 
 - **`ui`** — lint + typecheck + test + three Playwright e2e projects: `responsive-overflow` (baseline-diffed
   against `apps/ui/tests/e2e/overflow-baseline.json` — fails only on a NEW element escaping the
   viewport, not the pre-existing tracked backlog like #3930/#3931/#3985; regenerate the baseline via
-  `npm run test:e2e:update-baseline --workspace=apps/ui` after a real fix or an accepted new layout), `interaction` (sticky headers, crawlability, offline, deep links) and `token-inventory` (#11605 — the design-system contract measured in the rendered page: font families, the seven sizes, `letter-spacing: normal`, one 4px radius, zero pills, no resting shadow; absolute, never baseline-diffed),
+  `npm run test:e2e:update-baseline --workspace=apps/ui` after a real fix or an accepted new layout), `interaction` (sticky headers, crawlability, offline, deep links) and `token-inventory` (#11605/#11628 — the design-system contract measured in the rendered page: font families (mono everywhere; Plex Sans only on the prose routes in `PROSE_ROUTES`), the seven sizes, `letter-spacing: normal`, one 4px radius, zero pills, no resting shadow, **at most seven `section.mg-section` per route**, **at most one table over 900px inside one section**, and **zero elements carrying a class the v2 purge deleted**; absolute, never baseline-diffed),
   build, and bundle-size-budget for `apps/ui` (the TanStack Start/Vite frontend, folded into this
   repo as an npm workspace — #3062), plus a `packages/client/dist` drift check (rebuild fresh,
   `git diff --exit-code` against the committed runtime bundle — #3066/#3294) and, the same way, a
   `packages/ui-kit/dist` drift check plus its own `npm run typecheck --workspace=packages/ui-kit`
   step (`packages/ui-kit` is the design-system component library extracted from `apps/ui` — issue
-  #4867's epic). Gated on `run_ui_validation` (`^apps/ui/` **or** `^packages/client/` **or**
+  #4867's epic).
+
+  **A new route must enter the sweep.** `token-inventory-coverage.unit.ts` reads
+  `routeTree.gen.ts` and fails on any route that is neither swept
+  (`apps/ui/tests/e2e/overflow-check.config.ts` + a HAR fixture), redirect-only, nor named in
+  `NOT_SWEPT` with a reason. A route that fetches nothing needs no fixture — list it in
+  `NO_API_ROUTES` instead. The two structural exemptions (`SPECIMEN_ROUTES`, `PROSE_ROUTES`) are
+  themselves asserted to name only routes that exist and are swept, so an exemption cannot outlive
+  its subject. Gated on `run_ui_validation` (`^apps/ui/` **or** `^packages/client/` **or**
   `^packages/ui-kit/` in the diff — `packages/client` and `packages/ui-kit` are both required, not
   optional: each is the only place that verifies its own committed `dist/index.js`/`index.cjs` still
   matches a fresh build, so a `packages/client`- or `packages/ui-kit`-only PR must also trip this

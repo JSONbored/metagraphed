@@ -1,12 +1,11 @@
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import * as React3 from 'react';
-import { createContext, forwardRef, useState, useRef, useEffect, useMemo, useCallback, useContext, useId, useReducer, useLayoutEffect, Children, isValidElement } from 'react';
-import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import { ChevronDown, X, Search, ArrowUp, Check, Copy, ChevronUp, RotateCcw, AlertTriangle, Filter, Inbox, ExternalLink as ExternalLink$1, Loader2, RefreshCw, AlertCircle, Lock } from 'lucide-react';
-import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
+import * as React2 from 'react';
+import { createContext, useState, useEffect, useMemo, useCallback, useReducer, useContext, useRef, useLayoutEffect, useId, Children, isValidElement } from 'react';
 import { Command as Command$1 } from 'cmdk';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { X, Search, ArrowUp, Check, Copy, RotateCcw, AlertTriangle, Filter, Inbox, ExternalLink as ExternalLink$1, AlertCircle, RefreshCw, Lock } from 'lucide-react';
+import * as SheetPrimitive from '@radix-ui/react-dialog';
+import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { cva } from 'class-variance-authority';
 import { Toaster as Toaster$1, toast } from 'sonner';
@@ -44,79 +43,13 @@ function formatRelative(iso) {
   }
   return past ? `${value}${unit} ago` : `in ${value}${unit}`;
 }
-function formatFreshness(updatedAt, windowLabel) {
-  const parts = [];
-  if (updatedAt) {
-    const t = new Date(updatedAt);
-    if (!Number.isNaN(t.getTime())) {
-      const diffMs = Date.now() - t.getTime();
-      parts.push(`updated ${relative(diffMs)}`);
-    }
-  }
-  if (windowLabel) parts.push(`${windowLabel} window`);
-  return parts.length ? parts.join(" \xB7 ") : null;
-}
-function formatFreshnessAbsolute(updatedAt) {
-  if (!updatedAt) return null;
-  const t = new Date(updatedAt);
-  if (Number.isNaN(t.getTime())) return null;
-  return t.toLocaleString();
-}
-function relative(diffMs) {
-  const sec = Math.max(0, Math.round(diffMs / 1e3));
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.round(min / 60);
-  if (hr < 48) return `${hr}h ago`;
-  const day = Math.round(hr / 24);
-  return `${day}d ago`;
-}
 function cn(...inputs) {
   return twMerge(clsx(...inputs));
 }
-var Accordion = AccordionPrimitive.Root;
-var AccordionItem = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
-  AccordionPrimitive.Item,
-  {
-    ref,
-    className: cn("border-b", className),
-    ...props
-  }
-));
-AccordionItem.displayName = "AccordionItem";
-var AccordionTrigger = React3.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsx(AccordionPrimitive.Header, { className: "flex", children: /* @__PURE__ */ jsxs(
-  AccordionPrimitive.Trigger,
-  {
-    ref,
-    className: cn(
-      "flex flex-1 items-center justify-between py-4 text-13 font-medium cursor-pointer transition-all hover:underline text-left [&[data-state=open]>svg]:rotate-180",
-      className
-    ),
-    ...props,
-    children: [
-      children,
-      /* @__PURE__ */ jsx(ChevronDown, { className: "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" })
-    ]
-  }
-) }));
-AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName;
-var AccordionContent = React3.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsx(
-  AccordionPrimitive.Content,
-  {
-    ref,
-    className: "overflow-hidden text-13 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
-    ...props,
-    children: /* @__PURE__ */ jsx("div", { className: cn("pb-4 pt-0", className), children })
-  }
-));
-AccordionContent.displayName = AccordionPrimitive.Content.displayName;
-var Dialog = DialogPrimitive.Root;
-var DialogTrigger = DialogPrimitive.Trigger;
-var DialogPortal = DialogPrimitive.Portal;
-var DialogClose = DialogPrimitive.Close;
-var DialogOverlay = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
-  DialogPrimitive.Overlay,
+var Dialog = SheetPrimitive.Root;
+var DialogPortal = SheetPrimitive.Portal;
+var DialogOverlay = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+  SheetPrimitive.Overlay,
   {
     ref,
     className: cn(
@@ -126,11 +59,11 @@ var DialogOverlay = React3.forwardRef(({ className, ...props }, ref) => /* @__PU
     ...props
   }
 ));
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
-var DialogContent = React3.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs(DialogPortal, { children: [
+DialogOverlay.displayName = SheetPrimitive.Overlay.displayName;
+var DialogContent = React2.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs(DialogPortal, { children: [
   /* @__PURE__ */ jsx(DialogOverlay, {}),
   /* @__PURE__ */ jsxs(
-    DialogPrimitive.Content,
+    SheetPrimitive.Content,
     {
       ref,
       className: cn(
@@ -140,7 +73,7 @@ var DialogContent = React3.forwardRef(({ className, children, ...props }, ref) =
       ...props,
       children: [
         children,
-        /* @__PURE__ */ jsxs(DialogPrimitive.Close, { className: "absolute right-4 top-4 rounded opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground", children: [
+        /* @__PURE__ */ jsxs(SheetPrimitive.Close, { className: "absolute right-4 top-4 rounded opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground", children: [
           /* @__PURE__ */ jsx(X, { className: "h-4 w-4" }),
           /* @__PURE__ */ jsx("span", { className: "sr-only", children: "Close" })
         ] })
@@ -148,7 +81,7 @@ var DialogContent = React3.forwardRef(({ className, children, ...props }, ref) =
     }
   )
 ] }));
-DialogContent.displayName = DialogPrimitive.Content.displayName;
+DialogContent.displayName = SheetPrimitive.Content.displayName;
 var DialogHeader = ({
   className,
   ...props
@@ -177,25 +110,25 @@ var DialogFooter = ({
   }
 );
 DialogFooter.displayName = "DialogFooter";
-var DialogTitle = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
-  DialogPrimitive.Title,
+var DialogTitle = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+  SheetPrimitive.Title,
   {
     ref,
     className: cn("text-16 font-semibold leading-none", className),
     ...props
   }
 ));
-DialogTitle.displayName = DialogPrimitive.Title.displayName;
-var DialogDescription = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
-  DialogPrimitive.Description,
+DialogTitle.displayName = SheetPrimitive.Title.displayName;
+var DialogDescription = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+  SheetPrimitive.Description,
   {
     ref,
     className: cn("text-13 text-muted-foreground", className),
     ...props
   }
 ));
-DialogDescription.displayName = DialogPrimitive.Description.displayName;
-var Command = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+DialogDescription.displayName = SheetPrimitive.Description.displayName;
+var Command = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
   Command$1,
   {
     ref,
@@ -210,7 +143,7 @@ Command.displayName = Command$1.displayName;
 var CommandDialog = ({ children, ...props }) => {
   return /* @__PURE__ */ jsx(Dialog, { ...props, children: /* @__PURE__ */ jsx(DialogContent, { className: "overflow-hidden p-0 max-w-[calc(100vw-2rem)] sm:max-w-lg", children: /* @__PURE__ */ jsx(Command, { className: "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5", children }) }) });
 };
-var CommandInput = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxs("div", { className: "flex items-center border-b px-3", "cmdk-input-wrapper": "", children: [
+var CommandInput = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxs("div", { className: "flex items-center border-b px-3", "cmdk-input-wrapper": "", children: [
   /* @__PURE__ */ jsx(Search, { className: "mr-2 h-4 w-4 shrink-0 opacity-50" }),
   /* @__PURE__ */ jsx(
     Command$1.Input,
@@ -225,7 +158,7 @@ var CommandInput = React3.forwardRef(({ className, ...props }, ref) => /* @__PUR
   )
 ] }));
 CommandInput.displayName = Command$1.Input.displayName;
-var CommandList = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+var CommandList = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
   Command$1.List,
   {
     ref,
@@ -234,7 +167,7 @@ var CommandList = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE
   }
 ));
 CommandList.displayName = Command$1.List.displayName;
-var CommandEmpty = React3.forwardRef((props, ref) => /* @__PURE__ */ jsx(
+var CommandEmpty = React2.forwardRef((props, ref) => /* @__PURE__ */ jsx(
   Command$1.Empty,
   {
     ref,
@@ -243,7 +176,7 @@ var CommandEmpty = React3.forwardRef((props, ref) => /* @__PURE__ */ jsx(
   }
 ));
 CommandEmpty.displayName = Command$1.Empty.displayName;
-var CommandGroup = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+var CommandGroup = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
   Command$1.Group,
   {
     ref,
@@ -255,7 +188,7 @@ var CommandGroup = React3.forwardRef(({ className, ...props }, ref) => /* @__PUR
   }
 ));
 CommandGroup.displayName = Command$1.Group.displayName;
-var CommandSeparator = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+var CommandSeparator = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
   Command$1.Separator,
   {
     ref,
@@ -264,7 +197,7 @@ var CommandSeparator = React3.forwardRef(({ className, ...props }, ref) => /* @_
   }
 ));
 CommandSeparator.displayName = Command$1.Separator.displayName;
-var CommandItem = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+var CommandItem = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
   Command$1.Item,
   {
     ref,
@@ -291,8 +224,7 @@ var CommandShortcut = ({
 CommandShortcut.displayName = "CommandShortcut";
 var Popover = PopoverPrimitive.Root;
 var PopoverTrigger = PopoverPrimitive.Trigger;
-var PopoverAnchor = PopoverPrimitive.Anchor;
-var PopoverContent = React3.forwardRef(({ className, align = "center", sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx(PopoverPrimitive.Portal, { children: /* @__PURE__ */ jsx(
+var PopoverContent = React2.forwardRef(({ className, align = "center", sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx(PopoverPrimitive.Portal, { children: /* @__PURE__ */ jsx(
   PopoverPrimitive.Content,
   {
     ref,
@@ -306,12 +238,11 @@ var PopoverContent = React3.forwardRef(({ className, align = "center", sideOffse
   }
 ) }));
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
-var Sheet = DialogPrimitive.Root;
-var SheetTrigger = DialogPrimitive.Trigger;
-var SheetClose = DialogPrimitive.Close;
-var SheetPortal = DialogPrimitive.Portal;
-var SheetOverlay = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
-  DialogPrimitive.Overlay,
+var Sheet = SheetPrimitive.Root;
+var SheetTrigger = SheetPrimitive.Trigger;
+var SheetPortal = SheetPrimitive.Portal;
+var SheetOverlay = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+  SheetPrimitive.Overlay,
   {
     className: cn(
       "fixed inset-0 z-[var(--mg-z-modal)] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -321,7 +252,7 @@ var SheetOverlay = React3.forwardRef(({ className, ...props }, ref) => /* @__PUR
     ref
   }
 ));
-SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
+SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 var sheetVariants = cva(
   "fixed z-[var(--mg-z-modal)] gap-4 bg-background p-6 transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
   {
@@ -338,16 +269,16 @@ var sheetVariants = cva(
     }
   }
 );
-var SheetContent = React3.forwardRef(({ side = "right", className, children, ...props }, ref) => /* @__PURE__ */ jsxs(SheetPortal, { children: [
+var SheetContent = React2.forwardRef(({ side = "right", className, children, ...props }, ref) => /* @__PURE__ */ jsxs(SheetPortal, { children: [
   /* @__PURE__ */ jsx(SheetOverlay, {}),
   /* @__PURE__ */ jsxs(
-    DialogPrimitive.Content,
+    SheetPrimitive.Content,
     {
       ref,
       className: cn(sheetVariants({ side }), className),
       ...props,
       children: [
-        /* @__PURE__ */ jsxs(DialogPrimitive.Close, { className: "absolute right-4 top-4 rounded opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary", children: [
+        /* @__PURE__ */ jsxs(SheetPrimitive.Close, { className: "absolute right-4 top-4 rounded opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary", children: [
           /* @__PURE__ */ jsx(X, { className: "h-4 w-4" }),
           /* @__PURE__ */ jsx("span", { className: "sr-only", children: "Close" })
         ] }),
@@ -356,7 +287,7 @@ var SheetContent = React3.forwardRef(({ side = "right", className, children, ...
     }
   )
 ] }));
-SheetContent.displayName = DialogPrimitive.Content.displayName;
+SheetContent.displayName = SheetPrimitive.Content.displayName;
 var SheetHeader = ({
   className,
   ...props
@@ -385,24 +316,24 @@ var SheetFooter = ({
   }
 );
 SheetFooter.displayName = "SheetFooter";
-var SheetTitle = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
-  DialogPrimitive.Title,
+var SheetTitle = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+  SheetPrimitive.Title,
   {
     ref,
     className: cn("text-16 font-semibold text-foreground", className),
     ...props
   }
 ));
-SheetTitle.displayName = DialogPrimitive.Title.displayName;
-var SheetDescription = React3.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
-  DialogPrimitive.Description,
+SheetTitle.displayName = SheetPrimitive.Title.displayName;
+var SheetDescription = React2.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx(
+  SheetPrimitive.Description,
   {
     ref,
     className: cn("text-13 text-muted-foreground", className),
     ...props
   }
 ));
-SheetDescription.displayName = DialogPrimitive.Description.displayName;
+SheetDescription.displayName = SheetPrimitive.Description.displayName;
 var Toaster = ({ ...props }) => {
   return /* @__PURE__ */ jsx(
     Toaster$1,
@@ -422,66 +353,6 @@ var Toaster = ({ ...props }) => {
 };
 function Skeleton({ className = "h-4 w-full" }) {
   return /* @__PURE__ */ jsx("div", { className: `animate-pulse rounded bg-surface-2 ${className}` });
-}
-var defaultFormat = (n) => new Intl.NumberFormat("en-US").format(Math.round(n));
-function prefersReducedMotion() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-}
-function AnimatedNumber({
-  value,
-  format = defaultFormat,
-  fallback = "\u2014",
-  duration = 600,
-  flashOnChange = true,
-  className
-}) {
-  const safe = typeof value === "number" && Number.isFinite(value) ? value : null;
-  const [display, setDisplay] = useState(safe);
-  const [flash, setFlash] = useState("");
-  const fromRef = useRef(safe);
-  const rafRef = useRef(null);
-  useEffect(() => {
-    if (safe === null) {
-      setDisplay(null);
-      fromRef.current = null;
-      return;
-    }
-    const from = fromRef.current;
-    if (from === null || prefersReducedMotion() || from === safe) {
-      setDisplay(safe);
-      fromRef.current = safe;
-      return;
-    }
-    if (flashOnChange) {
-      setFlash(safe > from ? "" : "");
-      window.setTimeout(() => setFlash(""), 720);
-    }
-    const start = performance.now();
-    const delta = safe - from;
-    const step = (now) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setDisplay(from + delta * eased);
-      if (t < 1) rafRef.current = requestAnimationFrame(step);
-      else fromRef.current = safe;
-    };
-    rafRef.current = requestAnimationFrame(step);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, [safe, duration, flashOnChange]);
-  return /* @__PURE__ */ jsx(
-    "span",
-    {
-      className: classNames(
-        "tabular-nums inline-block px-0.5",
-        flash,
-        className
-      ),
-      children: display === null ? fallback : format(display)
-    }
-  );
 }
 var BOTTOM_HIDE_GAP = 96;
 function BackToTop({ threshold = 600 }) {
@@ -1064,7 +935,6 @@ function HealthDot({
   const key = normalize(state);
   const color = STATE_COLOR[key];
   const label = STATE_LABEL[key];
-  const shouldPulse = key === "warn" || key === "degraded" || key === "down" || key === "offline";
   const dot = /* @__PURE__ */ jsx(
     "span",
     {
@@ -1073,7 +943,6 @@ function HealthDot({
       className: classNames(
         "relative inline-block size-2 rounded-full mg-dot shrink-0",
         color,
-        shouldPulse && "",
         className
       )
     }
@@ -1083,89 +952,6 @@ function HealthDot({
     dot,
     /* @__PURE__ */ jsx("span", { className: "text-13 font-medium text-ink", children: label })
   ] });
-}
-function HealthPill({
-  state,
-  label
-}) {
-  if (label) {
-    return /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
-      /* @__PURE__ */ jsx(HealthDot, { state }),
-      /* @__PURE__ */ jsx("span", { className: "text-13 font-medium text-ink", children: label })
-    ] });
-  }
-  return /* @__PURE__ */ jsx(HealthDot, { state, variant: "label" });
-}
-var curationLabel = {
-  native: "Native",
-  "candidate-discovered": "Candidate",
-  "community-seeded": "Community",
-  "machine-verified": "Machine",
-  "maintainer-reviewed": "Reviewed",
-  "adapter-backed": "Adapter"
-};
-var curationCls = {
-  native: "bg-transparent text-ink-strong border-ink-strong/40",
-  "candidate-discovered": "bg-transparent text-ink-muted border-dashed border-ink-subtle",
-  "community-seeded": "bg-transparent text-curation-seeded border-curation-seeded/40",
-  "machine-verified": "bg-transparent text-ink-muted border-border",
-  "maintainer-reviewed": "bg-primary-soft text-curation-verified border-accent/40",
-  "adapter-backed": "bg-primary-soft text-curation-pilot border-accent/50"
-};
-var authorityLabel = {
-  official: "Official",
-  "registry-observed": "Observed",
-  "provider-claimed": "Claimed",
-  community: "Community",
-  "native-chain": "Native"
-};
-var authorityCls = {
-  official: curationCls["maintainer-reviewed"],
-  "registry-observed": curationCls["machine-verified"],
-  "provider-claimed": curationCls["adapter-backed"],
-  community: curationCls["candidate-discovered"],
-  "native-chain": curationCls["native"]
-};
-function CurationChip({ level }) {
-  const key = String(level ?? "");
-  const label = Object.hasOwn(curationLabel, key) ? curationLabel[key] : Object.hasOwn(authorityLabel, key) ? authorityLabel[key] : level ? key : "\u2014";
-  const cls = Object.hasOwn(curationCls, key) ? curationCls[key] : Object.hasOwn(authorityCls, key) ? authorityCls[key] : curationCls["candidate-discovered"];
-  return /* @__PURE__ */ jsx(
-    "span",
-    {
-      className: classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-13 font-medium",
-        cls
-      ),
-      children: label
-    }
-  );
-}
-var reviewLabel = {
-  "maintainer-reviewed": "Reviewed",
-  rejected: "Rejected"
-};
-var reviewCls = {
-  "maintainer-reviewed": curationCls["maintainer-reviewed"],
-  rejected: "bg-transparent text-ink-muted border-ink-subtle line-through"
-};
-function ReviewChip({ state }) {
-  const key = String(state ?? "");
-  if (!Object.hasOwn(reviewLabel, key)) return null;
-  return /* @__PURE__ */ jsx(
-    "span",
-    {
-      className: classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-13 font-medium",
-        reviewCls[key]
-      ),
-      title: `Maintainer review: ${key}`,
-      children: reviewLabel[key]
-    }
-  );
-}
-function CandidateChip() {
-  return /* @__PURE__ */ jsx("span", { className: "inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 text-13 font-medium text-ink-muted", children: "Unverified" });
 }
 function truncateCopyPreview(value, max = 64) {
   return value.length > max ? value.slice(0, max) + "\u2026" : value;
@@ -1382,140 +1168,6 @@ function CopyableCode({
     ),
     /* @__PURE__ */ jsx(CopyStatusRegion, { children: copied ? `${label ?? "Value"} copied to clipboard` : "" })
   ] });
-}
-var DefinitionsContext = createContext({});
-function DefinitionsProvider({
-  definitions,
-  children
-}) {
-  return /* @__PURE__ */ jsx(DefinitionsContext.Provider, { value: definitions, children });
-}
-function useDefinition(term) {
-  return useContext(DefinitionsContext)[term];
-}
-function Definition({
-  term,
-  sentence,
-  align = "start",
-  className,
-  children
-}) {
-  const fromGlossary = useDefinition(term);
-  const text = sentence ?? fromGlossary;
-  const id = useId();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef(null);
-  const pointerType = useRef("mouse");
-  const close = useCallback(() => setOpen(false), []);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event) => {
-      if (event.key === "Escape") close();
-    };
-    const onPointerDown = (event) => {
-      const root = rootRef.current;
-      if (root && event.target instanceof Node && !root.contains(event.target))
-        close();
-    };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onPointerDown, true);
-    };
-  }, [open, close]);
-  if (!text) return children ? /* @__PURE__ */ jsx(Fragment, { children }) : null;
-  return /* @__PURE__ */ jsxs(
-    "span",
-    {
-      ref: rootRef,
-      className: ["mg-definition", className].filter(Boolean).join(" "),
-      children: [
-        /* @__PURE__ */ jsx(
-          "button",
-          {
-            type: "button",
-            className: children ? "mg-definition-trigger" : "mg-definition-button",
-            "aria-label": children ? void 0 : `What is ${term}`,
-            "aria-describedby": open ? id : void 0,
-            "aria-expanded": open,
-            onPointerDown: (event) => {
-              pointerType.current = event.pointerType || "mouse";
-            },
-            onPointerEnter: (event) => {
-              if (event.pointerType !== "touch") setOpen(true);
-            },
-            onPointerLeave: (event) => {
-              if (event.pointerType !== "touch") setOpen(false);
-            },
-            onFocus: () => setOpen(true),
-            onBlur: () => setOpen(false),
-            onClick: () => {
-              if (pointerType.current === "touch") setOpen((v) => !v);
-            },
-            children: children ?? "?"
-          }
-        ),
-        open ? /* @__PURE__ */ jsxs(
-          "span",
-          {
-            id,
-            role: "tooltip",
-            className: "mg-definition-tip",
-            "data-align": align,
-            "data-mg-tooltip": "",
-            children: [
-              /* @__PURE__ */ jsx("strong", { children: term }),
-              text
-            ]
-          }
-        ) : null
-      ]
-    }
-  );
-}
-var ELIGIBILITY_LABEL = {
-  "proxy-enabled": "Proxy",
-  "pool-member": "Pool",
-  "archive-capable": "Archive",
-  unassigned: "Unassigned"
-};
-var TONE = {
-  "proxy-enabled": "border-accent/50 text-curation-pilot before:bg-accent",
-  "pool-member": "border-curation-machine/50 text-curation-machine before:bg-curation-machine",
-  "archive-capable": "border-curation-verified/50 text-curation-verified before:bg-curation-verified",
-  unassigned: "border-border text-ink-muted before:bg-ink-subtle"
-};
-var RULE = {
-  "proxy-enabled": "Routable through the Metagraphed pool when proxy is enabled backend-side. Routing remains future-scoped.",
-  "pool-member": "Curated member of an RPC pool \u2014 eligible for routing once proxy is enabled.",
-  "archive-capable": "Historical block data supported \u2014 suitable for archival reads beyond head depth.",
-  unassigned: "Not assigned to any pool yet. Eligible for pooling once verification metadata is added."
-};
-function EligibilityChip({
-  eligibility,
-  size = "sm"
-}) {
-  return /* @__PURE__ */ jsx(
-    Definition,
-    {
-      term: ELIGIBILITY_LABEL[eligibility],
-      sentence: RULE[eligibility],
-      children: /* @__PURE__ */ jsx(
-        "span",
-        {
-          className: classNames(
-            "inline-flex items-center gap-1.5 rounded border bg-transparent whitespace-nowrap transition-colors",
-            "mg-dot-before",
-            "hover:bg-surface",
-            size === "xs" ? "px-2 py-0 h-5 text-11" : "px-2.5 py-0 h-6 text-11",
-            TONE[eligibility]
-          ),
-          children: ELIGIBILITY_LABEL[eligibility]
-        }
-      )
-    }
-  );
 }
 var SAFE_EXTERNAL_PROTOCOLS = /* @__PURE__ */ new Set(["http:", "https:"]);
 function isBlockedIpv42(hostname) {
@@ -1918,6 +1570,97 @@ function ChartTooltip({
     }
   ) : null });
 }
+var DefinitionsContext = createContext({});
+function DefinitionsProvider({
+  definitions,
+  children
+}) {
+  return /* @__PURE__ */ jsx(DefinitionsContext.Provider, { value: definitions, children });
+}
+function useDefinition(term) {
+  return useContext(DefinitionsContext)[term];
+}
+function Definition({
+  term,
+  sentence,
+  align = "start",
+  className,
+  children
+}) {
+  const fromGlossary = useDefinition(term);
+  const text = sentence ?? fromGlossary;
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const pointerType = useRef("mouse");
+  const close = useCallback(() => setOpen(false), []);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event) => {
+      if (event.key === "Escape") close();
+    };
+    const onPointerDown = (event) => {
+      const root = rootRef.current;
+      if (root && event.target instanceof Node && !root.contains(event.target))
+        close();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [open, close]);
+  if (!text) return children ? /* @__PURE__ */ jsx(Fragment, { children }) : null;
+  return /* @__PURE__ */ jsxs(
+    "span",
+    {
+      ref: rootRef,
+      className: ["mg-definition", className].filter(Boolean).join(" "),
+      children: [
+        /* @__PURE__ */ jsx(
+          "button",
+          {
+            type: "button",
+            className: children ? "mg-definition-trigger" : "mg-definition-button",
+            "aria-label": children ? void 0 : `What is ${term}`,
+            "aria-describedby": open ? id : void 0,
+            "aria-expanded": open,
+            onPointerDown: (event) => {
+              pointerType.current = event.pointerType || "mouse";
+            },
+            onPointerEnter: (event) => {
+              if (event.pointerType !== "touch") setOpen(true);
+            },
+            onPointerLeave: (event) => {
+              if (event.pointerType !== "touch") setOpen(false);
+            },
+            onFocus: () => setOpen(true),
+            onBlur: () => setOpen(false),
+            onClick: () => {
+              if (pointerType.current === "touch") setOpen((v) => !v);
+            },
+            children: children ?? "?"
+          }
+        ),
+        open ? /* @__PURE__ */ jsxs(
+          "span",
+          {
+            id,
+            role: "tooltip",
+            className: "mg-definition-tip",
+            "data-align": align,
+            "data-mg-tooltip": "",
+            children: [
+              /* @__PURE__ */ jsx("strong", { children: term }),
+              text
+            ]
+          }
+        ) : null
+      ]
+    }
+  );
+}
 function Raw({
   title = "Raw identifiers & sources",
   rows = [],
@@ -1973,43 +1716,6 @@ function RawCode({
       }
     )
   ] });
-}
-function provenanceSentence({
-  source,
-  windowLabel,
-  updatedAt,
-  staleness
-}) {
-  const fresh = formatFreshness(updatedAt, windowLabel);
-  const freshAbs = formatFreshnessAbsolute(updatedAt);
-  return [
-    source.replace(/\.?$/, "."),
-    staleness ? `Staleness: ${staleness.replace(/\.?$/, ".")}` : null,
-    fresh || freshAbs ? `${fresh ?? ""}${freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""}.` : null
-  ].filter(Boolean).join(" ");
-}
-function Provenance({
-  children,
-  metric,
-  source,
-  windowLabel,
-  updatedAt,
-  staleness
-}) {
-  const term = windowLabel ? `${metric} \xB7 ${windowLabel}` : metric;
-  return /* @__PURE__ */ jsx(
-    Definition,
-    {
-      term,
-      sentence: provenanceSentence({
-        source,
-        windowLabel,
-        updatedAt,
-        staleness
-      }),
-      children: /* @__PURE__ */ jsx("span", { className: "inline-flex max-w-full items-center", children })
-    }
-  );
 }
 function AnalyticsSection({
   id,
@@ -2433,42 +2139,6 @@ function Kbd({
     }
   );
 }
-function KeyChip({
-  value,
-  label = "value",
-  head = 8,
-  tail = 6,
-  className
-}) {
-  const { copied, copy } = useCopy({ label });
-  const short = value.length > head + tail + 1 ? `${value.slice(0, head)}\u2026${value.slice(-tail)}` : value;
-  return /* @__PURE__ */ jsxs(Fragment, { children: [
-    /* @__PURE__ */ jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: () => copy(value),
-        title: value,
-        "aria-label": copied ? `${label} copied` : `Copy ${label}: ${value}`,
-        className: classNames(
-          "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left text-11 text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
-          className
-        ),
-        children: [
-          /* @__PURE__ */ jsx("span", { className: "truncate tabular-nums", children: short }),
-          /* @__PURE__ */ jsx(
-            CopyIconToggle,
-            {
-              copied,
-              className: "text-ink-muted group-hover:text-ink"
-            }
-          )
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsx(CopyStatusRegion, { children: copied ? `${label} copied to clipboard` : "" })
-  ] });
-}
 function Wordmark({ className }) {
   return /* @__PURE__ */ jsxs(
     "svg",
@@ -2620,57 +2290,6 @@ var SCOPES = [
   { key: "provider", label: "Providers" },
   { key: "schema", label: "Schemas" }
 ];
-var PREVIEW_COUNT = 24;
-function visibleTools(tools, open) {
-  return open ? tools : tools.slice(0, PREVIEW_COUNT);
-}
-function McpToolsList({
-  tools
-}) {
-  const [open, setOpen] = useState(false);
-  const hasMore = tools.length > PREVIEW_COUNT;
-  return /* @__PURE__ */ jsxs("div", { className: "mt-2", children: [
-    /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-1.5", children: visibleTools(tools, open).map((t) => /* @__PURE__ */ jsx(
-      "span",
-      {
-        className: "inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 text-10 text-ink-muted",
-        children: t.name
-      },
-      t.name
-    )) }),
-    hasMore ? /* @__PURE__ */ jsx(
-      "button",
-      {
-        type: "button",
-        onClick: () => setOpen((v) => !v),
-        "aria-expanded": open,
-        className: classNames(
-          "mt-2 inline-flex items-center gap-1 text-10 text-ink-muted",
-          "hover:text-accent transition-colors"
-        ),
-        children: open ? /* @__PURE__ */ jsxs(Fragment, { children: [
-          /* @__PURE__ */ jsx(ChevronUp, { className: "size-3" }),
-          " Show fewer"
-        ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-          /* @__PURE__ */ jsx(ChevronDown, { className: "size-3" }),
-          " Show all ",
-          tools.length,
-          " tools"
-        ] })
-      }
-    ) : null
-  ] });
-}
-
-// src/components/metagraphed/yield-format.ts
-function fmtYield(v) {
-  if (v == null || !Number.isFinite(v)) return "\u2014";
-  if (v === 0) return "0%";
-  const pct = v * 100;
-  if (Math.abs(pct) >= 1) return `${pct.toFixed(2)}%`;
-  if (Math.abs(pct) >= 1e-3) return `${pct.toPrecision(5)}%`;
-  return `${pct.toExponential(2)}%`;
-}
 var TONE_CLASSES = {
   default: "border-border bg-paper text-ink",
   ok: "border-health-ok/40 bg-health-ok/10 text-health-ok",
@@ -2721,76 +2340,6 @@ function Chip({
         ) : null,
         label ? /* @__PURE__ */ jsx("span", { className: "opacity-70", children: label }) : null,
         children != null ? /* @__PURE__ */ jsx("span", { className: "text-ink-strong normal-case", children }) : null
-      ]
-    }
-  );
-}
-var STATUS_LABEL = {
-  ok: "Healthy",
-  warn: "Degraded",
-  down: "Down",
-  unknown: "Unknown"
-};
-var STATUS_TONE = {
-  ok: "ok",
-  warn: "warn",
-  down: "down",
-  unknown: "muted"
-};
-function StatusBadge({
-  status,
-  label,
-  live,
-  title,
-  className
-}) {
-  return /* @__PURE__ */ jsx(
-    Chip,
-    {
-      tone: STATUS_TONE[status],
-      dot: live,
-      title: title ?? STATUS_LABEL[status],
-      className,
-      children: label ?? STATUS_LABEL[status]
-    }
-  );
-}
-function Indicator({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  title,
-  className,
-  orientation = "row"
-}) {
-  const isRow = orientation === "row";
-  return /* @__PURE__ */ jsxs(
-    "span",
-    {
-      className: classNames(
-        "inline-flex min-w-0",
-        isRow ? "items-baseline gap-1.5" : "flex-col gap-0.5",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsxs(
-          "span",
-          {
-            className: classNames(
-              "inline-flex items-center gap-1 text-10 text-ink-muted",
-              isRow ? "self-center" : null
-            ),
-            children: [
-              Icon ? /* @__PURE__ */ jsx(Icon, { className: "size-3", "aria-hidden": true }) : null,
-              label
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxs("span", { className: "text-11 tabular-nums text-ink-strong truncate", children: [
-          value,
-          hint ? /* @__PURE__ */ jsx("span", { className: "ml-1 text-ink-muted normal-case", children: hint }) : null
-        ] })
       ]
     }
   );
@@ -2895,466 +2444,6 @@ function EmptyState({
     }
   );
 }
-function PanelHeader({
-  title,
-  description,
-  actions,
-  variant = "display",
-  className
-}) {
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      className: cn(
-        "flex flex-wrap items-start justify-between gap-3",
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-          variant === "micro" ? /* @__PURE__ */ jsx("h3", { className: "text-13 font-semibold text-ink-strong", children: title }) : /* @__PURE__ */ jsx("h2", { className: "font-display text-16 font-medium leading-tight text-ink-strong", children: title }),
-          description ? /* @__PURE__ */ jsx("p", { className: "mt-1 text-13 leading-relaxed text-ink-muted", children: description }) : null
-        ] }),
-        actions ? /* @__PURE__ */ jsx("div", { className: "flex shrink-0 flex-wrap items-center gap-2", children: actions }) : null
-      ]
-    }
-  );
-}
-function Divider({
-  tone = "default",
-  pip = false,
-  className
-}) {
-  const bar = tone === "accent" ? "bg-accent/40" : "bg-border";
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      className: cn("relative h-px w-full", bar, className),
-      role: "separator",
-      "aria-hidden": true,
-      children: pip ? /* @__PURE__ */ jsx("span", { className: "absolute left-0 top-1/2 -translate-y-1/2 size-1.5 rounded bg-accent" }) : null
-    }
-  );
-}
-function DefinitionList({
-  items,
-  layout = "inline",
-  className
-}) {
-  if (layout === "grid") {
-    return /* @__PURE__ */ jsx(
-      "dl",
-      {
-        className: cn(
-          "grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2",
-          className
-        ),
-        children: items.map((it, i) => /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-          /* @__PURE__ */ jsx("dt", { className: "text-10 text-ink-muted", children: it.term }),
-          /* @__PURE__ */ jsx("dd", { className: "mt-1 truncate text-13 text-ink-strong", children: it.detail })
-        ] }, i))
-      }
-    );
-  }
-  if (layout === "stacked") {
-    return /* @__PURE__ */ jsx("dl", { className: cn("space-y-3", className), children: items.map((it, i) => /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-      /* @__PURE__ */ jsx("dt", { className: "text-10 text-ink-muted", children: it.term }),
-      /* @__PURE__ */ jsx("dd", { className: "mt-1 text-13 text-ink-strong", children: it.detail })
-    ] }, i)) });
-  }
-  return /* @__PURE__ */ jsx("dl", { className: cn("divide-y divide-border/70", className), children: items.map((it, i) => /* @__PURE__ */ jsxs(
-    "div",
-    {
-      className: "flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0",
-      children: [
-        /* @__PURE__ */ jsx("dt", { className: "text-11 shrink-0 text-ink-muted", children: it.term }),
-        /* @__PURE__ */ jsx("dd", { className: "min-w-0 truncate text-right text-13 text-ink-strong", children: it.detail })
-      ]
-    },
-    i
-  )) });
-}
-function LoadingPill({
-  children = "Loading",
-  tone = "muted",
-  className
-}) {
-  return /* @__PURE__ */ jsx(
-    Chip,
-    {
-      tone,
-      icon: /* @__PURE__ */ jsx(Loader2, { className: "size-3 animate-spin" }),
-      className,
-      children
-    }
-  );
-}
-var SIZE = {
-  sm: "min-h-8 px-2.5 text-13",
-  md: "min-h-10 px-4 text-13",
-  lg: "min-h-11 px-4 text-13"
-};
-var TONE2 = {
-  default: "border-border text-ink-muted hover:border-accent/60 hover:text-ink-strong",
-  accent: "border-accent/60 bg-primary-soft text-ink-strong hover:border-accent",
-  warn: "border-health-warn/60 text-health-warn-text hover:border-health-warn",
-  down: "border-health-down/60 text-health-down hover:border-health-down"
-};
-var GhostButton = forwardRef(
-  function GhostButton2({
-    size = "sm",
-    tone = "default",
-    icon,
-    iconRight,
-    className,
-    children,
-    type,
-    ...rest
-  }, ref) {
-    return /* @__PURE__ */ jsxs(
-      "button",
-      {
-        ref,
-        type: type ?? "button",
-        className: cn(
-          "inline-flex items-center justify-center gap-1.5 rounded border bg-card transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-          SIZE[size],
-          TONE2[tone],
-          className
-        ),
-        ...rest,
-        children: [
-          icon,
-          children != null ? /* @__PURE__ */ jsx("span", { className: "min-w-0 truncate", children }) : null,
-          iconRight
-        ]
-      }
-    );
-  }
-);
-function ScrollShadow({
-  orientation = "horizontal",
-  className,
-  innerClassName,
-  children
-}) {
-  const ref = useRef(null);
-  const [state, setState] = useState({ start: false, end: false });
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const update = () => {
-      if (orientation === "horizontal") {
-        setState({
-          start: el.scrollLeft > 2,
-          end: el.scrollLeft + el.clientWidth < el.scrollWidth - 2
-        });
-      } else {
-        setState({
-          start: el.scrollTop > 2,
-          end: el.scrollTop + el.clientHeight < el.scrollHeight - 2
-        });
-      }
-    };
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", update);
-      ro.disconnect();
-    };
-  }, [orientation]);
-  const isH = orientation === "horizontal";
-  return /* @__PURE__ */ jsxs("div", { className: classNames("relative", className), children: [
-    /* @__PURE__ */ jsx(
-      "div",
-      {
-        ref,
-        className: classNames(
-          isH ? "overflow-x-auto" : "overflow-y-auto",
-          "mg-scroll overscroll-contain",
-          innerClassName
-        ),
-        style: isH ? { overflowY: "hidden", scrollbarWidth: "none" } : { overflowX: "hidden" },
-        children
-      }
-    ),
-    state.start ? /* @__PURE__ */ jsx(
-      "div",
-      {
-        "aria-hidden": true,
-        className: classNames(
-          "pointer-events-none absolute z-[var(--mg-z-sticky)]",
-          isH ? "left-0 top-0 h-full w-6 bg-gradient-to-r from-card to-transparent" : "left-0 top-0 h-6 w-full bg-gradient-to-b from-card to-transparent"
-        )
-      }
-    ) : null,
-    state.end ? /* @__PURE__ */ jsx(
-      "div",
-      {
-        "aria-hidden": true,
-        className: classNames(
-          "pointer-events-none absolute z-[var(--mg-z-sticky)]",
-          isH ? "right-0 top-0 h-full w-6 bg-gradient-to-l from-card to-transparent" : "bottom-0 left-0 h-6 w-full bg-gradient-to-t from-card to-transparent"
-        )
-      }
-    ) : null
-  ] });
-}
-var HEIGHT = {
-  xs: "h-16",
-  sm: "h-24",
-  md: "h-32",
-  lg: "h-48",
-  xl: "h-64"
-};
-function PanelSkeleton({
-  height = "md",
-  label = "Loading panel\u2026",
-  className
-}) {
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      role: "status",
-      "aria-live": "polite",
-      "aria-busy": "true",
-      className: classNames(
-        "w-full rounded border border-border bg-card overflow-hidden",
-        "animate-pulse",
-        HEIGHT[height],
-        className
-      ),
-      children: /* @__PURE__ */ jsx("span", { className: "sr-only", children: label })
-    }
-  );
-}
-var provenance = {
-  native: {
-    label: "Native",
-    description: "Native chain metadata",
-    className: "border-ink-strong/40 text-ink-strong"
-  },
-  "candidate-discovered": {
-    label: "Candidate",
-    description: "Discovered lead; not yet verified",
-    className: "border-dashed border-ink-subtle text-ink-muted"
-  },
-  "community-seeded": {
-    label: "Community",
-    description: "Community-sourced registry metadata",
-    className: "border-curation-seeded/45 text-curation-seeded"
-  },
-  "machine-verified": {
-    label: "Machine",
-    description: "Automatically verified registry metadata",
-    className: "border-curation-machine/45 text-curation-machine"
-  },
-  "maintainer-reviewed": {
-    label: "Reviewed",
-    description: "Reviewed by a registry maintainer",
-    className: "border-curation-verified/45 bg-primary-soft text-curation-verified"
-  },
-  "adapter-backed": {
-    label: "Adapter",
-    description: "Backed by a first-party registry adapter",
-    className: "border-curation-adapter/45 text-curation-adapter"
-  }
-};
-function ProvenanceChip({
-  level,
-  className
-}) {
-  const item = provenance[level ?? ""] ?? {
-    label: level || "Unknown",
-    description: "Curation provenance not classified",
-    className: "border-border text-ink-muted"
-  };
-  return /* @__PURE__ */ jsx(
-    "span",
-    {
-      tabIndex: 0,
-      "aria-label": `${item.label}: ${item.description}`,
-      className: classNames(
-        "mg-focus-ring inline-flex items-center rounded border bg-transparent px-1.5 py-0.5 text-10",
-        item.className,
-        className
-      ),
-      children: item.label
-    }
-  );
-}
-var HEIGHTS = {
-  sm: "min-h-[120px]",
-  md: "min-h-[200px]",
-  lg: "min-h-[320px]"
-};
-function PanelError({
-  title = "Couldn't load this panel",
-  message = "Something went wrong fetching this data. Retry, or try again in a moment.",
-  errorId,
-  onRetry,
-  height = "md",
-  trailing,
-  className
-}) {
-  const [copied, setCopied] = useState(false);
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      role: "alert",
-      className: classNames(
-        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded",
-        "border border-border/70 bg-card p-6 text-center",
-        HEIGHTS[height],
-        className
-      ),
-      children: [
-        /* @__PURE__ */ jsx("div", { className: "grid size-9 place-items-center rounded bg-surface-2 text-health-warn", children: /* @__PURE__ */ jsx(AlertTriangle, { className: "size-4", "aria-hidden": true }) }),
-        /* @__PURE__ */ jsxs("div", { className: "max-w-sm space-y-1", children: [
-          /* @__PURE__ */ jsx("div", { className: "font-display text-13 font-semibold text-ink-strong", children: title }),
-          /* @__PURE__ */ jsx("p", { className: "text-13 leading-relaxed text-ink-muted", children: message })
-        ] }),
-        /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap items-center justify-center gap-2 pt-1", children: [
-          onRetry ? /* @__PURE__ */ jsx(
-            GhostButton,
-            {
-              size: "sm",
-              onClick: onRetry,
-              icon: /* @__PURE__ */ jsx(RefreshCw, { className: "size-3" }),
-              children: "Retry"
-            }
-          ) : null,
-          errorId ? /* @__PURE__ */ jsxs(
-            "button",
-            {
-              type: "button",
-              onClick: () => {
-                void navigator.clipboard.writeText(errorId).then(() => {
-                  setCopied(true);
-                  window.setTimeout(() => setCopied(false), 1400);
-                });
-              },
-              className: "mg-focus-ring inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-10 text-ink-muted hover:text-ink-strong",
-              "aria-label": `Copy error id ${errorId}`,
-              children: [
-                copied ? /* @__PURE__ */ jsx(Check, { className: "size-3", "aria-hidden": true }) : /* @__PURE__ */ jsx(Copy, { className: "size-3", "aria-hidden": true }),
-                /* @__PURE__ */ jsxs("span", { className: "normal-case", children: [
-                  "id \xB7 ",
-                  errorId.slice(0, 8)
-                ] })
-              ]
-            }
-          ) : null,
-          trailing
-        ] })
-      ]
-    }
-  );
-}
-function QueryProgress({
-  active,
-  position = "absolute",
-  className,
-  ariaLabel = "Updating results"
-}) {
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      role: "progressbar",
-      "aria-label": ariaLabel,
-      "aria-hidden": !active,
-      className: classNames(
-        "mg-query-progress pointer-events-none overflow-hidden",
-        position === "absolute" && "absolute inset-x-0 top-0 z-[var(--mg-z-sticky)]",
-        position === "fixed" && "fixed inset-x-0 top-0 z-[var(--mg-z-modal)]",
-        position === "sticky" && "sticky top-0 z-[var(--mg-z-sticky)] -mt-px",
-        "h-[2px]",
-        active ? "opacity-100" : "opacity-0 transition-opacity duration-300",
-        className
-      ),
-      children: /* @__PURE__ */ jsx(
-        "div",
-        {
-          className: classNames(
-            "h-full w-1/3 rounded",
-            active && "mg-query-progress-track"
-          ),
-          style: {
-            background: "linear-gradient(90deg, transparent, color-mix(in oklab, var(--accent) 90%, transparent), transparent)"
-          }
-        }
-      )
-    }
-  );
-}
-function RoutePending({
-  title,
-  panels = 2,
-  panelHeight = "md",
-  header,
-  className
-}) {
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      "aria-busy": "true",
-      "aria-live": "polite",
-      className: classNames(
-        "mg-route-pending mx-auto w-full max-w-shell px-4 py-6 md:px-6",
-        className
-      ),
-      children: [
-        header ?? /* @__PURE__ */ jsxs("div", { className: "mb-6 space-y-3", children: [
-          /* @__PURE__ */ jsx(
-            "div",
-            {
-              className: "h-3 w-32 animate-pulse rounded bg-surface-2",
-              "aria-hidden": true
-            }
-          ),
-          /* @__PURE__ */ jsxs("div", { className: "flex items-baseline gap-3", children: [
-            /* @__PURE__ */ jsx(
-              "div",
-              {
-                className: "h-7 w-64 animate-pulse rounded bg-surface-2",
-                "aria-hidden": true
-              }
-            ),
-            title ? /* @__PURE__ */ jsxs("span", { className: "sr-only", children: [
-              "Loading ",
-              title
-            ] }) : /* @__PURE__ */ jsx("span", { className: "sr-only", children: "Loading page" })
-          ] }),
-          /* @__PURE__ */ jsx(
-            "div",
-            {
-              className: "h-3 w-96 max-w-full animate-pulse rounded bg-surface-2/70",
-              "aria-hidden": true
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsx("div", { className: "space-y-4", children: Array.from({ length: panels }).map((_, i) => /* @__PURE__ */ jsx(PanelSkeleton, { height: panelHeight }, i)) })
-      ]
-    }
-  );
-}
-function isScrolledPast(scrollY, threshold) {
-  return scrollY > threshold;
-}
-function useScrolled(threshold = 4) {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onScroll = () => {
-      setScrolled(isScrolledPast(window.scrollY, threshold));
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [threshold]);
-  return scrolled;
-}
 
 // src/components/metagraphed/charts/series-palette.ts
 var CHART_RAMP_SIZE = 10;
@@ -3412,7 +2501,7 @@ function collapseOther(segments, registry, label = OTHER_KEY) {
     kept.push({ key: OTHER_KEY, label: residualLabel ?? label, value: other });
   return kept;
 }
-var defaultFormat2 = (v) => String(v);
+var defaultFormat = (v) => String(v);
 var BAR_PX = 15;
 function StackedColumns({
   id,
@@ -3420,7 +2509,7 @@ function StackedColumns({
   seriesOrder,
   registry,
   other = OTHER_KEY,
-  formatValue = defaultFormat2,
+  formatValue = defaultFormat,
   ariaLabel,
   columnSource = "stacked-columns",
   className
@@ -3742,7 +2831,7 @@ function monthTicks(points) {
   }
   return out;
 }
-var defaultFormat3 = (v) => String(v);
+var defaultFormat2 = (v) => String(v);
 var dateFormat = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
@@ -3760,7 +2849,7 @@ function LineWithWindow({
   points,
   window: window2,
   unit,
-  formatValue = defaultFormat3,
+  formatValue = defaultFormat2,
   formatDate = formatLineDate,
   formatRange,
   ariaLabel,
@@ -3978,25 +3067,6 @@ function lineSpecimen(days = 120) {
     points,
     window: { from: t0 + (days - 56) * day, to: t0 + (days - 1) * day }
   };
-}
-function trendDeltaOf(values) {
-  const points = values.filter((v) => typeof v === "number" && Number.isFinite(v)).map((v, i) => ({ t: i, v }));
-  return windowDelta(points, {
-    from: 0,
-    to: Math.max(0, points.length - 1)
-  });
-}
-function TrendDelta({ values, label, className }) {
-  const delta = trendDeltaOf(values);
-  return /* @__PURE__ */ jsx(
-    "span",
-    {
-      className: classNames("mg-line-delta", className),
-      "data-state": delta.state,
-      "aria-label": `${label} ${delta.label}`,
-      children: delta.label
-    }
-  );
 }
 function railFill(value, max, scale = "linear") {
   if (!(max > 0) || !(value > 0)) return 0;
@@ -4695,7 +3765,7 @@ var numberFormat = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2
 });
 var DefaultLink2 = ({ href, children, ...rest }) => /* @__PURE__ */ jsx("a", { href, ...rest, children });
-function defaultFormat4(kind, value) {
+function defaultFormat3(kind, value) {
   if (value === null || value === void 0 || value === "") return "\u2014";
   if (kind === "number" || kind === "tint") {
     return typeof value === "number" ? numberFormat.format(value) : String(value);
@@ -5078,7 +4148,7 @@ function Cell({
   disclosure
 }) {
   const raw = column.value ? column.value(row) : void 0;
-  const text = column.format ? column.format(raw, row) : defaultFormat4(column.kind, raw);
+  const text = column.format ? column.format(raw, row) : defaultFormat3(column.kind, raw);
   const align = column.align ?? (column.kind === "number" || column.kind === "delta" || column.kind === "tint" ? "right" : void 0);
   const tint = column.kind === "tint" ? column.tint?.(row) ?? null : null;
   let body;
@@ -5299,13 +4369,6 @@ function FilterSelect({
     }
   );
 }
-
-// src/lib/csv.ts
-function buildCsvDownloadUrl(url) {
-  const parsed = new URL(url);
-  parsed.searchParams.set("format", "csv");
-  return parsed.toString();
-}
 function bestIndices(row) {
   if (!row.better) return [];
   const numeric = row.values.map(
@@ -5317,7 +4380,7 @@ function bestIndices(row) {
   const winners = numeric.flatMap((v, i) => v === best ? [i] : []);
   return winners.length === present.length ? [] : winners;
 }
-var defaultFormat5 = (value) => typeof value === "number" ? value.toLocaleString("en-US") : value;
+var defaultFormat4 = (value) => typeof value === "number" ? value.toLocaleString("en-US") : value;
 function CompareLedger({
   entities,
   groups,
@@ -5355,7 +4418,7 @@ function CompareLedger({
           /* @__PURE__ */ jsx("tr", { className: "mg-compare-group", children: /* @__PURE__ */ jsx("th", { scope: "colgroup", colSpan: entities.length + 1, children: group.label }) }),
           group.rows.map((row) => {
             const winners = highlightBest ? bestIndices(row) : [];
-            const format = row.format ?? defaultFormat5;
+            const format = row.format ?? defaultFormat4;
             return /* @__PURE__ */ jsxs("tr", { children: [
               /* @__PURE__ */ jsx("th", { scope: "row", children: row.label }),
               entities.map((entity, i) => {
@@ -5380,4 +4443,4 @@ function CompareLedger({
   );
 }
 
-export { Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActiveEntityProvider, AnalyticsPage, AnalyticsSection, AnimatedNumber, BackToTop, BrandIcon, CHART_RAMP_SIZE, COMPOSITION_SPECIMEN, CandidateChip, ChartTooltip, Chip, ClaudeIcon, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompareLedger, CompositionBreakdown, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DataTable, Definition, DefinitionList, DefinitionsProvider, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, EligibilityChip, EmptyState, EntityHero, ExternalLink, Fact, FactCell, FactSentence, FactStrip, FilterField, FilterInput, FilterSelect, GhostButton, HealthDot, HealthPill, Indicator, Kbd, KeyChip, LEADER_SPECIMEN, LINE_VIEWBOX, LeaderCards, LineWithWindow, LiveMeta, LiveTickerProvider, LoadMore, LoadingPill, MARKER_SPECIMEN, MAX_SECTIONS, MarkerRail, McpToolsList, OTHER_COLOR, OTHER_KEY, OpenAIIcon, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, Provenance, ProvenanceChip, QueryProgress, RAIL_SPECIMEN, RESIDUAL_KEY, RangeControl, RankGrid, RankedRails, Raw, RawCode, ReviewChip, RoutePending, SCOPES, ScrollShadow, SectionHead, SectionNav, SeriesPaletteRegistry, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, StackedColumns, StatusBadge, TimeAgo, Toaster, TrendDelta, Wordmark, bestIndices, buildCsvDownloadUrl, classNames, cn, collapseOther, compareValues, csvField, defaultVisibleKeys, deltaLabel, fmtYield, formatLineDate, isMissing, isScrolledPast, lineSpecimen, markAriaLabel, markerPosition, momentumAriaLabel, monthTicks, nextSort, nextTabIndex, pageCount, pageSlice, pageWindow, pickActiveSection, pickMobileMode, placePoints, prefetchBrandIcon, provenanceSentence, railFill, rangeLabel, resolveVisibleKeys, rovingTabIndex, safeExternalUrl, sectionItems, shouldBoundViewport, smoothPath, sortRows, stackedSpecimen, statusTone, toCsv, trendDeltaOf, truncateIdentifier, useActiveEntity, useActiveSection, useDefinition, useEntityMark, useIsActive, useLiveTicker, useRovingGroup, useScrolled, windowDelta, windowPoints };
+export { ActiveEntityProvider, AnalyticsPage, AnalyticsSection, BackToTop, BrandIcon, CHART_RAMP_SIZE, COMPOSITION_SPECIMEN, ChartTooltip, Chip, ClaudeIcon, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompareLedger, CompositionBreakdown, CopyButton, CopyIconToggle, CopyableCode, DataTable, Definition, DefinitionsProvider, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DiscordIcon, EmptyState, EntityHero, ExternalLink, Fact, FactCell, FactSentence, FactStrip, FilterField, FilterInput, FilterSelect, HealthDot, Kbd, LEADER_SPECIMEN, LINE_VIEWBOX, LeaderCards, LineWithWindow, LiveMeta, LiveTickerProvider, LoadMore, MARKER_SPECIMEN, MAX_SECTIONS, MarkerRail, OTHER_COLOR, OTHER_KEY, OpenAIIcon, Panel, Popover, PopoverContent, PopoverTrigger, RAIL_SPECIMEN, RESIDUAL_KEY, RangeControl, RankGrid, RankedRails, Raw, RawCode, SCOPES, SectionHead, SectionNav, SeriesPaletteRegistry, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger, Skeleton, StackedColumns, TimeAgo, Toaster, Wordmark, bestIndices, classNames, cn, collapseOther, compareValues, csvField, defaultVisibleKeys, deltaLabel, formatLineDate, isMissing, lineSpecimen, markAriaLabel, markerPosition, momentumAriaLabel, monthTicks, nextSort, nextTabIndex, pageCount, pageSlice, pageWindow, pickActiveSection, pickMobileMode, placePoints, prefetchBrandIcon, railFill, rangeLabel, resolveVisibleKeys, rovingTabIndex, safeExternalUrl, sectionItems, shouldBoundViewport, smoothPath, sortRows, stackedSpecimen, statusTone, toCsv, truncateIdentifier, useActiveEntity, useActiveSection, useDefinition, useEntityMark, useIsActive, useRovingGroup, windowDelta, windowPoints };
