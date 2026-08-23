@@ -47,6 +47,16 @@ export interface LineWithWindowProps {
   source?: string;
   /** 120px plot, no summary, no months row -- the in-strip variant. */
   compact?: boolean;
+  /**
+   * A `t` to rule vertically, for a window drawn AROUND one subject (#11621):
+   * /blocks/$ref plots the block time either side of the block it is about,
+   * and without the rule the reader cannot tell which of a hundred points is
+   * the one they navigated to. Distinct from the hover cursor, which the
+   * reader controls and which supersedes it while it is up.
+   */
+  marker?: number;
+  /** Accessible name for the marker rule; required whenever `marker` is set. */
+  markerLabel?: string;
   className?: string;
 }
 
@@ -77,6 +87,8 @@ export function LineWithWindow({
   keyOf,
   source = "line",
   compact = false,
+  marker,
+  markerLabel,
   className,
 }: LineWithWindowProps) {
   const placed = useMemo(() => placePoints(points), [points]);
@@ -90,6 +102,8 @@ export function LineWithWindow({
     ? placed.find((p) => keyFor(p) === active.key)
     : undefined;
 
+  const markerPoint =
+    typeof marker === "number" ? placed.find((p) => p.t === marker) : undefined;
   const first = placed[0];
   const wStart = inside[0];
   const wEnd = inside[inside.length - 1];
@@ -143,6 +157,15 @@ export function LineWithWindow({
         >
           <path className="mg-line-muted" d={smoothPath(placed)} />
           <path className="mg-line-active" d={smoothPath(inside)} />
+          {markerPoint ? (
+            <line
+              className="mg-line-subject"
+              x1={markerPoint.x}
+              x2={markerPoint.x}
+              y1={0}
+              y2={LINE_VIEWBOX.height}
+            />
+          ) : null}
           {activePoint ? (
             <line
               className="mg-line-cursor"
@@ -175,6 +198,19 @@ export function LineWithWindow({
               {
                 "--mg-line-x": pct(activePoint.x, LINE_VIEWBOX.width),
                 "--mg-line-y": pct(activePoint.y, LINE_VIEWBOX.height),
+              } as CSSProperties
+            }
+          />
+        ) : null}
+        {markerPoint && markerLabel ? (
+          <i
+            className="mg-line-marker mg-line-marker-subject"
+            aria-label={markerLabel}
+            role="img"
+            style={
+              {
+                "--mg-line-x": pct(markerPoint.x, LINE_VIEWBOX.width),
+                "--mg-line-y": pct(markerPoint.y, LINE_VIEWBOX.height),
               } as CSSProperties
             }
           />
