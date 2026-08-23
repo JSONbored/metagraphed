@@ -1,12 +1,20 @@
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { ExternalLink } from "@jsonbored/ui-kit";
+import {
+  DataTable,
+  ExternalLink,
+  LiveTickerProvider,
+  LoadMore,
+  TimeAgo,
+  type DataTableColumn,
+} from "@jsonbored/ui-kit";
 import { API_BASE, PAID_EXPORT_ENDPOINTS } from "@/lib/metagraphed/config";
 import { ResetFiltersButton, SearchInput } from "@/components/metagraphed/table-controls";
-import { TimeAgo, ListShell, LoadMore, LiveTickerProvider } from "@jsonbored/ui-kit";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { StreamStatusChip } from "@/components/metagraphed/stream-status-chip";
 import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -15,8 +23,6 @@ import { summarizeChainEvent, isNoiseEvent } from "@/lib/metagraphed/chain-event
 import { summarizeEvent } from "@/lib/metagraphed/chain-summaries";
 import type { ChainEvent } from "@/lib/metagraphed/types";
 import { chainStreamEventMatchesFilters, useChainStream } from "@/hooks/use-chain-stream";
-
-const TH = "px-4 py-2.5";
 
 /** Subnet chip for a decoded `netuid` arg — links to that subnet. */
 function SubnetChip({ netuid }: { netuid: number }) {
@@ -104,6 +110,75 @@ export function ChainEventCard({ event }: { event: ChainEvent }) {
   );
 }
 
+/** One decoded event row: the raw event plus the args this feed reads out of it. */
+interface DecodedEventRow {
+  key: string;
+  event: ChainEvent;
+  sentence: string | null;
+  amountTao: number | null;
+  from: string | null;
+  to: string | null;
+  netuid: number | null;
+}
+
+// #8253: decoded columns replace the old three-column
+// `Pallet.Method · block · age` row, which answered none of who / what /
+// how-much / where. The args have carried this all along -- see
+// lib/metagraphed/chain-event-summary.ts.
+const COLUMNS: Array<DataTableColumn<DecodedEventRow>> = [
+  {
+    key: "event",
+    label: "Event",
+    value: (r) => r.sentence ?? extrinsicCall(r.event.pallet, r.event.method),
+  },
+  {
+    key: "amount",
+    label: "Amount",
+    kind: "number",
+    sortable: true,
+    value: (r) => r.amountTao,
+    format: (v) => formatTao(typeof v === "number" ? v : null),
+  },
+  {
+    key: "from",
+    label: "From",
+    value: (r) => r.from,
+    render: (r) => <AddressDisplay ss58={r.from} compact fallback="—" />,
+  },
+  {
+    key: "to",
+    label: "To",
+    value: (r) => r.to,
+    render: (r) => <AddressDisplay ss58={r.to} compact fallback="—" />,
+  },
+  {
+    key: "subnet",
+    label: "Subnet",
+    value: (r) => (r.netuid == null ? null : `SN${r.netuid}`),
+    render: (r) => (r.netuid != null ? <SubnetChip netuid={r.netuid} /> : "—"),
+  },
+  {
+    key: "block",
+    label: "Block",
+    kind: "number",
+    sortable: true,
+    value: (r) => r.event.block_number,
+    render: (r) =>
+      r.event.block_number != null ? (
+        <Link
+          to="/blocks/$ref"
+          params={{ ref: String(r.event.block_number) }}
+          className="text-ink-strong hover:text-accent hover:underline"
+        >
+          #{formatNumber(r.event.block_number)}
+        </Link>
+      ) : (
+        "—"
+      ),
+  },
+  { key: "observed", label: "Observed", kind: "time", value: (r) => r.event.observed_at },
+];
+
 interface Props {
   pallet: string;
   method: string;
@@ -155,73 +230,40 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
     },
   });
 
-  const pages = data?.pages ?? [];
+  const pages = useMemo(() => data?.pages ?? [], [data?.pages]);
   const lastPage = pages[pages.length - 1];
   const cursorInvalid = !!(lastPage as { cursorInvalid?: boolean } | undefined)?.cursorInvalid;
-  const allEvents = pages.flatMap((p) => (p.data ?? []) as ChainEvent[]);
+  const allEvents = useMemo(() => pages.flatMap((p) => (p.data ?? []) as ChainEvent[]), [pages]);
   // #8253: noise filtering is CLIENT-side because the API has no "exclude
   // these pallet.methods" param -- it only filters TO a pallet/method, not
   // away from several. That means a page can arrive mostly-hidden; the
   // hidden-count line below says so explicitly rather than leaving a reader
   // wondering why 50 fetched rows rendered as 16.
-  const events = showNoise ? allEvents : allEvents.filter((e) => !isNoiseEvent(e.pallet, e.method));
+  const events = useMemo(
+    () => (showNoise ? allEvents : allEvents.filter((e) => !isNoiseEvent(e.pallet, e.method))),
+    [allEvents, showNoise],
+  );
+  const rows = useMemo<DecodedEventRow[]>(
+    () =>
+      events.map((event) => {
+        const s = summarizeChainEvent(event.args);
+        return {
+          key: `${event.block_number}-${event.event_index}`,
+          event,
+          // #8371: leads with the human-readable sentence when a template
+          // covers this pallet.method; falls back to the raw module.function
+          // otherwise -- never a guessed sentence.
+          sentence: summarizeEvent(event.pallet, event.method, event.args),
+          amountTao: s.amountTao ?? null,
+          from: s.from ?? null,
+          to: s.to ?? null,
+          netuid: s.netuid ?? null,
+        };
+      }),
+    [events],
+  );
   const hiddenCount = allEvents.length - events.length;
   const filtersActive = !!(pallet.trim() || method.trim());
-
-  const filters = (
-    <>
-      <SearchInput
-        value={pallet}
-        onChange={(v) => onFilter({ pallet: v, method: v.trim() ? method : "" })}
-        placeholder="Filter by pallet"
-        // SearchInput's own base hardcodes `min-w-[180px]` unconditionally, which
-        // wins the same-property (min-width) cascade over a plain `min-w-[140px]`
-        // override regardless of prop order (classNames() is a plain string-join,
-        // not tailwind-merge-aware -- see #6904); the trailing `!` forces this
-        // narrower floor to actually apply for these compact pallet/method filters.
-        className="min-w-[140px]! flex-none text-11"
-      />
-      <SearchInput
-        value={method}
-        onChange={(v) => onFilter({ method: v })}
-        placeholder={pallet.trim() ? "Filter by method" : "Method (requires pallet)"}
-        className="min-w-[140px]! flex-none text-11"
-      />
-      {/* #6387: a filtered /events?pallet=X or /explorer?pallet=X link is
-          URL-persisted and otherwise stuck until manually cleared, unlike every
-          other filterable feed (blocks/extrinsics/providers/surfaces/subnets),
-          which all render a ResetFiltersButton. Clearing pallet+method via the
-          existing onFilter also resets the cursor at both call sites. */}
-      <ResetFiltersButton
-        active={filtersActive}
-        onReset={() => onFilter({ pallet: "", method: "" })}
-      />
-      {/* #8253: accent lit only while the toggle is NARROWING the feed --
-          the same convention /subnets' own exclude-toggle uses, so the
-          default (noise hidden) reads as the quiet normal state. */}
-      <button
-        type="button"
-        onClick={() => onFilter({ noise: showNoise ? false : true })}
-        aria-pressed={!showNoise}
-        title={
-          showNoise
-            ? "Showing every event, including ExtrinsicSuccess / ExtrinsicFailed / TransactionFeePaid"
-            : "System plumbing events (ExtrinsicSuccess / ExtrinsicFailed / TransactionFeePaid) are hidden — click to show them"
-        }
-        className={classNames(
-          "text-13 inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
-          !showNoise
-            ? "border-accent/40 bg-accent/10 text-accent"
-            : "border-border bg-card text-ink-muted hover:text-ink-strong",
-        )}
-      >
-        <span className={classNames("size-1.5 rounded-full mg-dot", !showNoise && "bg-accent")} />
-        Hide system noise
-        {hiddenCount > 0 ? <span className="text-ink-muted">· {hiddenCount}</span> : null}
-      </button>
-      <StreamStatusChip status={streamStatus} testId="chain-events-stream-status" />
-    </>
-  );
 
   const emptyNode = (
     <EmptyState
@@ -235,9 +277,9 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
             ? "No chain events match these filters."
             : "No chain events indexed yet — the all-events backfill fills this feed."
       }
-      // #6340: a genuinely-empty feed offers the same "open the API" action every
-      // other empty list page does; the filtered-empty case keeps no action,
-      // matching the filter-empty convention elsewhere. #8253: the
+      // #6340: a genuinely-empty feed offers the same "open the API" action
+      // every other empty list page does; the filtered-empty case keeps no
+      // action, matching the filter-empty convention elsewhere. #8253: the
       // all-hidden-by-the-noise-toggle case is also "filtered", so it gets no
       // API link either -- the toggle beside the feed is the fix there.
       action={
@@ -251,71 +293,6 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
       }
     />
   );
-
-  // #8253: decoded columns replace the old three-column
-  // `Pallet.Method · block · age` row, which answered none of who / what /
-  // how-much / where. The args have carried this all along -- see
-  // lib/metagraphed/chain-event-summary.ts.
-  const table = (
-    <table className="w-full text-left text-13">
-      <thead className="bg-surface">
-        <tr>
-          <th className={TH}>Event</th>
-          <th className={`${TH} text-right`}>Amount</th>
-          <th className={TH}>From</th>
-          <th className={TH}>To</th>
-          <th className={TH}>Subnet</th>
-          <th className={TH}>Block</th>
-          <th className={`${TH} text-right`}>Observed</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-border">
-        {events.map((event) => {
-          const s = summarizeChainEvent(event.args);
-          const sentence = summarizeEvent(event.pallet, event.method, event.args);
-          return (
-            <tr key={`${event.block_number}-${event.event_index}`} className="hover:bg-surface">
-              <td className="px-4 py-2.5 text-11 text-ink-strong">
-                {sentence ?? extrinsicCall(event.pallet, event.method)}
-              </td>
-              <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink">
-                {s.amountTao != null ? formatTao(s.amountTao) : "—"}
-              </td>
-              <td className="px-4 py-2.5 text-11">
-                <AddressDisplay ss58={s.from} compact fallback="—" />
-              </td>
-              <td className="px-4 py-2.5 text-11">
-                <AddressDisplay ss58={s.to} compact fallback="—" />
-              </td>
-              <td className="px-4 py-2.5 text-11">
-                {s.netuid != null ? <SubnetChip netuid={s.netuid} /> : "—"}
-              </td>
-              <td className="px-4 py-2.5 text-11">
-                {event.block_number != null ? (
-                  <Link
-                    to="/blocks/$ref"
-                    params={{ ref: String(event.block_number) }}
-                    className="text-ink-strong hover:text-accent hover:underline"
-                  >
-                    #{formatNumber(event.block_number)}
-                  </Link>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="px-4 py-2.5 text-right text-11 text-ink-muted">
-                <TimeAgo at={event.observed_at} />
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-
-  const cards = events.map((event) => (
-    <ChainEventCard key={`${event.block_number}-${event.event_index}-card`} event={event} />
-  ));
 
   if (isPending) return <Skeleton className="h-56 w-full" />;
   if (error && !data)
@@ -335,47 +312,103 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
     // sub-minute-old rows simultaneously right after a busy block, which is
     // exactly the case a per-row timer adds up for.
     <LiveTickerProvider>
-      <ListShell
-        filters={filters}
-        table={table}
-        cards={cards}
-        isEmpty={events.length === 0 && !isFetching}
-        empty={emptyNode}
-        isStale={isFetching && !isPending && !isFetchingNextPage}
-        footer={
-          events.length > 0 ? (
+      <div className="space-y-3">
+        <DataTable
+          rows={rows}
+          columns={COLUMNS}
+          rowKey={(r) => r.key}
+          caption="Chain events"
+          link={RouterLink}
+          storageKey="chain-events"
+          // The feed is cursor-paginated from the server (LoadMore below); a
+          // page-numbered pager over an incrementally-grown list would number
+          // pages that do not exist yet.
+          paginate={false}
+          search={{
+            value: pallet,
+            onChange: (v) => onFilter({ pallet: v, method: v.trim() ? method : "" }),
+            placeholder: "Filter by pallet",
+          }}
+          filters={
             <>
-              <LoadMore
-                hasMore={!!hasNextPage}
-                isLoading={isFetchingNextPage}
-                onLoadMore={() => {
-                  void fetchNextPage();
-                }}
-                shown={events.length}
-                error={isFetchNextPageError ? error : null}
-                cursorInvalid={cursorInvalid}
+              <SearchInput
+                value={method}
+                onChange={(v) => onFilter({ method: v })}
+                placeholder={pallet.trim() ? "Filter by method" : "Method (requires pallet)"}
               />
-              {/* Paging this feed 100 rows at a time is the free path and
-                  stays the free path. A reader who has just clicked "load
-                  more" is the one person who benefits from knowing a
-                  single-call export exists, so it is named HERE rather than
-                  on a pricing page nobody visits. Rendered as a link, never
-                  fetched: this route answers 402 without a payment. */}
-              {PAID_EXPORT_ENDPOINTS.map((endpoint) => (
-                <p key={endpoint.path} className="text-11 text-ink-muted mt-3">
-                  <ExternalLink
-                    href={`${API_BASE}${endpoint.path}`}
-                    className="hover:text-ink-strong"
-                  >
-                    {endpoint.label}
-                  </ExternalLink>{" "}
-                  — {endpoint.note}
-                </p>
-              ))}
+              {/* #6387: a filtered /events?pallet=X or /explorer?pallet=X link is
+                  URL-persisted and otherwise stuck until manually cleared, unlike
+                  every other filterable feed (blocks/extrinsics/providers/surfaces/
+                  subnets), which all render a ResetFiltersButton. Clearing
+                  pallet+method via the existing onFilter also resets the cursor at
+                  both call sites. */}
+              <ResetFiltersButton
+                active={filtersActive}
+                onReset={() => onFilter({ pallet: "", method: "" })}
+              />
+              {/* #8253: accent lit only while the toggle is NARROWING the feed --
+                  the same convention /subnets' own exclude-toggle uses, so the
+                  default (noise hidden) reads as the quiet normal state. */}
+              <button
+                type="button"
+                onClick={() => onFilter({ noise: showNoise ? false : true })}
+                aria-pressed={!showNoise}
+                title={
+                  showNoise
+                    ? "Showing every event, including ExtrinsicSuccess / ExtrinsicFailed / TransactionFeePaid"
+                    : "System plumbing events (ExtrinsicSuccess / ExtrinsicFailed / TransactionFeePaid) are hidden — click to show them"
+                }
+                className={classNames(
+                  "text-13 inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
+                  !showNoise
+                    ? "border-accent/40 bg-accent/10 text-accent"
+                    : "border-border bg-card text-ink-muted hover:text-ink-strong",
+                )}
+              >
+                <span
+                  className={classNames("size-1.5 rounded-full mg-dot", !showNoise && "bg-accent")}
+                />
+                Hide system noise
+                {hiddenCount > 0 ? <span className="text-ink-muted">· {hiddenCount}</span> : null}
+              </button>
+              <StreamStatusChip status={streamStatus} testId="chain-events-stream-status" />
             </>
-          ) : undefined
-        }
-      />
+          }
+          loading={isFetching && rows.length === 0}
+          empty={emptyNode}
+        />
+        {rows.length > 0 ? (
+          <>
+            <LoadMore
+              hasMore={!!hasNextPage}
+              isLoading={isFetchingNextPage}
+              onLoadMore={() => {
+                void fetchNextPage();
+              }}
+              shown={rows.length}
+              error={isFetchNextPageError ? error : null}
+              cursorInvalid={cursorInvalid}
+            />
+            {/* Paging this feed 100 rows at a time is the free path and stays
+                the free path. A reader who has just clicked "load more" is the
+                one person who benefits from knowing a single-call export
+                exists, so it is named HERE rather than on a pricing page nobody
+                visits. Rendered as a link, never fetched: this route answers 402
+                without a payment. */}
+            {PAID_EXPORT_ENDPOINTS.map((endpoint) => (
+              <p key={endpoint.path} className="text-11 text-ink-muted">
+                <ExternalLink
+                  href={`${API_BASE}${endpoint.path}`}
+                  className="hover:text-ink-strong"
+                >
+                  {endpoint.label}
+                </ExternalLink>{" "}
+                — {endpoint.note}
+              </p>
+            ))}
+          </>
+        ) : null}
+      </div>
     </LiveTickerProvider>
   );
 }

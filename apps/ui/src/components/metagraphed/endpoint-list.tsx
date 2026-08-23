@@ -4,17 +4,16 @@ import { useMemo } from "react";
 import {
   HealthDot,
   EligibilityChip,
-  TimeAgo,
   BrandIcon,
+  DataTable,
   safeExternalUrl,
   CopyIconToggle,
   ExternalLink,
-  Definition,
   TrendDelta,
+  type DataTableColumn,
 } from "@jsonbored/ui-kit";
 import { useCopy } from "@/hooks/use-copy";
-import { Panel } from "@/components/metagraphed/primitives";
-import { classNames } from "@/lib/metagraphed/format";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import {
   endpointCategory,
   endpointEligibility,
@@ -25,9 +24,10 @@ import {
 import type { Endpoint, RpcPool } from "@/lib/metagraphed/types";
 
 /**
- * Endpoint list — kind-grouped table on desktop, stacked cards on mobile.
- * Columns: Resource (path + provider) · Auth/Region · Eligibility · Health
- * (sparkline + dot) · Probed · row actions (copy URL, open).
+ * Endpoint list — one table per canonical kind, so the grouping the reader
+ * needs is a heading rather than a spanning row buried inside one long body.
+ * Columns: Resource (path + region) · Provider · Eligibility · Health
+ * (sparkline + dot) · Latency · Probed · row actions (copy URL, open).
  */
 export function EndpointList({
   rows,
@@ -59,158 +59,54 @@ export function EndpointList({
   // a per-row array scan).
   const poolsById = useMemo(() => indexPoolsById(pools), [pools]);
 
-  if (rows.length === 0) return null;
-
-  return (
-    <>
-      {/* Desktop */}
-      <Panel flush className="hidden md:block overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-13">
-            <thead className="bg-surface text-10 text-ink-muted">
-              <tr>
-                {showNetuid ? <th className="px-4 py-2.5 text-left w-16">SN</th> : null}
-                <th className="px-4 py-2.5 text-left">Resource</th>
-                {showProvider ? <th className="px-4 py-2.5 text-left w-40">Provider</th> : null}
-                <th className="px-4 py-2.5 text-left w-28">
-                  <HeaderHint
-                    label="Eligibility"
-                    hint="Pool / proxy / archive membership. Hover any chip for the rule."
-                  />
-                </th>
-                <th className="px-4 py-2.5 text-left w-40">
-                  <HeaderHint
-                    label="Health"
-                    hint="Probe-derived only. The delta is the change across the last 12 probes when available."
-                  />
-                </th>
-                <th className="px-4 py-2.5 text-right w-24">Latency</th>
-                <th className="px-4 py-2.5 text-right w-28">Probed</th>
-                <th className="px-4 py-2.5 text-right w-20" aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((g, gi) => (
-                <GroupBlock
-                  key={g.category}
-                  category={g.category}
-                  items={g.items}
-                  poolsById={poolsById}
-                  showNetuid={showNetuid}
-                  showProvider={showProvider}
-                  isFirst={gi === 0}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
-
-      {/* Mobile */}
-      <div className="md:hidden space-y-4">
-        {groups.map((g) => (
-          <div key={g.category}>
-            <div className="px-1 mb-1.5 text-13 text-ink-muted flex items-center justify-between">
-              <span>{CATEGORY_LABEL[g.category]}</span>
-              <span className="tabular-nums">{g.items.length}</span>
-            </div>
-            <ul className="space-y-2">
-              {g.items.map((e) => (
-                <MobileCard
-                  key={e.id}
-                  e={e}
-                  poolsById={poolsById}
-                  showNetuid={showNetuid}
-                  showProvider={showProvider}
-                />
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
-function GroupBlock({
-  category,
-  items,
-  poolsById,
-  showNetuid,
-  showProvider,
-  isFirst,
-}: {
-  category: EndpointCategory;
-  items: Endpoint[];
-  poolsById: ReadonlyMap<string, RpcPool>;
-  showNetuid: boolean;
-  showProvider: boolean;
-  isFirst: boolean;
-}) {
-  const colSpan = 4 + (showNetuid ? 1 : 0) + (showProvider ? 1 : 0) + 2;
-  return (
-    <>
-      <tr className={classNames("bg-surface", !isFirst && "border-t border-border")}>
-        <td colSpan={colSpan} className="px-4 py-1.5 text-10 text-ink-muted">
-          <span className="text-ink-strong">{CATEGORY_LABEL[category]}</span>
-          <span className="ml-2 tabular-nums">· {items.length}</span>
-        </td>
-      </tr>
-      {items.map((e) => (
-        <Row
-          key={e.id}
-          e={e}
-          poolsById={poolsById}
-          showNetuid={showNetuid}
-          showProvider={showProvider}
-        />
-      ))}
-    </>
-  );
-}
-
-function Row({
-  e,
-  poolsById,
-  showNetuid,
-  showProvider,
-}: {
-  e: Endpoint;
-  poolsById: ReadonlyMap<string, RpcPool>;
-  showNetuid: boolean;
-  showProvider: boolean;
-}) {
-  const { copied, copy } = useCopy({ label: "endpoint url" });
-  const series = healthSeries(e);
-  const safeUrl = safeExternalUrl(e.url ?? undefined);
-  return (
-    <tr className="mg-row-hover border-t border-border/60">
-      {showNetuid ? (
-        <td className="px-4 py-2.5 text-11 text-ink-muted tabular-nums">
-          {e.netuid != null ? (
+  const columns = useMemo<Array<DataTableColumn<Endpoint>>>(() => {
+    const list: Array<DataTableColumn<Endpoint>> = [];
+    if (showNetuid) {
+      list.push({
+        key: "netuid",
+        label: "SN",
+        kind: "number",
+        align: "left",
+        sortable: true,
+        value: (e) => e.netuid ?? null,
+        render: (e) =>
+          e.netuid != null ? (
             <Link
               to="/subnets/$netuid"
               params={{ netuid: e.netuid }}
-              className="hover:text-ink-strong"
+              className="tabular-nums hover:text-ink-strong"
             >
               {String(e.netuid).padStart(3, "0")}
             </Link>
           ) : (
             "—"
-          )}
-        </td>
-      ) : null}
-      <td className="px-4 py-2.5">
-        <div className="text-11 text-ink truncate max-w-[42ch]">{e.url ?? "—"}</div>
-        {e.region ? <div className="text-10 text-ink-muted mt-0.5">{e.region}</div> : null}
-      </td>
-      {showProvider ? (
-        <td className="px-4 py-2.5 text-13">
-          {e.provider ? (
+          ),
+      });
+    }
+    list.push({
+      key: "resource",
+      label: "Resource",
+      sortable: true,
+      value: (e) => e.url ?? null,
+      render: (e) => (
+        <span className="block min-w-0">
+          <span className="block truncate text-ink">{e.url ?? "—"}</span>
+          {e.region ? <span className="block text-10 text-ink-muted">{e.region}</span> : null}
+        </span>
+      ),
+    });
+    if (showProvider) {
+      list.push({
+        key: "provider",
+        label: "Provider",
+        sortable: true,
+        value: (e) => e.provider ?? null,
+        render: (e) =>
+          e.provider ? (
             <Link
               to="/providers/$slug"
               params={{ slug: e.provider_slug ?? e.provider }}
-              className="inline-flex items-center gap-1.5 hover:text-ink-strong"
+              className="inline-flex min-w-0 items-center gap-1.5 hover:text-ink-strong"
             >
               <BrandIcon
                 url={e.url}
@@ -223,158 +119,113 @@ function Row({
             </Link>
           ) : (
             <span className="text-ink-muted">—</span>
-          )}
-        </td>
-      ) : null}
-      <td className="px-4 py-2.5">
-        <EligibilityChip eligibility={endpointEligibility(e, poolsById)} size="xs" />
-      </td>
-      <td className="px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <HealthDot state={e.health} />
-          {series.length > 1 ? (
-            <TrendDelta values={series} label="Recent probe latency" />
-          ) : (
-            <span className="text-10 text-ink-muted">—</span>
-          )}
-        </div>
-      </td>
-      <td className="px-4 py-2.5 text-right text-11 text-ink-muted tabular-nums">
-        {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
-      </td>
-      <td className="px-4 py-2.5 text-right text-11 text-ink-muted">
-        <TimeAgo at={e.last_probed_at} />
-      </td>
-      <td className="px-4 py-2.5 text-right">
-        <div className="inline-flex items-center gap-0.5">
-          {e.url ? (
-            <>
-              <button
-                type="button"
-                onClick={() => copy(e.url!)}
-                aria-label="Copy URL"
-                className="inline-flex size-7 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-              >
-                <CopyIconToggle copied={copied} size={3.5} />
-              </button>
-              {safeUrl ? (
-                <ExternalLink
-                  bare
-                  href={safeUrl}
-                  ariaLabel="Open URL"
-                  className="inline-flex size-7 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-                >
-                  <ExternalLinkIcon className="size-3.5" />
-                </ExternalLink>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function MobileCard({
-  e,
-  poolsById,
-  showNetuid,
-  showProvider,
-}: {
-  e: Endpoint;
-  poolsById: ReadonlyMap<string, RpcPool>;
-  showNetuid: boolean;
-  showProvider: boolean;
-}) {
-  const { copied, copy } = useCopy({ label: "endpoint url" });
-  const safeUrl = safeExternalUrl(e.url ?? undefined);
-  return (
-    <li className="rounded border border-border bg-card p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-13 text-ink-muted">{e.kind ?? "endpoint"}</span>
-            {showNetuid && e.netuid != null ? (
-              <Link
-                to="/subnets/$netuid"
-                params={{ netuid: e.netuid }}
-                className="text-10 text-ink-muted hover:text-ink-strong"
-              >
-                sn{String(e.netuid).padStart(3, "0")}
-              </Link>
-            ) : null}
-            <EligibilityChip eligibility={endpointEligibility(e, poolsById)} size="xs" />
-          </div>
-          <div className="text-11 text-ink break-all">{e.url ?? "—"}</div>
-        </div>
-        <HealthDot state={e.health} />
-      </div>
-      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-13">
-        {showProvider ? (
-          <>
-            <dt className="text-13 text-ink-muted">Provider</dt>
-            <dd className="text-right">
-              {e.provider ? (
-                <Link
-                  to="/providers/$slug"
-                  params={{ slug: e.provider_slug ?? e.provider }}
-                  className="inline-flex items-center gap-1.5 hover:text-ink-strong"
-                >
-                  <BrandIcon
-                    url={e.url}
-                    providerSlug={e.provider_slug ?? e.provider}
-                    name={e.provider}
-                    size={14}
-                    className="shrink-0"
-                  />
-                  {e.provider}
-                </Link>
+          ),
+      });
+    }
+    list.push(
+      {
+        key: "eligibility",
+        label: "Eligibility",
+        value: (e) => endpointEligibility(e, poolsById),
+        render: (e) => (
+          <EligibilityChip eligibility={endpointEligibility(e, poolsById)} size="xs" />
+        ),
+      },
+      {
+        key: "health",
+        label: "Health",
+        definition: "Health",
+        sortable: true,
+        value: (e) => e.health ?? null,
+        render: (e) => {
+          const series = healthSeries(e);
+          return (
+            <span className="inline-flex items-center gap-2">
+              <HealthDot state={e.health} />
+              {series.length > 1 ? (
+                <TrendDelta values={series} label="Recent probe latency" />
               ) : (
-                <span className="text-ink-muted">—</span>
+                <span className="text-10 text-ink-muted">—</span>
               )}
-            </dd>
-          </>
-        ) : null}
-        <dt className="text-13 text-ink-muted">Latency</dt>
-        <dd className="text-right font-mono text-ink tabular-nums">
-          {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
-        </dd>
-        <dt className="text-13 text-ink-muted">Probed</dt>
-        <dd className="text-right font-mono text-ink-muted">
-          <TimeAgo at={e.last_probed_at} />
-        </dd>
-      </dl>
-      {e.url ? (
-        <div className="mt-2 flex items-center justify-end gap-1">
-          <button
-            type="button"
-            onClick={() => copy(e.url!)}
-            className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-accent/40"
-          >
-            <CopyIconToggle copied={copied} /> copy
-          </button>
-          {safeUrl ? (
-            <ExternalLink
-              href={safeUrl}
-              bare
-              className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 text-13 text-ink-muted hover:text-ink-strong hover:border-accent/40"
-            >
-              open <ExternalLinkIcon className="size-3" />
-            </ExternalLink>
-          ) : null}
-        </div>
-      ) : null}
-    </li>
+            </span>
+          );
+        },
+      },
+      {
+        key: "latency",
+        label: "Latency",
+        kind: "number",
+        sortable: true,
+        value: (e) => e.latency_ms ?? null,
+        format: (v) => (typeof v === "number" ? `${v}ms` : "—"),
+      },
+      {
+        key: "probed",
+        label: "Probed",
+        kind: "time",
+        sortable: true,
+        value: (e) => e.last_probed_at,
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        align: "right",
+        value: () => null,
+        render: (e) => <RowActions endpoint={e} />,
+      },
+    );
+    return list;
+  }, [poolsById, showNetuid, showProvider]);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="space-y-6">
+      {groups.map((g) => (
+        <DataTable
+          key={g.category}
+          rows={g.items}
+          columns={columns}
+          rowKey={(e) => e.id}
+          caption={CATEGORY_LABEL[g.category]}
+          link={RouterLink}
+          source={`endpoints-${g.category}`}
+          // Eight columns, two of them controls: a labelled card is the only
+          // shape below 640px that keeps the copy/open actions reachable.
+          mobile="cards"
+        />
+      ))}
+    </div>
   );
 }
 
-function HeaderHint({ label, hint }: { label: string; hint: string }) {
+/** Copy the URL, or open it — the two things a reader does with an endpoint. */
+function RowActions({ endpoint }: { endpoint: Endpoint }) {
+  const { copied, copy } = useCopy({ label: "endpoint url" });
+  const url = endpoint.url;
+  const safeUrl = safeExternalUrl(url ?? undefined);
+  if (!url) return null;
   return (
-    <Definition term={label} sentence={hint}>
-      <span className="inline-flex items-center gap-1 rounded underline-offset-2 decoration-dotted decoration-ink-subtle hover:decoration-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        {label}
-      </span>
-    </Definition>
+    <span className="inline-flex items-center gap-0.5">
+      <button
+        type="button"
+        onClick={() => copy(url)}
+        aria-label="Copy URL"
+        className="inline-flex size-7 items-center justify-center rounded text-ink-muted transition-colors hover:bg-surface hover:text-ink-strong"
+      >
+        <CopyIconToggle copied={copied} size={3.5} />
+      </button>
+      {safeUrl ? (
+        <ExternalLink
+          bare
+          href={safeUrl}
+          ariaLabel="Open URL"
+          className="inline-flex size-7 items-center justify-center rounded text-ink-muted transition-colors hover:bg-surface hover:text-ink-strong"
+        >
+          <ExternalLinkIcon className="size-3.5" />
+        </ExternalLink>
+      ) : null}
+    </span>
   );
 }
 

@@ -1,11 +1,12 @@
-import { FactStrip, FactCell } from "@jsonbored/ui-kit";
+import { FactStrip, FactCell, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
 import { useQuery } from "@tanstack/react-query";
 import { Database } from "lucide-react";
 import { subnetHoldersQuery } from "@/lib/metagraphed/queries";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { formatNumber } from "@/lib/metagraphed/format";
+import type { SubnetHolderEntry } from "@/lib/metagraphed/types";
 
 /**
  * Alpha, already in WHOLE UNITS.
@@ -37,6 +38,50 @@ function pctStr(share: number | null): string {
   if (pct >= 1) return `${pct.toFixed(2)}%`;
   return `${pct.toFixed(3)}%`;
 }
+
+/** One holder, carrying the rank its position in the ranked list gives it. */
+type RankedHolder = SubnetHolderEntry & { rank: number };
+
+const COLUMNS: Array<DataTableColumn<RankedHolder>> = [
+  // Rank, because this is a leaderboard -- the order carries meaning and a
+  // reader should not have to count rows.
+  { key: "rank", label: "#", kind: "number", value: (entry) => entry.rank },
+  {
+    key: "coldkey",
+    label: "Coldkey",
+    value: (entry) => entry.coldkey,
+    render: (entry) => <AddressDisplay ss58={entry.coldkey} fallback="—" compact />,
+  },
+  {
+    key: "alpha",
+    label: "Alpha",
+    kind: "number",
+    sortable: true,
+    value: (entry) => entry.alpha,
+    format: (v) => (typeof v === "number" ? fmtAlpha(v) : "—"),
+  },
+  // Concentration is the question this section exists to answer, and a column
+  // of percentages does not answer it at a glance -- `tint` paints the cell
+  // in proportion to the share, so the shape of the distribution is legible
+  // without a second encoding of its own.
+  {
+    key: "share",
+    label: "Share",
+    kind: "tint",
+    sortable: true,
+    value: (entry) => entry.share_of_total,
+    tint: (entry) => entry.share_of_total,
+    format: (v) => pctStr(typeof v === "number" ? v : null),
+  },
+  {
+    key: "hotkeys",
+    label: "Hotkeys",
+    kind: "number",
+    sortable: true,
+    value: (entry) => entry.hotkey_count,
+    format: (v) => formatNumber(typeof v === "number" ? v : null),
+  },
+];
 
 /**
  * Why the ranking could not be produced, in the caller's words.
@@ -125,6 +170,7 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
     );
   }
 
+  const ranked: RankedHolder[] = holders.map((entry, i) => ({ ...entry, rank: i + 1 }));
   const conc = data?.concentration;
   const shown =
     data?.holder_count != null ? Math.min(holders.length, data.holder_count) : holders.length;
@@ -132,7 +178,7 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-3">
       {/* LABELLED TILES, NOT A RUN-ON STRIP.
-      
+
           This was a dot-separated line -- `520 holders · 152.3k α held · top 5
           shown` -- with the three concentration ranks tacked underneath as
           `TOP 5 31.4% 10 44.1% 20 58.7%`. Every number was correct and none of
@@ -140,7 +186,7 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
           magnitude, a pagination note) ran together in one sentence, and the
           rank row read as unpaired digits because the label sat outside the
           pairs it was labelling.
-          
+
           Each figure now carries its own label, and only the three that answer
           a question a reader actually has get tile weight. The other two --
           how many rows are on screen, and how fresh the pool pass is -- are
@@ -173,119 +219,14 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
           className="col-span-2 md:col-span-1"
         />
       </FactStrip>
-      <Panel flush className="overflow-hidden">
-        {/* MOBILE IS A RANKED LIST, NOT A TABLE OF LABELLED FIELDS.
-            
-            The first attempt rendered the four columns as `Alpha 41.2k α Share
-            27.1% Hotkeys 3` under each address -- readable, and wrong for what
-            this is. Three failures, all of them about a leaderboard not looking
-            like one: no rank at all, the address (the least interesting field)
-            set as the most prominent thing, and the ranking key buried in a
-            run-on label row at the same weight as the hotkey count.
-            
-            So: rank leads, alpha is the dominant figure, and the share becomes a
-            BAR -- concentration is the actual question this section answers, and
-            a bar answers it at a glance where a column of percentages does not.
-            The repeated field labels are gone; position and the bar carry the
-            meaning instead, which is also what buys back the width that pushed
-            a column off-screen in the first place. */}
-        <ul className="divide-y divide-border/60 md:hidden">
-          {holders.map((entry, i) => (
-            <li key={entry.coldkey} className="space-y-1.5 px-4 py-3">
-              <div className="flex items-baseline gap-2">
-                <span className="w-6 shrink-0 font-mono text-13 tabular-nums text-ink-muted">
-                  {i + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <AddressDisplay ss58={entry.coldkey} fallback="—" compact />
-                </div>
-                <span className="shrink-0 font-mono text-13 tabular-nums whitespace-nowrap text-ink-strong">
-                  {fmtAlpha(entry.alpha)}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 pl-8">
-                {/* Same 3px track/fill the author-share panel uses. aria-hidden
-                    because the percentage beside it is the accessible value --
-                    the bar is redundant encoding, not the only one. */}
-                <div
-                  aria-hidden
-                  className="h-[3px] min-w-0 flex-1 overflow-hidden rounded bg-border/60"
-                >
-                  <div
-                    className="h-full rounded bg-accent/70"
-                    style={{ width: `${Math.min(100, (entry.share_of_total ?? 0) * 100)}%` }}
-                  />
-                </div>
-                <span className="shrink-0 font-mono text-13 tabular-nums whitespace-nowrap text-ink-muted">
-                  {pctStr(entry.share_of_total)}
-                </span>
-                {/* Only when it says something. One hotkey is the default case
-                    and a "1" on every row is noise; null means unread, not one. */}
-                {entry.hotkey_count != null && entry.hotkey_count > 1 ? (
-                  <span className="shrink-0 text-13 whitespace-nowrap text-ink-muted">
-                    {formatNumber(entry.hotkey_count)} hotkeys
-                  </span>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full text-left text-13">
-            <thead className="bg-surface">
-              <tr>
-                <th className="px-4 py-2.5 text-ink-muted">#</th>
-                <th className="px-4 py-2.5 text-ink-muted">Coldkey</th>
-                <th className="px-4 py-2.5 text-right text-ink-muted">Alpha</th>
-                <th className="px-4 py-2.5 text-right text-ink-muted">Share</th>
-                <th className="px-4 py-2.5 text-right text-ink-muted">Hotkeys</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {holders.map((entry, i) => (
-                <tr key={entry.coldkey} className="mg-row-accent hover:bg-surface">
-                  {/* Rank, because this is a leaderboard -- the order carries
-                      meaning and a reader should not have to count rows. */}
-                  <td className="px-4 py-2.5 align-top font-mono text-13 tabular-nums text-ink-muted">
-                    {i + 1}
-                  </td>
-                  {/* min-w-0 so a long resolved identity truncates instead of
-                      widening the row past the viewport at 375px. */}
-                  <td className="px-4 py-2.5 align-top">
-                    <div className="min-w-0">
-                      <AddressDisplay ss58={entry.coldkey} fallback="—" compact />
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 align-top text-right font-mono text-13 tabular-nums whitespace-nowrap text-ink-strong">
-                    {fmtAlpha(entry.alpha)}
-                  </td>
-                  <td className="px-4 py-2.5 align-top text-right">
-                    <div className="font-mono text-13 tabular-nums whitespace-nowrap text-ink">
-                      {pctStr(entry.share_of_total)}
-                    </div>
-                    {/* The same bar the mobile list uses, so the concentration
-                        this section exists to show is legible at a glance on
-                        both breakpoints rather than only the narrow one.
-                        aria-hidden: the percentage above it is the value. */}
-                    <div
-                      aria-hidden
-                      className="ml-auto mt-1 h-[3px] w-16 overflow-hidden rounded bg-border/60"
-                    >
-                      <div
-                        className="h-full rounded bg-accent/70"
-                        style={{ width: `${Math.min(100, (entry.share_of_total ?? 0) * 100)}%` }}
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 align-top text-right font-mono text-13 tabular-nums whitespace-nowrap text-ink-muted">
-                    {entry.hotkey_count == null ? "—" : formatNumber(entry.hotkey_count)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
+      <DataTable
+        rows={ranked}
+        columns={COLUMNS}
+        rowKey={(entry) => entry.coldkey}
+        caption="Alpha holders"
+        link={RouterLink}
+        storageKey="subnet-holders"
+      />
       {/* About the LIST, not about the subnet -- which is why it sits with the
           list rather than in the tiles above. */}
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-13 text-ink-muted">

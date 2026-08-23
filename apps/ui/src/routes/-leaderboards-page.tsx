@@ -1,13 +1,14 @@
-import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 import { ChevronDown, Download } from "lucide-react";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { RegistryLeaderboards } from "@/components/metagraphed/registry-leaderboards";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import {
   BrandIcon,
+  DataTable,
   TimeAgo,
   Popover,
   PopoverTrigger,
@@ -30,7 +31,6 @@ import type { leaderboardsSearchSchema } from "./leaderboards";
 
 type LeaderboardWindow = z.infer<typeof leaderboardsSearchSchema>["window"];
 
-const TH = "px-4 py-2.5";
 const WINDOW_BTN_ACTIVE =
   "rounded border border-accent/40 bg-accent/10 px-3 py-1 text-11 text-accent-text";
 const WINDOW_BTN =
@@ -148,8 +148,8 @@ export function LeaderboardsSection({
 /** CSV export for the boards, re-exported so the hosting page can place it. */
 export { CsvExportMenu as LeaderboardsCsvExportMenu };
 
-// Three boards, three CSV sources (#6577). A third bare DownloadCsvButton here
-// collapses to an unlabeled icon below `sm` — its own two prior PR attempts both
+// Three boards, three CSV sources (#6577). A third bare CSV download button
+// here collapses to an unlabeled icon below `sm` — two prior PR attempts both
 // did exactly that and were rejected by the maintainer ("3 repeating icons" /
 // "utterly ridiculous and confusing" on mobile, since nothing distinguishes one
 // download icon from another once the text label drops). One trigger opening a
@@ -217,12 +217,41 @@ function useSubnetById(): Map<number, Subnet> {
   }, [snRes]);
 }
 
+/**
+ * The subnet identity cell every board on this route shares — brand icon plus
+ * name, with the row's own link supplied by `rowHref`.
+ */
+function SubnetIdentity({
+  subnet,
+  netuid,
+  fallbackName,
+}: {
+  subnet?: Subnet;
+  netuid: number;
+  fallbackName?: string;
+}) {
+  const name = subnet?.name ?? fallbackName ?? `Subnet ${netuid}`;
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <BrandIcon
+        size={18}
+        name={name}
+        fallback={netuid}
+        netuid={netuid}
+        subnetSlug={typeof subnet?.slug === "string" ? subnet.slug : undefined}
+      />
+      <span className="truncate text-13 text-ink-strong">{name}</span>
+    </span>
+  );
+}
+
 function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
   const { data: boardRes } = useSuspenseQuery(chainWeightsQuery(win));
   const subnetById = useSubnetById();
   const board = boardRes.data;
   const network = board.network;
   const dist = board.intensity_distribution;
+  const ranked = board.subnets.map((row, i) => ({ ...row, rank: i + 1 }));
 
   return (
     <div className="space-y-8">
@@ -267,111 +296,61 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
           lastChecked={board.observed_at ?? undefined}
         />
       ) : (
-        <Panel flush>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <span className="text-11 text-ink-muted">Per-subnet rankings</span>
-            <span className="text-11 text-ink-muted">
-              {formatNumber(board.subnet_count)} subnets
-              {board.observed_at ? (
-                <>
-                  {" "}
-                  · observed <TimeAgo at={board.observed_at} />
-                </>
-              ) : null}
-            </span>
-          </div>
-          {/* < md: the 5-column table clips its trailing columns behind an
-              undiscoverable horizontal scroll, so narrow viewports get a
-              stacked card per subnet instead — mirrors the cards/desktop-only
-              split the explorer leaderboards use for the same static boards. */}
-          <div className="md:hidden space-y-2 p-3">
-            {board.subnets.map((row, i) => {
-              const subnet = subnetById.get(row.netuid);
-              const name = subnet?.name ?? `Subnet ${row.netuid}`;
-              return (
-                <Panel key={row.netuid}>
-                  <div className="flex items-center justify-between gap-2">
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: row.netuid }}
-                      className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
-                    >
-                      <span className="shrink-0 text-11 tabular-nums text-ink-muted">{i + 1}</span>
-                      <BrandIcon
-                        size={18}
-                        name={name}
-                        fallback={row.netuid}
-                        netuid={row.netuid}
-                        subnetSlug={typeof subnet?.slug === "string" ? subnet.slug : undefined}
-                      />
-                      <span className="truncate text-13 text-ink-strong">{name}</span>
-                    </Link>
-                    <span className="shrink-0 text-11 tabular-nums text-ink-muted">
-                      {row.sets_per_setter != null
-                        ? `${row.sets_per_setter.toFixed(2)} / setter`
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-11 tabular-nums text-ink-muted">
-                    <span>{formatNumber(row.weight_sets)} weight-sets</span>
-                    <span>{formatNumber(row.distinct_setters)} setters</span>
-                  </div>
-                </Panel>
-              );
-            })}
-          </div>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-13">
-              <thead>
-                <tr>
-                  <th className={TH}>Rank</th>
-                  <th className={TH}>Subnet</th>
-                  <th className={`${TH} text-right`}>Weight-sets</th>
-                  <th className={`${TH} text-right`}>Distinct setters</th>
-                  <th className={`${TH} text-right`}>Per setter</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {board.subnets.map((row, i) => {
-                  const subnet = subnetById.get(row.netuid);
-                  const name = subnet?.name ?? `Subnet ${row.netuid}`;
-                  return (
-                    <tr key={row.netuid} className="hover:bg-surface">
-                      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-muted">
-                        {i + 1}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <Link
-                          to="/subnets/$netuid"
-                          params={{ netuid: row.netuid }}
-                          className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
-                        >
-                          <BrandIcon
-                            size={18}
-                            name={name}
-                            fallback={row.netuid}
-                            netuid={row.netuid}
-                            subnetSlug={typeof subnet?.slug === "string" ? subnet.slug : undefined}
-                          />
-                          <span className="truncate text-13 text-ink-strong">{name}</span>
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-strong">
-                        {formatNumber(row.weight_sets)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-muted">
-                        {formatNumber(row.distinct_setters)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-muted">
-                        {row.sets_per_setter != null ? row.sets_per_setter.toFixed(2) : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+        <div className="space-y-2">
+          <p className="text-11 text-ink-muted">
+            {formatNumber(board.subnet_count)} subnets
+            {board.observed_at ? (
+              <>
+                {" "}
+                · observed <TimeAgo at={board.observed_at} />
+              </>
+            ) : null}
+          </p>
+          <DataTable
+            rows={ranked}
+            rowKey={(row) => String(row.netuid)}
+            caption="Per-subnet rankings"
+            source="weight-setting"
+            link={RouterLink}
+            rowHref={(row) => `/subnets/${row.netuid}`}
+            columns={[
+              { key: "rank", label: "Rank", kind: "number", sortable: true, value: (r) => r.rank },
+              {
+                key: "subnet",
+                label: "Subnet",
+                sortable: true,
+                value: (r) => subnetById.get(r.netuid)?.name ?? `Subnet ${r.netuid}`,
+                render: (r) => (
+                  <SubnetIdentity subnet={subnetById.get(r.netuid)} netuid={r.netuid} />
+                ),
+              },
+              {
+                key: "weight_sets",
+                label: "Weight-sets",
+                kind: "number",
+                sortable: true,
+                value: (r) => r.weight_sets ?? null,
+                format: (v) => formatNumber(typeof v === "number" ? v : null),
+              },
+              {
+                key: "distinct_setters",
+                label: "Distinct setters",
+                kind: "number",
+                sortable: true,
+                value: (r) => r.distinct_setters ?? null,
+                format: (v) => formatNumber(typeof v === "number" ? v : null),
+              },
+              {
+                key: "sets_per_setter",
+                label: "Per setter",
+                kind: "number",
+                sortable: true,
+                value: (r) => r.sets_per_setter ?? null,
+                format: (v) => formatNumber(typeof v === "number" ? v : null),
+              },
+            ]}
+          />
+        </div>
       )}
     </div>
   );
@@ -396,7 +375,7 @@ function EmissionsLeaderboard() {
     v != null && Number.isFinite(v) ? `${(v * 100).toFixed(2)}%` : "—";
   const topShare = ranked.slice(0, 10).reduce((sum, s) => sum + (s.emission_share ?? 0), 0);
   // Cap the ranked table at the top 20, matching the other boards' page size.
-  const top = ranked.slice(0, 20);
+  const top = ranked.slice(0, 20).map((row, i) => ({ ...row, rank: i + 1 }));
 
   return (
     <div className="space-y-8">
@@ -431,87 +410,43 @@ function EmissionsLeaderboard() {
           description="The economics snapshot has no per-subnet emission share for this network yet."
         />
       ) : (
-        <Panel flush>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <span className="text-11 text-ink-muted">Per-subnet rankings</span>
-            <span className="text-11 text-ink-muted">
-              top {top.length} of {formatNumber(ranked.length)} subnets
-            </span>
-          </div>
-          <div className="md:hidden space-y-2 p-3">
-            {top.map((row, i) => {
-              const subnet = subnetById.get(row.netuid);
-              const name = subnet?.name ?? row.name ?? `Subnet ${row.netuid}`;
-              return (
-                <Panel key={row.netuid}>
-                  <div className="flex items-center justify-between gap-2">
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: row.netuid }}
-                      className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
-                    >
-                      <span className="shrink-0 text-11 tabular-nums text-ink-muted">{i + 1}</span>
-                      <BrandIcon
-                        size={18}
-                        name={name}
-                        fallback={row.netuid}
-                        netuid={row.netuid}
-                        subnetSlug={typeof subnet?.slug === "string" ? subnet.slug : undefined}
-                      />
-                      <span className="truncate text-13 text-ink-strong">{name}</span>
-                    </Link>
-                    <span className="shrink-0 text-11 tabular-nums text-ink-strong">
-                      {pct(row.emission_share)}
-                    </span>
-                  </div>
-                </Panel>
-              );
-            })}
-          </div>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-13">
-              <thead>
-                <tr>
-                  <th className={TH}>Rank</th>
-                  <th className={TH}>Subnet</th>
-                  <th className={`${TH} text-right`}>Emission share</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {top.map((row, i) => {
-                  const subnet = subnetById.get(row.netuid);
-                  const name = subnet?.name ?? row.name ?? `Subnet ${row.netuid}`;
-                  return (
-                    <tr key={row.netuid} className="hover:bg-surface">
-                      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-muted">
-                        {i + 1}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <Link
-                          to="/subnets/$netuid"
-                          params={{ netuid: row.netuid }}
-                          className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
-                        >
-                          <BrandIcon
-                            size={18}
-                            name={name}
-                            fallback={row.netuid}
-                            netuid={row.netuid}
-                            subnetSlug={typeof subnet?.slug === "string" ? subnet.slug : undefined}
-                          />
-                          <span className="truncate text-13 text-ink-strong">{name}</span>
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-strong">
-                        {pct(row.emission_share)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+        <div className="space-y-2">
+          <p className="text-11 text-ink-muted">
+            top {top.length} of {formatNumber(ranked.length)} subnets
+          </p>
+          <DataTable
+            rows={top}
+            rowKey={(row) => String(row.netuid)}
+            caption="Per-subnet rankings"
+            source="top-emitters"
+            link={RouterLink}
+            rowHref={(row) => `/subnets/${row.netuid}`}
+            columns={[
+              { key: "rank", label: "Rank", kind: "number", sortable: true, value: (r) => r.rank },
+              {
+                key: "subnet",
+                label: "Subnet",
+                sortable: true,
+                value: (r) => subnetById.get(r.netuid)?.name ?? r.name ?? `Subnet ${r.netuid}`,
+                render: (r) => (
+                  <SubnetIdentity
+                    subnet={subnetById.get(r.netuid)}
+                    netuid={r.netuid}
+                    fallbackName={r.name}
+                  />
+                ),
+              },
+              {
+                key: "emission_share",
+                label: "Emission share",
+                kind: "number",
+                sortable: true,
+                value: (r) => r.emission_share ?? null,
+                format: (v) => pct(typeof v === "number" ? v : undefined),
+              },
+            ]}
+          />
+        </div>
       )}
     </div>
   );
@@ -522,6 +457,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
   const subnetById = useSubnetById();
   const board = boardRes.data;
   const network = board.network;
+  const ranked = board.subnets.map((row, i) => ({ ...row, rank: i + 1 }));
 
   return (
     <div className="space-y-8">
@@ -562,110 +498,61 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
           lastChecked={board.observed_at ?? undefined}
         />
       ) : (
-        <Panel flush>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <span className="text-11 text-ink-muted">Per-subnet rankings</span>
-            <span className="text-11 text-ink-muted">
-              {formatNumber(board.subnet_count)} subnets
-              {board.observed_at ? (
-                <>
-                  {" "}
-                  · observed <TimeAgo at={board.observed_at} />
-                </>
-              ) : null}
-            </span>
-          </div>
-          {/* < md: card fallback per subnet (see the weight-setting board). */}
-          <div className="md:hidden space-y-2 p-3">
-            {board.subnets.map((row, i) => {
-              const subnet = subnetById.get(row.netuid);
-              const name = subnet?.name ?? `Subnet ${row.netuid}`;
-              return (
-                <Panel key={row.netuid}>
-                  <div className="flex items-center justify-between gap-2">
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: row.netuid }}
-                      className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
-                    >
-                      <span className="shrink-0 text-11 tabular-nums text-ink-muted">{i + 1}</span>
-                      <BrandIcon
-                        size={18}
-                        name={name}
-                        fallback={row.netuid}
-                        netuid={row.netuid}
-                        subnetSlug={typeof subnet?.slug === "string" ? subnet.slug : undefined}
-                      />
-                      <span className="truncate text-13 text-ink-strong">{name}</span>
-                    </Link>
-                    <span className="shrink-0 text-11 tabular-nums text-ink-muted">
-                      {row.deregistrations_per_hotkey != null
-                        ? `${row.deregistrations_per_hotkey.toFixed(2)} / hotkey`
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-11 tabular-nums text-ink-muted">
-                    <span>{formatNumber(row.deregistrations)} deregistrations</span>
-                    <span>{formatNumber(row.distinct_deregistered_hotkeys)} hotkeys</span>
-                  </div>
-                </Panel>
-              );
-            })}
-          </div>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-13">
-              <thead>
-                <tr>
-                  <th className={TH}>Rank</th>
-                  <th className={TH}>Subnet</th>
-                  <th className={`${TH} text-right`}>Deregistrations</th>
-                  <th className={`${TH} text-right`}>Distinct hotkeys</th>
-                  <th className={`${TH} text-right`}>Per hotkey</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {board.subnets.map((row, i) => {
-                  const subnet = subnetById.get(row.netuid);
-                  const name = subnet?.name ?? `Subnet ${row.netuid}`;
-                  return (
-                    <tr key={row.netuid} className="hover:bg-surface">
-                      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-muted">
-                        {i + 1}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <Link
-                          to="/subnets/$netuid"
-                          params={{ netuid: row.netuid }}
-                          className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
-                        >
-                          <BrandIcon
-                            size={18}
-                            name={name}
-                            fallback={row.netuid}
-                            netuid={row.netuid}
-                            subnetSlug={typeof subnet?.slug === "string" ? subnet.slug : undefined}
-                          />
-                          <span className="truncate text-13 text-ink-strong">{name}</span>
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-strong">
-                        {formatNumber(row.deregistrations)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-muted">
-                        {formatNumber(row.distinct_deregistered_hotkeys)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-muted">
-                        {row.deregistrations_per_hotkey != null
-                          ? row.deregistrations_per_hotkey.toFixed(2)
-                          : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+        <div className="space-y-2">
+          <p className="text-11 text-ink-muted">
+            {formatNumber(board.subnet_count)} subnets
+            {board.observed_at ? (
+              <>
+                {" "}
+                · observed <TimeAgo at={board.observed_at} />
+              </>
+            ) : null}
+          </p>
+          <DataTable
+            rows={ranked}
+            rowKey={(row) => String(row.netuid)}
+            caption="Per-subnet rankings"
+            source="deregistrations"
+            link={RouterLink}
+            rowHref={(row) => `/subnets/${row.netuid}`}
+            columns={[
+              { key: "rank", label: "Rank", kind: "number", sortable: true, value: (r) => r.rank },
+              {
+                key: "subnet",
+                label: "Subnet",
+                sortable: true,
+                value: (r) => subnetById.get(r.netuid)?.name ?? `Subnet ${r.netuid}`,
+                render: (r) => (
+                  <SubnetIdentity subnet={subnetById.get(r.netuid)} netuid={r.netuid} />
+                ),
+              },
+              {
+                key: "deregistrations",
+                label: "Deregistrations",
+                kind: "number",
+                sortable: true,
+                value: (r) => r.deregistrations ?? null,
+                format: (v) => formatNumber(typeof v === "number" ? v : null),
+              },
+              {
+                key: "distinct_deregistered_hotkeys",
+                label: "Distinct hotkeys",
+                kind: "number",
+                sortable: true,
+                value: (r) => r.distinct_deregistered_hotkeys ?? null,
+                format: (v) => formatNumber(typeof v === "number" ? v : null),
+              },
+              {
+                key: "deregistrations_per_hotkey",
+                label: "Per hotkey",
+                kind: "number",
+                sortable: true,
+                value: (r) => r.deregistrations_per_hotkey ?? null,
+                format: (v) => formatNumber(typeof v === "number" ? v : null),
+              },
+            ]}
+          />
+        </div>
       )}
     </div>
   );

@@ -2,33 +2,19 @@ import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { Skeleton } from "@/components/metagraphed/states";
-import { ShareButton, DownloadCsvButton, TableState, TimeAgo } from "@jsonbored/ui-kit";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { DataTable, TimeAgo } from "@jsonbored/ui-kit";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { NetworkParametersPanel } from "@/components/metagraphed/network-parameters-panel";
-import {
-  RuntimeUpgradeCardList,
-  orderRuntimeUpgradesNewestFirst,
-} from "@/components/metagraphed/runtime-upgrade-card-list";
+import { orderRuntimeUpgradesNewestFirst } from "@/components/metagraphed/runtime-upgrade-card-list";
 import { networkParametersQuery, runtimeVersionHistoryQuery } from "@/lib/metagraphed/queries";
-import { buildUrl } from "@/lib/metagraphed/client";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { RuntimeVersionHistory } from "@/lib/metagraphed/types";
-import { ChainTabActions } from "./-chain-hub";
 
 export function RuntimePage() {
-  const runtimeCsvUrl = buildUrl("/api/v1/runtime", { format: "csv" });
   return (
     <>
-      <ChainTabActions>
-        <div className="mg-actions">
-          {/* /api/v1/runtime is a single whole-window aggregate with no
-              filters to carry, so the export needs no query params beyond
-              format -- unlike the filtered feeds' <page>QueryParams(search). */}
-          <DownloadCsvButton url={runtimeCsvUrl} bare />
-          <ShareButton bare />
-        </div>
-      </ChainTabActions>
       <AsyncPanel
         context="network parameters"
         height="sm"
@@ -59,59 +45,47 @@ function RuntimeContent() {
   return (
     <>
       <PageHeroKpis history={history} />
-      {rows.length === 0 ? (
-        <TableState
-          variant="empty"
-          title="No runtime upgrades observed yet"
-          description="This tracks forward from when spec_version capture began — an upgrade before that point won't appear here."
-          generatedAt={history.coverage_from_at ?? undefined}
-        />
-      ) : (
-        <>
-          <Panel flush className="hidden md:block overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-13">
-                <thead className="text-10 bg-surface text-ink-muted">
-                  <tr>
-                    <th className="px-3 py-2.5 text-left">Spec Version</th>
-                    <th className="px-3 py-2.5 text-left">Block</th>
-                    <th className="px-3 py-2.5 text-left">Observed</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr
-                      key={`${row.spec_version}-${row.block_number}`}
-                      className="mg-row-hover border-t border-border/60"
-                    >
-                      <td className="px-3 py-2.5 font-mono text-13 tabular-nums text-ink-strong">
-                        {formatNumber(row.spec_version)}
-                      </td>
-                      <td className="px-3 py-2.5 font-mono text-13 tabular-nums">
-                        {row.block_number != null ? (
-                          <Link
-                            to="/blocks/$ref"
-                            params={{ ref: String(row.block_number) }}
-                            className="text-ink hover:underline"
-                          >
-                            #{formatNumber(row.block_number)}
-                          </Link>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 font-mono text-13 text-ink-muted">
-                        {row.observed_at ? <TimeAgo at={row.observed_at} /> : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
-          <RuntimeUpgradeCardList rows={rows} className="grid gap-3 sm:grid-cols-2 md:hidden" />
-        </>
-      )}
+      <DataTable
+        rows={rows}
+        rowKey={(row) => `${row.spec_version}-${row.block_number}`}
+        caption="Runtime upgrades"
+        source="runtime-upgrades"
+        link={RouterLink}
+        empty={
+          <EmptyState
+            title="No runtime upgrades observed yet"
+            description="This tracks forward from when spec_version capture began — an upgrade before that point won't appear here."
+            lastChecked={history.coverage_from_at ?? undefined}
+          />
+        }
+        columns={[
+          {
+            key: "spec_version",
+            label: "Spec Version",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.spec_version ?? null,
+            format: (value) => formatNumber(typeof value === "number" ? value : null),
+          },
+          {
+            key: "block_number",
+            label: "Block",
+            kind: "link",
+            sortable: true,
+            align: "right",
+            value: (row) => row.block_number ?? null,
+            format: (value) => (typeof value === "number" ? `#${formatNumber(value)}` : "—"),
+            href: (row) => (row.block_number != null ? `/blocks/${row.block_number}` : undefined),
+          },
+          {
+            key: "observed_at",
+            label: "Observed",
+            kind: "time",
+            sortable: true,
+            value: (row) => row.observed_at ?? null,
+          },
+        ]}
+      />
     </>
   );
 }

@@ -1,74 +1,61 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ValidatorsSearch } from "./validators.index";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Star } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { ShareButton, DownloadCsvButton, EntityHero, FactSentence } from "@jsonbored/ui-kit";
-import { AsyncPanel, Panel, TableSkeleton } from "@/components/metagraphed/primitives";
+import {
+  DataTable,
+  EntityHero,
+  FactSentence,
+  type CellValue,
+  type DataTableColumn,
+  type SortState,
+} from "@jsonbored/ui-kit";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ValidatorEconomicsRanking } from "@/components/metagraphed/validator-economics-ranking";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
-import { buildUrl } from "@/lib/metagraphed/client";
-import { formatNumber, isStaleFreshness, classNames } from "@/lib/metagraphed/format";
+import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
 import { matchesQuery, sortBy } from "@/lib/metagraphed/url-state";
 import { groupByOperator } from "@/lib/metagraphed/group-validators";
 import { useWatchlist } from "@/lib/metagraphed/watchlist";
 import { ValidatorSubnetCoverage } from "@/components/metagraphed/charts/validator-subnet-coverage";
-import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { VALIDATOR_COLUMNS } from "@/components/metagraphed/validator-columns";
-import { ColumnCustomizer, useColumnVisibility } from "@jsonbored/ui-kit";
 import {
   ValidatorsCompareDrawer,
   ValidatorCompareToggle,
 } from "@/components/metagraphed/validators-compare-drawer";
 import { HubSections, hubLede } from "@/components/metagraphed/hub-prose";
-import { SortHeader, ariaSort, SearchInput } from "@/components/metagraphed/table-controls";
-import { TableColGroup } from "@jsonbored/ui-kit";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
-import { useMeasuredRowHeight } from "@/hooks/use-measured-row-height";
 import { readKey } from "@/lib/metagraphed/read-key";
 
 // #8251: one request for the FULL directory (~1,014 validators live; the API
-// cap was raised 100 -> 2000 in the same change) — the table body is
-// virtualized client-side, so there is no pagination tier and every row is
-// searchable/sortable locally.
+// cap was raised 100 -> 2000 in the same change) — the table sorts and
+// searches the whole set locally and pages it 50 rows at a time, so there is
+// no server pagination tier.
 // Exported so the homepage's Watched module can request the identical query
 // (same sort + limit = same cache key) and read from cache rather than firing
 // a second 2000-row fetch (#8256).
 export const ALL_VALIDATORS_LIMIT = 2000;
 const CONCENTRATION_TOP_N = 10;
+const VALIDATORS_PAGE_SIZE = 50;
 
 export function ValidatorsPage() {
-  // Mirror the sibling ranked-list pages (subnets/blocks/surfaces): export the
-  // current view as CSV. DownloadCsvButton appends `format=csv`; the backend's
-  // handleGlobalValidators already serves it (#5482).
-  const validatorsCsvUrl = buildUrl("/api/v1/validators", {
-    sort: "total_stake",
-    limit: ALL_VALIDATORS_LIMIT,
-  });
   return (
     <AppShell>
       <EntityHero
         name="Validators"
-        action={
-          <>
-            <div className="mg-actions">
-              <DownloadCsvButton url={validatorsCsvUrl} bare />
-              <ShareButton bare />
-            </div>
-          </>
-        }
         sentence={<FactSentence>{hubLede("/validators")}</FactSentence>}
       />
       <ValidatorGuide />
       <AsyncPanel
         context="validators"
-        fallback={<TableSkeleton rows={10} columns={8} />}
+        fallback={<Skeleton className="h-80 w-full" />}
         retryQueryKeys={[
           validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT, subnets: false })
             .queryKey,
@@ -89,6 +76,13 @@ export function ValidatorsPage() {
   );
 }
 
+/** A dynamic row field narrowed to what the table can sort and export. */
+function cellValue(row: object, key: string | undefined): CellValue {
+  if (!key) return null;
+  const raw = readKey(row, key);
+  return typeof raw === "number" || typeof raw === "string" ? raw : null;
+}
+
 function ValidatorsDirectory() {
   const search = useSearch({ from: "/validators/" }) as ValidatorsSearch;
   const navigate = useNavigate({ from: "/validators/" });
@@ -104,12 +98,7 @@ function ValidatorsDirectory() {
   const all = res.data.validators;
   const generatedAt = res.meta?.generated_at ?? null;
   const watchlist = useWatchlist("validator");
-  // Every column is opt-in/out, with a core set on by default -- the API
-  // returns far more per validator than the table used to show (emission,
-  // trust, realized returns, the root/alpha stake split), and hiding them
-  // permanently was the wrong default.
-  const columns = useColumnVisibility("validators", VALIDATOR_COLUMNS);
-  const visibleColumns = VALIDATOR_COLUMNS.filter((c) => columns.isVisible(c.id));
+  const { isWatched, toggle: toggleWatch, count: watchedCount } = watchlist;
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
@@ -119,33 +108,23 @@ function ValidatorsDirectory() {
       replace: true,
     });
 
-  const onSort = (field: string) =>
-    navigate({
-      search: (prev: Record<string, unknown>) => ({
-        ...prev,
-        sort: field,
-        order: prev.sort === field && prev.order === "desc" ? "asc" : "desc",
-      }),
-      replace: true,
-    });
-
   // Client-side search + sort over the full set. Watched rows pin to the top
   // within the current sort (stable partition, not a separate list).
   const sortedRows = useMemo(() => {
     const filtered = all.filter(
       (v) =>
         matchesQuery([v.hotkey, v.coldkey, v.coldkey_identity?.name], search.q) &&
-        (!search.watched || watchlist.isWatched(v.hotkey)),
+        (!search.watched || isWatched(v.hotkey)),
     );
     const sorted = sortBy(filtered, sort, order, (row, key) => {
       return readKey(row, key);
     });
-    if (watchlist.count === 0) return sorted;
+    if (watchedCount === 0) return sorted;
     const watched: GlobalValidator[] = [];
     const rest: GlobalValidator[] = [];
-    for (const v of sorted) (watchlist.isWatched(v.hotkey) ? watched : rest).push(v);
+    for (const v of sorted) (isWatched(v.hotkey) ? watched : rest).push(v);
     return [...watched, ...rest];
-  }, [all, search.q, search.watched, sort, order, watchlist]);
+  }, [all, search.q, search.watched, sort, order, isWatched, watchedCount]);
 
   // Cluster an operator's keys adjacent under its best-ranked row (default on):
   // one "Ventura Labs ×3" entry instead of the same name repeated at three
@@ -156,27 +135,75 @@ function ValidatorsDirectory() {
     return { rows: list, groupInfo: info };
   }, [sortedRows, grouped]);
 
-  // #8251: virtualized table body — the same padding-row technique the
-  // /subnets table established (#8314): only the visible slice mounts as real
-  // in-flow `<tr>`s, with two spacer rows standing in for off-screen space,
-  // so the sticky header and column alignment keep working.
-  const tableScrollRef = useRef<HTMLDivElement>(null);
-  const rowHeight = useMeasuredRowHeight(tableScrollRef, 41);
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => tableScrollRef.current,
-    // Measured, not guessed -- see use-measured-row-height.ts. The literal
-    // here is only the pre-measurement seed; it read 41 against real 39px
-    // rows, which shrank the scroll height by ~492px as the reader scrolled.
-    estimateSize: () => rowHeight,
-    overscan: 12,
-  });
-  const virtualRows = rowVirtualizer.getVirtualItems();
-  const virtualPaddingTop = virtualRows.length > 0 ? virtualRows[0]!.start : 0;
-  const virtualPaddingBottom =
-    virtualRows.length > 0
-      ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1]!.end
-      : 0;
+  // ~1,000 rows, so the directory pages rather than mounting all of them.
+  // The page is owned here, not by the table: the table's own page state does
+  // not reset when a search narrows the set, which strands the reader on an
+  // empty page whose pager has disappeared with it. Clamping is the safety
+  // net; resetting on a filter change is the behaviour a reader expects.
+  const [pageState, setPageState] = useState(1);
+  const filterKey = `${search.q}|${search.watched}|${grouped}|${sort}|${order}`;
+  useEffect(() => {
+    setPageState(1);
+  }, [filterKey]);
+  const pageTotal = Math.max(1, Math.ceil(rows.length / VALIDATORS_PAGE_SIZE));
+  const page = Math.min(pageState, pageTotal);
+  const pageRows = useMemo(
+    () => rows.slice((page - 1) * VALIDATORS_PAGE_SIZE, page * VALIDATORS_PAGE_SIZE),
+    [rows, page],
+  );
+
+  // The directory's own column set, plus the two per-row controls that used to
+  // sit outside it. Memoized because DataTable re-reads its stored column
+  // selection whenever the column set changes identity.
+  const columns = useMemo<Array<DataTableColumn<GlobalValidator>>>(
+    () => [
+      {
+        key: "watch",
+        label: "Watch",
+        width: 46,
+        value: (v) => (isWatched(v.hotkey) ? "watched" : ""),
+        render: (v) => (
+          <button
+            type="button"
+            onClick={() => toggleWatch(v.hotkey)}
+            aria-pressed={isWatched(v.hotkey)}
+            aria-label={isWatched(v.hotkey) ? "Remove from watchlist" : "Add to watchlist"}
+            className="mg-tap-target flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
+          >
+            <Star
+              className={classNames("size-3.5", isWatched(v.hotkey) && "fill-accent text-accent")}
+            />
+          </button>
+        ),
+      },
+      {
+        key: "compare",
+        label: "Compare",
+        width: 40,
+        value: () => null,
+        render: (v) => <ValidatorCompareToggle hotkey={v.hotkey} />,
+      },
+      ...VALIDATOR_COLUMNS.map((col): DataTableColumn<GlobalValidator> => ({
+        key: col.id,
+        label: col.header,
+        width: col.width,
+        demote: !col.defaultVisible,
+        sortable: Boolean(col.sortKey),
+        align: col.thClassName.includes("text-right") ? "right" : "left",
+        // The operator column has no sortable field of its own, but its name
+        // is what a CSV of this table has to carry.
+        value: (v) =>
+          col.id === "operator"
+            ? (v.coldkey_identity?.name ?? v.hotkey)
+            : cellValue(v, col.sortKey),
+        render: (v) => col.cell(v, { group: groupInfo?.get(v.hotkey) }),
+      })),
+    ],
+    [isWatched, toggleWatch, groupInfo],
+  );
+
+  const sortedColumn = VALIDATOR_COLUMNS.find((c) => c.sortKey === sort);
+  const sortState: SortState | null = sortedColumn ? { key: sortedColumn.id, dir: order } : null;
 
   return (
     <div className="space-y-3">
@@ -190,197 +217,90 @@ function ValidatorsDirectory() {
         />
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <SearchInput
-          value={search.q}
-          onChange={(v) => setSearch({ q: v })}
-          placeholder="Search by operator, hotkey, or coldkey"
-          className="w-full sm:w-80"
-        />
-        {/* #8256: only offered once something is starred -- an always-visible
-            filter that can only ever return nothing is furniture. */}
-        <button
-          type="button"
-          onClick={() => setSearch({ grouped: !grouped })}
-          aria-pressed={grouped}
-          title="Cluster an operator's validator keys under one entry"
-          className={classNames(
-            "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1 text-13 font-medium transition-colors",
-            grouped
-              ? "border-accent/40 bg-accent/10 text-accent-text"
-              : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
-          )}
-        >
-          Group by operator
-        </button>
-        {watchlist.count > 0 ? (
-          <button
-            type="button"
-            onClick={() => setSearch({ watched: !search.watched })}
-            aria-pressed={search.watched}
-            className={classNames(
-              "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1 text-13 font-medium transition-colors",
-              search.watched
-                ? "border-accent/40 bg-accent/10 text-accent-text"
-                : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
-            )}
-          >
-            <Star
-              className={classNames("size-3.5", search.watched && "fill-accent text-accent")}
-              aria-hidden
-            />
-            Watched · {watchlist.count}
-          </button>
-        ) : null}
-        <span className="text-11 text-ink-muted">
-          {formatNumber(rows.length)} of {formatNumber(all.length)} validators
-        </span>
-        <div className="ml-auto flex items-center gap-2">
-          <ColumnCustomizer
-            columns={VALIDATOR_COLUMNS}
-            isVisible={columns.isVisible}
-            onToggle={columns.toggle}
-            onReset={columns.reset}
+      <DataTable
+        caption="Validators"
+        rows={pageRows}
+        total={rows.length}
+        page={page}
+        onPage={setPageState}
+        pageSize={VALIDATORS_PAGE_SIZE}
+        columns={columns}
+        rowKey={(v) => v.hotkey}
+        link={RouterLink}
+        storageKey="validators"
+        source="validator"
+        sort={sortState}
+        onSort={(next) => {
+          const column = next ? VALIDATOR_COLUMNS.find((c) => c.id === next.key) : undefined;
+          setSearch({
+            sort: column?.sortKey ?? "total_stake_tao",
+            order: column && next ? next.dir : "desc",
+          });
+        }}
+        search={{
+          value: search.q,
+          onChange: (v) => setSearch({ q: v }),
+          placeholder: "Operator, hotkey, or coldkey",
+        }}
+        filters={
+          <>
+            <button
+              type="button"
+              onClick={() => setSearch({ grouped: !grouped })}
+              aria-pressed={grouped}
+              title="Cluster an operator's validator keys under one entry"
+              className={classNames(
+                "inline-flex min-h-7 items-center gap-1.5 rounded border px-2 py-1 text-13 transition-colors",
+                grouped
+                  ? "border-accent/40 bg-accent/10 text-accent-text"
+                  : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
+              )}
+            >
+              Group
+            </button>
+            {/* #8256: only offered once something is starred -- an always-visible
+                filter that can only ever return nothing is furniture. */}
+            {watchedCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => setSearch({ watched: !search.watched })}
+                aria-pressed={search.watched}
+                className={classNames(
+                  "inline-flex min-h-7 items-center gap-1.5 rounded border px-2 py-1 text-13 transition-colors",
+                  search.watched
+                    ? "border-accent/40 bg-accent/10 text-accent-text"
+                    : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
+                )}
+              >
+                <Star
+                  className={classNames("size-3.5", search.watched && "fill-accent text-accent")}
+                  aria-hidden
+                />
+                {watchedCount}
+              </button>
+            ) : null}
+          </>
+        }
+        empty={
+          <EmptyState
+            title={search.q ? "No validators match this search" : "No validators indexed yet"}
+            description={
+              search.q
+                ? "Try a different operator name, hotkey, or coldkey."
+                : "The global validator directory is empty for this window."
+            }
+            action={
+              search.q
+                ? undefined
+                : {
+                    label: "Open /api/v1/validators",
+                    href: `${API_BASE}/api/v1/validators`,
+                    external: true,
+                  }
+            }
           />
-        </div>
-      </div>
-
-      {rows.length > 0 ? (
-        <div className="hidden md:block rounded border border-border">
-          {/* ONE scroll container carrying BOTH sets of styling.
-              This was split into single-axis wrappers (#8314) because a
-              combined overflow-auto div left the extra columns
-              (Nominators/Dominance/Total stake/30d Δ) scrollable but
-              undiscoverable at tablet widths -- no fade, no affordance. That
-              diagnosis was right; the remedy was not. Splitting cannot work,
-              because `overflow-y: auto` coerces `overflow-x` to `auto` too
-              (CSS Overflow 3 §3), so the inner div took the horizontal axis
-              anyway and the outer .mg-table-scroll -- the one carrying the
-              fade and the thin scrollbar -- was left unable to scroll at all.
-              The affordance was on the wrong element the whole time.
-              Measured on a sibling route: inner scrolled x at 958 > 708 while
-              the outer could not move, with a 15px default scrollbar inside
-              the bounded region.
-              Putting .mg-table-scroll ON the scroller is what actually
-              delivers the affordance the original comment wanted. */}
-          <div ref={tableScrollRef} className="mg-table-scroll mg-list-viewport">
-            <table className="w-full min-w-[1100px] table-fixed text-left text-13">
-              {/* Pins the column tracks so they cannot be re-derived from
-                  whichever virtualized rows happen to be mounted. */}
-              <TableColGroup widths={[46, 40, ...visibleColumns.map((c) => c.width)]} />
-              <thead className="mg-table-head-pinned">
-                <tr>
-                  <th className="w-6 px-3 py-2" aria-label="Watch" />
-                  <th className="w-6 px-3 py-2" aria-label="Compare" />
-                  {visibleColumns.map((col) => (
-                    <th
-                      key={col.header}
-                      className={col.thClassName}
-                      aria-sort={col.sortKey ? ariaSort(sort === col.sortKey, order) : undefined}
-                    >
-                      {col.sortKey ? (
-                        <SortHeader
-                          label={col.header}
-                          field={col.sortKey}
-                          active={sort === col.sortKey}
-                          order={order}
-                          onSort={onSort}
-                          align={col.thClassName.includes("text-right") ? "right" : "left"}
-                        />
-                      ) : (
-                        col.header
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {virtualPaddingTop > 0 ? (
-                  <tr aria-hidden>
-                    <td
-                      colSpan={VALIDATOR_COLUMNS.length + 2}
-                      style={{ height: virtualPaddingTop }}
-                    />
-                  </tr>
-                ) : null}
-                {virtualRows.map((vRow) => {
-                  const v = rows[vRow.index];
-                  return (
-                    <tr
-                      key={v.hotkey}
-                      data-index={vRow.index}
-                      ref={rowVirtualizer.measureElement}
-                      className="hover:bg-surface"
-                    >
-                      <td className="px-3 py-2 align-middle">
-                        <button
-                          type="button"
-                          onClick={() => watchlist.toggle(v.hotkey)}
-                          aria-pressed={watchlist.isWatched(v.hotkey)}
-                          aria-label={
-                            watchlist.isWatched(v.hotkey)
-                              ? "Remove from watchlist"
-                              : "Add to watchlist"
-                          }
-                          className="mg-tap-target flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
-                        >
-                          <Star
-                            className={classNames(
-                              "size-3.5",
-                              watchlist.isWatched(v.hotkey) && "fill-accent text-accent",
-                            )}
-                          />
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 align-middle">
-                        <ValidatorCompareToggle hotkey={v.hotkey} />
-                      </td>
-                      {visibleColumns.map((col) => (
-                        <td key={col.header} className={col.tdClassName}>
-                          {col.cell(v, { group: groupInfo?.get(v.hotkey) })}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-                {virtualPaddingBottom > 0 ? (
-                  <tr aria-hidden>
-                    <td
-                      colSpan={VALIDATOR_COLUMNS.length + 2}
-                      style={{ height: virtualPaddingBottom }}
-                    />
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        <EmptyState
-          title={search.q ? "No validators match this search" : "No validators indexed yet"}
-          description={
-            search.q
-              ? "Try a different operator name, hotkey, or coldkey."
-              : "The global validator directory is empty for this window."
-          }
-          action={
-            search.q
-              ? undefined
-              : {
-                  label: "Open /api/v1/validators",
-                  href: `${API_BASE}/api/v1/validators`,
-                  external: true,
-                }
-          }
-        />
-      )}
-
-      {rows.length > 0 ? (
-        <ValidatorCardList
-          validators={rows.slice(0, 50)}
-          className="grid gap-3 sm:grid-cols-2 md:hidden"
-        />
-      ) : null}
+        }
+      />
 
       <ConcentrationSection validators={all} />
     </div>

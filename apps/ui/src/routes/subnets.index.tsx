@@ -7,8 +7,8 @@ import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
 // #8311: /domains and /leaderboards fold into this page as sections rather
 // than becoming extra `view` modes -- `tableSearchSchema.view` is shared by
-// four routes and drives <ViewModeToggle>, so overloading it would put
-// "Rankings" in the table/grid/matrix toggle on /surfaces and /providers too.
+// four routes, so overloading it would put "Rankings" into the view state of
+// /surfaces and /providers too.
 // `window` comes across from /leaderboards so its boards keep their range.
 export type SubnetsSearch = z.infer<typeof subnetsSearchSchema>;
 

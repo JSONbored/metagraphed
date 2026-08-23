@@ -91,7 +91,7 @@ function RateLimitedNotice({ context }: { context?: string }) {
 
 // Re-exported so existing `import { Skeleton, ... } from "@/components/metagraphed/states"`
 // call sites keep working -- Skeleton's canonical home is now packages/ui-kit (needed by
-// the already-extracted ListShell), this file just isn't the place to update ~40 unrelated
+// the already-extracted DataTable), this file just isn't the place to update ~40 unrelated
 // call sites as a side effect of that.
 export { Skeleton } from "@jsonbored/ui-kit";
 
@@ -208,11 +208,10 @@ export function ErrorState({
  * - `EmptyState` (this component) — the DEFAULT for general list / card-grid /
  *   section emptiness: a subtle dashed card with an optional last-checked line
  *   and action link. Reach for this whenever a slice is simply empty and there
- *   is no paginated-table retry wiring or registry-provenance story to tell.
- * - `TableState` (`@jsonbored/ui-kit`) — paginated / query-backed TABLE
- *   emptiness that shares empty / stale / error states and a retry CTA with the
- *   table it belongs to (the registry tables on /endpoints, /surfaces,
- *   /providers, subnet detail, …). Not for plain card grids or single sections.
+ *   is no registry-provenance story to tell — including inside a `DataTable`,
+ *   which renders whatever you hand its `empty` slot in the table body.
+ * - `ErrorState` (this file) — a query that FAILED, with its retry. A
+ *   `DataTable` takes one in its `error` slot.
  * - `RegistryEmpty` (`./states/registry-empty`) — registry-PROVENANCE content
  *   specifically: carries a variant badge, a freshness/staleness row, and an
  *   evidence link. Keep it for surfaces/gaps-style panels where provenance is

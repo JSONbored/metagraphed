@@ -1,11 +1,71 @@
 import { useQuery } from "@tanstack/react-query";
+import { DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
 import { validatorEconomicsQuery } from "@/lib/metagraphed/queries";
-import { Panel } from "@/components/metagraphed/primitives";
-import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState } from "@/components/metagraphed/states";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
-import type { ExcludedSubnet } from "@/lib/metagraphed/types";
+import type { ExcludedSubnet, ValidatorEconomicsRow } from "@/lib/metagraphed/types";
 
 const SHOWN = 15;
+
+const tao = (value: unknown) => formatTao(typeof value === "number" ? value : null);
+
+const COLUMNS: Array<DataTableColumn<ValidatorEconomicsRow>> = [
+  {
+    key: "subnet",
+    label: "Subnet",
+    value: (r) => `SN${r.netuid}`,
+    // A degraded row is still a row, but it is labelled -- a figure derived
+    // under a stated degradation is not the same claim as one that was not.
+    render: (r) => (
+      <>
+        SN{r.netuid}
+        {r.degraded_reason ? <span className="ml-1 text-11 text-ink-muted">degraded</span> : null}
+        {r.emission_gate_open === false ? (
+          <span className="ml-1 text-11 text-ink-muted">gate shut</span>
+        ) : null}
+      </>
+    ),
+  },
+  {
+    key: "permit_floor",
+    label: "Permit floor",
+    kind: "number",
+    sortable: true,
+    value: (r) => r.permit_floor_cost_tao,
+    format: tao,
+  },
+  {
+    key: "earning_floor",
+    label: "Earning floor",
+    kind: "number",
+    sortable: true,
+    value: (r) => r.earning_floor_cost_tao,
+    format: tao,
+  },
+  {
+    key: "multiple",
+    label: "×",
+    kind: "number",
+    sortable: true,
+    value: (r) => r.permit_to_earning_multiple,
+    format: (v) => (typeof v === "number" ? `${formatNumber(v)}×` : "—"),
+  },
+  {
+    key: "slots",
+    label: "Slots",
+    kind: "number",
+    sortable: true,
+    value: (r) => r.validator_slots_open,
+    format: (v) => formatNumber(typeof v === "number" ? v : null),
+    render: (r) => (
+      <>
+        {formatNumber(r.validator_slots_open)}
+        {r.cap_binding ? <span className="ml-1 text-ink-muted">cap</span> : null}
+      </>
+    ),
+  },
+];
 
 /**
  * `/api/v1/validators/economics` (#10300), published and rendered nowhere.
@@ -23,80 +83,49 @@ const SHOWN = 15;
 export function ValidatorEconomicsRanking() {
   const { data, isLoading, isError, error, refetch } = useQuery(validatorEconomicsQuery(SHOWN));
 
-  if (isLoading) return <Skeleton className="h-[240px] w-full" />;
-  if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
-
   const e = data?.data;
-  if (!e || e.rows.length === 0) {
-    return (
-      <EmptyState
-        title="No validator economics"
-        description="No subnet reported the stake thresholds a validator permit and earning require."
-      />
-    );
-  }
-
-  const grouped = groupExclusions(e.excluded);
+  const rows = (e?.rows ?? []).slice(0, SHOWN);
+  const grouped = groupExclusions(e?.excluded ?? []);
 
   return (
-    <Panel>
-      <p className="mb-3 text-10 text-ink-muted">
-        What it costs to start validating — cheapest {formatNumber(Math.min(SHOWN, e.rows.length))}{" "}
-        of {formatNumber(e.total)} ranked subnets
-        {e.tao_weight != null ? ` · tao weight ${formatNumber(e.tao_weight)}` : ""}
-      </p>
+    <div className="space-y-3">
+      {e ? (
+        <p className="text-10 text-ink-muted">
+          What it costs to start validating — cheapest{" "}
+          {formatNumber(Math.min(SHOWN, e.rows.length))} of {formatNumber(e.total)} ranked subnets
+          {e.tao_weight != null ? ` · tao weight ${formatNumber(e.tao_weight)}` : ""}
+        </p>
+      ) : null}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-10">
-          <thead>
-            <tr className="text-11 text-ink-muted">
-              <th className="py-1 text-left">subnet</th>
-              <th className="py-1 text-right">permit floor</th>
-              <th className="py-1 text-right">earning floor</th>
-              <th className="py-1 text-right">×</th>
-              <th className="py-1 text-right">slots</th>
-            </tr>
-          </thead>
-          <tbody>
-            {e.rows.slice(0, SHOWN).map((r) => (
-              <tr key={r.netuid} className="border-t border-border/50">
-                <td className="py-1 text-ink">
-                  SN{r.netuid}
-                  {/* A degraded row is still a row, but it is labelled -- a
-                      figure derived under a stated degradation is not the same
-                      claim as one that was not. */}
-                  {r.degraded_reason ? (
-                    <span className="ml-1 text-11 text-ink-muted">degraded</span>
-                  ) : null}
-                  {r.emission_gate_open === false ? (
-                    <span className="ml-1 text-11 text-ink-muted">gate shut</span>
-                  ) : null}
-                </td>
-                <td className="py-1 text-right tabular-nums text-ink">
-                  {formatTao(r.permit_floor_cost_tao)}
-                </td>
-                <td className="py-1 text-right tabular-nums text-ink">
-                  {formatTao(r.earning_floor_cost_tao)}
-                </td>
-                <td className="py-1 text-right tabular-nums text-ink">
-                  {r.permit_to_earning_multiple == null
-                    ? "—"
-                    : `${formatNumber(r.permit_to_earning_multiple)}×`}
-                </td>
-                <td className="py-1 text-right tabular-nums text-ink">
-                  {formatNumber(r.validator_slots_open)}
-                  {r.cap_binding ? <span className="ml-1 text-ink-muted">cap</span> : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        rows={rows}
+        columns={COLUMNS}
+        rowKey={(r) => String(r.netuid)}
+        caption="Validator entry cost"
+        link={RouterLink}
+        storageKey="validator-economics"
+        loading={isLoading}
+        error={
+          isError ? (
+            <ErrorState
+              error={error}
+              onRetry={() => void refetch()}
+              context="validator economics"
+            />
+          ) : undefined
+        }
+        empty={
+          <EmptyState
+            title="No validator economics"
+            description="No subnet reported the stake thresholds a validator permit and earning require."
+          />
+        }
+      />
 
       {/* The subnets that could not be ranked, grouped by why. Named, because a
           ranking that hides its exclusions describes a subset as the whole. */}
-      {grouped.length > 0 ? (
-        <div className="mt-4">
+      {grouped.length > 0 && e ? (
+        <div>
           <p className="text-11 text-ink-muted">
             Not ranked ({e.excluded.length} subnet{e.excluded.length === 1 ? "" : "s"}):
           </p>
@@ -109,7 +138,7 @@ export function ValidatorEconomicsRanking() {
           </ul>
         </div>
       ) : null}
-    </Panel>
+    </div>
   );
 }
 

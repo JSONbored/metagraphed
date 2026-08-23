@@ -1,23 +1,12 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { GovernanceSearch } from "./chain.governance";
-import {
-  DownloadCsvButton,
-  ShareButton,
-  Skeleton,
-  TableSkeleton,
-  RangeControl,
-} from "@jsonbored/ui-kit";
+import { Skeleton, RangeControl } from "@jsonbored/ui-kit";
 import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { buildUrl } from "@/lib/metagraphed/client";
 import { ChainTabActions } from "./-chain-hub";
 import { EmissionGateChanges } from "@/components/metagraphed/emission-gate-changes";
-import { SudoKeyCard, SudoTable, sudoQueryParams } from "./-sudo-index-page";
-import {
-  AdminChangesTable,
-  NetworkParametersCard,
-  adminChangesQueryParams,
-} from "./-admin-changes-index-page";
+import { SudoKeyCard, SudoTable } from "./-sudo-index-page";
+import { AdminChangesTable, NetworkParametersCard } from "./-admin-changes-index-page";
 
 /**
  * Governance tab — /sudo and /admin-changes merged (#8291, part of #8244).
@@ -53,11 +42,6 @@ export function ChainGovernancePage() {
   const navigate = useNavigate({ from: "/chain/governance" });
   const view: GovernanceView = search.view === "admin" ? "admin" : "sudo";
 
-  const csvUrl =
-    view === "sudo"
-      ? buildUrl("/api/v1/sudo", sudoQueryParams(search))
-      : buildUrl("/api/v1/governance/config-changes", adminChangesQueryParams(search));
-
   const setView = (next: GovernanceView) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, view: next }),
@@ -76,10 +60,6 @@ export function ChainGovernancePage() {
           onChange={setView}
           className="mr-auto"
         />
-        <div className="mg-actions">
-          <DownloadCsvButton url={csvUrl} bare />
-          <ShareButton bare />
-        </div>
       </ChainTabActions>
 
       <p className="mb-6 max-w-3xl text-13 text-ink-muted">{active.blurb}</p>
@@ -103,7 +83,7 @@ export function ChainGovernancePage() {
             <NetworkParametersCard />
           </AsyncPanel>
           <div className="min-w-0">
-            <AsyncPanel context="admin changes" fallback={<TableSkeleton rows={10} columns={6} />}>
+            <AsyncPanel context="admin changes" fallback={<Skeleton className="h-80 w-full" />}>
               <AdminChangesTable />
             </AsyncPanel>
           </div>

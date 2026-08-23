@@ -2,7 +2,13 @@ import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRightLeft, Coins } from "lucide-react";
 import { useQueries, useSuspenseQuery } from "@tanstack/react-query";
-import { CopyButton, FactStrip, FactCell } from "@jsonbored/ui-kit";
+import {
+  CopyButton,
+  DataTable,
+  FactStrip,
+  FactCell,
+  type DataTableColumn,
+} from "@jsonbored/ui-kit";
 import {
   accountPortfolioQuery,
   accountPositionsQuery,
@@ -12,7 +18,7 @@ import {
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import { MoveStakeModal } from "@/components/metagraphed/move-stake-modal";
 import { EmptyState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -93,6 +99,81 @@ export function buildUnifiedPositions(
 const pct = (v: number | null) =>
   v != null && Number.isFinite(v) ? `${(v * 100).toFixed(2)}%` : "—";
 
+const tao = (value: unknown) => taoCompact(typeof value === "number" ? value : null);
+
+/** A position plus the AMM exit quote that belongs to it. */
+type PositionRow = UnifiedPosition & { exitTao: number | null };
+
+const COLUMNS: Array<DataTableColumn<PositionRow>> = [
+  {
+    key: "subnet",
+    label: "Subnet",
+    value: (p) => (p.isRoot ? "Root" : `SN${p.netuid}`),
+    render: (p) => (
+      <Link
+        to="/subnets/$netuid"
+        params={{ netuid: p.netuid }}
+        className="font-mono text-ink-strong hover:text-accent hover:underline"
+      >
+        {p.isRoot ? "Root" : `SN${p.netuid}`}
+      </Link>
+    ),
+  },
+  {
+    key: "source",
+    label: "Source",
+    value: (p) => (p.source === "owned" ? "Owned" : "Delegated"),
+    render: (p) => <SourceBadge source={p.source} />,
+  },
+  {
+    key: "hotkey",
+    label: "Hotkey",
+    value: (p) => p.hotkey,
+    render: (p) => (p.hotkey ? <HotkeyCell hotkey={p.hotkey} /> : "—"),
+  },
+  {
+    key: "spot",
+    label: "Spot τ",
+    kind: "number",
+    sortable: true,
+    value: (p) => p.spotTao,
+    format: tao,
+  },
+  {
+    key: "exit",
+    label: "Exit τ",
+    kind: "number",
+    sortable: true,
+    value: (p) => p.exitTao,
+    format: tao,
+  },
+  {
+    key: "yield",
+    label: "Yield",
+    kind: "number",
+    sortable: true,
+    value: (p) => p.yield,
+    format: (v) => pct(typeof v === "number" ? v : null),
+  },
+  {
+    key: "manage",
+    label: "Manage",
+    align: "right",
+    value: () => null,
+    render: (p) => (
+      <span className="inline-flex items-center gap-1.5">
+        <ManageButton hotkey={p.hotkey} netuid={p.netuid} />
+        <MoveButton
+          hotkey={p.hotkey}
+          netuid={p.netuid}
+          positionAlpha={p.alpha}
+          positionSpotTao={p.spotTao}
+        />
+      </span>
+    ),
+  },
+];
+
 export function YourPositionsPanel({ address }: { address: string }) {
   const portfolio = useSuspenseQuery(accountPortfolioQuery(address)).data.data;
   const nominator = useSuspenseQuery(accountPositionsQuery(address)).data.data;
@@ -125,11 +206,11 @@ export function YourPositionsPanel({ address }: { address: string }) {
     })),
   });
 
-  const exitTaoFor = (index: number, p: UnifiedPosition): number | null => {
-    if (p.isRoot) return p.spotTao; // no AMM, 1:1
+  const rows: PositionRow[] = positions.map((p, index) => {
+    if (p.isRoot) return { ...p, exitTao: p.spotTao }; // no AMM, 1:1
     const out = quotes[index]?.data?.data?.expected_out;
-    return typeof out === "number" ? out : null;
-  };
+    return { ...p, exitTao: typeof out === "number" ? out : null };
+  });
 
   // #8819: exit is never padded with a position's un-slipped spot value when its AMM quote is
   // pending or errored -- see exitTotals' own doc comment for why. quoteStates mirrors quotes
@@ -194,100 +275,17 @@ export function YourPositionsPanel({ address }: { address: string }) {
         />
       </FactStrip>
 
-      {/* Desktop table */}
-      <Panel flush className="hidden overflow-x-auto md:block">
-        <table className="w-full text-13">
-          <thead className="bg-surface text-10 text-ink-muted">
-            <tr>
-              <th className="px-3 py-2.5 text-left">Subnet</th>
-              <th className="px-3 py-2.5 text-left">Source</th>
-              <th className="px-3 py-2.5 text-left">Hotkey</th>
-              <th className="px-3 py-2.5 text-right">Spot τ</th>
-              <th className="px-3 py-2.5 text-right">Exit τ</th>
-              <th className="px-3 py-2.5 text-right">Yield</th>
-              <th className="px-3 py-2.5 text-right">Manage</th>
-            </tr>
-          </thead>
-          <tbody>
-            {positions.map((p, i) => (
-              <tr key={p.key} className="mg-row-hover border-t border-border/60">
-                <td className="px-3 py-2.5 font-mono text-13">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: p.netuid }}
-                    className="text-ink-strong hover:text-accent hover:underline"
-                  >
-                    {p.isRoot ? "Root" : `SN${p.netuid}`}
-                  </Link>
-                </td>
-                <td className="px-3 py-2.5">
-                  <SourceBadge source={p.source} />
-                </td>
-                <td className="px-3 py-2.5 text-11 text-ink-muted">
-                  {p.hotkey ? <HotkeyCell hotkey={p.hotkey} /> : "—"}
-                </td>
-                <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-strong">
-                  {taoCompact(p.spotTao)}
-                </td>
-                <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
-                  {taoCompact(exitTaoFor(i, p))}
-                </td>
-                <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-                  {pct(p.yield)}
-                </td>
-                <td className="px-3 py-2.5 text-right">
-                  <div className="inline-flex items-center gap-1.5">
-                    <ManageButton hotkey={p.hotkey} netuid={p.netuid} />
-                    <MoveButton
-                      hotkey={p.hotkey}
-                      netuid={p.netuid}
-                      positionAlpha={p.alpha}
-                      positionSpotTao={p.spotTao}
-                    />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
-
-      {/* Mobile cards */}
-      <div className="space-y-3 md:hidden">
-        {positions.map((p, i) => (
-          <Panel bodyClassName="space-y-2" key={p.key}>
-            <div className="flex items-center justify-between gap-2">
-              <Link
-                to="/subnets/$netuid"
-                params={{ netuid: p.netuid }}
-                className="font-mono text-13 text-ink-strong hover:text-accent hover:underline"
-              >
-                {p.isRoot ? "Root" : `SN${p.netuid}`}
-              </Link>
-              <SourceBadge source={p.source} />
-            </div>
-            {p.hotkey ? (
-              <div className="text-11 text-ink-muted">
-                <HotkeyCell hotkey={p.hotkey} />
-              </div>
-            ) : null}
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-13">
-              <Stat label="Spot τ" value={taoCompact(p.spotTao)} />
-              <Stat label="Exit τ" value={taoCompact(exitTaoFor(i, p))} />
-              <Stat label="Yield" value={pct(p.yield)} />
-            </dl>
-            <div className="flex items-center gap-1.5">
-              <ManageButton hotkey={p.hotkey} netuid={p.netuid} />
-              <MoveButton
-                hotkey={p.hotkey}
-                netuid={p.netuid}
-                positionAlpha={p.alpha}
-                positionSpotTao={p.spotTao}
-              />
-            </div>
-          </Panel>
-        ))}
-      </div>
+      <DataTable
+        rows={rows}
+        columns={COLUMNS}
+        rowKey={(p) => p.key}
+        caption="Positions"
+        link={RouterLink}
+        storageKey="your-positions"
+        // Seven columns, two of them controls: label/value cards read below
+        // 640px where a horizontal scroll would hide the Manage actions.
+        mobile="cards"
+      />
     </div>
   );
 }
@@ -373,14 +371,5 @@ function MoveButton({
         </button>
       )}
     />
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2">
-      <dt className="text-ink-muted">{label}</dt>
-      <dd className="font-mono tabular-nums text-ink">{value}</dd>
-    </div>
   );
 }

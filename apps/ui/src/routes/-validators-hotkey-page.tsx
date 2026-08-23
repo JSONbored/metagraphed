@@ -8,13 +8,13 @@ import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/stat
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import {
-  ShareButton,
   Chip,
   AnalyticsSection,
   FactCell,
   EntityHero,
   FactSentence,
   SectionNav,
+  DataTable,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
@@ -23,7 +23,7 @@ import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { WatchValidatorAlert } from "@/components/metagraphed/watch-validator-alert";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import { TakeManagementModal } from "@/components/metagraphed/take-management-modal";
-import { SearchInput } from "@/components/metagraphed/table-controls";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import {
   ValidatorNominatorsTable,
   type ValidatorNominatorsSearch,
@@ -62,7 +62,6 @@ const TABS = [
 
 // Per-subnet table shows the top N by stake until expanded — most validators
 // with 100+ memberships have a long tail of dust rows.
-const SUBNETS_INITIAL = 20;
 
 export function ValidatorDetailPage() {
   const { hotkey } = useParams({ from: "/validators/$hotkey" });
@@ -92,7 +91,6 @@ function subnetEmissionStr(s: ValidatorDetailSubnet): string {
 
 function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] }) {
   const [q, setQ] = useState("");
-  const [showAll, setShowAll] = useState(false);
   const sorted = useMemo(
     () => [...subnets].sort((a, b) => (b.stake_alpha ?? 0) - (a.stake_alpha ?? 0)),
     [subnets],
@@ -101,7 +99,6 @@ function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] })
     () => sorted.filter((s) => matchesQuery([s.netuid, `SN${s.netuid}`, s.uid], q)),
     [sorted, q],
   );
-  const visible = showAll || q ? filtered : filtered.slice(0, SUBNETS_INITIAL);
 
   if (subnets.length === 0) {
     return (
@@ -113,104 +110,64 @@ function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] })
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <SearchInput
-          value={q}
-          onChange={setQ}
-          placeholder="Filter by netuid"
-          className="w-full sm:w-64"
-        />
-        <span className="text-11 text-ink-muted">
-          {formatNumber(filtered.length)} membership{filtered.length === 1 ? "" : "s"}
-        </span>
-      </div>
-
-      {/* Desktop table. #8251: the per-row Stake buttons died — the page's ONE
-          Delegate CTA lives in the header. */}
-      <div className="hidden md:block overflow-x-auto rounded border border-border">
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface">
-            <tr>
-              <th className={TH}>Subnet</th>
-              <th className={`${TH} text-right`}>UID</th>
-              <th className={`${TH} text-right`}>Stake τ</th>
-              <th className={`${TH} text-right`}>Emission τ</th>
-              <th className={`${TH} text-right`}>Dividends</th>
-              <th className={`${TH} text-right`}>Val trust</th>
-              <th className={`${TH} text-center`}>Permit</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {visible.map((s) => (
-              <tr key={s.netuid} className="hover:bg-surface">
-                <td className="px-3 py-2 text-11">
-                  <SubnetCellLink s={s} />
-                </td>
-                <td className="px-3 py-2 text-right font-mono text-13 tabular-nums text-ink-muted">
-                  {s.uid}
-                </td>
-                <td className="px-3 py-2 text-right font-mono text-13 tabular-nums text-ink-strong">
-                  {subnetStakeStr(s)}
-                </td>
-                <td className="px-3 py-2 text-right font-mono text-13 tabular-nums text-ink">
-                  {subnetEmissionStr(s)}
-                </td>
-                <td className="px-3 py-2 text-right font-mono text-13 tabular-nums text-ink">
-                  {scoreStr(s.dividends)}
-                </td>
-                <td className="px-3 py-2 text-right font-mono text-13 tabular-nums text-ink-muted">
-                  {scoreStr(s.validator_trust)}
-                </td>
-                <td className="px-3 py-2 text-center">
-                  {s.validator_permit ? (
-                    <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-13 text-accent-text">
-                      Yes
-                    </span>
-                  ) : (
-                    <span className="text-10 text-ink-subtle-text">—</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile: Subnet · Stake · Dividends rows with the long tail behind an
-          expandable per-row detail — the 8-column table doesn't survive 390px. */}
-      <ul className="space-y-2 md:hidden">
-        {visible.map((s) => (
-          <li key={s.netuid} className="rounded border border-border bg-card">
-            <details>
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
-                <SubnetCellLink s={s} />
-                <span className="flex items-center gap-4 text-11 tabular-nums">
-                  <span className="text-ink-strong">{subnetStakeStr(s)}</span>
-                  <span className="text-ink-muted">{scoreStr(s.dividends)}</span>
-                </span>
-              </summary>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-border px-3 py-2.5 text-11">
-                <MobileField label="UID" value={String(s.uid)} />
-                <MobileField label="Emission" value={subnetEmissionStr(s)} />
-                <MobileField label="Val trust" value={scoreStr(s.validator_trust)} />
-                <MobileField label="Permit" value={s.validator_permit ? "Yes" : "—"} />
-              </dl>
-            </details>
-          </li>
-        ))}
-      </ul>
-
-      {!showAll && !q && filtered.length > SUBNETS_INITIAL ? (
-        <button
-          type="button"
-          onClick={() => setShowAll(true)}
-          className="block w-full rounded border border-border bg-card px-3 py-2 text-13 font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
-        >
-          Show all {formatNumber(filtered.length)} memberships
-        </button>
-      ) : null}
-    </div>
+    <DataTable
+      rows={filtered}
+      rowKey={(row) => String(row.netuid)}
+      caption="Subnet memberships"
+      total={filtered.length}
+      link={RouterLink}
+      search={{ value: q, onChange: setQ, placeholder: "Filter by netuid" }}
+      storageKey="validator-subnets"
+      columns={[
+        {
+          key: "netuid",
+          label: "Subnet",
+          sortable: true,
+          value: (row) => row.netuid,
+          format: (value) => `SN${String(value)}`,
+          render: (row) => <SubnetCellLink s={row} />,
+        },
+        { key: "uid", label: "UID", kind: "number", sortable: true, value: (row) => row.uid },
+        {
+          key: "stake",
+          label: "Stake",
+          kind: "number",
+          sortable: true,
+          value: (row) => row.stake_alpha ?? null,
+          format: (_value, row) => subnetStakeStr(row),
+        },
+        {
+          key: "emission",
+          label: "Emission",
+          kind: "number",
+          sortable: true,
+          value: (row) => row.emission_alpha ?? null,
+          format: (_value, row) => subnetEmissionStr(row),
+        },
+        {
+          key: "dividends",
+          label: "Dividends",
+          kind: "number",
+          sortable: true,
+          value: (row) => row.dividends ?? null,
+          format: (value) => scoreStr(typeof value === "number" ? value : undefined),
+        },
+        {
+          key: "trust",
+          label: "Val trust",
+          kind: "number",
+          sortable: true,
+          value: (row) => row.validator_trust ?? null,
+          format: (value) => scoreStr(typeof value === "number" ? value : undefined),
+        },
+        {
+          key: "permit",
+          label: "Permit",
+          demote: true,
+          value: (row) => (row.validator_permit ? "Yes" : null),
+        },
+      ]}
+    />
   );
 }
 
@@ -228,17 +185,6 @@ function SubnetCellLink({ s }: { s: ValidatorDetailSubnet }) {
     </Link>
   );
 }
-
-function MobileField({ label, value }: { label: string; value: string }) {
-  return (
-    <>
-      <dt className="text-ink-muted">{label}</dt>
-      <dd className="text-right tabular-nums text-ink">{value}</dd>
-    </>
-  );
-}
-
-const TH = "text-13 px-3 py-2 text-ink-muted";
 
 function nominatorsQueryParams(search: ValidatorNominatorsSearch): Record<string, string | number> {
   const params: Record<string, string | number> = {
@@ -417,7 +363,6 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
                 label={hasIdentity ? displayName : "this validator"}
                 iconOnly
               />
-              <ShareButton bare iconOnly />
             </div>
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner

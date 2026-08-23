@@ -21,9 +21,12 @@ const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.met
 const appStyles = read("../../styles.css");
 const subnetsPage = read("../../routes/-subnets-index-page.tsx");
 const kitStyles = read("../../../../../packages/ui-kit/src/styles.css");
-const listShell = read("../../../../../packages/ui-kit/src/components/metagraphed/list-shell.tsx");
 
-const pinnedRule = /\.mg-table-head-pinned\s*\{([^}]*)\}/g;
+// #11610: there is now exactly ONE way a table header sticks -- DataTable's
+// own <th> rule. `.mg-table-head-pinned` and the ListShell that applied it
+// are gone, so this file holds that single rule to what the class used to
+// promise.
+const dataTableHeadRule = /\.mg-dt-viewport-bounded thead th\s*\{([^}]*)\}/g;
 
 describe("sticky table header anchoring", () => {
   it("keeps the subnets table header inside a bounded scroll container", () => {
@@ -31,22 +34,35 @@ describe("sticky table header anchoring", () => {
     // removed (back to page scroll), `top: 0` becomes the WRONG answer and
     // this whole file should be revisited rather than made to pass.
     //
-    // The viewport is ListShell's, not this page's: the page used to declare
-    // a second `max-h` div of its own purely to own the virtualizer's ref,
-    // which nested two bounded scrollers and left the outer one inert. It now
-    // hands that ref to the shell instead, so the element the virtualizer
-    // measures and the element the header pins to are the same one.
-    expect(subnetsPage).toContain("viewportRef={tableScrollRef}");
+    // The viewport is the table component's, not this page's: the page used
+    // to declare a `max-h` div of its own purely to own the virtualizer's
+    // ref, which nested two bounded scrollers and left the outer one inert.
+    // #11610 retired both the virtualizer and ListShell here -- /subnets is a
+    // DataTable, which owns its one bounded scrollport. The property to hold
+    // is unchanged: the page declares no scroll container of its own, so
+    // there is exactly one element for the header to pin to.
+    expect(subnetsPage).toContain("<DataTable");
     expect(subnetsPage).not.toContain("mg-list-viewport");
-    // ONE element carries both classes: .mg-table-scroll for the edge-fade and
-    // thin scrollbar, .mg-list-viewport for the height cap, both overflow axes
-    // and overscroll containment. Nesting them does not work -- `overflow-y:
+    expect(subnetsPage).not.toContain("max-h-");
+    // DataTable bounds its viewport the same way, off the same token, and
+    // contains scroll chaining -- without that, scrolling past the last row
+    // drags the viewport (and the header pinned to its top) up under the app
+    // header while the reader is still looking at rows.
+    const dtBounded = kitStyles.slice(
+      kitStyles.indexOf(".mg-dt-viewport-bounded {"),
+      kitStyles.indexOf("}", kitStyles.indexOf(".mg-dt-viewport-bounded {")),
+    );
+    expect(dtBounded).toContain("max-height: var(--mg-list-viewport-max, 70vh)");
+    expect(dtBounded).toContain("overscroll-behavior: contain");
+    // ONE element carries both axes. Nesting them does not work -- `overflow-y:
     // auto` coerces `overflow-x` to `auto`, so an inner vertical scroller
     // steals the horizontal axis and strands the affordance on an element that
     // can no longer scroll.
-    expect(listShell).toContain('"mg-table-scroll mg-list-viewport"');
-    // `stickyHeader={false}` drops the bounded box along with the pin.
-    expect(listShell).toContain('"mg-table-scroll overflow-x-auto"');
+    const dtViewport = kitStyles.slice(
+      kitStyles.indexOf(".mg-dt-viewport {"),
+      kitStyles.indexOf("}", kitStyles.indexOf(".mg-dt-viewport {")),
+    );
+    expect(dtViewport).toContain("overflow: auto");
     // The cap must carry a literal fallback. A bare var() that fails to
     // resolve computes `max-height: none`, which silently unbounds the
     // viewport and makes every sticky header in the app inert again --
@@ -56,45 +72,55 @@ describe("sticky table header anchoring", () => {
   });
 
   it("pins every table header to its scrollport, not to the app-header offset", () => {
-    const rules = [...kitStyles.matchAll(pinnedRule)];
-    expect(rules.length, "no .mg-table-head-pinned rule found").toBeGreaterThan(0);
+    const rules = [...kitStyles.matchAll(dataTableHeadRule)];
+    expect(rules.length, ".mg-dt-viewport-bounded thead th declares no pin").toBe(1);
 
     for (const [, body] of rules) {
       expect(body).toContain("position: sticky");
       expect(body).toMatch(/top:\s*0;/);
       // The specific regression: the page-scroll offset used inside the box.
       expect(body).not.toContain("--mg-sticky-offset");
-      // And the second one: a translucent header lets the row passing
-      // underneath read through the column labels.
-      expect(body).toMatch(/background: var\(--(?:card|canvas)\)/);
     }
   });
 
-  it("routes every sticky table header through that one class", () => {
+  it("routes every sticky table header through the kit, never a page's own copy", () => {
     // /subnets carried its own `.mg-subnets-sticky-head` copy of the same
     // idea, and that copy is what drifted -- wrong offset, and gated to
-    // >=1024px while the table renders from 768px. Two definitions of "how a
-    // table header sticks" is the actual root cause; one is the fix.
+    // >=1024px while the table renders from 768px. A page-local definition of
+    // "how a table header sticks" is the actual root cause; keeping every one
+    // of them in the kit is the fix.
     expect(appStyles).not.toContain(".mg-subnets-sticky-head {");
     expect(subnetsPage).not.toContain("mg-subnets-sticky-head");
-    expect(subnetsPage).toContain("mg-table-head-pinned");
+    expect(subnetsPage).not.toContain("position: sticky");
+    // The one kit-owned pin exists and is held to the rules above.
+    expect(kitStyles).toContain(".mg-dt-viewport-bounded thead th {");
+    // A third regression the e2e gate catches and source cannot: a sticky
+    // header in an UNBOUNDED viewport never moves. The pin is scoped to the
+    // bounded viewport so it is never declared where it would be inert.
+    expect(kitStyles).not.toMatch(/^ *\.mg-dt thead th \{[^}]*position: sticky/m);
+    // And it stays opaque, so a row passing underneath cannot read through.
+    expect(kitStyles).toMatch(/\.mg-dt thead th \{[^}]*background: var\(--canvas\)/);
+    // And the retired one really is retired, not merely unused.
+    expect(kitStyles).not.toContain(".mg-table-head-pinned");
   });
 
   it("does not gate that stickiness above the width where the table renders", () => {
-    // ListShell swaps to cards below `md` (768px), so the table is on screen
-    // from 768px up. The old rule sat inside `@media (min-width: 1024px)`,
+    // DataTable swaps to cards below 640px, so the table is on screen from
+    // there up. The old rule sat inside `@media (min-width: 1024px)`,
     // leaving 768-1023px with a static header that scrolled out of the
     // bounded box entirely -- a full-height table of unlabelled columns.
     // Assert the declaration sits at the top level of the sheet: count the
     // media queries opened before it against the block-closing braces.
-    const ruleAt = kitStyles.indexOf(".mg-table-head-pinned {");
-    expect(ruleAt).toBeGreaterThan(-1);
-    const before = kitStyles.slice(0, ruleAt);
-    const opens = (before.match(/@media/g) ?? []).length;
-    const closes = (before.match(/^}/gm) ?? []).length;
-    expect(
-      opens,
-      "the .mg-table-head-pinned rule is nested inside an unclosed @media block",
-    ).toBeLessThanOrEqual(closes);
+    for (const selector of [".mg-dt-viewport-bounded thead th {"]) {
+      const ruleAt = kitStyles.indexOf(selector);
+      expect(ruleAt, `${selector} is not in the kit stylesheet`).toBeGreaterThan(-1);
+      const before = kitStyles.slice(0, ruleAt);
+      const opens = (before.match(/@media/g) ?? []).length;
+      const closes = (before.match(/^}/gm) ?? []).length;
+      expect(
+        opens,
+        `the ${selector} rule is nested inside an unclosed @media block`,
+      ).toBeLessThanOrEqual(closes);
+    }
   });
 });

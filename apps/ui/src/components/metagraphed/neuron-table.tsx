@@ -1,14 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Coins, Download } from "lucide-react";
-import { CopyButton, ExternalLink } from "@jsonbored/ui-kit";
-import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
+import { Coins } from "lucide-react";
+import { CopyButton, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
-import { buildUrl } from "@/lib/metagraphed/client";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
-import { Panel } from "@/components/metagraphed/primitives";
 import { taoCompact, scoreStr, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import {
   annualizedDelegatorApyPct,
@@ -74,6 +72,56 @@ function sortValue(n: MetagraphNeuron, field: SortField): number {
   return field === "rank" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
 }
 
+const tao = (value: unknown) => taoCompact(typeof value === "number" ? value : null);
+const score = (value: unknown) => scoreStr(typeof value === "number" ? value : null);
+
+/** The permit is a chain-derived trust fact, so it reads as a chip, not a tick. */
+function PermitCell({ permit }: { permit: boolean | null | undefined }) {
+  if (!permit) return <span className="text-10 text-ink-subtle-text">—</span>;
+  return (
+    <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-13 text-accent-text">
+      Validator
+    </span>
+  );
+}
+
+function HotkeyCell({ n, isValidator }: { n: MetagraphNeuron; isValidator: boolean }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      {n.featured ? <SponsoredBadge /> : null}
+      {n.hotkey ? (
+        isValidator ? (
+          <>
+            {/* Validator rows link to the dedicated /validators/$hotkey page,
+                not the generic /accounts/$ss58 lookup that AddressDisplay's own
+                link targets, so this stays a manually-composed Link +
+                CopyButton pair rather than AddressDisplay -- the text is still
+                upgraded through the shared resolveAddress ladder. */}
+            <Link
+              to="/validators/$hotkey"
+              params={{ hotkey: n.hotkey }}
+              className="truncate text-ink-muted hover:text-ink hover:underline"
+              title={n.hotkey}
+            >
+              {resolveAddress(n.hotkey).display}
+            </Link>
+            <CopyButton value={n.hotkey} label="hotkey" compact />
+          </>
+        ) : (
+          <AddressDisplay
+            ss58={n.hotkey}
+            fallback={<>{n.hotkey}</>}
+            compact
+            valueClassName="text-ink-muted hover:text-ink"
+          />
+        )
+      ) : (
+        "—"
+      )}
+    </span>
+  );
+}
+
 /**
  * Shared sortable neuron table for the metagraph + validator panels. Rows
  * drill into a per-UID snapshot via `onSelect` (the parent owns the `?uid=`
@@ -101,363 +149,168 @@ export function NeuronTable({
   selectedUid?: number | null;
 }) {
   const isValidator = variant === "validator";
-  const [field, setField] = useState<SortField>(defaultField);
-  const [order, setOrder] = useState<"asc" | "desc">("desc");
 
-  const onSort = (f: string) => {
-    const next = f as SortField;
-    if (next === field) {
-      setOrder((o) => (o === "asc" ? "desc" : "asc"));
-    } else {
-      setField(next);
-      // Default to descending for the heavy metrics, ascending for uid/rank.
-      setOrder(next === "uid" || next === "rank" ? "asc" : "desc");
-    }
-  };
-
+  // The table owns interactive sorting; this only fixes the order the reader
+  // first sees, which is the leaderboard's whole point.
   const sorted = useMemo(() => {
-    const dir = order === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      if (!NUMERIC_FIELDS.has(field)) return 0;
-      return (sortValue(a, field) - sortValue(b, field)) * dir;
-    });
-  }, [rows, field, order]);
+    const dir = defaultField === "uid" || defaultField === "rank" ? 1 : -1;
+    return [...rows].sort(
+      (a, b) => (sortValue(a, defaultField) - sortValue(b, defaultField)) * dir,
+    );
+  }, [rows, defaultField]);
 
-  const csvUrl = useMemo(() => {
-    const path = isValidator
-      ? `/api/v1/subnets/${netuid}/validators`
-      : `/api/v1/subnets/${netuid}/metagraph`;
-    return buildUrl(path, { format: "csv" });
-  }, [isValidator, netuid]);
+  const columns = useMemo<Array<DataTableColumn<MetagraphNeuron>>>(() => {
+    const scoring: Array<DataTableColumn<MetagraphNeuron>> = isValidator
+      ? [
+          {
+            key: "dividends",
+            label: "Dividends",
+            kind: "number",
+            sortable: true,
+            value: (n) => n.dividends,
+            format: score,
+          },
+          {
+            key: "validator_trust",
+            label: "Val Trust",
+            kind: "number",
+            sortable: true,
+            value: (n) => validatorTrustValue(n),
+            format: score,
+          },
+          {
+            key: "take",
+            label: "Take",
+            kind: "number",
+            sortable: true,
+            value: (n) => n.take,
+            format: (v) => formatTakePct(typeof v === "number" ? v : null),
+          },
+          {
+            key: "apy",
+            label: "Est. APY",
+            kind: "number",
+            value: (n) =>
+              annualizedDelegatorApyPct(n.emission_tao ?? 0, n.stake_tao ?? 0, n.take) ?? null,
+            format: (v) => formatApyPct(typeof v === "number" ? v : null),
+          },
+        ]
+      : [
+          {
+            key: "rank",
+            label: "Rank",
+            kind: "number",
+            sortable: true,
+            value: (n) => n.rank,
+          },
+          {
+            key: "trust",
+            label: "Trust",
+            kind: "number",
+            sortable: true,
+            value: (n) => n.trust,
+            format: score,
+          },
+          {
+            key: "consensus",
+            label: "Consensus",
+            kind: "number",
+            sortable: true,
+            value: (n) => n.consensus,
+            format: score,
+          },
+        ];
 
-  const col = (f: SortField, label: string, align: "left" | "right" = "right") => (
-    <th
-      className={classNames("px-3 py-2.5", align === "right" ? "text-right" : "text-left")}
-      aria-sort={ariaSort(field === f, order)}
-    >
-      <SortHeader
-        label={label}
-        field={f}
-        active={field === f}
-        order={order}
-        onSort={onSort}
-        align={align}
-      />
-    </th>
-  );
-
-  return (
-    <Panel flush className="overflow-hidden">
-      {/* Mobile card fallback (#6335): the 8-10 column table is unreadable on a
-          narrow viewport, so mirror ValidatorCardList's per-row cards (one per
-          neuron, each metric labelled by its field). The desktop table below is
-          unchanged, just hidden under md. */}
-      <ul className="divide-y divide-border/60 md:hidden">
-        {sorted.map((n) => (
-          <NeuronCard
-            key={n.uid}
-            n={n}
-            isValidator={isValidator}
-            netuid={netuid}
-            onSelect={onSelect}
-            active={selectedUid === n.uid}
-          />
-        ))}
-      </ul>
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full text-13">
-          <thead className="bg-surface text-10 text-ink-muted">
-            <tr>
-              {col("uid", "UID", "left")}
-              <th className="px-3 py-2.5 text-left">Hotkey</th>
-              {col("stake_tao", "Stake τ")}
-              {col("emission_tao", "Emission τ")}
-              {isValidator ? (
-                <>
-                  {col("dividends", "Dividends")}
-                  {col("validator_trust", "Val Trust")}
-                  {col("take", "Take")}
-                  <th className="px-3 py-2.5 text-right">Est. APY</th>
-                </>
-              ) : (
-                <>
-                  {col("rank", "Rank")}
-                  {col("trust", "Trust")}
-                  {col("consensus", "Consensus")}
-                </>
-              )}
-              <th className="px-3 py-2.5 text-center">Permit</th>
-              {isValidator ? <th className="px-3 py-2.5 text-right">Delegate</th> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((n) => {
-              const active = selectedUid === n.uid;
-              return (
-                <tr
-                  key={n.uid}
-                  className={classNames(
-                    "mg-row-hover border-t border-border/60",
-                    active && "bg-accent-surface",
-                  )}
-                >
-                  <td className="px-3 py-2.5 font-mono text-13 tabular-nums text-ink-strong">
-                    {onSelect ? (
-                      <button
-                        type="button"
-                        className="underline underline-offset-2 hover:text-accent"
-                        onClick={() => onSelect(n.uid)}
-                      >
-                        {n.uid}
-                      </button>
-                    ) : (
-                      n.uid
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 text-11">
-                    <div className="flex items-center gap-1.5">
-                      {n.featured ? <SponsoredBadge /> : null}
-                      {n.hotkey ? (
-                        isValidator ? (
-                          <>
-                            {/* Validator rows link to the dedicated /validators/$hotkey
-                                page, not the generic /accounts/$ss58 lookup that
-                                AddressDisplay's own link targets, so this stays a
-                                manually-composed Link + CopyButton pair rather than
-                                AddressDisplay -- the text is still upgraded through
-                                the shared resolveAddress ladder. */}
-                            <Link
-                              to="/validators/$hotkey"
-                              params={{ hotkey: n.hotkey }}
-                              className="text-ink-muted hover:text-ink hover:underline"
-                              title={n.hotkey}
-                            >
-                              {resolveAddress(n.hotkey).display}
-                            </Link>
-                            <CopyButton value={n.hotkey} label="hotkey" compact />
-                          </>
-                        ) : (
-                          <AddressDisplay
-                            ss58={n.hotkey}
-                            fallback={<>{n.hotkey}</>}
-                            compact
-                            valueClassName="text-ink-muted hover:text-ink"
-                          />
-                        )
-                      ) : (
-                        "—"
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-strong">
-                    {taoCompact(n.stake_tao)}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
-                    {taoCompact(n.emission_tao)}
-                  </td>
-                  {isValidator ? (
-                    <>
-                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
-                        {scoreStr(n.dividends)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-                        {scoreStr(validatorTrustValue(n))}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-                        {formatTakePct(n.take)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-                        {formatApyPct(
-                          annualizedDelegatorApyPct(n.emission_tao ?? 0, n.stake_tao ?? 0, n.take),
-                        )}
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-                        {n.rank == null ? "—" : n.rank}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-                        {scoreStr(n.trust)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-                        {scoreStr(n.consensus)}
-                      </td>
-                    </>
-                  )}
-                  <td className="px-3 py-2.5 text-center">
-                    {n.validator_permit ? (
-                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-13 text-accent-text">
-                        Validator
-                      </span>
-                    ) : (
-                      <span className="text-10 text-ink-subtle-text">—</span>
-                    )}
-                  </td>
-                  {isValidator ? (
-                    <td className="px-3 py-2.5 text-right">
-                      {n.hotkey ? (
-                        <StakeUnstakeModal
-                          hotkey={n.hotkey}
-                          netuid={netuid}
-                          trigger={(open) => (
-                            <button
-                              type="button"
-                              onClick={open}
-                              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
-                            >
-                              <Coins className="size-3 text-ink-muted" aria-hidden />
-                              Delegate
-                            </button>
-                          )}
-                        />
-                      ) : null}
-                    </td>
-                  ) : null}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="border-t border-border/60 bg-surface px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-13 text-ink-muted">
-        <span>
-          {sorted.length} {sorted.length === 1 ? "neuron" : "neurons"} · subnet {netuid}
-        </span>
-        <span onClick={(e) => e.stopPropagation()}>
-          <ExternalLink
-            bare
-            href={csvUrl}
-            className="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2.5 py-1 text-11 text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    const base: Array<DataTableColumn<MetagraphNeuron>> = [
+      {
+        key: "uid",
+        label: "UID",
+        align: "left",
+        sortable: true,
+        value: (n) => n.uid,
+        render: (n) => (
+          <span
+            className={classNames(
+              "font-mono tabular-nums",
+              selectedUid === n.uid ? "text-accent" : "text-ink-strong",
+            )}
           >
-            <Download className="size-3" aria-hidden />
-            Download CSV
-          </ExternalLink>
-        </span>
-      </div>
-    </Panel>
-  );
-}
-
-/**
- * One neuron rendered as a card — the mobile fallback for a table row (#6335),
- * mirroring ValidatorCardList's per-row layout. Each metric is labelled so the
- * card reads correctly on its own, and the variant-specific scoring fields +
- * the validator Delegate action match the desktop columns exactly.
- */
-function NeuronCard({
-  n,
-  isValidator,
-  netuid,
-  onSelect,
-  active,
-}: {
-  n: MetagraphNeuron;
-  isValidator: boolean;
-  netuid: number;
-  onSelect?: (uid: number) => void;
-  active: boolean;
-}) {
-  return (
-    <li className={classNames("min-w-0 space-y-2 p-3", active && "bg-accent-surface")}>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 font-mono text-13 tabular-nums text-ink-strong">
-          <span className="text-13 text-ink-muted">UID</span>
-          {onSelect ? (
-            <button
-              type="button"
-              className="underline underline-offset-2 hover:text-accent"
-              onClick={() => onSelect(n.uid)}
-            >
-              {n.uid}
-            </button>
-          ) : (
-            n.uid
-          )}
-        </div>
-        {n.validator_permit ? (
-          <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-13 text-accent-text">
-            Validator
+            {n.uid}
           </span>
-        ) : null}
-      </div>
-      <div className="flex min-w-0 items-center gap-1.5 text-11 text-ink-muted">
-        {n.featured ? <SponsoredBadge /> : null}
-        {n.hotkey ? (
-          isValidator ? (
-            <>
-              {/* See the desktop table's matching branch for why validator rows
-                  keep a manual Link + CopyButton instead of AddressDisplay. */}
-              <Link
-                to="/validators/$hotkey"
-                params={{ hotkey: n.hotkey }}
-                title={n.hotkey}
-                className="truncate hover:text-ink hover:underline"
-              >
-                {resolveAddress(n.hotkey).display}
-              </Link>
-              <CopyButton value={n.hotkey} label="hotkey" compact />
-            </>
-          ) : (
-            <AddressDisplay
-              ss58={n.hotkey}
-              fallback={<>{n.hotkey}</>}
-              compact
-              valueClassName="truncate hover:text-ink"
-            />
-          )
-        ) : (
-          "—"
-        )}
-      </div>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-13">
-        <Stat label="Stake τ" value={taoCompact(n.stake_tao)} />
-        <Stat label="Emission τ" value={taoCompact(n.emission_tao)} />
-        {isValidator ? (
-          <>
-            <Stat label="Dividends" value={scoreStr(n.dividends)} />
-            <Stat label="Val Trust" value={scoreStr(validatorTrustValue(n))} />
-            <Stat label="Take" value={formatTakePct(n.take)} />
-            <Stat
-              label="Est. APY"
-              value={formatApyPct(
-                annualizedDelegatorApyPct(n.emission_tao ?? 0, n.stake_tao ?? 0, n.take),
+        ),
+      },
+      {
+        key: "hotkey",
+        label: "Hotkey",
+        value: (n) => n.hotkey ?? null,
+        render: (n) => <HotkeyCell n={n} isValidator={isValidator} />,
+      },
+      {
+        key: "stake_tao",
+        label: "Stake τ",
+        kind: "number",
+        sortable: true,
+        value: (n) => n.stake_tao,
+        format: tao,
+      },
+      {
+        key: "emission_tao",
+        label: "Emission τ",
+        kind: "number",
+        sortable: true,
+        value: (n) => n.emission_tao,
+        format: tao,
+      },
+      ...scoring,
+      {
+        key: "permit",
+        label: "Permit",
+        align: "left",
+        value: (n) => (n.validator_permit ? "Validator" : null),
+        render: (n) => <PermitCell permit={n.validator_permit} />,
+      },
+    ];
+
+    if (!isValidator) return base;
+    return [
+      ...base,
+      {
+        key: "delegate",
+        label: "Delegate",
+        align: "right",
+        value: () => null,
+        render: (n) =>
+          n.hotkey ? (
+            <StakeUnstakeModal
+              hotkey={n.hotkey}
+              netuid={netuid}
+              trigger={(open) => (
+                <button
+                  type="button"
+                  onClick={open}
+                  className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+                >
+                  <Coins className="size-3 text-ink-muted" aria-hidden />
+                  Delegate
+                </button>
               )}
             />
-          </>
-        ) : (
-          <>
-            <Stat label="Rank" value={n.rank == null ? "—" : String(n.rank)} />
-            <Stat label="Trust" value={scoreStr(n.trust)} />
-            <Stat label="Consensus" value={scoreStr(n.consensus)} />
-          </>
-        )}
-      </dl>
-      {isValidator && n.hotkey ? (
-        <StakeUnstakeModal
-          hotkey={n.hotkey}
-          netuid={netuid}
-          trigger={(open) => (
-            <button
-              type="button"
-              onClick={open}
-              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
-            >
-              <Coins className="size-3 text-ink-muted" aria-hidden />
-              Delegate
-            </button>
-          )}
-        />
-      ) : null}
-    </li>
-  );
-}
+          ) : null,
+      },
+    ];
+  }, [isValidator, netuid, selectedUid]);
 
-function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      <dt className="text-ink-muted">{label}</dt>
-      <dd className="font-mono tabular-nums text-ink">{value}</dd>
-    </div>
+    <DataTable
+      rows={sorted}
+      columns={columns}
+      rowKey={(n) => String(n.uid)}
+      caption={isValidator ? `Subnet ${netuid} validators` : `Subnet ${netuid} neurons`}
+      link={RouterLink}
+      // Ten labelled metrics per row read as a card below 640px; a horizontal
+      // scroll there hides the scoring columns behind a gesture nobody makes.
+      mobile="cards"
+      onRowActivate={onSelect ? (n) => onSelect(n.uid) : undefined}
+    />
   );
 }

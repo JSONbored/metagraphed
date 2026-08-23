@@ -11,7 +11,7 @@ export interface ScrollShadowProps {
 
 /**
  * Adds edge-fade shadows that appear only when content overflows and the
- * user hasn't scrolled to that edge. Used by <ResponsiveTable> and the
+ * user hasn't scrolled to that edge. Used by the
  * profile-tabs strip so overflow is signalled the same way everywhere.
  */
 export function ScrollShadow({

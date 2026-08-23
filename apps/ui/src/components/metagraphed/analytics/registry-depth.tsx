@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { registrySummaryQuery, coverageDepthQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { TableState, Definition, MarkerRail } from "@jsonbored/ui-kit";
-import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
+import { Definition, MarkerRail, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
+import { EmptyState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import type { CoverageDepthQueueRow } from "@/lib/metagraphed/types";
 
 /* ------------------------------------------------------------------ *
@@ -190,134 +191,61 @@ const SEVERITY_TONE: Record<string, string> = {
   ready: "text-health-ok border-health-ok/40",
 };
 
-export function EnrichmentQueueTable({ limit = 12 }: { limit?: number }) {
-  const { data: res } = useSuspenseQuery(coverageDepthQuery());
-  const [sort, setSort] = useState<"rank" | "priority_score" | "score">("rank");
-  const [order, setOrder] = useState<"asc" | "desc">("asc");
-
-  const onSort = (field: string) => {
-    const f = field as typeof sort;
-    if (f === sort) setOrder((o) => (o === "asc" ? "desc" : "asc"));
-    else {
-      setSort(f);
-      setOrder(f === "rank" ? "asc" : "desc");
-    }
-  };
-
-  const rows = useMemo(() => {
-    const list = [...res.data.ranked_queue];
-    const mul = order === "asc" ? 1 : -1;
-    list.sort((a, b) => {
-      const va = a[sort] ?? 0;
-      const vb = b[sort] ?? 0;
-      return (Number(va) - Number(vb)) * mul;
-    });
-    return list.slice(0, limit);
-  }, [res.data.ranked_queue, sort, order, limit]);
-
-  if (res.data.ranked_queue.length === 0) {
-    return (
-      <TableState
-        variant="empty"
-        title="Enrichment queue is empty"
-        description="No subnets are currently queued for enrichment — the coverage-depth artifact returned no ranked rows."
-        generatedAt={res.meta?.generated_at}
-      />
-    );
-  }
-
-  return (
-    <Panel flush className="overflow-x-auto">
-      <table className="w-full text-left text-13">
-        <thead className="bg-surface text-10 text-ink-muted">
-          <tr>
-            <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "rank", order)}>
-              <SortHeader
-                label="#"
-                field="rank"
-                active={sort === "rank"}
-                order={order}
-                onSort={onSort}
-              />
-            </th>
-            <th className="px-3 py-2.5">Subnet</th>
-            <th className="px-3 py-2.5">Severity</th>
-            <th
-              className="px-3 py-2.5 text-right"
-              aria-sort={ariaSort(sort === "priority_score", order)}
-            >
-              <SortHeader
-                label="Priority"
-                field="priority_score"
-                active={sort === "priority_score"}
-                order={order}
-                onSort={onSort}
-                align="right"
-              />
-            </th>
-            <th className="px-3 py-2.5 text-right" aria-sort={ariaSort(sort === "score", order)}>
-              <SortHeader
-                label="Score"
-                field="score"
-                active={sort === "score"}
-                order={order}
-                onSort={onSort}
-                align="right"
-              />
-            </th>
-            <th className="px-3 py-2.5">Recommended next action</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.map((r) => (
-            <QueueRow key={r.netuid} row={r} />
-          ))}
-        </tbody>
-      </table>
-    </Panel>
-  );
-}
-
-function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
-  const tone = SEVERITY_TONE[row.severity ?? ""] ?? "text-ink-muted border-border";
-  return (
-    <tr className="mg-row-hover">
-      <td className="px-3 py-2.5 text-11 tabular-nums text-ink-muted">{row.rank}</td>
-      <td className="px-3 py-2.5">
-        <Link
-          to="/subnets/$netuid"
-          params={{ netuid: row.netuid }}
-          className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
+const QUEUE_COLUMNS: Array<DataTableColumn<CoverageDepthQueueRow>> = [
+  { key: "rank", label: "#", kind: "number", align: "left", sortable: true, value: (r) => r.rank },
+  {
+    key: "subnet",
+    label: "Subnet",
+    sortable: true,
+    value: (r) => r.name ?? `Subnet ${r.netuid}`,
+    render: (r) => (
+      <Link
+        to="/subnets/$netuid"
+        params={{ netuid: r.netuid }}
+        className="inline-flex min-w-0 items-center gap-2 font-medium text-ink-strong hover:underline"
+      >
+        <span className="text-11 text-ink-muted">#{String(r.netuid).padStart(3, "0")}</span>
+        <span className="truncate">{r.name ?? `Subnet ${r.netuid}`}</span>
+      </Link>
+    ),
+  },
+  {
+    key: "severity",
+    label: "Severity",
+    sortable: true,
+    value: (r) => r.severity ?? null,
+    render: (r) =>
+      r.severity ? (
+        <span
+          className={classNames(
+            "inline-flex items-center rounded border px-1.5 py-0.5 text-13",
+            SEVERITY_TONE[r.severity] ?? "text-ink-muted border-border",
+          )}
         >
-          <span className="text-11 text-ink-muted">#{String(row.netuid).padStart(3, "0")}</span>
-          <span className="truncate">{row.name ?? `Subnet ${row.netuid}`}</span>
-        </Link>
-      </td>
-      <td className="px-3 py-2.5">
-        {row.severity ? (
-          <span
-            className={classNames(
-              "inline-flex items-center rounded border px-1.5 py-0.5 text-13",
-              tone,
-            )}
-          >
-            {row.severity}
-          </span>
-        ) : (
-          "—"
-        )}
-      </td>
-      <td className="px-3 py-2.5 text-right text-11 tabular-nums text-ink-strong">
-        {row.priority_score ?? "—"}
-      </td>
-      <td className="px-3 py-2.5 text-right text-11 tabular-nums text-ink-muted">
-        {row.score ?? "—"}
-      </td>
-      <td className="px-3 py-2.5 text-13 text-ink">
-        <span className="line-clamp-1">{row.recommended_next_action ?? "—"}</span>
-        {row.top_gap_codes && row.top_gap_codes.length > 0 ? (
-          <div className="mt-1 flex flex-wrap gap-1">
-            {row.top_gap_codes.slice(0, 4).map((g) => (
+          {r.severity}
+        </span>
+      ) : (
+        "—"
+      ),
+  },
+  {
+    key: "priority_score",
+    label: "Priority",
+    kind: "number",
+    sortable: true,
+    value: (r) => r.priority_score ?? null,
+  },
+  { key: "score", label: "Score", kind: "number", sortable: true, value: (r) => r.score ?? null },
+  {
+    key: "action",
+    label: "Recommended next action",
+    value: (r) => r.recommended_next_action ?? null,
+    render: (r) => (
+      <span className="block min-w-0">
+        <span className="line-clamp-1 text-ink">{r.recommended_next_action ?? "—"}</span>
+        {r.top_gap_codes && r.top_gap_codes.length > 0 ? (
+          <span className="mt-1 flex flex-wrap gap-1">
+            {r.top_gap_codes.slice(0, 4).map((g) => (
               <span
                 key={g}
                 className="rounded border border-dashed border-ink-subtle bg-paper px-1 py-0.5 text-10 text-ink-muted"
@@ -325,9 +253,46 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
                 {g}
               </span>
             ))}
-          </div>
+          </span>
         ) : null}
-      </td>
-    </tr>
+      </span>
+    ),
+  },
+];
+
+export function EnrichmentQueueTable({ limit = 12 }: { limit?: number }) {
+  const { data: res } = useSuspenseQuery(coverageDepthQuery());
+
+  // The artifact publishes the queue already ranked; the table owns every
+  // re-sort from there, so the two orderings can never disagree.
+  const rows = useMemo(
+    () => [...res.data.ranked_queue].sort((a, b) => a.rank - b.rank).slice(0, limit),
+    [res.data.ranked_queue, limit],
+  );
+
+  if (res.data.ranked_queue.length === 0) {
+    return (
+      <EmptyState
+        title="Enrichment queue is empty"
+        description="No subnets are currently queued for enrichment — the coverage-depth artifact returned no ranked rows."
+        lastChecked={res.meta?.generated_at}
+      />
+    );
+  }
+
+  return (
+    <DataTable
+      rows={rows}
+      columns={QUEUE_COLUMNS}
+      rowKey={(r) => String(r.netuid)}
+      caption="Enrichment queue"
+      total={res.data.ranked_queue.length}
+      link={RouterLink}
+      source="enrichment-queue"
+      storageKey="enrichment-queue"
+      // The `limit` prop already bounds the slice; a second pager over an
+      // already-truncated list would page a page.
+      paginate={false}
+    />
   );
 }

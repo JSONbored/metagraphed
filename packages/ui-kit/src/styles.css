@@ -393,9 +393,8 @@
     0 4px 8px rgba(0, 0, 0, 0.08);
 
   --mg-sticky-offset: 3.75rem;
-  /* The bounded scroll viewport a list's sticky <thead> pins to. Owned by
-     the DataTable primitive once #11610 lands; until then ListShell and
-     /validators share it here. */
+  /* The bounded scroll viewport a table's sticky <thead> pins to (#11610).
+     Read by `.mg-dt-viewport-bounded`, and by nothing else. */
   --mg-list-viewport-max: 70vh;
 
   /* Layer tokens (#7841) -- named stacking order. Radix portals default to
@@ -1860,6 +1859,454 @@
     background: var(--chart-idle);
   }
 
+  /* ------------------------------------------------------------------
+     DataTable (#11610): the one table. Caption row, a head that pins inside
+     a bounded viewport, 44px rows (36px dense), and a card layout below
+     640px built from the SAME markup (`td::before` reads `data-label`), so
+     the server-rendered HTML always carries every row and every row link. */
+  .mg-dt {
+    --mg-dt-row-h: 44px;
+    min-width: 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--canvas);
+  }
+  .mg-dt[data-dense="true"] {
+    --mg-dt-row-h: 36px;
+  }
+  /* Wraps at every width: the tools row carries a search box, up to three
+     filters and the menu, and a caption that could not wrap pushed all of
+     them past the viewport edge on a narrow screen. */
+  .mg-dt-caption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    min-height: 44px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .mg-dt-title {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-strong);
+  }
+  .mg-dt-count {
+    color: var(--ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .mg-dt-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  /* Anything a route hands the filters slot shrinks with the row rather than
+     setting the row's width. */
+  .mg-dt-tools > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .mg-dt-search {
+    width: 240px;
+    max-width: 40vw;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--layer);
+    color: var(--ink);
+    font: inherit;
+    font-size: 11px;
+  }
+  .mg-dt-search:focus-visible {
+    outline: none;
+    border-color: var(--focus);
+  }
+  .mg-dt-menu-trigger {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink-muted);
+    font: inherit;
+    cursor: pointer;
+  }
+  .mg-dt-menu-trigger:hover,
+  .mg-dt-menu-trigger:focus-visible {
+    color: var(--ink-strong);
+    border-color: var(--rule-strong);
+    outline: none;
+  }
+  .mg-dt-menu {
+    width: 240px;
+    padding: 8px;
+    border-color: var(--rule);
+    background: var(--layer);
+  }
+  .mg-dt-menu-heading {
+    margin: 0 0 8px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+  }
+  .mg-dt-menu-columns {
+    display: grid;
+    gap: 2px;
+    max-height: 280px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mg-dt-menu-columns label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    border-radius: var(--radius);
+    font-size: 11px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .mg-dt-menu-columns label:hover {
+    background: var(--raised);
+  }
+  .mg-dt-menu-columns input {
+    accent-color: var(--accent);
+  }
+  .mg-dt-menu-actions {
+    display: grid;
+    gap: 2px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--rule);
+  }
+  .mg-dt-menu-actions button {
+    padding: 4px;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 11px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .mg-dt-menu-actions button:hover,
+  .mg-dt-menu-actions button:focus-visible {
+    background: var(--raised);
+    outline: none;
+  }
+  .mg-dt-viewport {
+    min-width: 0;
+    overflow: auto;
+  }
+  /* Both axes on ONE element: `overflow-y: auto` coerces `overflow-x` to
+     auto (CSS Overflow 3 §3), so a nested horizontal scroller would steal
+     that axis and leave the head pinning to a box that never scrolls. */
+  .mg-dt-viewport-bounded {
+    max-height: var(--mg-list-viewport-max, 70vh);
+    overscroll-behavior: contain;
+  }
+  .mg-dt table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .mg-dt thead th {
+    padding: 10px 16px;
+    background: var(--canvas);
+    border-bottom: 1px solid var(--rule-strong);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: left;
+    white-space: nowrap;
+    color: var(--ink-muted);
+  }
+  .mg-dt thead th[data-align="right"] {
+    text-align: right;
+  }
+  /* The pin only exists where the viewport can actually scroll. A sticky
+     header in an unbounded box never moves, so the declaration would be a
+     lie -- and the e2e gate reads it as one. */
+  .mg-dt-viewport-bounded thead th {
+    position: sticky;
+    top: 0;
+    z-index: var(--mg-z-sticky);
+  }
+  .mg-dt-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+  }
+  .mg-dt-sort:hover,
+  .mg-dt-sort[data-active="true"] {
+    color: var(--ink-strong);
+  }
+  .mg-dt-sort:focus-visible {
+    outline: 1px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .mg-dt-sort > i {
+    width: 0;
+    height: 0;
+    border-inline: 3px solid transparent;
+    border-bottom: 4px solid currentColor;
+    opacity: 0.3;
+  }
+  .mg-dt-sort > i[data-dir="asc"],
+  .mg-dt-sort > i[data-dir="desc"] {
+    opacity: 1;
+  }
+  .mg-dt-sort > i[data-dir="desc"] {
+    transform: rotate(180deg);
+  }
+  .mg-dt tbody td {
+    height: var(--mg-dt-row-h);
+    padding: 0 16px;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink);
+    vertical-align: middle;
+  }
+  .mg-dt tbody td[data-align="right"] {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .mg-dt tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  @media (hover: hover) {
+    .mg-dt-row:hover td {
+      background: var(--layer);
+    }
+  }
+  .mg-dt-row[data-active="true"] td {
+    background: var(--layer);
+  }
+  .mg-dt-row[data-active="true"] td:first-child {
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .mg-dt-row[data-expandable="true"] {
+    cursor: pointer;
+  }
+  .mg-dt-rowlink,
+  .mg-dt-link {
+    color: inherit;
+    text-decoration: none;
+  }
+  .mg-dt-rowlink:hover,
+  .mg-dt-link:hover {
+    text-decoration: underline;
+  }
+  .mg-dt-rowlink:focus-visible,
+  .mg-dt-rowbutton:focus-visible,
+  .mg-dt-link:focus-visible {
+    outline: 1px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .mg-dt-rowbutton {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+    cursor: pointer;
+  }
+  .mg-dt-id {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    color: var(--ink-muted);
+  }
+  /* The copy affordance appears on the row, not on every row at rest. It
+     keeps its box either way, so nothing reflows when it shows. */
+  .mg-dt-id > button {
+    opacity: 0;
+    transition: opacity var(--mg-motion);
+  }
+  .mg-dt-row:hover .mg-dt-id > button,
+  .mg-dt-id > button:focus-visible {
+    opacity: 1;
+  }
+  @media (hover: none) {
+    .mg-dt-id > button {
+      opacity: 1;
+    }
+  }
+  .mg-dt-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 6px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    font-size: 10px;
+    line-height: 18px;
+    color: var(--ink-muted);
+  }
+  .mg-dt-status > i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ink-subtle);
+  }
+  .mg-dt-status[data-tone="good"] {
+    color: var(--good);
+    border-color: color-mix(in srgb, var(--good) 40%, transparent);
+  }
+  .mg-dt-status[data-tone="good"] > i {
+    background: var(--good);
+  }
+  .mg-dt-status[data-tone="warn"] {
+    color: var(--warn);
+    border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+  }
+  .mg-dt-status[data-tone="warn"] > i {
+    background: var(--warn);
+  }
+  .mg-dt-status[data-tone="bad"] {
+    color: var(--bad);
+    border-color: color-mix(in srgb, var(--bad) 40%, transparent);
+  }
+  .mg-dt-status[data-tone="bad"] > i {
+    background: var(--bad);
+  }
+  .mg-dt-delta[data-state="up"] {
+    color: var(--good);
+  }
+  .mg-dt-delta[data-state="down"] {
+    color: var(--bad);
+  }
+  .mg-dt td[data-kind="tint"] {
+    background: color-mix(in srgb, var(--accent) var(--tint, 0%), transparent);
+  }
+  .mg-dt-state td {
+    padding: 24px 16px;
+    color: var(--ink-muted);
+    text-align: center;
+  }
+  .mg-dt-expansion td {
+    padding: 16px;
+    background: var(--layer);
+  }
+  .mg-dt-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 16px;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .mg-dt-range {
+    font-variant-numeric: tabular-nums;
+  }
+  .mg-dt-pager {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .mg-dt-pager button {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink-muted);
+    font: inherit;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  .mg-dt-pager button:hover:not(:disabled) {
+    color: var(--ink-strong);
+  }
+  .mg-dt-pager button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .mg-dt-pager button[data-current="true"] {
+    background: var(--ink-strong);
+    color: var(--canvas);
+  }
+  .mg-dt-pager button:focus-visible {
+    outline: 1px solid var(--focus);
+    outline-offset: 1px;
+  }
+  /* Cards below 640px, from the same markup: the head goes, every row
+     becomes a bordered block and each cell prints its own label. */
+  @media (max-width: 639px) {
+    .mg-dt[data-mobile="cards"] .mg-dt-viewport {
+      overflow: visible;
+      max-height: none;
+    }
+    .mg-dt[data-mobile="cards"] table,
+    .mg-dt[data-mobile="cards"] tbody,
+    .mg-dt[data-mobile="cards"] tr,
+    .mg-dt[data-mobile="cards"] td {
+      display: block;
+      width: auto;
+    }
+    .mg-dt[data-mobile="cards"] thead {
+      display: none;
+    }
+    .mg-dt[data-mobile="cards"] .mg-dt-row {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+    .mg-dt[data-mobile="cards"] tbody td {
+      display: grid;
+      grid-template-columns: minmax(0, 10ch) minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      height: auto;
+      min-height: 24px;
+      padding: 2px 16px;
+      border-bottom: 0;
+      text-align: left;
+    }
+    .mg-dt[data-mobile="cards"] tbody td::before {
+      content: attr(data-label);
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--ink-subtle);
+    }
+    .mg-dt[data-mobile="cards"] tbody td[data-align="right"] {
+      text-align: left;
+    }
+    .mg-dt-search {
+      max-width: none;
+      flex: 1 1 140px;
+    }
+    .mg-dt-footer {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+
   /* The visually hidden table behind a chart, in a 1×1 clipped box. The box
      is a div, not the table: `height` and `overflow` are minimums on a table
      (56 rows stay 56 rows tall and push the document down), and `width` is
@@ -2218,18 +2665,6 @@
   background-color: var(--layer);
 }
 @media (hover: hover) {
-  .mg-row-accent:hover {
-    box-shadow: inset 2px 0 0 0 var(--accent);
-    background-color: var(--layer);
-  }
-}
-.mg-row-accent:focus-within {
-  box-shadow: inset 2px 0 0 0 var(--accent);
-}
-.mg-row-accent[data-selected="true"],
-.mg-row-accent[aria-selected="true"] {
-  box-shadow: inset 2px 0 0 0 var(--accent);
-  background-color: var(--layer);
 }
 .mg-refreshing {
   transition: opacity var(--mg-motion);
@@ -2307,68 +2742,9 @@
 }
 
 /* ---------------------------------------------------------------- tables */
-/* The bounded viewport a long list's table scrolls inside, and the element
-   `.mg-table-head-pinned` pins to. `overscroll-behavior: contain` is
-   load-bearing: without it scrolling past the last row chains to the page
-   and drags the pinned header off-screen. Both axes on ONE element --
-   `overflow-y: auto` coerces `overflow-x` to auto (CSS Overflow 3 §3), so a
-   nested horizontal scroller would steal that axis. */
-.mg-list-viewport {
-  max-height: var(--mg-list-viewport-max, 70vh);
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-/* A table header pinned inside a bounded list viewport. `top: 0` because the
-   viewport it pins to IS the reference -- never --mg-sticky-offset. Opaque,
-   so a row passing underneath never reads through the labels. */
-.mg-table-head-pinned {
-  position: sticky;
-  top: 0;
-  z-index: var(--mg-z-sticky);
-  background: var(--canvas);
-  border-bottom: 1px solid var(--rule);
-}
-/* Horizontal-scroll fade for wide tables. Horizontal only -- the vertical
-   viewport is .mg-list-viewport on the same element. */
-.mg-table-scroll {
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 1rem,
-    #000 calc(100% - 1rem),
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 1rem,
-    #000 calc(100% - 1rem),
-    transparent 100%
-  );
-  scrollbar-width: thin;
-  scrollbar-color: var(--rule-strong) transparent;
+@media (min-width: 1024px) {
 }
 @media (min-width: 1024px) {
-  .mg-table-scroll {
-    mask-image: none;
-    -webkit-mask-image: none;
-  }
-}
-.mg-table-scroll::-webkit-scrollbar {
-  height: 6px;
-  width: 6px;
-}
-.mg-table-scroll::-webkit-scrollbar-thumb {
-  background: var(--rule-strong);
-  border-radius: var(--radius);
-}
-.mg-table-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-@media (min-width: 1024px) {
-  .mg-table-scroll::-webkit-scrollbar {
-    height: 0;
-  }
 }
 
 /* ------------------------------------------------------------- a11y / touch */

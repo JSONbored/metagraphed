@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { subnetTurnoverQuery } from "@/lib/metagraphed/queries";
-import { TableState, FactStrip, FactCell } from "@jsonbored/ui-kit";
+import { FactStrip, FactCell } from "@jsonbored/ui-kit";
+import { EmptyState } from "@/components/metagraphed/states";
 import { formatNumber } from "@/lib/metagraphed/format";
 
 function pctStr(v?: number | null): string {
@@ -23,11 +24,10 @@ export function TurnoverLoader({ netuid }: { netuid: number }) {
 
   if (!t.comparable) {
     return (
-      <TableState
-        variant="empty"
+      <EmptyState
         title="Not enough history to compare"
         description="Validator-set and registration turnover is computed by diffing the window's start and end metagraph snapshots. This will appear once at least two daily snapshots have been captured."
-        generatedAt={meta?.generated_at}
+        lastChecked={meta?.generated_at}
       />
     );
   }

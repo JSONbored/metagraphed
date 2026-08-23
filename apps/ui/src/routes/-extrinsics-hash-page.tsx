@@ -5,20 +5,26 @@ import { Link2, UserCog } from "lucide-react";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import {
+  EmptyState,
+  ErrorState,
+  PageHeading,
+  Skeleton,
+  StaleBanner,
+} from "@/components/metagraphed/states";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import {
   CopyableCode,
   TimeAgo,
-  ShareButton,
-  TableState,
   AnalyticsSection,
   FactStrip,
   FactCell,
   EntityHero,
   FactSentence,
+  DataTable,
+  DefinitionList,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel } from "@/components/metagraphed/primitives";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -42,6 +48,7 @@ import {
   relatedEntityChipLinkClass,
   shortSs58Chip,
 } from "@/components/metagraphed/related-entity-chips";
+import { RouterLink } from "@/components/metagraphed/router-link";
 
 export function ExtrinsicDetailPage() {
   const { hash } = useParams({ from: "/extrinsics/$hash" });
@@ -159,7 +166,6 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           <>
             <div className="mg-actions">
               <ValueUnitControl />
-              <ShareButton bare />
             </div>
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner
@@ -351,12 +357,10 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             // `relatedCalls` fell through to [] and rendered the same "no other
             // extrinsics" copy as a genuinely empty result -- the one case where
             // this page asserted something it hadn't actually learned (#6426).
-            <TableState
-              variant="error"
-              title="Couldn't load related Multisig calls"
-              description="The related-calls lookup is optional enrichment — the rest of this extrinsic's detail is unaffected."
+            <ErrorState
               error={relatedQuery.error}
               onRetry={() => relatedQuery.refetch()}
+              context="related Multisig calls"
             />
           ) : relatedCalls.length > 0 ? (
             <ul className="flex flex-col gap-2">
@@ -389,60 +393,57 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       ) : null}
 
       <AnalyticsSection id="events" name="Emitted events">
-        {events.length > 0 ? (
-          <Panel flush className="overflow-x-auto">
-            <table className="w-full text-left text-13">
-              <thead className="bg-surface">
-                <tr>
-                  <th className="px-4 py-2.5">Block</th>
-                  <th className="px-4 py-2.5">Kind</th>
-                  <th className="px-4 py-2.5">Hotkey</th>
-                  <th className="px-4 py-2.5 text-right">Amount</th>
-                  <th className="px-4 py-2.5 text-right">Observed</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {events.map((ev, i) => (
-                  <tr
-                    key={`${ev.block_number}-${ev.event_index}-${i}`}
-                    className="hover:bg-surface"
-                  >
-                    <td className="px-4 py-2.5 font-mono text-13">
-                      {ev.block_number != null ? (
-                        <Link
-                          to="/blocks/$ref"
-                          params={{ ref: String(ev.block_number) }}
-                          className="text-ink hover:underline"
-                        >
-                          #{formatNumber(ev.block_number)}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-11 text-ink-strong">
-                      {eventKindLabel(ev.event_kind)}
-                    </td>
-                    <td className="px-4 py-2.5 text-11 text-ink-muted">
-                      <AddressDisplay ss58={ev.hotkey} compact fallback="—" />
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <TaoValue amount={ev.amount_tao} precision={4} />
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-11 text-ink-muted">
-                      <TimeAgo at={ev.observed_at} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Panel>
-        ) : (
-          <EmptyState
-            title="No emitted events"
-            description="No emitted events were indexed for this extrinsic."
-          />
-        )}
+        <DataTable
+          rows={events}
+          rowKey={(row) => `${row.block_number}-${row.event_index}`}
+          caption="Emitted events"
+          captionHidden
+          link={RouterLink}
+          empty={
+            <EmptyState
+              title="No emitted events"
+              description="No emitted events were indexed for this extrinsic."
+            />
+          }
+          columns={[
+            {
+              key: "block",
+              label: "Block",
+              kind: "link",
+              value: (row) =>
+                row.block_number == null ? null : `#${formatNumber(row.block_number)}`,
+              href: (row) => (row.block_number == null ? undefined : `/blocks/${row.block_number}`),
+            },
+            {
+              key: "kind",
+              label: "Kind",
+              sortable: true,
+              value: (row) => eventKindLabel(row.event_kind),
+            },
+            {
+              key: "hotkey",
+              label: "Hotkey",
+              value: (row) => row.hotkey ?? null,
+              render: (row) => <AddressDisplay ss58={row.hotkey} compact fallback="—" />,
+            },
+            {
+              key: "amount",
+              label: "Amount",
+              kind: "number",
+              sortable: true,
+              value: (row) => row.amount_tao ?? null,
+              render: (row) => <TaoValue amount={row.amount_tao} precision={4} />,
+            },
+            {
+              key: "observed",
+              label: "Observed",
+              kind: "time",
+              align: "right",
+              sortable: true,
+              value: (row) => row.observed_at ?? null,
+            },
+          ]}
+        />
         {eventsOmitted > 0 ? (
           <p className="mt-2 text-11 text-ink-muted">
             Showing 100 of {formatNumber(eventsTotal)} events — {formatNumber(eventsOmitted)} more
@@ -502,28 +503,13 @@ function renderCallArgs(
       return <p className="text-13 text-ink-muted">No call args were indexed.</p>;
     }
     return (
-      <Panel flush className="overflow-x-auto">
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface">
-            <tr>
-              <th className="px-4 py-2.5">Name</th>
-              <th className="px-4 py-2.5">Value</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {args.map((arg, i) => (
-              <tr key={`${arg.name ?? i}`} className="hover:bg-surface">
-                <td className="px-4 py-2.5 text-11 text-ink-strong align-top">
-                  {arg.name ?? `arg_${i + 1}`}
-                </td>
-                <td className="px-4 py-2.5 text-11 text-ink-muted">
-                  {renderCallArgValue(arg.value, arg.name, callModule, callFunction, depth)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
+      <DefinitionList
+        layout="stacked"
+        items={args.map((arg, i) => ({
+          term: arg.name ?? `arg_${i + 1}`,
+          detail: renderCallArgValue(arg.value, arg.name, callModule, callFunction, depth),
+        }))}
+      />
     );
   }
 
@@ -533,26 +519,13 @@ function renderCallArgs(
       return <p className="text-13 text-ink-muted">No call args were indexed.</p>;
     }
     return (
-      <Panel flush className="overflow-x-auto">
-        <table className="w-full text-left text-13">
-          <thead className="bg-surface">
-            <tr>
-              <th className="px-4 py-2.5">Key</th>
-              <th className="px-4 py-2.5">Value</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {entries.map(([key, value]) => (
-              <tr key={key} className="hover:bg-surface">
-                <td className="px-4 py-2.5 text-11 text-ink-strong align-top">{key}</td>
-                <td className="px-4 py-2.5 text-11 text-ink-muted">
-                  {renderCallArgValue(value, key, callModule, callFunction, depth)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
+      <DefinitionList
+        layout="stacked"
+        items={entries.map(([key, value]) => ({
+          term: key,
+          detail: renderCallArgValue(value, key, callModule, callFunction, depth),
+        }))}
+      />
     );
   }
 

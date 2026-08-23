@@ -1,15 +1,7 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import {
-  AsyncPanel,
-  FilterChipRow,
-  FilterSheet,
-  Panel,
-  QueryBar,
-  QueryProgress,
-  type FilterChipItem,
-} from "@/components/metagraphed/primitives";
+import { AsyncPanel, QueryProgress } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { FixtureLookupPanel } from "@/components/metagraphed/registry-pipeline-panel";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
@@ -21,14 +13,13 @@ import {
   ReviewChip,
   ExternalLink,
   BrandIcon,
-  ShareButton,
-  DownloadCsvButton,
-  ViewModeToggle,
-  ListShell,
+  DataTable,
   LoadMore,
   Provenance,
   SectionHead,
+  type SortState,
 } from "@jsonbored/ui-kit";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import {
   TimeRangeProvider,
   useTimeRange,
@@ -36,11 +27,9 @@ import {
 } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
 import {
-  ariaSort,
   PageSizeSelect,
   ResetFiltersButton,
   SelectFilter,
-  SortHeader,
 } from "@/components/metagraphed/table-controls";
 import {
   surfacesInfiniteQuery,
@@ -49,7 +38,6 @@ import {
   metagraphedQueryKey,
 } from "@/lib/metagraphed/queries";
 import { HubSections } from "@/components/metagraphed/hub-prose";
-import { buildUrl } from "@/lib/metagraphed/client";
 import { sortBy } from "@/lib/metagraphed/url-state";
 import { matchesSurfaceFilters } from "@/lib/metagraphed/surface-filters";
 import type { Surface, Provider, Subnet } from "@/lib/metagraphed/types";
@@ -69,18 +57,10 @@ export function SurfacesPage() {
     !!search.cursor;
   const onReset = () =>
     navigate({
-      // Keep page size and view on reset so the chosen layout survives.
-      search: { limit: search.limit, view: search.view },
+      // Keep the page size on reset so the chosen fetch window survives.
+      search: { limit: search.limit },
       replace: true,
     });
-  const viewMode: "table" | "grid" = search.view === "grid" ? "grid" : "table";
-  const surfacesCsvUrl = buildUrl("/api/v1/surfaces", {
-    q: search.q || undefined,
-    sort: search.sort || undefined,
-    order: search.sort ? search.order : undefined,
-    kind: search.kind || undefined,
-    provider: search.provider || undefined,
-  });
   return (
     <>
       <TimeRangeProvider defaultRange="7d">
@@ -90,20 +70,8 @@ export function SurfacesPage() {
             mobile (#8254). */}
         <ApisTabActions>
           <TimeRangeScrub />
-          <ViewModeToggle
-            value={viewMode}
-            options={["table", "grid"]}
-            onChange={(v) =>
-              navigate({
-                search: (prev: Record<string, unknown>) => ({ ...prev, view: v }),
-                replace: true,
-              })
-            }
-          />
           <div className="mg-actions">
             <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
-            <DownloadCsvButton url={surfacesCsvUrl} bare />
-            <ShareButton bare />
           </div>
         </ApisTabActions>
         <AsyncPanel
@@ -115,7 +83,7 @@ export function SurfacesPage() {
             metagraphedQueryKey("subnets"),
           ]}
         >
-          <SurfacesTable view={viewMode} />
+          <SurfacesTable />
         </AsyncPanel>
         <section className="mt-section">
           <SectionHead name="Evidence & sources" />
@@ -137,7 +105,7 @@ export function SurfacesPage() {
   );
 }
 
-function SurfacesTable({ view }: { view: "table" | "grid" }) {
+function SurfacesTable() {
   const search = useSearch({ from: "/apis/" });
   const navigate = useNavigate({ from: "/apis/" });
   const { range } = useTimeRange();
@@ -229,12 +197,14 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
       resetScroll: false,
     });
 
-  const onSort = (field: string) =>
+  // The sort is a server parameter as well as a client ordering, so it stays in
+  // the URL; clearing it (DataTable's third click) drops the parameter entirely.
+  const onSort = (next: SortState | null) =>
     navigate({
       search: (prev: { sort?: string; order?: "asc" | "desc" }) => ({
         ...prev,
-        sort: field,
-        order: prev.sort === field && prev.order === "asc" ? "desc" : "asc",
+        sort: next?.key ?? "",
+        order: next?.dir ?? "asc",
         cursor: "",
       }),
     });
@@ -247,128 +217,15 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
     (row, key) => (row as Record<string, unknown>)[key],
   );
 
-  const activeChips: Array<{ key: string; value: string; onClear: () => void }> = [];
-  if (search.q)
-    activeChips.push({ key: "q", value: search.q, onClear: () => setSearch({ q: "" }) });
-  if (search.kind)
-    activeChips.push({ key: "kind", value: search.kind, onClear: () => setSearch({ kind: "" }) });
-  if (search.provider)
-    activeChips.push({
-      key: "provider",
-      value: search.provider,
-      onClear: () => setSearch({ provider: "" }),
-    });
-  if (search.netuid)
-    activeChips.push({
-      key: "netuid",
-      value: String(search.netuid),
-      onClear: () => setSearch({ netuid: "" }),
-    });
-  if (search.public_safe)
-    activeChips.push({
-      key: "public",
-      value: String(search.public_safe),
-      onClear: () => setSearch({ public_safe: "" }),
-    });
-  if (search.auth)
-    activeChips.push({
-      key: "auth",
-      value: String(search.auth),
-      onClear: () => setSearch({ auth: "" }),
-    });
-  if (search.rate_limited)
-    activeChips.push({
-      key: "rate-limit",
-      value: String(search.rate_limited),
-      onClear: () => setSearch({ rate_limited: "" }),
-    });
-
-  const secondaryFilterCount =
-    (search.kind ? 1 : 0) +
-    (search.provider ? 1 : 0) +
-    (search.netuid ? 1 : 0) +
-    (search.public_safe ? 1 : 0) +
-    (search.auth ? 1 : 0) +
-    (search.rate_limited ? 1 : 0);
-
-  const secondaryFilters = (
-    <>
-      <SelectFilter
-        label="kind"
-        value={search.kind}
-        onChange={(v) => setSearch({ kind: v })}
-        options={kindOptions}
-      />
-      <SelectFilter
-        label="provider"
-        value={search.provider}
-        onChange={(v) => setSearch({ provider: v })}
-        options={providerOptions}
-      />
-      <SelectFilter
-        label="netuid"
-        value={search.netuid}
-        onChange={(v) => setSearch({ netuid: v })}
-        options={netuidOptions}
-      />
-    </>
+  const filtersActive = Boolean(
+    search.q ||
+    search.kind ||
+    search.provider ||
+    search.netuid ||
+    search.public_safe ||
+    search.auth ||
+    search.rate_limited,
   );
-
-  const chipItems: FilterChipItem[] = [];
-  if (search.q) chipItems.push({ id: "q", label: "Search", value: search.q });
-  if (search.kind) chipItems.push({ id: "kind", label: "Kind", value: search.kind });
-  if (search.provider)
-    chipItems.push({ id: "provider", label: "Provider", value: search.provider });
-  if (search.netuid)
-    chipItems.push({ id: "netuid", label: "Netuid", value: String(search.netuid) });
-  if (search.public_safe)
-    chipItems.push({ id: "public_safe", label: "Public-safe", value: "only" });
-  if (search.auth) chipItems.push({ id: "auth", label: "Auth", value: search.auth });
-  if (search.rate_limited)
-    chipItems.push({ id: "rate_limited", label: "Rate-limited", value: "only" });
-
-  const clearChip = (id: string) => setSearch({ [id]: "" });
-  const clearAll = () =>
-    setSearch({
-      q: "",
-      kind: "",
-      provider: "",
-      netuid: "",
-      public_safe: "",
-      auth: "",
-      rate_limited: "",
-    });
-
-  const filters = (
-    <div className="flex w-full flex-col gap-0 min-w-0">
-      <div className="flex w-full items-center gap-2 min-w-0">
-        <QueryBar className="flex-1 min-w-0">
-          <QueryBar.Search
-            value={search.q}
-            onChange={(v) => setSearch({ q: v })}
-            placeholder="Search by name, URL, provider, or netuid"
-            shortcut
-            debounceMs={200}
-          />
-          <QueryBar.Divider />
-          <div className="hidden md:contents">{secondaryFilters}</div>
-          <QueryBar.Utility className="ml-auto">
-            <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
-          </QueryBar.Utility>
-        </QueryBar>
-        <FilterSheet className="md:hidden" label="Filters" activeCount={secondaryFilterCount}>
-          {secondaryFilters}
-        </FilterSheet>
-      </div>
-      <FilterChipRow
-        items={chipItems}
-        onRemove={clearChip}
-        onClearAll={chipItems.length > 1 ? clearAll : undefined}
-      />
-    </div>
-  );
-
-  const filtersActive = activeChips.length > 0;
 
   const emptyNode = (
     <StateBlock
@@ -460,194 +317,128 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
     );
   };
 
-  const cardFor = (s: Surface) => (
-    <Panel key={s.id} className="min-h-11">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-10 text-ink-muted">{s.kind ?? "surface"}</span>
-        <div className="flex items-center gap-1.5">
-          <CurationChip level={s.curation_level} />
-          <ReviewChip state={s.review?.state} />
-        </div>
-      </div>
-      <div className="mt-1 flex items-center gap-2">
-        <BrandIcon
-          url={s.url}
-          providerSlug={s.provider_slug}
-          name={s.name ?? s.provider}
-          fallback={s.netuid}
-          size={20}
-          className="shrink-0"
-        />
-        <span className="font-medium text-ink-strong truncate">{s.name ?? "—"}</span>
-      </div>
-      {s.url ? (
-        <div className="mt-1 text-13 truncate">
-          <ExternalLink
-            href={s.url}
-            authRequired={s.auth_required}
-            publicSafe={s.public_safe ?? true}
-            className="min-w-0 max-w-full"
-          >
-            {s.url}
-          </ExternalLink>
-        </div>
-      ) : null}
-      <div className="mt-2 flex items-center justify-between gap-2 text-11 text-ink-muted">
-        <span className="inline-flex items-center gap-2 min-w-0">
-          {renderSubnetCell(s.netuid)}
-          <span aria-hidden>·</span>
-          {renderProviderCell(s)}
-        </span>
-        <Provenance
-          metric="Surface verification"
-          source="/api/v1/surfaces"
-          windowLabel={windowLabel}
-          updatedAt={s.last_verified_at ?? undefined}
-          staleness="Re-verified on every registry build; unverified rows have never been probed."
-        >
-          <TimeAgo at={s.last_verified_at} fallback="never verified" />
-        </Provenance>
-      </div>
-    </Panel>
-  );
-
-  // The user-selectable grid view renders the cards at every breakpoint, so it
-  // is passed as the single `table` body (no mobile-only `cards` duplication).
-  // The table view keeps ListShell's responsive cards↔table split.
-  const gridBody = (
-    <div className="grid gap-2 p-2 sm:grid-cols-2 lg:grid-cols-3">{rows.map(cardFor)}</div>
-  );
-
   return (
     <div id="surfaces-list" className="relative">
       <QueryProgress active={isFetching && !isFetchingNextPage} position="sticky" />
-      <ListShell
-        filters={filters}
-        isEmpty={rows.length === 0}
-        isStale={isFetching && !isFetchingNextPage}
+      {/* `paginate={false}`: the query is cursor-paged against the API, so the
+          table shows everything loaded so far and `LoadMore` below fetches the
+          next server page — one paging concept, not two. */}
+      <DataTable
+        rows={rows}
+        rowKey={(s) => s.id}
+        caption="Surfaces"
+        source="surfaces"
+        storageKey="surfaces"
+        link={RouterLink}
+        paginate={false}
+        total={total}
+        sort={search.sort ? { key: search.sort, dir: search.order } : null}
+        onSort={onSort}
+        search={{
+          value: search.q,
+          onChange: (v) => setSearch({ q: v }),
+          placeholder: "Search by name, URL, provider, or netuid",
+        }}
+        filters={
+          <>
+            <SelectFilter
+              label="kind"
+              value={search.kind}
+              onChange={(v) => setSearch({ kind: v })}
+              options={kindOptions}
+            />
+            <SelectFilter
+              label="provider"
+              value={search.provider}
+              onChange={(v) => setSearch({ provider: v })}
+              options={providerOptions}
+            />
+            <SelectFilter
+              label="netuid"
+              value={search.netuid}
+              onChange={(v) => setSearch({ netuid: v })}
+              options={netuidOptions}
+            />
+          </>
+        }
         empty={emptyNode}
-        stickyHeader={false}
-        cards={view === "grid" ? undefined : rows.map(cardFor)}
-        table={
-          view === "grid" ? (
-            gridBody
-          ) : (
-            <table className="w-full text-left text-13">
-              <thead className="bg-surface">
-                <tr>
-                  <th
-                    className="px-3 py-2"
-                    aria-sort={ariaSort(search.sort === "netuid", search.order)}
-                  >
-                    <SortHeader
-                      label="Netuid"
-                      field="netuid"
-                      active={search.sort === "netuid"}
-                      order={search.order}
-                      onSort={onSort}
-                    />
-                  </th>
-                  <th
-                    className="px-3 py-2"
-                    aria-sort={ariaSort(search.sort === "kind", search.order)}
-                  >
-                    <SortHeader
-                      label="Kind"
-                      field="kind"
-                      active={search.sort === "kind"}
-                      order={search.order}
-                      onSort={onSort}
-                    />
-                  </th>
-                  <th
-                    className="px-3 py-2"
-                    aria-sort={ariaSort(search.sort === "name", search.order)}
-                  >
-                    <SortHeader
-                      label="Name"
-                      field="name"
-                      active={search.sort === "name"}
-                      order={search.order}
-                      onSort={onSort}
-                    />
-                  </th>
-                  <th className="px-3 py-2">URL</th>
-                  <th className="px-3 py-2">Provider</th>
-                  <th className="px-3 py-2">Curation</th>
-                  <th
-                    className="px-3 py-2 text-right"
-                    aria-sort={ariaSort(search.sort === "last_verified_at", search.order)}
-                  >
-                    <SortHeader
-                      label="Last verified"
-                      field="last_verified_at"
-                      active={search.sort === "last_verified_at"}
-                      order={search.order}
-                      onSort={onSort}
-                      align="right"
-                    />
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {rows.map((s) => (
-                  <tr key={s.id} className="mg-row-accent hover:bg-surface">
-                    <td className="px-3 py-2 text-11 text-ink-muted">
-                      {renderSubnetCell(s.netuid)}
-                    </td>
-                    <td className="px-3 py-2 text-11">{s.kind ?? "—"}</td>
-                    <td className="px-3 py-2 font-medium text-ink-strong">
-                      <span className="truncate">{s.name ?? "—"}</span>
-                    </td>
-                    <td className="px-3 py-2 text-13">
-                      {s.url ? (
-                        <ExternalLink
-                          href={s.url}
-                          authRequired={s.auth_required}
-                          publicSafe={s.public_safe ?? true}
-                        >
-                          {s.url}
-                        </ExternalLink>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-13">{renderProviderCell(s)}</td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-1.5">
-                        <CurationChip level={s.curation_level} />
-                        <ReviewChip state={s.review?.state} />
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right text-11 text-ink-muted">
-                      <Provenance
-                        metric="Surface verification"
-                        source="/api/v1/surfaces"
-                        windowLabel={windowLabel}
-                        updatedAt={s.last_verified_at ?? undefined}
-                        staleness="Re-verified on every registry build; unverified rows have never been probed."
-                      >
-                        <TimeAgo at={s.last_verified_at} fallback="never verified" />
-                      </Provenance>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        }
-        footer={
-          <LoadMore
-            shown={rows.length}
-            total={total}
-            hasMore={!!hasNextPage}
-            isLoading={isFetchingNextPage}
-            onLoadMore={() => fetchNextPage()}
-            error={isFetchNextPageError ? (error as Error) : null}
-            cursorInvalid={cursorInvalid}
-          />
-        }
+        columns={[
+          {
+            key: "netuid",
+            label: "Netuid",
+            sortable: true,
+            value: (s) => s.netuid ?? null,
+            render: (s) => renderSubnetCell(s.netuid),
+          },
+          { key: "kind", label: "Kind", sortable: true, value: (s) => s.kind ?? null },
+          { key: "name", label: "Name", sortable: true, value: (s) => s.name ?? null },
+          {
+            key: "url",
+            label: "URL",
+            value: (s) => s.url ?? null,
+            render: (s) =>
+              s.url ? (
+                <ExternalLink
+                  href={s.url}
+                  authRequired={s.auth_required}
+                  publicSafe={s.public_safe ?? true}
+                >
+                  {s.url}
+                </ExternalLink>
+              ) : (
+                "—"
+              ),
+          },
+          {
+            key: "provider",
+            label: "Provider",
+            value: (s) => s.provider ?? s.provider_slug ?? null,
+            render: renderProviderCell,
+          },
+          {
+            key: "curation",
+            label: "Curation",
+            value: (s) => s.curation_level ?? null,
+            render: (s) => (
+              <span className="inline-flex items-center gap-1.5">
+                <CurationChip level={s.curation_level} />
+                <ReviewChip state={s.review?.state} />
+              </span>
+            ),
+          },
+          {
+            key: "last_verified_at",
+            label: "Last verified",
+            kind: "time",
+            sortable: true,
+            align: "right",
+            value: (s) => s.last_verified_at ?? null,
+            render: (s) => (
+              <Provenance
+                metric="Surface verification"
+                source="/api/v1/surfaces"
+                windowLabel={windowLabel}
+                updatedAt={s.last_verified_at ?? undefined}
+                staleness="Re-verified on every registry build; unverified rows have never been probed."
+              >
+                <TimeAgo at={s.last_verified_at} fallback="never verified" />
+              </Provenance>
+            ),
+          },
+        ]}
       />
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
+        <LoadMore
+          shown={rows.length}
+          total={total}
+          hasMore={!!hasNextPage}
+          isLoading={isFetchingNextPage}
+          onLoadMore={() => fetchNextPage()}
+          error={isFetchNextPageError ? (error as Error) : null}
+          cursorInvalid={cursorInvalid}
+        />
+      </div>
     </div>
   );
 }

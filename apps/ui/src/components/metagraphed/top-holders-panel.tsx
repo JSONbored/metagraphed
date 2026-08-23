@@ -1,12 +1,67 @@
 import { useQuery } from "@tanstack/react-query";
+import { DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
 import { topHoldersQuery } from "@/lib/metagraphed/queries";
-import { Panel } from "@/components/metagraphed/primitives";
-import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { formatNumber, formatTao, formatRelative } from "@/lib/metagraphed/format";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import type { TopHolder } from "@/lib/metagraphed/types";
 
 const SHOWN = 15;
+
+const tao = (value: unknown) => formatTao(typeof value === "number" ? value : null);
+
+const COLUMNS: Array<DataTableColumn<TopHolder>> = [
+  {
+    key: "account",
+    label: "Account",
+    value: (a) => a.ss58,
+    render: (a) => <AddressDisplay ss58={a.ss58} fallback={a.ss58} compact />,
+  },
+  {
+    key: "free",
+    label: "Free",
+    kind: "number",
+    sortable: true,
+    value: (a) => a.free_tao,
+    format: tao,
+  },
+  {
+    key: "delegated",
+    label: "Delegated",
+    kind: "number",
+    sortable: true,
+    value: (a) => a.delegated_tao,
+    format: tao,
+  },
+  {
+    key: "total",
+    label: "Total",
+    kind: "number",
+    sortable: true,
+    value: (a) => a.total_tao,
+    format: tao,
+  },
+  {
+    key: "flow_30d",
+    label: "30d flow",
+    kind: "number",
+    sortable: true,
+    value: (a) => a.net_flow_30d,
+    format: tao,
+    // The marker is the point of the column: one window is not a direction.
+    render: (a) => (
+      <>
+        {formatTao(a.net_flow_30d)}
+        {flowsDisagree(a) ? (
+          <span className="ml-1 text-ink-muted" aria-label="flow windows disagree">
+            *
+          </span>
+        ) : null}
+      </>
+    ),
+  },
+];
 
 /**
  * `/api/v1/accounts/top-holders` (#10300), published and rendered nowhere.
@@ -27,68 +82,45 @@ const SHOWN = 15;
 export function TopHoldersPanel() {
   const { data, isLoading, isError, error, refetch } = useQuery(topHoldersQuery(SHOWN));
 
-  if (isLoading) return <Skeleton className="h-[240px] w-full" />;
-  if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
-
   const h = data?.data;
-  if (!h || h.accounts.length === 0) {
-    return (
-      <EmptyState
-        title="No holder ranking"
-        description="The network-wide holder leaderboard has not been captured."
-      />
-    );
-  }
+  const rows = (h?.accounts ?? []).slice(0, SHOWN);
 
   return (
-    <Panel>
-      <p className="mb-3 text-10 text-ink-muted">
-        Largest {formatNumber(Math.min(SHOWN, h.accounts.length))} TAO holders network-wide
-        {h.account_count == null ? "" : ` of ${formatNumber(h.account_count)} ranked`}
-        {h.captured_at ? ` · captured ${formatRelative(h.captured_at)}` : ""}
-      </p>
+    <div className="space-y-3">
+      {h ? (
+        <p className="text-10 text-ink-muted">
+          Largest {formatNumber(Math.min(SHOWN, h.accounts.length))} TAO holders network-wide
+          {h.account_count == null ? "" : ` of ${formatNumber(h.account_count)} ranked`}
+          {h.captured_at ? ` · captured ${formatRelative(h.captured_at)}` : ""}
+        </p>
+      ) : null}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-10">
-          <thead>
-            <tr className="text-11 text-ink-muted">
-              <th className="py-1 text-left">account</th>
-              <th className="py-1 text-right">free</th>
-              <th className="py-1 text-right">delegated</th>
-              <th className="py-1 text-right">total</th>
-              <th className="py-1 text-right">30d flow</th>
-            </tr>
-          </thead>
-          <tbody>
-            {h.accounts.slice(0, SHOWN).map((a) => (
-              <tr key={a.ss58} className="border-t border-border/50">
-                <td className="max-w-0 py-1">
-                  <AddressDisplay ss58={a.ss58} fallback={a.ss58} />
-                </td>
-                <td className="py-1 text-right tabular-nums text-ink">{formatTao(a.free_tao)}</td>
-                <td className="py-1 text-right tabular-nums text-ink">
-                  {formatTao(a.delegated_tao)}
-                </td>
-                <td className="py-1 text-right tabular-nums text-ink">{formatTao(a.total_tao)}</td>
-                <td className="py-1 text-right tabular-nums text-ink">
-                  {formatTao(a.net_flow_30d)}
-                  {flowsDisagree(a) ? (
-                    <span className="ml-1 text-ink-muted" aria-label="flow windows disagree">
-                      *
-                    </span>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        rows={rows}
+        columns={COLUMNS}
+        rowKey={(a) => a.ss58}
+        caption="Top holders"
+        link={RouterLink}
+        storageKey="top-holders"
+        loading={isLoading}
+        error={
+          isError ? (
+            <ErrorState error={error} onRetry={() => void refetch()} context="top holders" />
+          ) : undefined
+        }
+        empty={
+          <EmptyState
+            title="No holder ranking"
+            description="The network-wide holder leaderboard has not been captured."
+          />
+        }
+      />
 
-      <p className="mt-3 text-11 text-ink-muted">
+      <p className="text-11 text-ink-muted">
         * the 7d, 30d and 90d flows do not all point the same way — a move in one window is not a
         trend in the others.
       </p>
-    </Panel>
+    </div>
   );
 }
 

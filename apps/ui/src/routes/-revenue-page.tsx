@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import type { RevenueSearch } from "./revenue";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Chip, FactStrip, FactCell } from "@jsonbored/ui-kit";
+import { Chip, DataTable, FactStrip, FactCell, type SortState } from "@jsonbored/ui-kit";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { Route } from "./revenue";
 import { chainRevenueCoverageQuery } from "@/lib/metagraphed/queries";
 import { Panel } from "@/components/metagraphed/primitives";
 import { Skeleton, ErrorState } from "@/components/metagraphed/states";
-import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import {
   COVERAGE_SORT_FIELDS,
   HEADLINE_TIERS,
@@ -37,8 +37,6 @@ import {
  * The provenance filter shows every tier by default, with counts, because the
  * count is how a reader learns the headline-eligible set is two subnets wide.
  */
-
-const TH = "px-4 py-3 text-left";
 
 function ProvenanceCell({ provenance }: { provenance: string | null }) {
   const eligible = HEADLINE_TIERS.has(provenance ?? "");
@@ -77,14 +75,17 @@ export function RevenuePage() {
   // inferred. Both used to be widened by hand, which meant the reducer
   // returned an object the route's search schema would have rejected -- and
   // nothing checked it, because the route's search types did not resolve.
-  const onSort = (field: CoverageSortField) =>
-    navigate({
-      search: (prev) => ({
-        ...prev,
-        sort: field,
-        dir: prev.sort === field && prev.dir === "desc" ? "asc" : "desc",
-      }),
-    });
+  // DataTable hands back `null` on the third click; this board always ranks by
+  // something, so an unsorted state falls back to the default field.
+  const onSort = (next: SortState | null) => {
+    const field = (
+      next && COVERAGE_SORT_FIELDS.includes(next.key as CoverageSortField)
+        ? next.key
+        : "revenue_usd"
+    ) as CoverageSortField;
+    const dir = next && field === next.key ? next.dir : "desc";
+    navigate({ search: (prev) => ({ ...prev, sort: field, dir }) });
+  };
 
   if (q.isError) {
     return <ErrorState error={q.error} onRetry={() => q.refetch()} context="revenue coverage" />;
@@ -147,100 +148,64 @@ export function RevenuePage() {
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded border border-border/80">
-        <table className="w-full min-w-[52rem]">
-          <thead>
-            <tr className="border-b border-border/80">
-              <th className={TH} aria-sort={ariaSort(sortField === "netuid", search.dir)}>
-                <SortHeader
-                  label="Subnet"
-                  field="netuid"
-                  active={sortField === "netuid"}
-                  order={search.dir}
-                  onSort={onSort}
-                />
-              </th>
-              <th className={TH}>Provenance</th>
-              <th
-                className={`${TH} text-right`}
-                aria-sort={ariaSort(sortField === "emission_usd", search.dir)}
-              >
-                <SortHeader
-                  label="Emission"
-                  field="emission_usd"
-                  active={sortField === "emission_usd"}
-                  order={search.dir}
-                  onSort={onSort}
-                  align="right"
-                />
-              </th>
-              <th
-                className={`${TH} text-right`}
-                aria-sort={ariaSort(sortField === "revenue_usd", search.dir)}
-              >
-                <SortHeader
-                  label="Revenue"
-                  field="revenue_usd"
-                  active={sortField === "revenue_usd"}
-                  order={search.dir}
-                  onSort={onSort}
-                  align="right"
-                />
-              </th>
-              <th
-                className={`${TH} text-right`}
-                aria-sort={ariaSort(sortField === "coverage_ratio", search.dir)}
-              >
-                <SortHeader
-                  label="Coverage"
-                  field="coverage_ratio"
-                  active={sortField === "coverage_ratio"}
-                  order={search.dir}
-                  onSort={onSort}
-                  align="right"
-                />
-              </th>
-              <th
-                className={`${TH} text-right`}
-                aria-sort={ariaSort(sortField === "subsidy_multiple", search.dir)}
-              >
-                <SortHeader
-                  label="Subsidy"
-                  field="subsidy_multiple"
-                  active={sortField === "subsidy_multiple"}
-                  order={search.dir}
-                  onSort={onSort}
-                  align="right"
-                />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {measured.map((row) => (
-              <tr key={row.netuid} className="border-b border-border/40">
-                <td className="px-4 py-3">
-                  <SubnetCell row={row} />
-                </td>
-                <td className="px-4 py-3">
-                  <ProvenanceCell provenance={row.provenance} />
-                </td>
-                <td className="px-4 py-3 text-right text-11 tabular-nums text-ink">
-                  {usdLabel(row.emission_usd) ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-right text-11 tabular-nums text-ink">
-                  {usdLabel(row.revenue_usd) ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-right text-11 tabular-nums text-ink">
-                  {coverageLabel(row.coverage_ratio)}
-                </td>
-                <td className="px-4 py-3 text-right text-11 tabular-nums text-ink">
-                  {subsidyLabel(row.subsidy_multiple)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        rows={measured}
+        rowKey={(row) => String(row.netuid)}
+        caption="Revenue coverage"
+        source="revenue-coverage"
+        link={RouterLink}
+        rowHref={(row) => `/subnets/${row.netuid}`}
+        sort={{ key: sortField, dir: search.dir }}
+        onSort={onSort}
+        empty="No subnet in this provenance tier has an observable revenue figure."
+        columns={[
+          {
+            key: "netuid",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => row.netuid,
+            format: (_value, row) => `SN${row.netuid}${row.name ? ` ${row.name}` : ""}`,
+          },
+          {
+            key: "provenance",
+            label: "Provenance",
+            value: (row) => tierLabel(row.provenance),
+            render: (row) => <ProvenanceCell provenance={row.provenance} />,
+          },
+          {
+            key: "emission_usd",
+            label: "Emission",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.emission_usd ?? null,
+            format: (_value, row) => usdLabel(row.emission_usd) ?? "—",
+          },
+          {
+            key: "revenue_usd",
+            label: "Revenue",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.revenue_usd ?? null,
+            format: (_value, row) => usdLabel(row.revenue_usd) ?? "—",
+          },
+          {
+            key: "coverage_ratio",
+            label: "Coverage",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.coverage_ratio ?? null,
+            format: (_value, row) => coverageLabel(row.coverage_ratio),
+          },
+          {
+            key: "subsidy_multiple",
+            label: "Subsidy",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.subsidy_multiple ?? null,
+            format: (_value, row) => subsidyLabel(row.subsidy_multiple),
+          },
+        ]}
+      />
 
       {notObserved.length > 0 ? (
         <div className="space-y-2">

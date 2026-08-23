@@ -7,10 +7,10 @@ import { Search } from "lucide-react";
 import { classNames } from "@/lib/format";
 
 /**
- * Labeled toolbar control primitive. Every filter (search input, select,
- * segmented toggle) renders with a consistent mono micro-label, hairline
- * border, and 36px min-height so the sticky filter bar looks uniform on
- * every list route.
+ * The form controls a filter row is built from: a labelled field, an input
+ * and a select, on the shared control height. The `FilterToolbar` that used
+ * to arrange them is gone -- `DataTable` owns its own filter row (#11610),
+ * and a non-table list arranges these three itself.
  */
 export function FilterField({
   label,
@@ -93,32 +93,5 @@ export function FilterSelect({
 /**
  * Layout wrapper composing FilterField children plus a trailing action slot
  * (density toggle, column customizer, freshness pill). Designed to render
- * inside ListShell's sticky filter row and stay usable at 375px width.
+ * inside a filter row and stay usable at 375px width.
  */
-export function FilterToolbar({
-  children,
-  trailing,
-  className,
-}: {
-  children: ReactNode;
-  trailing?: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={classNames(
-        "flex w-full flex-wrap items-end gap-2 md:gap-3",
-        className,
-      )}
-    >
-      <div className="flex flex-1 flex-wrap items-end gap-2 md:gap-3 min-w-0">
-        {children}
-      </div>
-      {trailing ? (
-        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-          {trailing}
-        </div>
-      ) : null}
-    </div>
-  );
-}

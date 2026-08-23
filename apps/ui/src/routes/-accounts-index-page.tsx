@@ -7,7 +7,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
 import { TopActiveAccounts } from "@/components/metagraphed/top-active-accounts";
 import { TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS } from "@/components/metagraphed/top-active-accounts-ranking";
-import { ShareButton, EntityHero, FactSentence } from "@jsonbored/ui-kit";
+import { EntityHero, FactSentence } from "@jsonbored/ui-kit";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { Ss58Inspector } from "@/components/metagraphed/ss58-inspector";
 import { TopHoldersPanel } from "@/components/metagraphed/top-holders-panel";
@@ -52,11 +52,6 @@ export function AccountsPage() {
     <AppShell>
       <EntityHero
         name="Accounts"
-        action={
-          <div className="mg-actions">
-            <ShareButton bare />
-          </div>
-        }
         sentence={
           <FactSentence>
             Look up a Bittensor account by ss58 address (hotkey or coldkey) — its balance, staked

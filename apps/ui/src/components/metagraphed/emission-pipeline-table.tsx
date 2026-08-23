@@ -1,12 +1,13 @@
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { ListShell } from "@jsonbored/ui-kit";
-import { Chip, EmptyState, Panel } from "@/components/metagraphed/primitives";
+import { DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
+import { Chip, EmptyState } from "@/components/metagraphed/primitives";
 import {
   PageSizeSelect,
   ResetFiltersButton,
-  SearchInput,
   SelectFilter,
 } from "@/components/metagraphed/table-controls";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import {
   emissionRowState,
   filterEmissionSubnets,
@@ -17,7 +18,7 @@ import {
   type EmissionSortKey,
   type EmissionStateFilter,
 } from "@/lib/metagraphed/emission-pipeline";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber } from "@/lib/metagraphed/format";
 import type { EmissionPipelineSubnet } from "@/lib/metagraphed/types";
 
 export interface EmissionTableSearch {
@@ -35,15 +36,6 @@ const STATE_OPTIONS: { value: EmissionStateFilter; label: string }[] = [
   { value: "ineligible", label: "Outside the pipeline" },
 ];
 
-const SORT_OPTIONS: { value: EmissionSortKey; label: string }[] = [
-  { value: "final_share", label: "Final share" },
-  { value: "emission_share", label: "Price share" },
-  { value: "gate_delta", label: "Share moved" },
-  { value: "tao_total", label: "TAO per block" },
-  { value: "liquidity_fraction", label: "Pool fraction" },
-  { value: "netuid", label: "Netuid" },
-];
-
 const share = (value: number | null, digits = 3) =>
   value == null ? "—" : `${(value * 100).toFixed(digits)}%`;
 
@@ -52,123 +44,10 @@ const signedShare = (value: number | null) =>
 
 const tao = (value: number | null) => (value == null ? "—" : value.toFixed(6));
 
-/**
- * The per-subnet pipeline decomposition (#8745).
- *
- * Column order follows the pipeline itself — price share → miner-burn weight →
- * post-gate share → final share, then the TAO split — so a row reads left to
- * right as the sequence of decisions that produced it. That ordering is the
- * whole point of the table: the interesting fact about a subnet is usually
- * WHERE in the pipeline its share moved, not the endpoint alone.
- */
-export function EmissionPipelineTable({
-  subnets,
-  search,
-  setSearch,
-}: {
-  subnets: EmissionPipelineSubnet[];
-  search: EmissionTableSearch;
-  setSearch: (patch: Partial<EmissionTableSearch>) => void;
-}) {
-  const filtered = filterEmissionSubnets(subnets, search.state, search.netuid);
-  const sorted = sortEmissionSubnets(filtered, search.sort, search.dir);
-  const rows = sorted.slice(0, search.limit);
-  const filtersActive = search.state !== "all" || search.netuid !== "";
-
-  // Every select here is always-selected, hence allowEmpty={false}: the blank
-  // option SelectFilter adds by default would set an out-of-enum value that
-  // the route's zod schema silently falls back from, so the control would
-  // appear to do something and then do nothing.
-  const filters = (
-    <>
-      <SearchInput
-        value={search.netuid}
-        onChange={(v) => setSearch({ netuid: v })}
-        placeholder="Netuid…"
-      />
-      <SelectFilter
-        label="State"
-        allowEmpty={false}
-        value={search.state}
-        onChange={(v) => setSearch({ state: v as EmissionStateFilter })}
-        options={STATE_OPTIONS}
-      />
-      <SelectFilter
-        label="Sort"
-        allowEmpty={false}
-        value={search.sort}
-        onChange={(v) => setSearch({ sort: v as EmissionSortKey })}
-        options={SORT_OPTIONS}
-      />
-      <SelectFilter
-        label="Order"
-        allowEmpty={false}
-        value={search.dir}
-        onChange={(v) => setSearch({ dir: v as "asc" | "desc" })}
-        options={[
-          { value: "desc", label: "Highest first" },
-          { value: "asc", label: "Lowest first" },
-        ]}
-      />
-      <PageSizeSelect
-        value={search.limit}
-        onChange={(n) => setSearch({ limit: n })}
-        options={[25, 50, 100, 200]}
-      />
-      <ResetFiltersButton
-        active={filtersActive}
-        onReset={() => setSearch({ state: "all", netuid: "" })}
-      />
-    </>
-  );
-
-  return (
-    <ListShell
-      filters={filters}
-      isEmpty={rows.length === 0}
-      empty={
-        <EmptyState
-          title="No subnets match"
-          hint="Clear the netuid filter or switch back to all subnets."
-        />
-      }
-      cards={rows.map((s) => (
-        <EmissionCard key={s.netuid} subnet={s} />
-      ))}
-      table={
-        <table className="w-full text-left text-13">
-          <thead className="mg-table-head-pinned">
-            <tr>
-              <th className="px-4 py-2.5">Subnet</th>
-              <th className="px-4 py-2.5 text-right">Price share</th>
-              <th className="px-4 py-2.5 text-right">Miner burn</th>
-              <th className="px-4 py-2.5 text-right">Weighted</th>
-              <th className="px-4 py-2.5 text-right">Post-gate</th>
-              <th className="px-4 py-2.5 text-right">Final share</th>
-              <th className="px-4 py-2.5 text-right">Moved</th>
-              <th className="px-4 py-2.5 text-right">TAO/block</th>
-              <th className="px-4 py-2.5 text-right">Pool</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((s) => (
-              <EmissionRow key={s.netuid} subnet={s} />
-            ))}
-          </tbody>
-        </table>
-      }
-      footer={
-        <div className="flex items-center justify-between gap-3 border-t border-border bg-surface px-4 py-2 text-11 text-ink-muted">
-          <span>
-            Showing {formatNumber(rows.length)} of {formatNumber(filtered.length)}
-            {filtered.length === subnets.length ? "" : ` (${formatNumber(subnets.length)} total)`}
-          </span>
-          <span>Point sample — not a window average</span>
-        </div>
-      }
-    />
-  );
-}
+const shareFormat =
+  (digits = 3) =>
+  (value: unknown) =>
+    share(typeof value === "number" ? value : null, digits);
 
 /** The state chip. A disabled subnet and a gate-zeroed one both show zero TAO
  * and mean different things, so the state is its own column-adjacent signal
@@ -197,92 +76,186 @@ function movedToneClass(subnet: EmissionPipelineSubnet): string {
   return "text-ink-muted";
 }
 
-function EmissionRow({ subnet }: { subnet: EmissionPipelineSubnet }) {
-  const state = emissionRowState(subnet);
-  return (
-    <tr
-      className={classNames(
-        "mg-row-accent hover:bg-surface",
-        // A row outside the pipeline is context, not a competitor — dimmed so
-        // the ranked set reads as the ranked set, without hiding it.
-        state === "ineligible" && "opacity-70",
-      )}
-    >
-      <td className="px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <Link
-            to="/subnets/$netuid"
-            params={{ netuid: subnet.netuid }}
-            className="font-mono text-11 text-ink-strong hover:text-accent mg-focus-ring"
-          >
-            SN{subnet.netuid}
-          </Link>
-          <StateChip subnet={subnet} />
-        </div>
-      </td>
-      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
-        {share(subnet.emission_share)}
-      </td>
-      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-        {share(subnet.miner_burned, 1)}
-      </td>
-      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-        {share(subnet.weighted_share)}
-      </td>
-      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-        {share(subnet.gated_share)}
-      </td>
-      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink-strong">
-        {share(subnet.final_share)}
-      </td>
-      <td
-        className={classNames(
-          "px-4 py-2.5 text-right font-mono text-13 tabular-nums",
-          movedToneClass(subnet),
-        )}
-      >
-        {signedShare(subnet.gate_delta)}
-      </td>
-      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
-        {tao(subnet.tao_total)}
-      </td>
-      <td className="px-4 py-2.5 text-right font-mono text-13 tabular-nums text-ink-muted">
-        {taoChannelMix(subnet) === "chain-buys-only"
-          ? "0% (chain buys)"
-          : share(subnet.liquidity_fraction, 1)}
-      </td>
-    </tr>
-  );
-}
-
-function EmissionCard({ subnet }: { subnet: EmissionPipelineSubnet }) {
-  return (
-    <Panel className="block min-h-11">
-      <div className="flex items-center justify-between gap-2">
+// Column order follows the pipeline itself — price share → miner-burn weight →
+// post-gate share → final share, then the TAO split — so a row reads left to
+// right as the sequence of decisions that produced it.
+const COLUMNS: Array<DataTableColumn<EmissionPipelineSubnet>> = [
+  {
+    key: "netuid",
+    label: "Subnet",
+    sortable: true,
+    value: (s) => s.netuid,
+    render: (s) => (
+      <span className="inline-flex items-center gap-2">
         <Link
           to="/subnets/$netuid"
-          params={{ netuid: subnet.netuid }}
-          className="font-mono text-11 text-ink-strong mg-focus-ring"
+          params={{ netuid: s.netuid }}
+          className="font-mono text-11 text-ink-strong hover:text-accent mg-focus-ring"
         >
-          SN{subnet.netuid}
+          SN{s.netuid}
         </Link>
-        <div className="flex items-center gap-2">
-          <StateChip subnet={subnet} />
-          <span className="font-mono text-13 tabular-nums text-ink-strong">
-            {share(subnet.final_share)}
-          </span>
-        </div>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-11 text-ink-muted">
-        <span>price {share(subnet.emission_share)}</span>
-        <span className={movedToneClass(subnet)}>moved {signedShare(subnet.gate_delta)}</span>
-        <span>{tao(subnet.tao_total)} τ/block</span>
-        <span>
-          {taoChannelMix(subnet) === "chain-buys-only"
-            ? "all chain buys"
-            : `${share(subnet.liquidity_fraction, 1)} pool`}
-        </span>
-      </div>
-    </Panel>
+        <StateChip subnet={s} />
+      </span>
+    ),
+  },
+  {
+    key: "emission_share",
+    label: "Price share",
+    kind: "number",
+    sortable: true,
+    value: (s) => s.emission_share,
+    format: shareFormat(),
+  },
+  {
+    key: "miner_burned",
+    label: "Miner burn",
+    kind: "number",
+    value: (s) => s.miner_burned,
+    format: shareFormat(1),
+  },
+  {
+    key: "weighted_share",
+    label: "Weighted",
+    kind: "number",
+    value: (s) => s.weighted_share,
+    format: shareFormat(),
+  },
+  {
+    key: "gated_share",
+    label: "Post-gate",
+    kind: "number",
+    value: (s) => s.gated_share,
+    format: shareFormat(),
+  },
+  {
+    key: "final_share",
+    label: "Final share",
+    kind: "number",
+    sortable: true,
+    value: (s) => s.final_share,
+    format: shareFormat(),
+  },
+  {
+    key: "gate_delta",
+    label: "Moved",
+    kind: "number",
+    sortable: true,
+    value: (s) => s.gate_delta,
+    format: (v) => signedShare(typeof v === "number" ? v : null),
+    render: (s) => <span className={movedToneClass(s)}>{signedShare(s.gate_delta ?? null)}</span>,
+  },
+  {
+    key: "tao_total",
+    label: "TAO/block",
+    kind: "number",
+    sortable: true,
+    value: (s) => s.tao_total,
+    format: (v) => tao(typeof v === "number" ? v : null),
+  },
+  {
+    key: "liquidity_fraction",
+    label: "Pool",
+    kind: "number",
+    sortable: true,
+    value: (s) => s.liquidity_fraction,
+    format: shareFormat(1),
+    render: (s) =>
+      taoChannelMix(s) === "chain-buys-only"
+        ? "0% (chain buys)"
+        : share(s.liquidity_fraction ?? null, 1),
+  },
+];
+
+/**
+ * The per-subnet pipeline decomposition (#8745).
+ *
+ * The sort/order selects are gone: the columns themselves carry the sort, and
+ * the header click writes the same `sort`/`dir` search params the selects used
+ * to, so a shared URL still restores the same view.
+ */
+export function EmissionPipelineTable({
+  subnets,
+  search,
+  setSearch,
+}: {
+  subnets: EmissionPipelineSubnet[];
+  search: EmissionTableSearch;
+  setSearch: (patch: Partial<EmissionTableSearch>) => void;
+}) {
+  const filtered = useMemo(
+    () => filterEmissionSubnets(subnets, search.state, search.netuid),
+    [subnets, search.state, search.netuid],
+  );
+  const rows = useMemo(
+    () => sortEmissionSubnets(filtered, search.sort, search.dir).slice(0, search.limit),
+    [filtered, search.sort, search.dir, search.limit],
+  );
+  const filtersActive = search.state !== "all" || search.netuid !== "";
+
+  return (
+    <div className="space-y-2">
+      <DataTable
+        rows={rows}
+        columns={COLUMNS}
+        rowKey={(s) => String(s.netuid)}
+        caption="Emission pipeline"
+        total={filtered.length}
+        link={RouterLink}
+        storageKey="emission-pipeline"
+        // The route's own `limit` bounds the list; a second pager over an
+        // already-truncated slice would page a page.
+        paginate={false}
+        // Nine numeric stages per row: on a narrow viewport a labelled card is
+        // the only shape that keeps the whole pipeline readable.
+        mobile="cards"
+        sort={{ key: search.sort, dir: search.dir }}
+        onSort={(next) =>
+          setSearch({
+            sort: (next?.key ?? "final_share") as EmissionSortKey,
+            dir: next?.dir ?? "desc",
+          })
+        }
+        search={{
+          value: search.netuid,
+          onChange: (v) => setSearch({ netuid: v }),
+          placeholder: "Netuid…",
+        }}
+        filters={
+          <>
+            {/* Always-selected, hence allowEmpty={false}: the blank option
+                SelectFilter adds by default would set an out-of-enum value that
+                the route's zod schema silently falls back from, so the control
+                would appear to do something and then do nothing. */}
+            <SelectFilter
+              label="State"
+              allowEmpty={false}
+              value={search.state}
+              onChange={(v) => setSearch({ state: v as EmissionStateFilter })}
+              options={STATE_OPTIONS}
+            />
+            <PageSizeSelect
+              value={search.limit}
+              onChange={(n) => setSearch({ limit: n })}
+              options={[25, 50, 100, 200]}
+            />
+            <ResetFiltersButton
+              active={filtersActive}
+              onReset={() => setSearch({ state: "all", netuid: "" })}
+            />
+          </>
+        }
+        empty={
+          <EmptyState
+            title="No subnets match"
+            hint="Clear the netuid filter or switch back to all subnets."
+          />
+        }
+      />
+      <p className="text-11 text-ink-muted">
+        Showing {formatNumber(rows.length)} of {formatNumber(filtered.length)}
+        {filtered.length === subnets.length ? "" : ` (${formatNumber(subnets.length)} total)`} ·
+        point sample — not a window average
+      </p>
+    </div>
   );
 }

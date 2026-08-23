@@ -8,7 +8,6 @@ import { CrowdloansPanel } from "@/components/metagraphed/crowdloans-panel";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
-  ShareButton,
   TimeAgo,
   SectionHead,
   FactStrip,
@@ -17,10 +16,12 @@ import {
   LineWithWindow,
   CompositionBreakdown,
   RankedRails,
+  DataTable,
+  type CellValue,
+  type DataTableColumn,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
-import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
-import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import { ChainEventCard } from "@/components/metagraphed/chain-events-feed";
 import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed-feed";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
@@ -74,6 +75,8 @@ import type {
   ChainRegistrations,
   ChainServing,
   ChainPrometheus,
+  ChainSignerEntry,
+  ChainTransferEntry,
   ChainTransfers,
 } from "@/lib/metagraphed/types";
 import { HubSections } from "@/components/metagraphed/hub-prose";
@@ -248,9 +251,6 @@ export function ExplorerPage() {
     <>
       <ChainTabActions>
         <ChainHeadTip />
-        <div className="mg-actions">
-          <ShareButton bare />
-        </div>
       </ChainTabActions>
       <AsyncPanel context="explorer dashboard" fallback={<Skeleton className="h-[40rem] w-full" />}>
         <ExplorerDashboard
@@ -369,7 +369,15 @@ export function ExplorerPage() {
   );
 }
 
-const TH = "px-4 py-2.5";
+/** `DataTable` cell formatter for a count / ratio column, in this app's units. */
+function fmtCount(value: CellValue): string {
+  return formatNumber(typeof value === "number" ? value : null);
+}
+
+/** `DataTable` cell formatter for a τ amount. */
+function fmtTao(value: CellValue): string {
+  return formatTao(typeof value === "number" ? value : null);
+}
 
 /**
  * One labeled mini-sparkline cell for a daily series. Aligns `days` labels to
@@ -763,48 +771,49 @@ function ChainServingLeaderboard({ board }: { board: ChainServing }) {
         />
       </div>
 
-      {board.subnets.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-13">
-            <thead>
-              <tr>
-                <th className={TH}>Subnet</th>
-                <th className={`${TH} text-right`}>Announcements</th>
-                <th className={`${TH} text-right`}>Distinct servers</th>
-                <th className={`${TH} text-right`}>Per server</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {board.subnets.map((s) => (
-                <tr key={s.netuid} className="hover:bg-surface">
-                  <td className="px-4 py-2 text-11">
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                    >
-                      SN{s.netuid}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                    {formatNumber(s.announcements)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {formatNumber(s.distinct_servers)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {s.announcements_per_server != null
-                      ? s.announcements_per_server.toFixed(2)
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <EmptyState title="No serving activity in this window yet." />
-      )}
+      <DataTable
+        rows={board.subnets}
+        rowKey={(row) => String(row.netuid)}
+        caption="Axon serving by subnet"
+        captionHidden
+        link={RouterLink}
+        source="chain-serving"
+        rowHref={(row) => `/subnets/${row.netuid}`}
+        empty={<EmptyState title="No serving activity in this window yet." />}
+        columns={[
+          {
+            key: "netuid",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => row.netuid,
+            format: (value) => `SN${String(value)}`,
+          },
+          {
+            key: "announcements",
+            label: "Announcements",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.announcements,
+            format: fmtCount,
+          },
+          {
+            key: "distinct_servers",
+            label: "Distinct servers",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.distinct_servers,
+            format: fmtCount,
+          },
+          {
+            key: "per_server",
+            label: "Per server",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.announcements_per_server,
+            format: fmtCount,
+          },
+        ]}
+      />
     </Panel>
   );
 }
@@ -836,48 +845,49 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
         />
       </div>
 
-      {board.subnets.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-13">
-            <thead>
-              <tr>
-                <th className={TH}>Subnet</th>
-                <th className={`${TH} text-right`}>Announcements</th>
-                <th className={`${TH} text-right`}>Distinct exporters</th>
-                <th className={`${TH} text-right`}>Per exporter</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {board.subnets.map((s) => (
-                <tr key={s.netuid} className="hover:bg-surface">
-                  <td className="px-4 py-2 text-11">
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                    >
-                      SN{s.netuid}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                    {formatNumber(s.announcements)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {formatNumber(s.distinct_exporters)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {s.announcements_per_exporter != null
-                      ? s.announcements_per_exporter.toFixed(2)
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <EmptyState title="No Prometheus telemetry in this window yet." />
-      )}
+      <DataTable
+        rows={board.subnets}
+        rowKey={(row) => String(row.netuid)}
+        caption="Prometheus telemetry by subnet"
+        captionHidden
+        link={RouterLink}
+        source="chain-prometheus"
+        rowHref={(row) => `/subnets/${row.netuid}`}
+        empty={<EmptyState title="No Prometheus telemetry in this window yet." />}
+        columns={[
+          {
+            key: "netuid",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => row.netuid,
+            format: (value) => `SN${String(value)}`,
+          },
+          {
+            key: "announcements",
+            label: "Announcements",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.announcements,
+            format: fmtCount,
+          },
+          {
+            key: "distinct_exporters",
+            label: "Distinct exporters",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.distinct_exporters,
+            format: fmtCount,
+          },
+          {
+            key: "per_exporter",
+            label: "Per exporter",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.announcements_per_exporter,
+            format: fmtCount,
+          },
+        ]}
+      />
     </Panel>
   );
 }
@@ -908,46 +918,49 @@ function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
         </div>
         <span className="text-11 text-ink-muted">{churn.subnets.length} subnets</span>
       </div>
-      {churn.subnets.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-13">
-            <thead>
-              <tr>
-                <th className={TH}>Subnet</th>
-                <th className={`${TH} text-right`}>Teardowns</th>
-                <th className={`${TH} text-right`}>Distinct removers</th>
-                <th className={`${TH} text-right`}>Teardowns per remover</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {churn.subnets.map((s) => (
-                <tr key={s.netuid} className="hover:bg-surface">
-                  <td className="px-4 py-2 text-11">
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                    >
-                      SN{s.netuid}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                    {formatNumber(s.removals)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {formatNumber(s.distinct_removers)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {s.removals_per_remover != null ? s.removals_per_remover.toFixed(2) : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <EmptyState title="No axon teardowns in this window yet." />
-      )}
+      <DataTable
+        rows={churn.subnets}
+        rowKey={(row) => String(row.netuid)}
+        caption="Axon churn by subnet"
+        captionHidden
+        link={RouterLink}
+        source="chain-axon-churn"
+        rowHref={(row) => `/subnets/${row.netuid}`}
+        empty={<EmptyState title="No axon teardowns in this window yet." />}
+        columns={[
+          {
+            key: "netuid",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => row.netuid,
+            format: (value) => `SN${String(value)}`,
+          },
+          {
+            key: "removals",
+            label: "Teardowns",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.removals,
+            format: fmtCount,
+          },
+          {
+            key: "distinct_removers",
+            label: "Distinct removers",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.distinct_removers,
+            format: fmtCount,
+          },
+          {
+            key: "per_remover",
+            label: "Teardowns per remover",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.removals_per_remover,
+            format: fmtCount,
+          },
+        ]}
+      />
     </Panel>
   );
 }
@@ -994,46 +1007,49 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
         />
       </FactStrip>
 
-      {idleStake.subnets.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-13">
-            <thead>
-              <tr>
-                <th className={TH}>Subnet</th>
-                <th className={`${TH} text-right`}>Idle stake</th>
-                <th className={`${TH} text-right`}>Idle hotkeys</th>
-                <th className={`${TH} text-right`}>Neurons</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {idleStake.subnets.map((s) => (
-                <tr key={s.netuid} className="hover:bg-surface">
-                  <td className="px-4 py-2 text-11">
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                    >
-                      SN{s.netuid}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                    {formatTao(s.idle_stake_alpha)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                    {formatNumber(s.idle_neuron_count)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {formatNumber(s.neuron_count)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <EmptyState title="No idle stake in this snapshot yet." />
-      )}
+      <DataTable
+        rows={idleStake.subnets}
+        rowKey={(row) => String(row.netuid)}
+        caption="Idle stake by subnet"
+        captionHidden
+        link={RouterLink}
+        source="chain-idle-stake"
+        rowHref={(row) => `/subnets/${row.netuid}`}
+        empty={<EmptyState title="No idle stake in this snapshot yet." />}
+        columns={[
+          {
+            key: "netuid",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => row.netuid,
+            format: (value) => `SN${String(value)}`,
+          },
+          {
+            key: "idle_stake",
+            label: "Idle stake",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.idle_stake_alpha,
+            format: fmtTao,
+          },
+          {
+            key: "idle_neurons",
+            label: "Idle hotkeys",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.idle_neuron_count,
+            format: fmtCount,
+          },
+          {
+            key: "neurons",
+            label: "Neurons",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.neuron_count,
+            format: fmtCount,
+          },
+        ]}
+      />
     </Panel>
   );
 }
@@ -1076,48 +1092,49 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
         />
       </FactStrip>
 
-      {registrations.subnets.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-13">
-            <thead>
-              <tr>
-                <th className={TH}>Subnet</th>
-                <th className={`${TH} text-right`}>Registrations</th>
-                <th className={`${TH} text-right`}>Distinct registrants</th>
-                <th className={`${TH} text-right`}>Per registrant</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {registrations.subnets.map((s) => (
-                <tr key={s.netuid} className="hover:bg-surface">
-                  <td className="px-4 py-2 text-11">
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                    >
-                      SN{s.netuid}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                    {formatNumber(s.registrations)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {formatNumber(s.distinct_registrants)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {s.registrations_per_registrant != null
-                      ? s.registrations_per_registrant.toFixed(2)
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <EmptyState title="No registrations in this window yet." />
-      )}
+      <DataTable
+        rows={registrations.subnets}
+        rowKey={(row) => String(row.netuid)}
+        caption="Registrations by subnet"
+        captionHidden
+        link={RouterLink}
+        source="chain-registrations"
+        rowHref={(row) => `/subnets/${row.netuid}`}
+        empty={<EmptyState title="No registrations in this window yet." />}
+        columns={[
+          {
+            key: "netuid",
+            label: "Subnet",
+            sortable: true,
+            value: (row) => row.netuid,
+            format: (value) => `SN${String(value)}`,
+          },
+          {
+            key: "registrations",
+            label: "Registrations",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.registrations,
+            format: fmtCount,
+          },
+          {
+            key: "distinct_registrants",
+            label: "Distinct registrants",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.distinct_registrants,
+            format: fmtCount,
+          },
+          {
+            key: "per_registrant",
+            label: "Per registrant",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.registrations_per_registrant,
+            format: fmtCount,
+          },
+        ]}
+      />
     </Panel>
   );
 }
@@ -1284,6 +1301,39 @@ function weightSetterLabel(setter: { netuid?: number | null; uid: number | null 
   return setter.netuid == null ? `uid ${uid}` : `SN${setter.netuid} uid ${uid}`;
 }
 
+/** Top senders and top receivers rank the same shape, so they share one spec. */
+const transferLeaderboardColumns: DataTableColumn<ChainTransferEntry>[] = [
+  {
+    key: "address",
+    label: "Account",
+    value: (row) => row.address,
+    render: (row) => (
+      <AddressDisplay
+        ss58={row.address}
+        fallback={<>{row.address}</>}
+        compact
+        valueClassName="text-ink-strong hover:text-accent"
+      />
+    ),
+  },
+  {
+    key: "volume",
+    label: "Volume",
+    kind: "number",
+    sortable: true,
+    value: (row) => row.volume_tao,
+    format: fmtTao,
+  },
+  {
+    key: "transfers",
+    label: "Transfers",
+    kind: "number",
+    sortable: true,
+    value: (row) => row.transfer_count,
+    format: fmtCount,
+  },
+];
+
 /**
  * Network-wide native-TAO transfer-volume leaderboard (#3475) — separate
  * top-senders/top-receivers rankings, distinct from the directed
@@ -1313,80 +1363,30 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
       <div className="grid gap-6 lg:grid-cols-2">
         <div>
           <div className="mb-2 text-13 text-ink-muted">Top senders</div>
-          {transfers.top_senders.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-13">
-                <thead>
-                  <tr>
-                    <th className={TH}>Account</th>
-                    <th className={`${TH} text-right`}>Volume</th>
-                    <th className={`${TH} text-right`}>Transfers</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {transfers.top_senders.map((s) => (
-                    <tr key={s.address} className="hover:bg-surface">
-                      <td className="px-4 py-2 text-11">
-                        <AddressDisplay
-                          ss58={s.address}
-                          fallback={<>{s.address}</>}
-                          compact
-                          valueClassName="text-ink-strong hover:text-accent"
-                        />
-                      </td>
-                      <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                        {formatTao(s.volume_tao)}
-                      </td>
-                      <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                        {formatNumber(s.transfer_count)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="font-mono text-13 text-ink-muted">No senders in this window yet.</p>
-          )}
+          <DataTable
+            rows={transfers.top_senders}
+            rowKey={(row) => row.address}
+            caption="Top senders"
+            captionHidden
+            link={RouterLink}
+            source="chain-top-senders"
+            empty={<EmptyState title="No senders in this window yet." />}
+            columns={transferLeaderboardColumns}
+          />
         </div>
 
         <div>
           <div className="mb-2 text-13 text-ink-muted">Top receivers</div>
-          {transfers.top_receivers.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-13">
-                <thead>
-                  <tr>
-                    <th className={TH}>Account</th>
-                    <th className={`${TH} text-right`}>Volume</th>
-                    <th className={`${TH} text-right`}>Transfers</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {transfers.top_receivers.map((r) => (
-                    <tr key={r.address} className="hover:bg-surface">
-                      <td className="px-4 py-2 text-11">
-                        <AddressDisplay
-                          ss58={r.address}
-                          fallback={<>{r.address}</>}
-                          compact
-                          valueClassName="text-ink-strong hover:text-accent"
-                        />
-                      </td>
-                      <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                        {formatTao(r.volume_tao)}
-                      </td>
-                      <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                        {formatNumber(r.transfer_count)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="font-mono text-13 text-ink-muted">No receivers in this window yet.</p>
-          )}
+          <DataTable
+            rows={transfers.top_receivers}
+            rowKey={(row) => row.address}
+            caption="Top receivers"
+            captionHidden
+            link={RouterLink}
+            source="chain-top-receivers"
+            empty={<EmptyState title="No receivers in this window yet." />}
+            columns={transferLeaderboardColumns}
+          />
         </div>
       </div>
     </Panel>
@@ -1611,67 +1611,78 @@ function ExplorerDashboard({
                 {/* top signers */}
                 <Panel className="min-w-0">
                   <h2 className="mb-4 text-11 text-ink-muted">Most active accounts</h2>
-                  {signers.signers.length > 0 ? (
-                    <ExplorerLeaderboardTableShell
-                      leaderboardId={EXPLORER_LEADERBOARD_IDS.activeAccounts}
-                    >
-                      <thead>
-                        <tr>
-                          <th className={TH}>Account</th>
-                          <th className={`${TH} text-right`}>Txs</th>
-                          {/* #8292: these read 0.0000 τ for every row in every
-                          window observed — subtensor's fee market is
-                          effectively idle. A column of zeroes is not data, so
-                          it renders only when some row actually has a value. */}
-                          {anySignerFees ? <th className={`${TH} text-right`}>Fees</th> : null}
-                          {anySignerTips ? <th className={`${TH} text-right`}>Tips</th> : null}
-                          <th className={`${TH} text-right`}>Last block</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {signers.signers.slice(0, 12).map((s) => (
-                          <tr key={s.signer} className="hover:bg-surface">
-                            <td className="px-4 py-2 text-11">
-                              <AddressDisplay
-                                ss58={s.signer}
-                                fallback={<>{s.signer}</>}
-                                compact
-                                valueClassName="text-ink-strong hover:text-accent"
-                              />
-                            </td>
-                            <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                              {formatNumber(s.tx_count)}
-                            </td>
-                            {anySignerFees ? (
-                              <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                                {formatTao(s.total_fee_tao)}
-                              </td>
-                            ) : null}
-                            {anySignerTips ? (
-                              <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                                {formatTao(s.total_tip_tao)}
-                              </td>
-                            ) : null}
-                            <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                              {s.last_tx_block != null ? (
-                                <Link
-                                  to="/blocks/$ref"
-                                  params={{ ref: String(s.last_tx_block) }}
-                                  className="hover:text-accent hover:underline"
-                                >
-                                  #{formatNumber(s.last_tx_block)}
-                                </Link>
-                              ) : (
-                                "—"
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </ExplorerLeaderboardTableShell>
-                  ) : (
-                    <EmptyState title="No signers in this window yet." />
-                  )}
+                  <DataTable
+                    rows={signers.signers.slice(0, 12)}
+                    rowKey={(row) => row.signer}
+                    caption="Most active accounts"
+                    captionHidden
+                    link={RouterLink}
+                    source="chain-signers"
+                    empty={<EmptyState title="No signers in this window yet." />}
+                    columns={[
+                      {
+                        key: "signer",
+                        label: "Account",
+                        value: (row) => row.signer,
+                        render: (row) => (
+                          <AddressDisplay
+                            ss58={row.signer}
+                            fallback={<>{row.signer}</>}
+                            compact
+                            valueClassName="text-ink-strong hover:text-accent"
+                          />
+                        ),
+                      },
+                      {
+                        key: "tx_count",
+                        label: "Txs",
+                        kind: "number",
+                        sortable: true,
+                        value: (row) => row.tx_count,
+                        format: fmtCount,
+                      },
+                      // #8292: these read 0.0000 τ for every row in every
+                      // window observed — subtensor's fee market is
+                      // effectively idle. A column of zeroes is not data, so
+                      // it renders only when some row actually has a value.
+                      ...(anySignerFees
+                        ? [
+                            {
+                              key: "fees",
+                              label: "Fees",
+                              kind: "number" as const,
+                              sortable: true,
+                              value: (row: ChainSignerEntry) => row.total_fee_tao,
+                              format: fmtTao,
+                            },
+                          ]
+                        : []),
+                      ...(anySignerTips
+                        ? [
+                            {
+                              key: "tips",
+                              label: "Tips",
+                              kind: "number" as const,
+                              sortable: true,
+                              value: (row: ChainSignerEntry) => row.total_tip_tao,
+                              format: fmtTao,
+                            },
+                          ]
+                        : []),
+                      {
+                        key: "last_block",
+                        label: "Last block",
+                        kind: "link",
+                        align: "right",
+                        sortable: true,
+                        value: (row) => row.last_tx_block,
+                        format: (value) =>
+                          typeof value === "number" ? `#${formatNumber(value)}` : "—",
+                        href: (row) =>
+                          row.last_tx_block != null ? `/blocks/${row.last_tx_block}` : undefined,
+                      },
+                    ]}
+                  />
                 </Panel>
               </div>
               <NetworkOperationsSection serving={serving} prometheus={prometheus} />
@@ -1728,45 +1739,56 @@ function ExplorerDashboard({
                     {fees.top_fee_payers.length} accounts
                   </span>
                 </div>
-                {fees.top_fee_payers.length > 0 ? (
-                  // Table alone — the former bar chart restated the same ranked fee
-                  // list with no distinct cut of the data (#5313).
-                  <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
-                    <thead>
-                      <tr>
-                        <th className={TH}>Account</th>
-                        <th className={`${TH} text-right`}>Fees</th>
-                        <th className={`${TH} text-right`}>Tips</th>
-                        <th className={`${TH} text-right`}>Txs</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {fees.top_fee_payers.map((p) => (
-                        <tr key={p.signer} className="hover:bg-surface">
-                          <td className="px-4 py-2 text-11">
-                            <AddressDisplay
-                              ss58={p.signer}
-                              fallback={<>{p.signer}</>}
-                              compact
-                              valueClassName="text-ink-strong hover:text-accent"
-                            />
-                          </td>
-                          <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                            {formatTao(p.total_fee_tao)}
-                          </td>
-                          <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                            {formatTao(p.total_tip_tao)}
-                          </td>
-                          <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                            {formatNumber(p.extrinsic_count)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </ExplorerLeaderboardTableShell>
-                ) : (
-                  <EmptyState title="No fee payers in this window yet." />
-                )}
+                {/* Table alone — the former bar chart restated the same ranked fee
+                    list with no distinct cut of the data (#5313). */}
+                <DataTable
+                  rows={fees.top_fee_payers}
+                  rowKey={(row) => row.signer}
+                  caption="Top fee payers"
+                  captionHidden
+                  link={RouterLink}
+                  source="chain-fee-payers"
+                  empty={<EmptyState title="No fee payers in this window yet." />}
+                  columns={[
+                    {
+                      key: "signer",
+                      label: "Account",
+                      value: (row) => row.signer,
+                      render: (row) => (
+                        <AddressDisplay
+                          ss58={row.signer}
+                          fallback={<>{row.signer}</>}
+                          compact
+                          valueClassName="text-ink-strong hover:text-accent"
+                        />
+                      ),
+                    },
+                    {
+                      key: "fees",
+                      label: "Fees",
+                      kind: "number",
+                      sortable: true,
+                      value: (row) => row.total_fee_tao,
+                      format: fmtTao,
+                    },
+                    {
+                      key: "tips",
+                      label: "Tips",
+                      kind: "number",
+                      sortable: true,
+                      value: (row) => row.total_tip_tao,
+                      format: fmtTao,
+                    },
+                    {
+                      key: "txs",
+                      label: "Txs",
+                      kind: "number",
+                      sortable: true,
+                      value: (row) => row.extrinsic_count,
+                      format: fmtCount,
+                    },
+                  ]}
+                />
               </Panel>
             </div>
           )}
@@ -1796,79 +1818,49 @@ function ExplorerDashboard({
                     {stakeTransfers.subnets.length} subnets
                   </span>
                 </div>
-                {stakeTransfers.subnets.length > 0 ? (
-                  <>
-                    {/* < md: a squeezed 4-column table either clips its last column or
-                requires an undiscoverable horizontal scroll, so narrow
-                viewports get a stacked card per subnet instead (mirrors the
-                cards/table split ListShell uses for paginated lists). */}
-                    <div className="md:hidden space-y-2">
-                      {stakeTransfers.subnets.map((s) => (
-                        <Panel key={s.netuid}>
-                          <div className="flex items-center justify-between gap-2">
-                            <Link
-                              to="/subnets/$netuid"
-                              params={{ netuid: s.netuid }}
-                              className="font-mono text-13 font-medium text-ink-strong hover:text-accent hover:underline"
-                            >
-                              SN{s.netuid}
-                            </Link>
-                            <span className="text-11 tabular-nums text-ink-muted">
-                              {s.transfers_per_sender != null
-                                ? `${s.transfers_per_sender.toFixed(2)} / sender`
-                                : "—"}
-                            </span>
-                          </div>
-                          <div className="mt-2 flex items-center justify-between text-11 tabular-nums text-ink-muted">
-                            <span>{formatNumber(s.transfers)} transfers</span>
-                            <span>{formatNumber(s.distinct_senders)} senders</span>
-                          </div>
-                        </Panel>
-                      ))}
-                    </div>
-                    <ExplorerLeaderboardTableShell
-                      leaderboardId={EXPLORER_LEADERBOARD_IDS.stakeTransfers}
-                      visibility="desktop-only"
-                    >
-                      <thead>
-                        <tr>
-                          <th className={TH}>Subnet</th>
-                          <th className={`${TH} text-right`}>Transfers</th>
-                          <th className={`${TH} text-right`}>Distinct senders</th>
-                          <th className={`${TH} text-right`}>Transfers per sender</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {stakeTransfers.subnets.map((s) => (
-                          <tr key={s.netuid} className="hover:bg-surface">
-                            <td className="px-4 py-2 text-11">
-                              <Link
-                                to="/subnets/$netuid"
-                                params={{ netuid: s.netuid }}
-                                className="text-ink-strong hover:text-accent hover:underline"
-                              >
-                                SN{s.netuid}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                              {formatNumber(s.transfers)}
-                            </td>
-                            <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                              {formatNumber(s.distinct_senders)}
-                            </td>
-                            <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                              {s.transfers_per_sender != null
-                                ? s.transfers_per_sender.toFixed(2)
-                                : "—"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </ExplorerLeaderboardTableShell>
-                  </>
-                ) : (
-                  <EmptyState title="No stake transfers in this window yet." />
-                )}
+                <DataTable
+                  rows={stakeTransfers.subnets}
+                  rowKey={(row) => String(row.netuid)}
+                  caption="Stake transfers by subnet"
+                  captionHidden
+                  link={RouterLink}
+                  source="chain-stake-transfers"
+                  rowHref={(row) => `/subnets/${row.netuid}`}
+                  empty={<EmptyState title="No stake transfers in this window yet." />}
+                  columns={[
+                    {
+                      key: "netuid",
+                      label: "Subnet",
+                      sortable: true,
+                      value: (row) => row.netuid,
+                      format: (value) => `SN${String(value)}`,
+                    },
+                    {
+                      key: "transfers",
+                      label: "Transfers",
+                      kind: "number",
+                      sortable: true,
+                      value: (row) => row.transfers,
+                      format: fmtCount,
+                    },
+                    {
+                      key: "distinct_senders",
+                      label: "Distinct senders",
+                      kind: "number",
+                      sortable: true,
+                      value: (row) => row.distinct_senders,
+                      format: fmtCount,
+                    },
+                    {
+                      key: "per_sender",
+                      label: "Transfers per sender",
+                      kind: "number",
+                      sortable: true,
+                      value: (row) => row.transfers_per_sender,
+                      format: fmtCount,
+                    },
+                  ]}
+                />
               </Panel>
             </>
           )}
@@ -1882,52 +1874,61 @@ function ExplorerDashboard({
                     {formatNumber(weightSetters.distinct_setters)} validators
                   </span>
                 </div>
-                {weightSetters.setters.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-13">
-                      <thead>
-                        <tr>
-                          <th className={TH}>Validator</th>
-                          <th className={`${TH} text-right`}>WeightsSet</th>
-                          <th className={`${TH} text-right`}>Share</th>
-                          <th className={`${TH} text-right`}>Last set</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {weightSetters.setters.map((setter) => (
-                          <tr key={weightSetterKey(setter)} className="hover:bg-surface">
-                            <td className="px-4 py-2 text-11">
-                              <AddressDisplay
-                                ss58={setter.hotkey}
-                                fallback={
-                                  <span
-                                    className="text-ink-muted"
-                                    title="Uid-only setter scoped to a subnet (no network-wide hotkey)"
-                                  >
-                                    {weightSetterLabel(setter)}
-                                  </span>
-                                }
-                                compact
-                                valueClassName="text-ink-strong hover:text-accent"
-                              />
-                            </td>
-                            <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                              {formatNumber(setter.weight_sets)}
-                            </td>
-                            <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                              {fmtShare(setter.share)}
-                            </td>
-                            <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                              {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <EmptyState title="No weight-setters in this window yet." />
-                )}
+                <DataTable
+                  rows={weightSetters.setters}
+                  rowKey={weightSetterKey}
+                  caption="Network weight-setters"
+                  captionHidden
+                  link={RouterLink}
+                  source="chain-weight-setters"
+                  columns={[
+                    {
+                      key: "validator",
+                      label: "Validator",
+                      value: (row) => row.hotkey ?? weightSetterLabel(row),
+                      render: (row) => (
+                        <AddressDisplay
+                          ss58={row.hotkey}
+                          fallback={
+                            <span
+                              className="text-ink-muted"
+                              title="Uid-only setter scoped to a subnet (no network-wide hotkey)"
+                            >
+                              {weightSetterLabel(row)}
+                            </span>
+                          }
+                          compact
+                          valueClassName="text-ink-strong hover:text-accent"
+                        />
+                      ),
+                    },
+                    {
+                      key: "weight_sets",
+                      label: "WeightsSet",
+                      kind: "number",
+                      sortable: true,
+                      value: (row) => row.weight_sets,
+                      format: fmtCount,
+                    },
+                    {
+                      key: "share",
+                      label: "Share",
+                      kind: "number",
+                      sortable: true,
+                      value: (row) => row.share,
+                      format: (_value, row) => fmtShare(row.share),
+                    },
+                    {
+                      key: "last_set",
+                      label: "Last set",
+                      kind: "time",
+                      align: "right",
+                      sortable: true,
+                      value: (row) => row.last_set_at,
+                    },
+                  ]}
+                  empty={<EmptyState title="No weight-setters in this window yet." />}
+                />
               </Panel>
               <ValidatorTurnoverSection turnover={turnover} />
               <NetworkRegistrationsSection registrations={registrations} />
@@ -1946,7 +1947,9 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
   const [sort, setSort] = useState<"volume" | "count">("volume");
   const pairsQ = useQuery(chainTransferPairsQuery(win, 25, sort));
   const pairs = pairsQ.data?.data;
-  const rows = pairs?.pairs ?? [];
+  // The API returns the corridors already ranked by the selected sort; carry
+  // that incoming position as a field so the "#" column survives a re-sort.
+  const rows = (pairs?.pairs ?? []).map((pair, index) => ({ ...pair, rank: index + 1 }));
 
   return (
     <Panel className="min-w-0">
@@ -1983,76 +1986,86 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
         </div>
       </div>
 
-      {pairsQ.isPending ? (
-        <Skeleton className="h-64 w-full" />
-      ) : pairsQ.error ? (
-        <ErrorState
-          error={pairsQ.error}
-          onRetry={() => pairsQ.refetch()}
-          context="transfer pairs"
-        />
-      ) : rows.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-13">
-            <thead>
-              <tr>
-                <th className={`${TH} text-right`}>#</th>
-                <th className={TH}>From</th>
-                <th className={TH}>To</th>
-                <th className={`${TH} text-right`}>Volume</th>
-                <th className={`${TH} text-right`}>Transfers</th>
-                <th className={`${TH} text-right`}>Last block</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((p, i) => (
-                <tr key={`${p.from}-${p.to}`} className="hover:bg-surface">
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {i + 1}
-                  </td>
-                  <td className="px-4 py-2 text-11">
-                    <AddressDisplay
-                      ss58={p.from}
-                      fallback={<>{p.from}</>}
-                      compact
-                      valueClassName="text-ink-strong hover:text-accent"
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-11">
-                    <AddressDisplay
-                      ss58={p.to}
-                      fallback={<>{p.to}</>}
-                      compact
-                      valueClassName="text-ink-strong hover:text-accent"
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink">
-                    {formatTao(p.volume_tao)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {formatNumber(p.transfer_count)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-11 tabular-nums text-ink-muted">
-                    {p.last_block != null ? (
-                      <Link
-                        to="/blocks/$ref"
-                        params={{ ref: String(p.last_block) }}
-                        className="hover:text-accent hover:underline"
-                      >
-                        #{formatNumber(p.last_block)}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <EmptyState title="No transfer pairs in this window yet." />
-      )}
+      <DataTable
+        rows={rows}
+        rowKey={(row) => `${row.from}-${row.to}`}
+        caption="Transfer pairs"
+        captionHidden
+        link={RouterLink}
+        source="chain-transfer-pairs"
+        loading={pairsQ.isPending}
+        error={
+          pairsQ.error ? (
+            <ErrorState
+              error={pairsQ.error}
+              onRetry={() => pairsQ.refetch()}
+              context="transfer pairs"
+            />
+          ) : undefined
+        }
+        empty={<EmptyState title="No transfer pairs in this window yet." />}
+        columns={[
+          {
+            key: "rank",
+            label: "#",
+            kind: "number",
+            value: (row) => row.rank,
+            format: fmtCount,
+          },
+          {
+            key: "from",
+            label: "From",
+            value: (row) => row.from,
+            render: (row) => (
+              <AddressDisplay
+                ss58={row.from}
+                fallback={<>{row.from}</>}
+                compact
+                valueClassName="text-ink-strong hover:text-accent"
+              />
+            ),
+          },
+          {
+            key: "to",
+            label: "To",
+            value: (row) => row.to,
+            render: (row) => (
+              <AddressDisplay
+                ss58={row.to}
+                fallback={<>{row.to}</>}
+                compact
+                valueClassName="text-ink-strong hover:text-accent"
+              />
+            ),
+          },
+          {
+            key: "volume",
+            label: "Volume",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.volume_tao,
+            format: fmtTao,
+          },
+          {
+            key: "transfers",
+            label: "Transfers",
+            kind: "number",
+            sortable: true,
+            value: (row) => row.transfer_count,
+            format: fmtCount,
+          },
+          {
+            key: "last_block",
+            label: "Last block",
+            kind: "link",
+            align: "right",
+            sortable: true,
+            value: (row) => row.last_block,
+            format: (value) => (typeof value === "number" ? `#${formatNumber(value)}` : "—"),
+            href: (row) => (row.last_block != null ? `/blocks/${row.last_block}` : undefined),
+          },
+        ]}
+      />
     </Panel>
   );
 }

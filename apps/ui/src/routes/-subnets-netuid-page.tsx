@@ -1,16 +1,17 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AlertCircle, AlertTriangle, ChevronDown, Filter } from "lucide-react";
-import {
-  AsyncPanel,
-  CopyLinkButton,
-  Panel,
-  ResponsiveTable,
-} from "@/components/metagraphed/primitives";
+import { AsyncPanel, CopyLinkButton, Panel } from "@/components/metagraphed/primitives";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { EmptyState, Skeleton, StatUnavailable, RECOVERY } from "@/components/metagraphed/states";
+import {
+  EmptyState,
+  ErrorState,
+  Skeleton,
+  StatUnavailable,
+  RECOVERY,
+} from "@/components/metagraphed/states";
 import { statPhase } from "@/lib/metagraphed/stat-phase";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
@@ -24,7 +25,6 @@ import {
   ExternalLink,
   TimeAgo,
   LiveTickerProvider,
-  TableState,
   HealthPill,
   CopyableCode,
   BackToTop,
@@ -34,6 +34,8 @@ import {
   SectionNav,
   RangeControl,
   LineWithWindow,
+  DataTable,
+  RankedRails,
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
@@ -105,9 +107,7 @@ import {
   aggregateActivityEvents,
   activityGroupKey,
   activityGroupSpanMinutes,
-  type ActivityGroup,
 } from "@/lib/metagraphed/activity-aggregation";
-import { diffNewRows } from "@/lib/metagraphed/new-row-tracker";
 import type {
   AccountEvent,
   Candidate,
@@ -132,6 +132,7 @@ import { WatchSubnetAlert } from "@/components/metagraphed/watch-subnet-alert";
 import { SubnetWindowProvider, SubnetWindowToggle } from "@/lib/metagraphed/subnet-window";
 import type { SearchParams } from "./subnets.$netuid";
 import { toLinePoints } from "@/components/metagraphed/metric-history";
+import { RouterLink } from "@/components/metagraphed/router-link";
 
 // #8247: 14 tabs -> 7. "Validators" folds into Metagraph (both are neuron-set
 // views over the same live snapshot); Identity history/Hyperparameters/
@@ -832,13 +833,7 @@ function SubnetLineageSection({ netuid }: { netuid: number }) {
         name="Lineage"
         footnote="Cross-network lineage links the testnet and mainnet deployments of the same subnet, matched by chain name or source repo."
       >
-        <TableState
-          variant="error"
-          title="Lineage unavailable"
-          description="The cross-network lineage data failed to load."
-          error={error}
-          onRetry={() => void refetch()}
-        />
+        <ErrorState error={error} onRetry={() => void refetch()} context="lineage" />
       </AnalyticsSection>
     );
   }
@@ -1334,62 +1329,6 @@ function EventKindCell({
  * before #8366) and for each individual member row revealed when a
  * collapsed group is expanded.
  */
-function ActivityEventRow({
-  ev,
-  nested,
-  isNew,
-  id,
-}: {
-  ev: AccountEvent;
-  nested?: boolean;
-  isNew?: boolean;
-  /** Optional DOM id — used as the aria-controls target for a grouped parent (#8821). */
-  id?: string;
-}) {
-  return (
-    <tr
-      id={id}
-      className={classNames(
-        "hover:bg-surface",
-        nested && "bg-surface",
-        // #8528: only top-level new rows fade in; nested (expanded-group child)
-        // rows never animate -- they only appear on user toggle, not stream arrival.
-        isNew && !nested && "",
-      )}
-    >
-      <td className="px-4 py-2.5 font-mono text-13 whitespace-nowrap">
-        {ev.block_number != null ? (
-          <Link
-            to="/blocks/$ref"
-            params={{ ref: String(ev.block_number) }}
-            className="text-ink hover:underline"
-          >
-            #{formatNumber(ev.block_number)}
-          </Link>
-        ) : (
-          "—"
-        )}
-      </td>
-      <td className={classNames("px-4 py-2.5 whitespace-nowrap", nested && "pl-8")}>
-        <EventKindCell kind={ev.event_kind} />
-      </td>
-      <td className="px-4 py-2.5 text-11 whitespace-nowrap">
-        <AddressDisplay
-          ss58={ev.hotkey}
-          fallback="—"
-          compact
-          valueClassName="text-ink-muted hover:text-ink"
-        />
-      </td>
-      <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink whitespace-nowrap">
-        {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
-      </td>
-      <td className="px-4 py-2.5 text-right text-11 text-ink-muted whitespace-nowrap">
-        <TimeAgo at={ev.observed_at} />
-      </td>
-    </tr>
-  );
-}
 
 /**
  * #8366: one row PER AGGREGATED GROUP instead of one per event -- the fix
@@ -1403,115 +1342,6 @@ function ActivityEventRow({
  * time, and the shared hotkey if every member has the SAME one ("multiple"
  * otherwise) -- clickable to reveal the individual rows beneath it.
  */
-function ActivityGroupRow({
-  group,
-  isNew,
-  expanded,
-  onToggle,
-}: {
-  group: ActivityGroup;
-  isNew?: boolean;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  if (group.events.length === 1) {
-    return <ActivityEventRow ev={group.events[0]!} isNew={isNew} />;
-  }
-  const latest = group.events[0]!;
-  const span = activityGroupSpanMinutes(group);
-  const sameHotkey = group.events.every((e) => e.hotkey === latest.hotkey);
-  // Same identity as the row key / groupKeys entry (minus the array index).
-  // #8817 may replace this with activityGroupKey — aria-controls should follow that.
-  const groupIdentity = `${group.kind}-${latest.block_number}-${latest.event_index}`;
-  const controlsId = `activity-group-${groupIdentity}`;
-
-  return (
-    <>
-      <tr className={classNames("cursor-pointer hover:bg-surface", isNew && "")} onClick={onToggle}>
-        <td className="px-4 py-2.5 font-mono text-13 whitespace-nowrap">
-          {latest.block_number != null ? (
-            <Link
-              to="/blocks/$ref"
-              params={{ ref: String(latest.block_number) }}
-              className="text-ink hover:underline"
-              // The row itself toggles expand/collapse; this inner link must
-              // navigate instead, not also fire the row's own onClick.
-              onClick={(e) => e.stopPropagation()}
-            >
-              #{formatNumber(latest.block_number)}
-            </Link>
-          ) : (
-            "—"
-          )}
-        </td>
-        <td className="px-4 py-2.5 whitespace-nowrap">
-          <span className="inline-flex items-center gap-1.5">
-            {/*
-              #8821: real disclosure control — aria-expanded belongs on the button,
-              not the <tr> (invalid on implicit row role). Row onClick stays for
-              mouse users; stopPropagation avoids a double toggle.
-            */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggle();
-              }}
-              aria-expanded={expanded}
-              aria-controls={controlsId}
-              aria-label={
-                `${expanded ? "Collapse" : "Expand"} ${group.events.length} ` +
-                `${group.kind ?? "event"} events at block ${latest.block_number}`
-              }
-              className="inline-flex shrink-0 items-center justify-center rounded p-0.5 text-ink-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <ChevronDown
-                className={classNames(
-                  "size-3 shrink-0 text-ink-muted transition-transform",
-                  !expanded && "-rotate-90",
-                )}
-                aria-hidden
-              />
-            </button>
-            <EventKindCell kind={group.kind} count={group.events.length} spanMinutes={span} />
-          </span>
-        </td>
-        <td className="px-4 py-2.5 text-11 whitespace-nowrap">
-          {sameHotkey && latest.hotkey ? (
-            // The row itself toggles expand/collapse; the address link/copy
-            // button must navigate/copy instead, not also fire onToggle.
-            <span onClick={(e) => e.stopPropagation()}>
-              <AddressDisplay
-                ss58={latest.hotkey}
-                fallback="—"
-                compact
-                valueClassName="text-ink-muted hover:text-ink"
-              />
-            </span>
-          ) : (
-            <span className="text-ink-muted">multiple</span>
-          )}
-        </td>
-        <td className="px-4 py-2.5 text-right text-11 tabular-nums text-ink-muted whitespace-nowrap">
-          —
-        </td>
-        <td className="px-4 py-2.5 text-right text-11 text-ink-muted whitespace-nowrap">
-          <TimeAgo at={latest.observed_at} />
-        </td>
-      </tr>
-      {expanded
-        ? group.events.map((ev, i) => (
-            <ActivityEventRow
-              key={`${ev.block_number}-${ev.event_index}-${i}`}
-              ev={ev}
-              nested
-              id={i === 0 ? controlsId : undefined}
-            />
-          ))
-        : null}
-    </>
-  );
-}
 
 function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }) {
   const navigate = useNavigate({ from: "/subnets/$netuid" });
@@ -1525,23 +1355,9 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
   // 100 events (subnetEventsQuery's own limit), cheap enough that memoizing
   // it would cost more bookkeeping than it saves.
   const groups = aggregateActivityEvents(events);
-  // #8528: fade-in only genuinely-new rows as the live stream delivers them --
-  // never on re-render/refetch/re-sort, and never the initial populated paint.
-  // Pure CSS (, which already suppresses under prefers-reduced-motion)
-  // driven by mount; no per-row timers (#8365). The seen-set persists across
-  // renders in a ref; a group's stable identity is activityGroupKey (#8817).
-  const seenRowsRef = useRef<Set<string>>(new Set());
-  const primedRef = useRef(false);
-  const groupKeys = groups.map(activityGroupKey);
-  const groupKeySet = new Set(groupKeys);
-  const { newKeys } = diffNewRows(groupKeys, seenRowsRef.current, primedRef.current);
-  primedRef.current = true;
-  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(new Set());
-  // #8817: derive the rendered open-set so keys that rolled off the capped
-  // 100-event list (or left via a kind filter) drop without an extra
-  // setState on every refetch -- pruning stays a pure read, not a write.
-  const expandedVisible = new Set([...expandedGroups].filter((key) => groupKeySet.has(key)));
-
+  // The table owns which group is open (`expand`), and a group's identity is
+  // activityGroupKey (#8817) -- the new-row fade and the hand-rolled open-set
+  // went with the hand-rolled rows.
   // #8445: subscribe to the firehose's `account_events` topic (the only one
   // that carries `netuid` on the payload -- `chain_events` doesn't) so a new
   // event for this subnet refreshes the table well under the existing poll.
@@ -1555,15 +1371,14 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
   if (events.length === 0) {
     return (
       <div className="space-y-3">
-        <TableState
-          variant="empty"
+        <EmptyState
           title={kind ? `No ${kind} events` : "No recent on-chain activity"}
           description={
             kind
               ? "Try clearing the kind filter — this subnet may not have emitted that event recently."
               : "No first-party chain events are indexed for this subnet in the current window — a quiet or newly-added subnet may have none yet. Registrations, stake, weights, delegation, and transfers will appear here as they're decoded."
           }
-          generatedAt={data.meta?.generated_at}
+          lastChecked={data.meta?.generated_at}
         />
         {kind ? (
           <div className="flex justify-center">
@@ -1599,40 +1414,97 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
             <StreamStatusChip status={streamStatus} testId="subnet-activity-stream-status" />
           </div>
         </div>
-        <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
-          <table className="w-full text-left text-13">
-            <thead className="bg-surface">
-              <tr>
-                <th className="px-4 py-2.5 whitespace-nowrap">Block</th>
-                <th className="px-4 py-2.5 whitespace-nowrap">Kind</th>
-                <th className="px-4 py-2.5 whitespace-nowrap">Hotkey</th>
-                <th className="px-4 py-2.5 text-right whitespace-nowrap">Amount</th>
-                <th className="px-4 py-2.5 text-right whitespace-nowrap">Observed</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {groups.map((group, i) => {
-                const key = groupKeys[i]!;
-                return (
-                  <ActivityGroupRow
-                    key={key}
-                    group={group}
-                    isNew={newKeys.has(key)}
-                    expanded={expandedVisible.has(key)}
-                    onToggle={() =>
-                      setExpandedGroups((prev) => {
-                        const next = new Set([...prev].filter((k) => groupKeySet.has(k)));
-                        if (next.has(key)) next.delete(key);
-                        else next.add(key);
-                        return next;
-                      })
-                    }
+        <DataTable
+          rows={groups}
+          rowKey={(group) => activityGroupKey(group)}
+          caption="On-chain activity"
+          captionHidden
+          link={RouterLink}
+          expand={(group) =>
+            group.events.length > 1 ? (
+              <ul className="grid gap-1">
+                {group.events.map((event) => (
+                  <li
+                    key={`${event.block_number}-${event.event_index}`}
+                    className="flex flex-wrap items-center justify-between gap-3 text-11"
+                  >
+                    <EventKindCell kind={event.event_kind} />
+                    <AddressDisplay
+                      ss58={event.hotkey}
+                      fallback="—"
+                      compact
+                      valueClassName="text-ink-muted hover:text-ink"
+                    />
+                    <span className="tabular-nums text-ink">
+                      {event.amount_tao != null ? `${formatNumber(event.amount_tao)} τ` : "—"}
+                    </span>
+                    <TimeAgo at={event.observed_at} />
+                  </li>
+                ))}
+              </ul>
+            ) : null
+          }
+          columns={[
+            {
+              key: "block",
+              label: "Block",
+              kind: "link",
+              value: (group) =>
+                group.events[0]!.block_number == null
+                  ? null
+                  : `#${formatNumber(group.events[0]!.block_number)}`,
+              href: (group) =>
+                group.events[0]!.block_number == null
+                  ? undefined
+                  : `/blocks/${group.events[0]!.block_number}`,
+            },
+            {
+              key: "kind",
+              label: "Kind",
+              value: (group) => group.kind,
+              render: (group) => (
+                <EventKindCell
+                  kind={group.kind}
+                  count={group.events.length > 1 ? group.events.length : undefined}
+                  spanMinutes={
+                    group.events.length > 1 ? activityGroupSpanMinutes(group) : undefined
+                  }
+                />
+              ),
+            },
+            {
+              key: "hotkey",
+              label: "Hotkey",
+              value: (group) => group.events[0]!.hotkey ?? null,
+              render: (group) =>
+                group.events.every((e) => e.hotkey === group.events[0]!.hotkey) ? (
+                  <AddressDisplay
+                    ss58={group.events[0]!.hotkey}
+                    fallback="—"
+                    compact
+                    valueClassName="text-ink-muted hover:text-ink"
                   />
-                );
-              })}
-            </tbody>
-          </table>
-        </ResponsiveTable>
+                ) : (
+                  <span className="text-ink-muted">multiple</span>
+                ),
+            },
+            {
+              key: "amount",
+              label: "Amount",
+              kind: "number",
+              value: (group) =>
+                group.events.reduce((sum, e) => sum + (e.amount_tao ?? 0), 0) || null,
+              format: (value) => (typeof value === "number" ? `${formatNumber(value)} τ` : "—"),
+            },
+            {
+              key: "observed",
+              label: "Observed",
+              kind: "time",
+              align: "right",
+              value: (group) => group.events[0]!.observed_at ?? null,
+            },
+          ]}
+        />
       </div>
     </LiveTickerProvider>
   );
@@ -1681,11 +1553,10 @@ function CallableServicesList({ netuid }: { netuid: number }) {
           status={readiness?.status}
           blockers={blockers}
         />
-        <TableState
-          variant="empty"
+        <EmptyState
           title="No callable service catalogued yet"
           description="This subnet has no public-safe callable surface in the agent catalog. The readiness card above lists exactly what's blocking it — help close those gaps via the public registry repo."
-          generatedAt={detail.generated_at ?? data.meta?.generated_at}
+          lastChecked={detail.generated_at ?? data.meta?.generated_at}
         />
       </div>
     );
@@ -2034,38 +1905,24 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
             {formatNumber(d.setter_count)} validators · {windowLabel}
           </span>
         </div>
-        {/* ResponsiveTable: horizontal scroll + edge-fade shadows on narrow
-            viewports (#3942), same treatment as list-page tables. */}
-        <ResponsiveTable minWidth={280}>
-          <table className="w-full text-13">
-            <thead className="bg-surface text-ink-muted">
-              <tr>
-                <th className="px-3 py-2.5 text-left">#</th>
-                <th className="px-3 py-2.5 text-left">Validator</th>
-                <th className="px-3 py-2.5 text-right">Weight sets</th>
-                <th className="px-3 py-2.5 text-right">Share</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((setter, i) => (
-                <tr key={setter.uid ?? setter.hotkey ?? i} className="border-t border-border">
-                  <td className="px-3 py-2.5 font-mono text-13 tabular-nums text-ink-muted">
-                    {i + 1}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-13 tabular-nums text-ink-strong">
-                    {setter.uid != null ? `UID ${setter.uid}` : "validator"}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink-strong">
-                    {formatNumber(setter.weight_sets)}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-13 tabular-nums text-ink">
-                    {setter.share != null ? `${(setter.share * 100).toFixed(1)}%` : "0%"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </ResponsiveTable>
+        <RankedRails
+          items={rows.map((setter, i) => ({
+            key: String(setter.uid ?? setter.hotkey ?? i),
+            label: setter.uid != null ? `UID ${setter.uid}` : "validator",
+            value: setter.weight_sets,
+            detail: [
+              {
+                key: "share",
+                label: "Share",
+                value: setter.share != null ? `${(setter.share * 100).toFixed(1)}%` : "0%",
+              },
+            ],
+          }))}
+          formatValue={(value) => formatNumber(value)}
+          columns={{ value: "Sets", name: "Validator", track: "0–100%" }}
+          ariaLabel={`Weight-setters for the ${windowLabel} window`}
+          source={`weight-setters-${netuid}`}
+        />
       </Panel>
     </div>
   );

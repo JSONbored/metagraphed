@@ -1,13 +1,13 @@
-import { RangeControl } from "@jsonbored/ui-kit";
-import { useState } from "react";
+import { RangeControl, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   subnetHealthPercentilesQuery,
   subnetHealthIncidentsQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { ErrorState } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
+import { EmptyState, ErrorState } from "@/components/metagraphed/states";
+import { RouterLink } from "@/components/metagraphed/router-link";
 import type { SurfaceLatencyPercentiles, SurfaceSla } from "@/lib/metagraphed/types";
 
 // #1114: per-surface reliability — uptime SLA + latency percentiles (p50/p95/p99)
@@ -47,6 +47,8 @@ function uptimeTone(u?: number): string {
   if (u >= 0.95) return "text-health-warn";
   return "text-health-down";
 }
+
+const ms = (value: unknown) => fmtMs(typeof value === "number" ? value : undefined);
 
 export function ReliabilityPanel({ netuid }: { netuid: number }) {
   const [window, setWindow] = useState<WindowKey>("7d");
@@ -89,23 +91,87 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
   const isError = pctError || slaIsError;
   const errorObj = pctErrorObj ?? slaErrorObj;
 
+  const columns = useMemo<Array<DataTableColumn<Row>>>(
+    () => [
+      {
+        key: "surface",
+        label: "Surface",
+        sortable: true,
+        value: (r) => shortSurfaceId(r.surfaceId, netuid),
+      },
+      {
+        key: "uptime",
+        label: "Uptime",
+        kind: "number",
+        sortable: true,
+        value: (r) => r.uptime ?? null,
+        format: (v) => (typeof v === "number" ? `${(v * 100).toFixed(2)}%` : "—"),
+        // The tone is the reading: 99.9% and 94% are the same number to a
+        // sorter and different facts to an operator.
+        render: (r) => (
+          <span className={classNames("tabular-nums", uptimeTone(r.uptime))}>
+            {r.uptime != null ? `${(r.uptime * 100).toFixed(2)}%` : "—"}
+          </span>
+        ),
+      },
+      {
+        key: "p50",
+        label: "p50",
+        kind: "number",
+        sortable: true,
+        value: (r) => r.p50 ?? null,
+        format: ms,
+      },
+      {
+        key: "p95",
+        label: "p95",
+        kind: "number",
+        sortable: true,
+        value: (r) => r.p95 ?? null,
+        format: ms,
+      },
+      {
+        key: "p99",
+        label: "p99",
+        kind: "number",
+        sortable: true,
+        value: (r) => r.p99 ?? null,
+        format: ms,
+      },
+      {
+        key: "incidents",
+        label: "Incidents",
+        kind: "number",
+        sortable: true,
+        value: (r) => r.incidentCount ?? null,
+        format: (v) => (typeof v === "number" && v > 0 ? String(v) : "—"),
+        // The count alone does not say how long it was down, and an operator
+        // needs both to size the outage.
+        render: (r) =>
+          r.incidentCount ? `${r.incidentCount} · ${fmtDowntime(r.downtimeMs)}` : "—",
+      },
+    ],
+    [netuid],
+  );
+
   return (
-    <Panel flush className="overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <div className="text-13 text-ink-muted">
-          Per-surface reliability · uptime · latency percentiles
-        </div>
+    <DataTable
+      rows={rows}
+      columns={columns}
+      rowKey={(r) => r.surfaceId}
+      caption="Per-surface reliability"
+      link={RouterLink}
+      filters={
         <RangeControl
           label="Reliability window"
           options={WINDOWS.map((w) => ({ value: w, label: String(w) }))}
           value={window}
           onChange={setWindow}
         />
-      </div>
-      {loading && rows.length === 0 ? (
-        <div className="p-4 text-13 text-ink-muted">Loading reliability…</div>
-      ) : isError ? (
-        <div className="p-4">
+      }
+      loading={loading && rows.length === 0}
+      error={
+        isError ? (
           <ErrorState
             error={errorObj}
             onRetry={() => {
@@ -114,56 +180,14 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
             }}
             context="reliability"
           />
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="p-4 text-13 text-ink-muted">
-          No probe history for this subnet in the {window} window yet.
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-11">
-            <thead>
-              <tr className="text-10 text-ink-muted">
-                <th className="border-b border-border px-3 py-2 text-left">Surface</th>
-                <th className="border-b border-border px-2 py-2 text-right">Uptime</th>
-                <th className="border-b border-border px-2 py-2 text-right">p50</th>
-                <th className="border-b border-border px-2 py-2 text-right">p95</th>
-                <th className="border-b border-border px-2 py-2 text-right">p99</th>
-                <th className="border-b border-border px-3 py-2 text-right">Incidents</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.surfaceId} className="border-b border-border last:border-b-0">
-                  <td className="max-w-[260px] truncate px-3 py-1.5 text-ink-strong">
-                    {shortSurfaceId(r.surfaceId, netuid)}
-                  </td>
-                  <td
-                    className={classNames(
-                      "px-2 py-1.5 text-right tabular-nums",
-                      uptimeTone(r.uptime),
-                    )}
-                  >
-                    {r.uptime != null ? `${(r.uptime * 100).toFixed(2)}%` : "—"}
-                  </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums text-ink-muted">
-                    {fmtMs(r.p50)}
-                  </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums text-ink-muted">
-                    {fmtMs(r.p95)}
-                  </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums text-ink-muted">
-                    {fmtMs(r.p99)}
-                  </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-ink-muted">
-                    {r.incidentCount ? `${r.incidentCount} · ${fmtDowntime(r.downtimeMs)}` : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Panel>
+        ) : undefined
+      }
+      empty={
+        <EmptyState
+          title="No probe history yet"
+          description={`Nothing has been probed for this subnet in the ${window} window.`}
+        />
+      }
+    />
   );
 }
