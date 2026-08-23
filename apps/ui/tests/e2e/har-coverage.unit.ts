@@ -66,12 +66,11 @@ const KNOWN_UNCOVERED: Record<string, string[]> = {
     "/api/v1/validators",
   ],
   "/chain/runtime": ["/api/v1/network/parameters", "/api/v1/runtime"],
-  "/accounts": [
-    "/api/v1/accounts",
-    "/api/v1/accounts/top-holders",
-    "/api/v1/accounts/{ss58}",
-    "/api/v1/chain/signers",
-  ],
+  // #11615 emptied this: the rebuilt hub reads /api/v1/accounts and
+  // /api/v1/chain/signers, and the recorded fixture covers both. The two
+  // entries it no longer reads at all -- top-holders and the per-account
+  // detail, which the wallet module and the holders panel fetched -- went
+  // with those components.
 };
 
 describe("every swept route resolves to a page", () => {

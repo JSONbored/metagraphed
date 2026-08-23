@@ -685,6 +685,31 @@
     line-height: 1.45;
     color: var(--ink-muted);
   }
+  /* The one input a hub hero is allowed: an entity lookup, directly under
+     the sentence that says what the page indexes. Field and button share the
+     control height; the rejection is an 11px line under both rather than a
+     toast, because the reader is looking at the field they just typed into. */
+  .mg-lookup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    max-width: 520px;
+  }
+  .mg-lookup > span,
+  .mg-lookup > input {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+  .mg-lookup-error {
+    flex: 1 0 100%;
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--bad);
+  }
+
   /* "Show all N" -- the one disclosure a section is allowed. It sits in the
      footnote slot and is set like a footnote, because promoting it to a
      button would make every section carry a call to action. */

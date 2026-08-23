@@ -465,6 +465,26 @@
     line-height: 1.45;
     color: var(--ink-muted);
   }
+  .mg-lookup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    max-width: 520px;
+  }
+  .mg-lookup > span,
+  .mg-lookup > input {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+  .mg-lookup-error {
+    flex: 1 0 100%;
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--bad);
+  }
   .mg-section-more {
     font: inherit;
     color: var(--ink);
