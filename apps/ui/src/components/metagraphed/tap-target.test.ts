@@ -16,21 +16,54 @@ const compareToggles = read("./compare-toggle.tsx");
 
 describe("mg-tap-target (#8254)", () => {
   it("expands the hit area to 44px without changing the painted size", () => {
-    const util = css.slice(css.indexOf(".mg-tap-target {"), css.indexOf(".mg-tap-target {") + 800);
-    expect(util).toContain("min-width: 44px");
-    expect(util).toContain("min-height: 44px");
+    // Sliced from the ::after RULE rather than from a literal `.mg-tap-target {`
+    // (#11683): the recipe is a selector list now -- the row disclosure, the
+    // range option, the table menu, the pager, "Show all" and the section nav
+    // share it -- so pinning one spelling made this go blind the moment another
+    // control was given the same treatment.
+    const start = css.indexOf(".mg-tap-target::after");
+    expect(start, "the tap-target recipe is gone").toBeGreaterThan(-1);
+    const rule = css.slice(start, css.indexOf("}", start) + 1);
+    expect(rule).toContain("min-width: 44px");
+    expect(rule).toContain("min-height: 44px");
     // An absolutely-positioned ::after, so the control's own box -- and
     // therefore the surrounding layout -- is untouched.
-    expect(util).toContain("position: absolute");
-    expect(util).toContain('content: ""');
+    expect(rule).toContain("position: absolute");
+    expect(rule).toContain('content: ""');
+  });
+
+  it("gives every undersized shared control the same hit area", () => {
+    // Measured on a Pixel 5 (#11683): /validators alone rendered 25 row
+    // disclosures under 44px, and the pager, the range switch, the table menu,
+    // "Show all" and the section nav were under it on nearly every route.
+    // Named here so removing one from the sheet fails rather than silently
+    // shrinking a thumb target back.
+    const start = css.indexOf(".mg-tap-target::after");
+    const rule = css.slice(start, css.indexOf("{", start));
+    for (const selector of [
+      ".mg-dt-disclosure::after",
+      ".mg-range-option::after",
+      ".mg-dt-menu-trigger::after",
+      ".mg-dt-pager button::after",
+      ".mg-section-more::after",
+      ".mg-section-nav a::after",
+    ]) {
+      expect(rule, `${selector} lost its hit area`).toContain(selector);
+    }
   });
 
   it("is gated to coarse pointers so dense desktop rows don't get overlapping hit boxes", () => {
     // On a mouse-driven table the invisible 44px boxes would overlap each
     // other and swallow clicks meant for the neighbouring row.
-    expect(css).toContain(
-      "@media (pointer: fine) {\n  .mg-tap-target::after {\n    display: none;",
-    );
+    const gate = css.slice(css.indexOf("@media (pointer: fine) {"));
+    const body = gate.slice(0, gate.indexOf("\n}"));
+    expect(body).toContain(".mg-tap-target::after");
+    expect(body).toContain("display: none");
+    // Every control that gets the slop must also be released from it on a
+    // mouse, or the invisible boxes overlap and swallow neighbouring clicks.
+    for (const selector of [".mg-dt-disclosure", ".mg-range-option", ".mg-dt-pager button"]) {
+      expect(body, `${selector} keeps its hit slop on a mouse`).toContain(`${selector}::after`);
+    }
   });
 
   it("is applied to every compare checkbox, the densest undersized control we ship", () => {

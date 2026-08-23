@@ -46,6 +46,8 @@ type Sweep = {
   stackedTables: string[];
   /** Elements still carrying a class the v2 purge deleted (#11628). */
   deletedClasses: string[];
+  /** Sections showing the same ranked list twice (#11683). */
+  repeatedLegends: string[];
   textNodes: number;
 };
 
@@ -62,6 +64,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
   const thOffenders: string[] = [];
   const compareHeadOffenders: string[] = [];
   const stackedTables: string[] = [];
+  const repeatedLegends: string[] = [];
   const deletedClasses: string[] = [];
   // Every class the v2 rebuild deleted. A page carrying one is either a stale
   // component that survived a rebase or a hand-rolled copy of a primitive; both
@@ -118,6 +121,22 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
     );
     if (tall.length > 1) {
       stackedTables.push(`${describeEl(section)} holds ${tall.length} tables over 900px`);
+    }
+    // The same ranked list rendered twice in one section. `CompositionBreakdown`
+    // OWNS a `RankGrid` legend, so a page that also passes one into
+    // `AnalyticsSection`'s `legend` slot prints the identical rows underneath
+    // itself -- which /validators and /chain both did, 11 and 9 rows, on every
+    // viewport, unnoticed because at 4 columns the two blocks read as one long
+    // list. Compared on normalised text: the two DOM subtrees differ in
+    // whitespace, so a raw comparison misses it.
+    const signatures = [...section.querySelectorAll(".mg-rank-grid")].map((grid) =>
+      [...grid.querySelectorAll(".mg-rank-grid-row")]
+        .map((row) => (row.textContent ?? "").replace(/\s+/g, " ").trim())
+        .join("|"),
+    );
+    const distinct = new Set(signatures.filter(Boolean));
+    if (distinct.size < signatures.filter(Boolean).length) {
+      repeatedLegends.push(`${describeEl(section)} renders the same ranked list twice`);
     }
   }
   for (const el of root.querySelectorAll<HTMLElement>("*")) {
@@ -216,6 +235,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
     sections,
     stackedTables,
     deletedClasses,
+    repeatedLegends,
     textNodes,
   };
 }

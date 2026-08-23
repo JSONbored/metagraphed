@@ -17,7 +17,6 @@ import {
   type DataTableColumn,
   type FactCells,
   type FactNodes,
-  type RankGridItem,
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -130,14 +129,6 @@ export function ValidatorsPage() {
     },
     { label: "Median APY", value: medianApy === null ? "—" : `${formatPct(medianApy, 1)}` },
   ];
-
-  const legend: RankGridItem[] = segments.map((segment) => ({
-    key: segment.key,
-    label: segment.label,
-    value: fmtStake(segment.value),
-    share: listedTotal > 0 ? `${formatPct(segment.value / listedTotal, 1)}` : undefined,
-    href: segment.href,
-  }));
 
   const columns: DataTableColumn<OperatorRow>[] = [
     {
@@ -279,16 +270,6 @@ export function ValidatorsPage() {
                 formatValue={(value) => fmtStake(value)}
                 legendCols={5}
                 ariaLabel="Stake share of the largest operators"
-                source="validator-operator"
-              />
-            ) : null
-          }
-          legend={
-            legend.length > 0 ? (
-              <RankGrid
-                items={legend}
-                cols={5}
-                ariaLabel="Operators by stake"
                 source="validator-operator"
               />
             ) : null

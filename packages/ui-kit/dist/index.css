@@ -2271,7 +2271,7 @@
     outline-offset: 1px;
   }
   @media (max-width: 639px) {
-    .mg-dt[data-mobile=cards] .mg-dt-viewport {
+    .mg-dt[data-mobile=cards] .mg-dt-viewport:not(.mg-dt-viewport-bounded) {
       overflow: visible;
       max-height: none;
     }
@@ -2770,10 +2770,22 @@
   background-color: var(--canvas);
   border-bottom: 1px solid var(--rule);
 }
-.mg-tap-target {
+.mg-tap-target,
+.mg-dt-disclosure,
+.mg-range-option,
+.mg-dt-menu-trigger,
+.mg-dt-pager button,
+.mg-section-more,
+.mg-section-nav a {
   position: relative;
 }
-.mg-tap-target::after {
+.mg-tap-target::after,
+.mg-dt-disclosure::after,
+.mg-range-option::after,
+.mg-dt-menu-trigger::after,
+.mg-dt-pager button::after,
+.mg-section-more::after,
+.mg-section-nav a::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -2785,7 +2797,13 @@
   height: 100%;
 }
 @media (pointer: fine) {
-  .mg-tap-target::after {
+  .mg-tap-target::after,
+  .mg-dt-disclosure::after,
+  .mg-range-option::after,
+  .mg-dt-menu-trigger::after,
+  .mg-dt-pager button::after,
+  .mg-section-more::after,
+  .mg-section-nav a::after {
     display: none;
   }
 }

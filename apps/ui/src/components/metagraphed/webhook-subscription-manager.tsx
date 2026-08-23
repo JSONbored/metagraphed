@@ -241,7 +241,10 @@ function CreateSubscriptionSection() {
         <Field label="Kinds filter" hint="Optional — leave unchecked to receive all change kinds.">
           <div className="flex gap-4">
             {CHANGE_KINDS.map((kind) => (
-              <label key={kind} className="inline-flex items-center gap-1.5 text-13 text-ink">
+              <label
+                key={kind}
+                className="mg-tap-target inline-flex min-h-11 items-center gap-1.5 text-13 text-ink"
+              >
                 <input
                   type="checkbox"
                   checked={kinds.has(kind)}
