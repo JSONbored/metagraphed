@@ -77,9 +77,11 @@ const BASE_URL = process.env.BASE_URL ?? "http://localhost:8080";
  * those is a chance for the overflow baseline to shift for reasons unrelated
  * to the change.
  *
- *   RECORD_ROUTES=/chain/analytics,/status npm run test:e2e:record-har --workspace=apps/ui
+ *   RECORD_ROUTES='/chain/analytics;/status' npm run test:e2e:record-har --workspace=apps/ui
  */
-const only = process.env.RECORD_ROUTES?.split(",")
+// Semicolon-separated: a swept route may itself contain a comma
+// (`/compare?subnets=1,19`), which a comma-separated list cannot express.
+const only = process.env.RECORD_ROUTES?.split(";")
   .map((r) => r.trim())
   .filter(Boolean);
 const targets = only?.length ? ROUTES.filter((r) => only.includes(r)) : ROUTES;

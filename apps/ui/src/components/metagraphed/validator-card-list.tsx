@@ -3,7 +3,7 @@ import { CopyButton } from "@jsonbored/ui-kit";
 
 import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
-import { ValidatorCompareToggle } from "@/components/metagraphed/validators-compare-drawer";
+import { ValidatorCompareToggle } from "@/components/metagraphed/compare-toggle";
 import { resolveValidatorCard } from "@/lib/metagraphed/validator-card-fields";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { GlobalValidator } from "@/lib/metagraphed/types";

@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as ApisRouteImport } from './routes/apis'
 import { Route as ChainRouteImport } from './routes/chain'
+import { Route as CompareRouteImport } from './routes/compare'
 import { Route as ContributeRouteImport } from './routes/contribute'
 import { Route as DomainsRouteImport } from './routes/domains'
 import { Route as EndpointsRouteImport } from './routes/endpoints'
@@ -97,6 +98,11 @@ const ApisRoute = ApisRouteImport.update({
 const ChainRoute = ChainRouteImport.update({
   id: '/chain',
   path: '/chain',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContributeRoute = ContributeRouteImport.update({
@@ -401,6 +407,7 @@ export interface FileRoutesByFullPath {
   '/agents': typeof AgentsRoute
   '/apis': typeof ApisRouteWithChildren
   '/chain': typeof ChainRouteWithChildren
+  '/compare': typeof CompareRoute
   '/contribute': typeof ContributeRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
@@ -465,6 +472,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/compare': typeof CompareRoute
   '/contribute': typeof ContributeRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
@@ -532,6 +540,7 @@ export interface FileRoutesById {
   '/agents': typeof AgentsRoute
   '/apis': typeof ApisRouteWithChildren
   '/chain': typeof ChainRouteWithChildren
+  '/compare': typeof CompareRoute
   '/contribute': typeof ContributeRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
@@ -600,6 +609,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/apis'
     | '/chain'
+    | '/compare'
     | '/contribute'
     | '/domains'
     | '/endpoints'
@@ -664,6 +674,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/compare'
     | '/contribute'
     | '/domains'
     | '/endpoints'
@@ -730,6 +741,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/apis'
     | '/chain'
+    | '/compare'
     | '/contribute'
     | '/domains'
     | '/endpoints'
@@ -797,6 +809,7 @@ export interface RootRouteChildren {
   AgentsRoute: typeof AgentsRoute
   ApisRoute: typeof ApisRouteWithChildren
   ChainRoute: typeof ChainRouteWithChildren
+  CompareRoute: typeof CompareRoute
   ContributeRoute: typeof ContributeRoute
   DomainsRoute: typeof DomainsRoute
   EndpointsRoute: typeof EndpointsRoute
@@ -881,6 +894,13 @@ declare module '@tanstack/react-router' {
       path: '/chain'
       fullPath: '/chain'
       preLoaderRoute: typeof ChainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contribute': {
@@ -1345,6 +1365,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgentsRoute: AgentsRoute,
   ApisRoute: ApisRouteWithChildren,
   ChainRoute: ChainRouteWithChildren,
+  CompareRoute: CompareRoute,
   ContributeRoute: ContributeRoute,
   DomainsRoute: DomainsRoute,
   EndpointsRoute: EndpointsRoute,

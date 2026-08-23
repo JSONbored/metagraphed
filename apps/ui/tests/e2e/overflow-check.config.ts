@@ -11,6 +11,8 @@ export const ROUTES = [
   // harPathForRoute, so a route being listed here is what makes one exist.
   "/subnets",
   "/subnets/1",
+  // #11611: the comparison is a route now, so it is swept like any other.
+  "/compare?subnets=1,19",
   "/endpoints",
   "/status",
   "/settings",

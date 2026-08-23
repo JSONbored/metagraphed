@@ -33,8 +33,10 @@ type Sweep = {
   radii: Histogram;
   pills: string[];
   shadows: string[];
-  /** Text inside <thead th> that is not 10px / 600 / uppercase. */
+  /** Text inside a data table's <thead th> that is not 10px / 600 / uppercase. */
   thOffenders: string[];
+  /** Text inside a compare ledger's <thead th> that is not 13px / 600 sentence case. */
+  compareHeadOffenders: string[];
   textNodes: number;
 };
 
@@ -49,6 +51,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
   const pills: string[] = [];
   const shadows: string[] = [];
   const thOffenders: string[] = [];
+  const compareHeadOffenders: string[] = [];
   let textNodes = 0;
   const describe = (el: Element) =>
     `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}.${String(el.className || "")
@@ -73,11 +76,28 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
       tracking[ls] = (tracking[ls] ?? 0) + 1;
       // The header cell is the one place uppercase + tracking exist, and it
       // is 10px / 600 there -- a sort button or span inside it included.
+      //
+      // A compare ledger's column header is not a column LABEL: it is the
+      // entity being compared, and a name set at 10px uppercase would be
+      // unreadable. It carries its own contract, checked just below.
+      const inCompare = el.closest("[data-mg-compare]") != null;
       if (
         isTh &&
+        !inCompare &&
         (cs.fontSize !== "10px" || cs.fontWeight !== "600" || cs.textTransform !== "uppercase")
       ) {
         thOffenders.push(`${describe(el)} → ${cs.fontSize}/${cs.fontWeight}/${cs.textTransform}`);
+      }
+      // The ledger's own rule: the entity name reads as a name -- 13px, 600,
+      // never uppercased -- and its qualifier is the 11px muted line. The
+      // visually hidden label for the metric column is exempt.
+      if (isTh && inCompare && !el.closest(".sr-only") && !["13px", "11px"].includes(cs.fontSize)) {
+        compareHeadOffenders.push(
+          `${describe(el)} → ${cs.fontSize}/${cs.fontWeight}/${cs.textTransform}`,
+        );
+      }
+      if (isTh && inCompare && cs.textTransform === "uppercase" && !el.closest(".sr-only")) {
+        compareHeadOffenders.push(`${describe(el)} → uppercased entity name`);
       }
     }
     const r = cs.borderRadius;
@@ -115,7 +135,17 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
       if (!tooltip && !insetOnly) shadows.push(`${describe(el)} → ${cs.boxShadow}`);
     }
   }
-  return { families, sizes, tracking, radii, pills, shadows, thOffenders, textNodes };
+  return {
+    families,
+    sizes,
+    tracking,
+    radii,
+    pills,
+    shadows,
+    thOffenders,
+    compareHeadOffenders,
+    textNodes,
+  };
 }
 
 for (const route of ROUTES) {
@@ -191,6 +221,11 @@ for (const route of ROUTES) {
         expect(
           s.thOffenders,
           `table-header text that is not 10px / 600 / uppercase on ${route} (${theme})`,
+        ).toEqual([]);
+
+        expect(
+          s.compareHeadOffenders,
+          `compare-ledger header text that is not a 13px/11px sentence-case name on ${route} (${theme})`,
         ).toEqual([]);
       });
     }
