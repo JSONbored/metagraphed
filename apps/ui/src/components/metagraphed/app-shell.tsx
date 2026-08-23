@@ -348,7 +348,6 @@ function SiteFooter() {
           <FooterLink to="/validators">Validators</FooterLink>
           <FooterLink to="/accounts">Accounts</FooterLink>
           <FooterLink to="/health">Health</FooterLink>
-          <FooterLink to="/status">Status</FooterLink>
           <FooterLink to="/contribute">Contribute</FooterLink>
         </FooterCol>
         {/* Governance and Runtime were links here until #11619 retired those

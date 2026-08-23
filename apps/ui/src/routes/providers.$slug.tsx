@@ -20,12 +20,9 @@ import {
 } from "@/lib/metagraphed/entity-not-found-meta";
 import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 
-type SearchParams = { tab?: string };
-
 export const Route = createFileRoute("/providers/$slug")({
-  validateSearch: (s: Record<string, unknown>): SearchParams => ({
-    tab: typeof s.tab === "string" ? s.tab : undefined,
-  }),
+  // #11624 dropped the `tab` param with the tab strip: the page is three
+  // sections now, and an in-page anchor is what a link to one of them is.
   parseParams: ({ slug }) => {
     if (!slug) throw notFound();
     return { slug };

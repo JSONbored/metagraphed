@@ -19,7 +19,6 @@ export const ROUTES = [
   // #11611: the comparison is a route now, so it is swept like any other.
   "/compare?subnets=1,19",
   "/endpoints",
-  "/status",
   "/settings",
   "/explorer",
   // #8357: the three templates the 2026-07-27 instrumented audit found

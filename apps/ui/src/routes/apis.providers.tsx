@@ -5,21 +5,21 @@ import { RoutePending } from "@/components/metagraphed/primitives";
 import { ProvidersPage } from "./-providers-index-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
-export const providerSortKeys = ["name", "surfaces", "endpoints", "subnets", "updated"] as const;
-export type ProviderSortKey = (typeof providerSortKeys)[number];
-
 export type ProvidersSearch = z.infer<typeof providersSearchSchema>;
 
+/**
+ * #11624 dropped `view` and `sort`.
+ *
+ * `view` toggled a grid of 136 provider cards that #8303 had already demoted
+ * out of the default; the table is the page now and the grid is gone rather
+ * than one toggle away. `sort` is the table's own, and duplicating it in the
+ * URL let the two disagree.
+ */
 export const providersSearchSchema = z.object({
-  // #8303: the audit measured an 11,900px wall of 136 provider cards. The
-  // table view already existed -- this was only ever the DEFAULT. Flipped
-  // rather than rebuilt; the grid stays one toggle away.
-  view: z.enum(["grid", "table"]).catch("table").default("table"),
   q: z.string().catch("").default(""),
   kind: z.string().catch("").default(""),
   // `high` is a nav shortcut for official + provider-claimed (see nav-mega-menu-data).
   authority: z.string().catch("").default(""),
-  sort: z.enum(providerSortKeys).catch("name").default("name"),
 });
 
 export const Route = createFileRoute("/apis/providers")({
