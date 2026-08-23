@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { surfacesSearchSchema } from "@/lib/metagraphed/surface-filters";
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
-import { SurfacesPage } from "./-surfaces-page";
+import { ApisCatalogPage } from "./-apis-catalog-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
 export const Route = createFileRoute("/apis/")({
@@ -10,5 +10,5 @@ export const Route = createFileRoute("/apis/")({
   head: () => ({
     meta: hubMeta("/apis"),
   }),
-  component: SurfacesPage,
+  component: ApisCatalogPage,
 });

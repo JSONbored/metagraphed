@@ -1,560 +1,317 @@
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, FileCode, Copy, Check } from "lucide-react";
-import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useRouterState } from "@tanstack/react-router";
 import {
-  TimeAgo,
-  CopyableCode,
-  ExternalLink,
-  AnimatedNumber,
-  LoadMore,
   AnalyticsSection,
+  DataTable,
+  EntityHero,
+  Fact,
+  FactSentence,
+  MarkerRail,
+  RankedRails,
+  Raw,
+  SectionNav,
+  type DataTableColumn,
+  type RawRow,
 } from "@jsonbored/ui-kit";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { DownloadOpenApiButton } from "@/components/metagraphed/download-openapi-button";
-import { Skeleton, StaleBanner, EmptyState } from "@/components/metagraphed/states";
-import { SchemaDriftMatrix } from "@/components/metagraphed/analytics/schema-drift-matrix";
-import { DriftActivity } from "@/components/metagraphed/analytics/drift-activity";
-import { SchemaDriftDetail } from "@/components/metagraphed/schema-drift-detail";
-import { SchemaSnapshotSummary } from "@/components/metagraphed/schema-snapshot-summary";
-import { useCopy } from "@/hooks/use-copy";
-import {
-  schemasQuery,
-  contractsQuery,
-  evidenceQuery,
-  metagraphedQueryKey,
-} from "@/lib/metagraphed/queries";
+import { AppShell } from "@/components/metagraphed/app-shell";
 import { HubSections } from "@/components/metagraphed/hub-prose";
-import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
-import { API_BASE, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
-import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
-import { APIS_HUB_PAGE_STEP, nextListLimit } from "@/lib/metagraphed/list-page-window";
-import { SearchInput, ResetFiltersButton } from "@/components/metagraphed/table-controls";
-import type { SchemaInfo } from "@/lib/metagraphed/types";
-import { ApisTabActions } from "./-apis-hub";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
+import { API_BASE } from "@/lib/metagraphed/config";
+import { formatNumber } from "@/lib/metagraphed/format";
+import { coverageQuery, schemasQuery } from "@/lib/metagraphed/queries";
+import {
+  apisNav,
+  coverageMarkers,
+  driftRails,
+  schemaFacts,
+  schemaRows,
+  schemaSummary,
+  shortHash,
+  type SchemaRow,
+} from "@/components/metagraphed/apis/apis-logic";
 
-function sameOriginApiUrl(url?: string) {
-  if (typeof url !== "string" || url.trim() === "") return undefined;
-  try {
-    const apiBaseUrl = new URL(API_BASE);
-    const artifactUrl = new URL(url, apiBaseUrl);
-    if (!["http:", "https:"].includes(artifactUrl.protocol)) return undefined;
-    return artifactUrl.origin === apiBaseUrl.origin ? artifactUrl.href : undefined;
-  } catch {
-    return undefined;
-  }
+const API_PATHS = ["/api/v1/schemas", "/api/v1/coverage", "/api/v1/subnets/{netuid}/evidence"];
+
+function ApiSources() {
+  useRegisterApiSource(
+    API_PATHS.filter((path) => !path.includes("{")),
+    ["/metagraph/schemas/index.json"],
+  );
+  return null;
 }
 
+/**
+ * Captured schemas and what moved (#11622) — three sections.
+ *
+ * What went: six count boxes that repeated the hero, a "Data freshness &
+ * methodology" essay, a `drifting only / show all` toggle (the table filters),
+ * a 64-chip drift matrix, and every paragraph. The 60-row drift-activity list
+ * and the matrix were the same 64 rows drawn twice; they are one table now,
+ * with the ones that moved ranked above it.
+ *
+ * The issue asked for a third section of change kinds by week over 26 weeks.
+ * /api/v1/schemas publishes ONE snapshot -- a hash, a previous hash and one
+ * `observed_at` per surface -- and no history endpoint exists, so there is no
+ * series to draw. Rather than a chart of one column, this section asks what
+ * the captures actually contain: how large each published spec is, which is
+ * the closest question the data can answer and the one that says whether a
+ * subnet's "has an OpenAPI" is three paths or three hundred.
+ */
 export function SchemasPage() {
-  return (
-    <>
-      <AsyncPanel
-        context="schemas overview"
-        fallback={<Skeleton className="h-64 w-full" />}
-        retryQueryKeys={[schemasQuery().queryKey, contractsQuery().queryKey]}
-      >
-        <SchemasHero />
-      </AsyncPanel>
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [showAllDrift, setShowAllDrift] = useState(false);
+  const schemas = useQuery({ ...schemasQuery(), retry: 0 });
+  const coverage = useQuery({ ...coverageQuery(), retry: 0 });
 
-      <main className="space-y-section">
-        <AnalyticsSection
-          id="drift-activity"
-          name="Drift activity"
-          question="Per-schema change weight. Stable schemas are dim; drifting schemas surface on top — click a drifting row for change details, or a stable row to open it in the explorer below."
-        >
-          <AsyncPanel
-            context="drift activity"
-            fallback={<Skeleton className="h-32 w-full" />}
-            retryQueryKeys={[schemasQuery().queryKey]}
-          >
-            <DriftActivityRibbon />
-          </AsyncPanel>
-        </AnalyticsSection>
-
-        <AnalyticsSection
-          id="schema-drift-matrix"
-          name="Schema drift matrix"
-          question="Every tracked schema classified by change type, with one-click access to source evidence."
-        >
-          <AsyncPanel
-            context="schema drift matrix"
-            fallback={<Skeleton className="h-48 w-full" />}
-            retryQueryKeys={[schemasQuery().queryKey, evidenceQuery({ limit: 500 }).queryKey]}
-          >
-            <SchemaDriftMatrix />
-          </AsyncPanel>
-        </AnalyticsSection>
-
-        <AnalyticsSection
-          id="contracts"
-          name="Published contracts"
-          question="Versioned envelope contracts that govern API responses."
-        >
-          <AsyncPanel
-            context="published contracts"
-            fallback={<Skeleton className="h-24 w-full" />}
-            retryQueryKeys={[contractsQuery().queryKey]}
-          >
-            <ContractsList />
-          </AsyncPanel>
-        </AnalyticsSection>
-
-        <AnalyticsSection
-          id="schema-index"
-          name="Schema index"
-          question="Browse every tracked JSON Schema. Select one to inspect the latest snapshot and recent drift."
-        >
-          <AsyncPanel
-            context="schema index"
-            fallback={<Skeleton className="h-[480px] w-full" />}
-            retryQueryKeys={[schemasQuery().queryKey]}
-          >
-            <SchemaExplorer />
-          </AsyncPanel>
-        </AnalyticsSection>
-      </main>
-
-      <ApiSourceFooter
-        paths={["/api/v1/schemas", "/api/v1/contracts"]}
-        artifacts={["/metagraph/openapi.json"]}
-      />
-
-      <AsyncPanel context="schema drift detail" fallback={null}>
-        <SchemaDriftDetailHost />
-      </AsyncPanel>
-      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
-      <HubSections path="/apis/schemas" />
-    </>
+  // `schemasQuery` returns the flat schema ARRAY -- its normalizer keeps the
+  // rows and drops the response envelope -- so there is no `.schemas` and no
+  // `.summary` to read here. The summary is counted off the rows instead.
+  const rows = useMemo(() => schemaRows(schemas.data?.data), [schemas.data]);
+  const summary = useMemo(() => schemaSummary(rows), [rows]);
+  const rails = useMemo(() => driftRails(rows), [rows]);
+  const subnetsCovered = useMemo(
+    () => new Set(rows.map((row) => row.netuid).filter((n) => n != null)).size,
+    [rows],
   );
-}
+  const captured = useMemo(
+    () => rows.filter((row) => row.status === "captured" && (row.paths ?? 0) > 0),
+    [rows],
+  );
+  const markers = useMemo(
+    () =>
+      coverageMarkers(
+        (
+          coverage.data?.data.completeness as
+            { dimension_coverage?: Record<string, { pct?: number; present?: number }> } | undefined
+        )?.dimension_coverage,
+        { count: formatNumber },
+      ),
+    [coverage.data],
+  );
 
-function SchemaDriftDetailHost() {
-  const search = useSearch({ from: "/apis/schemas" });
-  const navigate = useNavigate({ from: "/apis/schemas" });
-  const { data } = useSuspenseQuery(schemasQuery());
-  const all = (data.data ?? []) as SchemaInfo[];
-  const schema = search.driftDetail ? (all.find((s) => s.id === search.driftDetail) ?? null) : null;
+  const driftShown = showAllDrift ? rows : rows.filter((row) => row.drift !== "unchanged");
+
+  const columns: DataTableColumn<SchemaRow>[] = [
+    {
+      key: "subnet",
+      label: "Subnet",
+      kind: "link",
+      width: 120,
+      value: (row) => row.netuid ?? null,
+      href: (row) => (row.netuid == null ? undefined : `/subnets/${row.netuid}`),
+      format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
+    },
+    { key: "title", label: "Schema", value: (row) => row.title },
+    { key: "drift", label: "Drift", kind: "status", width: 160, value: (row) => row.drift },
+    { key: "status", label: "Capture", kind: "status", width: 160, value: (row) => row.status },
+    {
+      key: "paths",
+      label: "Paths",
+      kind: "number",
+      align: "right",
+      width: 90,
+      value: (row) => row.paths,
+    },
+    {
+      key: "components",
+      label: "Components",
+      kind: "number",
+      align: "right",
+      width: 120,
+      demote: true,
+      value: (row) => row.components,
+    },
+    {
+      key: "hashes",
+      label: "Was → now",
+      kind: "identifier",
+      width: 190,
+      demote: true,
+      value: (row) => `${shortHash(row.from)} → ${shortHash(row.to)}`,
+    },
+    {
+      key: "observed",
+      label: "Captured",
+      kind: "time",
+      width: 130,
+      value: (row) => row.observedAt,
+    },
+    {
+      key: "url",
+      label: "Spec",
+      kind: "link",
+      demote: true,
+      value: (row) => row.url,
+      href: (row) => row.url ?? undefined,
+      format: (value) => (typeof value === "string" ? value.replace(/^https?:\/\//, "") : "—"),
+    },
+    {
+      // The issue asks for an evidence link, and this is what backs a drift
+      // claim: /api/v1/subnets/{netuid}/evidence is the captured proof that
+      // the subnet publishes what the row says it publishes. It was the only
+      // published route with no reference anywhere in apps/ui once the
+      // orphaned evidence panel came out, which `validate:ui-route-coverage`
+      // reports as a regression -- correctly, since an unreferenced route is
+      // one nothing on the site can lead a reader to.
+      key: "evidence",
+      label: "Evidence",
+      kind: "link",
+      width: 120,
+      demote: true,
+      value: (row) => (row.netuid == null ? null : "evidence"),
+      href: (row) =>
+        row.netuid == null ? undefined : `${API_BASE}/api/v1/subnets/${row.netuid}/evidence`,
+    },
+  ];
+
+  const sizeRails = useMemo(
+    () =>
+      [...captured]
+        .sort((a, b) => (b.paths ?? 0) - (a.paths ?? 0))
+        .slice(0, 15)
+        .map((row) => ({
+          key: row.key,
+          label: row.netuid == null ? row.subnet : `SN${row.netuid} ${row.subnet}`,
+          value: row.paths ?? 0,
+          href: row.netuid == null ? "/subnets" : `/subnets/${row.netuid}`,
+          detail: [
+            { key: "title", label: "Title", value: row.title },
+            { key: "components", label: "Components", value: formatNumber(row.components ?? 0) },
+          ],
+        })),
+    [captured],
+  );
+
+  const rawRows: RawRow[] = API_PATHS.filter((path) => !path.includes("{")).map((path) => ({
+    label: path.replace("/api/v1/", ""),
+    value: `${API_BASE}${path}`,
+    href: `${API_BASE}${path}`,
+  }));
+
   return (
-    <SchemaDriftDetail
-      schema={schema}
-      open={!!schema}
-      onOpenChange={(o) => {
-        if (!o) {
-          navigate({
-            search: (p: Record<string, unknown>) => ({ ...p, driftDetail: "" }),
-            replace: true,
-          });
+    <AppShell>
+      <ApiSources />
+      <EntityHero
+        name="Schemas"
+        sentence={
+          <FactSentence>
+            JSON Schema is the contract; drift is this capture against the last one.{" "}
+            {schemaFacts(summary, subnetsCovered, { count: formatNumber }).map((fact) => (
+              <Fact key={fact.key}>
+                {fact.label} {fact.value}
+              </Fact>
+            ))}
+          </FactSentence>
         }
-      }}
-      onOpenInExplorer={(id) =>
-        navigate({
-          search: (p: Record<string, unknown>) => ({ ...p, driftDetail: "", open: id }),
-          replace: true,
-        })
-      }
-    />
-  );
-}
-
-/* --------------------------- Hero --------------------------- */
-
-function SchemasHero() {
-  const { data: sRes } = useSuspenseQuery(schemasQuery());
-  const { data: cRes } = useSuspenseQuery(contractsQuery());
-  const schemas = (sRes.data ?? []) as SchemaInfo[];
-  const drift = schemas.filter((s) => s.drift).length;
-  const fresh = schemas.filter((s) => normalizeDriftStatus(s.drift_status) === "new").length;
-  const stable = schemas.length - drift - fresh;
-  const subnets = new Set(schemas.map((s) => s.netuid).filter((n) => n != null)).size;
-  const contractsCount = (cRes.data ?? []).length;
-
-  return (
-    <>
-      {/* The hub owns title/description now (#8303), so this renders only the
-          actions and the KPI row that used to hang off this page's own
-          masthead — two stacked mastheads would otherwise repeat the heading. */}
-      <ApisTabActions>
-        <CopyableCode label="openapi" value={`${API_BASE}/api/v1/openapi.json`} truncate={false} />
-        <DownloadOpenApiButton url={`${DEFAULT_API_BASE}/metagraph/openapi.json`} />
-        <Link
-          to="/docs/$"
-          params={{ _splat: "api-reference" }}
-          className="inline-flex items-center rounded border border-accent/30 bg-accent/10 px-4 py-2 text-11 text-accent-text transition-colors hover:bg-accent/15"
-        >
-          Browse reference
-        </Link>
-      </ApisTabActions>
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        {[
-          { label: "Schemas", value: schemas.length },
-          { label: "Stable", value: stable },
-          { label: "New", value: fresh },
-          { label: "Drift", value: drift },
-          { label: "Contracts", value: contractsCount },
-          { label: "Subnets covered", value: subnets },
-        ].map((k) => (
-          <Panel key={k.label} flush className="px-3 py-2.5">
-            <div className="text-10 text-ink-muted">{k.label}</div>
-            <div className="mt-0.5 text-11 text-ink-strong">
-              <AnimatedNumber value={k.value} />
-            </div>
-          </Panel>
-        ))}
-      </div>
-    </>
-  );
-}
-
-/* --------------------------- Methodology --------------------------- */
-
-/* --------------------------- Drift activity --------------------------- */
-
-function DriftActivityRibbon() {
-  const { data } = useSuspenseQuery(schemasQuery());
-  const all = (data.data ?? []) as SchemaInfo[];
-  return <DriftActivity schemas={all} fromPath="/apis/schemas" />;
-}
-
-/* --------------------------- Contracts --------------------------- */
-
-function ContractsList() {
-  const { data } = useSuspenseQuery(contractsQuery());
-  const rows = useMemo(() => data.data ?? [], [data.data]);
-  // #8360: this grid (not the explorer rail) was the ~33kpx mobile height driver on
-  // /apis/schemas — bound DOM at 25 cards; same step as SchemaExplorer / Providers.
-  const [listLimit, setListLimit] = useState(APIS_HUB_PAGE_STEP);
-  const visible = useMemo(() => rows.slice(0, listLimit), [rows, listLimit]);
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        title="No contracts published"
-        description="Versioned contracts will appear here once the registry ships its first envelope."
+        live={{
+          updatedAt: summary.observed_at,
+          source: "snapshot",
+          onRefresh: () => void schemas.refetch(),
+          refreshing: schemas.isFetching,
+        }}
       />
-    );
-  }
-  return (
-    <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {visible.map((c) => {
-          const artifactUrl = sameOriginApiUrl(c.path);
-          return (
-            <Panel key={c.id} className="min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="font-display text-13 font-semibold text-ink-strong">{c.id}</div>
-                  {c.description ? (
-                    <div className="text-10 text-ink-muted mt-0.5">{c.description}</div>
-                  ) : null}
-                </div>
-                <FileCode className="size-4 text-ink-muted shrink-0" />
-              </div>
-              {c.path && artifactUrl ? (
-                <div className="mt-3">
-                  <ExternalLink href={artifactUrl} className="text-13">
-                    {c.path}
-                  </ExternalLink>
-                </div>
-              ) : null}
-            </Panel>
-          );
-        })}
-      </div>
-      {rows.length > APIS_HUB_PAGE_STEP ? (
-        <div id="contracts-pager">
-          <LoadMore
-            shown={visible.length}
-            total={rows.length}
-            hasMore={listLimit < rows.length}
-            isLoading={false}
-            onLoadMore={() => setListLimit((prev) => prev + APIS_HUB_PAGE_STEP)}
-          />
-        </div>
-      ) : null}
-    </div>
-  );
-}
+      <SectionNav items={apisNav(pathname)} link={RouterLink} />
 
-/* --------------------------- Split explorer --------------------------- */
-
-function SchemaExplorer() {
-  const search = useSearch({ from: "/apis/schemas" });
-  const navigate = useNavigate({ from: "/apis/schemas" });
-  const { data } = useSuspenseQuery(schemasQuery());
-  const all = useMemo(() => (data.data ?? []) as SchemaInfo[], [data.data]);
-
-  const filtered = useMemo(() => {
-    const needle = search.q.trim().toLowerCase();
-    return all.filter((s) => {
-      if (search.drift === "drift" && !s.drift) return false;
-      if (search.drift === "stable" && s.drift) return false;
-      if (!needle) return true;
-      const hay = [s.name, s.id, s.url, String(s.netuid ?? "")]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(needle);
-    });
-  }, [all, search.drift, search.q]);
-
-  // #8360: bound the left-rail DOM at 25 cards; filters still run over `all`.
-  // One effect owns filter-reset and `?open=` expansion (same race fix as providers).
-  const [listLimit, setListLimit] = useState(APIS_HUB_PAGE_STEP);
-  const filterKey = `${search.q}\0${search.drift}`;
-  const prevFilterKeyRef = useRef(filterKey);
-  useEffect(() => {
-    const filtersChanged = prevFilterKeyRef.current !== filterKey;
-    prevFilterKeyRef.current = filterKey;
-    const idx = search.open ? filtered.findIndex((s) => s.id === search.open) : -1;
-    setListLimit((prev) =>
-      nextListLimit({
-        prev,
-        filtersChanged,
-        targetIndex: idx,
-        step: APIS_HUB_PAGE_STEP,
-      }),
-    );
-  }, [filterKey, search.open, filtered]);
-  const visible = useMemo(() => filtered.slice(0, listLimit), [filtered, listLimit]);
-
-  const selectedId = search.open || filtered[0]?.id || "";
-  const selected = useMemo(
-    () => all.find((s) => s.id === selectedId) ?? filtered[0],
-    [all, filtered, selectedId],
-  );
-
-  const stale = isStaleFreshness(data.meta?.generated_at);
-
-  const setSearch = useCallback(
-    (patch: Partial<typeof search>) =>
-      navigate({
-        search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
-        // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
-        resetScroll: false,
-        replace: true,
-      }),
-    [navigate],
-  );
-
-  // Esc clears the selected schema on desktop (mobile uses the explicit "back"
-  // button inside the viewer). Skips when focus is in an input/textarea so it
-  // doesn't fight the global search shortcut handlers.
-  useEffect(() => {
-    if (!search.open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      setSearch({ open: "" });
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [search.open, setSearch]);
-
-  return (
-    <div className="space-y-4">
-      {stale ? (
-        <StaleBanner
-          generatedAt={data.meta?.generated_at}
-          refreshQueryKeys={[metagraphedQueryKey("schemas"), metagraphedQueryKey("contracts")]}
-        />
-      ) : null}
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_1fr]">
-        {/* Left rail */}
-        <aside className="rounded border border-border bg-card overflow-hidden flex flex-col max-h-[min(680px,70vh)]">
-          <div className="border-b border-border p-3 space-y-2.5">
-            {/* The shared SearchInput, which carries an aria-label (a
-                placeholder is not an accessible name), replacing the bespoke
-                unlabelled <input> (#6394). w-full keeps the left-rail width. */}
-            <SearchInput
-              value={search.q}
-              onChange={(q) => setSearch({ q })}
-              placeholder="Search schemas…"
-              className="w-full"
+      <AnalyticsSection
+        id="drift"
+        name="Drift"
+        question="Which schemas changed, and how much surface changed with them."
+        visual={
+          rails.length > 0 ? (
+            <RankedRails
+              items={rails}
+              formatValue={(value: number) => `${formatNumber(value)} paths`}
+              scale="sqrt"
+              columns={{ value: "Paths", name: "Subnet", track: "Size of the spec that moved" }}
+              ariaLabel="Schemas that changed since the last capture"
+              source="schema-drift"
             />
-            <div className="flex items-center gap-1">
-              {(["all", "drift", "stable"] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setSearch({ drift: v })}
-                  className={classNames(
-                    "text-10 flex-1 rounded border px-2 py-1 transition-all duration-150",
-                    search.drift === v
-                      ? "border-ink/40 bg-ink-strong text-paper"
-                      : "border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-accent/40",
-                  )}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-13 text-ink-muted">
-                {filtered.length} of {all.length}
-              </div>
-              {/* One-click way back to the unfiltered view for a shared
-                  /schemas?q=X&drift=Y link -- clears BOTH the search text and
-                  the drift pill, matching the filtersActive/ResetFiltersButton
-                  convention every other list page uses (#6394). The `open` /
-                  `driftDetail` selection state is a viewer target, not a filter,
-                  so it is left untouched. */}
-              <ResetFiltersButton
-                active={!!search.q || search.drift !== "all"}
-                onReset={() => setSearch({ q: "", drift: "all" })}
-                bare
-              />
-            </div>
-          </div>
-          <ul className="flex-1 overflow-y-auto divide-y divide-border/60">
-            {filtered.length === 0 ? (
-              <li className="p-8 text-center">
-                <EmptyState title="No schemas match" />
-              </li>
-            ) : (
-              visible.map((s) => {
-                const active = s.id === selected?.id;
-                return (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSearch({ open: s.id })}
-                      className={classNames(
-                        "w-full text-left px-3 py-2.5 transition-colors",
-                        active ? "bg-primary-soft" : "hover:bg-surface",
-                      )}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span
-                          aria-hidden
-                          className={classNames(
-                            "size-1.5 rounded-full mg-dot shrink-0",
-                            s.drift ? "bg-health-warn" : "bg-health-ok",
-                          )}
-                        />
-                        <span className="text-13 text-ink-strong truncate font-medium">
-                          {s.name ?? s.id}
-                        </span>
-                        {s.netuid != null ? (
-                          <span className="ml-auto text-10 text-ink-muted shrink-0">
-                            SN{s.netuid}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="text-10 text-ink-muted truncate mt-1">{s.url ?? s.id}</div>
-                    </button>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-          {filtered.length > APIS_HUB_PAGE_STEP ? (
-            <LoadMore
-              shown={visible.length}
-              total={filtered.length}
-              hasMore={listLimit < filtered.length}
-              isLoading={false}
-              onLoadMore={() => setListLimit((prev) => prev + APIS_HUB_PAGE_STEP)}
-            />
-          ) : null}
-        </aside>
-
-        {/* Right viewer */}
-        <Panel flush className="overflow-hidden min-h-[480px]">
-          {selected ? (
-            <SchemaViewer schema={selected} />
-          ) : (
-            <div className="p-12 text-center">
-              <EmptyState
-                title="Select a schema"
-                description="Pick a schema from the left to inspect snapshot and drift."
-              />
-            </div>
-          )}
-        </Panel>
-      </div>
-    </div>
-  );
-}
-
-/* --------------------------- Schema viewer --------------------------- */
-
-function SchemaViewer({ schema }: { schema: SchemaInfo }) {
-  const { copied, copy } = useCopy({ label: "schema url" });
-  const navigate = useNavigate({ from: "/apis/schemas" });
-
-  // No backend /schemas/{id}/diff or /snapshots endpoint exists — both 404. The
-  // drift/snapshot summary is rendered inline from the record's own fields
-  // (snapshot + hash + previous_hash + drift_status), so the viewer never errors
-  // on a normal row.
-  const artifactUrl = sameOriginApiUrl(schema.url);
-
-  return (
-    <div className="flex flex-col h-full">
-      <header className="border-b border-border p-4">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <button
-              type="button"
-              onClick={() =>
-                navigate({
-                  search: (p: Record<string, unknown>) => ({ ...p, open: "" }),
-                  replace: true,
-                })
-              }
-              className="text-13 lg:hidden inline-flex items-center gap-1 text-ink-muted hover:text-ink-strong mb-2"
-            >
-              <ChevronLeft className="size-3" /> back
-            </button>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-display text-28 font-semibold text-ink-strong">
-                {schema.name ?? schema.id}
-              </h3>
-              {schema.drift ? (
-                <span className="text-10 inline-flex items-center rounded border border-health-warn/40 bg-health-warn/10 px-2 py-0.5 text-health-warn">
-                  drift
-                </span>
-              ) : (
-                <span className="text-10 inline-flex items-center rounded border border-health-ok/40 bg-health-ok/10 px-2 py-0.5 text-health-ok">
-                  stable
-                </span>
-              )}
-              {schema.netuid != null ? (
-                <Link
-                  to="/subnets/$netuid"
-                  params={{ netuid: schema.netuid }}
-                  className="text-10 text-accent hover:underline"
-                >
-                  SN{schema.netuid}
-                </Link>
-              ) : null}
-            </div>
-            <div className="text-11 text-ink-muted mt-1.5">
-              snapshot <TimeAgo at={schema.updated_at} />
-            </div>
-          </div>
-          {artifactUrl ? (
-            <div className="flex items-center gap-2 shrink-0">
+          ) : null
+        }
+        legend={
+          <DataTable
+            id="drift-table"
+            rows={driftShown}
+            columns={columns}
+            rowKey={(row) => row.key}
+            caption={showAllDrift ? "Every tracked schema" : "Schemas that moved"}
+            link={RouterLink}
+            source="schema"
+            storageKey="mg-schemas-columns"
+            loading={schemas.isPending}
+            filters={
               <button
                 type="button"
-                onClick={() => copy(artifactUrl)}
-                className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-3 py-1.5 text-13 text-ink hover:border-accent/40 transition-colors"
+                className="mg-section-more"
+                onClick={() => setShowAllDrift((v) => !v)}
               >
-                {copied ? <Check className="size-3 text-health-ok" /> : <Copy className="size-3" />}
-                {copied ? "copied" : "copy url"}
+                {showAllDrift ? "Only what moved" : `Show all ${formatNumber(rows.length)}`}
               </button>
-              <ExternalLink href={artifactUrl} className="text-13">
-                open
-              </ExternalLink>
-            </div>
-          ) : null}
-        </div>
-      </header>
+            }
+            empty="Nothing moved since the last capture."
+          />
+        }
+        // Ranked on the size of the spec, not on a diff score: no change
+        // weight is published, and a subnet whose 35-path spec changed moved
+        // more than one whose capture failed. The seven that could not be
+        // captured are in the table below rather than as empty rails.
+        footnote="ranked by paths in the captured spec · snapshot"
+      />
 
-      <div className="flex-1 overflow-auto p-4 space-y-3">
-        <SchemaSnapshotSummary schema={schema} />
-      </div>
-    </div>
+      <AnalyticsSection
+        id="size"
+        name="Size"
+        question="How much each captured spec actually documents."
+        visual={
+          sizeRails.length > 0 ? (
+            <RankedRails
+              items={sizeRails}
+              formatValue={(value: number) => `${formatNumber(value)} paths`}
+              scale="sqrt"
+              columns={{ value: "Paths", name: "Subnet", track: "Documented operations" }}
+              ariaLabel="Captured schemas by size"
+              source="schema-size"
+            />
+          ) : null
+        }
+        // The issue asked for change kinds by week over 26 weeks.
+        // /api/v1/schemas publishes ONE snapshot -- a hash, a previous hash
+        // and one observed_at per surface -- and no history endpoint exists,
+        // so there is no series to draw. This asks the closest question the
+        // data can answer, and the one that says whether a subnet's "has an
+        // OpenAPI" is three paths or three hundred.
+        footnote="current snapshot · no per-week history is published · snapshot"
+      />
+
+      <AnalyticsSection
+        id="coverage"
+        name="Coverage"
+        question="What share of subnets publish each kind of surface."
+        visual={
+          markers.length > 0 ? (
+            <MarkerRail
+              items={markers}
+              max={100}
+              formatValue={(value) => `${value}%`}
+              columns={{ ratio: "Covered", name: "Surface kind", scale: "Share of subnets" }}
+              ariaLabel="Subnets publishing each kind of surface"
+              source="coverage-dimension"
+            />
+          ) : null
+        }
+        // From `completeness.dimension_coverage`, a real ratio over the subnet
+        // set. The retired page drew this against `domain_coverage`, which
+        // counts how many subnets are IN each domain and is not a coverage
+        // figure at all -- an 11-subnet "agents" domain is not 11% covered.
+        footnote="share of subnets publishing each kind · registry"
+      />
+
+      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
+      <HubSections path="/apis/schemas" />
+
+      <Raw rows={rawRows} />
+    </AppShell>
   );
 }

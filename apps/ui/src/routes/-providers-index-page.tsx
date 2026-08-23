@@ -1,4 +1,4 @@
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
 import type { ProvidersSearch } from "./apis.providers";
 import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
@@ -19,15 +19,32 @@ import {
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
-import { BrandIcon, DataTable, prefetchBrandIcon, type SortState } from "@jsonbored/ui-kit";
+import {
+  BrandIcon,
+  DataTable,
+  EntityHero,
+  FactSentence,
+  SectionNav,
+  prefetchBrandIcon,
+  type SortState,
+} from "@jsonbored/ui-kit";
+import { AppShell } from "@/components/metagraphed/app-shell";
+import { apisNav } from "@/components/metagraphed/apis/apis-logic";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { ProvidersPulseRail } from "@/components/metagraphed/providers-pulse-rail";
 import type { Provider } from "@/lib/metagraphed/types";
 import type { ProviderSortKey } from "./apis.providers";
 import { providerSortKeys } from "./apis.providers";
-import { ApisTabActions } from "./-apis-hub";
 import { cancelIdle, requestIdle } from "@/lib/metagraphed/idle";
 
+/**
+ * The APIs hub layout used to supply this page's shell: `AppShell`, one hero
+ * and the four-entry tab strip all rendered once in apis.tsx. #11622 emptied
+ * that layout -- each of the four routes answers a different question and so
+ * owns its own hero -- and replaced the tab strip with a `SectionNav` of
+ * `href` items, which is the same nav primitive every rebuilt page uses for
+ * its own sections. This page carries both until its own rebuild.
+ */
 export function ProvidersPage() {
   const search = useSearch({ from: "/apis/providers" }) as ProvidersSearch;
   const navigate = useNavigate({ from: "/apis/providers" });
@@ -35,13 +52,21 @@ export function ProvidersPage() {
     search.q || search.kind || search.authority || (search.sort && search.sort !== "name"),
   );
   const onReset = () => navigate({ search: {}, replace: true });
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
-    <>
-      <ApisTabActions>
-        <div className="mg-actions">
-          <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
-        </div>
-      </ApisTabActions>
+    <AppShell>
+      <EntityHero
+        name="Providers"
+        sentence={
+          <FactSentence>
+            The teams, infra operators and docs registries behind these public interfaces.
+          </FactSentence>
+        }
+      />
+      <SectionNav items={apisNav(pathname)} link={RouterLink} />
+      <div className="mg-actions">
+        <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+      </div>
       <AsyncPanel
         height="sm"
         context="providers pulse"
@@ -76,7 +101,7 @@ export function ProvidersPage() {
       />
       {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
       <HubSections path="/apis/providers" />
-    </>
+    </AppShell>
   );
 }
 

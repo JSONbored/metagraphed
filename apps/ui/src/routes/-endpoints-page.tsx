@@ -5,7 +5,19 @@ import { useEffect, useMemo, useState } from "react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
-import { DataTable, SectionHead, FactStrip, FactCell, RangeControl } from "@jsonbored/ui-kit";
+import {
+  DataTable,
+  EntityHero,
+  FactCell,
+  FactSentence,
+  FactStrip,
+  RangeControl,
+  SectionHead,
+  SectionNav,
+} from "@jsonbored/ui-kit";
+import { AppShell } from "@/components/metagraphed/app-shell";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { apisNav } from "@/components/metagraphed/apis/apis-logic";
 import { AsyncPanel, PanelSkeleton, QueryProgress } from "@/components/metagraphed/primitives";
 import {
   ResetFiltersButton,
@@ -68,6 +80,13 @@ const ENDPOINTS_TABS: ReadonlyArray<{ id: EndpointsTab; label: string }> = [
   { id: "incidents", label: "Incidents" },
 ];
 
+/**
+ * The APIs hub layout used to supply this page's shell: `AppShell`, one hero
+ * and the four-entry tab strip all rendered once in apis.tsx. #11622 emptied
+ * that layout -- each of the four routes answers a different question and so
+ * owns its own hero -- and replaced the tab strip with a `SectionNav` of
+ * `href` items. This page carries both until its own rebuild.
+ */
 export function EndpointsPage() {
   const hash = useRouterState({ select: (s) => s.location.hash });
   useEffect(() => {
@@ -86,8 +105,18 @@ export function EndpointsPage() {
   // mobile. Split its distinct concerns into tabs; each section fetches its own
   // data, so only the active tab's panels mount (and query) at a time.
   const [tab, setTab] = useState<EndpointsTab>("endpoints");
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
-    <>
+    <AppShell>
+      <EntityHero
+        name="Endpoints"
+        sentence={
+          <FactSentence>
+            Callable Subtensor and subnet endpoints — health, latency and pool eligibility.
+          </FactSentence>
+        }
+      />
+      <SectionNav items={apisNav(pathname)} link={RouterLink} />
       <div className="space-y-section">
         {/* Endpoint KPIs stay visible above the tabs so the tab bar has context
             and doesn't float alone under the hero. */}
@@ -245,7 +274,7 @@ export function EndpointsPage() {
       />
       {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
       <HubSections path="/apis/endpoints" />
-    </>
+    </AppShell>
   );
 }
 
