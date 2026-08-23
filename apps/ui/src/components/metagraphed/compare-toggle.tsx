@@ -1,4 +1,3 @@
-import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { useCompareSelection } from "@/lib/metagraphed/compare-selection";
 import { useValidatorsCompareSelection } from "@/lib/metagraphed/validators-compare-selection";
@@ -24,14 +23,10 @@ export function CompareToggle({ netuid }: { netuid: number }) {
         if (!disabled) toggle(netuid);
       }}
       title={disabled ? `Compare is full (${max})` : on ? "Remove from compare" : "Add to compare"}
-      className={classNames(
-        "inline-flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
-        on ? "bg-accent border-accent text-paper" : "border-border bg-paper hover:border-accent/60",
-        disabled && "opacity-40 cursor-not-allowed",
-      )}
+      className="mg-compare-toggle mg-tap-target"
     >
       {on ? (
-        <svg viewBox="0 0 12 12" fill="none" className="size-2.5" aria-hidden>
+        <svg viewBox="0 0 12 12" fill="none" width="10" height="10" aria-hidden>
           <path
             d="M2 6.5l2.5 2.5L10 3.5"
             stroke="currentColor"
@@ -63,14 +58,10 @@ export function ValidatorCompareToggle({ hotkey }: { hotkey: string }) {
         if (!disabled) toggle(hotkey);
       }}
       title={disabled ? `Compare is full (${max})` : on ? "Remove from compare" : "Add to compare"}
-      className={classNames(
-        "inline-flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
-        on ? "bg-accent border-accent text-paper" : "border-border bg-paper hover:border-accent/60",
-        disabled && "opacity-40 cursor-not-allowed",
-      )}
+      className="mg-compare-toggle mg-tap-target"
     >
       {on ? (
-        <svg viewBox="0 0 12 12" fill="none" className="size-2.5" aria-hidden>
+        <svg viewBox="0 0 12 12" fill="none" width="10" height="10" aria-hidden>
           <path
             d="M2 6.5l2.5 2.5L10 3.5"
             stroke="currentColor"

@@ -563,10 +563,16 @@ function Row<Row_>({
   expanded: boolean;
   onExpand: () => void;
 }) {
+  // `expand` may decline per row -- an operator with one key has nothing to
+  // reveal -- and a chevron that expands nothing is a control that lies. It
+  // is also 605 chevrons of markup on a table where 500 of them do nothing.
+  const expansion = expand ? expand(row) : null;
+  const expandable =
+    expansion !== null && expansion !== undefined && expansion !== false;
   const mark = useEntityMark(entityKey, {
     source,
     label: entityKey,
-    onActivate: expand ? onExpand : onActivate,
+    onActivate: expandable ? onExpand : onActivate,
   });
   // The row is a grouping element, not a control: it carries the active
   // state and the pointer/keyboard wiring, but `role="button"` on a <tr>
@@ -585,7 +591,7 @@ function Row<Row_>({
       <tr
         {...rowMark}
         className="mg-dt-row"
-        data-expandable={expand ? "true" : undefined}
+        data-expandable={expandable ? "true" : undefined}
         data-expanded={expanded ? "true" : undefined}
       >
         {columns.map((column, index) => (
@@ -598,19 +604,19 @@ function Row<Row_>({
             href={index === 0 ? href : undefined}
             link={link}
             disclosure={
-              index === 0 && expand
+              index === 0 && expandable
                 ? { expanded, controls: expansionId, onToggle: onExpand }
                 : undefined
             }
             onActivate={
-              index === 0 && !href && !expand ? onActivate : undefined
+              index === 0 && !href && !expandable ? onActivate : undefined
             }
           />
         ))}
       </tr>
-      {expand && expanded ? (
+      {expandable && expanded ? (
         <tr className="mg-dt-expansion" id={expansionId}>
-          <td colSpan={columns.length}>{expand(row)}</td>
+          <td colSpan={columns.length}>{expansion}</td>
         </tr>
       ) : null}
     </>
@@ -691,24 +697,57 @@ function Cell<Row_>({
   // A <tr> cannot take focus, so a row whose only affordance is "expand" would
   // be mouse-only. The disclosure is a real button in the first cell, which is
   // also the only element allowed to carry aria-expanded (#8821).
-  const content =
-    disclosure !== undefined ? (
+  //
+  // When a row has BOTH a disclosure and a link, the two are separate
+  // controls in the same cell rather than one that wins. The disclosure used
+  // to replace the link entirely, so an expandable table rendered ZERO
+  // internal anchors -- /validators served 606 rows and 10 links, which is
+  // precisely the crawlability regression #11204 exists to prevent (#11616).
+  const toggle =
+    disclosure === undefined ? null : (
       <button
         type="button"
-        className="mg-dt-rowbutton"
+        className="mg-dt-disclosure"
         aria-expanded={disclosure.expanded}
         aria-controls={disclosure.expanded ? disclosure.controls : undefined}
+        aria-label={disclosure.expanded ? "Collapse row" : "Expand row"}
         onClick={(event) => {
           event.stopPropagation();
           disclosure.onToggle();
         }}
-      >
-        {body}
-      </button>
-    ) : href !== undefined ? (
+      ></button>
+    );
+
+  const linked =
+    href !== undefined ? (
       <RowLink href={href} className="mg-dt-rowlink">
         {body}
       </RowLink>
+    ) : null;
+
+  const content =
+    disclosure !== undefined ? (
+      <span className="mg-dt-rowlead">
+        {toggle}
+        {linked ?? (
+          <button
+            type="button"
+            className="mg-dt-rowbutton"
+            aria-expanded={disclosure.expanded}
+            aria-controls={
+              disclosure.expanded ? disclosure.controls : undefined
+            }
+            onClick={(event) => {
+              event.stopPropagation();
+              disclosure.onToggle();
+            }}
+          >
+            {body}
+          </button>
+        )}
+      </span>
+    ) : linked !== null ? (
+      linked
     ) : onActivate ? (
       <button type="button" className="mg-dt-rowbutton" onClick={onActivate}>
         {body}

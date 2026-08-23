@@ -33,9 +33,18 @@ describe("empty-state 'Open the API' actions", () => {
     expect(empty).toContain('label: "Open /api/v1/validators"');
     expect(empty).toContain("href: `${API_BASE}/api/v1/validators`");
     expect(empty).toContain("external: true");
-    // Gated on the search box being empty -- search.q ? undefined : {...}.
-    expect(empty).toContain("search.q");
-    expect(empty).toContain("undefined");
+    // Gated on NO filter being active, not just an empty search box: #11616
+    // added a minimum-stake select and an identity filter, and each of them
+    // can empty the table while the directory itself is full.
+    const branch = validators.slice(
+      validators.indexOf("const filtersActive"),
+      validators.indexOf("No validators indexed yet"),
+    );
+    expect(branch).toContain("search.q");
+    expect(branch).toContain("search.minStake");
+    expect(branch).toContain("search.named");
+    expect(branch).toContain("filtersActive ? (");
+    expect(branch).toContain("No operators match these filters");
   });
 
   // The whole `const emptyNode = (...)` declaration, however long its comments grow.

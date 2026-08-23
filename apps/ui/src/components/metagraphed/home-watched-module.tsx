@@ -20,7 +20,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao, classNames } from "@/lib/metagraphed/format";
 import type { HealthState } from "@/lib/metagraphed/types";
-import { ALL_VALIDATORS_LIMIT } from "@/routes/-validators-index-page";
+import { ALL_VALIDATORS_LIMIT } from "@/components/metagraphed/validators-index/validators-index-logic";
 import {
   accountEventHotkeyIn,
   accountEventNetuidIn,

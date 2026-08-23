@@ -13,6 +13,14 @@ export const CHART_RAMP_SIZE = 10;
 export const OTHER_COLOR = "var(--chart-11)";
 export const OTHER_KEY = "Other";
 
+/**
+ * The key a CALLER uses for its own residual segment ("595 more operators").
+ * Distinct from OTHER_KEY, which the ramp creates when it runs out of
+ * colours: this one is a deliberate roll-up the caller computed, and it keeps
+ * its own label. Both sort last wherever a composition is drawn.
+ */
+export const RESIDUAL_KEY = "rest";
+
 export interface SeriesPalette {
   /** `--chart-1` … `--chart-10`, or `--chart-11` for a collapsed series. */
   colorOf: (key: string) => string;
@@ -70,7 +78,17 @@ export function collapseOther<T extends { key: string; value: number }>(
 ): Array<{ key: string; label: string; value: number }> {
   const kept: Array<{ key: string; label: string; value: number }> = [];
   let other = 0;
+  // A caller's own residual absorbs the collapse instead of being collapsed
+  // INTO one: "595 more operators" and "Other" are the same idea, and having
+  // both would show a residual of a residual. Its label wins, because the
+  // caller knows what it rolled up and the ramp does not.
+  let residualLabel: string | null = null;
   for (const s of segments) {
+    if (s.key === RESIDUAL_KEY) {
+      other += s.value;
+      residualLabel = (s as { label?: string }).label ?? label;
+      continue;
+    }
     if (registry.indexOf(s.key) === null) other += s.value;
     else
       kept.push({
@@ -79,6 +97,7 @@ export function collapseOther<T extends { key: string; value: number }>(
         value: s.value,
       });
   }
-  if (other > 0) kept.push({ key: OTHER_KEY, label, value: other });
+  if (other > 0)
+    kept.push({ key: OTHER_KEY, label: residualLabel ?? label, value: other });
   return kept;
 }

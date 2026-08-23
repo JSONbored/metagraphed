@@ -3353,6 +3353,7 @@ function useScrolled(threshold = 4) {
 var CHART_RAMP_SIZE = 10;
 var OTHER_COLOR = "var(--chart-11)";
 var OTHER_KEY = "Other";
+var RESIDUAL_KEY = "rest";
 var SeriesPaletteRegistry = class {
   slots = /* @__PURE__ */ new Map();
   /** Assigns the next free ramp index to every unseen key, in the order given. */
@@ -3385,7 +3386,13 @@ var SeriesPaletteRegistry = class {
 function collapseOther(segments, registry, label = OTHER_KEY) {
   const kept = [];
   let other = 0;
+  let residualLabel = null;
   for (const s of segments) {
+    if (s.key === RESIDUAL_KEY) {
+      other += s.value;
+      residualLabel = s.label ?? label;
+      continue;
+    }
     if (registry.indexOf(s.key) === null) other += s.value;
     else
       kept.push({
@@ -3394,7 +3401,8 @@ function collapseOther(segments, registry, label = OTHER_KEY) {
         value: s.value
       });
   }
-  if (other > 0) kept.push({ key: OTHER_KEY, label, value: other });
+  if (other > 0)
+    kept.push({ key: OTHER_KEY, label: residualLabel ?? label, value: other });
   return kept;
 }
 var defaultFormat2 = (v) => String(v);
@@ -4325,7 +4333,12 @@ function CompositionBreakdown({
   const own = useRef(null);
   if (!registry && !own.current) own.current = new SeriesPaletteRegistry();
   const reg = registry ?? own.current;
-  const ordered = [...segments].sort((a, b) => b.value - a.value);
+  const isResidual = (key) => key === OTHER_KEY || key === RESIDUAL_KEY;
+  const ordered = [...segments].sort((a, b) => {
+    if (isResidual(a.key) !== isResidual(b.key))
+      return isResidual(a.key) ? 1 : -1;
+    return b.value - a.value;
+  });
   const keep = limit === void 0 ? ordered : ordered.slice(0, limit);
   reg.assign(keep.map((s) => s.key));
   const palette = reg.palette();
@@ -4336,7 +4349,10 @@ function CompositionBreakdown({
   const activeKey = active && shown.some((s) => s.key === active.key) ? active.key : null;
   const legend = shown.map((s) => ({
     key: s.key,
-    label: s.key === OTHER_KEY ? other : s.label,
+    // collapseOther already decided this: a caller's residual keeps its own
+    // label and the ramp's collapse takes the `other` prop. Re-deciding here
+    // overwrote the caller's label with "Other".
+    label: s.label,
     value: formatValue(s.value),
     share: total > 0 ? `${Math.round(s.value / total * 1e3) / 10}%` : void 0,
     swatch: palette.colorOf(s.key),
@@ -4369,7 +4385,7 @@ function CompositionBreakdown({
                     source,
                     element: barRef.current,
                     data: {
-                      title: s.key === OTHER_KEY ? other : s.label,
+                      title: s.label,
                       total: formatValue(s.value)
                     }
                   });
@@ -4952,10 +4968,12 @@ function Row({
   expanded,
   onExpand
 }) {
+  const expansion = expand ? expand(row) : null;
+  const expandable = expansion !== null && expansion !== void 0 && expansion !== false;
   const mark = useEntityMark(entityKey, {
     source,
     label: entityKey,
-    onActivate: expand ? onExpand : onActivate
+    onActivate: expandable ? onExpand : onActivate
   });
   const {
     role: _role,
@@ -4969,7 +4987,7 @@ function Row({
       {
         ...rowMark,
         className: "mg-dt-row",
-        "data-expandable": expand ? "true" : void 0,
+        "data-expandable": expandable ? "true" : void 0,
         "data-expanded": expanded ? "true" : void 0,
         children: columns.map((column, index) => /* @__PURE__ */ jsx(
           Cell,
@@ -4979,14 +4997,14 @@ function Row({
             label: cardLabels ? column.label : void 0,
             href: index === 0 ? href : void 0,
             link,
-            disclosure: index === 0 && expand ? { expanded, controls: expansionId, onToggle: onExpand } : void 0,
-            onActivate: index === 0 && !href && !expand ? onActivate : void 0
+            disclosure: index === 0 && expandable ? { expanded, controls: expansionId, onToggle: onExpand } : void 0,
+            onActivate: index === 0 && !href && !expandable ? onActivate : void 0
           },
           column.key
         ))
       }
     ),
-    expand && expanded ? /* @__PURE__ */ jsx("tr", { className: "mg-dt-expansion", id: expansionId, children: /* @__PURE__ */ jsx("td", { colSpan: columns.length, children: expand(row) }) }) : null
+    expandable && expanded ? /* @__PURE__ */ jsx("tr", { className: "mg-dt-expansion", id: expansionId, children: /* @__PURE__ */ jsx("td", { colSpan: columns.length, children: expansion }) }) : null
   ] });
 }
 function Cell({
@@ -5031,20 +5049,38 @@ function Cell({
     body = to ? /* @__PURE__ */ jsx(LinkCmp, { href: to, className: "mg-dt-link", children: text }) : text;
   } else body = text;
   const RowLink = link ?? DefaultLink2;
-  const content = disclosure !== void 0 ? /* @__PURE__ */ jsx(
+  const toggle = disclosure === void 0 ? null : /* @__PURE__ */ jsx(
     "button",
     {
       type: "button",
-      className: "mg-dt-rowbutton",
+      className: "mg-dt-disclosure",
       "aria-expanded": disclosure.expanded,
       "aria-controls": disclosure.expanded ? disclosure.controls : void 0,
+      "aria-label": disclosure.expanded ? "Collapse row" : "Expand row",
       onClick: (event) => {
         event.stopPropagation();
         disclosure.onToggle();
-      },
-      children: body
+      }
     }
-  ) : href !== void 0 ? /* @__PURE__ */ jsx(RowLink, { href, className: "mg-dt-rowlink", children: body }) : onActivate ? /* @__PURE__ */ jsx("button", { type: "button", className: "mg-dt-rowbutton", onClick: onActivate, children: body }) : body;
+  );
+  const linked = href !== void 0 ? /* @__PURE__ */ jsx(RowLink, { href, className: "mg-dt-rowlink", children: body }) : null;
+  const content = disclosure !== void 0 ? /* @__PURE__ */ jsxs("span", { className: "mg-dt-rowlead", children: [
+    toggle,
+    linked ?? /* @__PURE__ */ jsx(
+      "button",
+      {
+        type: "button",
+        className: "mg-dt-rowbutton",
+        "aria-expanded": disclosure.expanded,
+        "aria-controls": disclosure.expanded ? disclosure.controls : void 0,
+        onClick: (event) => {
+          event.stopPropagation();
+          disclosure.onToggle();
+        },
+        children: body
+      }
+    )
+  ] }) : linked !== null ? linked : onActivate ? /* @__PURE__ */ jsx("button", { type: "button", className: "mg-dt-rowbutton", onClick: onActivate, children: body }) : body;
   return /* @__PURE__ */ jsx(
     "td",
     {
@@ -5283,4 +5319,4 @@ function CompareLedger({
   );
 }
 
-export { Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActiveEntityProvider, AnalyticsPage, AnalyticsSection, AnimatedNumber, BackToTop, BrandIcon, CHART_RAMP_SIZE, COMPOSITION_SPECIMEN, CandidateChip, ChartTooltip, Chip, ClaudeIcon, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompareLedger, CompositionBreakdown, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DataTable, Definition, DefinitionList, DefinitionsProvider, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, EligibilityChip, EmptyState, EntityHero, ExternalLink, Fact, FactCell, FactSentence, FactStrip, FilterField, FilterInput, FilterSelect, GhostButton, HealthDot, HealthPill, Indicator, Kbd, KeyChip, LEADER_SPECIMEN, LINE_VIEWBOX, LeaderCards, LineWithWindow, LiveMeta, LiveTickerProvider, LoadMore, LoadingPill, MARKER_SPECIMEN, MAX_SECTIONS, MarkerRail, McpToolsList, OTHER_COLOR, OTHER_KEY, OpenAIIcon, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, Provenance, ProvenanceChip, QueryProgress, RAIL_SPECIMEN, RangeControl, RankGrid, RankedRails, Raw, RawCode, ReviewChip, RoutePending, SCOPES, ScrollShadow, SectionHead, SectionNav, SeriesPaletteRegistry, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, StackedColumns, StatusBadge, TimeAgo, Toaster, TrendDelta, Wordmark, bestIndices, buildCsvDownloadUrl, classNames, cn, collapseOther, compareValues, csvField, defaultVisibleKeys, deltaLabel, fmtYield, formatLineDate, isMissing, isScrolledPast, lineSpecimen, markAriaLabel, markerPosition, momentumAriaLabel, monthTicks, nextSort, nextTabIndex, pageCount, pageSlice, pageWindow, pickActiveSection, pickMobileMode, placePoints, prefetchBrandIcon, provenanceSentence, railFill, rangeLabel, resolveVisibleKeys, rovingTabIndex, safeExternalUrl, sectionItems, shouldBoundViewport, smoothPath, sortRows, stackedSpecimen, statusTone, toCsv, trendDeltaOf, truncateIdentifier, useActiveEntity, useActiveSection, useDefinition, useEntityMark, useIsActive, useLiveTicker, useRovingGroup, useScrolled, windowDelta, windowPoints };
+export { Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActiveEntityProvider, AnalyticsPage, AnalyticsSection, AnimatedNumber, BackToTop, BrandIcon, CHART_RAMP_SIZE, COMPOSITION_SPECIMEN, CandidateChip, ChartTooltip, Chip, ClaudeIcon, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CompareLedger, CompositionBreakdown, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DataTable, Definition, DefinitionList, DefinitionsProvider, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, EligibilityChip, EmptyState, EntityHero, ExternalLink, Fact, FactCell, FactSentence, FactStrip, FilterField, FilterInput, FilterSelect, GhostButton, HealthDot, HealthPill, Indicator, Kbd, KeyChip, LEADER_SPECIMEN, LINE_VIEWBOX, LeaderCards, LineWithWindow, LiveMeta, LiveTickerProvider, LoadMore, LoadingPill, MARKER_SPECIMEN, MAX_SECTIONS, MarkerRail, McpToolsList, OTHER_COLOR, OTHER_KEY, OpenAIIcon, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, Provenance, ProvenanceChip, QueryProgress, RAIL_SPECIMEN, RESIDUAL_KEY, RangeControl, RankGrid, RankedRails, Raw, RawCode, ReviewChip, RoutePending, SCOPES, ScrollShadow, SectionHead, SectionNav, SeriesPaletteRegistry, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, StackedColumns, StatusBadge, TimeAgo, Toaster, TrendDelta, Wordmark, bestIndices, buildCsvDownloadUrl, classNames, cn, collapseOther, compareValues, csvField, defaultVisibleKeys, deltaLabel, fmtYield, formatLineDate, isMissing, isScrolledPast, lineSpecimen, markAriaLabel, markerPosition, momentumAriaLabel, monthTicks, nextSort, nextTabIndex, pageCount, pageSlice, pageWindow, pickActiveSection, pickMobileMode, placePoints, prefetchBrandIcon, provenanceSentence, railFill, rangeLabel, resolveVisibleKeys, rovingTabIndex, safeExternalUrl, sectionItems, shouldBoundViewport, smoothPath, sortRows, stackedSpecimen, statusTone, toCsv, trendDeltaOf, truncateIdentifier, useActiveEntity, useActiveSection, useDefinition, useEntityMark, useIsActive, useLiveTicker, useRovingGroup, useScrolled, windowDelta, windowPoints };

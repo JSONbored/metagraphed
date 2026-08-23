@@ -3,6 +3,7 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ActiveEntityProvider } from "../interaction/active-entity";
 import { CompositionBreakdown } from "./composition-breakdown";
+import { RESIDUAL_KEY } from "./series-palette";
 import { LeaderCards, deltaLabel } from "./leader-cards";
 import { MarkerRail, markerPosition } from "./marker-rail";
 import { RankGrid } from "./rank-grid";
@@ -195,5 +196,37 @@ describe("CompositionBreakdown", () => {
     expect(html).toContain('data-entity="Other"');
     expect(html).not.toContain('data-entity="c"');
     expect(html).toContain("--swatch:var(--chart-11)");
+  });
+});
+
+describe("CompositionBreakdown residual ordering (#11616)", () => {
+  const segments = [
+    { key: "a", label: "Alpha", value: 10 },
+    { key: RESIDUAL_KEY, label: "595 more operators", value: 90 },
+    { key: "b", label: "Beta", value: 20 },
+  ];
+  const html = renderToStaticMarkup(
+    h(CompositionBreakdown, {
+      segments,
+      formatValue: (v: number) => String(v),
+      ariaLabel: "Test composition",
+    }),
+  );
+  const order = [...html.matchAll(/data-entity="([^"]+)"/g)]
+    .map((m) => m[1])
+    .filter((key, i, all) => all.indexOf(key) === i);
+
+  it("pins a caller's residual last however large it is", () => {
+    // A residual is not a peer of the named segments; sorting it by value put
+    // "595 more operators" at rank 01 of a concentration chart -- the reading
+    // the chart exists to give, stated backwards.
+    expect(order).toHaveLength(3);
+    expect(order.slice(0, 2)).toEqual(["b", "a"]);
+  });
+
+  it("keeps the caller's own label on it, rather than the ramp's Other", () => {
+    // The caller knows what it rolled up; the ramp does not.
+    expect(html).toContain("595 more operators");
+    expect(html).not.toMatch(/mg-rank-grid-name">Other</);
   });
 });

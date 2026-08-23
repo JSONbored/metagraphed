@@ -8,6 +8,8 @@ import {
   type DataTableColumn,
 } from "@jsonbored/ui-kit";
 import { RouterLink } from "@/components/metagraphed/router-link";
+import { SubnetCompareBar } from "@/components/metagraphed/compare-bar";
+import { CompareToggle } from "@/components/metagraphed/compare-toggle";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { fmtAlpha, type DirectoryRow } from "./subnets-index-logic";
 
@@ -157,6 +159,16 @@ export function DirectorySection({
         demote: true,
         value: (row) => (withApi.has(row.netuid) ? "yes" : "no"),
       },
+      {
+        // #11613 rebuilt this table and dropped the compare selection #11611
+        // had put here; #11616 restores it as a cell rather than a table mode.
+        key: "compare",
+        label: "Compare",
+        kind: "text",
+        value: () => "",
+        render: (row) => <CompareToggle netuid={row.netuid} />,
+        definition: "Compare",
+      },
     ],
     [withApi],
   );
@@ -167,68 +179,71 @@ export function DirectorySection({
       name="Directory"
       question="Every subnet, sortable."
       visual={
-        <DataTable
-          rows={rows}
-          columns={columns}
-          rowKey={(row) => String(row.netuid)}
-          // The table appends the row count itself; the caption says what was
-          // filtered OUT, which the count alone cannot.
-          caption={
-            rows.length === total
-              ? "Every subnet"
-              : `${formatNumber(rows.length)} of ${formatNumber(total)} subnets`
-          }
-          rowHref={(row) => `/subnets/${row.netuid}`}
-          link={RouterLink}
-          // Every row in the server-rendered bytes -- see the note above.
-          paginate={false}
-          source="subnet-row"
-          storageKey="subnets-directory-columns"
-          mobile="cards"
-          search={{
-            value: filters.q,
-            onChange: (q) => onFilter({ q }),
-            placeholder: "Find a subnet",
-          }}
-          filters={
-            <>
-              <FilterField label="Domain">
-                <FilterSelect
-                  value={filters.domain}
-                  onChange={(event) => onFilter({ domain: event.target.value })}
-                >
-                  <option value="">Any domain</option>
-                  {domains.map((domain) => (
-                    <option key={domain} value={domain}>
-                      {domain}
-                    </option>
-                  ))}
-                </FilterSelect>
-              </FilterField>
-              <FilterField label="Health">
-                <FilterSelect
-                  value={filters.health}
-                  onChange={(event) => onFilter({ health: event.target.value })}
-                >
-                  {HEALTH_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </FilterSelect>
-              </FilterField>
-              <FilterField label="API">
-                <FilterSelect
-                  value={filters.api ? "1" : ""}
-                  onChange={(event) => onFilter({ api: event.target.value === "1" })}
-                >
-                  <option value="">Any surface</option>
-                  <option value="1">Has an API</option>
-                </FilterSelect>
-              </FilterField>
-            </>
-          }
-        />
+        <>
+          <DataTable
+            rows={rows}
+            columns={columns}
+            rowKey={(row) => String(row.netuid)}
+            // The table appends the row count itself; the caption says what was
+            // filtered OUT, which the count alone cannot.
+            caption={
+              rows.length === total
+                ? "Every subnet"
+                : `${formatNumber(rows.length)} of ${formatNumber(total)} subnets`
+            }
+            rowHref={(row) => `/subnets/${row.netuid}`}
+            link={RouterLink}
+            // Every row in the server-rendered bytes -- see the note above.
+            paginate={false}
+            source="subnet-row"
+            storageKey="subnets-directory-columns"
+            mobile="cards"
+            search={{
+              value: filters.q,
+              onChange: (q) => onFilter({ q }),
+              placeholder: "Find a subnet",
+            }}
+            filters={
+              <>
+                <FilterField label="Domain">
+                  <FilterSelect
+                    value={filters.domain}
+                    onChange={(event) => onFilter({ domain: event.target.value })}
+                  >
+                    <option value="">Any domain</option>
+                    {domains.map((domain) => (
+                      <option key={domain} value={domain}>
+                        {domain}
+                      </option>
+                    ))}
+                  </FilterSelect>
+                </FilterField>
+                <FilterField label="Health">
+                  <FilterSelect
+                    value={filters.health}
+                    onChange={(event) => onFilter({ health: event.target.value })}
+                  >
+                    {HEALTH_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </FilterSelect>
+                </FilterField>
+                <FilterField label="API">
+                  <FilterSelect
+                    value={filters.api ? "1" : ""}
+                    onChange={(event) => onFilter({ api: event.target.value === "1" })}
+                  >
+                    <option value="">Any surface</option>
+                    <option value="1">Has an API</option>
+                  </FilterSelect>
+                </FilterField>
+              </>
+            }
+          />
+          <SubnetCompareBar />
+        </>
       }
     />
   );

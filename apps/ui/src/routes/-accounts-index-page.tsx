@@ -11,6 +11,7 @@ import {
   LeaderCards,
   RangeControl,
   RankGrid,
+  RESIDUAL_KEY,
   Raw,
   type DataTableColumn,
   type FactCells,
@@ -78,7 +79,7 @@ export function AccountsPage() {
   }, [active, signerQuery]);
 
   const topTen = segments
-    .filter((segment) => segment.key !== "rest")
+    .filter((segment) => segment.key !== RESIDUAL_KEY)
     .reduce((acc, segment) => acc + segment.value, 0);
   const topShare = listedTotal > 0 ? topTen / listedTotal : null;
 

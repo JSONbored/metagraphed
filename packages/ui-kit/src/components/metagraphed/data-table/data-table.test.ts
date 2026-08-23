@@ -264,3 +264,47 @@ describe("statusTone", () => {
     expect(statusTone("whatever")).toBe("muted");
   });
 });
+
+describe("an expandable row still links (#11616)", () => {
+  const rows = [
+    { id: "a", name: "Alpha" },
+    { id: "b", name: "Beta" },
+  ];
+  const columns = [
+    {
+      key: "name",
+      label: "Name",
+      kind: "text" as const,
+      value: (r: (typeof rows)[number]) => r.name,
+    },
+  ];
+  const html = renderToStaticMarkup(
+    h(DataTable<(typeof rows)[number]>, {
+      rows,
+      columns,
+      rowKey: (r) => r.id,
+      caption: "Expandable",
+      rowHref: (r) => `/things/${r.id}`,
+      expand: (r) => h("div", null, `detail for ${r.name}`),
+    }),
+  );
+
+  it("renders an anchor per row, so a crawler still sees every entity", () => {
+    // The disclosure used to REPLACE the link: /validators served 606 rows and
+    // 10 anchors, which is the regression #11204 exists to prevent.
+    expect(
+      [...html.matchAll(/href="\/things\/([^"]+)"/g)].map((m) => m[1]),
+    ).toEqual(["a", "b"]);
+  });
+
+  it("keeps the disclosure as its own labelled control beside the link", () => {
+    expect(html).toContain('class="mg-dt-disclosure"');
+    expect(html).toContain('aria-label="Expand row"');
+    // One per row. The table's own column menu carries a third; count only
+    // the disclosures.
+    expect(
+      (html.match(/class="mg-dt-disclosure"[^>]*aria-expanded="false"/g) ?? [])
+        .length,
+    ).toBe(2);
+  });
+});
