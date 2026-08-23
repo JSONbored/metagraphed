@@ -2124,13 +2124,14 @@ function EntityHero({
   cells,
   facts,
   live,
+  headingLevel = 1,
   className
 }) {
   return /* @__PURE__ */ jsxRuntime.jsxs("header", { className: classNames("mg-hero", className), "data-mg-hero": "", children: [
     crumbs && crumbs.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("nav", { className: "mg-hero-crumbs", "aria-label": "Breadcrumb", children: crumbs.map((c, i) => /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-hero-crumb", children: c.href ? /* @__PURE__ */ jsxRuntime.jsx("a", { href: c.href, children: c.label }) : c.label }, `${c.label}-${i}`)) }) : null,
     /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-hero-title", children: [
       avatar ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-hero-avatar", children: avatar }) : null,
-      /* @__PURE__ */ jsxRuntime.jsx("h1", { children: name }),
+      headingLevel === 1 ? /* @__PURE__ */ jsxRuntime.jsx("h1", { children: name }) : headingLevel === 2 ? /* @__PURE__ */ jsxRuntime.jsx("h2", { children: name }) : /* @__PURE__ */ jsxRuntime.jsx("h3", { children: name }),
       action || secondary ? /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-hero-actions", children: [
         secondary,
         action

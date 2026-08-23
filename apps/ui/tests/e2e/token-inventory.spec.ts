@@ -127,11 +127,17 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
     // `AnalyticsSection`'s `legend` slot prints the identical rows underneath
     // itself -- which /validators and /chain both did, 11 and 9 rows, on every
     // viewport, unnoticed because at 4 columns the two blocks read as one long
-    // list. Compared on normalised text: the two DOM subtrees differ in
-    // whitespace, so a raw comparison misses it.
+    // list -- and /accounts, which this first MISSED. Compared on each row's
+    // ENTITY KEY, not its text: /accounts printed the same eleven accounts
+    // twice with two different percent formatters ("9%" against "9.0%"), so a
+    // text comparison called them two different lists while a reader saw one
+    // account listed twice showing two different numbers for it.
     const signatures = [...section.querySelectorAll(".mg-rank-grid")].map((grid) =>
       [...grid.querySelectorAll(".mg-rank-grid-row")]
-        .map((row) => (row.textContent ?? "").replace(/\s+/g, " ").trim())
+        .map(
+          (row) =>
+            row.getAttribute("data-entity") ?? (row.textContent ?? "").replace(/\s+/g, " ").trim(),
+        )
         .join("|"),
     );
     const distinct = new Set(signatures.filter(Boolean));

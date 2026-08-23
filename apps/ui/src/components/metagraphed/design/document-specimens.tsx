@@ -82,6 +82,7 @@ export function HeroSection() {
       visual={
         <div className="rounded border border-rule">
           <EntityHero
+            headingLevel={3}
             crumbs={[{ label: "Subnets", href: "/subnets" }, { label: "SN19" }]}
             name="Nineteen"
             action={

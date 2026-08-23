@@ -39,6 +39,15 @@ export interface EntityHeroProps {
   /** A composed `<FactStrip>` (routes mid-migration that map legacy KPI arrays). */
   facts?: ReactNode;
   live?: LiveMetaProps;
+  /**
+   * The heading level for `name`. 1 on a route, which is every real use.
+   *
+   * 3 on /design/primitives, where a hero is a SPECIMEN inside a documented
+   * section rather than the page's own subject: emitting `<h1>` there gave that
+   * page two of them (#11691), which is a document with two titles as far as a
+   * screen reader is concerned.
+   */
+  headingLevel?: 1 | 2 | 3;
   className?: string;
 }
 
@@ -52,6 +61,7 @@ export function EntityHero({
   cells,
   facts,
   live,
+  headingLevel = 1,
   className,
 }: EntityHeroProps) {
   return (
@@ -67,7 +77,13 @@ export function EntityHero({
       ) : null}
       <div className="mg-hero-title">
         {avatar ? <span className="mg-hero-avatar">{avatar}</span> : null}
-        <h1>{name}</h1>
+        {headingLevel === 1 ? (
+          <h1>{name}</h1>
+        ) : headingLevel === 2 ? (
+          <h2>{name}</h2>
+        ) : (
+          <h3>{name}</h3>
+        )}
         {action || secondary ? (
           <div className="mg-hero-actions">
             {secondary}

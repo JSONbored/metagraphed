@@ -164,3 +164,45 @@ describe("lookupVerdict", () => {
     });
   });
 });
+
+describe("holderCards carries the share the retired Concentration section showed (#11691)", () => {
+  const accounts = [
+    { coldkey: "5A", total_stake_tao: 250, subnet_count: 3, uid_count: 3 },
+    { coldkey: "5B", total_stake_tao: 750, subnet_count: 1, uid_count: 1 },
+  ] as never;
+
+  it("states each account's share of the listed total, share first", () => {
+    const [a, b] = holderCards(accounts, "stake", 18, 1000);
+    expect(a!.sub).toBe("25.0% of listed · 3 subnets");
+    expect(b!.sub).toBe("75.0% of listed · 1 subnet");
+  });
+
+  it("falls back to reach when there is no total to divide by", () => {
+    // A zero denominator is not "0%", it is "we cannot say" -- the card shows
+    // what it does know instead of a share of nothing.
+    const [a] = holderCards(accounts, "stake", 18, 0);
+    expect(a!.sub).toBe("3 subnets · 3 UIDs");
+  });
+
+  it("falls back when the stake itself is missing", () => {
+    const [a] = holderCards(
+      [{ coldkey: "5A", subnet_count: 2, uid_count: 2 }] as never,
+      "stake",
+      18,
+      1000,
+    );
+    expect(a!.sub).toBe("2 subnets · 2 UIDs");
+  });
+
+  it("uses one percent formatter, so two rows can never disagree", () => {
+    // The defect this replaced: the same account rendered "9%" in one section
+    // and "9.0%" in the other, 600px apart.
+    const [a] = holderCards(
+      [{ coldkey: "5A", total_stake_tao: 90, subnet_count: 1 }] as never,
+      "stake",
+      18,
+      1000,
+    );
+    expect(a!.sub.startsWith("9.0% of listed")).toBe(true);
+  });
+});
