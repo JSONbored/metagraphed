@@ -28,7 +28,7 @@ const index = routeFileIndex();
  * Declared paths a fixture does NOT cover today, and therefore fetches from
  * live production on every sweep.
  *
- * A SNAPSHOT, NOT AN EXEMPTION -- the same shape as overflow-baseline.json
+ * A SNAPSHOT, NOT AN EXEMPTION -- the same shape overflow-baseline.json had
  * beside it, and for the same reason: the backlog is real, pre-existing, and
  * not something this check should force-fix. New entries fail; so does an
  * entry that is no longer needed (see the two assertions below). A list only

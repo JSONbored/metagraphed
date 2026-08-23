@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { findOverflowViolations } from "./find-overflow-violations.ts";
 import {
@@ -11,19 +11,21 @@ import {
 import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
 import { gotoThroughRestart } from "./server-restart.ts";
 
-// Baseline-diff, not zero-tolerance: this app has pre-existing, already-tracked
-// overflow bugs (#3930, #3931, #3985, etc.) that are separately-scored
-// contributor work, not something this check should force-fix or block on.
-// The baseline is a snapshot of KNOWN violations at the time it was last
-// regenerated; this test fails only on a NEW element escaping the viewport
-// that isn't already in that snapshot -- converting "a human might notice a
-// new regression by luck" into "CI always catches it," without also making
-// every apps/ui PR red until the existing backlog is cleared.
+// ZERO TOLERANCE: nothing may escape the viewport, at any of the four widths.
 //
-// Regenerate after intentionally fixing (shrinks it) or after confirming a
-// new entry is an accepted layout choice, not a bug (grows it) --
-// `npm run test:e2e:update-baseline --workspace=apps/ui`. Don't hand-edit;
-// let the script keep it consistent with the real detector output.
+// This was a baseline diff for two years. The app carried pre-existing overflow
+// bugs (#3930, #3931, #3985) that were separately-scored contributor work, so
+// the check compared against a snapshot of KNOWN violations and failed only on
+// a NEW one -- which caught regressions without making every apps/ui PR red
+// until the backlog cleared.
+//
+// The backlog cleared. The v2 rebuild (#11604) emptied
+// `overflow-baseline.json` completely: 76 route@width keys, every one of them
+// an empty array. A baseline that grants nothing is not a baseline, and keeping
+// the file would leave `test:e2e:update-baseline` standing as a way to make a
+// real overflow bug pass by re-recording it -- the one escape hatch this gate
+// must not have. Both are deleted; the assertion is now `toEqual([])` against
+// the detector's raw output.
 //
 // Deterministic by design: every route replays a HAR fixture
 // (tests/e2e/har/*.har, recorded via `npm run test:e2e:record-har`) instead
@@ -36,9 +38,6 @@ import { gotoThroughRestart } from "./server-restart.ts";
 // Re-record the HAR (in addition to the baseline, if the DOM also changed)
 // whenever a route's real API surface changes -- a stale HAR aborts/falls
 // back predictably rather than silently drifting.
-const BASELINE_PATH = new URL("./overflow-baseline.json", import.meta.url);
-const baseline: Record<string, string[]> = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
-
 function fingerprint(v: { tag: string; cls: string }): string {
   return `${v.tag}:${v.cls}`;
 }
@@ -174,14 +173,13 @@ for (const route of ROUTES) {
         }
 
         const violations = await page.evaluate(findOverflowViolations, viewport.width);
-        const found = new Set(violations.map(fingerprint));
-        const known = new Set(baseline[`${route}@${viewport.width}`] ?? []);
-        const newViolations = [...found].filter((f) => !known.has(f));
+        const escaping = [...new Set(violations.map(fingerprint))];
 
         expect(
-          newViolations,
-          newViolations.length
-            ? `${route} at ${viewport.width}px: ${newViolations.length} new element(s) escaping the viewport, not in the known baseline: ${newViolations.join(", ")}. If this is confirmed intentional (not a bug), regenerate the baseline; otherwise this is a real regression.`
+          escaping,
+          escaping.length
+            ? `${route} at ${viewport.width}px: ${escaping.length} element(s) escape the viewport: ` +
+                `${escaping.join(", ")}. Fix the layout -- there is no baseline to record this into.`
             : "",
         ).toEqual([]);
       });

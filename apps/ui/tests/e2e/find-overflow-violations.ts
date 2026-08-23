@@ -1,7 +1,8 @@
-// Plain JS (not .ts): imported both by the Playwright test (via its
-// TS-aware runner) and by generate-overflow-baseline.ts (run with plain
-// `node`, no TypeScript loader) -- keeping one shared implementation instead
-// of two copies that could drift.
+// Extracted rather than inlined into the spec: this ran in two callers until
+// #11678 deleted `generate-overflow-baseline.ts` with the baseline itself, and
+// it stays a module because the browser-side contract below (self-contained,
+// serializable) is worth stating once in a file of its own rather than burying
+// in a `page.evaluate` argument.
 //
 // Runs inside the browser via page.evaluate -- must be self-contained (no
 // closures over outer-scope variables) so Playwright can serialize it.

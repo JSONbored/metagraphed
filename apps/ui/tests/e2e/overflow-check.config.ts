@@ -1,5 +1,5 @@
-// Shared between responsive-overflow.spec.ts and generate-overflow-baseline.ts
-// so the two can't silently drift apart.
+// Shared between responsive-overflow.spec.ts and token-inventory.spec.ts so
+// the two sweeps can't silently disagree about which routes exist.
 //
 export const ROUTES = [
   "/",
