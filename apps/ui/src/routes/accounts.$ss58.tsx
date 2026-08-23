@@ -1,4 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { z } from "zod";
+import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
@@ -13,31 +15,24 @@ import { ogImageMeta } from "@/lib/metagraphed/og-card";
 import { accountQuery } from "@/lib/metagraphed/queries";
 import { AccountDetailPage } from "./-accounts-ss58-page";
 
-type SearchParams = {
-  // #8358: the detail-page template's tab strip, same key/shape as
-  // subnets.$netuid.tsx's `tab`.
-  tab?: string;
-  // Paginated /events feed controls (#266). Prefixed so they never collide with
-  // other future per-account search params.
-  ev_kind?: string;
-  ev_limit?: number;
-  ev_offset?: number;
-};
+/**
+ * One key: the window the Flow section totals over.
+ *
+ * The tab strip and the three `ev_*` feed controls went with the UI that read
+ * them (#11614) -- the events feed is one infinite table with a kind filter
+ * now, and its paging is a cursor the URL never carried. `validateSearch`
+ * REPLACES the search object, so a key with no reader is dropped on the next
+ * parse rather than sitting inert.
+ */
+export const accountSearchSchema = z.object({
+  window: z.enum(TRAILING_WINDOWS).catch("30d").default("30d"),
+});
 
-const EVENTS_LIMITS = [25, 50, 100, 200] as const;
-export const DEFAULT_EVENTS_LIMIT = 25;
+export type SearchParams = z.infer<typeof accountSearchSchema>;
 
 export const Route = createFileRoute("/accounts/$ss58")({
-  validateSearch: (s: Record<string, unknown>): SearchParams => {
-    const limitNum = Number(s.ev_limit);
-    const offsetNum = Number(s.ev_offset);
-    return {
-      tab: typeof s.tab === "string" ? s.tab : undefined,
-      ev_kind: typeof s.ev_kind === "string" && s.ev_kind ? s.ev_kind : undefined,
-      ev_limit: (EVENTS_LIMITS as readonly number[]).includes(limitNum) ? limitNum : undefined,
-      ev_offset: Number.isInteger(offsetNum) && offsetNum > 0 ? offsetNum : undefined,
-    };
-  },
+  validateSearch: accountSearchSchema,
+  search: { middlewares: [stripDefaultSearchParams(accountSearchSchema)] },
   // #6429: validate the ss58 at the router level, matching blocks.$ref.tsx
   // (#3422) and subnets.$netuid.tsx. parseParams runs before head()/the loader,
   // so an invalid address renders the real not-found boundary instead of a

@@ -2,22 +2,48 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// #8818: Positions KPI must not fabricate "0" / "no positions" from a failed
-// accountPortfolioQuery. Node-environment source assertions (same convention
-// as subnets-total-stake-tile.test.ts).
+// #8818: the Positions figure must not fabricate "0" from a query that has
+// not answered. Zero positions and an unresolved read are opposite facts
+// about an account, and `?? 0` renders them identically.
+//
+// #11614 rebuilt the page, so the specific machinery this pinned -- an
+// `AsyncPanel`, a `statPhase` ternary, a `StatUnavailable` tile -- is gone.
+// The property is not: every hero figure derived from the positions read
+// resolves to null, and renders as a dash, until that read lands.
+//
+// Source assertions rather than a render: the page composes TanStack
+// Router/Query context a node-environment test cannot stand up.
 const source = readFileSync(
   fileURLToPath(new URL("./-accounts-ss58-page.tsx", import.meta.url)),
   "utf8",
 );
 
-describe("accounts.$ss58 Positions KPI (#8818)", () => {
-  it("no longer fabricates position_count via ?? 0", () => {
-    expect(source).not.toContain("portfolio?.position_count ?? 0");
+describe("#8818 the /accounts figures never fabricate a zero", () => {
+  it("derives every positions figure from one nullable read", () => {
+    expect(source).toContain("const held = positions.data?.data.positions ?? null;");
+    expect(source).toMatch(/const staked = held \? held\.reduce/);
+    expect(source).toMatch(/const subnetCount = held \?/);
+    expect(source).toContain("const positionCount = positions.data?.data.position_count ?? null;");
   });
 
-  it("phases the Positions tile through statPhase + StatUnavailable", () => {
-    expect(source).toContain("statPhase(portfolioResult)");
-    expect(source).toContain("portfolioPhase");
-    expect(source).toContain("StatUnavailable");
+  it("renders a dash for an unresolved count, not a number", () => {
+    expect(source).toContain('positionCount === null ? "—"');
+    expect(source).toContain('subnetCount === null ? "—"');
+  });
+
+  it("never coerces a positions field to zero", () => {
+    for (const fabricated of [
+      "position_count ?? 0",
+      "positions ?? []",
+      "portfolio?.position_count ?? 0",
+    ]) {
+      expect(source, `${fabricated} fabricates a figure`).not.toContain(fabricated);
+    }
+  });
+
+  it("states the scan cap rather than printing a capped count as a total", () => {
+    // Above the cap the summary describes the scanned prefix; printing it as
+    // a total understates a whale by an unknown amount.
+    expect(source).toContain("scanCapped ? `> ${formatNumber(EVENT_SCAN_CAP)}`");
   });
 });
