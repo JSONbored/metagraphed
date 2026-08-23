@@ -443,10 +443,20 @@ export function EndpointsPage() {
                 </FilterSelect>
               </FilterField>
             }
-            empty="No endpoint incidents are open."
+            empty={
+              search.incidents === "open"
+                ? "No endpoint incidents are open."
+                : "No endpoint incidents have been recorded."
+            }
           />
         }
-        footnote={`${formatNumber(openIncidents.length)} open · probe-derived`}
+        footnote={
+          incidentList.length === openIncidents.length
+            ? `${formatNumber(openIncidents.length)} recorded, all still open · probe-derived`
+            : `${formatNumber(openIncidents.length)} open of ${formatNumber(
+                incidentList.length,
+              )} recorded · probe-derived`
+        }
       />
 
       {/* #11320: below the data on purpose -- see hub-prose.tsx. */}

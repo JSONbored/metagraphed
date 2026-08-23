@@ -93,6 +93,8 @@ export function WatchlistPortability() {
           ref={fileRef}
           type="file"
           accept="application/json,.json"
+          aria-label="Import a watchlist JSON file"
+          tabIndex={-1}
           className="sr-only"
           onChange={(e) => {
             const file = e.target.files?.[0];

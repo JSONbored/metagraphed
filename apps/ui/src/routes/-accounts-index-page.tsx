@@ -3,20 +3,17 @@ import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-quer
 import {
   AnalyticsPage,
   AnalyticsSection,
-  CompositionBreakdown,
   DataTable,
   EntityHero,
   Fact,
   FactSentence,
   LeaderCards,
   RangeControl,
-  RankGrid,
   RESIDUAL_KEY,
   Raw,
   type DataTableColumn,
   type FactCells,
   type FactNodes,
-  type RankGridItem,
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -71,7 +68,7 @@ export function AccountsPage() {
 
   const accounts = byStake.data.accounts;
   const { segments, listedTotal } = useMemo(() => concentrationSegments(accounts, 10), [accounts]);
-  const cards = holderCards(ranked.data?.data.accounts ?? accounts, metric);
+  const cards = holderCards(ranked.data?.data.accounts ?? accounts, metric, 18, listedTotal);
   const active = useMemo(() => activeRows(signers.data?.data.signers ?? []), [signers.data]);
   const shownActive = useMemo(() => {
     const query = signerQuery.trim().toLowerCase();
@@ -111,14 +108,6 @@ export function AccountsPage() {
     { label: "Top 10 share", value: topShare === null ? "—" : `${formatPct(topShare, 1)}` },
     { label: "Signers 7d", value: formatNumber(active.length) },
   ];
-
-  const legend: RankGridItem[] = segments.map((segment) => ({
-    key: segment.key,
-    label: segment.label,
-    value: fmtTaoCompact(segment.value),
-    share: listedTotal > 0 ? `${formatPct(segment.value / listedTotal, 1)}` : undefined,
-    href: segment.href,
-  }));
 
   const activeColumns: DataTableColumn<ActiveRow>[] = [
     { key: "signer", label: "Account", kind: "identifier", value: (row) => row.signer },
@@ -190,34 +179,9 @@ export function AccountsPage() {
               />
             ) : null
           }
-          footnote={`top ${formatNumber(LISTED)} by ${metric} · chain-direct index`}
-        />
-        <AnalyticsSection
-          id="concentration"
-          name="Concentration"
-          question="How much of the listed stake the largest accounts hold."
-          visual={
-            segments.length > 0 ? (
-              <CompositionBreakdown
-                segments={segments}
-                formatValue={(value) => fmtTaoCompact(value)}
-                legendCols={5}
-                ariaLabel="Stake share of the largest listed accounts"
-                source="account-holder"
-              />
-            ) : null
-          }
-          legend={
-            legend.length > 0 ? (
-              <RankGrid items={legend} cols={5} ariaLabel="Listed accounts by stake" />
-            ) : null
-          }
-          // The denominator is stated because it is not the network: this reads
-          // the top-20 slice, and calling a share of it a share of all stake
-          // would overstate every segment by the whole untabulated tail.
-          footnote={`shares of the ${fmtTaoCompact(listedTotal)} held by the ${formatNumber(
-            accounts.length,
-          )} listed accounts, not of all stake`}
+          footnote={`top ${formatNumber(LISTED)} by ${metric} · shares are of the ${fmtTaoCompact(
+            listedTotal,
+          )} these ${formatNumber(accounts.length)} hold, not of all stake · chain-direct index`}
         />
         <AnalyticsSection
           id="active"

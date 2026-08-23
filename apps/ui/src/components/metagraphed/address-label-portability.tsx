@@ -87,6 +87,8 @@ export function AddressLabelPortability() {
           ref={fileRef}
           type="file"
           accept="application/json,.json"
+          aria-label="Import an address-label JSON file"
+          tabIndex={-1}
           className="sr-only"
           onChange={(e) => {
             const file = e.target.files?.[0];
