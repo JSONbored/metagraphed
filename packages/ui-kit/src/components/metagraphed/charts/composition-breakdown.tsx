@@ -5,6 +5,7 @@ import { RankGrid, type RankGridItem } from "./rank-grid";
 import {
   collapseOther,
   OTHER_KEY,
+  RESIDUAL_KEY,
   SeriesPaletteRegistry,
 } from "./series-palette";
 
@@ -52,7 +53,17 @@ export function CompositionBreakdown({
   const own = useRef<SeriesPaletteRegistry | null>(null);
   if (!registry && !own.current) own.current = new SeriesPaletteRegistry();
   const reg = registry ?? own.current!;
-  const ordered = [...segments].sort((a, b) => b.value - a.value);
+  // Largest first, EXCEPT a caller-supplied residual, which is pinned last
+  // however large it is. A residual is not a peer of the named segments: it
+  // is what is left after them, and sorting it by value put "595 more
+  // operators" at rank 01 of a concentration chart -- the reading the chart
+  // exists to give, stated backwards (#11616).
+  const isResidual = (key: string) => key === OTHER_KEY || key === RESIDUAL_KEY;
+  const ordered = [...segments].sort((a, b) => {
+    if (isResidual(a.key) !== isResidual(b.key))
+      return isResidual(a.key) ? 1 : -1;
+    return b.value - a.value;
+  });
   const keep = limit === undefined ? ordered : ordered.slice(0, limit);
   reg.assign(keep.map((s) => s.key));
   const palette = reg.palette();
@@ -64,7 +75,10 @@ export function CompositionBreakdown({
     active && shown.some((s) => s.key === active.key) ? active.key : null;
   const legend: RankGridItem[] = shown.map((s) => ({
     key: s.key,
-    label: s.key === OTHER_KEY ? other : s.label,
+    // collapseOther already decided this: a caller's residual keeps its own
+    // label and the ramp's collapse takes the `other` prop. Re-deciding here
+    // overwrote the caller's label with "Other".
+    label: s.label,
     value: formatValue(s.value),
     share:
       total > 0 ? `${Math.round((s.value / total) * 1000) / 10}%` : undefined,
@@ -96,7 +110,7 @@ export function CompositionBreakdown({
                 source,
                 element: barRef.current,
                 data: {
-                  title: s.key === OTHER_KEY ? other : s.label,
+                  title: s.label,
                   total: formatValue(s.value),
                 },
               });

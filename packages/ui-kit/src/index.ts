@@ -197,6 +197,7 @@ export {
   CHART_RAMP_SIZE,
   OTHER_COLOR,
   OTHER_KEY,
+  RESIDUAL_KEY,
   SeriesPaletteRegistry,
   collapseOther,
   type SeriesPalette,

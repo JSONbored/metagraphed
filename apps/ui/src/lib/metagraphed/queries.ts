@@ -8391,22 +8391,58 @@ export const validatorsQuery = ({
   sort = "subnet_count",
   limit = 20,
   subnets = true,
-}: { sort?: GlobalValidatorSort; limit?: number; subnets?: boolean } = {}) =>
+  identity = true,
+}: {
+  sort?: GlobalValidatorSort;
+  limit?: number;
+  subnets?: boolean;
+  /**
+   * Keep the whole `coldkey_identity` object, or narrow it to the two fields
+   * a ranked list reads.
+   *
+   * Same cost and same fix as `subnets` above: the identity carries nine
+   * fields (url, github, image, discord, description, additional, captured_at
+   * beyond the name), most of them null and none of them rendered by a hub
+   * that only needs "does this key declare a brand, and what is it". Across
+   * 1,036 keys that was ~150 KB of the ~1,390 KiB /validators inlines as SSR
+   * dehydration (#11616).
+   */
+  identity?: boolean;
+} = {}) =>
   queryOptions({
-    queryKey: k("global-validators", sort, limit, subnets),
+    queryKey: k("global-validators", sort, limit, subnets, identity),
     queryFn: async ({ signal }) => {
       const res = await apiFetch<Partial<GlobalValidators>>("/api/v1/validators", {
         params: { sort, limit },
         signal,
       });
       const data = normalizeGlobalValidators(res.data);
-      return {
-        data: subnets
+      const projected =
+        subnets && identity
           ? data
-          : { ...data, validators: data.validators.map((v) => ({ ...v, subnets: [] })) },
-        meta: res.meta,
-        url: res.url,
-      } as ApiResult<GlobalValidators>;
+          : {
+              ...data,
+              validators: data.validators.map((v) => ({
+                ...v,
+                ...(subnets ? {} : { subnets: [] }),
+                ...(identity || v.coldkey_identity === null
+                  ? {}
+                  : {
+                      coldkey_identity: {
+                        has_identity: v.coldkey_identity.has_identity,
+                        name: v.coldkey_identity.name,
+                        url: null,
+                        github: null,
+                        image: null,
+                        discord: null,
+                        description: null,
+                        additional: null,
+                        captured_at: null,
+                      },
+                    }),
+              })),
+            };
+      return { data: projected, meta: res.meta, url: res.url } as ApiResult<GlobalValidators>;
     },
     staleTime: STALE_SHORT,
   });

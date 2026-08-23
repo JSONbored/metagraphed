@@ -1,6 +1,7 @@
 /**
  * The derivations behind /accounts (#11615).
  */
+import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import type { AccountListEntry, ChainSignerEntry } from "@/lib/metagraphed/types";
 
 export type HolderMetric = "stake" | "emission" | "reach";
@@ -112,7 +113,7 @@ export function concentrationSegments(
   }));
   if (tail.length > 0) {
     segments.push({
-      key: "rest",
+      key: RESIDUAL_KEY,
       label: `${tail.length} more listed`,
       value: tail.reduce((acc, row) => acc + row.stake, 0),
     });

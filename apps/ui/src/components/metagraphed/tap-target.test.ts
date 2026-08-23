@@ -12,7 +12,7 @@ const css = readFileSync(
   "utf8",
 );
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
-const validators = read("../../routes/-validators-index-page.tsx");
+const compareToggles = read("./compare-toggle.tsx");
 
 describe("mg-tap-target (#8254)", () => {
   it("expands the hit area to 44px without changing the painted size", () => {
@@ -33,7 +33,7 @@ describe("mg-tap-target (#8254)", () => {
     );
   });
 
-  it("is applied to every watchlist star, the densest undersized control we ship", () => {
+  it("is applied to every compare checkbox, the densest undersized control we ship", () => {
     // #11610 removed the hand-written mobile card branch from both index
     // pages -- DataTable renders one DOM in every mode, so there is no longer
     // a second, card-only star for the same row. Counting render paths would
@@ -41,21 +41,28 @@ describe("mg-tap-target (#8254)", () => {
     // watchlist toggle in these files carries the utility, however many the
     // page happens to render.
     //
-    // /subnets dropped out of this list in #11613: its directory carries the
-    // columns that decide between subnets and nothing else, and following one
-    // is an action you take on the subnet's own page. /validators still ships
-    // the control, so the assertion still has a subject -- the guard below
-    // fails loudly if that stops being true.
-    const watchToggles = (src: string) =>
-      [...src.matchAll(/<button[\s\S]{0,900}?<\/button>/g)]
-        .map((match) => match[0])
-        .filter((button) => /aria-label=\{[\s\S]*?watchlist/.test(button));
-    for (const [name, src] of [["validators", validators]] as const) {
-      const toggles = watchToggles(src);
-      // Guard the guard: a rename of the aria-label would otherwise empty the
-      // set and pass on nothing.
-      expect(toggles.length, `${name} renders no watchlist toggle`).toBeGreaterThan(0);
-      for (const toggle of toggles) expect(toggle).toContain("mg-tap-target");
+    // Both index pages dropped the star: /subnets in #11613 and /validators in
+    // #11616. Watching an entity is an action you take on its own page, where
+    // there is room for the affordance and only one of it.
+    //
+    // The subject moved rather than vanished. The densest undersized control
+    // the app still ships is the compare checkbox -- one per row on both index
+    // tables -- so that is what this now holds to the 44px rule.
+    // Slice from each `<button` rather than regexing to its closing `>`: an
+    // attribute value can itself contain a `>` (a ternary, a JSX arrow), and a
+    // lazy match stops there and never reaches the className.
+    const buttons = [...compareToggles.matchAll(/<button/g)].map((match) =>
+      compareToggles.slice(match.index, match.index + 500),
+    );
+    // Guard the guard: a rewrite that stopped rendering a button would
+    // otherwise empty the set and pass on nothing.
+    expect(buttons.length, "compare-toggle renders no button").toBeGreaterThan(0);
+    for (const button of buttons) {
+      expect(button).toContain("mg-compare-toggle");
+      expect(button).toContain("mg-tap-target");
     }
+    // And the class carries the hit slop, in the sheet rather than per call site.
+    expect(css).toMatch(/\.mg-compare-toggle \{[^}]*width: 16px/);
+    expect(css).toContain(".mg-tap-target::after");
   });
 });
