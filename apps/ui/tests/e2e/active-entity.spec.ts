@@ -68,10 +68,16 @@ test.describe("active entity", () => {
 
   test("exactly one mark per group is tabbable at rest", async ({ page }) => {
     await open(page);
-    const tabbable = await page
-      .locator('[data-testid="entity-demo"] [data-marks] [data-entity][tabindex="0"]')
-      .count();
-    expect(tabbable).toBe(1);
+    // Polled, like every other assertion in this file. `tabindex` is written by
+    // `useRovingGroup` during hydration, so a bare `count()` immediately after
+    // navigation races it and reads 0 on a slow machine -- which is what CI did
+    // once #11678 split the specimens into three modules and added two chunks
+    // to the page's hydration. The contract being tested is "at rest, exactly
+    // one", not "within one tick of navigation".
+    const tabbable = page.locator(
+      '[data-testid="entity-demo"] [data-marks] [data-entity][tabindex="0"]',
+    );
+    await expect.poll(() => tabbable.count()).toBe(1);
   });
 
   test("Enter on a focused mark activates it", async ({ page }) => {
