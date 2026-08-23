@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.JSONbored/metagraphed",
-  "title": "metagraphed \u2014 Bittensor in a box",
-  "description": "Bittensor in a box: the live operational + integration registry for every subnet \u2014 discover, verify, call, and screen subnet APIs, schemas, health, and economics through one MCP server.",
-  "version": "1.78.22",
+  "title": "metagraphed — Bittensor in a box",
+  "description": "Bittensor in a box: the live operational + integration registry for every subnet — discover, verify, call, and screen subnet APIs, schemas, health, and economics through one MCP server.",
+  "version": "1.78.23",
   "websiteUrl": "https://metagraph.sh",
   "repository": {
     "url": "https://github.com/JSONbored/metagraphed",
