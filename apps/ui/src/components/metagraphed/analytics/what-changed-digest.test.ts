@@ -69,7 +69,7 @@ describe("buildDigestItems (#8257)", () => {
     expect(items).toEqual([]);
   });
 
-  it("deep-links an identity change to its subnet and a runtime upgrade to /chain/runtime", () => {
+  it("deep-links an identity change to its subnet and a runtime upgrade to the chain section", () => {
     const items = buildDigestItems(
       sources({
         identity: [
@@ -85,7 +85,12 @@ describe("buildDigestItems (#8257)", () => {
     );
     const identity = items.find((i) => i.kind === "identity");
     expect(identity?.href).toEqual({ to: "/subnets/$netuid", params: { netuid: "8" } });
-    expect(items.find((i) => i.kind === "runtime")?.href).toEqual({ to: "/chain/runtime" });
+    // /chain, not /chain/runtime: #11619 retired that route, and a digest that
+    // deep-linked it would hand the reader a 301 on every runtime upgrade.
+    expect(items.find((i) => i.kind === "runtime")?.href).toEqual({
+      to: "/chain",
+      hash: "governance",
+    });
   });
 
   it("marks an unresolved incident ongoing and a resolved one resolved", () => {

@@ -244,17 +244,21 @@ export const HUB_COPY = {
     // more people search it — extrinsics stays in the description.
     title: `Bittensor block explorer — blocks & events${BRAND}`,
     description:
-      "The Bittensor chain at a glance — blocks, extrinsics, events, daily activity, fees and " +
-      "call mix, computed live from the chain-direct tiers.",
+      "The Bittensor chain at a glance — throughput, fees, stake flow, who signs it, where each " +
+      "block's emission lands and what root origin changed. Computed live.",
     intro: {
       lede: {
         heading: "The Bittensor chain at a glance",
-        body: "Blocks, extrinsics and events as they are produced, plus the daily rollups underneath: activity, fees, call mix and the accounts moving the most. Computed live from the chain-direct tiers rather than a cached summary.",
+        body: "Six readings of one chain: how much it is processing, what that costs, where stake is moving, how few accounts sign it, where each block's emission lands after the gate, and what the root origin changed. Computed live from the chain-direct tiers rather than a cached summary. Blocks, extrinsics and events are the streams underneath.",
       },
       sections: [
         {
           heading: "Blocks, extrinsics and events",
           body: "A block is a batch of state transitions. An extrinsic is a call submitted to the chain — a transfer, a registration, a weight update. Events are what the runtime emitted while executing them, which is where the outcome of a call actually shows up. Most questions about what happened are event questions.",
+        },
+        {
+          heading: "Published share is not paid share",
+          body: "A subnet's emission share is what it would receive; the gate decides what it does receive. Between the two sit a weighting and the gate itself, and a subnet reaches zero by three separate routes: never eligible to emit, eligible with emission switched off, or eligible and enabled but weighted to nothing before the gate ever sees it. Ranking by the published figure puts a subnet that is paid nothing above one that is paid, which is the gate stated backwards.",
         },
         {
           heading: "Depth and freshness",

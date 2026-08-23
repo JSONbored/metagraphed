@@ -4,9 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AsyncPanel, PanelSkeleton } from "@/components/metagraphed/primitives";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
+  EntityHero,
+  FactSentence,
   TimeAgo,
   CopyableCode,
   BackToTop,
@@ -41,9 +44,32 @@ function blocksQueryParams(search: BlocksSearch): Record<string, string | number
   return queryParams;
 }
 
+/**
+ * The chain-hub layout used to supply this page's shell: `AppShell`, the
+ * `EntityHero` and the nine-tab strip all rendered once in chain.tsx, and
+ * every stream page returned a bare fragment into its `<Outlet />`. #11619
+ * emptied that layout -- four of the tabs are sections of /chain now, and a
+ * tab strip whose tabs are anchors on the page below it is two navigations
+ * for one destination -- so each remaining stream page owns its own shell.
+ *
+ * Self-contained rather than a smaller shared layout on purpose: three pages
+ * is not enough shape to name a layer, and a layout that exists only to hold
+ * a heading is the thing that just came out. The crumb back to /chain is the
+ * whole of what the tab strip was actually load-bearing for.
+ */
 export function BlocksPage() {
   return (
-    <>
+    <AppShell>
+      <EntityHero
+        crumbs={[{ label: "Chain", href: "/chain" }]}
+        name="Blocks"
+        sentence={
+          <FactSentence>
+            Recent blocks indexed directly from the chain — newest first, with author, extrinsic and
+            event counts.
+          </FactSentence>
+        }
+      />
       <AsyncPanel
         context="Live block rail"
         retryQueryKeys={[metagraphedQueryKey("blocks"), metagraphedQueryKey("chain-activity")]}
@@ -76,7 +102,7 @@ export function BlocksPage() {
         artifacts={["/metagraph/blocks.json", "/metagraph/blocks/summary.json"]}
       />
       <BackToTop />
-    </>
+    </AppShell>
   );
 }
 

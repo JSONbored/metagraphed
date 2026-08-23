@@ -1,35 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
-import { z } from "zod";
-import { ChainEmissionsPage } from "./-chain-emissions-page";
-import { EMISSION_SORT_KEYS } from "@/lib/metagraphed/emission-pipeline";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-// Filter/sort state lives in the URL so a specific view of the decomposition
-// ("the subnets the gate took the most from") is shareable — the same reason
-// /chain/governance puts its `view` toggle there.
-const emissionsSearchSchema = z.object({
-  state: z.enum(["all", "eligible", "disabled", "ineligible"]).catch("all").default("all"),
-  sort: z.enum(EMISSION_SORT_KEYS).catch("final_share").default("final_share"),
-  dir: z.enum(["asc", "desc"]).catch("desc").default("desc"),
-  limit: z.number().int().min(1).max(200).catch(50).default(50),
-  netuid: z.string().catch("").default(""),
-});
-
-export type EmissionsSearch = z.infer<typeof emissionsSearchSchema>;
-
-const DESCRIPTION =
-  "Where each block's TAO goes: every Bittensor subnet's emission share decomposed from price share through the miner-burn weighting and the gate, plus the split between pool liquidity injection and chain buys.";
-
+/**
+ * /chain/emissions retired into the /chain emission section (#11619).
+ *
+ * The tab decomposed where each block's TAO goes, per subnet. That is a fact
+ * about the chain in the same sense as its fees and its throughput, and the
+ * rebuilt /chain says so by drawing it as one of its sections rather than as
+ * a page a reader had to know existed.
+ *
+ * A permanent redirect rather than a deletion: this URL is in the sitemap, in
+ * llms.txt, and in whatever agents and inbound links already point at it, so
+ * deleting the route would answer them with a 404 instead of the page that now
+ * holds the answer. 301 and not the framework's 307 default because the route
+ * is RETIRED rather than temporarily moved — a temporary redirect tells a
+ * search engine to keep the old URL and re-check it forever, while a permanent
+ * one transfers the signals to /chain and lets the old URL drop out.
+ *
+ * None of `state`, `sort`, `dir`, `limit` or `netuid` is forwarded: every one
+ * of them named a column or a filter of the per-subnet pipeline table, and that
+ * table is not what the section draws. Carrying them over would put state on
+ * /chain that nothing there can read.
+ */
 export const Route = createFileRoute("/chain/emissions")({
-  validateSearch: emissionsSearchSchema,
-  search: { middlewares: [stripDefaultSearchParams(emissionsSearchSchema)] },
-  head: () => ({
-    meta: [
-      { title: "Emissions — Metagraphed" },
-      { name: "description", content: DESCRIPTION },
-      { property: "og:title", content: "Emissions — Metagraphed" },
-      { property: "og:description", content: DESCRIPTION },
-    ],
-  }),
-  component: ChainEmissionsPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/chain", hash: "emission", replace: true, statusCode: 301 });
+  },
 });

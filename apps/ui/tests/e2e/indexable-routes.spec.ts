@@ -41,8 +41,6 @@ const MUST_BE_200 = [
   "/chain/blocks",
   "/chain/extrinsics",
   "/chain/events",
-  "/chain/governance",
-  "/chain/runtime",
   "/health",
   "/status",
   "/contribute",
@@ -67,14 +65,18 @@ const MUST_BE_301: ReadonlyArray<readonly [from: string, to: string, carries?: s
   ["/blocks", "/chain/blocks"],
   ["/events", "/chain/events"],
   ["/extrinsics", "/chain/extrinsics"],
-  ["/runtime", "/chain/runtime"],
+  // #11619: /runtime redirects PAST the retired /chain/runtime, not into it.
+  // Chaining 301s costs a hop on every crawl and every share-card fetch, and
+  // Google follows at most five before giving up on the URL entirely.
+  ["/runtime", "/chain", "#governance"],
   ["/schemas", "/apis/schemas"],
   ["/surfaces", "/apis"],
   ["/endpoints", "/apis/endpoints"],
   ["/providers", "/apis/providers"],
   ["/gaps", "/contribute"],
   ["/portfolio", "/accounts"],
-  ["/sudo", "/chain/governance"],
+  ["/sudo", "/chain", "#governance"],
+  ["/admin-changes", "/chain", "#governance"],
   ["/tools/ss58", "/accounts"],
   // #11613 folded five more routes into the rebuilt /subnets index. Each one
   // ranked, faceted or grouped subnets, which is what that page now does in
@@ -86,6 +88,14 @@ const MUST_BE_301: ReadonlyArray<readonly [from: string, to: string, carries?: s
   ["/subnets/category", "/subnets", "#domains"],
   ["/subnets/category/inference", "/subnets", "domain=inference"],
   ["/subnets/with-api", "/subnets", "api=true"],
+  // #11619 folded four chain tabs into the rebuilt /chain. Each one was a
+  // reading OF the chain that the page now draws as a section, so each keeps
+  // its inbound links by landing on that section rather than on the top of a
+  // six-section page with the question dropped.
+  ["/chain/analytics", "/chain", "#stake-flow"],
+  ["/chain/emissions", "/chain", "#emission"],
+  ["/chain/governance", "/chain", "#governance"],
+  ["/chain/runtime", "/chain", "#governance"],
 ];
 
 test.describe("#11204 indexable routes answer, retired routes redirect permanently", () => {
@@ -117,6 +127,31 @@ test.describe("#11204 indexable routes answer, retired routes redirect permanent
           `${from} redirects to the right page but drops the ${carries} it was retired into`,
         ).toContain(carries);
       }
+    });
+  }
+
+  // ONE HOP, and the table above cannot prove it on its own (#11619).
+  //
+  // Every row asserts the first response. A destination that is ITSELF retired
+  // still passes every one of them: the status is 301, the pathname is what the
+  // row named, and the fragment is carried — the reader just arrives one hop
+  // later than the row claims. That is not hypothetical. /runtime, /sudo and
+  // /admin-changes each pointed at a /chain tab that #11619 retired, so leaving
+  // them alone would have built exactly that chain, and each hop bleeds a
+  // little of what the 301 exists to pass on. Google gives up after five.
+  //
+  // Derived from MUST_BE_301 rather than listed, so a retirement pointed at a
+  // redirect fails the moment it is added instead of when someone re-reads the
+  // table.
+  for (const to of [...new Set(MUST_BE_301.map(([, destination]) => destination))]) {
+    test(`${to} is a destination, not another hop`, async ({ request }) => {
+      const response = await request.get(to, { maxRedirects: 0 });
+      expect(
+        response.status(),
+        `${to} is the target of a retired route but answers ` +
+          `${response.status()} -> ${response.headers()["location"] ?? "(no location)"}. ` +
+          `Repoint every route that names it at the page that actually renders.`,
+      ).toBe(200);
     });
   }
 });

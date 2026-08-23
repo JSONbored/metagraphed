@@ -77,7 +77,12 @@ const BASE_URL = process.env.BASE_URL ?? "http://localhost:8080";
  * those is a chance for the overflow baseline to shift for reasons unrelated
  * to the change.
  *
- *   RECORD_ROUTES='/chain/analytics;/status' npm run test:e2e:record-har --workspace=apps/ui
+ *   RECORD_ROUTES='/chain;/status' npm run test:e2e:record-har --workspace=apps/ui
+ *
+ * The example named /chain/analytics until #11619 retired it into /chain. A
+ * usage line has to name a route the sweep still visits: `only` is checked
+ * against ROUTES and throws on anything else, so a stale example is a copied
+ * command that fails.
  */
 // Semicolon-separated: a swept route may itself contain a comma
 // (`/compare?subnets=1,19`), which a comma-separated list cannot express.

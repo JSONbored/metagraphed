@@ -8,7 +8,8 @@
 // `.unit.ts` rather than `.test.ts` because playwright.config.ts sets testDir
 // to ./tests/e2e and its default testMatch claims *.test.ts -- see the note in
 // apps/ui/vitest.config.ts.
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ROUTES } from "./overflow-check.config.ts";
 import { harPathForRoute } from "./har-path.ts";
@@ -18,6 +19,7 @@ import {
   harRecordedPaths,
   resolveRouteFile,
   routeFileIndex,
+  ROUTES_DIR,
 } from "./har-coverage.ts";
 
 const index = routeFileIndex();
@@ -57,15 +59,6 @@ const KNOWN_UNCOVERED: Record<string, string[]> = {
   "/chain/blocks": ["/api/v1/blocks/summary", "/api/v1/chain/activity"],
   "/chain/events": ["/api/v1/chain-events/stats"],
   "/chain/extrinsics": ["/api/v1/chain/fees", "/api/v1/extrinsics"],
-  "/chain/analytics": [
-    "/api/v1/chain/concentration",
-    "/api/v1/chain/idle-stake",
-    "/api/v1/chain/stake-flow",
-    "/api/v1/economics",
-    "/api/v1/economics/trends",
-    "/api/v1/validators",
-  ],
-  "/chain/runtime": ["/api/v1/network/parameters", "/api/v1/runtime"],
   // #11615 emptied this: the rebuilt hub reads /api/v1/accounts and
   // /api/v1/chain/signers, and the recorded fixture covers both. The two
   // entries it no longer reads at all -- top-holders and the per-account
@@ -138,7 +131,14 @@ describe("the known-uncovered list can only shrink", () => {
 describe("the detector can fail", () => {
   // A gate nobody has watched fail is a gate nobody knows works. These drive
   // the pure functions over inputs whose answer is known by construction.
-  const fixtureHar = harPathForRoute("/chain/analytics");
+  //
+  // /chain/blocks, which was /chain/analytics until #11619 retired it. The
+  // subject has to be a route whose footer lives in an imported page module,
+  // and it has to keep being one: the ds-v2 rebuilds register their API sources
+  // through `useRegisterApiSource` instead, which this reader cannot see, so a
+  // rebuilt route would leave these three assertions passing over an empty set.
+  const FIXTURE_ROUTE = "/chain/blocks";
+  const fixtureHar = harPathForRoute(FIXTURE_ROUTE);
 
   it("reports a declared path the HAR never recorded", () => {
     const recorded = harRecordedPaths(fixtureHar);
@@ -155,11 +155,15 @@ describe("the detector can fail", () => {
   });
 
   it("reads paths out of a page reached through a local import", () => {
-    // chain.analytics.tsx renders nothing itself -- the footer lives in
-    // -chain-analytics-page.tsx, so a non-recursive reader would see zero
-    // declared paths here and call the fixture complete.
-    const declared = declaredApiPaths(resolveRouteFile("/chain/analytics", index));
-    expect(declared).toContain("/api/v1/chain/concentration");
-    expect(declared.length).toBeGreaterThan(5);
+    // chain.blocks.tsx renders nothing itself -- the footer lives in
+    // -blocks-index-page.tsx, so a non-recursive reader would see zero declared
+    // paths here and call the fixture complete.
+    const routeFile = resolveRouteFile(FIXTURE_ROUTE, index);
+    const routeSource = readFileSync(path.join(ROUTES_DIR, routeFile), "utf8");
+    // The positive control the old form was missing: without it, "found the
+    // paths" would also be true of a route file carrying its own footer, and
+    // the import hop -- the thing under test -- would never be exercised.
+    expect(routeSource).not.toContain("ApiSourceFooter");
+    expect(declaredApiPaths(routeFile)).toContain("/api/v1/blocks/summary");
   });
 });

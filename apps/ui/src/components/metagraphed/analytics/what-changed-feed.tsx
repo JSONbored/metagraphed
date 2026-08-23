@@ -243,7 +243,12 @@ function DigestRow({ item }: { item: DigestItem }) {
   return (
     <li className="group">
       {item.href ? (
-        <Link to={item.href.to} params={item.href.params} className="flex items-start gap-2.5">
+        <Link
+          to={item.href.to}
+          params={item.href.params}
+          hash={item.href.hash}
+          className="flex items-start gap-2.5"
+        >
           {body}
         </Link>
       ) : (
