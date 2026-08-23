@@ -685,6 +685,15 @@
   .mg-section-legend {
     margin-top: 24px;
   }
+  /* What a section says when it has nothing to draw. Deliberately the same
+     size and colour as the footnote: an empty answer is a quiet fact, not an
+     error, and giving it a bordered box would make every sparse window look
+     like a failure. */
+  .mg-section-empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
   .mg-section-note {
     margin: 16px 0 0;
     font-size: 11px;

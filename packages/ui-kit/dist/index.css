@@ -460,6 +460,11 @@
   .mg-section-legend {
     margin-top: 24px;
   }
+  .mg-section-empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
   .mg-section-note {
     margin: 16px 0 0;
     font-size: 11px;

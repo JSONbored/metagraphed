@@ -378,12 +378,13 @@ export function ExplorerPage() {
               />
             ) : null
           }
+          empty="No concentration measure for this window."
           footnote={
             stake
               ? `${formatNumber(stake.holders ?? 0)} holders · Nakamoto ${formatNumber(
                   stake.nakamoto_coefficient ?? 0,
                 )} — the smallest number of holders that together control half the stake · chain-direct`
-              : "concentration unavailable"
+              : undefined
           }
         />
         <AnalyticsSection

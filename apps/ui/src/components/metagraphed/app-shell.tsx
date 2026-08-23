@@ -77,12 +77,25 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
 export function AppShell({
   children,
   fullBleedMain = false,
+  chromeOnly = false,
 }: {
   children: ReactNode;
   // Fumadocs' DocsLayout manages its own full-height sidebar/content grid
   // and expects to control its own padding -- the standard max-w-shell-max
   // + px/py wrapper below would squeeze its sidebar into the content column.
   fullBleedMain?: boolean;
+  /**
+   * Render the chrome without the two lines that read data.
+   *
+   * For the router's error and pending fallbacks (#11686), which render where
+   * no `QueryClientProvider` is in scope: `SourcesLine`'s `useQuery` throws
+   * "No QueryClient set" there, and an error fallback that throws takes the
+   * whole SSR stream down -- every route then answered with the dependency-free
+   * recovery HTML, which is not this design system at all. The header, the nav
+   * and the footer links need no data and are exactly what a reader whose data
+   * failed still needs.
+   */
+  chromeOnly?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -203,15 +216,17 @@ export function AppShell({
                   })}
                 </nav>
                 <div className="flex-1 min-w-0 flex justify-end items-center gap-2">
-                  <NavOmnibox
-                    onOpenPalette={() =>
-                      openPaletteFrom(
-                        document.activeElement instanceof HTMLElement
-                          ? document.activeElement
-                          : null,
-                      )
-                    }
-                  />
+                  {chromeOnly ? null : (
+                    <NavOmnibox
+                      onOpenPalette={() =>
+                        openPaletteFrom(
+                          document.activeElement instanceof HTMLElement
+                            ? document.activeElement
+                            : null,
+                        )
+                      }
+                    />
+                  )}
                   {/* Below md the omnibox is hidden, which would leave the palette
                     reachable only via keyboard shortcuts -- none of which exist
                     on a touch device. */}
@@ -290,7 +305,7 @@ export function AppShell({
               {children}
             </main>
 
-            <SiteFooter />
+            <SiteFooter chromeOnly={chromeOnly} />
             <CommandPalette open={paletteOpen} onOpenChange={handlePaletteOpenChange} />
             <BackToTop />
           </div>
@@ -300,7 +315,7 @@ export function AppShell({
   );
 }
 
-function SiteFooter() {
+function SiteFooter({ chromeOnly }: { chromeOnly: boolean }) {
   return (
     <footer className="mt-24 border-t border-border">
       <div className="max-w-shell-max mx-auto px-4 md:px-10 py-12 grid gap-10 md:grid-cols-5 text-13 text-ink-muted">
@@ -381,12 +396,12 @@ function SiteFooter() {
       </div>
       <div className="border-t border-border">
         <div className="max-w-shell-max mx-auto px-4 md:px-10 py-4 flex flex-col gap-3 text-11 text-ink-muted">
-          <PageSourcesLine />
+          {chromeOnly ? null : <PageSourcesLine />}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span>
               © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
             </span>
-            <SourcesLine />
+            {chromeOnly ? null : <SourcesLine />}
           </div>
         </div>
       </div>
