@@ -8567,6 +8567,12 @@ export const validatorDetailQuery = (hotkey: string) =>
           alpha_stake_tao: firstFiniteNumber(d.alpha_stake_tao) ?? 0,
           total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? 0,
           avg_validator_trust: firstFiniteNumber(d.avg_validator_trust) ?? null,
+          apy_estimate: firstFiniteNumber(d.apy_estimate) ?? null,
+          apy_estimate_eligible_subnet_count:
+            firstFiniteNumber(d.apy_estimate_eligible_subnet_count) ?? 0,
+          realized_return_1d: firstFiniteNumber(d.realized_return_1d) ?? null,
+          realized_return_1w: firstFiniteNumber(d.realized_return_1w) ?? null,
+          realized_return_1m: firstFiniteNumber(d.realized_return_1m) ?? null,
           max_validator_trust: firstFiniteNumber(d.max_validator_trust) ?? null,
           captured_at: firstString(d.captured_at) ?? null,
           block_number: firstFiniteNumber(d.block_number) ?? null,

@@ -2847,6 +2847,17 @@ export interface ValidatorDetail {
   total_emission_tao: number;
   avg_validator_trust: number | null;
   max_validator_trust: number | null;
+  /**
+   * The estimate the LIST already publishes for the same hotkey. It was on
+   * the wire here too and unmapped, so the detail page could only show a
+   * yield by refetching the whole 1,036-row list to find one row (#11617).
+   */
+  apy_estimate: number | null;
+  apy_estimate_eligible_subnet_count: number;
+  /** Realized return over the trailing window, as a fraction. */
+  realized_return_1d: number | null;
+  realized_return_1w: number | null;
+  realized_return_1m: number | null;
   captured_at?: string | null;
   block_number?: number | null;
   subnets: ValidatorDetailSubnet[];

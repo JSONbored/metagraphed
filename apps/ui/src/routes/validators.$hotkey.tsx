@@ -1,5 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
+import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
@@ -16,21 +16,20 @@ import { formatTao } from "@/lib/metagraphed/format";
 import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { validatorDetailQuery } from "@/lib/metagraphed/queries";
 import { ValidatorDetailPage } from "./-validators-hotkey-page";
-import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
-const NOMINATOR_ENUMS = QUERY_PARAMETER_ENUMS["/api/v1/validators/{hotkey}/nominators"];
-
+/**
+ * One key: the window the Momentum section plots.
+ *
+ * The tab strip and the nominator sort/limit/offset controls went with the UI
+ * that read them (#11617) -- the nominators are a rail with one disclosure
+ * now, and the three tabs are three sections on one page. `validateSearch`
+ * REPLACES the search object, so an unread key is dropped on the next parse.
+ */
 const validatorDetailSearchSchema = z.object({
-  // #8251: which detail tab is active (Per-subnet performance / Nominators /
-  // History) — same `tab` convention subnets.$netuid.tsx uses.
-  tab: z.string().catch("subnets").default("subnets"),
-  // The nominators route's own published enums (#10994).
-  window: z.enum(NOMINATOR_ENUMS.window).catch("30d").default("30d"),
-  sort: z.enum(NOMINATOR_ENUMS.sort).catch("net_staked").default("net_staked"),
-  limit: z.number().int().min(1).max(100).catch(20).default(20),
-  offset: z.number().int().min(0).catch(0).default(0),
-  coldkey: z.string().catch("").default(""),
+  window: z.enum(TRAILING_WINDOWS).catch("30d").default("30d"),
 });
+
+export type ValidatorDetailSearch = z.infer<typeof validatorDetailSearchSchema>;
 
 export const Route = createFileRoute("/validators/$hotkey")({
   validateSearch: validatorDetailSearchSchema,

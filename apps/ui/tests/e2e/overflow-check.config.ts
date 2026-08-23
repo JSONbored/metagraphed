@@ -29,6 +29,10 @@ export const ROUTES = [
   "/extrinsics/0x986f1f7da3d93882e8c19bbe3b303ef8ba5454062272446598d17aa599ca4428",
   "/apis/schemas",
   "/validators",
+  // #11617: the validator detail page, the last entity template in the sweep.
+  // A key with 116 memberships and 3,271 nominators, so the widths it stresses
+  // are the ones a real operator page has.
+  "/validators/5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u",
   // #8538: extend the matrix to the Chain hub and its six tab routes. A
   // measurement change, not a fix -- whatever violations these reveal get
   // recorded in the baseline (like the existing entries), never fixed here.

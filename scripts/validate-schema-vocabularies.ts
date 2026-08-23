@@ -89,10 +89,10 @@ const COINCIDENT_BY_DOMAIN: Record<string, string[]> = {
     // writing the set out as an array literal here -- even inside a comment --
     // makes THIS file a declaration site and fails the gate.
     //
-    // The APY basis's overlap with route windows is coincidence, not lineage
-    // (#10994) -- it keeps its own literal deliberately.
+    // The APY basis kept its own literal deliberately (#10994) until #11617
+    // rebuilt that page from blank -- its window control imports the owner
+    // like every other route's now, so this list is down to the owner alone.
     "apps/ui/src/lib/metagraphed/url-state.ts",
-    "apps/ui/src/routes/-validators-hotkey-page.tsx",
     "schemas-src/routes/account-activity-registrations.ts",
     "schemas-src/routes/account-activity.ts",
     "schemas-src/routes/chain-turnover.ts",
