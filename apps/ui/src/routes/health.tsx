@@ -1,22 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
+import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { HealthPage } from "./-health-page";
 
-// Mirrors the Health mega-menu ops deep-links (nav-mega-menu-data.ts
-// `MEGA_PANELS` "health" panel) so `/health?view=...` and `/health?status=...`
-// scroll to a specific section/filter. Public plain-language status lives on
-// `/status` (surfaced from the same panel). `status` also backs the page's own
-// incident-filter chips.
-const HEALTH_VIEWS = ["", "matrix", "incidents", "sources", "freshness"] as const;
-export type HealthView = (typeof HEALTH_VIEWS)[number];
-
-const HEALTH_STATUSES = ["all", "down", "warn", "resolved"] as const;
-export type StateFilter = (typeof HEALTH_STATUSES)[number];
-
+/**
+ * #11625 replaced `view` and `status` with `window` and `incidents`.
+ *
+ * `view` named the four panels of a page that had eight -- `matrix` and
+ * `freshness` pointed at components this PR deletes, and `sources` at a panel
+ * the by-subnet section absorbed. `status` filtered incidents by a health
+ * word; the merged page filters them by the only distinction that changes
+ * what a reader can DO about one, which is whether it is still open.
+ *
+ * The mega-menu's Health deep links are updated to match.
+ */
 const healthSearchSchema = z.object({
-  view: z.enum(HEALTH_VIEWS).catch("").default(""),
-  status: z.enum(HEALTH_STATUSES).catch("all").default("all"),
+  // `TRAILING_WINDOWS`, not a fourth copy of the same three strings: it is the
+  // single owner of that vocabulary (validate:schema-vocabularies enforces it).
+  window: z.enum(TRAILING_WINDOWS).catch("7d").default("7d"),
+  incidents: z.enum(["open", "all"]).catch("open").default("open"),
 });
 
 export type HealthSearch = z.infer<typeof healthSearchSchema>;

@@ -116,7 +116,8 @@ const SITEMAP_STATIC_PATHS = [
   // that answers 200 — listing a redirect refills the "Page with redirect"
   // bucket #11204 emptied and spends the budget getting there.
   "/health",
-  "/status",
+  // #11625 dropped /status: it is a section of /health now and answers 301.
+  // A sitemap must only ask a crawler to index a URL that answers 200.
   "/apis/schemas",
   "/contribute",
   "/about",
@@ -748,11 +749,8 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
     subtitle: "Live operational health across every registered endpoint",
     eyebrow: "Health",
   },
-  "/status": {
-    title: "Status",
-    subtitle: "Metagraphed's own uptime and publish health",
-    eyebrow: "Health",
-  },
+  // #11625 removed /status's OG entry with the route: a retired URL gets no
+  // social card, the same rule the four chain tabs followed in #11619.
 
   // Agents & developers
   "/agents": {

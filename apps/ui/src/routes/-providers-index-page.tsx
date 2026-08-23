@@ -1,426 +1,290 @@
-import { useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
-import type { ProvidersSearch } from "./apis.providers";
-import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { ProviderIndexDirectory } from "@/components/metagraphed/provider-index-directory";
-import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
-import { AsyncPanel, PanelSkeleton, QueryProgress } from "@/components/metagraphed/primitives";
-import { RouterLink } from "@/components/metagraphed/router-link";
-import { ResetFiltersButton, SelectFilter } from "@/components/metagraphed/table-controls";
+import { useMemo } from "react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  providersQuery,
-  endpointsQuery,
-  sourceHealthProvidersQuery,
-  metagraphedQueryKey,
-  type ProviderCounts,
-} from "@/lib/metagraphed/queries";
-import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
-import { matchesQuery } from "@/lib/metagraphed/url-state";
-import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
-import {
+  AnalyticsSection,
   BrandIcon,
   DataTable,
   EntityHero,
+  Fact,
   FactSentence,
+  FilterField,
+  FilterSelect,
+  LeaderCards,
+  Raw,
   SectionNav,
-  prefetchBrandIcon,
-  type SortState,
+  type DataTableColumn,
+  type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { apisNav } from "@/components/metagraphed/apis/apis-logic";
 import { HubSections } from "@/components/metagraphed/hub-prose";
-import { ProvidersPulseRail } from "@/components/metagraphed/providers-pulse-rail";
-import type { Provider } from "@/lib/metagraphed/types";
-import type { ProviderSortKey } from "./apis.providers";
-import { providerSortKeys } from "./apis.providers";
-import { cancelIdle, requestIdle } from "@/lib/metagraphed/idle";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
+import { API_BASE } from "@/lib/metagraphed/config";
+import { formatNumber } from "@/lib/metagraphed/format";
+import { providersQuery, sourceHealthProvidersQuery } from "@/lib/metagraphed/queries";
+import { apisNav } from "@/components/metagraphed/apis/apis-logic";
+import {
+  facet,
+  filterProviders,
+  initials,
+  providerFacts,
+  providerLeaders,
+  providerRows,
+  type ProviderRow,
+} from "@/components/metagraphed/providers/providers-logic";
+import { Route } from "./apis.providers";
+
+const API_PATHS = ["/api/v1/providers", "/api/v1/source-health"];
+
+function ApiSources() {
+  useRegisterApiSource(API_PATHS, ["/metagraph/providers.json"]);
+  return null;
+}
 
 /**
- * The APIs hub layout used to supply this page's shell: `AppShell`, one hero
- * and the four-entry tab strip all rendered once in apis.tsx. #11622 emptied
- * that layout -- each of the four routes answers a different question and so
- * owns its own hero -- and replaced the tab strip with a `SectionNav` of
- * `href` items, which is the same nav primitive every rebuilt page uses for
- * its own sections. This page carries both until its own rebuild.
+ * Providers (#11624) — two sections.
+ *
+ * What went: a Table/Grid toggle over an 11,900px wall of 136 cards, a
+ * `Download CSV · Share view` bar the table menu already carries, four count
+ * boxes, a `SOURCE HEALTH` line above the table (it is a hero fact), and a
+ * search bar outside the table (the table has one).
  */
 export function ProvidersPage() {
-  const search = useSearch({ from: "/apis/providers" }) as ProvidersSearch;
+  const search = Route.useSearch();
   const navigate = useNavigate({ from: "/apis/providers" });
-  const filtersActive = Boolean(
-    search.q || search.kind || search.authority || (search.sort && search.sort !== "name"),
-  );
-  const onReset = () => navigate({ search: {}, replace: true });
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const setSearch = (patch: Record<string, unknown>) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
+      resetScroll: false,
+    });
+
+  /**
+   * `useSuspenseQuery`, so the rows exist in the SERVER-RENDERED HTML.
+   *
+   * `crawlable-subnet-index.spec.ts` asserts that /apis/providers links to
+   * every provider page in the raw response, because a crawler is the reason
+   * those 138 detail pages are indexable at all. A client-only `useQuery`
+   * ships an empty table to the first paint and to every bot, which is
+   * exactly the defect #11204 measured. The source-health join stays
+   * client-side: it colours a column and links nothing.
+   */
+  const providers = useSuspenseQuery(providersQuery());
+  const health = useQuery({ ...sourceHealthProvidersQuery(), retry: 0 });
+
+  const rows = useMemo(
+    () => providerRows(providers.data?.data, health.data?.data.providers),
+    [providers.data, health.data],
+  );
+  const shown = useMemo(() => filterProviders(rows, search), [rows, search]);
+  const kinds = useMemo(() => facet(rows, (row) => row.kind), [rows]);
+  const authorities = useMemo(() => facet(rows, (row) => row.authority), [rows]);
+  const leaders = useMemo(() => providerLeaders(rows), [rows]);
+
+  const columns: DataTableColumn<ProviderRow>[] = [
+    {
+      key: "name",
+      label: "Provider",
+      kind: "link",
+      width: 240,
+      value: (row) => row.name,
+      href: (row) => `/providers/${row.slug}`,
+      render: (row) => (
+        <span className="mg-dt-entity">
+          <BrandIcon
+            iconUrl={row.iconUrl}
+            name={row.name}
+            providerSlug={row.slug}
+            fallback={initials(row.name)}
+          />
+          {row.name}
+        </span>
+      ),
+    },
+    { key: "kind", label: "Kind", kind: "status", width: 150, value: (row) => row.kind },
+    {
+      key: "authority",
+      label: "Authority",
+      kind: "status",
+      width: 170,
+      value: (row) => row.authority,
+    },
+    {
+      key: "host",
+      label: "Host",
+      kind: "link",
+      value: (row) => row.host,
+      href: (row) => row.host ?? undefined,
+      format: (value) => (typeof value === "string" ? value.replace(/^https?:\/\//, "") : "—"),
+    },
+    {
+      key: "subnets",
+      label: "Subnets",
+      kind: "number",
+      align: "right",
+      width: 100,
+      value: (row) => row.netuids.length,
+    },
+    {
+      key: "endpoints",
+      label: "Endpoints",
+      kind: "number",
+      align: "right",
+      width: 110,
+      value: (row) => row.endpoints,
+    },
+    {
+      key: "sources",
+      label: "Sources",
+      kind: "status",
+      width: 130,
+      value: (row) => row.sourceStatus,
+    },
+    {
+      key: "surfaces",
+      label: "Surfaces",
+      kind: "number",
+      align: "right",
+      width: 110,
+      demote: true,
+      value: (row) => row.surfaces,
+    },
+    {
+      key: "slug",
+      label: "Slug",
+      kind: "identifier",
+      width: 170,
+      demote: true,
+      value: (row) => row.slug,
+    },
+  ];
+
+  const rawRows: RawRow[] = API_PATHS.map((path) => ({
+    label: path.replace("/api/v1/", ""),
+    value: `${API_BASE}${path}`,
+    href: `${API_BASE}${path}`,
+  }));
+
   return (
     <AppShell>
+      <ApiSources />
       <EntityHero
         name="Providers"
         sentence={
           <FactSentence>
-            The teams, infra operators and docs registries behind these public interfaces.
+            The teams and operators behind these public interfaces.{" "}
+            {providerFacts(rows, health.data?.data.summary, {
+              count: formatNumber,
+            }).map((fact) => (
+              <Fact key={fact.key}>
+                {fact.label} {fact.value}
+              </Fact>
+            ))}
           </FactSentence>
         }
+        live={{
+          // The payload's own timestamp, not a row's: /api/v1/providers
+          // publishes `generated_at` once at the envelope and the rows carry
+          // none, so reading `rows[0]` renders "Updated —" on a page that
+          // knows exactly when it was built.
+          updatedAt: health.data?.data.generated_at ?? rows[0]?.updatedAt ?? null,
+          source: "registry",
+          onRefresh: () => void providers.refetch(),
+          refreshing: providers.isFetching,
+        }}
       />
       <SectionNav items={apisNav(pathname)} link={RouterLink} />
-      <div className="mg-actions">
-        <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
-      </div>
-      <AsyncPanel
-        height="sm"
-        context="providers pulse"
-        retryQueryKeys={[metagraphedQueryKey("providers")]}
-      >
-        <ProvidersPulseRailLoader />
-      </AsyncPanel>
-      <AsyncPanel
-        context="providers"
-        fallback={<Skeleton className="h-80 w-full" />}
-        retryQueryKeys={[
-          metagraphedQueryKey("providers"),
-          metagraphedQueryKey("source-health-providers"),
-        ]}
-      >
-        <ProvidersTable />
-      </AsyncPanel>
-      {/* #11204: the list above renders every provider into the server-rendered
-          HTML (`paginate={false}`), so no provider page is left without an
-          internal link. This alphabetical directory is the second entry point —
-          see the component for why it is not a duplicate of the table. */}
-      <AsyncPanel
-        context="provider index"
-        fallback={<PanelSkeleton height="sm" className="mt-8" />}
-        retryQueryKeys={[metagraphedQueryKey("providers")]}
-      >
-        <ProviderIndexDirectory />
-      </AsyncPanel>
-      <ApiSourceFooter
-        paths={["/api/v1/providers", "/api/v1/source-health"]}
-        artifacts={["/metagraph/providers.json"]}
-      />
-      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
-      <HubSections path="/apis/providers" />
-    </AppShell>
-  );
-}
 
-function maskHost(url?: string): string | null {
-  if (!url) return null;
-  try {
-    return new URL(url).host.replace(/^www\./, "");
-  } catch {
-    return url.replace(/^https?:\/\//, "").split("/")[0] ?? null;
-  }
-}
-
-function authorityTone(a?: string): string {
-  switch (a) {
-    case "official":
-      return "border-curation-verified/40 bg-curation-verified/10 text-curation-verified";
-    case "provider-claimed":
-      return "border-curation-pilot/40 bg-curation-pilot/10 text-curation-pilot";
-    case "community":
-      return "border-curation-machine/40 bg-curation-machine/10 text-curation-machine";
-    default:
-      return "border-border bg-paper text-ink-muted";
-  }
-}
-
-function ProvidersTable() {
-  const search = useSearch({ from: "/apis/providers" }) as ProvidersSearch;
-  const navigate = useNavigate({ from: "/apis/providers" });
-  const setSearch = (patch: Record<string, unknown>) =>
-    navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
-      replace: true,
-    });
-
-  const { data: providersRes } = useSuspenseQuery(providersQuery());
-  const rows = useMemo(() => (providersRes.data ?? []) as Provider[], [providersRes]);
-  // The /api/v1/providers list already carries per-provider tallies
-  // (endpoint_count / surface_count / subnet_count, normalized to the *_count
-  // fields). Derive the counts map from those rows instead of re-fetching the
-  // full surfaces + endpoints collections — the server computes these the same
-  // way, so the rendered numbers are identical.
-  const counts = useMemo<Record<string, ProviderCounts>>(() => {
-    const out: Record<string, ProviderCounts> = {};
-    for (const p of rows) {
-      if (!p.slug) continue;
-      out[p.slug] = {
-        surfaces: p.surfaces_count ?? 0,
-        endpoints: p.endpoints_count ?? 0,
-        subnets: (p.subnet_count as number | undefined) ?? 0,
-      };
-    }
-    return out;
-  }, [rows]);
-  const generatedAt = providersRes.meta?.generated_at;
-  const stale = isStaleFreshness(generatedAt);
-
-  const q = search.q;
-  const kind = search.kind;
-  const authority = search.authority;
-  const sortKey: ProviderSortKey = search.sort ?? "name";
-
-  const kinds = useMemo(
-    () => Array.from(new Set(rows.map((p) => p.kind).filter(Boolean) as string[])).sort(),
-    [rows],
-  );
-  const authorities = useMemo(
-    () => Array.from(new Set(rows.map((p) => p.authority).filter(Boolean) as string[])).sort(),
-    [rows],
-  );
-
-  const authorityOptions = useMemo(() => {
-    const fromRows = authorities.filter((a) => a !== "high");
-    return ["high", ...fromRows];
-  }, [authorities]);
-
-  const filtered = useMemo(() => {
-    return rows.filter((p) => {
-      if (kind && p.kind !== kind) return false;
-      if (!matchesProviderAuthority(p, authority)) return false;
-      const host = maskHost(p.website ?? p.homepage) ?? "";
-      return matchesQuery([p.name, p.slug, p.notes, host], q);
-    });
-  }, [rows, q, kind, authority]);
-
-  const sorted = useMemo(() => {
-    const arr = [...filtered];
-    arr.sort((a, b) => {
-      if (sortKey === "name")
-        return String(a.name ?? a.slug).localeCompare(String(b.name ?? b.slug));
-      if (sortKey === "updated") {
-        const ta = String(a.updated_at ?? "");
-        const tb = String(b.updated_at ?? "");
-        return tb.localeCompare(ta);
-      }
-      const ca = counts[a.slug];
-      const cb = counts[b.slug];
-      const va = (ca?.[sortKey] as number | undefined) ?? 0;
-      const vb = (cb?.[sortKey] as number | undefined) ?? 0;
-      return vb - va;
-    });
-    return arr;
-  }, [filtered, sortKey, counts]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const handle = requestIdle(() => {
-      for (const p of sorted)
-        prefetchBrandIcon(p.website ?? p.homepage, 36, {
-          iconUrl: p.icon_url,
-          repoUrl: p.repo,
-          lookup: { providerSlug: p.slug },
-        });
-    });
-    return () => cancelIdle(handle);
-  }, [sorted]);
-
-  // Hooks must run unconditionally before the early return below.
-  const isFetchingProviders = useIsFetching({ queryKey: metagraphedQueryKey("providers") }) > 0;
-
-  if (rows.length === 0)
-    return (
-      <EmptyState
-        title="No providers tracked yet"
-        description="Once provider entries are registered, they'll be listed here."
-        action={{ label: "Browse all endpoints", href: "/apis/endpoints" }}
-      />
-    );
-
-  const hasFilters = Boolean(q || kind || authority || (sortKey && sortKey !== "name"));
-
-  // The route's sort is a bare key with no direction: names read A→Z and every
-  // tally reads high→low. `sorted` above is already in that order, so the table
-  // is handed rows it must not re-sort — passing `onSort` is what tells it so.
-  const sortState: SortState = { key: sortKey, dir: sortKey === "name" ? "asc" : "desc" };
-  const onSort = (next: SortState | null) =>
-    setSearch({
-      sort: (next && (providerSortKeys as readonly string[]).includes(next.key)
-        ? next.key
-        : "name") as ProviderSortKey,
-    });
-
-  return (
-    <div className="space-y-3">
-      {stale ? (
-        <StaleBanner
-          generatedAt={generatedAt}
-          refreshQueryKeys={[providersQuery().queryKey, endpointsQuery({ limit: 1000 }).queryKey]}
-        />
-      ) : null}
-
-      <SourceHealthRollup />
-
-      <QueryProgress active={isFetchingProviders} position="sticky" />
-
-      {/* `paginate={false}`: every provider ships in the server-rendered HTML,
-          which is what tests/e2e/crawlable-subnet-index.spec.ts asserts. */}
-      <DataTable
-        rows={sorted}
-        rowKey={(p) => p.slug}
-        caption="Provider directory"
-        source="providers"
-        storageKey="providers"
-        link={RouterLink}
-        rowHref={(p) => `/providers/${encodeURIComponent(p.slug)}`}
-        paginate={false}
-        sort={sortState}
-        onSort={onSort}
-        search={{
-          value: q,
-          onChange: (value) => setSearch({ q: value }),
-          placeholder: "Search providers, slugs, hosts…",
-        }}
-        filters={
-          <>
-            <SelectFilter
-              label="Kind"
-              value={kind}
-              onChange={(v) => setSearch({ kind: v })}
-              options={kinds.map((value) => ({ value, label: value }))}
+      <AnalyticsSection
+        id="leaders"
+        name="Leaders"
+        question="Who serves the most endpoints."
+        visual={
+          leaders.length > 0 ? (
+            <LeaderCards
+              items={leaders}
+              featured={3}
+              ariaLabel="Providers by endpoints served"
+              source="provider"
             />
-            <SelectFilter
-              label="Authority"
-              value={authority}
-              onChange={(v) => setSearch({ authority: v })}
-              options={authorityOptions.map((value) => ({
-                value,
-                label: value === "high" ? "Official + claimed" : value,
-              }))}
-            />
-            <ResetFiltersButton
-              active={hasFilters}
-              onReset={() => setSearch({ q: "", kind: "", authority: "", sort: "name" })}
-              bare
-            />
-          </>
+          ) : null
         }
-        empty={
-          <EmptyState
-            title="No providers match this filter"
-            description="Try clearing filters or adjusting your search."
-            action={{ label: "Browse all endpoints", href: "/apis/endpoints" }}
+        // No delta: `LeaderCards` draws one as a period-over-period change and
+        // /api/v1/providers is a snapshot with no previous count to compare
+        // against. A delta computed from anything else would look like growth
+        // and not be.
+        footnote="endpoints served · registry"
+      />
+
+      <AnalyticsSection
+        id="directory"
+        name="Directory"
+        question="Every provider, and whether their sources still resolve."
+        visual={
+          <DataTable
+            id="providers"
+            rows={shown}
+            columns={columns}
+            rowKey={(row) => row.slug}
+            caption="Providers"
+            rowHref={(row) => `/providers/${row.slug}`}
+            link={RouterLink}
+            source="provider"
+            storageKey="mg-providers-columns"
+            loading={false}
+            // Every row, not a first page of fifty: the crawlable-index gate
+            // reads the SERVER-RENDERED HTML and 138 provider pages are
+            // indexable only because this page links to them. The bounded
+            // viewport still keeps the table one screen tall.
+            paginate={false}
+            search={{
+              value: search.q,
+              onChange: (q) => setSearch({ q }),
+              placeholder: "Name, slug or host",
+            }}
+            filters={
+              <>
+                <FilterField label="Kind">
+                  <FilterSelect
+                    value={search.kind}
+                    onChange={(event) => setSearch({ kind: event.target.value })}
+                  >
+                    <option value="">Any kind</option>
+                    {kinds.map((kind) => (
+                      <option key={kind} value={kind}>
+                        {kind}
+                      </option>
+                    ))}
+                  </FilterSelect>
+                </FilterField>
+                <FilterField label="Authority">
+                  <FilterSelect
+                    value={search.authority}
+                    onChange={(event) => setSearch({ authority: event.target.value })}
+                  >
+                    <option value="">Any authority</option>
+                    {authorities.map((authority) => (
+                      <option key={authority} value={authority}>
+                        {authority}
+                      </option>
+                    ))}
+                  </FilterSelect>
+                </FilterField>
+              </>
+            }
+            empty="No providers match these filters."
           />
         }
-        columns={[
-          {
-            key: "name",
-            label: "Provider",
-            sortable: true,
-            value: (p) => p.name ?? p.slug,
-            render: (p) => (
-              <span className="inline-flex min-w-0 items-center gap-2">
-                <BrandIcon
-                  url={p.website ?? p.homepage}
-                  iconUrl={p.icon_url}
-                  repoUrl={p.repo}
-                  providerSlug={p.slug}
-                  name={p.name ?? p.slug}
-                  fallback={p.slug}
-                  size={20}
-                />
-                {p.authority === "official" ? (
-                  // #6423: see hero-subnet-chips -- role="img" so the
-                  // colour-only badge announces its meaning. `mg-dot` is the
-                  // one round element the design system allows, and it paints
-                  // itself from `currentColor`.
-                  <span role="img" aria-label="Official provider" className="mg-dot text-accent" />
-                ) : null}
-                <span className="truncate text-ink-strong">{p.name ?? p.slug}</span>
-                <span className="truncate text-10 text-ink-muted">{p.slug}</span>
-              </span>
-            ),
-          },
-          { key: "kind", label: "Kind", sortable: true, value: (p) => p.kind ?? null },
-          {
-            key: "authority",
-            label: "Authority",
-            sortable: true,
-            value: (p) => p.authority ?? null,
-            render: (p) =>
-              p.authority ? (
-                <span
-                  className={classNames(
-                    "text-13 rounded border px-1.5 py-0.5",
-                    authorityTone(p.authority),
-                  )}
-                >
-                  {p.authority}
-                </span>
-              ) : (
-                <span className="text-ink-muted">—</span>
-              ),
-          },
-          {
-            key: "host",
-            label: "Host",
-            sortable: true,
-            value: (p) => maskHost(p.website ?? p.homepage),
-          },
-          {
-            key: "subnets",
-            label: "Subnets",
-            kind: "number",
-            sortable: true,
-            value: (p) => counts[p.slug]?.subnets ?? 0,
-          },
-          {
-            key: "surfaces",
-            label: "Surfaces",
-            kind: "number",
-            sortable: true,
-            value: (p) => counts[p.slug]?.surfaces ?? 0,
-          },
-          {
-            key: "endpoints",
-            label: "Endpoints",
-            kind: "number",
-            sortable: true,
-            value: (p) => counts[p.slug]?.endpoints ?? 0,
-          },
-          {
-            key: "updated",
-            label: "Updated",
-            kind: "time",
-            sortable: true,
-            align: "right",
-            value: (p) => (typeof p.updated_at === "string" ? p.updated_at : null),
-          },
-        ]}
+        footnote={`${formatNumber(shown.length)} of ${formatNumber(
+          rows.length,
+        )} · source health from the verification lane · registry`}
       />
-    </div>
-  );
-}
 
-// #3353: compact source-health status-mix rollup for the /providers page — the
-// summary-level companion to the full sortable provider table on /status, from
-// the same /api/v1/source-health query already wired for that page. Suspends
-// within the ProvidersGrid boundary alongside ProviderOverview.
-function SourceHealthRollup() {
-  const summary = useSuspenseQuery(sourceHealthProvidersQuery()).data.data.summary;
-  const status = summary.status_counts;
-  return (
-    <Panel
-      className="mt-3"
-      bodyClassName="flex flex-wrap items-center gap-4 font-mono text-13 tabular-nums"
-    >
-      <span className="text-10 text-ink-muted">Source health</span>
-      <span className="text-health-ok">{status.ok ?? 0} ok</span>
-      <span className="text-health-warn">{status.degraded ?? 0} degraded</span>
-      <span className="text-health-down">{status.failed ?? 0} failed</span>
-      <span className="text-ink-muted">{status.unknown ?? 0} unknown</span>
-      <span className="ml-auto text-ink-muted">
-        {summary.provider_count ?? 0} providers · {summary.endpoint_count ?? 0} endpoints
-      </span>
-    </Panel>
-  );
-}
+      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
+      <HubSections path="/apis/providers" />
 
-function ProvidersPulseRailLoader() {
-  const { data } = useSuspenseQuery(providersQuery());
-  const providers = (data.data ?? []) as Provider[];
-  return <ProvidersPulseRail providers={providers} />;
+      <Raw rows={rawRows} />
+    </AppShell>
+  );
 }

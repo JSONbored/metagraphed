@@ -22,7 +22,6 @@ import {
   ExternalLink,
   FileJson,
   Fingerprint,
-  Gauge,
   GitBranch,
   Hash,
   History,
@@ -150,13 +149,6 @@ const STATIC_ROUTES_HEAD: RouteEntry[] = [
     to: "/health",
     hint: "Ops matrix, mosaic & freshness",
     icon: Activity,
-    scope: "route",
-  },
-  {
-    label: "Status",
-    to: "/status",
-    hint: "Public uptime & incidents",
-    icon: Gauge,
     scope: "route",
   },
   {

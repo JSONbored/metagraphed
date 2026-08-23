@@ -1295,6 +1295,32 @@ function normalizeBulkHealthTrends(raw: unknown): BulkHealthTrends {
   };
 }
 
+/**
+ * GET /api/v1/health, keeping the PER-SUBNET rows (#11625).
+ *
+ * `healthQuery` above merges the response's `global` block up to the top level
+ * and hands back a flat `HealthSummary` — which is what a header badge wants
+ * and is not what a page listing 122 subnets by uptime can use. Same request,
+ * same cache cost; this one keeps `subnets[]`.
+ */
+export const healthSubnetsQuery = () =>
+  queryOptions({
+    queryKey: k("health-subnets"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/health", { signal });
+      const d = (res.data ?? {}) as Record<string, unknown>;
+      return {
+        ...res,
+        data: {
+          global: isRecord(d.global) ? (d.global as Record<string, unknown>) : {},
+          subnets: Array.isArray(d.subnets) ? (d.subnets as Record<string, unknown>[]) : [],
+          observed_at: firstString(d.operational_observed_at) ?? firstString(d.generated_at),
+        },
+      };
+    },
+    staleTime: STALE_SHORT,
+  });
+
 export const bulkHealthTrendsQuery = () =>
   queryOptions({
     queryKey: k("bulk-health-trends"),

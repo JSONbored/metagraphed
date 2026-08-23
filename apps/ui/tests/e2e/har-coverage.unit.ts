@@ -57,7 +57,6 @@ const KNOWN_UNCOVERED: Record<string, string[]> = {
   // re-recorded. Counting the supplement -- the other half of the same fixture
   // set -- cleared /status's self-health, /apis/schemas entirely, and all three
   // chain streams. What remains is genuinely unrecorded.
-  "/status": ["/api/v1/feeds/incidents"],
   "/settings": ["/api/v1/keys", "/api/v1/watch/triggers", "/api/v1/webhooks/subscriptions"],
   // The sweep visits the SUBNET comparison; the validator ledger is the same
   // page under `?validators=`, and its path is declared for that view.

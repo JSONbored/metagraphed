@@ -1,769 +1,392 @@
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import type { HealthSearch } from "./health";
-import { useSuspenseQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { useHydrated } from "@/hooks/use-hydrated";
-import { useRegistryEvents } from "@/hooks/use-registry-events";
-import { resolveRefetchInterval, usePageVisible } from "@/hooks/use-refetch-interval";
-import { useEffect, useMemo, useState } from "react";
-import { RefreshCw, Pause, Play, ChevronDown, ChevronRight, ArrowUpRight } from "lucide-react";
-import { AppShell } from "@/components/metagraphed/app-shell";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CaptureCurrencyPanel } from "@/components/metagraphed/capture-currency-panel";
-import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
-import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
-import { IncidentCard } from "@/components/metagraphed/incident-card";
+import { useMemo } from "react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import {
-  DataTable,
-  HealthPill,
-  TimeAgo,
-  AnimatedNumber,
-  CompositionBreakdown,
   AnalyticsSection,
+  DataTable,
   EntityHero,
+  Fact,
   FactSentence,
-  FactStrip,
-  FactCell,
-  TrendDelta,
+  FilterField,
+  FilterSelect,
+  LineWithWindow,
+  MarkerRail,
+  RangeControl,
+  Raw,
+  type DataTableColumn,
+  type RawRow,
 } from "@jsonbored/ui-kit";
-import { SubnetHealthMatrix } from "@/components/metagraphed/subnet-health-matrix";
-import { StatusMosaic } from "@/components/metagraphed/analytics/status-mosaic";
-import { NetworkPulseBand } from "@/components/metagraphed/analytics/network-pulse-band";
-import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
-import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
+import { AppShell } from "@/components/metagraphed/app-shell";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
+import { API_BASE } from "@/lib/metagraphed/config";
+import { formatNumber } from "@/lib/metagraphed/format";
 import {
-  healthQuery,
-  freshnessQuery,
-  sourceHealthQuery,
-  endpointIncidentsQuery,
+  bulkHealthTrendsQuery,
+  bulkTrendDays,
+  globalIncidentsQuery,
+  healthSubnetsQuery,
+  selfHealthQuery,
 } from "@/lib/metagraphed/queries";
 import {
-  humaniseSeconds,
-  isStaleFreshness,
-  classNames,
-  formatNumber,
-} from "@/lib/metagraphed/format";
-import type { EndpointIncident, HealthState } from "@/lib/metagraphed/types";
-import type { HealthView, StateFilter } from "./health";
+  TREND_WINDOWS,
+  healthFacts,
+  humaniseDuration,
+  incidentRows,
+  selfComponents,
+  subnetHealthRows,
+  trendPoints,
+  type IncidentRow,
+  type SubnetHealthRow,
+  type TrendWindow,
+} from "@/components/metagraphed/health/health-logic";
+import { Route } from "./health";
 
-const INTERVAL_OPTIONS: Array<{ label: string; value: number }> = [
-  { label: "10s", value: 10_000 },
-  { label: "30s", value: 30_000 },
-  { label: "1m", value: 60_000 },
-  { label: "5m", value: 5 * 60_000 },
+const API_PATHS = [
+  "/api/v1/health",
+  "/api/v1/health/trends",
+  "/api/v1/incidents",
+  "/api/v1/self-health",
 ];
 
-const INCIDENT_INITIAL_VISIBLE = 12;
+function ApiSources() {
+  useRegisterApiSource(API_PATHS);
+  return null;
+}
 
-// Which section a `view` deep-link should scroll to + highlight. A bare
-// `status` (no `view`) targets the incidents section too, since that's the
-// only place `status` has any effect.
-const VIEW_SECTION_ID: Record<HealthView, string | null> = {
-  "": null,
-  matrix: "subnet-matrix",
-  incidents: "incidents",
-  sources: "source-health",
-  freshness: "status-board",
-};
-
+/**
+ * Health (#11625) — the merged /health and /status, four sections.
+ *
+ * /status was a separate page for one question — is metagraphed itself up —
+ * asked by the same reader, in the same breath, as "is anything else". It is
+ * the fourth section now and /status is a permanent redirect.
+ *
+ * What went with them: the health matrix mosaic and the coverage matrix (a
+ * 129-chip grid that said what the by-subnet rail says in order), three
+ * incident-timeline components, the trend panels, the status page's card
+ * stack, and the global incident banner's last data consumer.
+ */
 export function HealthPage() {
-  const search = useSearch({ from: "/health" }) as HealthSearch;
-  const [enabled, setEnabled] = useState(true);
-  const [intervalMs, setIntervalMs] = useState(30_000);
-  const visible = usePageVisible();
-  const effectiveInterval = resolveRefetchInterval(intervalMs, enabled, visible);
-  // #1117: push a refresh on each registry publish, on top of the poll interval.
-  useRegistryEvents();
-
-  const activeSectionId =
-    VIEW_SECTION_ID[search.view] ?? (search.status !== "all" ? "incidents" : null);
-  const sectionRing = (id: string) =>
-    activeSectionId === id ? "ring-1 ring-accent/40 rounded" : undefined;
-
-  useEffect(() => {
-    if (!activeSectionId) return;
-    const t = window.setTimeout(() => {
-      document
-        .getElementById(activeSectionId)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 80);
-    return () => window.clearTimeout(t);
-    // Deep-link arrival only — deliberately not re-run when `search` changes
-    // afterward (e.g. clicking an incident-filter chip below), or the page
-    // would yank itself back to this section every time.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <AppShell>
-      <AsyncPanel height="xl">
-        <HealthHero
-          interval={effectiveInterval}
-          controls={
-            <>
-              <div className="mg-actions">
-                <Link
-                  to="/status"
-                  className="inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-13 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-                >
-                  Public status
-                  <ArrowUpRight className="size-3" aria-hidden="true" />
-                </Link>
-              </div>
-              <AutoRefreshControl
-                enabled={enabled}
-                visible={visible}
-                intervalMs={intervalMs}
-                onToggle={() => setEnabled((v) => !v)}
-                onIntervalChange={setIntervalMs}
-              />
-            </>
-          }
-        />
-      </AsyncPanel>
-
-      <main className="space-y-20 md:space-y-24">
-        <TimeRangeProvider>
-          <AnalyticsSection
-            id="status-board"
-            name="Global health, at a glance"
-            question="Probe-derived state across every monitored surface."
-            controls={<TimeRangeScrub />}
-            className={sectionRing("status-board")}
-          >
-            <AsyncPanel height="lg">
-              <StatusBoard interval={effectiveInterval} />
-            </AsyncPanel>
-          </AnalyticsSection>
-
-          <AnalyticsSection
-            id="network-pulse"
-            name="ok / warn / down distribution"
-            question="Aggregate status over the selected range."
-          >
-            <AsyncPanel height="lg">
-              <NetworkPulseBand />
-            </AsyncPanel>
-          </AnalyticsSection>
-
-          <AnalyticsSection
-            id="status-mosaic"
-            name="Live status mosaic"
-            question="Every monitored endpoint by its latest probe state."
-          >
-            <AsyncPanel height="lg">
-              <StatusMosaic />
-            </AsyncPanel>
-          </AnalyticsSection>
-        </TimeRangeProvider>
-
-        <AnalyticsSection
-          id="subnet-matrix"
-          name="Subnet health matrix"
-          question="Every active subnet, colored by latest probe state. Click a cell to open."
-          className={sectionRing("subnet-matrix")}
-        >
-          <SubnetHealthMatrix />
-        </AnalyticsSection>
-
-        <AnalyticsSection
-          id="source-health"
-          name="Source freshness"
-          question="Where the registry pulls evidence from and how fresh each source is."
-          className={sectionRing("source-health")}
-        >
-          <AsyncPanel height="md">
-            <SourceHealth interval={effectiveInterval} />
-          </AsyncPanel>
-        </AnalyticsSection>
-
-        {/* #10300: /chain/indexer-lag and /health/failure-reasons were both
-            published and rendered nowhere. The ops console is their home --
-            "how current is our capture, and what is failing behind it" is the
-            question this page exists to answer. */}
-        <AnalyticsSection
-          id="capture-currency"
-          name="Capture currency & failure mix"
-          question="How far behind the chain head our indexing is, and what is actually going wrong with the probes."
-          className={sectionRing("capture-currency")}
-        >
-          <AsyncPanel height="md">
-            <CaptureCurrencyPanel />
-          </AsyncPanel>
-        </AnalyticsSection>
-
-        <AnalyticsSection
-          id="incidents"
-          name="Live & recent incidents"
-          question="Grouped by host. Ongoing incidents bubble to the top."
-          className={sectionRing("incidents")}
-        >
-          <AsyncPanel height="md">
-            <Incidents interval={effectiveInterval} />
-          </AsyncPanel>
-        </AnalyticsSection>
-      </main>
-
-      <ApiSourceFooter
-        paths={[
-          "/api/v1/health",
-          "/api/v1/freshness",
-          "/api/v1/endpoint-incidents",
-          "/api/v1/chain/indexer-lag",
-          "/api/v1/health/failure-reasons",
-        ]}
-      />
-    </AppShell>
-  );
-}
-
-/* --------------------------- Hero --------------------------- */
-
-function HealthHero({
-  interval,
-  controls,
-}: {
-  interval: number | false;
-  controls: React.ReactNode;
-}) {
-  const { data: hRes } = useSuspenseQuery({ ...healthQuery(), refetchInterval: interval });
-  const { data: fRes } = useSuspenseQuery({ ...freshnessQuery(), refetchInterval: interval });
-  const { data: iRes } = useSuspenseQuery({
-    ...endpointIncidentsQuery(),
-    refetchInterval: interval,
-  });
-  const h = hRes.data;
-  const f = fRes.data;
-  const incidents = (iRes.data ?? []) as EndpointIncident[];
-
-  // No per-hour uptime history is exposed on /health, so the hero KPI shows the
-  // real current 24h uptime value only — we never ship a fabricated trend shape,
-  // so there's no illustrative sparkline here.
-  const uptimePct = h?.uptime_24h != null ? h.uptime_24h * 100 : null;
-
-  const ongoing = incidents.filter((i) => !i.ended_at).length;
-
-  return (
-    <EntityHero
-      name="Health & freshness"
-      action={controls}
-      sentence={
-        <FactSentence>
-          {
-            <>
-              Operational drill-down for maintainers — subnet matrix, endpoint mosaic, source
-              freshness, and live incidents. Probe-derived only; submissions cannot set uptime or
-              incident state. For plain-language uptime, see{" "}
-              <Link to="/status" className="text-accent-text underline-offset-2 hover:underline">
-                System status
-              </Link>
-              .
-            </>
-          }
-        </FactSentence>
-      }
-      facts={
-        <FactStrip>
-          {[
-            {
-              label: "Uptime · 24h",
-              value: uptimePct != null ? uptimePct.toFixed(2) + "%" : "—",
-            },
-            { label: "OK", value: <AnimatedNumber value={h?.ok} />, hint: "surfaces" },
-            { label: "Warn", value: <AnimatedNumber value={h?.warn} /> },
-            { label: "Down", value: <AnimatedNumber value={h?.down} /> },
-            {
-              label: "Stale sources",
-              value: <AnimatedNumber value={f?.stale_count} />,
-              hint: f?.sources ? `of ${f.sources.length}` : undefined,
-            },
-            {
-              label: "Ongoing incidents",
-              value: <AnimatedNumber value={ongoing} />,
-            },
-          ].map((k) => (
-            <FactCell
-              key={k.label}
-              label={k.label}
-              value={k.value}
-              hint={typeof k.hint === "string" ? k.hint : undefined}
-            />
-          ))}
-        </FactStrip>
-      }
-    />
-  );
-}
-
-/* --------------------------- Auto-refresh control --------------------------- */
-
-/**
- * Consolidated auto-refresh control. One pill-shaped control group:
- * interval select · pause/play with live countdown · sync indicator. The
- * "tab hidden" state is folded into the pause button's label so we don't
- * stack a third chip on top. Throttled aria-live keeps the countdown from
- * spamming screen readers.
- */
-function AutoRefreshControl({
-  enabled,
-  visible,
-  intervalMs,
-  onToggle,
-  onIntervalChange,
-}: {
-  enabled: boolean;
-  visible: boolean;
-  intervalMs: number;
-  onToggle: () => void;
-  onIntervalChange: (ms: number) => void;
-}) {
-  const fetching = useIsFetching({ queryKey: ["metagraphed"] });
-  const qc = useQueryClient();
-  const active = enabled && visible;
-  const [secondsLeft, setSecondsLeft] = useState(Math.round(intervalMs / 1000));
-
-  useEffect(() => {
-    setSecondsLeft(Math.round(intervalMs / 1000));
-    if (!active) return;
-    const total = Math.round(intervalMs / 1000);
-    const i = window.setInterval(() => {
-      setSecondsLeft((s) => (s <= 1 ? total : s - 1));
-    }, 1000);
-    return () => window.clearInterval(i);
-  }, [active, intervalMs]);
-
-  // Throttled, deduped aria-live so the countdown never spams a screen reader.
-  const [announcement, setAnnouncement] = useState("");
-  useEffect(() => {
-    const next = !enabled
-      ? "Auto-refresh paused."
-      : !visible
-        ? "Auto-refresh paused while tab is hidden."
-        : `Auto-refresh on, every ${Math.round(intervalMs / 1000)} seconds.`;
-    const t = window.setTimeout(() => {
-      setAnnouncement((prev) => (prev === next ? prev : next));
-    }, 900);
-    return () => window.clearTimeout(t);
-  }, [enabled, visible, intervalMs]);
-
-  const pauseLabel = !enabled ? "Paused" : !visible ? "Tab hidden" : null;
-
-  return (
-    <div className="inline-flex items-center rounded border border-border bg-card overflow-hidden text-13">
-      <label className="sr-only" htmlFor="health-interval">
-        Auto-refresh interval
-      </label>
-      <select
-        id="health-interval"
-        value={intervalMs}
-        onChange={(e) => onIntervalChange(Number(e.target.value))}
-        disabled={!enabled}
-        className="bg-card px-3 py-1.5 text-ink focus:outline-none disabled:opacity-60 border-r border-border"
-      >
-        {INTERVAL_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            every {opt.label}
-          </option>
-        ))}
-      </select>
-
-      <button
-        onClick={onToggle}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-ink hover:bg-surface transition-colors border-r border-border"
-        aria-pressed={enabled}
-      >
-        {enabled ? <Pause className="size-3" /> : <Play className="size-3" />}
-        {pauseLabel ? (
-          <span className="text-13 text-ink-muted">{pauseLabel}</span>
-        ) : (
-          <span aria-hidden="true" className="font-mono text-ink-muted">
-            in <AnimatedNumber value={secondsLeft} flashOnChange={false} duration={250} />s
-          </span>
-        )}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => qc.invalidateQueries({ queryKey: ["metagraphed"] })}
-        className="text-13 inline-flex items-center gap-1.5 px-3 py-1.5 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-        title={fetching ? "Refreshing…" : "Refresh now"}
-        aria-label="Refresh now"
-      >
-        <RefreshCw
-          className={classNames(
-            "size-3",
-            fetching ? "animate-spin text-ink-strong" : "text-ink-muted",
-          )}
-        />
-        {fetching ? "sync" : "refresh"}
-      </button>
-      <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-        {announcement}
-      </span>
-    </div>
-  );
-}
-
-/* --------------------------- Status board --------------------------- */
-
-function StatusBoard({ interval }: { interval: number | false }) {
-  const { data: hRes } = useSuspenseQuery({ ...healthQuery(), refetchInterval: interval });
-  const { data: fRes } = useSuspenseQuery({ ...freshnessQuery(), refetchInterval: interval });
-  // `stale` reads the wall clock during render, so the server pass and the
-  // client's first pass disagree by however long the response spent in flight
-  // (#8241). Hold it at its pre-hydration value until hydration completes,
-  // matching useHydrated's documented use.
-  const hydrated = useHydrated();
-  const h = hRes.data;
-  const f = fRes.data;
-  const stale = hydrated && isStaleFreshness(hRes.meta?.generated_at);
-  const segs = [
-    { label: "OK", value: h?.ok ?? 0, color: "var(--health-ok)" },
-    { label: "Warn", value: h?.warn ?? 0, color: "var(--health-warn)" },
-    { label: "Down", value: h?.down ?? 0, color: "var(--health-down)" },
-    { label: "Unknown", value: h?.unknown ?? 0, color: "var(--health-unknown)" },
-  ].filter((s) => s.value > 0);
-  const uptimePct = h?.uptime_24h != null ? (h.uptime_24h * 100).toFixed(2) + "%" : "—";
-
-  return (
-    <div className="space-y-4">
-      {stale ? (
-        <StaleBanner
-          generatedAt={hRes.meta?.generated_at}
-          refreshQueryKeys={[
-            healthQuery().queryKey,
-            freshnessQuery().queryKey,
-            sourceHealthQuery().queryKey,
-          ]}
-          refreshLabel="Refresh health now"
-        />
-      ) : null}
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
-        <BoardCard title="Status mix">
-          <CompositionBreakdown
-            segments={segs.map((seg) => ({
-              key: `status:${seg.label}`,
-              label: seg.label,
-              value: seg.value,
-            }))}
-            formatValue={(v) => formatNumber(v)}
-            legendCols={4}
-            ariaLabel={`Status mix · ${uptimePct} uptime 24h`}
-          />
-        </BoardCard>
-
-        <BoardCard title="Source freshness">
-          <div className="grid grid-cols-3 gap-2">
-            <Cell label="Avg age" num={f?.avg_age_seconds} format={(n) => humaniseSeconds(n)} />
-            <Cell label="Max age" num={f?.max_age_seconds} format={(n) => humaniseSeconds(n)} />
-            <Cell label="Stale" num={f?.stale_count} />
-          </div>
-        </BoardCard>
-
-        <BoardCard title="Counts">
-          <div className="grid grid-cols-2 gap-2">
-            <Cell label="OK" num={h?.ok} accent="text-health-ok" />
-            <Cell label="Warn" num={h?.warn} accent="text-health-warn" />
-            <Cell label="Down" num={h?.down} accent="text-health-down" />
-            <Cell label="Unknown" num={h?.unknown} accent="text-ink-muted" />
-          </div>
-        </BoardCard>
-      </div>
-      <div className="text-11 text-ink-muted">
-        snapshot <TimeAgo at={hRes.meta?.generated_at} />
-      </div>
-    </div>
-  );
-}
-
-function BoardCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <Panel flush>
-      <div className="p-4">
-        <div className="text-13 text-ink-muted mb-3">{title}</div>
-        {children}
-      </div>
-    </Panel>
-  );
-}
-
-function Cell({
-  label,
-  num,
-  accent,
-  format,
-}: {
-  label: string;
-  num: number | null | undefined;
-  accent?: string;
-  format?: (n: number) => string;
-}) {
-  return (
-    <div className="rounded border border-border/60 bg-paper px-3 py-2.5">
-      <div className="text-13 text-ink-muted">{label}</div>
-      <div
-        className={`mt-1 font-display text-16 font-semibold tabular-nums leading-none ${accent ?? "text-ink-strong"}`}
-      >
-        <AnimatedNumber value={num} format={format} />
-      </div>
-    </div>
-  );
-}
-
-/* --------------------------- Source health --------------------------- */
-
-function SourceHealth({ interval }: { interval: number | false }) {
-  const { data } = useSuspenseQuery({ ...sourceHealthQuery(), refetchInterval: interval });
-  const rows = data.data ?? [];
-  return (
-    <DataTable
-      rows={rows}
-      rowKey={(s) => s.name}
-      caption="Source health"
-      source="source-health"
-      empty={
-        <EmptyState
-          title="No source health"
-          description="Source freshness telemetry will appear once probes report in."
-        />
-      }
-      columns={[
-        { key: "name", label: "Source", sortable: true, value: (s) => s.name },
-        {
-          key: "status",
-          label: "Status",
-          kind: "status",
-          sortable: true,
-          value: (s) => (s.ok === false ? "down" : s.ok ? "ok" : "unknown"),
-        },
-        {
-          key: "last_seen",
-          label: "Last seen",
-          kind: "time",
-          sortable: true,
-          align: "right",
-          value: (s) => s.last_seen ?? null,
-        },
-      ]}
-    />
-  );
-}
-
-/* --------------------------- Incidents --------------------------- */
-
-/**
- * Extract a stable "host" key from an incident's endpoint_id. Examples:
- *   "endpoint-sn-1-subnetradar-dashboard" → "subnetradar-dashboard"
- *   "endpoint-sn-40-chunking-website"      → "chunking-website"
- *   "endpoint-sn7-allways"                 → "allways"
- *   anything else                          → the raw id
- */
-function hostKeyFromEndpointId(id: unknown): string {
-  if (id === null || id === undefined || id === "") return "—";
-  const text = String(id);
-  const m = text.match(/^endpoint-sn-?\d+-(.+)$/i);
-  return m ? m[1]! : text;
-}
-
-type SeverityRank = 0 | 1 | 2 | 3;
-function severityRank(state: HealthState | undefined): SeverityRank {
-  if (state === "down") return 3;
-  if (state === "warn") return 2;
-  if (state === "unknown") return 1;
-  return 0;
-}
-
-function Incidents({ interval }: { interval: number | false }) {
-  const { data } = useSuspenseQuery({ ...endpointIncidentsQuery(), refetchInterval: interval });
-  const rows = useMemo(() => (data.data ?? []) as EndpointIncident[], [data]);
-  // The 14-day bucket keys below are derived from the wall clock, so a server
-  // pass that straddles a UTC midnight (or simply runs seconds earlier) builds
-  // a different set of days than the client's first pass (#8241).
-  const hydrated = useHydrated();
-  const search = useSearch({ from: "/health" }) as HealthSearch;
+  const search = Route.useSearch();
   const navigate = useNavigate({ from: "/health" });
-  const filter = search.status;
-  const setFilter = (next: StateFilter) =>
+  const setSearch = (patch: Record<string, unknown>) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, status: next }),
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
       resetScroll: false,
     });
-  const [showAll, setShowAll] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  const filtered = useMemo(() => {
-    return rows.filter((i) => {
-      const ongoing = !i.ended_at;
-      if (filter === "all") return true;
-      if (filter === "down") return ongoing && i.state === "down";
-      if (filter === "warn") return ongoing && i.state === "warn";
-      if (filter === "resolved") return !ongoing;
-      return true;
-    });
-  }, [rows, filter]);
+  const health = useSuspenseQuery(healthSubnetsQuery()).data;
+  const trends = useQuery({ ...bulkHealthTrendsQuery(), retry: 0 });
+  const incidents = useQuery({ ...globalIncidentsQuery(search.window), retry: 0 });
+  const self = useQuery({ ...selfHealthQuery(), retry: 0 });
 
-  const groups = useMemo(() => {
-    const byHost = new Map<string, EndpointIncident[]>();
-    for (const i of filtered) {
-      const key = hostKeyFromEndpointId(i.endpoint_id);
-      const list = byHost.get(key) ?? [];
-      list.push(i);
-      byHost.set(key, list);
-    }
-    const out = Array.from(byHost.entries()).map(([host, items]) => {
-      const ongoing = items.filter((i) => !i.ended_at).length;
-      const top = items.reduce<EndpointIncident>(
-        (acc, cur) => (severityRank(cur.state) > severityRank(acc.state) ? cur : acc),
-        items[0]!,
-      );
-      return { host, items, ongoing, dominantState: top.state };
-    });
-    out.sort((a, b) => {
-      const sev = severityRank(b.dominantState) - severityRank(a.dominantState);
-      if (sev !== 0) return sev;
-      return b.items.length - a.items.length;
-    });
-    return out;
-  }, [filtered]);
+  const window = search.window as TrendWindow;
+  const rows = useMemo(
+    () => incidentRows(incidents.data?.data.surfaces as Record<string, unknown>[] | undefined),
+    [incidents.data],
+  );
+  const openRows = useMemo(() => rows.filter((row) => row.open), [rows]);
+  const shownIncidents = search.incidents === "open" ? openRows : rows;
 
-  // 14-day incident trend (count of incidents per day, oldest first).
-  const incidentsByDay = useMemo(() => {
-    if (!hydrated) return [];
-    const buckets = new Map<string, number>();
-    const now = new Date();
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(now);
-      d.setUTCDate(d.getUTCDate() - i);
-      buckets.set(d.toISOString().slice(0, 10), 0);
-    }
-    for (const r of rows) {
-      const key = r.started_at?.slice(0, 10);
-      if (key && buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
-    }
-    return Array.from(buckets.values());
-  }, [rows, hydrated]);
+  const trendWindow = trends.data?.data.windows?.[window];
+  const subnets = useMemo(
+    () =>
+      subnetHealthRows(
+        health.data.subnets,
+        trendWindow?.subnets as Record<string, unknown>[] | undefined,
+      ),
+    [health.data.subnets, trendWindow],
+  );
+  const points = useMemo(() => trendPoints(bulkTrendDays(trendWindow)), [trendWindow]);
+  const components = useMemo(
+    () => selfComponents(self.data?.data?.components as Record<string, unknown>[] | undefined),
+    [self.data],
+  );
 
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        title="No recent incidents"
-        description="Nothing is currently failing or degraded — everything's quiet."
-      />
-    );
-  }
-
-  const visibleGroups = showAll ? groups : groups.slice(0, INCIDENT_INITIAL_VISIBLE);
-
-  const FILTER_OPTIONS: Array<{ value: StateFilter; label: string; count: number }> = [
-    { value: "all", label: "All", count: rows.length },
+  const incidentColumns: DataTableColumn<IncidentRow>[] = [
+    { key: "started", label: "Started", kind: "time", width: 130, value: (row) => row.startedAt },
     {
-      value: "down",
-      label: "Down",
-      count: rows.filter((i) => !i.ended_at && i.state === "down").length,
+      key: "subnet",
+      label: "Subnet",
+      kind: "link",
+      width: 110,
+      value: (row) => row.netuid,
+      href: (row) => (row.netuid == null ? undefined : `/subnets/${row.netuid}`),
+      format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
+    },
+    { key: "surface", label: "Surface", kind: "identifier", value: (row) => row.surfaceId },
+    {
+      key: "duration",
+      label: "Down for",
+      kind: "text",
+      align: "right",
+      width: 120,
+      value: (row) => humaniseDuration(row.durationMs),
     },
     {
-      value: "warn",
-      label: "Degraded",
-      count: rows.filter((i) => !i.ended_at && i.state === "warn").length,
+      key: "failed",
+      label: "Failed probes",
+      kind: "number",
+      align: "right",
+      width: 130,
+      value: (row) => row.failedSamples,
     },
     {
-      value: "resolved",
-      label: "Resolved",
-      count: rows.filter((i) => i.ended_at).length,
+      key: "state",
+      label: "State",
+      kind: "status",
+      width: 110,
+      value: (row) => (row.open ? "open" : "resolved"),
+    },
+    {
+      key: "ended",
+      label: "Ended",
+      kind: "time",
+      width: 130,
+      demote: true,
+      value: (row) => row.endedAt,
+    },
+  ];
+
+  const subnetColumns: DataTableColumn<SubnetHealthRow>[] = [
+    {
+      key: "subnet",
+      label: "Subnet",
+      kind: "link",
+      width: 200,
+      value: (row) => row.netuid,
+      href: (row) => `/subnets/${row.netuid}`,
+      format: (value, row) => (typeof value === "number" ? `SN${value} ${row.name}` : row.name),
+    },
+    {
+      key: "uptime",
+      label: `Uptime ${window}`,
+      kind: "number",
+      align: "right",
+      width: 120,
+      value: (row) => row.uptimePct,
+      format: (value) => (typeof value === "number" ? `${value}%` : "—"),
+    },
+    { key: "status", label: "Status", kind: "status", width: 120, value: (row) => row.status },
+    {
+      key: "surfaces",
+      label: "Surfaces",
+      kind: "number",
+      align: "right",
+      width: 100,
+      value: (row) => row.surfaces,
+    },
+    { key: "ok", label: "ok", kind: "number", align: "right", width: 80, value: (row) => row.ok },
+    {
+      key: "degraded",
+      label: "degraded",
+      kind: "number",
+      align: "right",
+      width: 110,
+      value: (row) => row.degraded,
+    },
+    {
+      key: "failed",
+      label: "down",
+      kind: "number",
+      align: "right",
+      width: 90,
+      value: (row) => row.failed,
+    },
+    {
+      key: "checked",
+      label: "Last probe",
+      kind: "time",
+      width: 130,
+      demote: true,
+      value: (row) => row.lastChecked,
+    },
+  ];
+
+  const rawRows: RawRow[] = [
+    ...API_PATHS.map((path) => ({
+      label: path.replace("/api/v1/", ""),
+      value: `${API_BASE}${path}`,
+      href: `${API_BASE}${path}`,
+    })),
+    {
+      label: "incidents feed",
+      value: `${API_BASE}/api/v1/feeds/incidents.json`,
+      href: `${API_BASE}/api/v1/feeds/incidents.json`,
     },
   ];
 
   return (
-    <div className="space-y-4">
-      <Panel bodyClassName="flex items-center gap-4">
-        <div>
-          <div className="text-13 text-ink-muted">Incidents · 14d</div>
-          <div className="font-display text-28 font-semibold text-ink-strong tabular-nums leading-none mt-1">
-            {rows.length}
-          </div>
-        </div>
-        <TrendDelta values={incidentsByDay} label="Incidents per day, 14d" className="ml-auto" />
-      </Panel>
+    <AppShell>
+      <ApiSources />
+      <EntityHero
+        name="Health"
+        sentence={
+          <FactSentence>
+            What is broken, across every probed surface and this site itself.{" "}
+            {healthFacts(
+              health.data.global as Parameters<typeof healthFacts>[0],
+              openRows.length,
+              (self.data?.data?.verdict as string | undefined) ?? null,
+              { count: formatNumber },
+            ).map((fact) => (
+              <Fact key={fact.key}>
+                {fact.label} {fact.value}
+              </Fact>
+            ))}
+          </FactSentence>
+        }
+        live={{
+          updatedAt: health.data.observed_at ?? null,
+          source: "probed every 15 min",
+          onRefresh: () => void incidents.refetch(),
+          refreshing: incidents.isFetching,
+        }}
+      />
 
-      <div className="flex flex-wrap items-center gap-1.5 text-11">
-        {FILTER_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => {
-              setFilter(opt.value);
-              setShowAll(false);
-            }}
-            aria-pressed={filter === opt.value}
-            className={classNames(
-              "inline-flex items-center gap-1.5 rounded border px-3 py-1 font-mono transition-all duration-150",
-              filter === opt.value
-                ? "border-ink/40 bg-ink-strong text-paper"
-                : "border-border bg-card text-ink-muted hover:text-ink-strong hover:border-accent/40",
-            )}
-          >
-            {opt.label}
-            <span className="text-10 tabular-nums opacity-80">{opt.count}</span>
-          </button>
-        ))}
-        <span className="ml-auto text-10 text-ink-muted">
-          {groups.length} {groups.length === 1 ? "host" : "hosts"} · {filtered.length} incidents
-        </span>
-      </div>
+      <AnalyticsSection
+        id="incidents"
+        name="Incidents"
+        question="What is down now, and what was."
+        visual={
+          <DataTable
+            id="incidents"
+            rows={shownIncidents}
+            columns={incidentColumns}
+            rowKey={(row) => row.key}
+            caption="Surface incidents"
+            link={RouterLink}
+            source="incident"
+            storageKey="mg-health-incidents-columns"
+            loading={incidents.isPending}
+            filters={
+              <FilterField label="State">
+                <FilterSelect
+                  value={search.incidents}
+                  onChange={(event) => setSearch({ incidents: event.target.value })}
+                >
+                  <option value="open">Open now</option>
+                  <option value="all">All in window</option>
+                </FilterSelect>
+              </FilterField>
+            }
+            empty="Nothing is down in this window."
+          />
+        }
+        // One row per INCIDENT, not per surface: /api/v1/incidents groups by
+        // surface, which answers "which surfaces had trouble" -- but a surface
+        // with three separate outages is three answers to "what is broken".
+        footnote={`${formatNumber(openRows.length)} open of ${formatNumber(
+          rows.length,
+        )} in ${window} · probe-derived`}
+      />
 
-      {groups.length === 0 ? (
-        <EmptyState title="No incidents match this filter" />
-      ) : (
-        <>
-          <ul className="space-y-2">
-            {visibleGroups.map((g) => {
-              const open = !!openGroups[g.host];
-              const singleton = g.items.length === 1;
-              if (singleton) return <IncidentCard key={g.host} incident={g.items[0]!} />;
-              return (
-                <li key={g.host} className="rounded border border-border bg-card overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setOpenGroups((s) => ({ ...s, [g.host]: !open }))}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface transition-colors min-h-11"
-                    aria-expanded={open}
-                  >
-                    {open ? (
-                      <ChevronDown className="size-3.5 text-ink-muted shrink-0" />
-                    ) : (
-                      <ChevronRight className="size-3.5 text-ink-muted shrink-0" />
-                    )}
-                    <HealthPill state={g.dominantState} />
-                    <span className="font-mono text-13 text-ink-strong truncate">{g.host}</span>
-                    <span className="text-13 ml-auto inline-flex items-center gap-2 text-ink-muted shrink-0">
-                      {g.ongoing > 0 ? (
-                        <span className="text-health-down">{g.ongoing} ongoing</span>
-                      ) : null}
-                      <span>{g.items.length} total</span>
-                    </span>
-                  </button>
-                  {open ? (
-                    <ul className="grid gap-2 p-3 md:grid-cols-2 border-t border-border bg-paper">
-                      {g.items.map((i) => (
-                        <IncidentCard key={i.id} incident={i} />
-                      ))}
-                    </ul>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+      <AnalyticsSection
+        id="by-subnet"
+        name="By subnet"
+        question="Uptime over the window, worst first."
+        controls={
+          <RangeControl
+            label="Window"
+            options={TREND_WINDOWS}
+            value={window}
+            onChange={(next) => setSearch({ window: next })}
+          />
+        }
+        visual={
+          subnets.some((row) => row.uptimePct != null) ? (
+            <MarkerRail
+              items={subnets
+                .filter((row) => row.uptimePct != null)
+                .slice(0, 20)
+                .map((row) => ({
+                  key: `sn-${row.netuid}`,
+                  label: `SN${row.netuid} ${row.name}`,
+                  value: row.uptimePct as number,
+                  detail: `${formatNumber(row.surfaces)} surfaces · ${formatNumber(row.failed)} down`,
+                }))}
+              max={100}
+              formatValue={(value) => `${value}%`}
+              columns={{ ratio: "Uptime", name: "Subnet", scale: "Share of probes that answered" }}
+              ariaLabel="Subnet uptime, worst first"
+              source="subnet-health"
+            />
+          ) : null
+        }
+        legend={
+          <DataTable
+            id="subnet-health"
+            rows={subnets}
+            columns={subnetColumns}
+            rowKey={(row) => String(row.netuid)}
+            caption="Every probed subnet"
+            rowHref={(row) => `/subnets/${row.netuid}`}
+            link={RouterLink}
+            source="subnet-health"
+            storageKey="mg-health-subnets-columns"
+            empty="No subnet has been probed in this window."
+          />
+        }
+        // A subnet with no trend sample sorts LAST: `null` is "we have not
+        // measured this", and ordering it beside the genuinely broken ones
+        // would put the unknown at the top of a page whose job is naming what
+        // is broken.
+        footnote={`${formatNumber(subnets.length)} probed subnets · ${window} · probe-derived`}
+      />
 
-          {groups.length > INCIDENT_INITIAL_VISIBLE ? (
-            <button
-              type="button"
-              onClick={() => setShowAll((v) => !v)}
-              className="block w-full rounded border border-border bg-card px-3 py-2.5 text-13 font-medium text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors min-h-9"
-            >
-              {showAll ? "Show fewer" : `Show all ${groups.length} grouped incidents`}
-            </button>
-          ) : null}
-        </>
-      )}
-    </div>
+      <AnalyticsSection
+        id="trend"
+        name="Trend"
+        question="What share of probes answered, day by day."
+        visual={
+          points.length > 1 ? (
+            <LineWithWindow
+              points={points}
+              window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
+              unit="% of probes answered"
+              formatValue={(value) => `${value}%`}
+              ariaLabel={`Healthy share over ${window}`}
+              source="health-trend"
+            />
+          ) : null
+        }
+        footnote={`${window} · sample-weighted across subnets · probe-derived`}
+      />
+
+      <AnalyticsSection
+        id="self-health"
+        name="Self-health"
+        question="Whether the thing telling you this is itself up."
+        visual={
+          components.length > 0 ? (
+            <MarkerRail
+              items={components.map((component) => ({
+                key: component.key,
+                label: component.label,
+                value: component.uptimePct ?? 0,
+                detail: `${component.currentOk === null ? "unknown" : component.currentOk ? "ok now" : "down now"}${
+                  component.latencyMs == null ? "" : ` · ${formatNumber(component.latencyMs)} ms`
+                } · ${formatNumber(component.points.length)} days measured`,
+              }))}
+              max={100}
+              formatValue={(value) => `${value}%`}
+              columns={{ ratio: "Uptime", name: "Component", scale: "Share of checks that passed" }}
+              ariaLabel="metagraphed's own component uptime"
+              source="self-health"
+            />
+          ) : null
+        }
+        // The ratio is over the days a component REPORTS, not assumed to be 90:
+        // a component measured for a week must not read as 8% available because
+        // the other 83 days are missing.
+        footnote={
+          self.isError
+            ? "self-health is unavailable — this section cannot tell you whether the site is up"
+            : "over the days each component reports · self-probed"
+        }
+      />
+
+      <Raw rows={rawRows} />
+    </AppShell>
   );
 }

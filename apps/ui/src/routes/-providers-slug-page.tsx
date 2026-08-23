@@ -1,442 +1,306 @@
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { AppShell } from "@/components/metagraphed/app-shell";
-import { EmptyState, RECOVERY, StaleBanner } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { useInfiniteQuery, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
-  BrandIcon,
-  CopyableCode,
   AnalyticsSection,
-  Raw,
-  RangeControl,
+  BrandIcon,
+  DataTable,
   EntityHero,
+  Fact,
   FactSentence,
+  RankedRails,
+  Raw,
+  type DataTableColumn,
+  type RawRow,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel } from "@/components/metagraphed/primitives";
-import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
-import { EndpointList } from "@/components/metagraphed/endpoint-list";
-import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
+import { AppShell } from "@/components/metagraphed/app-shell";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
+import { API_BASE } from "@/lib/metagraphed/config";
+import { formatNumber } from "@/lib/metagraphed/format";
 import {
-  providerQuery,
   providerEndpointsQuery,
-  subnetsQuery,
-  metagraphedQueryKey,
+  providerQuery,
+  surfacesInfiniteQuery,
 } from "@/lib/metagraphed/queries";
-import { UptimeBadgeEmbed } from "@/components/metagraphed/uptime-badge-embed";
-import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
-import { shouldShowProviderSlugSubtitle } from "@/lib/metagraphed/provider-hero-fields";
-import type { Endpoint, Subnet } from "@/lib/metagraphed/types";
+import type { Endpoint, Surface } from "@/lib/metagraphed/types";
+import {
+  endpointRails,
+  hostOf,
+  initials,
+  providerDetailFacts,
+  providerSurfaces,
+} from "@/components/metagraphed/providers/providers-logic";
+import { Route } from "./providers.$slug";
 
-type ProviderTab = "overview" | "endpoints" | "subnets" | "evidence";
+const API_PATHS = [
+  "/api/v1/providers/{slug}",
+  "/api/v1/providers/{slug}/endpoints",
+  "/api/v1/surfaces",
+];
 
-const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "endpoints", label: "Endpoints" },
-  { id: "subnets", label: "Subnets" },
-  { id: "evidence", label: "Evidence" },
-] as const;
-
-const SECTION_TO_TAB: Record<string, string> = {
-  "endpoints-glance": "overview",
-  endpoints: "endpoints",
-  "subnets-served": "subnets",
-  evidence: "evidence",
-};
-
-export function ProviderDetail() {
-  const { slug } = useParams({ from: "/providers/$slug" });
-  return (
-    <AppShell>
-      <AsyncPanel
-        height="md"
-        context="provider"
-        retryQueryKeys={[metagraphedQueryKey("provider", slug)]}
-      >
-        <ProviderShell slug={slug} />
-      </AsyncPanel>
-    </AppShell>
-  );
+function ApiSources({ slug }: { slug: string }) {
+  useRegisterApiSource(API_PATHS.map((path) => path.replace("{slug}", slug)));
+  return null;
 }
 
-function ProviderShell({ slug }: { slug: string }) {
-  const { data: p, meta } = useSuspenseQuery(providerQuery(slug)).data;
-  const summary = p?.endpoint_summary;
-  const search = useSearch({ from: "/providers/$slug" });
-  const navigate = useNavigate({ from: "/providers/$slug" });
-  const tab = (
-    TABS.some((item) => item.id === search.tab) ? search.tab : "overview"
-  ) as ProviderTab;
-  useHashScroll(tab, SECTION_TO_TAB);
-  const stale = meta?.stale || isStaleFreshness(meta?.generated_at);
-  const setTab = (next: ProviderTab) =>
-    navigate({
-      search: { tab: next === "overview" ? undefined : next },
-      replace: true,
-      resetScroll: false,
-    });
+/**
+ * One provider (#11624) — hero, three sections, `Raw`.
+ *
+ * What went: a five-section page behind a `TabStrip`, and the tab param with
+ * it. The tabs were Endpoints, Surfaces and three panels of the same counts
+ * the hero now carries.
+ *
+ * The issue asked for a 90-day uptime rail and a p50 series over time.
+ * Neither is published: /api/v1/providers/{slug}/endpoints carries ONE probe
+ * per endpoint -- `latency_ms`, `status`, `last_checked`, `last_ok` -- and no
+ * history route exists for either reading. The Latency section ranks that one
+ * probe and says which probe it is; the Health section states the status split
+ * the summary does publish, next to the endpoints it describes.
+ */
+export function ProviderDetail() {
+  const { slug } = Route.useParams();
+  const provider = useSuspenseQuery(providerQuery(slug)).data.data;
+  const endpoints = useQuery({ ...providerEndpointsQuery(slug), retry: 0 });
+  // The provider's surfaces, server-filtered: /api/v1/surfaces takes
+  // `provider`, so this asks for one provider's rows rather than paging the
+  // 3,391-row catalogue and discarding 99% of it.
+  const surfaces = useInfiniteQuery({
+    ...surfacesInfiniteQuery({ provider: slug, limit: 500 }),
+    retry: 0,
+  });
+
+  // Memoised, not inlined: `?? []` builds a fresh array on every render and
+  // the rail's useMemo below would recompute every time.
+  const endpointList = useMemo(() => (endpoints.data?.data ?? []) as Endpoint[], [endpoints.data]);
+  const surfaceList = useMemo(
+    () => providerSurfaces((surfaces.data?.pages ?? []).flatMap((page) => page.data)),
+    [surfaces.data],
+  );
+  const rails = useMemo(() => endpointRails(endpointList), [endpointList]);
+  const summary = provider?.endpoint_summary;
+
+  const host =
+    (typeof provider?.website === "string" ? provider.website : null) ??
+    (typeof provider?.homepage === "string" ? provider.homepage : null);
+
+  const endpointColumns: DataTableColumn<Endpoint>[] = [
+    { key: "kind", label: "Kind", kind: "status", width: 150, value: (row) => row.kind ?? null },
+    {
+      key: "url",
+      label: "URL",
+      kind: "link",
+      value: (row) => row.url ?? null,
+      href: (row) => row.url,
+      format: (value) => (typeof value === "string" ? value.replace(/^https?:\/\//, "") : "—"),
+    },
+    {
+      key: "subnet",
+      label: "Subnet",
+      kind: "link",
+      width: 110,
+      value: (row) => (typeof row.netuid === "number" ? (row.netuid as number) : null),
+      href: (row) =>
+        typeof row.netuid === "number" ? `/subnets/${row.netuid as number}` : undefined,
+      format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
+    },
+    {
+      key: "status",
+      label: "Status",
+      kind: "status",
+      width: 120,
+      value: (row) => (typeof row.status === "string" ? row.status : null),
+    },
+    {
+      key: "latency",
+      label: "p50",
+      kind: "number",
+      align: "right",
+      width: 100,
+      value: (row) => (typeof row.latency_ms === "number" ? row.latency_ms : null),
+      format: (value) => (typeof value === "number" ? `${formatNumber(value)} ms` : "—"),
+    },
+    {
+      key: "probed",
+      label: "Last probe",
+      kind: "time",
+      width: 130,
+      value: (row) => (typeof row.last_checked === "string" ? row.last_checked : null),
+    },
+    {
+      key: "ok",
+      label: "Last ok",
+      kind: "time",
+      width: 130,
+      demote: true,
+      value: (row) => (typeof row.last_ok === "string" ? row.last_ok : null),
+    },
+  ];
+
+  const surfaceColumns: DataTableColumn<Surface>[] = [
+    {
+      key: "subnet",
+      label: "Subnet",
+      kind: "link",
+      width: 110,
+      value: (row) => row.netuid ?? null,
+      href: (row) => (row.netuid == null ? undefined : `/subnets/${row.netuid}`),
+      format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
+    },
+    { key: "kind", label: "Kind", kind: "status", width: 150, value: (row) => row.kind ?? null },
+    { key: "name", label: "Name", value: (row) => row.name ?? null },
+    {
+      key: "url",
+      label: "URL",
+      kind: "link",
+      value: (row) => row.url ?? null,
+      href: (row) => row.url,
+      format: (value) => (typeof value === "string" ? value.replace(/^https?:\/\//, "") : "—"),
+    },
+    {
+      key: "authority",
+      label: "Authority",
+      kind: "status",
+      width: 170,
+      value: (row) => (typeof row.authority === "string" ? row.authority : null),
+    },
+    {
+      key: "verified",
+      label: "Last verified",
+      kind: "time",
+      width: 130,
+      demote: true,
+      value: (row) => row.last_verified_at ?? null,
+    },
+  ];
+
+  const name = (typeof provider?.name === "string" && provider.name) || slug;
+  const rawRows: RawRow[] = [
+    { label: "slug", value: slug },
+    ...API_PATHS.map((path) => {
+      const resolved = path.replace("{slug}", slug);
+      return {
+        label: resolved.replace("/api/v1/", ""),
+        value: `${API_BASE}${resolved}`,
+        href: `${API_BASE}${resolved}`,
+      };
+    }),
+  ];
 
   return (
-    <>
-      {/* No breadcrumb row here: the app-shell's own row is the single
-          canonical trail (#7853). AppShell's `crumbLabel` prop carries the
-          provider's display name this used to render redundantly. */}
+    <AppShell>
+      <ApiSources slug={slug} />
       <EntityHero
-        name={p?.name ?? slug}
+        crumbs={[
+          { label: "APIs", href: "/apis" },
+          { label: "Providers", href: "/apis/providers" },
+        ]}
+        name={name}
+        avatar={
+          <BrandIcon
+            iconUrl={typeof provider?.icon_url === "string" ? provider.icon_url : undefined}
+            name={name}
+            providerSlug={slug}
+            fallback={initials(name)}
+            size={40}
+          />
+        }
         action={
-          <Panel
-            flush
-            bodyClassName="inline-flex items-center divide-x divide-border overflow-hidden"
-          >
-            <Raw
-              title="Links"
-              rows={[
-                ...((v) => (v ? [{ label: "Website", value: v, href: v }] : []))(
-                  p?.website ?? p?.homepage,
-                ),
-                ...((v) => (v ? [{ label: "Docs", value: v, href: v }] : []))(p?.docs),
-                ...((v) => (v ? [{ label: "Repository", value: v, href: v }] : []))(p?.repo),
-              ]}
-            />
-          </Panel>
+          host ? (
+            <a href={host} className="mg-hero-action" rel="noreferrer">
+              Open host
+            </a>
+          ) : undefined
         }
         sentence={
           <FactSentence>
-            {p?.notes ?? "Public Bittensor infrastructure, endpoints, and supporting evidence."}
+            {typeof provider?.kind === "string" ? provider.kind : "provider"} at{" "}
+            {hostOf(host) ?? "no published host"}.{" "}
+            {providerDetailFacts(provider, summary, surfaceList.length, {
+              count: formatNumber,
+            }).map((fact) => (
+              <Fact key={fact.key}>
+                {fact.label} {fact.value}
+              </Fact>
+            ))}
           </FactSentence>
         }
-      />
-      {shouldShowProviderSlugSubtitle(p?.name, slug) ? (
-        <div className="-mt-2 mb-3 text-11 text-ink-muted">{slug}</div>
-      ) : null}
-
-      <div className="mg-kpi-strip">
-        <ProviderPulseTile label="Endpoints" value={formatNumber(summary?.endpoint_count)} />
-        <ProviderPulseTile label="Monitored" value={formatNumber(summary?.monitored_count)} />
-        <ProviderPulseTile label="Healthy" value={formatNumber(summary?.by_status?.ok)} tone="ok" />
-        <ProviderPulseTile
-          label="Pool eligible"
-          value={formatNumber(summary?.pool_eligible_count)}
-        />
-      </div>
-      {stale ? (
-        <StaleBanner
-          generatedAt={meta?.generated_at}
-          refreshQueryKeys={[providerQuery(slug).queryKey, providerEndpointsQuery(slug).queryKey]}
-        />
-      ) : null}
-
-      <RangeControl
-        options={TABS.map((item) =>
-          item.id === "endpoints" ? { ...item, meta: summary?.endpoint_count } : item,
-        ).map((t) => ({ value: t.id, label: String(t.label) }))}
-        value={tab}
-        onChange={setTab}
-        label="Provider profile sections"
-        className="mt-4 overflow-x-auto"
+        live={{
+          updatedAt: (provider?.generated_at as string | undefined) ?? null,
+          source: "registry",
+        }}
       />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
-        <div className="min-w-0 space-y-6">
-          {tab === "overview" ? <OverviewPanel slug={slug} /> : null}
-          {tab === "endpoints" ? <EndpointsPanel slug={slug} /> : null}
-          {tab === "subnets" ? <SubnetsServedPanel slug={slug} /> : null}
-          {tab === "evidence" ? <EvidencePanel provider={p} /> : null}
-        </div>
-
-        <aside className="space-y-3 border-t border-border pt-4 lg:sticky lg:top-32 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 self-start">
-          {summary?.by_kind ? <BreakdownCard title="By kind" data={summary.by_kind} /> : null}
-          {summary?.by_status ? <BreakdownCard title="By status" data={summary.by_status} /> : null}
-          {summary?.by_layer ? <BreakdownCard title="By layer" data={summary.by_layer} /> : null}
-        </aside>
-      </div>
-
-      {/*
-        #11351: the same flywheel #8329 built for subnet teams, on the 138
-        provider pages that never had it. /api/v1/providers/{slug}/badge.svg has
-        always existed and nothing pointed an operator at it.
-        With outreach deliberately off the table, a self-serve badge on the page
-        an operator already visits is the only mechanism by which this project
-        earns an inbound link -- measured 2026-08-15, 0 of 115 reachable subnet
-        READMEs mention metagraph.sh.
-      */}
-      <UptimeBadgeEmbed entity="providers" id={slug} name={p.name ?? undefined} />
-
-      <ApiSourceFooter
-        paths={[`/api/v1/providers/${slug}`, `/api/v1/providers/${slug}/endpoints`]}
-      />
-    </>
-  );
-}
-
-function ProviderPulseTile({ label, value, tone }: { label: string; value: string; tone?: "ok" }) {
-  return (
-    <div>
-      <div className="text-10 text-ink-muted">{label}</div>
-      <div
-        className={
-          tone === "ok"
-            ? "mt-1 font-mono text-28 text-health-ok"
-            : "mt-1 font-mono text-28 text-ink-strong"
+      <AnalyticsSection
+        id="latency"
+        name="Latency"
+        question="How long each endpoint took on its last probe."
+        visual={
+          rails.length > 0 ? (
+            <RankedRails
+              items={rails}
+              formatValue={(value: number) => `${formatNumber(value)} ms`}
+              scale="sqrt"
+              columns={{ value: "p50", name: "Kind · host", track: "Last probe" }}
+              ariaLabel={`${name} endpoint latency`}
+              source="provider-latency"
+            />
+          ) : null
         }
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function OverviewPanel({ slug }: { slug: string }) {
-  return (
-    <>
-      <AnalyticsSection
-        id="endpoints-glance"
-        name="Endpoints at a glance"
-        question="Root RPC/WSS, SSE/data streams, and open incidents — one tap to expand."
-        footnote="Compact operational summary across this provider's endpoints."
-      >
-        <AsyncPanel
-          height="md"
-          context="endpoints"
-          retryQueryKeys={[metagraphedQueryKey("provider-endpoints", slug)]}
-        >
-          <EndpointsGlanceLoader slug={slug} />
-        </AsyncPanel>
-      </AnalyticsSection>
+        // One probe, not a series: no per-endpoint history route exists, and a
+        // "p50 over time" chart drawn from a single reading would be a line
+        // between one point and itself.
+        footnote="most recent probe · measured endpoints only · probe-derived"
+      />
 
       <AnalyticsSection
-        id="subnets-served-preview"
-        name="Subnets served"
-        question="Active netuids where this provider operates endpoints."
-        footnote="Grouped by netuid — click any to open the subnet profile."
-      >
-        <AsyncPanel
-          height="sm"
-          context="subnets served"
-          retryQueryKeys={[
-            metagraphedQueryKey("provider-endpoints", slug),
-            metagraphedQueryKey("subnets"),
-          ]}
-        >
-          <SubnetsServedGrid slug={slug} compact />
-        </AsyncPanel>
-      </AnalyticsSection>
-    </>
-  );
-}
-
-function EndpointsPanel({ slug }: { slug: string }) {
-  return (
-    <AnalyticsSection
-      id="endpoints"
-      name="Endpoints"
-      question="Probe-derived health, latency, and freshness."
-      footnote="Each endpoint is probed periodically. Health reflects the most recent probe."
-    >
-      <AsyncPanel
-        height="lg"
-        context="endpoints"
-        retryQueryKeys={[metagraphedQueryKey("provider-endpoints", slug)]}
-      >
-        <EndpointsTableLoader slug={slug} />
-      </AsyncPanel>
-    </AnalyticsSection>
-  );
-}
-
-function SubnetsServedPanel({ slug }: { slug: string }) {
-  return (
-    <AnalyticsSection
-      id="subnets-served"
-      name="Subnets served"
-      question="Active netuids where this provider operates endpoints."
-    >
-      <AsyncPanel
-        height="md"
-        context="subnets served"
-        retryQueryKeys={[
-          metagraphedQueryKey("provider-endpoints", slug),
-          metagraphedQueryKey("subnets"),
-        ]}
-      >
-        <SubnetsServedGrid slug={slug} />
-      </AsyncPanel>
-    </AnalyticsSection>
-  );
-}
-
-function EndpointsGlanceLoader({ slug }: { slug: string }) {
-  const { data } = useSuspenseQuery(providerEndpointsQuery(slug));
-  const meta = data.meta;
-  const rows = (data.data ?? []) as Endpoint[];
-  return (
-    <EndpointsGlance
-      endpoints={rows}
-      lastChecked={meta?.generated_at}
-      fullList={() => <EndpointList rows={rows} showNetuid showProvider={false} />}
-    />
-  );
-}
-
-function EndpointsTableLoader({ slug }: { slug: string }) {
-  const { data } = useSuspenseQuery(providerEndpointsQuery(slug));
-  const meta = data.meta;
-  const rows = (data.data ?? []) as Endpoint[];
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        title="No endpoints for this provider"
-        description="This provider has no tracked endpoints yet."
-        lastChecked={meta?.generated_at}
-        action={RECOVERY.endpoints}
-      />
-    );
-  }
-  return <EndpointList rows={rows} showNetuid showProvider={false} />;
-}
-
-function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean }) {
-  const { data } = useSuspenseQuery(providerEndpointsQuery(slug));
-  const meta = data.meta;
-  const rows = useMemo(() => (data.data ?? []) as Endpoint[], [data]);
-  // Join the subnet index so each tile can show the subnet's logo + name
-  // (BrandIcon resolves icon_url → netuid brand-override → favicon → monogram).
-  const subnetIndex = useSuspenseQuery(subnetsQuery({ limit: 256 })).data;
-  const subnetByNetuid = useMemo(() => {
-    const m = new Map<number, Subnet>();
-    for (const s of (subnetIndex.data ?? []) as Subnet[]) {
-      if (s.netuid != null) m.set(s.netuid, s);
-    }
-    return m;
-  }, [subnetIndex]);
-  const grouped = useMemo(() => {
-    const m = new Map<number, Endpoint[]>();
-    for (const r of rows) {
-      if (r.netuid == null) continue;
-      const arr = m.get(r.netuid) ?? [];
-      arr.push(r);
-      m.set(r.netuid, arr);
-    }
-    return Array.from(m.entries()).sort((a, b) => a[0] - b[0]);
-  }, [rows]);
-  if (grouped.length === 0)
-    return (
-      <EmptyState
-        title="No per-subnet endpoints recorded"
-        description="This provider may serve root or unattributed endpoints only."
-        lastChecked={meta?.generated_at}
-      />
-    );
-  const visible = compact ? grouped.slice(0, 8) : grouped;
-  return (
-    <>
-      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {visible.map(([netuid, items]) => {
-          const sn = subnetByNetuid.get(netuid);
-          return (
-            <li key={netuid}>
-              <Link
-                to="/subnets/$netuid"
-                params={{ netuid: netuid }}
-                className="flex items-center gap-2.5 rounded border border-border bg-card p-3 hover:border-ink/30 mg-row-hover"
-              >
-                <BrandIcon
-                  url={sn?.website}
-                  iconUrl={sn?.icon_url}
-                  netuid={netuid}
-                  name={sn?.name ?? `Subnet ${netuid}`}
-                  fallback={netuid}
-                  size={30}
-                  className="shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate font-display text-13 font-semibold text-ink-strong">
-                      {sn?.name ?? "Subnet"}
-                    </span>
-                    <span className="shrink-0 text-11 text-ink-muted tabular-nums">
-                      {String(netuid).padStart(3, "0")}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 text-10 text-ink-muted">
-                    {items.length} endpoint{items.length === 1 ? "" : "s"}
-                  </div>
-                </div>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-      {compact && grouped.length > visible.length ? (
-        <div className="mt-2 text-13 text-ink-muted">
-          + {grouped.length - visible.length} more — open the Subnets served tab.
-        </div>
-      ) : null}
-    </>
-  );
-}
-
-function BreakdownCard({ title, data }: { title: string; data: Record<string, number> }) {
-  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
-  if (entries.length === 0) return null;
-  const max = Math.max(...entries.map((e) => e[1]));
-  return (
-    <Panel>
-      <h3 className="font-display text-13 font-semibold text-ink-strong mb-2">{title}</h3>
-      <ul className="space-y-1.5">
-        {entries.map(([kk, v]) => (
-          <li key={kk}>
-            <div className="flex items-baseline justify-between gap-2 mb-0.5">
-              <span className="text-11 text-ink truncate">{kk}</span>
-              <span className="text-11 text-ink-muted tabular-nums">{v}</span>
-            </div>
-            <div className="h-1 w-full overflow-hidden rounded bg-surface">
-              <div
-                className="h-full bg-accent"
-                style={{ width: `${max > 0 ? (v / max) * 100 : 0}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </Panel>
-  );
-}
-
-function EvidencePanel({
-  provider,
-}: {
-  provider: { website?: string; homepage?: string; docs?: string; repo?: string };
-}) {
-  return (
-    <AnalyticsSection
-      id="evidence"
-      name="Evidence & source links"
-      question="Public references and canonical data behind this profile."
-      footnote="Provider links are source context; canonical API and artifact URLs expose the normalized registry record."
-    >
-      <div className="space-y-2">
-        {(provider.website ?? provider.homepage) ? (
-          <CopyableCode
-            label="website"
-            value={provider.website ?? provider.homepage ?? ""}
-            truncate={false}
-            className="w-full"
+        id="endpoints"
+        name="Endpoints"
+        question="Everything this provider runs, and how it answered."
+        visual={
+          <DataTable
+            id="endpoints"
+            rows={endpointList}
+            columns={endpointColumns}
+            rowKey={(row) => row.id}
+            caption={`${name} endpoints`}
+            link={RouterLink}
+            source="provider-endpoint"
+            loading={endpoints.isPending}
+            paginate={false}
+            empty="No endpoints are registered for this provider."
           />
-        ) : null}
-        {provider.docs ? (
-          <CopyableCode label="docs" value={provider.docs} truncate={false} className="w-full" />
-        ) : null}
-        {provider.repo ? (
-          <CopyableCode
-            label="repository"
-            value={provider.repo}
-            truncate={false}
-            className="w-full"
+        }
+        footnote={
+          summary?.by_status
+            ? Object.entries(summary.by_status)
+                .map(([status, n]) => `${formatNumber(n)} ${status}`)
+                .join(" · ") + " · probe-derived"
+            : "probe-derived"
+        }
+      />
+
+      <AnalyticsSection
+        id="surfaces"
+        name="Surfaces"
+        question="What this provider publishes, per subnet."
+        visual={
+          <DataTable
+            id="surfaces"
+            rows={surfaceList}
+            columns={surfaceColumns}
+            rowKey={(row) => row.id}
+            caption={`${name} surfaces`}
+            link={RouterLink}
+            source="provider-surface"
+            loading={surfaces.isPending}
+            paginate={false}
+            empty="No surfaces are registered for this provider."
           />
-        ) : null}
-      </div>
-    </AnalyticsSection>
+        }
+        footnote={`${formatNumber(surfaceList.length)} surfaces · registry`}
+      />
+
+      <Raw rows={rawRows} />
+    </AppShell>
   );
 }

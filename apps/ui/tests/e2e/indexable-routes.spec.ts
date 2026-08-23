@@ -42,7 +42,6 @@ const MUST_BE_200 = [
   "/chain/extrinsics",
   "/chain/events",
   "/health",
-  "/status",
   "/contribute",
   "/about",
   "/validators",
@@ -76,6 +75,9 @@ const MUST_BE_301: ReadonlyArray<readonly [from: string, to: string, carries?: s
   ["/gaps", "/contribute"],
   ["/portfolio", "/accounts"],
   ["/sudo", "/chain", "#governance"],
+  // #11625 merged /status into /health: the self-health verdict is its fourth
+  // section, so the redirect lands on that section rather than the top.
+  ["/status", "/health", "#self-health"],
   ["/admin-changes", "/chain", "#governance"],
   ["/tools/ss58", "/accounts"],
   // #11613 folded five more routes into the rebuilt /subnets index. Each one
