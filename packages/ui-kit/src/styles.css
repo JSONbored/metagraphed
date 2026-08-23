@@ -1640,7 +1640,26 @@
   .mg-rails-track[data-secondary] > b {
     background: var(--ink-muted);
   }
-  .mg-rails-row[data-active="true"] .mg-rails-track > b {
+
+  /* A two-track rail is TWO SERIES, which is what the categorical ramp is for.
+     A single-track rail stays graphite: one bar is not a category, and the
+     reference design's own rails are graphite for exactly that reason. The
+     active override below still wins -- it comes later at equal specificity. */
+  .mg-rails[data-secondary="true"] .mg-rails-track > b {
+    background: var(--chart-1);
+  }
+
+  .mg-rails[data-secondary="true"] .mg-rails-track[data-secondary] > b {
+    background: var(--chart-2);
+  }
+  /* The active row still wins over the categorical colours above, on BOTH
+     tracks -- the second selector only exists because the coloured secondary
+     rule outranks the first one on specificity. */
+  .mg-rails-row[data-active="true"] .mg-rails-track > b,
+  .mg-rails[data-secondary="true"]
+    .mg-rails-row[data-active="true"]
+    .mg-rails-track[data-secondary]
+    > b {
     background: var(--accent);
   }
   .mg-rails-more {

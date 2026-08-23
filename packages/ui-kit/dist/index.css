@@ -1342,7 +1342,14 @@
   .mg-rails-track[data-secondary] > b {
     background: var(--ink-muted);
   }
-  .mg-rails-row[data-active=true] .mg-rails-track > b {
+  .mg-rails[data-secondary=true] .mg-rails-track > b {
+    background: var(--chart-1);
+  }
+  .mg-rails[data-secondary=true] .mg-rails-track[data-secondary] > b {
+    background: var(--chart-2);
+  }
+  .mg-rails-row[data-active=true] .mg-rails-track > b,
+  .mg-rails[data-secondary=true] .mg-rails-row[data-active=true] .mg-rails-track[data-secondary] > b {
     background: var(--accent);
   }
   .mg-rails-more {
