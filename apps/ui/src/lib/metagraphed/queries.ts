@@ -828,14 +828,38 @@ export const lineageQuery = () =>
 
 // #1112: per-subnet on-chain economics. One artifact carries all subnets, so
 // fetch once (shared cache) and the consumer finds its netuid.
-export const economicsQuery = () =>
+/** The three fields a composition or a name lookup needs from an economics row. */
+const ECONOMICS_IDENTITY_FIELDS = ["netuid", "name", "emission_share"] as const;
+
+/**
+ * @param fields `"all"` for the full row, `"identity"` for netuid + name +
+ * emission share.
+ *
+ * The response is 129 rows of ~45 fields, and a page that only composes
+ * emission share inlines the whole thing as SSR dehydration -- 176 KB of the
+ * home page's 211 KiB for three fields per row (#11618). Same reasoning and
+ * same shape as `validatorsQuery`'s `subnets` / `identity` flags; it is part
+ * of the query KEY so two callers asking for different shapes cannot share a
+ * cache entry and read rows that are missing a field.
+ */
+export const economicsQuery = ({ fields = "all" }: { fields?: "all" | "identity" } = {}) =>
   queryOptions({
-    queryKey: k("economics"),
+    queryKey: k("economics", fields),
     queryFn: async ({ signal }) => {
       const res = await apiFetch<{ subnets?: unknown }>("/api/v1/economics", {
         signal,
       });
-      return { data: normalizeEconomicsSubnets(res.data?.subnets), meta: res.meta, url: res.url };
+      const rows = normalizeEconomicsSubnets(res.data?.subnets);
+      return {
+        data:
+          fields === "all"
+            ? rows
+            : rows.map((row) =>
+                Object.fromEntries(ECONOMICS_IDENTITY_FIELDS.map((field) => [field, row[field]])),
+              ),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetEconomics[]>;
     },
     staleTime: STALE_MED,
   });

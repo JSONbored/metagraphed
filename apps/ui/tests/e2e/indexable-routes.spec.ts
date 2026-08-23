@@ -484,7 +484,11 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
   // because the stub's fixtures are smaller; the ratchet still catches a code
   // change that inflates the document, which is what it is for.
   const MAX_HTML_KIB: Record<keyof typeof HUB_COPY, number> = {
-    "/": 130,
+    // #11618 lowered this from 130. The rebuilt landing page reads three
+    // fields of an economics row, so it asks for three -- the full response is
+    // 129 rows of ~45 fields and was 176 KB of inlined dehydration. It also
+    // stopped fetching the registry list for a name it already had.
+    "/": 70,
     // #11612 lowered this from 560. Dropping `github_commits_weekly` (52
     // weekly objects per subnet, 74 KB of the 331 KB this page inlined as SSR
     // dehydration) and `github_languages` from the list rows took the document

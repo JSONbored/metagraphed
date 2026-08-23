@@ -136,7 +136,9 @@ export function ValidatorDetailPage() {
 
   const sentence: FactNodes = [
     <Fact key="hotkey">{`hotkey ${shortKey(hotkey)}`}</Fact>,
-    <Fact key="coldkey">{detail.coldkey ? `coldkey ${shortKey(detail.coldkey)}` : "no coldkey"}</Fact>,
+    <Fact key="coldkey">
+      {detail.coldkey ? `coldkey ${shortKey(detail.coldkey)}` : "no coldkey"}
+    </Fact>,
     <Fact key="subnets">{`${formatNumber(memberships.length)} memberships`}</Fact>,
     <Fact key="permits">{`${formatNumber(permits)} with a permit`}</Fact>,
     <Fact key="noms">

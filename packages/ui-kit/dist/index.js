@@ -1316,7 +1316,14 @@ function CopyableCode({
         title: value,
         "aria-label": copied ? "Copied" : `Copy ${label ?? "value"}`,
         className: classNames(
-          "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left text-11 text-ink hover:border-ink/30 transition-colors",
+          // `max-w-full` alongside `min-w-0`, matching KeyChip: without it an
+          // `inline-flex` shrink-to-fit box grows to its unwrapped content
+          // width whatever the parent is, and a long value -- an MCP install
+          // command, a feed URL -- escaped the viewport at 375px while
+          // truncating happily at 1280 (#11618). The truncate/wrap choice
+          // below only decides HOW the text behaves once the box is bound;
+          // this is what binds it.
+          "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left text-11 text-ink hover:border-ink/30 transition-colors",
           // `truncate={false}` means "wrap instead of truncate," which only
           // makes sense once the box is width-bound -- otherwise `inline-flex`
           // shrink-to-fit sizing lets it grow to its unwrapped content width
