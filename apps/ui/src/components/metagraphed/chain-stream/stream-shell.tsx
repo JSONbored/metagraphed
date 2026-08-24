@@ -1,19 +1,11 @@
 import type { ReactNode } from "react";
-import { EntityHero, Fact, FactSentence, Raw, type RawRow } from "@jsonbored/ui-kit";
+import { EntityHero, FactSentence, Raw, type RawRow } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState } from "@/components/metagraphed/states";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { factCells } from "@/lib/metagraphed/facts";
 import type { Fact as StreamFact } from "./chain-stream-logic";
-
-/** The hero facts as the inline chips the design system asks for. */
-function factChips(facts: readonly StreamFact[]): ReactNode {
-  return facts.slice(0, 6).map((fact) => (
-    <Fact key={fact.key}>
-      {fact.label} {fact.value}
-    </Fact>
-  ));
-}
 
 /**
  * Registration has to happen INSIDE `AppShell`, which is where the provider
@@ -85,11 +77,12 @@ export function StreamShell({
       <EntityHero
         crumbs={[{ label: "Chain", href: "/chain" }]}
         name={name}
-        sentence={
-          <FactSentence>
-            {lede} {factChips(facts)}
-          </FactSentence>
-        }
+        sentence={<FactSentence>{lede}</FactSentence>}
+        // A STRIP, not chips (#11696). All three of these pages are a table
+        // with a sentence over it, and the sentence set the head block, the
+        // block time and the Nakamoto coefficient at 11px -- smaller than the
+        // table's own rows. The lede stays prose; the numbers get cells.
+        cells={factCells(facts) ?? undefined}
         live={{ updatedAt, source: "chain-direct", onRefresh, refreshing }}
       />
       {children}

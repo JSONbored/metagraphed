@@ -5,7 +5,6 @@ import {
   CopyableCode,
   DataTable,
   EntityHero,
-  Fact,
   FactSentence,
   FilterField,
   FilterSelect,
@@ -16,6 +15,7 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -113,15 +113,18 @@ export function AgentsPage() {
         }
         sentence={
           <FactSentence>
-            One command points any MCP client at every Bittensor subnet this registry knows.{" "}
-            {agentFacts(payload?.summary as Parameters<typeof agentFacts>[0], tools.length, {
-              count: formatNumber,
-            }).map((fact) => (
-              <Fact key={fact.key}>
-                {fact.label} {fact.value}
-              </Fact>
-            ))}
+            One command points any MCP client at every Bittensor subnet this registry knows.
           </FactSentence>
+        }
+        // A STRIP, not chips (#11696). This page's subject is a table, and its
+        // headline counts were 11px `Fact` chips inside the sentence -- set
+        // smaller than the rows they frame. The lede stays prose.
+        cells={
+          factCells(
+            agentFacts(payload?.summary as Parameters<typeof agentFacts>[0], tools.length, {
+              count: formatNumber,
+            }),
+          ) ?? undefined
         }
         live={{
           updatedAt: (payload?.generated_at as string | undefined) ?? null,

@@ -22,7 +22,19 @@ export function blockColumns(): DataTableColumn<BlockRow>[] {
       href: (row) => `/blocks/${row.block_number}`,
       format: (value) => (typeof value === "number" ? `#${formatNumber(value)}` : "—"),
     },
-    { key: "age", label: "Age", kind: "time", width: 110, value: (row) => row.observed_at ?? null },
+    // In the menu, not the table. Blocks arrive twelve seconds apart, so at any
+    // relative-time granularity a reader can read, fifty consecutive blocks are
+    // all "11d ago" -- or all "10m ago" at the head (#11696). What varies down
+    // this list is the HEIGHT, which leads, and the block time, which has its
+    // own column; the head's own age is in the page's liveness line.
+    {
+      key: "age",
+      label: "Age",
+      kind: "time",
+      width: 110,
+      demote: true,
+      value: (row) => row.observed_at ?? null,
+    },
     {
       key: "author",
       label: "Author",
@@ -130,10 +142,17 @@ export function extrinsicColumns(): DataTableColumn<Extrinsic>[] {
       value: (row) => (row.success == null ? null : row.success ? "ok" : "failed"),
     },
     {
+      // The CAPTURE time, not the chain's. Every row in a polled page was
+      // observed in the same pass, so the column reads one value on all fifty
+      // of them -- forty rows of "17h ago" (#11696). It stays available in the
+      // column menu, because "when did we see this" is a real question about a
+      // single row; it is not something a reader scans down a column, and the
+      // row's block already dates it.
       key: "observed",
       label: "Observed",
       kind: "time",
       width: 110,
+      demote: true,
       value: (row) => row.observed_at ?? null,
     },
     {
@@ -169,8 +188,16 @@ export function eventColumns(): DataTableColumn<ChainEvent>[] {
           ? `#${formatNumber(value)}${row.event_index == null ? "" : `·${row.event_index}`}`
           : "—",
     },
-    { key: "kind", label: "Event", value: (row) => eventLabel(row) },
-    { key: "summary", label: "Summary", kind: "text", value: (row) => asText(row.summary) },
+    { key: "kind", label: "Event", width: 280, value: (row) => eventLabel(row) },
+    // Bounded: unbounded it took 617px of a 1254px table on a 1198px card and
+    // pushed the last column off the edge (#11696).
+    {
+      key: "summary",
+      label: "Summary",
+      kind: "text",
+      width: 560,
+      value: (row) => asText(row.summary),
+    },
     {
       key: "phase",
       label: "Phase",
@@ -180,10 +207,17 @@ export function eventColumns(): DataTableColumn<ChainEvent>[] {
       value: (row) => asText(row.phase),
     },
     {
+      // The CAPTURE time, not the chain's. Every row in a polled page was
+      // observed in the same pass, so the column reads one value on all fifty
+      // of them -- forty rows of "17h ago" (#11696). It stays available in the
+      // column menu, because "when did we see this" is a real question about a
+      // single row; it is not something a reader scans down a column, and the
+      // row's block already dates it.
       key: "observed",
       label: "Observed",
       kind: "time",
       width: 110,
+      demote: true,
       value: (row) => row.observed_at ?? null,
     },
   ];

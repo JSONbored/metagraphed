@@ -2399,8 +2399,15 @@
     max-height: var(--mg-list-viewport-max, 70vh);
     overscroll-behavior: contain;
   }
+  /* FIXED, so a declared column width is a width rather than a minimum.
+     Under `auto` the browser grows any column whose content is longer than its
+     `width:` hint, and one long identifier -- a 40-character surface id, a
+     provider name -- pushed the table 200-340px past its card and took the
+     right-hand columns off the edge with it (#11696). Fixed honours the
+     declaration and the cell truncates instead. */
   .mg-dt table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     font-size: 13px;
   }
@@ -2413,6 +2420,8 @@
     text-transform: uppercase;
     text-align: left;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--ink-muted);
   }
   .mg-dt thead th[data-align="right"] {
@@ -2466,6 +2475,8 @@
     color: var(--ink-muted);
     vertical-align: middle;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .mg-dt tbody td[data-align="right"] {
     text-align: right;

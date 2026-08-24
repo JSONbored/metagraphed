@@ -2019,6 +2019,7 @@
   }
   .mg-dt table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     font-size: 13px;
   }
@@ -2031,6 +2032,8 @@
     text-transform: uppercase;
     text-align: left;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--ink-muted);
   }
   .mg-dt thead th[data-align=right] {
@@ -2077,6 +2080,8 @@
     color: var(--ink-muted);
     vertical-align: middle;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .mg-dt tbody td[data-align=right] {
     text-align: right;

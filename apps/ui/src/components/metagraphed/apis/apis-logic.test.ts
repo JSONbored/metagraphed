@@ -78,11 +78,11 @@ describe("catalogFacts", () => {
       fmt,
     );
     expect(facts.map((f) => f.label)).toEqual([
-      "surfaces",
-      "across subnets",
-      "kinds",
-      "probed",
-      "first-party",
+      "Surfaces",
+      "Across subnets",
+      "Kinds",
+      "Probed",
+      "First-party",
     ]);
     expect(facts.find((f) => f.key === "probed")?.value).toBe("1863");
     expect(facts.some((f) => f.label.includes("up"))).toBe(false);
@@ -229,7 +229,7 @@ describe("schemaFacts", () => {
     // "Nothing changed" is the answer this page exists to give; leaving it out
     // would make a quiet week look like a page that failed to load.
     expect(schemaFacts({ by_drift_status: { unchanged: 64 } }, 0, fmt)).toEqual([
-      { key: "moved", label: "moved since last capture", value: "0" },
+      { key: "moved", label: "Moved since last capture", value: "0" },
     ]);
   });
 

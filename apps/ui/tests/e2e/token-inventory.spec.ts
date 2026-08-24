@@ -50,6 +50,8 @@ type Sweep = {
   repeatedLegends: string[];
   /** Measure labels the page states more than once (#11693). */
   repeatedMeasures: string[];
+  /** Tables wider than the card they sit in (#11696). */
+  wideTables: string[];
   textNodes: number;
 };
 
@@ -68,6 +70,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
   const stackedTables: string[] = [];
   const repeatedLegends: string[] = [];
   const repeatedMeasures: string[] = [];
+  const wideTables: string[] = [];
   const deletedClasses: string[] = [];
   // Every class the v2 rebuild deleted. A page carrying one is either a stale
   // component that survived a rebase or a hand-rolled copy of a primitive; both
@@ -219,6 +222,40 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
         (values.size > 1 ? ` and they disagree: ${[...values].join(" / ")}` : ""),
     );
   }
+  // A TABLE THAT FITS ITS CARD.
+  //
+  // Seven tables were wider than the card they sat in -- /apis/endpoints by
+  // 338px -- because a full URL took 390-711px of the row and the columns to
+  // its right went off the edge into a horizontal scroll nothing announced. A
+  // URL is something a reader copies, not something they compare down a
+  // column, so it belongs under the row (#11696).
+  //
+  // What this can still catch, now that `table-layout: fixed` stops CONTENT
+  // from widening a table: declared widths that sum past the card. Verified by
+  // injection -- widening one column to 900px reports
+  // "div#directory.mg-dt is 652px wider than its card", while putting the
+  // 711px URL column back does NOT, because fixed layout truncates it instead.
+  // That is the fix working, not a hole: the failure mode that remains is a
+  // column set declared wider than the space it has.
+  //
+  // A COLUMN THAT SAYS ONE THING is the other half of #11696 and is NOT
+  // asserted here. Constancy is a property of the data, not of the design:
+  // `Severity: warning` on all twelve incidents and `Subnet: SN51` on all 156
+  // of one provider's surfaces are true today and false after the next probe
+  // pass, so a gate on it goes red for reasons nobody chose. The columns that
+  // were constant BY CONSTRUCTION -- a capture timestamp shared by every row
+  // of one polled page, a permit column on a list of permit-holders -- are
+  // demoted at their definition instead, where the reason lives in a comment
+  // next to the code that made it true.
+  for (const table of root.querySelectorAll<HTMLElement>(".mg-dt")) {
+    const box = table.querySelector<HTMLElement>(".mg-dt-viewport");
+    const grid = table.querySelector<HTMLElement>("table");
+    if (!box || !grid) continue;
+    const over = Math.round(grid.getBoundingClientRect().width - box.getBoundingClientRect().width);
+    if (over > 2) {
+      wideTables.push(`${describeEl(table)} is ${over}px wider than its card`);
+    }
+  }
   for (const el of root.querySelectorAll<HTMLElement>("*")) {
     const cs = getComputedStyle(el);
     for (const cls of String(el.className || "").split(/\s+/)) {
@@ -317,6 +354,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
     deletedClasses,
     repeatedLegends,
     repeatedMeasures,
+    wideTables,
     textNodes,
   };
 }
@@ -452,6 +490,21 @@ for (const route of ROUTES) {
             expect(
               s.repeatedMeasures,
               `the same measure stated twice on ${route} (${viewport.name}, ${theme})`,
+            ).toEqual([]);
+          }
+
+          // A table wider than its card: the reader loses the right-hand
+          // columns to a scroll nothing announces.
+          //
+          // DESKTOP ONLY. A seven-column table cannot fit a 375px phone or a
+          // 768px tablet, and scrolling one sideways there is the ordinary
+          // answer -- asserting it everywhere would be asserting that the
+          // table has no more than three columns. At the width the layout was
+          // designed for there is no such excuse.
+          if (!(route in SPECIMEN_ROUTES) && viewport.name === "desktop") {
+            expect(
+              s.wideTables,
+              `a table wider than its card on ${route} (${viewport.name}, ${theme})`,
             ).toEqual([]);
           }
 

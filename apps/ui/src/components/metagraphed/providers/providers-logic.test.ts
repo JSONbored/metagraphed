@@ -6,6 +6,7 @@ import {
   filterProviders,
   hostOf,
   initials,
+  mergeSurfaceProbes,
   providerDetailFacts,
   providerFacts,
   providerLeaders,
@@ -224,8 +225,8 @@ describe("providerDetailFacts", () => {
       fmt,
     );
     const healthy = facts.find((f) => f.key === "healthy");
-    expect(healthy?.value).toBe("75%");
-    expect(healthy?.label).toBe("ok of 12 probed");
+    expect(healthy?.value).toBe("75% of 12");
+    expect(healthy?.label).toBe("Healthy");
   });
 
   it("omits the share when nothing carries a status", () => {
@@ -261,5 +262,43 @@ describe("providerSurfaces", () => {
 describe("facet", () => {
   it("is the sorted distinct set", () => {
     expect(facet(providerRows(providers, health), (r) => r.kind)).toEqual(["infra", "subnet-team"]);
+  });
+});
+
+describe("mergeSurfaceProbes", () => {
+  const surfaces = [
+    { id: "sn-51-a", url: "https://a.example", name: "A" },
+    { id: "sn-51-docs", url: "https://docs.example", name: "Docs" },
+    { id: "sn-51-nourl", name: "No URL" },
+  ] as Surface[];
+  const endpoints = [
+    {
+      id: "endpoint-srf-1",
+      url: "https://a.example",
+      status: "ok",
+      latency_ms: 42,
+      last_checked: "2026-08-24T00:00:00.000Z",
+    },
+  ] as unknown as Endpoint[];
+
+  it("joins on the URL, because the two feeds number the same thing differently", () => {
+    // /endpoints says `endpoint-srf-<hash>`; /surfaces says
+    // `sn-51-<provider>-<path>`. The ids never match; the URL is the thing
+    // both records are about.
+    const [a] = mergeSurfaceProbes(surfaces, endpoints);
+    expect(a).toMatchObject({ id: "sn-51-a", probeStatus: "ok", probeLatencyMs: 42 });
+    expect(a?.probedAt).toBe("2026-08-24T00:00:00.000Z");
+  });
+
+  it("leaves a surface nobody probes with null probe fields, not zeroes", () => {
+    const [, docs, noUrl] = mergeSurfaceProbes(surfaces, endpoints);
+    expect(docs).toMatchObject({ probeStatus: null, probeLatencyMs: null, probedAt: null });
+    expect(noUrl).toMatchObject({ probeStatus: null, probeLatencyMs: null, probedAt: null });
+  });
+
+  it("keeps every surface, so the merged list is the superset it claims to be", () => {
+    expect(mergeSurfaceProbes(surfaces, endpoints)).toHaveLength(surfaces.length);
+    expect(mergeSurfaceProbes(surfaces, [])).toHaveLength(surfaces.length);
+    expect(mergeSurfaceProbes([], endpoints)).toEqual([]);
   });
 });

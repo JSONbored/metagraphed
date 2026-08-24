@@ -248,8 +248,11 @@ describe("endpointFacts", () => {
       fmt,
     );
     const healthy = facts.find((f) => f.key === "healthy");
-    expect(healthy?.value).toBe("82%");
-    expect(healthy?.label).toBe("healthy of 621 probed");
+    // The denominator lives in the VALUE now: as a 10px cell label over a
+    // 28px number it was the strip's longest label and the only one whose
+    // length changed with the data (#11696).
+    expect(healthy?.value).toBe("82% of 621");
+    expect(healthy?.label).toBe("Healthy");
   });
 
   it("reports the pools, the degraded and the open incidents", () => {
@@ -261,7 +264,7 @@ describe("endpointFacts", () => {
 
   it("omits the healthy share when nothing was probed", () => {
     expect(endpointFacts({ endpoint_count: 10, by_status: { unknown: 10 } }, 0, null, fmt)).toEqual(
-      [{ key: "tracked", label: "tracked", value: "10" }],
+      [{ key: "tracked", label: "Tracked", value: "10" }],
     );
   });
 

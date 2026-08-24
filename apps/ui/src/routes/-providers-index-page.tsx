@@ -6,7 +6,6 @@ import {
   BrandIcon,
   DataTable,
   EntityHero,
-  Fact,
   FactSentence,
   FilterField,
   FilterSelect,
@@ -17,6 +16,7 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
@@ -110,14 +110,7 @@ export function ProvidersPage() {
       width: 170,
       value: (row) => row.authority,
     },
-    {
-      key: "host",
-      label: "Host",
-      kind: "link",
-      value: (row) => row.host,
-      href: (row) => row.host ?? undefined,
-      format: (value) => (typeof value === "string" ? value.replace(/^https?:\/\//, "") : "—"),
-    },
+
     {
       key: "subnets",
       label: "Subnets",
@@ -147,18 +140,32 @@ export function ProvidersPage() {
       kind: "number",
       align: "right",
       width: 110,
-      demote: true,
       value: (row) => row.surfaces,
     },
-    {
-      key: "slug",
-      label: "Slug",
-      kind: "identifier",
-      width: 170,
-      demote: true,
-      value: (row) => row.slug,
-    },
   ];
+
+  /**
+   * The host and the slug, under the row.
+   *
+   * The host took 391px of a 1310px table on a 1118px card and pushed Sources
+   * off the right edge (#11696). It is a URL: something a reader copies or
+   * follows, not something they scan down a column -- and the provider's name
+   * in the lead cell already links to its page.
+   */
+  const providerDetail = (row: ProviderRow) => (
+    <dl>
+      {row.host ? (
+        <div className="mg-raw-row">
+          <dt>Host</dt>
+          <dd>{row.host}</dd>
+        </div>
+      ) : null}
+      <div className="mg-raw-row">
+        <dt>Slug</dt>
+        <dd>{row.slug}</dd>
+      </div>
+    </dl>
+  );
 
   const rawRows: RawRow[] = API_PATHS.map((path) => ({
     label: path.replace("/api/v1/", ""),
@@ -172,16 +179,17 @@ export function ProvidersPage() {
       <EntityHero
         name="Providers"
         sentence={
-          <FactSentence>
-            The teams and operators behind these public interfaces.{" "}
-            {providerFacts(rows, health.data?.data.summary, {
+          <FactSentence>The teams and operators behind these public interfaces.</FactSentence>
+        }
+        // A STRIP, not chips (#11696). This page's subject is a table, and its
+        // headline counts were 11px `Fact` chips inside the sentence -- set
+        // smaller than the rows they frame. The lede stays prose.
+        cells={
+          factCells(
+            providerFacts(rows, health.data?.data.summary, {
               count: formatNumber,
-            }).map((fact) => (
-              <Fact key={fact.key}>
-                {fact.label} {fact.value}
-              </Fact>
-            ))}
-          </FactSentence>
+            }),
+          ) ?? undefined
         }
         live={{
           // The payload's own timestamp, not a row's: /api/v1/providers
@@ -232,6 +240,7 @@ export function ProvidersPage() {
             link={RouterLink}
             source="provider"
             storageKey="mg-providers-columns"
+            expand={providerDetail}
             loading={false}
             // Every row, not a first page of fifty: the crawlable-index gate
             // reads the SERVER-RENDERED HTML and 138 provider pages are

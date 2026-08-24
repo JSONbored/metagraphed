@@ -5,7 +5,6 @@ import {
   AnalyticsSection,
   DataTable,
   EntityHero,
-  Fact,
   FactSentence,
   FilterField,
   FilterSelect,
@@ -15,6 +14,7 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -173,17 +173,16 @@ export function GapsPage() {
             Read the guide
           </RouterLink>
         }
-        sentence={
-          <FactSentence>
-            What is missing, in the order the registry ranks it.{" "}
-            {contributeFacts(rows, coverage.data?.data as Parameters<typeof contributeFacts>[1], {
+        sentence={<FactSentence>What is missing, in the order the registry ranks it.</FactSentence>}
+        // A STRIP, not chips (#11696). This page's subject is a table, and its
+        // headline counts were 11px `Fact` chips inside the sentence -- set
+        // smaller than the rows they frame. The lede stays prose.
+        cells={
+          factCells(
+            contributeFacts(rows, coverage.data?.data as Parameters<typeof contributeFacts>[1], {
               count: formatNumber,
-            }).map((fact) => (
-              <Fact key={fact.key}>
-                {fact.label} {fact.value}
-              </Fact>
-            ))}
-          </FactSentence>
+            }),
+          ) ?? undefined
         }
         live={{
           updatedAt: (gaps.meta?.generated_at as string | undefined) ?? null,

@@ -260,20 +260,24 @@ export function endpointFacts(
   const measured = ok + degraded + failed;
   const facts: Fact[] = [];
   if (typeof summary.endpoint_count === "number") {
-    facts.push({ key: "tracked", label: "tracked", value: fmt.count(summary.endpoint_count) });
+    facts.push({ key: "tracked", label: "Tracked", value: fmt.count(summary.endpoint_count) });
   }
   if (measured > 0) {
+    // The denominator moves into the VALUE. As a chip the label could carry
+    // it ("healthy of 112 probed 95%"); as a 10px cell label over a 28px
+    // number it was the longest label in the strip and the only one that
+    // changed length with the data (#11696).
     facts.push({
       key: "healthy",
-      label: `healthy of ${fmt.count(measured)} probed`,
-      value: `${Math.round((ok / measured) * 100)}%`,
+      label: "Healthy",
+      value: `${Math.round((ok / measured) * 100)}% of ${fmt.count(measured)}`,
     });
   }
   if (pools > 0) facts.push({ key: "pools", label: "RPC pools", value: fmt.count(pools) });
   if (degraded > 0)
-    facts.push({ key: "degraded", label: "degraded now", value: fmt.count(degraded) });
+    facts.push({ key: "degraded", label: "Degraded now", value: fmt.count(degraded) });
   if (openIncidents != null) {
-    facts.push({ key: "incidents", label: "open incidents", value: fmt.count(openIncidents) });
+    facts.push({ key: "incidents", label: "Open incidents", value: fmt.count(openIncidents) });
   }
   return facts;
 }

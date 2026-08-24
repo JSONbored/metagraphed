@@ -85,23 +85,23 @@ export function catalogFacts(
   if (!coverage) return [];
   const facts: Fact[] = [];
   if (typeof coverage.surface_count === "number") {
-    facts.push({ key: "surfaces", label: "surfaces", value: fmt.count(coverage.surface_count) });
+    facts.push({ key: "surfaces", label: "Surfaces", value: fmt.count(coverage.surface_count) });
   }
   if (typeof coverage.chain_subnet_count === "number") {
     facts.push({
       key: "subnets",
-      label: "across subnets",
+      label: "Across subnets",
       value: fmt.count(coverage.chain_subnet_count),
     });
   }
-  if (kinds > 0) facts.push({ key: "kinds", label: "kinds", value: fmt.count(kinds) });
+  if (kinds > 0) facts.push({ key: "kinds", label: "Kinds", value: fmt.count(kinds) });
   if (typeof coverage.probed_surface_count === "number") {
-    facts.push({ key: "probed", label: "probed", value: fmt.count(coverage.probed_surface_count) });
+    facts.push({ key: "probed", label: "Probed", value: fmt.count(coverage.probed_surface_count) });
   }
   if (typeof coverage.official_surface_count === "number") {
     facts.push({
       key: "official",
-      label: "first-party",
+      label: "First-party",
       value: fmt.count(coverage.official_surface_count),
     });
   }
@@ -265,22 +265,22 @@ export function schemaFacts(
   const drift = summary.by_drift_status ?? {};
   const facts: Fact[] = [];
   if (typeof summary.surface_count === "number") {
-    facts.push({ key: "tracked", label: "tracked", value: fmt.count(summary.surface_count) });
+    facts.push({ key: "tracked", label: "Tracked", value: fmt.count(summary.surface_count) });
   }
   if (typeof summary.by_status?.captured === "number") {
     facts.push({
       key: "captured",
-      label: "captured",
+      label: "Captured",
       value: fmt.count(summary.by_status.captured),
     });
   }
   if (subnetsCovered > 0) {
-    facts.push({ key: "subnets", label: "subnets", value: fmt.count(subnetsCovered) });
+    facts.push({ key: "subnets", label: "Subnets", value: fmt.count(subnetsCovered) });
   }
   const moved = (drift.changed ?? 0) + (drift.new ?? 0);
-  facts.push({ key: "moved", label: "moved since last capture", value: fmt.count(moved) });
+  facts.push({ key: "moved", label: "Moved since last capture", value: fmt.count(moved) });
   if (typeof drift["not-captured"] === "number") {
-    facts.push({ key: "missing", label: "not captured", value: fmt.count(drift["not-captured"]) });
+    facts.push({ key: "missing", label: "Not captured", value: fmt.count(drift["not-captured"]) });
   }
   return facts;
 }
