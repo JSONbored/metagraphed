@@ -22,48 +22,40 @@
  */
 
 /* ------------------------------------------------------------------ fonts */
+/*
+ * TWO FAMILIES, TWO FILES (#11698).
+ *
+ * The site was one mono for everything, which is a defensible choice and was
+ * the wrong one here. A monospace glyph is about a third wider than a grotesk
+ * at the same size, so every column of text carried a third more width than it
+ * needed -- the direct cause of the table-width work in #11696 -- and 16px
+ * prose in a face designed for aligning code is tiring to read at length.
+ *
+ * Geist and Geist Mono are one family drawn twice. Text, headings and labels
+ * take the sans; identifiers, hashes, figures and code take the mono, which is
+ * what a monospace is actually for.
+ *
+ * VARIABLE, and latin-subset: two files covering every weight from 100 to 900,
+ * 52 KB against 116 KB for the six static IBM Plex faces they replace. Fewer
+ * requests, half the bytes, and a weight axis the design can use without
+ * shipping another file.
+ *
+ * Vendored rather than depended on, the same way Plex was: the licence is
+ * beside them in Geist-OFL.txt (SIL OFL 1.1).
+ */
 @font-face {
-  font-family: "IBM Plex Mono";
+  font-family: "Geist";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("./fonts/IBM-Plex-Mono-400-normal.woff2") format("woff2");
+  src: url("./fonts/Geist-latin-variable.woff2") format("woff2");
 }
 @font-face {
-  font-family: "IBM Plex Mono";
+  font-family: "Geist Mono";
   font-style: normal;
-  font-weight: 500;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("./fonts/IBM-Plex-Mono-500-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "IBM Plex Mono";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("./fonts/IBM-Plex-Mono-600-normal.woff2") format("woff2");
-}
-/* Prose face. Only the docs/news article body (`.mg-prose`) may use it. */
-@font-face {
-  font-family: "IBM Plex Sans";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("./fonts/IBM-Plex-Sans-400-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "IBM Plex Sans";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("./fonts/IBM-Plex-Sans-500-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "IBM Plex Sans";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("./fonts/IBM-Plex-Sans-600-normal.woff2") format("woff2");
+  src: url("./fonts/GeistMono-latin-variable.woff2") format("woff2");
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -113,11 +105,11 @@
   --drop-shadow-*: initial;
   --blur-*: initial;
 
-  --font-display: var(--font-mono);
-  --font-sans: var(--font-mono);
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-mono:
-    "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --font-prose: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: var(--font-sans);
+  --font-prose: var(--font-sans);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -441,7 +433,9 @@
   body {
     background-color: var(--canvas);
     color: var(--ink-strong);
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
+    /* Kept on the ROOT, not moved to the mono rules: Geist's sans has tabular
+       figures too, so a column of numbers set in it still aligns. */
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -464,7 +458,6 @@
   /* Table headers are the one place uppercase + tracking exist: 10px, 600,
      muted, 0.05em -- the blockmachine header discipline on v2 tokens. */
   thead th {
-    font-family: var(--font-mono);
     font-size: 10px;
     line-height: 1.4;
     font-weight: 600;
@@ -804,7 +797,7 @@
   /* SEPARATE CARDS, not one boxed strip.
      The cells shared their edges and sat inside a single outer border, which
      made a page's five headline numbers read as one blocky object rather than
-     as five things a reader can take one at a time (#11698). Each cell is its
+     as five things a reader can take one at a time (#11696). Each cell is its
      own card now, on the elevation token the tables use, with a 12px gutter
      between them.
      Still `var(--radius)`: the site has ONE radius, and a 12px corner here
@@ -831,7 +824,7 @@
     background: var(--surface-card);
     /* NOT `overflow: hidden`. The card is where a label's "?" opens its
        definition, and a clipping card cut the tooltip off at its own bottom
-       edge (#11698). The long value inside clips itself -- see
+       edge (#11696). The long value inside clips itself -- see
        `.mg-fact-value` -- so the card never needed to. */
     position: relative;
   }
@@ -841,13 +834,13 @@
      four words -- so at 375px one card in a strip wrapped while its
      neighbours did not, and the grid row stretched to the tallest, leaving
      one card 16px taller than the five beside it. Eighteen routes did this
-     (#11698). Reserving the second line makes the strip a rectangle at every
+     (#11696). Reserving the second line makes the strip a rectangle at every
      width, whatever the data says. */
   .mg-fact dt {
     /* INLINE FLOW, not flex. The label's "?" is a sibling of the text, and as
        a flex item it could not share a line with it -- the text got a narrower
        box, wrapped to three lines where it had taken two, and the card went
-       ragged again for the same reason in a new place (#11698). Inline, the
+       ragged again for the same reason in a new place (#11696). Inline, the
        "?" simply follows the last word. */
     min-height: calc(2 * 11px * 1.45);
     font-size: 11px;
@@ -861,7 +854,27 @@
     margin: 0;
     min-width: 0;
   }
+  /* MONO IS FOR IDENTIFIERS, FIGURES AND CODE (#11698).
+     Everything else on the site is text and takes the sans. Each hook below
+     costs no extra bytes in the served HTML: `[data-align="right"]` is already
+     emitted for every numeric column, `.mg-dt-id` is what the identifier cell
+     kind renders, and the rest are their own elements. */
+  .mg-dt-id,
+  .mg-dt tbody td[data-align="right"],
+  .mg-raw-row dd,
+  .mg-raw-body,
+  .mg-copyable,
+  .mg-fact-chip,
+  code,
+  pre,
+  kbd {
+    font-family: var(--font-mono);
+  }
+
   .mg-fact-value {
+    /* A headline figure is an instrument reading: mono, so the digits keep
+       their column when the number changes under a refresh. */
+    font-family: var(--font-mono);
     font-size: 28px;
     line-height: 1.25;
     font-weight: 500;
@@ -900,7 +913,7 @@
        source order decides. Without it the 1023px rule above -- (0,2,0)
        against this one's (0,1,0) -- won at every width below 640 too, so a
        phone got three columns rather than two and every value in them
-       truncated: "0.00…", "2.63…", "96/1…" (#11698). */
+       truncated: "0.00…", "2.63…", "96/1…" (#11696). */
     .mg-facts:not([data-variant="grid"]),
     .mg-facts[data-variant="grid"] {
       grid-auto-flow: row;
@@ -1627,7 +1640,7 @@
     font-variant-numeric: tabular-nums;
     /* A formatted figure, never prose. At 375px "215 paths" wrapped in the
        64px value column while "99 paths" did not, so one rail row came out
-       41px against its neighbours' 32 (#11698). */
+       41px against its neighbours' 32 (#11696). */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2258,7 +2271,7 @@
   /* A mark in a row is 20px, whatever the call site asked for. `BrandIcon`
      defaults to 32 -- the entire content box of a 56px row -- so one forgotten
      `size` made every row carrying a mark 6px taller than its neighbours
-     (#11698). The call sites pass 20; this is what stops the next one that
+     (#11696). The call sites pass 20; this is what stops the next one that
      does not. */
   .mg-dt-entity > :first-child:not(.truncate) {
     max-width: 20px;
@@ -2543,7 +2556,7 @@
   }
   /* Wrapping is capped at two lines. Unbounded, one 300-character note made
      its row 395px tall next to 56px neighbours -- a list whose row height is
-     set by whichever row has the most to say (#11698). The rest of the
+     set by whichever row has the most to say (#11696). The rest of the
      sentence is under the row, where the disclosure already puts what does not
      fit. */
   .mg-dt tbody td[data-wrap="true"] {
@@ -2630,6 +2643,55 @@
   .mg-dt-disclosure:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
+  }
+  /* NAMES ALIGN WHETHER OR NOT A ROW EXPANDS (#11700).
+     The disclosure sits in the lead cell, so a row that had one started its
+     name 24px right of a row that did not -- on /validators the multi-hotkey
+     operators were indented and the single-hotkey ones were not, down 604
+     rows. The gutter is reserved on every row of an expandable table and the
+     chevron hangs into it, so the column reads as a column. */
+  .mg-dt[data-expandable="true"] tbody td:first-child {
+    padding-left: 40px;
+  }
+  .mg-dt[data-expandable="true"] .mg-dt-rowlead {
+    margin-left: -24px;
+  }
+  /* NOTHING IN A CELL IS WIDER THAN THE CELL (#11700).
+     Named one wrapper at a time this was a whack-a-mole: `.mg-dt-rowbutton`
+     escaped the viewport at 375px, and with it bounded `.mg-dt-id` escaped
+     instead -- the same defect wearing the next class along, because the rule
+     was written about elements rather than about cells.
+     EVERY DESCENDANT, not every child: the lead cell nests three deep
+     (`td > .mg-dt-rowlead > .mg-dt-rowbutton > .mg-dt-id`), so a rule on `> *`
+     bounded the outermost wrapper and left the identifier inside it 173px wide
+     in a 99px button. A tooltip is exempt -- it is positioned out of the cell
+     on purpose and bounding it to a column's width would be a bug, not a fix.
+     `min-width: 0` with it, or a flex child refuses to shrink below its
+     content and the `max-width` never bites.
+     It surfaced on CI and not locally because the two platforms fall back to
+     different faces while the webfont loads and one is wider -- which a cell
+     that clips its own content must not depend on. */
+  .mg-dt tbody td *:not([role="tooltip"]),
+  .mg-dt thead th *:not([role="tooltip"]) {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .mg-dt-rowbutton,
+  .mg-dt-rowlink {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* The identifier's own text truncates; its copy button must not be squeezed
+     to nothing beside it. */
+  .mg-dt-id > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mg-dt-id > button {
+    flex: none;
   }
   .mg-dt-rowbutton {
     padding: 0;
@@ -3207,8 +3269,9 @@
     text-transform: inherit;
     letter-spacing: inherit;
   }
-  /* Prose: the docs/news article body is the only sans-serif text on the
-     site -- 16px, 1.65, a 68ch measure. Everything else stays mono. */
+  /* Prose: an article body at 16px, 1.65, on a 68ch measure. It takes the same
+     face as the rest of the site now -- the "one sans-serif page" exception
+     existed because everything else was mono (#11698). */
   .mg-prose {
     font-family: var(--font-prose);
     font-size: 16px;
@@ -3217,7 +3280,9 @@
   .mg-prose :where(p, li, blockquote, td) {
     max-width: 68ch;
   }
-  .mg-prose :where(h1, h2, h3, h4, code, pre, kbd, table, th, nav, figcaption) {
+  /* Code, and only code. Headings, tables and navigation are text and take the
+     sans with everything else. */
+  .mg-prose :where(code, pre, kbd) {
     font-family: var(--font-mono);
   }
   /* An article's own rhythm: sections separated by a rule, headings at the

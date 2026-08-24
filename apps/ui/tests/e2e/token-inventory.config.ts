@@ -32,21 +32,35 @@ export const VIEWPORTS = [
 
 export type ContractViewport = (typeof VIEWPORTS)[number];
 
-/** Font families allowed under <main>, by route prefix. */
-export const MONO = "IBM Plex Mono";
-export const PROSE = "IBM Plex Sans";
 /**
- * The prose routes: the only pages that are an ARTICLE rather than a reading of
- * data, and so the only ones allowed the second face.
+ * The two families, and nothing else (#11698).
  *
- * /docs and /news were the whole list until #11627 put /about, /privacy and
- * /terms into `.mg-prose` — the rule they had always described and no route
- * applied. Everything else is mono, which is the point of having one face.
+ * The site was one mono everywhere, and `allowedFamilies` said so: a single
+ * name, with a second granted to the five prose routes. It is a PAIR now --
+ * Geist for text, Geist Mono for identifiers, figures and code -- so every
+ * route may show both, and the rule the gate can still hold is that it shows
+ * ONLY those two. A third family reaching a page is a component that brought
+ * its own stack, which is what this catches.
+ *
+ * The split itself is enforced where it is decided: `styles.css` names the
+ * handful of hooks that take the mono, and everything else inherits the sans
+ * from `body`. A runtime gate cannot tell an identifier from a label.
+ */
+export const MONO = "Geist Mono";
+export const SANS = "Geist";
+
+/**
+ * The prose routes: the pages that are an ARTICLE rather than a reading of
+ * data.
+ *
+ * They no longer differ in FACE -- the whole site is the sans now -- but they
+ * still differ in measure, rhythm and heading scale, and `.mg-prose` is what
+ * applies that. The list stays because those rules key off it.
  */
 export const PROSE_ROUTES = ["/docs", "/news", "/about", "/privacy", "/terms"];
 
-export function allowedFamilies(route: string): string[] {
-  return PROSE_ROUTES.some((p) => route.startsWith(p)) ? [MONO, PROSE] : [MONO];
+export function allowedFamilies(_route: string): string[] {
+  return [SANS, MONO];
 }
 
 /** The seven sizes. 64px is the landing h1 only. */

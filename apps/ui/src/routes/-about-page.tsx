@@ -45,7 +45,7 @@ const LEVEL_COLUMNS: DataTableColumn<TaxonomyLevel>[] = [
  * an "At a glance" panel of four linked stat tiles on the right. The tiles are
  * the hero's fact cells now (four numbers belong in the strip every other
  * entity page puts them in), and the prose is the site's only `.mg-prose`
- * body — 16px IBM Plex Sans on a 68ch measure, which is the whole reason that
+ * body — 16px on a 68ch measure, which is the whole reason that
  * second face is loaded at all.
  *
  * The two taxonomies were `<dl>`s of hand-styled term/description pairs. They

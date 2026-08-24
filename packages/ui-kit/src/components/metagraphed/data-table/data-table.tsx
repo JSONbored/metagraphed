@@ -349,6 +349,11 @@ export function DataTable<Row>({
       id={id}
       className={classNames("mg-dt", className)}
       data-mg-data-table=""
+      /* One attribute on the TABLE, so the lead column can reserve the
+         disclosure's gutter for every row (#11700). Doing it per row would
+         mean a spacer element on each of /validators' 604, which is 19 KB of
+         served HTML on a route that sits on a payload ratchet. */
+      data-expandable={expand ? "true" : undefined}
       data-mobile={mobileMode}
       data-dense={dense ? "true" : undefined}
     >

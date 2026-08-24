@@ -1,48 +1,20 @@
 /* src/styles.css */
 @font-face {
-  font-family: "IBM Plex Mono";
+  font-family: "Geist";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("./IBM-Plex-Mono-400-normal-A2WATXFY.woff2") format("woff2");
+  src: url("./Geist-latin-variable-T72VVCUW.woff2") format("woff2");
 }
 @font-face {
-  font-family: "IBM Plex Mono";
+  font-family: "Geist Mono";
   font-style: normal;
-  font-weight: 500;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("./IBM-Plex-Mono-500-normal-33HAQIPI.woff2") format("woff2");
-}
-@font-face {
-  font-family: "IBM Plex Mono";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("./IBM-Plex-Mono-600-normal-IIV3OB4N.woff2") format("woff2");
-}
-@font-face {
-  font-family: "IBM Plex Sans";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("./IBM-Plex-Sans-400-normal-COQVXTP6.woff2") format("woff2");
-}
-@font-face {
-  font-family: "IBM Plex Sans";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("./IBM-Plex-Sans-500-normal-JTONHBWS.woff2") format("woff2");
-}
-@font-face {
-  font-family: "IBM Plex Sans";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("./IBM-Plex-Sans-600-normal-DTNZULF4.woff2") format("woff2");
+  src: url("./GeistMono-latin-variable-CJNQKXUG.woff2") format("woff2");
 }
 @custom-variant dark (&:is(.dark *));
-@theme inline { --text-*: initial; --text-10: 10px; --text-10--line-height: 1.4; --text-11: 11px; --text-11--line-height: 1.45; --text-13: 13px; --text-13--line-height: 1.5; --text-16: 16px; --text-16--line-height: 1.55; --text-28: 28px; --text-28--line-height: 1.25; --text-40: 40px; --text-40--line-height: 1.1; --text-64: 64px; --text-64--line-height: 1; --tracking-*: initial; --radius-*: initial; --radius: 4px; --radius-sm: var(--radius); --radius-md: var(--radius); --radius-lg: var(--radius); --radius-xl: var(--radius); --radius-2xl: var(--radius); --radius-3xl: var(--radius); --shadow-*: initial; --inset-shadow-*: initial; --drop-shadow-*: initial; --blur-*: initial; --font-display: var(--font-mono); --font-sans: var(--font-mono); --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --font-prose: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; --color-background: var(--background); --color-foreground: var(--foreground); --color-canvas: var(--canvas); --color-layer: var(--layer); --color-raised: var(--raised); --color-rule: var(--rule); --color-rule-strong: var(--rule-strong); --color-paper: var(--paper); --color-surface: var(--surface); --color-surface-2: var(--surface-2); --color-ink: var(--ink); --color-ink-strong: var(--ink-strong); --color-ink-muted: var(--ink-muted); --color-ink-subtle: var(--ink-subtle); --color-ink-subtle-text: var(--ink-subtle-text); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-primary-soft: var(--primary-soft); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-accent-text: var(--accent-text); --color-brand: var(--brand); --color-focus: var(--focus); --color-destructive: var(--destructive); --color-destructive-foreground: var(--destructive-foreground); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-good: var(--good); --color-warn: var(--warn); --color-bad: var(--bad); --color-health-ok: var(--health-ok); --color-health-warn: var(--health-warn); --color-health-warn-text: var(--health-warn-text); --color-health-bad: var(--health-bad); --color-health-down: var(--health-down); --color-health-unknown: var(--health-unknown); --color-curation-native: var(--curation-native); --color-curation-verified: var(--curation-verified); --color-curation-pilot: var(--curation-pilot); --color-curation-candidate: var(--curation-candidate); --color-curation-seeded: var(--curation-seeded); --color-curation-machine: var(--curation-machine); --color-curation-adapter: var(--curation-adapter); --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5); --color-chart-6: var(--chart-6); --color-chart-7: var(--chart-7); --color-chart-8: var(--chart-8); --color-chart-9: var(--chart-9); --color-chart-10: var(--chart-10); --color-chart-11: var(--chart-11); --color-accent-surface: color-mix(in oklab, var(--accent) 8%, transparent); --spacing-nav: 3.75rem; --spacing-shell-max: 1280px; }
+@theme inline { --text-*: initial; --text-10: 10px; --text-10--line-height: 1.4; --text-11: 11px; --text-11--line-height: 1.45; --text-13: 13px; --text-13--line-height: 1.5; --text-16: 16px; --text-16--line-height: 1.55; --text-28: 28px; --text-28--line-height: 1.25; --text-40: 40px; --text-40--line-height: 1.1; --text-64: 64px; --text-64--line-height: 1; --tracking-*: initial; --radius-*: initial; --radius: 4px; --radius-sm: var(--radius); --radius-md: var(--radius); --radius-lg: var(--radius); --radius-xl: var(--radius); --radius-2xl: var(--radius); --radius-3xl: var(--radius); --shadow-*: initial; --inset-shadow-*: initial; --drop-shadow-*: initial; --blur-*: initial; --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif; --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --font-display: var(--font-sans); --font-prose: var(--font-sans); --color-background: var(--background); --color-foreground: var(--foreground); --color-canvas: var(--canvas); --color-layer: var(--layer); --color-raised: var(--raised); --color-rule: var(--rule); --color-rule-strong: var(--rule-strong); --color-paper: var(--paper); --color-surface: var(--surface); --color-surface-2: var(--surface-2); --color-ink: var(--ink); --color-ink-strong: var(--ink-strong); --color-ink-muted: var(--ink-muted); --color-ink-subtle: var(--ink-subtle); --color-ink-subtle-text: var(--ink-subtle-text); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-primary-soft: var(--primary-soft); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-accent-text: var(--accent-text); --color-brand: var(--brand); --color-focus: var(--focus); --color-destructive: var(--destructive); --color-destructive-foreground: var(--destructive-foreground); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-good: var(--good); --color-warn: var(--warn); --color-bad: var(--bad); --color-health-ok: var(--health-ok); --color-health-warn: var(--health-warn); --color-health-warn-text: var(--health-warn-text); --color-health-bad: var(--health-bad); --color-health-down: var(--health-down); --color-health-unknown: var(--health-unknown); --color-curation-native: var(--curation-native); --color-curation-verified: var(--curation-verified); --color-curation-pilot: var(--curation-pilot); --color-curation-candidate: var(--curation-candidate); --color-curation-seeded: var(--curation-seeded); --color-curation-machine: var(--curation-machine); --color-curation-adapter: var(--curation-adapter); --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5); --color-chart-6: var(--chart-6); --color-chart-7: var(--chart-7); --color-chart-8: var(--chart-8); --color-chart-9: var(--chart-9); --color-chart-10: var(--chart-10); --color-chart-11: var(--chart-11); --color-accent-surface: color-mix(in oklab, var(--accent) 8%, transparent); --spacing-nav: 3.75rem; --spacing-shell-max: 1280px; }
 :root {
   --radius: 4px;
   --canvas: #f8f8f5;
@@ -237,7 +209,7 @@
   body {
     background-color: var(--canvas);
     color: var(--ink-strong);
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -258,7 +230,6 @@
     scroll-behavior: smooth;
   }
   thead th {
-    font-family: var(--font-mono);
     font-size: 10px;
     line-height: 1.4;
     font-weight: 600;
@@ -588,7 +559,19 @@
     margin: 0;
     min-width: 0;
   }
+  .mg-dt-id,
+  .mg-dt tbody td[data-align=right],
+  .mg-raw-row dd,
+  .mg-raw-body,
+  .mg-copyable,
+  .mg-fact-chip,
+  code,
+  pre,
+  kbd {
+    font-family: var(--font-mono);
+  }
   .mg-fact-value {
+    font-family: var(--font-mono);
     font-size: 28px;
     line-height: 1.25;
     font-weight: 500;
@@ -2182,6 +2165,32 @@
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
+  .mg-dt[data-expandable=true] tbody td:first-child {
+    padding-left: 40px;
+  }
+  .mg-dt[data-expandable=true] .mg-dt-rowlead {
+    margin-left: -24px;
+  }
+  .mg-dt tbody td *:not([role=tooltip]),
+  .mg-dt thead th *:not([role=tooltip]) {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .mg-dt-rowbutton,
+  .mg-dt-rowlink {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mg-dt-id > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mg-dt-id > button {
+    flex: none;
+  }
   .mg-dt-rowbutton {
     padding: 0;
     border: 0;
@@ -2719,7 +2728,7 @@
   .mg-prose :where(p, li, blockquote, td) {
     max-width: 68ch;
   }
-  .mg-prose :where(h1, h2, h3, h4, code, pre, kbd, table, th, nav, figcaption) {
+  .mg-prose :where(code, pre, kbd) {
     font-family: var(--font-mono);
   }
   .mg-prose :where(section) {

@@ -3923,6 +3923,7 @@ function DataTable({
       id,
       className: classNames("mg-dt", className),
       "data-mg-data-table": "",
+      "data-expandable": expand ? "true" : void 0,
       "data-mobile": mobileMode,
       "data-dense": dense ? "true" : void 0,
       children: [
