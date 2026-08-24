@@ -2878,6 +2878,76 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 14,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "incident:sn-14-cacheon-eval-job:1787526919006",
+            "incident:sn-14-cacheon-eval-progress:1787526919006",
+            "incident:sn-14-cacheon-evaluations:1787526919006",
+            "incident:sn-14-cacheon-subnet-api:1787526919006"
+          ],
+          "text": "Subnet 14 recorded four operational incidents on 23 August."
+        }
+      ],
+      "slug": "2026-w34",
+      "sources": [
+        {
+          "id": "incident:sn-14-cacheon-eval-job:1787526919006",
+          "summary": "Surface sn-14-cacheon-eval-job (sn14) was down for ~525m, 35 failed probes.",
+          "tags": [
+            "incident",
+            "sn14",
+            "resolved"
+          ],
+          "timestamp": "2026-08-23T23:15:19.006Z",
+          "title": "Resolved incident — sn-14-cacheon-eval-job",
+          "url": "https://metagraph.sh/subnets/14"
+        },
+        {
+          "id": "incident:sn-14-cacheon-eval-progress:1787526919006",
+          "summary": "Surface sn-14-cacheon-eval-progress (sn14) was down for ~525m, 35 failed probes.",
+          "tags": [
+            "incident",
+            "sn14",
+            "resolved"
+          ],
+          "timestamp": "2026-08-23T23:15:19.006Z",
+          "title": "Resolved incident — sn-14-cacheon-eval-progress",
+          "url": "https://metagraph.sh/subnets/14"
+        },
+        {
+          "id": "incident:sn-14-cacheon-evaluations:1787526919006",
+          "summary": "Surface sn-14-cacheon-evaluations (sn14) was down for ~525m, 35 failed probes.",
+          "tags": [
+            "incident",
+            "sn14",
+            "resolved"
+          ],
+          "timestamp": "2026-08-23T23:15:19.006Z",
+          "title": "Resolved incident — sn-14-cacheon-evaluations",
+          "url": "https://metagraph.sh/subnets/14"
+        },
+        {
+          "id": "incident:sn-14-cacheon-subnet-api:1787526919006",
+          "summary": "Surface sn-14-cacheon-subnet-api (sn14) was down for ~525m, 35 failed probes.",
+          "tags": [
+            "incident",
+            "sn14",
+            "resolved"
+          ],
+          "timestamp": "2026-08-23T23:15:19.006Z",
+          "title": "Resolved incident — sn-14-cacheon-subnet-api",
+          "url": "https://metagraph.sh/subnets/14"
+        }
+      ],
+      "substantive_count": 4,
+      "week": 34,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 15,
       "schema_version": 1,
       "sentences": [
@@ -5264,6 +5334,76 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 36,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn36:hyperparam:8884393:min_burn_tao",
+            "chain:sn36:hyperparam:8884393:target_regs_per_interval",
+            "chain:sn36:hyperparam:8884393:yuma_version",
+            "chain:sn36:hyperparam:8884393:subnet_is_active"
+          ],
+          "text": "Subnet 36 recorded four hyperparameter changes on 20 August."
+        }
+      ],
+      "slug": "2026-w34",
+      "sources": [
+        {
+          "id": "chain:sn36:hyperparam:8884393:min_burn_tao",
+          "summary": "Minimum burn changed from 0.1 to 1 at block #8884393.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn36"
+          ],
+          "timestamp": "2026-08-20T07:05:39.917Z",
+          "title": "Subnet 36: Minimum burn 0.1 → 1",
+          "url": "https://metagraph.sh/blocks/8884393"
+        },
+        {
+          "id": "chain:sn36:hyperparam:8884393:target_regs_per_interval",
+          "summary": "Target registrations per interval changed from 1 to 2 at block #8884393.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn36"
+          ],
+          "timestamp": "2026-08-20T07:05:39.917Z",
+          "title": "Subnet 36: Target registrations per interval 1 → 2",
+          "url": "https://metagraph.sh/blocks/8884393"
+        },
+        {
+          "id": "chain:sn36:hyperparam:8884393:yuma_version",
+          "summary": "Yuma version changed from 2 to 3 at block #8884393.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn36"
+          ],
+          "timestamp": "2026-08-20T07:05:39.917Z",
+          "title": "Subnet 36: Yuma version 2 → 3",
+          "url": "https://metagraph.sh/blocks/8884393"
+        },
+        {
+          "id": "chain:sn36:hyperparam:8884393:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #8884393.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn36"
+          ],
+          "timestamp": "2026-08-20T07:05:39.917Z",
+          "title": "Subnet 36: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/8884393"
+        }
+      ],
+      "substantive_count": 4,
+      "week": 34,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 37,
       "schema_version": 1,
       "sentences": [
@@ -5807,6 +5947,63 @@
       ],
       "substantive_count": 3,
       "week": 33,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 4,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "incident:sn-4-targon-healthz-api:1787526919006",
+            "incident:sn-4-targon-version-api:1787526919006",
+            "incident:sn-4-targon-subnet-api:1787526018235"
+          ],
+          "text": "Subnet 4 recorded three operational incidents on 23 August."
+        }
+      ],
+      "slug": "2026-w34",
+      "sources": [
+        {
+          "id": "incident:sn-4-targon-healthz-api:1787526919006",
+          "summary": "Surface sn-4-targon-healthz-api (sn4) was down for ~525m, 35 failed probes.",
+          "tags": [
+            "incident",
+            "sn4",
+            "resolved"
+          ],
+          "timestamp": "2026-08-23T23:15:19.006Z",
+          "title": "Resolved incident — sn-4-targon-healthz-api",
+          "url": "https://metagraph.sh/subnets/4"
+        },
+        {
+          "id": "incident:sn-4-targon-version-api:1787526919006",
+          "summary": "Surface sn-4-targon-version-api (sn4) was down for ~525m, 35 failed probes.",
+          "tags": [
+            "incident",
+            "sn4",
+            "resolved"
+          ],
+          "timestamp": "2026-08-23T23:15:19.006Z",
+          "title": "Resolved incident — sn-4-targon-version-api",
+          "url": "https://metagraph.sh/subnets/4"
+        },
+        {
+          "id": "incident:sn-4-targon-subnet-api:1787526018235",
+          "summary": "Surface sn-4-targon-subnet-api (sn4) was down for ~540m, 36 failed probes.",
+          "tags": [
+            "incident",
+            "sn4",
+            "resolved"
+          ],
+          "timestamp": "2026-08-23T23:00:18.235Z",
+          "title": "Resolved incident — sn-4-targon-subnet-api",
+          "url": "https://metagraph.sh/subnets/4"
+        }
+      ],
+      "substantive_count": 3,
+      "week": 34,
       "year": 2026
     },
     {
