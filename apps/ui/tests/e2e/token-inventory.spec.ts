@@ -52,6 +52,8 @@ type Sweep = {
   repeatedMeasures: string[];
   /** Tables wider than the card they sit in (#11696). */
   wideTables: string[];
+  /** Peers laid out by one primitive whose heights disagree (#11698). */
+  raggedPeers: string[];
   textNodes: number;
 };
 
@@ -71,6 +73,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
   const repeatedLegends: string[] = [];
   const repeatedMeasures: string[] = [];
   const wideTables: string[] = [];
+  const raggedPeers: string[] = [];
   const deletedClasses: string[] = [];
   // Every class the v2 rebuild deleted. A page carrying one is either a stale
   // component that survived a rebase or a hand-rolled copy of a primitive; both
@@ -222,6 +225,44 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
         (values.size > 1 ? ` and they disagree: ${[...values].join(" / ")}` : ""),
     );
   }
+  // PEERS LAID OUT BY ONE PRIMITIVE ARE THE SAME HEIGHT.
+  //
+  // A `FactStrip` cell's label length is DATA, not design -- "Extrinsics
+  // 2026-08-22" carries a date, "Candidates awaiting review" is four words --
+  // so at 375px one card wrapped, the grid row stretched to the tallest, and
+  // the strip came out visibly ragged. Eighteen routes did it, and the
+  // instance a reader happened to notice was the eighteenth (#11698).
+  //
+  // Same shape wherever a primitive lays peers in a row or a grid: a table row
+  // whose one wrapping cell had 300 characters was 395px tall beside 56px
+  // neighbours. Four pixels of slack, because a border or a sub-pixel rounding
+  // difference is not raggedness.
+  const PEER_GROUPS: readonly (readonly [string, string])[] = [
+    [".mg-facts", ".mg-fact"],
+    [".mg-rank-grid", ".mg-rank-grid-row"],
+    [".mg-leaders", ".mg-leader"],
+    [".mg-rails-rows", ".mg-rails-row"],
+    [".mg-dt tbody", "tr"],
+  ];
+  for (const [parentSel, childSel] of PEER_GROUPS) {
+    for (const parent of root.querySelectorAll<HTMLElement>(parentSel)) {
+      // A table in CARDS mode stacks each row's cells as a label/value list,
+      // so a row with more to say is taller BY DESIGN -- that is the point of
+      // the mode. Only the grid form promises equal rows.
+      if (parent.closest('.mg-dt[data-mobile="cards"]')) continue;
+      const kids = [...parent.querySelectorAll<HTMLElement>(`:scope > ${childSel}`)];
+      if (kids.length < 3) continue;
+      const heights = kids.map((k) => Math.round(k.getBoundingClientRect().height));
+      const min = Math.min(...heights);
+      const max = Math.max(...heights);
+      if (max - min <= 4) continue;
+      const tallest = kids[heights.indexOf(max)];
+      raggedPeers.push(
+        `${parentSel} > ${childSel}: ${min}px to ${max}px across ${kids.length} — tallest is ` +
+          JSON.stringify((tallest?.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 48)),
+      );
+    }
+  }
   // A TABLE THAT FITS ITS CARD.
   //
   // Seven tables were wider than the card they sat in -- /apis/endpoints by
@@ -355,6 +396,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
     repeatedLegends,
     repeatedMeasures,
     wideTables,
+    raggedPeers,
     textNodes,
   };
 }
@@ -505,6 +547,15 @@ for (const route of ROUTES) {
             expect(
               s.wideTables,
               `a table wider than its card on ${route} (${viewport.name}, ${theme})`,
+            ).toEqual([]);
+          }
+
+          // Peers from one primitive at different heights: a strip of cards
+          // where one wrapped, a list where one row has more to say.
+          if (!(route in SPECIMEN_ROUTES)) {
+            expect(
+              s.raggedPeers,
+              `peers laid out by one primitive disagree on height on ${route} (${viewport.name}, ${theme})`,
             ).toEqual([]);
           }
 
