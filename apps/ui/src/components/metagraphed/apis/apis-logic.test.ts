@@ -229,7 +229,7 @@ describe("schemaFacts", () => {
     // "Nothing changed" is the answer this page exists to give; leaving it out
     // would make a quiet week look like a page that failed to load.
     expect(schemaFacts({ by_drift_status: { unchanged: 64 } }, 0, fmt)).toEqual([
-      { key: "moved", label: "Moved since last capture", value: "0" },
+      { key: "moved", label: "Moved", value: "0" },
     ]);
   });
 

@@ -278,7 +278,7 @@ export function schemaFacts(
     facts.push({ key: "subnets", label: "Subnets", value: fmt.count(subnetsCovered) });
   }
   const moved = (drift.changed ?? 0) + (drift.new ?? 0);
-  facts.push({ key: "moved", label: "Moved since last capture", value: fmt.count(moved) });
+  facts.push({ key: "moved", label: "Moved", value: fmt.count(moved) });
   if (typeof drift["not-captured"] === "number") {
     facts.push({ key: "missing", label: "Not captured", value: fmt.count(drift["not-captured"]) });
   }

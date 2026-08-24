@@ -573,12 +573,9 @@
     border: 1px solid var(--rule);
     border-radius: var(--radius);
     background: var(--surface-card);
-    overflow: hidden;
+    position: relative;
   }
   .mg-fact dt {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
     min-height: calc(2 * 11px * 1.45);
     font-size: 11px;
     line-height: 1.45;

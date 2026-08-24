@@ -829,7 +829,11 @@
     border: 1px solid var(--rule);
     border-radius: var(--radius);
     background: var(--surface-card);
-    overflow: hidden;
+    /* NOT `overflow: hidden`. The card is where a label's "?" opens its
+       definition, and a clipping card cut the tooltip off at its own bottom
+       edge (#11698). The long value inside clips itself -- see
+       `.mg-fact-value` -- so the card never needed to. */
+    position: relative;
   }
   /* TWO LINES RESERVED, always.
      A label's length is data, not design -- "Extrinsics 2026-08-22" carries a
@@ -840,9 +844,11 @@
      (#11698). Reserving the second line makes the strip a rectangle at every
      width, whatever the data says. */
   .mg-fact dt {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
+    /* INLINE FLOW, not flex. The label's "?" is a sibling of the text, and as
+       a flex item it could not share a line with it -- the text got a narrower
+       box, wrapped to three lines where it had taken two, and the card went
+       ragged again for the same reason in a new place (#11698). Inline, the
+       "?" simply follows the last word. */
     min-height: calc(2 * 11px * 1.45);
     font-size: 11px;
     line-height: 1.45;

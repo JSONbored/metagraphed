@@ -1925,7 +1925,7 @@ function FactCell({
   return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: classNames("mg-fact", className), children: [
     /* @__PURE__ */ jsxRuntime.jsxs("dt", { children: [
       label,
-      typeof hint === "string" ? /* @__PURE__ */ jsxRuntime.jsx(Definition, { term: label, sentence: hint }) : null
+      /* @__PURE__ */ jsxRuntime.jsx(Definition, { term: label, sentence: hint })
     ] }),
     /* @__PURE__ */ jsxRuntime.jsxs("dd", { children: [
       /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-fact-value", children: value }),

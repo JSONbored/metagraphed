@@ -79,9 +79,9 @@ export function aboutFacts(
   const age = num(sources.freshness, "avg_age_seconds");
   const active = num(sources.coverage, "netuids_active");
   return [
-    { label: "active subnets", value: active == null ? null : String(active), href: "/subnets" },
+    { label: "Active subnets", value: active == null ? null : String(active), href: "/subnets" },
     {
-      label: "adapter-backed",
+      label: "Adapter-backed",
       value:
         typeof adapterBacked === "number" && Number.isFinite(adapterBacked)
           ? String(adapterBacked)
@@ -89,12 +89,12 @@ export function aboutFacts(
       href: "/apis/providers",
     },
     {
-      label: "healthy surfaces",
+      label: "Healthy surfaces",
       value: ok != null && total != null && total > 0 ? `${ok}/${total}` : null,
       href: "/health",
     },
     {
-      label: "avg freshness",
+      label: "Avg freshness",
       value: age == null ? null : formatAge(age),
       href: "/health",
     },

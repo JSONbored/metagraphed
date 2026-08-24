@@ -135,7 +135,7 @@ export function contributeFacts(
   if (candidates != null) {
     facts.push({
       key: "candidates",
-      label: "Candidates awaiting review",
+      label: "Candidates",
       value: fmt.count(candidates),
     });
   }
