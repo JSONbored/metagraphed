@@ -145,6 +145,9 @@ export function ValidatorsPage() {
       key: "take",
       label: "Take",
       kind: "text",
+      // Wide enough for a RANGE: an operator running several hotkeys at
+      // different takes reads "9.0%-18.0%".
+      width: 130,
       value: (row) => takeLabel(row.takeMin, row.takeMax),
       definition: "Take",
     },
@@ -158,11 +161,11 @@ export function ValidatorsPage() {
       definition: "Estimated APY",
     },
     {
-      key: "subnets",
-      label: "Subnets",
+      key: "memberships",
+      label: "Memberships",
       kind: "number",
       sortable: true,
-      value: (row) => row.subnetCount,
+      value: (row) => row.memberships,
     },
     {
       key: "nominators",
@@ -221,6 +224,12 @@ export function ValidatorsPage() {
       key: "compare",
       label: "Compare",
       kind: "text",
+      // A checkbox needs no more than its own width plus the header word, and
+      // without a bound it took whatever was left and pushed itself off the
+      // right edge of the card (#11695). No `align`: that would emit
+      // `data-align` on all 604 cells for a column one checkbox wide, which is
+      // 11 KB of served HTML and this route is on a payload ratchet.
+      width: 96,
       value: () => "",
       render: (row) => <ValidatorCompareToggle hotkey={row.primaryHotkey} />,
       definition: "Compare",

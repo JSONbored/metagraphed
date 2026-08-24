@@ -96,20 +96,26 @@ describe("operatorRows", () => {
     expect(operatorRows([validator({ hotkey: "5A" })])[0]?.apyEstimate).toBeNull();
   });
 
-  it("counts distinct subnets across keys, not the sum of per-key counts", () => {
-    const overlapping = operatorRows([
-      validator({
-        hotkey: "5A",
-        coldkey_identity: named("Yuma"),
-        subnets: [{ netuid: 1 }, { netuid: 2 }] as GlobalValidator["subnets"],
-      }),
-      validator({
-        hotkey: "5B",
-        coldkey_identity: named("Yuma"),
-        subnets: [{ netuid: 2 }, { netuid: 3 }] as GlobalValidator["subnets"],
-      }),
+  // This used to assert that the count DEDUPED netuids across an operator's
+  // keys -- and it passed, on rows built with a populated `subnets` array. The
+  // page asks for `subnets: false` (#11315), so every row it actually receives
+  // has `subnets: []`, and the column read 0 for all 604 operators from the day
+  // that landed. The test proved the function worked on data the app never
+  // gives it (#11695).
+  it("counts memberships off the scalar that survives the projection", () => {
+    const rows = operatorRows([
+      validator({ hotkey: "5A", coldkey_identity: named("Yuma"), subnet_count: 2, subnets: [] }),
+      validator({ hotkey: "5B", coldkey_identity: named("Yuma"), subnet_count: 3, subnets: [] }),
     ]);
-    expect(overlapping[0]?.subnetCount).toBe(3);
+    expect(rows[0]?.memberships).toBe(5);
+  });
+
+  it("still counts when the per-subnet array has been projected away", () => {
+    // The exact shape `/validators` receives: no `subnets`, a real
+    // `subnet_count`. A zero here is the defect returning.
+    expect(
+      operatorRows([validator({ hotkey: "5A", subnet_count: 7, subnets: [] })])[0]?.memberships,
+    ).toBe(7);
   });
 
   it("sums nominators only when at least one key reports them", () => {

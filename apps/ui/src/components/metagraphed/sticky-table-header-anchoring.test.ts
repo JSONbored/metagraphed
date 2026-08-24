@@ -112,7 +112,17 @@ describe("sticky table header anchoring", () => {
     // bounded viewport so it is never declared where it would be inert.
     expect(kitStyles).not.toMatch(/^ *\.mg-dt thead th \{[^}]*position: sticky/m);
     // And it stays opaque, so a row passing underneath cannot read through.
-    expect(kitStyles).toMatch(/\.mg-dt thead th \{[^}]*background: var\(--canvas\)/);
+    // Compared against the CARD's own background rather than a named token:
+    // #11695 moved the table onto `--surface-card` so it reads as a surface
+    // rather than as a border drawn on the page, and a literal `--canvas` here
+    // would have failed for a change that kept the property it guards intact.
+    const bgOf = (selector: string) => {
+      const rule = new RegExp(`\\n *\\${selector} \\{([^}]*)\\}`).exec(kitStyles);
+      return /background:\s*(var\([^)]*\)|#[0-9a-f]+)/i.exec(rule?.[1] ?? "")?.[1] ?? null;
+    };
+    const headerBg = bgOf(".mg-dt thead th");
+    expect(headerBg, "the sticky header must declare a background").not.toBeNull();
+    expect(headerBg, "an opaque header, matching the card it sits in").toBe(bgOf(".mg-dt"));
     // And the retired one really is retired, not merely unused.
     expect(kitStyles).not.toContain(".mg-table-head-pinned");
   });

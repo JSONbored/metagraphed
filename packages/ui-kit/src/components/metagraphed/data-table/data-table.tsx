@@ -62,6 +62,22 @@ export interface DataTableColumn<Row> {
   sortable?: boolean;
   /** Hidden until the reader turns it on in the table menu. */
   demote?: boolean;
+  /**
+   * Let this cell wrap onto more lines.
+   *
+   * Cells do NOT wrap by default (#11695): a take RANGE ("9.0%-18.0%") breaks
+   * at its dash, and every multi-hotkey operator's row came out a third taller
+   * than its neighbours -- a table whose row height depends on which operator
+   * you are looking at reads as a rendering fault rather than as data. Uniform
+   * rows are the rhythm the reference tables have.
+   *
+   * The opt-out is the flag rather than the default because it is the rare
+   * case -- one prose column in the app -- and the attribute is emitted per
+   * CELL. Defaulting the other way put `data-nowrap="true"` on 604 cells of
+   * /validators, 10.8 KB of served HTML, and broke that route's payload
+   * ratchet.
+   */
+  wrap?: boolean;
   kind?: DataTableKind;
   /** The sortable / exportable / default-rendered value. */
   value?: (row: Row) => CellValue;
@@ -435,10 +451,7 @@ export function DataTable<Row>({
                         data-active={active ? "true" : undefined}
                       >
                         {column.label}
-                        <i
-                          aria-hidden="true"
-                          data-dir={active ? sort!.dir : undefined}
-                        />
+                        <SortIcon dir={active ? sort!.dir : null} />
                       </button>
                     ) : (
                       column.label
@@ -635,6 +648,36 @@ function Row<Row_>({
   );
 }
 
+/**
+ * The sort affordance: a two-way chevron at rest, one-way when the table is
+ * ordered by this column.
+ *
+ * Hand-drawn rather than pulled from the icon set, because it renders once per
+ * sortable header on a route carrying a payload ratchet -- lucide emits
+ * `xmlns`, a 24px width/height pair, a stroke triple and a class on every
+ * instance, roughly three times this (#11695). What it replaced was a 3px CSS
+ * triangle at 30% opacity: invisible beside 10px uppercase text, and the only
+ * thing separating "sortable" from "sorted" was that opacity, so a table
+ * already ordered by a column looked identical to one that was not.
+ */
+function SortIcon({ dir }: { dir: "asc" | "desc" | null }) {
+  return (
+    <svg
+      className="mg-dt-sort-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {dir !== "asc" ? <path d="m7 15 5 5 5-5" /> : null}
+      {dir !== "desc" ? <path d="m7 9 5-5 5 5" /> : null}
+    </svg>
+  );
+}
+
 function Cell<Row_>({
   row,
   column,
@@ -772,6 +815,11 @@ function Cell<Row_>({
     <td
       data-label={label}
       data-align={align}
+      /* Read back in CSS for the third ink level: a column the table itself
+         calls secondary should not shout at the same volume as the figure the
+         reader came for. */
+      data-demote={column.demote ? "true" : undefined}
+      data-wrap={column.wrap ? "true" : undefined}
       /* Only the tint kind is read back in CSS; on a 128-row table every
          other kind attribute is dead weight in the served HTML. */
       data-kind={column.kind === "tint" ? "tint" : undefined}

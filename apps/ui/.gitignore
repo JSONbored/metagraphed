@@ -39,3 +39,8 @@ ds-bundle/
 .design-sync/.cache/
 .design-sync/learnings/
 .design-sync/node_modules
+
+# Scratch files a debugging session drops beside the specs. `.mjs` under
+# `tests/` fails `validate:no-hand-written-mjs` in CI, and a `git add -A`
+# during a long session is all it takes to commit one (#11695).
+.tmp/

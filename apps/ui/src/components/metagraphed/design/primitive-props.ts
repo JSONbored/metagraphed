@@ -218,6 +218,7 @@ export const DATA_TABLE_PROPS: PropRow[] = [
     ["width", "number | string", false, "Fixed column width."],
     ["sortable", "boolean", false, "Adds the sort control to the header."],
     ["demote", "boolean", false, "Hidden until the reader turns it on in the menu."],
+    ["wrap", "boolean", false, "Lets the cell wrap; cells are one line by default."],
     [
       "kind",
       '"text" | "number" | "identifier" | "status" | "time" | "delta" | "link" | "tint"',

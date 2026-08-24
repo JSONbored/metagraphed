@@ -120,6 +120,10 @@ export function GapsPage() {
       key: "note",
       label: "Why it is open",
       kind: "text",
+      // The one prose cell in the app, and the only column that opts out of
+      // the one-line default: the lane's own sentence about why a gap is
+      // expected is worth reading in full, not truncating (#11695).
+      wrap: true,
       value: (row) => row.note,
     },
     {
