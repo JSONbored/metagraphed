@@ -36,6 +36,16 @@ export interface PoolRow {
 export interface IncidentRow {
   id: string;
   endpointId: string | null;
+  /**
+   * The surface the incident is against, e.g. `opentensor-finney-rpc`.
+   *
+   * The table had no column naming the endpoint, so three simultaneous
+   * opentensor RPC incidents rendered as three byte-identical rows -- provider,
+   * kind, subnet, reason, severity and state all equal -- and a reader could
+   * not tell whether that was three endpoints or one row drawn three times
+   * (#11693). Twelve incidents, twelve distinct surfaces.
+   */
+  surface: string | null;
   provider: string | null;
   kind: string | null;
   netuid: number | null;
@@ -203,6 +213,7 @@ export function incidentRows(raw: readonly EndpointIncident[] | null | undefined
   return raw.map((row, i) => ({
     id: str(row.id) ?? `incident-${i}`,
     endpointId: str(row.endpoint_id),
+    surface: str(row.surface_id) ?? str(row.surface_key) ?? str(row.endpoint_id),
     provider: str(row.provider) ?? str(row.operator),
     kind: str(row.kind),
     netuid: num(row.netuid),

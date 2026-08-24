@@ -13,7 +13,6 @@ import type {
   SubnetOhlcCandle,
   Surface,
 } from "@/lib/metagraphed/types";
-import { formatDecimal } from "@/lib/metagraphed/format";
 
 export type Window = "7d" | "30d" | "90d";
 
@@ -53,19 +52,6 @@ export function changeOver(values: readonly (number | null | undefined)[]): numb
   const last = finite[finite.length - 1];
   if (first === undefined || last === undefined || first === 0) return null;
   return (last - first) / first;
-}
-
-/** A signed percentage for a `FactCell` delta, with the tone the sign implies. */
-export function deltaCell(
-  change: number | null,
-  better: "high" | "low" = "high",
-): { text: string; tone: "good" | "bad" | "neutral" } | undefined {
-  if (change === null || !Number.isFinite(change)) return undefined;
-  const pct = change * 100;
-  const text = `${pct >= 0 ? "+" : ""}${formatDecimal(pct, Math.abs(pct) >= 10 ? 0 : 1)}%`;
-  if (Math.abs(pct) < 0.05) return { text: "0%", tone: "neutral" };
-  const good = better === "high" ? pct > 0 : pct < 0;
-  return { text, tone: good ? "good" : "bad" };
 }
 
 /**

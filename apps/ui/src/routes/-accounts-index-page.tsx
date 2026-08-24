@@ -82,26 +82,15 @@ export function AccountsPage() {
 
   // A fixed tuple, not a spread: FactNodes caps a sentence at six facts by
   // TYPE, and a conditional spread erases the length the cap is checked on.
+  // Only what the strip does not already state (#11693): "top 10 hold 80.6% of
+  // them" sat directly above "Top 10 share 80.6%", and the signer count above
+  // "Signers 7d", so two of three chips were the cell beneath them reworded.
   const sentence: FactNodes = h160
     ? [
         <Fact key="listed">{`${formatNumber(accounts.length)} accounts listed by stake`}</Fact>,
-        <Fact key="share">
-          {topShare === null
-            ? "share unavailable"
-            : `top 10 hold ${formatPct(topShare, 1)} of them`}
-        </Fact>,
-        <Fact key="signers">{`${formatNumber(active.length)} signing accounts this week`}</Fact>,
         <Fact key="h160">{`looking up ${shortAddress(h160)}`}</Fact>,
       ]
-    : [
-        <Fact key="listed">{`${formatNumber(accounts.length)} accounts listed by stake`}</Fact>,
-        <Fact key="share">
-          {topShare === null
-            ? "share unavailable"
-            : `top 10 hold ${formatPct(topShare, 1)} of them`}
-        </Fact>,
-        <Fact key="signers">{`${formatNumber(active.length)} signing accounts this week`}</Fact>,
-      ];
+    : [<Fact key="listed">{`${formatNumber(accounts.length)} accounts listed by stake`}</Fact>];
 
   const cells: FactCells = [
     { label: "Stake listed", value: fmtTaoCompact(listedTotal) },
@@ -144,7 +133,7 @@ export function AccountsPage() {
             name="Accounts"
             sentence={
               <>
-                <FactSentence>{sentence}</FactSentence>
+                <FactSentence>Who holds the stake, and who is spending it. {sentence}</FactSentence>
                 <AccountLookup />
               </>
             }

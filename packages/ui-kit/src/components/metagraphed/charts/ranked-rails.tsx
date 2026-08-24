@@ -33,6 +33,17 @@ export interface RankedRailsProps {
   scale?: "linear" | "sqrt";
   /** Pin the scale (e.g. across two rails); defaults to the largest value. */
   max?: number;
+  /**
+   * Scale the SECOND track against its own largest value instead of sharing
+   * the first's.
+   *
+   * Share the scale when the two series are commensurate -- stake in against
+   * stake out, where a longer track genuinely means more. Split it when they
+   * are not: a validator's stake (2.65M α) beside its emission (124 α) put the
+   * second track four orders of magnitude down, so every emission drew as the
+   * same flat 2px line and the track carried no information at all (#11693).
+   */
+  secondaryScale?: "shared" | "own";
   /** Header labels; omitted = no header row. */
   columns?: { value: string; name: string; track: string; secondary?: string };
   /** Rows shown before "Show all". */
@@ -60,6 +71,7 @@ export function RankedRails({
   formatSecondary,
   scale = "linear",
   max,
+  secondaryScale = "shared",
   columns,
   limit = 10,
   ariaLabel,
@@ -73,6 +85,10 @@ export function RankedRails({
     Math.max(0, ...items.map((i) => Math.max(i.value, i.secondary ?? 0)));
   const shown = expanded ? items : items.slice(0, limit);
   const hasSecondary = items.some((i) => i.secondary !== undefined);
+  const secondaryCap =
+    secondaryScale === "own"
+      ? Math.max(0, ...items.map((i) => i.secondary ?? 0))
+      : cap;
   return (
     <div
       className={classNames("mg-rails", className)}
@@ -99,6 +115,7 @@ export function RankedRails({
             key={item.key}
             item={item}
             cap={cap}
+            secondaryCap={secondaryCap}
             scale={scale}
             formatValue={formatValue}
             formatSecondary={formatSecondary ?? formatValue}
@@ -124,6 +141,7 @@ export function RankedRails({
 function Rail({
   item,
   cap,
+  secondaryCap,
   scale,
   formatValue,
   formatSecondary,
@@ -133,6 +151,7 @@ function Rail({
 }: {
   item: RankedRailItem;
   cap: number;
+  secondaryCap: number;
   scale: "linear" | "sqrt";
   formatValue: (v: number) => string;
   formatSecondary: (v: number) => string;
@@ -183,7 +202,7 @@ function Rail({
           <b
             style={
               {
-                "--fill": `${railFill(item.secondary ?? 0, cap, scale)}%`,
+                "--fill": `${railFill(item.secondary ?? 0, secondaryCap, scale)}%`,
               } as CSSProperties
             }
           />

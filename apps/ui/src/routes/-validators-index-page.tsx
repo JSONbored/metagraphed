@@ -106,17 +106,13 @@ export function ValidatorsPage() {
     navigate({ search: (prev) => ({ ...prev, ...next }), replace: true });
   };
 
+  // Nothing the strip below states appears here too (#11693). The operator
+  // count, the median take and the median APY were chips AND cells, so the
+  // hero said each of them twice, a line apart, in two type sizes.
   const sentence: FactNodes = [
     <Fact key="keys">{`${formatNumber(validators.length)} hotkeys`}</Fact>,
-    <Fact key="ops">{`run by ${formatNumber(operators.length)} operators`}</Fact>,
     <Fact key="top">
       {topShare === null ? "share unavailable" : `top 10 hold ${formatPct(topShare, 1)}`}
-    </Fact>,
-    <Fact key="take">
-      {medianTake === null ? "take unavailable" : `median take ${formatPct(medianTake, 1)}`}
-    </Fact>,
-    <Fact key="apy">
-      {medianApy === null ? "APY unavailable" : `median APY ${formatPct(medianApy, 1)}`}
     </Fact>,
   ];
 
@@ -149,6 +145,9 @@ export function ValidatorsPage() {
       key: "take",
       label: "Take",
       kind: "text",
+      // Wide enough for a RANGE: an operator running several hotkeys at
+      // different takes reads "9.0%-18.0%".
+      width: 130,
       value: (row) => takeLabel(row.takeMin, row.takeMax),
       definition: "Take",
     },
@@ -162,11 +161,11 @@ export function ValidatorsPage() {
       definition: "Estimated APY",
     },
     {
-      key: "subnets",
-      label: "Subnets",
+      key: "memberships",
+      label: "Memberships",
       kind: "number",
       sortable: true,
-      value: (row) => row.subnetCount,
+      value: (row) => row.memberships,
     },
     {
       key: "nominators",
@@ -225,6 +224,12 @@ export function ValidatorsPage() {
       key: "compare",
       label: "Compare",
       kind: "text",
+      // A checkbox needs no more than its own width plus the header word, and
+      // without a bound it took whatever was left and pushed itself off the
+      // right edge of the card (#11695). No `align`: that would emit
+      // `data-align` on all 604 cells for a column one checkbox wide, which is
+      // 11 KB of served HTML and this route is on a payload ratchet.
+      width: 96,
       value: () => "",
       render: (row) => <ValidatorCompareToggle hotkey={row.primaryHotkey} />,
       definition: "Compare",
@@ -249,7 +254,11 @@ export function ValidatorsPage() {
         hero={
           <EntityHero
             name="Validators"
-            sentence={<FactSentence>{sentence}</FactSentence>}
+            sentence={
+              <FactSentence>
+                Every hotkey holding a validator permit, and the operator running it. {sentence}
+              </FactSentence>
+            }
             cells={cells}
             live={{
               updatedAt: listed.meta?.generated_at ?? null,

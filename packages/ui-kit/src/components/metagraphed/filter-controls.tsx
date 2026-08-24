@@ -11,6 +11,14 @@ import { classNames } from "@/lib/format";
  * and a select, on the shared control height. The `FilterToolbar` that used
  * to arrange them is gone -- `DataTable` owns its own filter row (#11610),
  * and a non-table list arranges these three itself.
+ *
+ * QUIET BY DEFAULT (#11695). Three of these side by side, each a bordered box
+ * with a 10px caption floating above it, put more chrome above a table than
+ * the table itself has -- and every one of them sat inside the card, over rows
+ * that have no boxes at all. The field name is now for assistive tech only
+ * (every filter's resting option already names its own axis: "Any stake",
+ * "Any author", "Any domain"), and the control draws its border when a reader
+ * hovers or focuses it, not before.
  */
 export function FilterField({
   label,
@@ -32,14 +40,14 @@ export function FilterField({
     <label
       htmlFor={htmlFor}
       className={classNames(
-        "flex flex-col gap-1 min-w-0",
+        "flex min-w-0 flex-col",
         grow ? "flex-1 min-w-[180px]" : null,
         className,
       )}
     >
-      <span className="text-10 text-ink-muted inline-flex items-center gap-1.5">
+      <span className="sr-only">
         {label}
-        {hint ? <span className="opacity-70">{hint}</span> : null}
+        {hint ? <span>{hint}</span> : null}
       </span>
       {children}
     </label>
@@ -54,9 +62,11 @@ export function FilterField({
 // worst, NO VISIBLE FOCUS RING. Prettier keeps reformatting the line breaks
 // of a concatenation; it cannot reformat an array's elements together.
 const CONTROL_CLASSES = [
-  "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5",
+  "h-8 min-w-0 w-full rounded border border-transparent bg-transparent px-2.5",
   "text-13 text-ink-strong placeholder:text-ink-subtle-text",
-  "mg-focus-ring hover:border-ink/25 transition-colors",
+  "mg-focus-ring transition-colors",
+  "hover:border-border hover:bg-card focus-visible:border-border",
+  "focus-visible:bg-card",
 ].join(" ");
 
 export function FilterInput({

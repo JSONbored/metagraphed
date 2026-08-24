@@ -187,6 +187,16 @@ export function EndpointsPage() {
   ];
 
   const incidentColumns: DataTableColumn<IncidentRow>[] = [
+    {
+      // The lead column, because it is the only one that identifies the row:
+      // without it three concurrent opentensor RPC incidents were three
+      // identical lines (#11693).
+      key: "surface",
+      label: "Endpoint",
+      kind: "identifier",
+      width: 260,
+      value: (row) => row.surface,
+    },
     { key: "detected", label: "Started", kind: "time", width: 130, value: (row) => row.detectedAt },
     { key: "provider", label: "Provider", width: 170, value: (row) => row.provider },
     { key: "kind", label: "Kind", kind: "status", width: 150, value: (row) => row.kind },

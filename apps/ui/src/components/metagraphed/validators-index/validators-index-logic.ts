@@ -36,7 +36,21 @@ export interface OperatorRow {
   totalStakeTao: number;
   totalEmissionTao: number;
   nominators: number | null;
-  subnetCount: number;
+  /**
+   * Total MEMBERSHIPS across the operator's hotkeys, not distinct subnets.
+   *
+   * It used to be `new Set(keys.flatMap(k => k.subnets.map(s => s.netuid))).size`
+   * -- and it read 0 for all 604 operators, because /validators asks for
+   * `subnets: false` (#11315) to keep a megabyte of per-subnet breakdown out of
+   * the SSR dehydration, so the array those netuids came from is always empty.
+   * A column of zeroes, sortable, on every load since that landed (#11695).
+   *
+   * `subnet_count` is a scalar the projection keeps, so summing it survives.
+   * It counts memberships rather than distinct subnets -- two of an operator's
+   * keys on one subnet count twice -- which is why the column says
+   * "Memberships", the same word the detail page uses.
+   */
+  memberships: number;
   uidCount: number;
   /** Null when no key declares one; a single value when they agree. */
   takeMin: number | null;
@@ -108,7 +122,7 @@ export function operatorRows(validators: readonly GlobalValidator[]): OperatorRo
       totalStakeTao,
       totalEmissionTao: sorted.reduce((acc, validator) => acc + validator.total_emission_tao, 0),
       nominators: nominatorCounts.length > 0 ? nominatorCounts.reduce((a, b) => a + b, 0) : null,
-      subnetCount: new Set(sorted.flatMap((v) => v.subnets.map((s) => s.netuid))).size,
+      memberships: sorted.reduce((acc, validator) => acc + (validator.subnet_count ?? 0), 0),
       uidCount: sorted.reduce((acc, validator) => acc + validator.uid_count, 0),
       takeMin: takes.length > 0 ? Math.min(...takes) : null,
       takeMax: takes.length > 0 ? Math.max(...takes) : null,

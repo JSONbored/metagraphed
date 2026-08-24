@@ -1,23 +1,24 @@
 import { describe, it, expect } from "vitest";
 import {
+  deltaCell,
+  durationLabel,
   formatAmount,
   formatAmountFixed,
-  formatSignedAmount,
-  formatPct,
   formatCompact,
   formatCompactAmount,
   formatDecimal,
-  isUsableTimestamp,
-  humaniseSeconds,
-  durationLabel,
-  formatRelative,
-  relativeFromDiff,
-  isStaleFreshness,
   formatNumber,
+  formatPct,
+  formatRelative,
+  formatSignedAmount,
+  formatSubnetAge,
   formatTao,
   formatUsdApprox,
+  humaniseSeconds,
+  isStaleFreshness,
+  isUsableTimestamp,
+  relativeFromDiff,
   subnetAgeDays,
-  formatSubnetAge,
 } from "./format";
 
 describe("isUsableTimestamp", () => {
@@ -483,5 +484,22 @@ describe("formatCompact never leaks precision below a thousand (#11681)", () => 
       const decimals = (formatCompact(v).split(".")[1] ?? "").length;
       expect(decimals, `formatCompact(${v}) = ${formatCompact(v)}`).toBeLessThanOrEqual(2);
     }
+  });
+});
+
+describe("deltaCell", () => {
+  it("labels a rise good when high is better and bad when low is", () => {
+    expect(deltaCell(0.42)).toEqual({ text: "+42%", tone: "good" });
+    expect(deltaCell(0.42, "low")).toEqual({ text: "+42%", tone: "bad" });
+    expect(deltaCell(-0.03)).toEqual({ text: "-3.0%", tone: "bad" });
+  });
+
+  it("calls a change under a twentieth of a percent flat, with no tone", () => {
+    expect(deltaCell(0.0001)).toEqual({ text: "0%", tone: "neutral" });
+  });
+
+  it("has no cell at all when there is no change to state", () => {
+    expect(deltaCell(null)).toBeUndefined();
+    expect(deltaCell(Number.NaN)).toBeUndefined();
   });
 });

@@ -9,7 +9,7 @@ import {
   counterpartyRail,
   eventKindOptions,
   eventSubnetOptions,
-  flowColumns,
+  flowRails,
   fmtCompactTao,
   fmtSignedTao,
   fmtTao,
@@ -75,24 +75,43 @@ describe("positionsBySubnet", () => {
   });
 });
 
-describe("flowColumns", () => {
+describe("flowRails", () => {
   const subnets = [
     { netuid: 0, staked_tao: 0, unstaked_tao: 5.2 },
     { netuid: 1, staked_tao: 3, unstaked_tao: 1 },
     { netuid: 2, staked_tao: 0, unstaked_tao: 0 },
   ] as AccountStakeFlowSubnet[];
+  const fmt = (value: number | null | undefined) => `${value ?? 0} t`;
 
-  it("orders by how much moved and keeps both directions on every column", () => {
-    const columns = flowColumns(subnets, nameOf);
-    expect(columns.map((c) => c.key)).toEqual(["sn-0", "sn-1"]);
-    expect(columns[0]?.segments).toEqual([
-      { key: "staked", label: "Staked in", value: 0 },
-      { key: "unstaked", label: "Unstaked out", value: 5.2 },
+  it("orders by the leading value and keeps both directions on every row", () => {
+    // Ordered by inflow, not by gross: a ranked rail whose first column is not
+    // monotonic reads as broken. The exits-only subnet still shows its track.
+    const rails = flowRails(subnets, nameOf, fmt);
+    expect(rails.map((rail) => rail.key)).toEqual(["sn-1", "sn-0"]);
+    expect(rails[1]).toMatchObject({ value: 0, secondary: 5.2 });
+  });
+
+  it("names and links the row rather than leaving it to an axis label", () => {
+    expect(flowRails(subnets, nameOf, fmt)[0]).toMatchObject({
+      label: nameOf(1),
+      href: "/subnets/1",
+    });
+  });
+
+  it("carries in, out and net for the tooltip", () => {
+    expect(flowRails(subnets, nameOf, fmt)[0]?.detail).toEqual([
+      { key: "in", label: "Staked in", value: "3 t" },
+      { key: "out", label: "Unstaked out", value: "1 t" },
+      { key: "net", label: "Net", value: "2 t" },
     ]);
   });
 
-  it("drops a subnet nothing moved on, rather than drawing an empty column", () => {
-    expect(flowColumns(subnets, nameOf).some((c) => c.key === "sn-2")).toBe(false);
+  it("drops a subnet nothing moved on, rather than drawing an empty row", () => {
+    expect(flowRails(subnets, nameOf, fmt).some((rail) => rail.key === "sn-2")).toBe(false);
+  });
+
+  it("does not leak the sort key into the rail", () => {
+    expect(flowRails(subnets, nameOf, fmt)[0]).not.toHaveProperty("total");
   });
 });
 

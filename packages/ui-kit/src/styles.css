@@ -203,6 +203,12 @@
   --canvas: #f8f8f5;
   --layer: #f0f0ec;
   --raised: #e6e6e1;
+  /* The one ELEVATION token: a card that sits ABOVE the page, white on the
+     light ground and a step lighter on the dark one. `--layer` and `--raised`
+     are a recession scale -- both move AWAY from canvas, which in light means
+     darker -- so neither can hold a surface that must read as lifted in both
+     themes (#11695). */
+  --surface-card: #ffffff;
   --ink-strong: #161616; /* values, headings, the active row */
   --ink: #4a4a47; /* body */
   --ink-muted: #6b6b67; /* labels */
@@ -288,6 +294,7 @@
   --canvas: #161616;
   --layer: #1f1f1f;
   --raised: #2a2a2a;
+  --surface-card: #1f1f1f;
   --ink-strong: #f2f2f2;
   --ink: #d4d4d4;
   --ink-muted: #a3a3a3;
@@ -1640,7 +1647,26 @@
   .mg-rails-track[data-secondary] > b {
     background: var(--ink-muted);
   }
-  .mg-rails-row[data-active="true"] .mg-rails-track > b {
+
+  /* A two-track rail is TWO SERIES, which is what the categorical ramp is for.
+     A single-track rail stays graphite: one bar is not a category, and the
+     reference design's own rails are graphite for exactly that reason. The
+     active override below still wins -- it comes later at equal specificity. */
+  .mg-rails[data-secondary="true"] .mg-rails-track > b {
+    background: var(--chart-1);
+  }
+
+  .mg-rails[data-secondary="true"] .mg-rails-track[data-secondary] > b {
+    background: var(--chart-2);
+  }
+  /* The active row still wins over the categorical colours above, on BOTH
+     tracks -- the second selector only exists because the coloured secondary
+     rule outranks the first one on specificity. */
+  .mg-rails-row[data-active="true"] .mg-rails-track > b,
+  .mg-rails[data-secondary="true"]
+    .mg-rails-row[data-active="true"]
+    .mg-rails-track[data-secondary]
+    > b {
     background: var(--accent);
   }
   .mg-rails-more {
@@ -2036,11 +2062,15 @@
      640px built from the SAME markup (`td::before` reads `data-label`), so
      the server-rendered HTML always carries every row and every row link. */
   .mg-dt {
-    --mg-dt-row-h: 44px;
+    /* 56px, not 44px, and the padding is on the cell rather than implied by
+       the line box. A table row that is only as tall as its text reads as a
+       list of strings; the reference tables give every row 12px above and
+       below its content and 20px either side (#11695). */
+    --mg-dt-row-h: 56px;
     min-width: 0;
     border: 1px solid var(--rule);
     border-radius: var(--radius);
-    background: var(--canvas);
+    background: var(--surface-card);
   }
   .mg-dt[data-dense="true"] {
     --mg-dt-row-h: 36px;
@@ -2054,13 +2084,14 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px 12px;
-    min-height: 44px;
-    padding: 8px 16px;
+    min-height: 56px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--rule);
   }
   .mg-dt-title {
     margin: 0;
-    font-size: 13px;
+    font-size: 16px;
+    font-weight: 600;
     color: var(--ink-strong);
   }
   .mg-dt-count {
@@ -2200,20 +2231,34 @@
     min-width: 0;
     max-width: 100%;
   }
+  /* QUIET AT REST. A table's tool row used to be three or four bordered boxes
+     with a 10px label floating over each -- a search field, two selects and a
+     menu button, all boxed, all inside the card, above a table whose own rows
+     have no boxes at all. The reference tables put nothing in the card but the
+     title. These stay (604 operators need filtering) but they are text until
+     you reach for them (#11695). */
   .mg-dt-search {
     width: 240px;
     max-width: 40vw;
-    height: 28px;
+    height: 32px;
     padding: 0 8px;
-    border: 1px solid var(--rule);
+    border: 1px solid transparent;
     border-radius: var(--radius);
-    background: var(--layer);
+    background: none;
     color: var(--ink);
     font: inherit;
-    font-size: 11px;
+    font-size: 13px;
+    transition:
+      border-color var(--mg-motion),
+      background-color var(--mg-motion);
   }
+  .mg-dt-search:hover,
   .mg-dt-search:focus-visible {
     outline: none;
+    border-color: var(--rule);
+    background: var(--layer);
+  }
+  .mg-dt-search:focus-visible {
     border-color: var(--focus);
   }
   .mg-dt-menu-trigger {
@@ -2360,8 +2405,8 @@
     font-size: 13px;
   }
   .mg-dt thead th {
-    padding: 10px 16px;
-    background: var(--canvas);
+    padding: 12px 16px;
+    background: var(--surface-card);
     border-bottom: 1px solid var(--rule-strong);
     font-size: 10px;
     font-weight: 600;
@@ -2401,31 +2446,46 @@
     outline: 1px solid var(--focus);
     outline-offset: 2px;
   }
-  .mg-dt-sort > i {
-    width: 0;
-    height: 0;
-    border-inline: 3px solid transparent;
-    border-bottom: 4px solid currentColor;
-    opacity: 0.3;
+  .mg-dt-sort-icon {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    opacity: 0.4;
   }
-  .mg-dt-sort > i[data-dir="asc"],
-  .mg-dt-sort > i[data-dir="desc"] {
+  .mg-dt-sort[data-active="true"] .mg-dt-sort-icon {
     opacity: 1;
   }
-  .mg-dt-sort > i[data-dir="desc"] {
-    transform: rotate(180deg);
-  }
   .mg-dt tbody td {
+    /* Three levels of ink, not one. Every cell used to be `--ink`, so a row's
+       identifier, its figures and its "last seen" all shouted equally and the
+       eye had nothing to land on. The lead cell is the row's subject, the
+       figures are the answer, and a demoted column is context (#11695). */
     height: var(--mg-dt-row-h);
-    padding: 0 16px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--rule);
-    color: var(--ink);
+    color: var(--ink-muted);
     vertical-align: middle;
+    white-space: nowrap;
   }
   .mg-dt tbody td[data-align="right"] {
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
+  /* The row's subject: the one cell a reader scans down. Bigger and at full
+     ink, against `--ink-muted` figures and an `--ink-subtle` demoted column
+     -- three levels, so the eye has somewhere to land (#11695). */
+  .mg-dt tbody td:first-child {
+    font-size: 16px;
+    color: var(--ink-strong);
+  }
+
+  .mg-dt tbody td[data-demote="true"] {
+    color: var(--ink-subtle);
+  }
+  .mg-dt tbody td[data-wrap="true"] {
+    white-space: normal;
+  }
+
   .mg-dt tbody tr:last-child td {
     border-bottom: 0;
   }

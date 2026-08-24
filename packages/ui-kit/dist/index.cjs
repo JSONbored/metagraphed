@@ -3110,6 +3110,7 @@ function RankedRails({
   formatSecondary,
   scale = "linear",
   max,
+  secondaryScale = "shared",
   columns,
   limit = 10,
   ariaLabel,
@@ -3121,6 +3122,7 @@ function RankedRails({
   const cap = max ?? Math.max(0, ...items.map((i) => Math.max(i.value, i.secondary ?? 0)));
   const shown = expanded ? items : items.slice(0, limit);
   const hasSecondary = items.some((i) => i.secondary !== void 0);
+  const secondaryCap = secondaryScale === "own" ? Math.max(0, ...items.map((i) => i.secondary ?? 0)) : cap;
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "div",
     {
@@ -3148,6 +3150,7 @@ function RankedRails({
                 {
                   item,
                   cap,
+                  secondaryCap,
                   scale,
                   formatValue,
                   formatSecondary: formatSecondary ?? formatValue,
@@ -3179,6 +3182,7 @@ function RankedRails({
 function Rail({
   item,
   cap,
+  secondaryCap,
   scale,
   formatValue,
   formatSecondary,
@@ -3216,7 +3220,7 @@ function Rail({
           "b",
           {
             style: {
-              "--fill": `${railFill(item.secondary ?? 0, cap, scale)}%`
+              "--fill": `${railFill(item.secondary ?? 0, secondaryCap, scale)}%`
             }
           }
         )
@@ -4029,13 +4033,7 @@ function DataTable({
                           "data-active": active ? "true" : void 0,
                           children: [
                             column.label,
-                            /* @__PURE__ */ jsxRuntime.jsx(
-                              "i",
-                              {
-                                "aria-hidden": "true",
-                                "data-dir": active ? sort.dir : void 0
-                              }
-                            )
+                            /* @__PURE__ */ jsxRuntime.jsx(SortIcon, { dir: active ? sort.dir : null })
                           ]
                         }
                       ) : column.label,
@@ -4169,6 +4167,25 @@ function Row({
     expandable && expanded ? /* @__PURE__ */ jsxRuntime.jsx("tr", { className: "mg-dt-expansion", id: expansionId, children: /* @__PURE__ */ jsxRuntime.jsx("td", { colSpan: columns.length, children: expansion }) }) : null
   ] });
 }
+function SortIcon({ dir }) {
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "svg",
+    {
+      className: "mg-dt-sort-icon",
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      strokeWidth: "2",
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      "aria-hidden": "true",
+      children: [
+        dir !== "asc" ? /* @__PURE__ */ jsxRuntime.jsx("path", { d: "m7 15 5 5 5-5" }) : null,
+        dir !== "desc" ? /* @__PURE__ */ jsxRuntime.jsx("path", { d: "m7 9 5-5 5 5" }) : null
+      ]
+    }
+  );
+}
 function Cell({
   row,
   column,
@@ -4248,6 +4265,8 @@ function Cell({
     {
       "data-label": label,
       "data-align": align,
+      "data-demote": column.demote ? "true" : void 0,
+      "data-wrap": column.wrap ? "true" : void 0,
       "data-kind": column.kind === "tint" ? "tint" : void 0,
       style: tint === null ? void 0 : { "--tint": `${Math.round(tint * 100)}%` },
       children: content
@@ -4342,14 +4361,14 @@ function FilterField({
     {
       htmlFor,
       className: classNames(
-        "flex flex-col gap-1 min-w-0",
+        "flex min-w-0 flex-col",
         grow ? "flex-1 min-w-[180px]" : null,
         className
       ),
       children: [
-        /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "text-10 text-ink-muted inline-flex items-center gap-1.5", children: [
+        /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "sr-only", children: [
           label,
-          hint ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "opacity-70", children: hint }) : null
+          hint ? /* @__PURE__ */ jsxRuntime.jsx("span", { children: hint }) : null
         ] }),
         children
       ]
@@ -4357,9 +4376,11 @@ function FilterField({
   );
 }
 var CONTROL_CLASSES = [
-  "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5",
+  "h-8 min-w-0 w-full rounded border border-transparent bg-transparent px-2.5",
   "text-13 text-ink-strong placeholder:text-ink-subtle-text",
-  "mg-focus-ring hover:border-ink/25 transition-colors"
+  "mg-focus-ring transition-colors",
+  "hover:border-border hover:bg-card focus-visible:border-border",
+  "focus-visible:bg-card"
 ].join(" ");
 function FilterInput({
   className,

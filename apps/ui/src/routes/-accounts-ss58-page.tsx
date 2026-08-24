@@ -109,16 +109,10 @@ export function AccountDetailPage() {
   const scanCapped = Boolean(summary.event_scan_capped);
   const name = identity.data?.data.name?.trim() || short(ss58);
 
+  // The sentence dates the account; the strip counts it (#11693). Free, staked,
+  // the subnet count and the net flow were chips AND cells, so four of six
+  // numbers in this hero were printed twice, one line apart.
   const sentence: FactNodes = [
-    <Fact key="free">{`${fmtTao(free, 4)} free`}</Fact>,
-    <Fact key="staked">{`${fmtCompactTao(staked)} staked`}</Fact>,
-    <Fact key="subnets">
-      {subnetCount === null
-        ? "positions unavailable"
-        : subnetCount > 0
-          ? `across ${formatNumber(subnetCount)} subnets`
-          : "no live positions"}
-    </Fact>,
     <Fact key="first">
       {summary.first_seen_at
         ? `first seen ${formatRelative(summary.first_seen_at)}`
@@ -129,14 +123,23 @@ export function AccountDetailPage() {
         ? `last active ${formatRelative(summary.last_seen_at)}`
         : "last active —"}
     </Fact>,
-    <Fact key="net">{`net ${fmtSignedTao(flow.data?.data.net_flow_tao ?? null)} ${window}`}</Fact>,
   ];
 
   const cells: FactCells = [
     { label: "Free balance", value: fmtTao(free, 4) },
     { label: "Staked", value: fmtCompactTao(staked) },
-    { label: "Positions", value: positionCount === null ? "—" : formatNumber(positionCount) },
-    { label: "Subnets", value: subnetCount === null ? "—" : formatNumber(subnetCount) },
+    {
+      // One cell, not two. `position_count` and the number of DISTINCT netuids
+      // among those positions are different measures, but they agree for most
+      // accounts, so "Positions 61" beside "Subnets 61" read as one number
+      // typed twice. Slashed, the pair says what it is: 61 positions spread
+      // over 61 subnets, and it stops being ambiguous the moment they differ.
+      label: "Positions / subnets",
+      value:
+        positionCount === null || subnetCount === null
+          ? "—"
+          : `${formatNumber(positionCount)} / ${formatNumber(subnetCount)}`,
+    },
     {
       // Never a bare number above the cap: the summary describes the scanned
       // prefix there, and printing it as a total understates a whale by an
@@ -176,7 +179,11 @@ export function AccountDetailPage() {
                 className="mg-hero-icon-action"
               />
             }
-            sentence={<FactSentence>{sentence}</FactSentence>}
+            sentence={
+              <FactSentence>
+                What this address holds, where it holds it, and what it has been doing. {sentence}
+              </FactSentence>
+            }
             cells={cells}
             live={{
               updatedAt: summaryResult.meta?.generated_at ?? null,

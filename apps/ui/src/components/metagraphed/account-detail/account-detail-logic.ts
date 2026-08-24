@@ -88,43 +88,59 @@ export function positionsBySubnet(
     .sort((a, b) => b.value - a.value);
 }
 
-export interface FlowColumn {
+export interface FlowRail {
   key: string;
   label: string;
-  axisLabel: string;
-  total: number;
-  segments: { key: string; label: string; value: number }[];
+  value: number;
+  secondary: number;
+  href: string;
+  detail: { key: string; label: string; value: string }[];
 }
 
 /**
- * Stake movement per subnet, as one column each.
+ * Stake movement per subnet, as a ranked rail.
  *
- * Columns are subnets rather than weeks because `/stake-flow` publishes a
- * per-subnet total for the window and no time series -- drawing weeks would
- * mean inventing them. Both directions are always present so a subnet the
- * account only exited still shows the bar that says so.
+ * Rails rather than stacked columns (#11693). `/stake-flow` publishes a
+ * per-subnet total for the window and no time series, so the columns were
+ * SUBNETS on an axis that thins DATE labels -- an account touching two subnets
+ * drew one full-height bar, one four-pixel sliver at the bottom of an empty
+ * column, and a single rotated "SN0" over the first of them. The window
+ * control changes what is totalled, which is the real dimension available.
+ *
+ * Both directions on every row: a subnet the account only exited still shows
+ * the track that says so.
  */
-export function flowColumns(
+export function flowRails(
   subnets: readonly AccountStakeFlowSubnet[],
   nameOf: (netuid: number) => string,
-): FlowColumn[] {
-  return subnets
-    .map((subnet) => {
-      const staked = typeof subnet.staked_tao === "number" ? subnet.staked_tao : 0;
-      const unstaked = typeof subnet.unstaked_tao === "number" ? subnet.unstaked_tao : 0;
-      return {
-        key: `sn-${subnet.netuid}`,
-        label: nameOf(subnet.netuid),
-        axisLabel: `SN${subnet.netuid}`,
-        total: staked + unstaked,
-        segments: [
-          { key: "staked", label: "Staked in", value: staked },
-          { key: "unstaked", label: "Unstaked out", value: unstaked },
-        ],
-      };
-    })
-    .filter((column) => column.total > 0)
-    .sort((a, b) => b.total - a.total);
+  fmt: (value: number | null | undefined) => string,
+): FlowRail[] {
+  return (
+    subnets
+      .map((subnet) => {
+        const staked = typeof subnet.staked_tao === "number" ? subnet.staked_tao : 0;
+        const unstaked = typeof subnet.unstaked_tao === "number" ? subnet.unstaked_tao : 0;
+        return {
+          key: `sn-${subnet.netuid}`,
+          label: nameOf(subnet.netuid),
+          value: staked,
+          secondary: unstaked,
+          href: `/subnets/${subnet.netuid}`,
+          total: staked + unstaked,
+          detail: [
+            { key: "in", label: "Staked in", value: fmt(staked) },
+            { key: "out", label: "Unstaked out", value: fmt(unstaked) },
+            { key: "net", label: "Net", value: fmt(staked - unstaked) },
+          ],
+        };
+      })
+      .filter((rail) => rail.total > 0)
+      // By the LEADING value, then by the other direction. A ranked rail whose
+      // first column is not monotonic reads as broken (#11693). Nothing is
+      // dropped here, so there is no gross-movement cut to make first.
+      .sort((a, b) => b.value - a.value || b.secondary - a.secondary)
+      .map(({ total: _total, ...rail }) => rail)
+  );
 }
 
 export interface CounterpartyRow {

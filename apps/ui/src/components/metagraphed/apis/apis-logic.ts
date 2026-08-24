@@ -216,38 +216,6 @@ export function shortHash(hash: string | null | undefined): string {
   return hash ? `${hash.slice(0, 8)}…` : "—";
 }
 
-export interface Marker {
-  key: string;
-  label: string;
-  value: number;
-  detail?: string;
-}
-
-/**
- * How many subnets publish each kind of surface, as a percentage.
- *
- * From /api/v1/coverage's `completeness.dimension_coverage`, which is a real
- * ratio over the subnet set. The retired page drew this against
- * `domain_coverage`, which counts how many subnets are IN each domain and is
- * not a coverage figure at all — an 11-subnet "agents" domain is not 11%
- * covered, it is eleven subnets.
- */
-export function coverageMarkers(
-  dimensions: Record<string, { pct?: number; present?: number }> | null | undefined,
-  fmt: { count: (n: number) => string },
-): Marker[] {
-  if (!dimensions) return [];
-  return Object.entries(dimensions)
-    .filter(([, value]) => typeof value?.pct === "number")
-    .map(([key, value]) => ({
-      key,
-      label: key,
-      value: value.pct as number,
-      detail: typeof value.present === "number" ? `${fmt.count(value.present)} subnets` : undefined,
-    }))
-    .sort((a, b) => b.value - a.value || a.key.localeCompare(b.key));
-}
-
 export interface SchemaSummary {
   surface_count: number;
   by_status: Record<string, number>;

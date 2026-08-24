@@ -44,22 +44,35 @@ describe("stakeBySubnet", () => {
     membership({ netuid: 2, stake_alpha: 50, emission_alpha: 5 }),
     membership({ netuid: 3, stake_alpha: 0, emission_alpha: 0 }),
   ];
+  const fmt = (value: number) => `${value} a`;
 
-  it("orders by stake and carries both legs on every column", () => {
-    const columns = stakeBySubnet(memberships, nameOf);
-    expect(columns.map((c) => c.key)).toEqual(["sn-2", "sn-1"]);
-    expect(columns[0]?.segments).toEqual([
-      { key: "stake", label: "Stake", value: 50 },
-      { key: "emission", label: "Emission", value: 5 },
+  it("orders by stake and carries both legs on every row", () => {
+    const rails = stakeBySubnet(memberships, nameOf, fmt);
+    expect(rails.map((rail) => rail.key)).toEqual(["sn-2", "sn-1"]);
+    expect(rails[0]).toMatchObject({ value: 50, secondary: 5 });
+  });
+
+  it("names and links the row rather than leaving it to an axis label", () => {
+    // Stacked columns thinned the axis like dates and labelled two of twelve.
+    expect(stakeBySubnet(memberships, nameOf, fmt)[0]).toMatchObject({
+      label: nameOf(2),
+      href: "/subnets/2",
+    });
+  });
+
+  it("carries stake and emission for the tooltip", () => {
+    expect(stakeBySubnet(memberships, nameOf, fmt)[0]?.detail).toEqual([
+      { key: "stake", label: "Stake", value: "50 a" },
+      { key: "emission", label: "Emission", value: "5 a" },
     ]);
   });
 
   it("drops a membership holding and earning nothing", () => {
-    expect(stakeBySubnet(memberships, nameOf).some((c) => c.key === "sn-3")).toBe(false);
+    expect(stakeBySubnet(memberships, nameOf, fmt).some((rail) => rail.key === "sn-3")).toBe(false);
   });
 
   it("honours the ceiling so a 116-membership validator draws a chart, not a wall", () => {
-    expect(stakeBySubnet(memberships, nameOf, 1)).toHaveLength(1);
+    expect(stakeBySubnet(memberships, nameOf, fmt, 1)).toHaveLength(1);
   });
 });
 

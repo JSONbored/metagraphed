@@ -48,6 +48,8 @@ type Sweep = {
   deletedClasses: string[];
   /** Sections showing the same ranked list twice (#11683). */
   repeatedLegends: string[];
+  /** Measure labels the page states more than once (#11693). */
+  repeatedMeasures: string[];
   textNodes: number;
 };
 
@@ -65,6 +67,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
   const compareHeadOffenders: string[] = [];
   const stackedTables: string[] = [];
   const repeatedLegends: string[] = [];
+  const repeatedMeasures: string[] = [];
   const deletedClasses: string[] = [];
   // Every class the v2 rebuild deleted. A page carrying one is either a stale
   // component that survived a rebase or a hand-rolled copy of a primitive; both
@@ -132,18 +135,89 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
     // twice with two different percent formatters ("9%" against "9.0%"), so a
     // text comparison called them two different lists while a reader saw one
     // account listed twice showing two different numbers for it.
-    const signatures = [...section.querySelectorAll(".mg-rank-grid")].map((grid) =>
-      [...grid.querySelectorAll(".mg-rank-grid-row")]
-        .map(
-          (row) =>
-            row.getAttribute("data-entity") ?? (row.textContent ?? "").replace(/\s+/g, " ").trim(),
-        )
-        .join("|"),
+    //
+    // It was never ASSERTED, either -- see the expect() this feeds (#11693).
+    const grids = [...section.querySelectorAll(".mg-rank-grid")].map(
+      (grid) =>
+        new Set(
+          [...grid.querySelectorAll(".mg-rank-grid-row")].map(
+            (row) =>
+              row.getAttribute("data-entity") ??
+              (row.textContent ?? "").replace(/\s+/g, " ").trim(),
+          ),
+        ),
     );
-    const distinct = new Set(signatures.filter(Boolean));
-    if (distinct.size < signatures.filter(Boolean).length) {
-      repeatedLegends.push(`${describeEl(section)} renders the same ranked list twice`);
+    // OVERLAP, not an exact signature. An exact join is one row from useless:
+    // a duplicated `CompositionBreakdown` legend differs only in what it calls
+    // its residual row ("Other" against "rest"), and that single cell made two
+    // otherwise identical eleven-row lists compare as different -- the gate
+    // passed on an injected duplicate that a reader sees as the same ten
+    // operators printed twice.
+    for (let i = 0; i < grids.length; i += 1) {
+      for (let j = i + 1; j < grids.length; j += 1) {
+        const a = grids[i]!;
+        const b = grids[j]!;
+        if (a.size === 0 || b.size === 0) continue;
+        let shared = 0;
+        for (const key of a) if (b.has(key)) shared += 1;
+        const overlap = shared / Math.min(a.size, b.size);
+        if (overlap >= 0.8) {
+          repeatedLegends.push(
+            `${describeEl(section)} renders the same ranked list twice ` +
+              `(${shared} of ${Math.min(a.size, b.size)} rows shared)`,
+          );
+        }
+      }
     }
+  }
+  // ONE MEASURE, ONE PLACE (#11693). A labelled scalar -- a `FactStrip` cell or
+  // a `FactSentence` chip -- states its label once per page.
+  //
+  // Five heroes broke it. /validators printed "median take 18.0%" as a chip
+  // directly above "Median take 18.0%" as a cell; /validators/{hotkey} did it
+  // with four of six numbers; /accounts/{ss58} with four; and the subnet detail
+  // page stated "Total stake" in its hero AND in Momentum's legend, reading two
+  // different series, so one page said 2.63M α and 2.62M α about one subnet at
+  // one moment. That last one is why this compares LABELS and not values: the
+  // defect shows up as one label with two numbers, and a value comparison would
+  // have called that two different facts.
+  const measures = new Map<string, { count: number; values: Set<string> }>();
+  const noteMeasure = (label: string, value: string) => {
+    const key = label.trim().toLowerCase().replace(/[.:]$/, "");
+    if (!key || !value.trim()) return;
+    const seen = measures.get(key) ?? { count: 0, values: new Set<string>() };
+    seen.count += 1;
+    seen.values.add(value.trim());
+    measures.set(key, seen);
+  };
+  // A `FactStrip` cell says which half is which: `<dt>` is the label, `<dd>`
+  // the value. Read them rather than splitting the text, so "Alpha price" and
+  // "Alpha price 30d ago" stay two labels -- a regex that stops at the first
+  // digit collapses them, and the second is a different measure of the same
+  // series, which is exactly the shape the fix for this defect takes.
+  for (const cell of root.querySelectorAll<HTMLElement>(".mg-fact")) {
+    const dt = cell.querySelector("dt");
+    const dd = cell.querySelector("dd");
+    if (!dt || !dd) continue;
+    noteMeasure(
+      (dt.textContent ?? "").replace(/\s+/g, " "),
+      (dd.textContent ?? "").replace(/\s+/g, " "),
+    );
+  }
+  // A chip is one run of text, so its label is the leading run before the
+  // first digit or dash. A chip with no number at all ("unofficial", "open
+  // source") is a claim, not a measure, and is skipped.
+  for (const chip of root.querySelectorAll<HTMLElement>(".mg-fact-chip")) {
+    const text = (chip.textContent ?? "").replace(/\s+/g, " ").trim();
+    const match = /^([^0-9\u2014\u2013]*[A-Za-z)])\s*(.+)$/.exec(text);
+    if (match) noteMeasure(match[1]!, match[2]!);
+  }
+  for (const [label, { count, values }] of measures) {
+    if (count < 2) continue;
+    repeatedMeasures.push(
+      `"${label}" stated ${count} times` +
+        (values.size > 1 ? ` and they disagree: ${[...values].join(" / ")}` : ""),
+    );
   }
   for (const el of root.querySelectorAll<HTMLElement>("*")) {
     const cs = getComputedStyle(el);
@@ -242,6 +316,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
     stackedTables,
     deletedClasses,
     repeatedLegends,
+    repeatedMeasures,
     textNodes,
   };
 }
@@ -352,6 +427,31 @@ for (const route of ROUTES) {
             expect(
               s.stackedTables,
               `a section holding more than one table taller than 900px on ${route} (${viewport.name}, ${theme})`,
+            ).toEqual([]);
+          }
+
+          // The same ranked list twice in one section (#11683). This was
+          // COLLECTED and never asserted from the day it was written (#11685):
+          // the sweep computed the finding, returned it in the payload, and
+          // nothing looked at it, so the gate could not fail and the /accounts
+          // duplicate it exists to catch was found by hand months later.
+          if (!(route in SPECIMEN_ROUTES)) {
+            expect(
+              s.repeatedLegends,
+              `a section rendering the same ranked list twice on ${route} (${viewport.name}, ${theme})`,
+            ).toEqual([]);
+          }
+
+          // One measure, one place (#11693). A label stated twice is either the
+          // reader reading the same number twice or -- worse, and this happened
+          // on the subnet detail page -- reading two different numbers under
+          // one name. Specimen routes are exempt: /design/primitives documents
+          // `EntityHero` and `FactStrip` with the same four facts on purpose,
+          // which is the page's subject rather than a slip.
+          if (!(route in SPECIMEN_ROUTES)) {
+            expect(
+              s.repeatedMeasures,
+              `the same measure stated twice on ${route} (${viewport.name}, ${theme})`,
             ).toEqual([]);
           }
 

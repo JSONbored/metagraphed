@@ -5,7 +5,6 @@ import {
   categoryTotals,
   changeOver,
   closePoints,
-  deltaCell,
   emissionColumns,
   emissionNeighbours,
   emissionRank,
@@ -57,7 +56,7 @@ describe("emissionRank", () => {
   });
 });
 
-describe("changeOver / deltaCell", () => {
+describe("changeOver", () => {
   it("measures first to last across the finite values", () => {
     expect(changeOver([10, null, 15])).toBeCloseTo(0.5);
   });
@@ -65,20 +64,6 @@ describe("changeOver / deltaCell", () => {
   it("refuses to divide by a zero baseline", () => {
     expect(changeOver([0, 5])).toBeNull();
     expect(changeOver([])).toBeNull();
-  });
-
-  it("labels a rise good when high is better and bad when low is", () => {
-    expect(deltaCell(0.42)).toEqual({ text: "+42%", tone: "good" });
-    expect(deltaCell(0.42, "low")).toEqual({ text: "+42%", tone: "bad" });
-    expect(deltaCell(-0.03)).toEqual({ text: "-3.0%", tone: "bad" });
-  });
-
-  it("calls a change under a twentieth of a percent flat, with no tone", () => {
-    expect(deltaCell(0.0001)).toEqual({ text: "0%", tone: "neutral" });
-  });
-
-  it("has no cell at all when there is no change to state", () => {
-    expect(deltaCell(null)).toBeUndefined();
   });
 });
 
