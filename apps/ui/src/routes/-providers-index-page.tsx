@@ -95,7 +95,7 @@ export function ProvidersPage() {
           {/* 20px, the size every other table cell uses. `BrandIcon` defaults
               to 32, which is the whole content box of a 56px row -- so a row
               with a mark came out 63px tall against 57px for one without, and
-              the list rippled down the page (#11698). */}
+              the list rippled down the page (#11696). */}
           <BrandIcon
             size={20}
             iconUrl={row.iconUrl}

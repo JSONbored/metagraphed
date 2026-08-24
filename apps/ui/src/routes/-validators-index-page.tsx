@@ -134,7 +134,7 @@ export function ValidatorsPage() {
       sortable: true,
       // Bounded, or an unusually long identity name widens the table past its
       // card and takes Compare off the right edge (#11696).
-      width: 380,
+      width: 330,
       value: (row) => row.name,
       render: (row) => (
         <span className="mg-dt-entity">
@@ -168,6 +168,11 @@ export function ValidatorsPage() {
       label: "Memberships",
       kind: "number",
       sortable: true,
+      // Wide enough for the label PLUS its sort chevron. The column widths
+      // were set against a monospace; the sans is narrower per character but
+      // the chevron and the "?" are not, so two headers came out a few pixels
+      // short and ellipsed (#11698).
+      width: 150,
       value: (row) => row.memberships,
     },
     {
@@ -175,6 +180,7 @@ export function ValidatorsPage() {
       label: "Nominators",
       kind: "number",
       sortable: true,
+      width: 160,
       value: (row) => row.nominators,
       format: (value) => (typeof value === "number" ? formatNumber(value) : "—"),
       definition: "Nominators",
@@ -182,6 +188,7 @@ export function ValidatorsPage() {
     {
       key: "stake",
       label: "Total stake",
+      width: 140,
       kind: "number",
       sortable: true,
       value: (row) => row.totalStakeTao,

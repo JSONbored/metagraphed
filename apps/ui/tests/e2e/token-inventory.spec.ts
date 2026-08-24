@@ -52,7 +52,7 @@ type Sweep = {
   repeatedMeasures: string[];
   /** Tables wider than the card they sit in (#11696). */
   wideTables: string[];
-  /** Peers laid out by one primitive whose heights disagree (#11698). */
+  /** Peers laid out by one primitive whose heights disagree (#11696). */
   raggedPeers: string[];
   textNodes: number;
 };
@@ -231,7 +231,7 @@ function sweepMain([dotMax, contractRadiusPx]: [number, number]): Sweep {
   // 2026-08-22" carries a date, "Candidates awaiting review" is four words --
   // so at 375px one card wrapped, the grid row stretched to the tallest, and
   // the strip came out visibly ragged. Eighteen routes did it, and the
-  // instance a reader happened to notice was the eighteenth (#11698).
+  // instance a reader happened to notice was the eighteenth (#11696).
   //
   // Same shape wherever a primitive lays peers in a row or a grid: a table row
   // whose one wrapping cell had 300 characters was 395px tall beside 56px

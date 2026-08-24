@@ -5,7 +5,7 @@ import { sectionId } from "./prose-doc-logic";
  * One headed section of a prose document.
  *
  * The heading is a plain `<h2>` and takes its type from `.mg-prose`, which
- * puts headings back into the mono face while the body runs in IBM Plex Sans
+ * sets the article measure and rhythm; the whole site is one face now
  * — the one place on the site where those two faces meet.
  */
 export function ProseSection({ title, children }: { title: string; children: ReactNode }) {

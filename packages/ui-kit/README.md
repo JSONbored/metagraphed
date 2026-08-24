@@ -11,7 +11,7 @@ raw value or re-implementing something that exists.
 
 ## The contract
 
-One font (IBM Plex Mono; IBM Plex Sans for prose only). Three text sizes in the body
+Two faces of one family (Geist for text, Geist Mono for identifiers, figures and code). Three text sizes in the body
 (10 / 11 / 13) and three display sizes (16 / 28 / 40, plus 64 on the home hero). `letter-spacing:
 normal` everywhere except a table header. **One** border radius, 4px — the only round element on
 the site is the 8×8 status dot. Flat surfaces: no resting shadow, no gradient, no hover lift, no

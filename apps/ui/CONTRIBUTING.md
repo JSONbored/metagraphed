@@ -62,8 +62,9 @@ budget — keep new dependencies/imports lean.
 - **The design system (v2, #11605).** One token file — `packages/ui-kit/src/styles.css` — carries
   the whole visual contract, and both `eslint.config.ts` files enforce it at **error** tier in every
   source directory (there is no warn tier and no ratchet list any more). The contract:
-  - **One family.** IBM Plex Mono for every UI, label, number and heading (`font-mono`,
-    `font-sans` and `font-display` all resolve to it). IBM Plex Sans only inside the docs/news
+  - **Two faces, one family.** Geist for text, labels and headings (`font-sans` and
+    `font-display` resolve to it); Geist Mono for identifiers, figures and code. Both are
+    variable and latin-subset, one file each. `.mg-prose` sets the article measure inside the docs/news
     article body via `.mg-prose`.
   - **Seven sizes.** `text-10` · `text-11` · `text-13` · `text-16` · `text-28` · `text-40`
     (`text-64` on the landing `h1` only). Each carries its line-height. Tailwind's `text-xs`…`text-9xl`,

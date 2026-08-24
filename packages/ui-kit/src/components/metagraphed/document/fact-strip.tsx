@@ -7,7 +7,7 @@ import { Definition } from "../interaction/definition";
  * to: "Candidates" over a tooltip that says "discovered surfaces queued for a
  * human to accept or reject" beats "Candidates awaiting review", which wrapped
  * to three lines in a 145px card on a phone while its neighbours took two, and
- * made the strip ragged (#11698). Roughly seventeen characters fit one line at
+ * made the strip ragged (#11696). Roughly seventeen characters fit one line at
  * 375px, and the "?" takes a word's worth of the last one.
  *
  * A single row of 2–6 bordered cells (#11607): label 11px muted, value 28px
@@ -94,7 +94,7 @@ export function FactCell({
             definition is a one-line edit that lights up every card using that
             label at once. `Definition` renders nothing for a term it has no
             sentence for, so an undefined label is simply a card without a
-            help affordance rather than an empty button (#11698). */}
+            help affordance rather than an empty button (#11696). */}
         <Definition term={label} sentence={hint} />
       </dt>
       <dd>

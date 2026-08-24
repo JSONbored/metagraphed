@@ -124,7 +124,7 @@ export function GapsPage() {
       // the one-line default: the lane's own sentence about why a gap is
       // expected is worth reading. Two lines of it, capped -- unbounded, a
       // 300-character note made its row 395px tall beside 56px neighbours
-      // (#11698). The whole sentence is under the row.
+      // (#11696). The whole sentence is under the row.
       wrap: true,
       value: (row) => row.note,
     },

@@ -44,9 +44,9 @@ inline CSS variable values, e.g. `color="var(--chart-1)"` or
 `style={{ background: "var(--chart-3)" }}`. Follow that pattern for chart/series
 color, don't invent a `bg-chart-*` class.
 
-Typography: IBM Plex Mono is the only UI face (`font-mono`, `font-sans` and
-`font-display` all resolve to it); IBM Plex Sans is used only by `.mg-prose`
-(docs/news article bodies). Sizes are `text-10/11/13/16/28/40` (
+Typography: Geist is the UI face (`font-sans` and `font-display` resolve to
+it); Geist Mono carries identifiers, figures and code; `.mg-prose` sets the
+article measure and rhythm (docs/news article bodies). Sizes are `text-10/11/13/16/28/40` (
 already what text renders in). Sizes run small and dense throughout this system
 — real components lean on `text-[9px]`–`text-sm` with `uppercase tracking-wide`
 for labels far more than default Tailwind text sizes; match that density rather
@@ -59,7 +59,7 @@ than defaulting to `text-base`.
   Read it before inventing a new color.
 - **Per-component API + usage**: each component's `<Name>.prompt.md` (composition
   examples come from this repo's real previews, not invented).
-- **Fonts**: `packages/ui-kit/src/fonts/` — IBM Plex Mono + IBM Plex Sans (400/500/600), self-hosted
+- **Fonts**: `packages/ui-kit/src/fonts/` — Geist + Geist Mono, variable (100–900), latin subset, self-hosted
   as real woff2 at exactly the weights this app uses (400/500/600 — verified by
   grepping every `font-weight` utility class in `apps/ui/src`; `font-bold`/700
   never appears anywhere in the app, so it isn't shipped).

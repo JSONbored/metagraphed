@@ -7,7 +7,7 @@
  * Keep each entry to one sentence, in plain words, ending with a full stop.
  */
 export const DEFINITIONS = {
-  // ── Summary-card labels (#11698) ──────────────────────────────────────────
+  // ── Summary-card labels (#11696) ──────────────────────────────────────────
   //
   // `FactCell` looks its label up here, so a term listed below grows a "?" on
   // every card that uses it, on every route, at once. Only the terms a reader
