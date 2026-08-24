@@ -2660,15 +2660,19 @@
      Named one wrapper at a time this was a whack-a-mole: `.mg-dt-rowbutton`
      escaped the viewport at 375px, and with it bounded `.mg-dt-id` escaped
      instead -- the same defect wearing the next class along, because the rule
-     was written about elements rather than about cells. Every direct child of
-     a cell is bounded by it, whichever wrapper a future cell kind adds.
+     was written about elements rather than about cells.
+     EVERY DESCENDANT, not every child: the lead cell nests three deep
+     (`td > .mg-dt-rowlead > .mg-dt-rowbutton > .mg-dt-id`), so a rule on `> *`
+     bounded the outermost wrapper and left the identifier inside it 173px wide
+     in a 99px button. A tooltip is exempt -- it is positioned out of the cell
+     on purpose and bounding it to a column's width would be a bug, not a fix.
      `min-width: 0` with it, or a flex child refuses to shrink below its
      content and the `max-width` never bites.
      It surfaced on CI and not locally because the two platforms fall back to
      different faces while the webfont loads and one is wider -- which a cell
      that clips its own content must not depend on. */
-  .mg-dt tbody td > *,
-  .mg-dt thead th > * {
+  .mg-dt tbody td *:not([role="tooltip"]),
+  .mg-dt thead th *:not([role="tooltip"]) {
     min-width: 0;
     max-width: 100%;
   }
