@@ -132,6 +132,9 @@ export function ValidatorsPage() {
       label: "Operator",
       kind: "text",
       sortable: true,
+      // Bounded, or an unusually long identity name widens the table past its
+      // card and takes Compare off the right edge (#11696).
+      width: 380,
       value: (row) => row.name,
       render: (row) => (
         <span className="mg-dt-entity">

@@ -5,7 +5,6 @@ import {
   AnalyticsSection,
   DataTable,
   EntityHero,
-  Fact,
   FactSentence,
   FilterField,
   FilterSelect,
@@ -17,6 +16,7 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -223,18 +223,21 @@ export function HealthPage() {
         name="Health"
         sentence={
           <FactSentence>
-            What is broken, across every probed surface and this site itself.{" "}
-            {healthFacts(
+            What is broken, across every probed surface and this site itself.
+          </FactSentence>
+        }
+        // A STRIP, not chips (#11696). This page's subject is a table, and its
+        // headline counts were 11px `Fact` chips inside the sentence -- set
+        // smaller than the rows they frame. The lede stays prose.
+        cells={
+          factCells(
+            healthFacts(
               health.data.global as Parameters<typeof healthFacts>[0],
               openRows.length,
               (self.data?.data?.verdict as string | undefined) ?? null,
               { count: formatNumber },
-            ).map((fact) => (
-              <Fact key={fact.key}>
-                {fact.label} {fact.value}
-              </Fact>
-            ))}
-          </FactSentence>
+            ),
+          ) ?? undefined
         }
         live={{
           updatedAt: health.data.observed_at ?? null,

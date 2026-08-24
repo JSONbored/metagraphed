@@ -231,7 +231,7 @@ export function healthFacts(
   const counts = global.status_counts ?? {};
   const facts: Fact[] = [];
   if (typeof global.surface_count === "number") {
-    facts.push({ key: "probed", label: "probed surfaces", value: fmt.count(global.surface_count) });
+    facts.push({ key: "probed", label: "Probed surfaces", value: fmt.count(global.surface_count) });
   }
   for (const [key, label] of [
     ["ok", "ok"],
@@ -242,7 +242,7 @@ export function healthFacts(
       facts.push({ key, label, value: fmt.count(counts[key]) });
     }
   }
-  facts.push({ key: "incidents", label: "open incidents", value: fmt.count(openIncidents) });
-  if (verdict) facts.push({ key: "self", label: "metagraphed itself", value: verdict });
+  facts.push({ key: "incidents", label: "Open incidents", value: fmt.count(openIncidents) });
+  if (verdict) facts.push({ key: "self", label: "Metagraphed itself", value: verdict });
   return facts;
 }

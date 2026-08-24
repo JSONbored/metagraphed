@@ -164,7 +164,7 @@ describe("blocksFacts", () => {
   it("falls back to the summary's own last block when the page is empty", () => {
     expect(blocksFacts({ last_block: 7 }, null, fmt)[0]).toEqual({
       key: "head",
-      label: "head",
+      label: "Head block",
       value: "#7",
     });
   });
@@ -202,7 +202,7 @@ describe("extrinsicsFacts", () => {
   it("says the count is of the page, never of a window it cannot see", () => {
     expect(extrinsicsFacts(rows, fmt)[0]).toEqual({
       key: "rows",
-      label: "on this page",
+      label: "On this page",
       value: "5",
     });
   });

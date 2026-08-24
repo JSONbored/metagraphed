@@ -3,6 +3,13 @@ import { classNames } from "@/lib/format";
 import { Definition } from "../interaction/definition";
 
 /**
+ * KEEP THE LABEL SHORT. The "?" carries the detail, so the label does not have
+ * to: "Candidates" over a tooltip that says "discovered surfaces queued for a
+ * human to accept or reject" beats "Candidates awaiting review", which wrapped
+ * to three lines in a 145px card on a phone while its neighbours took two, and
+ * made the strip ragged (#11698). Roughly seventeen characters fit one line at
+ * 375px, and the "?" takes a word's worth of the last one.
+ *
  * A single row of 2–6 bordered cells (#11607): label 11px muted, value 28px
  * mono 500 ink tabular, optional delta chip. Shared edges, no gap, 4px radius
  * on the outer box only. No icon, no sparkline, no per-cell "updated", no hint
@@ -65,8 +72,8 @@ export function FactStrip({
 }
 
 export interface FactCellProps extends FactCellData {
-  /** A one-sentence definition of the label, shown as a `Definition` beside it. */
-  hint?: ReactNode;
+  /** Overrides the glossary sentence for this label. */
+  hint?: string;
   className?: string;
 }
 
@@ -82,9 +89,13 @@ export function FactCell({
     <div className={classNames("mg-fact", className)}>
       <dt>
         {label}
-        {typeof hint === "string" ? (
-          <Definition term={label} sentence={hint} />
-        ) : null}
+        {/* The "?" appears wherever the GLOSSARY has a sentence for this
+            label -- no call site has to remember to ask for it, and adding a
+            definition is a one-line edit that lights up every card using that
+            label at once. `Definition` renders nothing for a term it has no
+            sentence for, so an undefined label is simply a card without a
+            help affordance rather than an empty button (#11698). */}
+        <Definition term={label} sentence={hint} />
       </dt>
       <dd>
         <span className="mg-fact-value">{value}</span>

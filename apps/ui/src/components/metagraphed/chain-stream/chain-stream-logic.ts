@@ -153,16 +153,16 @@ export function blocksFacts(
 ): Fact[] {
   const facts: Fact[] = [];
   const at = head ?? summary?.last_block ?? null;
-  if (at != null) facts.push({ key: "head", label: "head", value: `#${fmt.count(at)}` });
+  if (at != null) facts.push({ key: "head", label: "Head block", value: `#${fmt.count(at)}` });
   const mean = summary?.block_time?.mean_ms;
   if (typeof mean === "number" && mean > 0) {
-    facts.push({ key: "cadence", label: "block time", value: fmt.seconds(mean / 1000) });
+    facts.push({ key: "cadence", label: "Block time", value: fmt.seconds(mean / 1000) });
   }
   const perBlock = summary?.throughput?.mean_extrinsics_per_block;
   if (typeof perBlock === "number") {
     facts.push({
       key: "throughput",
-      label: "extrinsics per block",
+      label: "Extrinsics per block",
       value: fmt.count(Math.round(perBlock * 10) / 10),
     });
   }
@@ -187,18 +187,18 @@ export function extrinsicsFacts(
   rows: readonly Extrinsic[],
   fmt: { count: (n: number) => string },
 ): Fact[] {
-  const facts: Fact[] = [{ key: "rows", label: "on this page", value: fmt.count(rows.length) }];
+  const facts: Fact[] = [{ key: "rows", label: "On this page", value: fmt.count(rows.length) }];
   const stated = rows.filter((row) => row.success != null);
   if (stated.length > 0) {
     const ok = stated.filter((row) => row.success === true).length;
     facts.push({
       key: "ok",
-      label: "succeeded",
+      label: "Succeeded",
       value: `${formatPct(ok / stated.length, 1)}`,
     });
   }
   const top = topBy(rows, (row) => row.call_module);
-  if (top) facts.push({ key: "module", label: "top module", value: top.key });
+  if (top) facts.push({ key: "module", label: "Top module", value: top.key });
   return facts;
 }
 
@@ -236,9 +236,9 @@ export function eventsFacts(
   ];
   const top = [...activity].sort((a, b) => (b.count ?? 0) - (a.count ?? 0))[0];
   const label = top ? callLabel(top.pallet, top.method) : null;
-  if (label) facts.push({ key: "top", label: "most frequent", value: label });
+  if (label) facts.push({ key: "top", label: "Most frequent", value: label });
   if (stats?.groups != null) {
-    facts.push({ key: "kinds", label: "distinct kinds", value: fmt.count(stats.groups) });
+    facts.push({ key: "kinds", label: "Distinct kinds", value: fmt.count(stats.groups) });
   }
   return facts;
 }

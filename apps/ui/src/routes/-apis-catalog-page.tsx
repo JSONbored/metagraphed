@@ -6,7 +6,6 @@ import {
   CompositionBreakdown,
   DataTable,
   EntityHero,
-  Fact,
   FactSentence,
   FilterField,
   FilterInput,
@@ -18,11 +17,12 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
 import { coverageQuery, surfacesInfiniteQuery } from "@/lib/metagraphed/queries";
 import type { Surface } from "@/lib/metagraphed/types";
 import type { CoverageCounts } from "@/components/metagraphed/apis/apis-logic";
@@ -117,14 +117,17 @@ export function ApisCatalogPage() {
       format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
     },
     { key: "kind", label: "Kind", kind: "status", width: 130, value: (row) => row.kind ?? null },
-    { key: "name", label: "Name", value: (row) => row.name ?? null },
     {
-      key: "url",
-      label: "URL",
+      // The name LEADS and links; the URL is under the row. Two identifier
+      // columns side by side took 946px of a 1400px table on a 1118px card,
+      // and the reader lost Provider and Authority off the right edge to a
+      // horizontal scroll nothing announced (#11696).
+      key: "name",
+      label: "Name",
       kind: "link",
-      value: (row) => row.url ?? null,
+      width: 380,
+      value: (row) => row.name ?? null,
       href: (row) => row.url,
-      format: (value) => (typeof value === "string" ? value.replace(/^https?:\/\//, "") : "—"),
     },
     { key: "provider", label: "Provider", width: 150, value: (row) => row.provider ?? null },
     {
@@ -134,30 +137,33 @@ export function ApisCatalogPage() {
       width: 140,
       value: (row) => (typeof row.authority === "string" ? row.authority : null),
     },
-    {
-      key: "auth",
-      label: "Auth",
-      kind: "status",
-      width: 100,
-      demote: true,
-      value: (row) => (row.auth_required == null ? null : row.auth_required ? "required" : "open"),
-    },
-    {
-      key: "curation",
-      label: "Curation",
-      width: 160,
-      demote: true,
-      value: (row) => (typeof row.curation_level === "string" ? row.curation_level : null),
-    },
-    {
-      key: "verified",
-      label: "Last verified",
-      kind: "time",
-      width: 130,
-      demote: true,
-      value: (row) => row.last_verified_at ?? null,
-    },
   ];
+
+  /** The URL and the three fields a reader checks once, under the row. */
+  const surfaceDetail = (row: Surface) => (
+    <dl>
+      {row.url ? (
+        <div className="mg-raw-row">
+          <dt>URL</dt>
+          <dd>{row.url}</dd>
+        </div>
+      ) : null}
+      <div className="mg-raw-row">
+        <dt>Auth</dt>
+        <dd>
+          {row.auth_required == null ? "—" : row.auth_required ? "a key is required" : "open"}
+        </dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Curation</dt>
+        <dd>{typeof row.curation_level === "string" ? row.curation_level : "—"}</dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Last verified</dt>
+        <dd>{row.last_verified_at ? formatAbsoluteTime(row.last_verified_at) : "not verified"}</dd>
+      </div>
+    </dl>
+  );
 
   const rawRows: RawRow[] = [
     ...API_PATHS.map((path) => ({
@@ -179,17 +185,16 @@ export function ApisCatalogPage() {
       <ApiSources />
       <EntityHero
         name="APIs"
-        sentence={
-          <FactSentence>
-            Every public interface this registry has verified.{" "}
-            {catalogFacts(coverage.data?.data as CoverageCounts | undefined, segments.length, {
+        sentence={<FactSentence>Every public interface this registry has verified.</FactSentence>}
+        // A STRIP, not chips (#11696). This page's subject is a table, and its
+        // headline counts were 11px `Fact` chips inside the sentence -- set
+        // smaller than the rows they frame. The lede stays prose.
+        cells={
+          factCells(
+            catalogFacts(coverage.data?.data as CoverageCounts | undefined, segments.length, {
               count: formatNumber,
-            }).map((fact) => (
-              <Fact key={fact.key}>
-                {fact.label} {fact.value}
-              </Fact>
-            ))}
-          </FactSentence>
+            }),
+          ) ?? undefined
         }
         live={{
           updatedAt: (coverage.data?.data.generated_at as string | undefined) ?? null,
@@ -237,11 +242,12 @@ export function ApisCatalogPage() {
             link={RouterLink}
             source="surface"
             storageKey="mg-apis-columns"
+            expand={surfaceDetail}
             loading={feed.isPending}
             search={{
               value: search.q,
               onChange: (q) => setSearch({ q }),
-              placeholder: "Name, URL, provider or subnet",
+              placeholder: "Name, provider or subnet",
             }}
             filters={
               <>
@@ -289,13 +295,18 @@ export function ApisCatalogPage() {
         footnote={
           <>
             {`${formatNumber(rows.length)} shown · facets applied server-side · registry `}
-            <LoadMore
-              hasMore={feed.hasNextPage}
-              isLoading={feed.isFetchingNextPage}
-              onLoadMore={() => void feed.fetchNextPage()}
-              shown={surfaces.length}
-              error={feed.error}
-            />
+            // Only while there IS more to fetch. The table states its own // range and total in its
+            pager, so a terminal "end of list" strip // beneath it is the same fact twice, in two
+            vocabularies (#11696).
+            {feed.hasNextPage || feed.error ? (
+              <LoadMore
+                hasMore={feed.hasNextPage}
+                isLoading={feed.isFetchingNextPage}
+                onLoadMore={() => void feed.fetchNextPage()}
+                shown={surfaces.length}
+                error={feed.error}
+              />
+            ) : null}
           </>
         }
       />

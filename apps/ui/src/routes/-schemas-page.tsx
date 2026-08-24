@@ -5,7 +5,6 @@ import {
   AnalyticsSection,
   DataTable,
   EntityHero,
-  Fact,
   FactSentence,
   RankedRails,
   Raw,
@@ -14,6 +13,7 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
@@ -182,13 +182,14 @@ export function SchemasPage() {
         name="Schemas"
         sentence={
           <FactSentence>
-            JSON Schema is the contract; drift is this capture against the last one.{" "}
-            {schemaFacts(summary, subnetsCovered, { count: formatNumber }).map((fact) => (
-              <Fact key={fact.key}>
-                {fact.label} {fact.value}
-              </Fact>
-            ))}
+            JSON Schema is the contract; drift is this capture against the last one.
           </FactSentence>
+        }
+        // A STRIP, not chips (#11696). This page's subject is a table, and its
+        // headline counts were 11px `Fact` chips inside the sentence -- set
+        // smaller than the rows they frame. The lede stays prose.
+        cells={
+          factCells(schemaFacts(summary, subnetsCovered, { count: formatNumber })) ?? undefined
         }
         live={{
           updatedAt: summary.observed_at,

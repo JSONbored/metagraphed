@@ -208,9 +208,14 @@ export function ValidatorDetailPage() {
       definition: "Validator trust",
     },
     {
+      // In the menu, not the table. This operator holds a permit on all 116 of
+      // its memberships, and an operator without one on a subnet is the rare
+      // case -- a column that reads "yes" on every row is a column a reader
+      // learns to skip (#11696).
       key: "validator_permit",
       label: "Permit",
       kind: "status",
+      demote: true,
       value: (row) => (row.validator_permit ? "yes" : "no"),
     },
   ];

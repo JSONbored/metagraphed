@@ -1899,7 +1899,7 @@ function FactCell({
   return /* @__PURE__ */ jsxs("div", { className: classNames("mg-fact", className), children: [
     /* @__PURE__ */ jsxs("dt", { children: [
       label,
-      typeof hint === "string" ? /* @__PURE__ */ jsx(Definition, { term: label, sentence: hint }) : null
+      /* @__PURE__ */ jsx(Definition, { term: label, sentence: hint })
     ] }),
     /* @__PURE__ */ jsxs("dd", { children: [
       /* @__PURE__ */ jsx("span", { className: "mg-fact-value", children: value }),

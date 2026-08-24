@@ -6,7 +6,6 @@ import {
   CopyableCode,
   DataTable,
   EntityHero,
-  Fact,
   FactSentence,
   FilterField,
   FilterSelect,
@@ -20,11 +19,12 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
 import {
   endpointIncidentsQuery,
   endpointsInfiniteQuery,
@@ -32,6 +32,7 @@ import {
   rpcPoolsQuery,
 } from "@/lib/metagraphed/queries";
 import { apisNav } from "@/components/metagraphed/apis/apis-logic";
+import { hostOf } from "@/components/metagraphed/providers/providers-logic";
 import {
   LATENCY_VIEWS,
   endpointFacts,
@@ -116,26 +117,32 @@ export function EndpointsPage() {
   const shownIncidents = search.incidents === "open" ? openIncidents : incidentList;
 
   const columns: DataTableColumn<EndpointRow>[] = [
-    { key: "provider", label: "Provider", width: 160, value: (row) => row.provider },
-    { key: "kind", label: "Kind", kind: "status", width: 150, value: (row) => row.kind },
     {
-      key: "url",
-      label: "URL",
+      // The HOST leads, not the provider. A directory sorted by provider put
+      // "opentensor" in the first cell of seven consecutive rows while the one
+      // thing that told them apart -- the URL -- sat third, 711px wide, and
+      // pushed Status, p50 and Last probe off the right edge of the card
+      // (#11696). The scheme and path are in the row's detail, where they can
+      // be copied; what a reader compares down a column is the host.
+      key: "host",
+      label: "Endpoint",
       kind: "link",
-      value: (row) => row.url,
+      width: 300,
+      value: (row) => hostOf(row.url),
       href: (row) => row.url ?? undefined,
-      format: (value) => (typeof value === "string" ? value.replace(/^https?:\/\//, "") : "—"),
     },
+    { key: "provider", label: "Provider", width: 150, value: (row) => row.provider },
+    { key: "kind", label: "Kind", kind: "status", width: 140, value: (row) => row.kind },
     {
       key: "subnet",
       label: "Subnet",
       kind: "link",
-      width: 110,
+      width: 100,
       value: (row) => row.netuid,
       href: (row) => (row.netuid == null ? undefined : `/subnets/${row.netuid}`),
       format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
     },
-    { key: "status", label: "Status", kind: "status", width: 120, value: (row) => row.status },
+    { key: "status", label: "Status", kind: "status", width: 110, value: (row) => row.status },
     {
       key: "latency",
       label: "p50",
@@ -149,40 +156,8 @@ export function EndpointsPage() {
       key: "probed",
       label: "Last probe",
       kind: "time",
-      width: 130,
+      width: 120,
       value: (row) => row.lastChecked,
-    },
-    {
-      key: "ok",
-      label: "Last ok",
-      kind: "time",
-      width: 130,
-      demote: true,
-      value: (row) => row.lastOk,
-    },
-    {
-      key: "pool",
-      label: "Pool",
-      kind: "status",
-      width: 130,
-      demote: true,
-      value: (row) => (row.poolEligible ? "eligible" : "no"),
-    },
-    {
-      key: "archive",
-      label: "Archive",
-      kind: "status",
-      width: 110,
-      demote: true,
-      value: (row) => (row.archive ? "yes" : "no"),
-    },
-    {
-      key: "auth",
-      label: "Auth",
-      kind: "status",
-      width: 100,
-      demote: true,
-      value: (row) => (row.authRequired ? "required" : "open"),
     },
   ];
 
@@ -210,37 +185,66 @@ export function EndpointsPage() {
       format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
     },
     { key: "reason", label: "Reason", value: (row) => row.reason },
-    {
-      key: "severity",
-      label: "Severity",
-      kind: "status",
-      width: 120,
-      value: (row) => row.severity,
-    },
-    {
-      key: "state",
-      label: "State",
-      kind: "status",
-      width: 110,
-      value: (row) => (row.open ? "open" : "resolved"),
-    },
-    {
-      key: "health",
-      label: "Probe",
-      kind: "status",
-      width: 110,
-      demote: true,
-      value: (row) => row.health,
-    },
-    {
-      key: "checked",
-      label: "Last probe",
-      kind: "time",
-      width: 130,
-      demote: true,
-      value: (row) => row.lastChecked,
-    },
   ];
+
+  /**
+   * What a row carries but does not compare.
+   *
+   * The full URL, whether the endpoint is pool-eligible, whether it serves
+   * archive state, whether it needs a key, and when it last answered. Four of
+   * those were `demote`d columns -- present in the ⋯ menu, invisible until a
+   * reader went looking, and each one widening the table when turned on. A
+   * value you copy or check once belongs under its row, not in a column
+   * competing for width with the six a reader scans (#11696).
+   */
+  const endpointDetail = (row: EndpointRow) => (
+    <dl>
+      {row.url ? (
+        <div className="mg-raw-row">
+          <dt>URL</dt>
+          <dd>{row.url}</dd>
+        </div>
+      ) : null}
+      <div className="mg-raw-row">
+        <dt>Pool</dt>
+        <dd>{row.poolEligible ? "eligible" : "not eligible"}</dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Archive</dt>
+        <dd>{row.archive ? "serves archive state" : "recent state only"}</dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Auth</dt>
+        <dd>{row.authRequired ? "a key is required" : "open"}</dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Last ok</dt>
+        <dd>{row.lastOk ? formatAbsoluteTime(row.lastOk) : "never answered"}</dd>
+      </div>
+    </dl>
+  );
+
+  /** The same reasoning for an incident: what it was, not what it is. */
+  const incidentDetail = (row: IncidentRow) => (
+    <dl>
+      <div className="mg-raw-row">
+        <dt>Severity</dt>
+        <dd>{row.severity ?? "—"}</dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>State</dt>
+        <dd>{row.open ? "open" : "resolved"}</dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Probe</dt>
+        <dd>{row.health ?? "—"}</dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Last probe</dt>
+        <dd>{row.lastChecked ? formatAbsoluteTime(row.lastChecked) : "—"}</dd>
+      </div>
+    </dl>
+  );
 
   const rawRows: RawRow[] = [
     { label: "managed RPC proxy", value: PROXY_URL, href: PROXY_URL },
@@ -257,19 +261,20 @@ export function EndpointsPage() {
       <EntityHero
         name="Endpoints"
         sentence={
-          <FactSentence>
-            What the registry can reach, and how it answered last time.{" "}
-            {endpointFacts(
+          <FactSentence>What the registry can reach, and how it answered last time.</FactSentence>
+        }
+        // A STRIP, not chips (#11696). This page's subject is a table, and its
+        // headline counts were 11px `Fact` chips inside the sentence -- set
+        // smaller than the rows they frame. The lede stays prose.
+        cells={
+          factCells(
+            endpointFacts(
               summary as Parameters<typeof endpointFacts>[0],
               poolList.length,
               openIncidents.length,
               { count: formatNumber },
-            ).map((fact) => (
-              <Fact key={fact.key}>
-                {fact.label} {fact.value}
-              </Fact>
-            ))}
-          </FactSentence>
+            ),
+          ) ?? undefined
         }
         live={{
           updatedAt: summary?.observed_at ?? rows[0]?.lastChecked ?? null,
@@ -360,11 +365,12 @@ export function EndpointsPage() {
             link={RouterLink}
             source="endpoint"
             storageKey="mg-endpoints-columns"
+            expand={endpointDetail}
             loading={feed.isPending}
             search={{
               value: search.q,
               onChange: (q) => setSearch({ q }),
-              placeholder: "Provider, URL, kind or subnet",
+              placeholder: "Endpoint, provider or kind",
             }}
             filters={
               <>
@@ -413,14 +419,21 @@ export function EndpointsPage() {
           />
         }
         legend={
-          <LoadMore
-            hasMore={feed.hasNextPage}
-            isLoading={feed.isFetchingNextPage}
-            onLoadMore={() => void feed.fetchNextPage()}
-            shown={rows.length}
-            total={summary?.endpoint_count}
-            error={feed.error}
-          />
+          // Only while there IS more to fetch. The table states its own range
+          // and total in the pager ("1-50 of 1,545"), so a terminal
+          // "1545 of 1545 - end of list" strip directly beneath it was the
+          // same fact twice, in two vocabularies (#11696). An error still
+          // shows, because a feed that stopped early is not the end of a list.
+          feed.hasNextPage || feed.error ? (
+            <LoadMore
+              hasMore={feed.hasNextPage}
+              isLoading={feed.isFetchingNextPage}
+              onLoadMore={() => void feed.fetchNextPage()}
+              shown={rows.length}
+              total={summary?.endpoint_count}
+              error={feed.error}
+            />
+          ) : null
         }
         footnote={`${formatNumber(shown.length)} shown of ${formatNumber(
           summary?.endpoint_count ?? rows.length,
@@ -441,6 +454,7 @@ export function EndpointsPage() {
             link={RouterLink}
             source="endpoint-incident"
             storageKey="mg-incidents-columns"
+            expand={incidentDetail}
             loading={incidents.isPending}
             filters={
               <FilterField label="State">

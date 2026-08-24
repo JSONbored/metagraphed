@@ -383,13 +383,18 @@ export function EventsPage() {
           "/api/v1/chain-events",
         )}
       />
-      <LoadMore
-        hasMore={feed.hasNextPage}
-        isLoading={feed.isFetchingNextPage}
-        onLoadMore={() => void feed.fetchNextPage()}
-        shown={rows.length}
-        error={feed.error}
-      />
+      // Only while there IS more to fetch. The table states its own // range and total in its
+      pager, so a terminal "end of list" strip // beneath it is the same fact twice, in two
+      vocabularies (#11696).
+      {feed.hasNextPage || feed.error ? (
+        <LoadMore
+          hasMore={feed.hasNextPage}
+          isLoading={feed.isFetchingNextPage}
+          onLoadMore={() => void feed.fetchNextPage()}
+          shown={rows.length}
+          error={feed.error}
+        />
+      ) : null}
     </StreamShell>
   );
 }

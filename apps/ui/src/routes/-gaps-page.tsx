@@ -5,7 +5,6 @@ import {
   AnalyticsSection,
   DataTable,
   EntityHero,
-  Fact,
   FactSentence,
   FilterField,
   FilterSelect,
@@ -15,6 +14,7 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -122,7 +122,9 @@ export function GapsPage() {
       kind: "text",
       // The one prose cell in the app, and the only column that opts out of
       // the one-line default: the lane's own sentence about why a gap is
-      // expected is worth reading in full, not truncating (#11695).
+      // expected is worth reading. Two lines of it, capped -- unbounded, a
+      // 300-character note made its row 395px tall beside 56px neighbours
+      // (#11698). The whole sentence is under the row.
       wrap: true,
       value: (row) => row.note,
     },
@@ -173,17 +175,16 @@ export function GapsPage() {
             Read the guide
           </RouterLink>
         }
-        sentence={
-          <FactSentence>
-            What is missing, in the order the registry ranks it.{" "}
-            {contributeFacts(rows, coverage.data?.data as Parameters<typeof contributeFacts>[1], {
+        sentence={<FactSentence>What is missing, in the order the registry ranks it.</FactSentence>}
+        // A STRIP, not chips (#11696). This page's subject is a table, and its
+        // headline counts were 11px `Fact` chips inside the sentence -- set
+        // smaller than the rows they frame. The lede stays prose.
+        cells={
+          factCells(
+            contributeFacts(rows, coverage.data?.data as Parameters<typeof contributeFacts>[1], {
               count: formatNumber,
-            }).map((fact) => (
-              <Fact key={fact.key}>
-                {fact.label} {fact.value}
-              </Fact>
-            ))}
-          </FactSentence>
+            }),
+          ) ?? undefined
         }
         live={{
           updatedAt: (gaps.meta?.generated_at as string | undefined) ?? null,
@@ -206,6 +207,16 @@ export function GapsPage() {
             link={RouterLink}
             source="gap"
             storageKey="mg-contribute-columns"
+            expand={(row) =>
+              row.note ? (
+                <dl>
+                  <div className="mg-raw-row">
+                    <dt>Why it is open</dt>
+                    <dd>{row.note}</dd>
+                  </div>
+                </dl>
+              ) : null
+            }
             search={{
               value: search.q,
               onChange: (q) => setSearch({ q }),

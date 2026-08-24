@@ -115,14 +115,19 @@ export function ActivitySection({
             dense
             storageKey="account-events-columns"
           />
-          <LoadMore
-            hasMore={Boolean(query.hasNextPage)}
-            isLoading={query.isFetchingNextPage}
-            onLoadMore={() => void query.fetchNextPage()}
-            shown={events.length}
-            total={kind ? undefined : eventCount}
-            error={query.error as Error | null}
-          />
+          // Only while there IS more to fetch. The table states its own // range and total in its
+          pager, so a terminal "end of list" strip // beneath it is the same fact twice, in two
+          vocabularies (#11696).
+          {query.hasNextPage || query.error ? (
+            <LoadMore
+              hasMore={Boolean(query.hasNextPage)}
+              isLoading={query.isFetchingNextPage}
+              onLoadMore={() => void query.fetchNextPage()}
+              shown={events.length}
+              total={kind ? undefined : eventCount}
+              error={query.error as Error | null}
+            />
+          ) : null}
         </>
       }
       footnote={

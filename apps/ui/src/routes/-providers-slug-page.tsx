@@ -5,7 +5,6 @@ import {
   BrandIcon,
   DataTable,
   EntityHero,
-  Fact,
   FactSentence,
   RankedRails,
   Raw,
@@ -13,22 +12,25 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
 import {
   providerEndpointsQuery,
   providerQuery,
   surfacesInfiniteQuery,
 } from "@/lib/metagraphed/queries";
-import type { Endpoint, Surface } from "@/lib/metagraphed/types";
+import type { Endpoint } from "@/lib/metagraphed/types";
 import {
   endpointRails,
   hostOf,
   initials,
+  mergeSurfaceProbes,
   providerDetailFacts,
   providerSurfaces,
+  type ProviderSurfaceRow,
 } from "@/components/metagraphed/providers/providers-logic";
 import { Route } from "./providers.$slug";
 
@@ -77,38 +79,48 @@ export function ProviderDetail() {
     [surfaces.data],
   );
   const rails = useMemo(() => endpointRails(endpointList), [endpointList]);
+  const mergedSurfaces = useMemo(
+    () => mergeSurfaceProbes(surfaceList, endpointList),
+    [surfaceList, endpointList],
+  );
   const summary = provider?.endpoint_summary;
 
   const host =
     (typeof provider?.website === "string" ? provider.website : null) ??
     (typeof provider?.homepage === "string" ? provider.homepage : null);
 
-  const endpointColumns: DataTableColumn<Endpoint>[] = [
-    { key: "kind", label: "Kind", kind: "status", width: 150, value: (row) => row.kind ?? null },
+  /**
+   * ONE column set over the merged list.
+   *
+   * The name leads and links to the surface; the probe columns are filled for
+   * the surfaces the prober watches and em-dashed for the ones it does not.
+   * Two tables of the same 156 rows became one (#11696).
+   */
+  const surfaceColumns: DataTableColumn<ProviderSurfaceRow>[] = [
     {
-      key: "url",
-      label: "URL",
+      key: "name",
+      label: "Surface",
       kind: "link",
-      value: (row) => row.url ?? null,
+      width: 340,
+      value: (row) => row.name ?? hostOf(row.url) ?? null,
       href: (row) => row.url,
-      format: (value) => (typeof value === "string" ? value.replace(/^https?:\/\//, "") : "—"),
     },
+    { key: "kind", label: "Kind", kind: "status", width: 140, value: (row) => row.kind ?? null },
     {
       key: "subnet",
       label: "Subnet",
       kind: "link",
-      width: 110,
-      value: (row) => (typeof row.netuid === "number" ? (row.netuid as number) : null),
-      href: (row) =>
-        typeof row.netuid === "number" ? `/subnets/${row.netuid as number}` : undefined,
+      width: 100,
+      value: (row) => row.netuid ?? null,
+      href: (row) => (row.netuid == null ? undefined : `/subnets/${row.netuid}`),
       format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
     },
     {
       key: "status",
       label: "Status",
       kind: "status",
-      width: 120,
-      value: (row) => (typeof row.status === "string" ? row.status : null),
+      width: 110,
+      value: (row) => row.probeStatus,
     },
     {
       key: "latency",
@@ -116,62 +128,39 @@ export function ProviderDetail() {
       kind: "number",
       align: "right",
       width: 100,
-      value: (row) => (typeof row.latency_ms === "number" ? row.latency_ms : null),
+      value: (row) => row.probeLatencyMs,
       format: (value) => (typeof value === "number" ? `${formatNumber(value)} ms` : "—"),
     },
-    {
-      key: "probed",
-      label: "Last probe",
-      kind: "time",
-      width: 130,
-      value: (row) => (typeof row.last_checked === "string" ? row.last_checked : null),
-    },
-    {
-      key: "ok",
-      label: "Last ok",
-      kind: "time",
-      width: 130,
-      demote: true,
-      value: (row) => (typeof row.last_ok === "string" ? row.last_ok : null),
-    },
-  ];
-
-  const surfaceColumns: DataTableColumn<Surface>[] = [
-    {
-      key: "subnet",
-      label: "Subnet",
-      kind: "link",
-      width: 110,
-      value: (row) => row.netuid ?? null,
-      href: (row) => (row.netuid == null ? undefined : `/subnets/${row.netuid}`),
-      format: (value) => (typeof value === "number" ? `SN${value}` : "—"),
-    },
-    { key: "kind", label: "Kind", kind: "status", width: 150, value: (row) => row.kind ?? null },
-    { key: "name", label: "Name", value: (row) => row.name ?? null },
-    {
-      key: "url",
-      label: "URL",
-      kind: "link",
-      value: (row) => row.url ?? null,
-      href: (row) => row.url,
-      format: (value) => (typeof value === "string" ? value.replace(/^https?:\/\//, "") : "—"),
-    },
+    { key: "probed", label: "Last probe", kind: "time", width: 120, value: (row) => row.probedAt },
     {
       key: "authority",
       label: "Authority",
       kind: "status",
-      width: 170,
+      width: 150,
       value: (row) => (typeof row.authority === "string" ? row.authority : null),
     },
-    {
-      key: "verified",
-      label: "Last verified",
-      kind: "time",
-      width: 130,
-      demote: true,
-      value: (row) => row.last_verified_at ?? null,
-    },
   ];
+
+  const surfaceDetail = (row: ProviderSurfaceRow) => (
+    <dl>
+      {row.url ? (
+        <div className="mg-raw-row">
+          <dt>URL</dt>
+          <dd>{row.url}</dd>
+        </div>
+      ) : null}
+      <div className="mg-raw-row">
+        <dt>Auth</dt>
+        <dd>
+          {row.auth_required == null ? "—" : row.auth_required ? "a key is required" : "open"}
+        </dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Last verified</dt>
+        <dd>{row.last_verified_at ? formatAbsoluteTime(row.last_verified_at) : "not verified"}</dd>
+      </div>
+    </dl>
+  );
 
   const name = (typeof provider?.name === "string" && provider.name) || slug;
   const rawRows: RawRow[] = [
@@ -214,15 +203,19 @@ export function ProviderDetail() {
         sentence={
           <FactSentence>
             {typeof provider?.kind === "string" ? provider.kind : "provider"} at{" "}
-            {hostOf(host) ?? "no published host"}.{" "}
-            {providerDetailFacts(provider, summary, surfaceList.length, {
-              count: formatNumber,
-            }).map((fact) => (
-              <Fact key={fact.key}>
-                {fact.label} {fact.value}
-              </Fact>
-            ))}
+            {hostOf(host) ?? "no published host"}.
           </FactSentence>
+        }
+        // A STRIP, not chips (#11696). The sentence keeps the provider's
+        // IDENTITY -- what kind of operator, at which host -- and the counts
+        // move to cells, where a number that frames two tables is not set
+        // smaller than the tables' own rows.
+        cells={
+          factCells(
+            providerDetailFacts(provider, summary, surfaceList.length, {
+              count: formatNumber,
+            }),
+          ) ?? undefined
         }
         live={{
           updatedAt: (provider?.generated_at as string | undefined) ?? null,
@@ -253,51 +246,33 @@ export function ProviderDetail() {
       />
 
       <AnalyticsSection
-        id="endpoints"
-        name="Endpoints"
-        question="Everything this provider runs, and how it answered."
-        visual={
-          <DataTable
-            id="endpoints"
-            rows={endpointList}
-            columns={endpointColumns}
-            rowKey={(row) => row.id}
-            caption={`${name} endpoints`}
-            link={RouterLink}
-            source="provider-endpoint"
-            loading={endpoints.isPending}
-            paginate={false}
-            empty="No endpoints are registered for this provider."
-          />
-        }
-        footnote={
-          summary?.by_status
-            ? Object.entries(summary.by_status)
-                .map(([status, n]) => `${formatNumber(n)} ${status}`)
-                .join(" · ") + " · probe-derived"
-            : "probe-derived"
-        }
-      />
-
-      <AnalyticsSection
         id="surfaces"
         name="Surfaces"
-        question="What this provider publishes, per subnet."
+        question="Everything this provider publishes, and how it answered."
         visual={
           <DataTable
             id="surfaces"
-            rows={surfaceList}
+            rows={mergedSurfaces}
             columns={surfaceColumns}
             rowKey={(row) => row.id}
             caption={`${name} surfaces`}
             link={RouterLink}
             source="provider-surface"
-            loading={surfaces.isPending}
+            expand={surfaceDetail}
+            loading={surfaces.isPending || endpoints.isPending}
             paginate={false}
             empty="No surfaces are registered for this provider."
           />
         }
-        footnote={`${formatNumber(surfaceList.length)} surfaces · registry`}
+        footnote={
+          summary?.by_status
+            ? `${formatNumber(mergedSurfaces.length)} surfaces · ` +
+              Object.entries(summary.by_status)
+                .map(([status, n]) => `${formatNumber(n)} ${status}`)
+                .join(" · ") +
+              " · probe-derived"
+            : `${formatNumber(mergedSurfaces.length)} surfaces · registry`
+        }
       />
 
       <Raw rows={rawRows} />

@@ -16,7 +16,7 @@ export const DESIGN_TOKENS: readonly DesignToken[] = [
   { name: "--canvas", light: "#f8f8f5", dark: "#161616", theme: "--color-canvas", refs: 25 },
   { name: "--layer", light: "#f0f0ec", dark: "#1f1f1f", theme: "--color-layer", refs: 25 },
   { name: "--raised", light: "#e6e6e1", dark: "#2a2a2a", theme: "--color-raised", refs: 11 },
-  { name: "--surface-card", light: "#ffffff", dark: "#1f1f1f", theme: null, refs: 2 },
+  { name: "--surface-card", light: "#ffffff", dark: "#1f1f1f", theme: null, refs: 3 },
   {
     name: "--ink-strong",
     light: "#161616",
@@ -45,7 +45,7 @@ export const DESIGN_TOKENS: readonly DesignToken[] = [
     light: "rgba(22, 22, 22, 0.11)",
     dark: "rgba(255, 255, 255, 0.11)",
     theme: "--color-rule",
-    refs: 45,
+    refs: 43,
   },
   {
     name: "--rule-strong",

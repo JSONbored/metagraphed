@@ -7,6 +7,62 @@
  * Keep each entry to one sentence, in plain words, ending with a full stop.
  */
 export const DEFINITIONS = {
+  // ── Summary-card labels (#11698) ──────────────────────────────────────────
+  //
+  // `FactCell` looks its label up here, so a term listed below grows a "?" on
+  // every card that uses it, on every route, at once. Only the terms a reader
+  // would actually stop at: a "?" beside "Providers" is noise, and noise is
+  // what makes a help affordance get ignored where it matters.
+  Nakamoto:
+    "The fewest block authors who could halt the chain between them; higher is more decentralised.",
+  "Head block": "The most recent block this indexer has seen.",
+  "Block time": "How long the chain took between blocks over the window, at the median.",
+  "Block time p50": "The median gap between blocks over the window; half were faster.",
+  "Extrinsics per block": "How many signed calls the average block in this window carried.",
+  Signers: "Distinct accounts that signed at least one extrinsic in the window.",
+  "Top module": "The runtime pallet that submitted the most calls on this page.",
+  "Most frequent": "The event kind the runtime emitted most often in the window.",
+  "Stake listed": "Total stake held by the accounts on this page, not by the whole network.",
+  "Top 10 share": "What the ten largest holders on this page hold, as a share of the listed total.",
+  "Median take": "The middle validator's take; half of them keep more, half keep less.",
+  "Median APY": "The middle validator's estimated annual yield; an estimate, not a promise.",
+  "Est. APY": "Yield projected from recent rewards; it moves with emission and with stake.",
+  Memberships: "Subnets this operator validates on; one hotkey can hold several.",
+  "Memberships / permits":
+    "Subnets this operator validates on, and how many of those carry a permit.",
+  "Positions / subnets":
+    "Live stake positions this account holds, and how many subnets they sit in.",
+  "Net flow": "Stake in minus stake out over the window; negative means the account is exiting.",
+  "Permit floor": "The stake a hotkey needs right now to hold a validator permit here.",
+  "Earning floor": "The stake a miner needs right now to earn anything on this subnet.",
+  Slots: "UIDs in use against the subnet's cap; a full subnet deregisters to admit anyone new.",
+  "Miners earning nothing":
+    "The share of registered miners this subnet paid zero to over the window.",
+  "Miners / Validators": "Registered neurons split by role; only permit-holders set weights.",
+  Tempo: "Blocks between weight-setting rounds on this subnet.",
+  "Pool liquidity": "TAO sitting in the subnet's alpha pool, backing its price.",
+  "Chain buys": "Emission the chain itself spent buying alpha, rather than paying it out.",
+  Paid: "Subnets the chain actually paid this block, against the number registered.",
+  "Probed surfaces": "Surfaces the prober watches; the rest are catalogued but unmeasured.",
+  "RPC pools": "Managed endpoint pools a client can be routed to instead of one host.",
+  "Degraded now": "Endpoints answering slowly or partially at the last probe, but still answering.",
+  "Open incidents": "Probe failures the prober has not yet seen recover.",
+  Healthy: "The share of PROBED surfaces that answered, not of the whole catalogue.",
+  "Official or claimed":
+    "Providers whose identity the registry has verified or the operator has claimed.",
+  "Sources resolving": "Providers whose published source URL still answers.",
+  "Adapter-backed": "Subnets with a typed adapter, the top rung of the curation ladder.",
+  "Avg freshness": "How old the registry's data is on average across every tracked surface.",
+  Moved: "Schemas whose contract changed between the last two captures.",
+  "Not captured": "Surfaces that advertise a schema the registry could not fetch.",
+  "Subnets with gaps": "Subnets missing at least one surface kind the registry expects.",
+  Candidates: "Discovered surfaces queued for a human to accept or reject.",
+  "Average completeness":
+    "How much of the expected surface set the registry has found, across all subnets.",
+  "Callable services": "Subnet surfaces an agent can call directly through this registry.",
+  "Metagraphed itself":
+    "Whether this site and its API are up, measured the same way it measures others.",
+
   "Emission share": "The fraction of each block's TAO emission the chain directs to this subnet.",
   "Alpha price": "What one unit of this subnet's alpha token costs in TAO on its own pool.",
   "Total stake": "All TAO and alpha staked to this subnet's validators, valued in TAO.",

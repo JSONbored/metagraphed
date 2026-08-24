@@ -128,20 +128,20 @@ export function contributeFacts(
   if (rows.length === 0) return [];
   const facets = rows.reduce((sum, row) => sum + row.missing.length, 0);
   const facts: Fact[] = [
-    { key: "subnets", label: "subnets with gaps", value: fmt.count(rows.length) },
-    { key: "facets", label: "missing surfaces", value: fmt.count(facets) },
+    { key: "subnets", label: "Subnets with gaps", value: fmt.count(rows.length) },
+    { key: "facets", label: "Missing surfaces", value: fmt.count(facets) },
   ];
   const candidates = num(coverage?.candidate_count);
   if (candidates != null) {
     facts.push({
       key: "candidates",
-      label: "candidates awaiting review",
+      label: "Candidates",
       value: fmt.count(candidates),
     });
   }
   const score = num(coverage?.completeness?.average_score);
   if (score != null)
-    facts.push({ key: "score", label: "average completeness", value: `${score}%` });
+    facts.push({ key: "score", label: "Average completeness", value: `${score}%` });
   return facts;
 }
 
@@ -285,10 +285,10 @@ export function agentFacts(
   if (tools > 0) facts.push({ key: "tools", label: "MCP tools", value: fmt.count(tools) });
   const subnets = num(summary?.subnet_count);
   if (subnets != null)
-    facts.push({ key: "subnets", label: "subnets covered", value: fmt.count(subnets) });
+    facts.push({ key: "subnets", label: "Subnets covered", value: fmt.count(subnets) });
   const services = num(summary?.callable_service_count);
   if (services != null) {
-    facts.push({ key: "services", label: "callable services", value: fmt.count(services) });
+    facts.push({ key: "services", label: "Callable services", value: fmt.count(services) });
   }
   return facts;
 }
