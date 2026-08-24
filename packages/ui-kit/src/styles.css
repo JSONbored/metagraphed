@@ -2656,19 +2656,38 @@
   .mg-dt[data-expandable="true"] .mg-dt-rowlead {
     margin-left: -24px;
   }
-  /* Both row affordances are BOUNDED. Neither declared a width, so a long name
-     pushed the button or the anchor past the cell -- which the overflow gate
-     caught at 375px on CI and not locally, because the two platforms fall back
-     to different faces while the webfont loads and one of them is wider
-     (#11700). A cell that clips its own content cannot depend on that. */
+  /* NOTHING IN A CELL IS WIDER THAN THE CELL (#11700).
+     Named one wrapper at a time this was a whack-a-mole: `.mg-dt-rowbutton`
+     escaped the viewport at 375px, and with it bounded `.mg-dt-id` escaped
+     instead -- the same defect wearing the next class along, because the rule
+     was written about elements rather than about cells. Every direct child of
+     a cell is bounded by it, whichever wrapper a future cell kind adds.
+     `min-width: 0` with it, or a flex child refuses to shrink below its
+     content and the `max-width` never bites.
+     It surfaced on CI and not locally because the two platforms fall back to
+     different faces while the webfont loads and one is wider -- which a cell
+     that clips its own content must not depend on. */
+  .mg-dt tbody td > *,
+  .mg-dt thead th > * {
+    min-width: 0;
+    max-width: 100%;
+  }
   .mg-dt-rowbutton,
   .mg-dt-rowlink {
     display: block;
-    min-width: 0;
-    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* The identifier's own text truncates; its copy button must not be squeezed
+     to nothing beside it. */
+  .mg-dt-id > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mg-dt-id > button {
+    flex: none;
   }
   .mg-dt-rowbutton {
     padding: 0;

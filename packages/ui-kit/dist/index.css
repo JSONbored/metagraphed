@@ -2171,14 +2171,25 @@
   .mg-dt[data-expandable=true] .mg-dt-rowlead {
     margin-left: -24px;
   }
+  .mg-dt tbody td > *,
+  .mg-dt thead th > * {
+    min-width: 0;
+    max-width: 100%;
+  }
   .mg-dt-rowbutton,
   .mg-dt-rowlink {
     display: block;
-    min-width: 0;
-    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .mg-dt-id > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mg-dt-id > button {
+    flex: none;
   }
   .mg-dt-rowbutton {
     padding: 0;
