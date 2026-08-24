@@ -557,21 +557,23 @@
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: minmax(0, 1fr);
+    gap: 12px;
     margin: 0;
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    overflow: hidden;
   }
   .mg-facts[data-variant=grid] {
     grid-auto-flow: row;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .mg-fact {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     min-width: 0;
-    padding: 12px 16px;
-    border-left: 1px solid var(--rule);
-    border-top: 1px solid var(--rule);
-    margin: -1px 0 0 -1px;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--surface-card);
+    overflow: hidden;
   }
   .mg-fact dt {
     font-size: 11px;
@@ -582,7 +584,7 @@
     display: flex;
     align-items: baseline;
     gap: 8px;
-    margin: 2px 0 0;
+    margin: 0;
     min-width: 0;
   }
   .mg-fact-value {
@@ -620,7 +622,7 @@
     }
   }
   @media (max-width: 639px) {
-    .mg-facts,
+    .mg-facts:not([data-variant=grid]),
     .mg-facts[data-variant=grid] {
       grid-auto-flow: row;
       grid-template-columns: repeat(2, minmax(0, 1fr));

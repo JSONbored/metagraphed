@@ -801,25 +801,35 @@
   }
 
   /* FactStrip: shared-edge cells, radius on the outer box only. */
+  /* SEPARATE CARDS, not one boxed strip.
+     The cells shared their edges and sat inside a single outer border, which
+     made a page's five headline numbers read as one blocky object rather than
+     as five things a reader can take one at a time (#11698). Each cell is its
+     own card now, on the elevation token the tables use, with a 12px gutter
+     between them.
+     Still `var(--radius)`: the site has ONE radius, and a 12px corner here
+     would be the second. */
   .mg-facts {
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: minmax(0, 1fr);
+    gap: 12px;
     margin: 0;
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    overflow: hidden;
   }
   .mg-facts[data-variant="grid"] {
     grid-auto-flow: row;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .mg-fact {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     min-width: 0;
-    padding: 12px 16px;
-    border-left: 1px solid var(--rule);
-    border-top: 1px solid var(--rule);
-    margin: -1px 0 0 -1px;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--surface-card);
+    overflow: hidden;
   }
   .mg-fact dt {
     font-size: 11px;
@@ -830,7 +840,7 @@
     display: flex;
     align-items: baseline;
     gap: 8px;
-    margin: 2px 0 0;
+    margin: 0;
     min-width: 0;
   }
   .mg-fact-value {
@@ -868,7 +878,12 @@
     }
   }
   @media (max-width: 639px) {
-    .mg-facts,
+    /* `:not(...)` on both, so the two rules carry the SAME specificity and
+       source order decides. Without it the 1023px rule above -- (0,2,0)
+       against this one's (0,1,0) -- won at every width below 640 too, so a
+       phone got three columns rather than two and every value in them
+       truncated: "0.00…", "2.63…", "96/1…" (#11698). */
+    .mg-facts:not([data-variant="grid"]),
     .mg-facts[data-variant="grid"] {
       grid-auto-flow: row;
       grid-template-columns: repeat(2, minmax(0, 1fr));
