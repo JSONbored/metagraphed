@@ -2644,6 +2644,32 @@
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
+  /* NAMES ALIGN WHETHER OR NOT A ROW EXPANDS (#11700).
+     The disclosure sits in the lead cell, so a row that had one started its
+     name 24px right of a row that did not -- on /validators the multi-hotkey
+     operators were indented and the single-hotkey ones were not, down 604
+     rows. The gutter is reserved on every row of an expandable table and the
+     chevron hangs into it, so the column reads as a column. */
+  .mg-dt[data-expandable="true"] tbody td:first-child {
+    padding-left: 40px;
+  }
+  .mg-dt[data-expandable="true"] .mg-dt-rowlead {
+    margin-left: -24px;
+  }
+  /* Both row affordances are BOUNDED. Neither declared a width, so a long name
+     pushed the button or the anchor past the cell -- which the overflow gate
+     caught at 375px on CI and not locally, because the two platforms fall back
+     to different faces while the webfont loads and one of them is wider
+     (#11700). A cell that clips its own content cannot depend on that. */
+  .mg-dt-rowbutton,
+  .mg-dt-rowlink {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .mg-dt-rowbutton {
     padding: 0;
     border: 0;

@@ -2165,6 +2165,21 @@
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
+  .mg-dt[data-expandable=true] tbody td:first-child {
+    padding-left: 40px;
+  }
+  .mg-dt[data-expandable=true] .mg-dt-rowlead {
+    margin-left: -24px;
+  }
+  .mg-dt-rowbutton,
+  .mg-dt-rowlink {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .mg-dt-rowbutton {
     padding: 0;
     border: 0;
