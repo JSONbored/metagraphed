@@ -9,6 +9,33 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [1.3.0](https://github.com/JSONbored/metagraphed/compare/ui-v1.2.0...ui-v1.3.0) (2026-08-25)
+
+
+### Features
+
+* **ui:** a "?" on every summary card whose label has a definition ([0b04de4](https://github.com/JSONbored/metagraphed/commit/0b04de4e49bea45ff1e4e4d447c05ab85256ae75))
+* **ui:** two faces of one family — Geist for text, Geist Mono for identifiers ([f4a2500](https://github.com/JSONbored/metagraphed/commit/f4a2500b93983860a800368f0ce481d74e453480))
+* **ui:** two faces of one family — Geist for text, Geist Mono for identifiers ([ec8d658](https://github.com/JSONbored/metagraphed/commit/ec8d65862e22e838f528875d0bea72bb5e07df09))
+
+
+### Bug Fixes
+
+* **ui:** a 116,000px phone page, a duplicated legend, and 26 undersized targets ([#11685](https://github.com/JSONbored/metagraphed/issues/11685)) ([86b68ab](https://github.com/JSONbored/metagraphed/commit/86b68ab311aa0918a066e955c1f85c9815a94996))
+* **ui:** give the tables the structure and quiet the chrome ([9b35a83](https://github.com/JSONbored/metagraphed/commit/9b35a836e4a27f389ded7eaaf6bf918ab8f5ed32))
+* **ui:** make the skip link skip, return focus after ⌘K, and give search a border ([#11690](https://github.com/JSONbored/metagraphed/issues/11690)) ([a754228](https://github.com/JSONbored/metagraphed/commit/a7542282f4ba0fd74b9cccf756e9e5c34ef8f3fd))
+* **ui:** one measure, one place; one question, one chart ([2204c80](https://github.com/JSONbored/metagraphed/commit/2204c80c65e75d42fe41c6e00d1c1ddc9ffe46e0))
+* **ui:** one measure, one place; one question, one chart ([cda625e](https://github.com/JSONbored/metagraphed/commit/cda625ede856a9e3f63bcaa9ea971df45e700a0a))
+* **ui:** peers laid out by one primitive are the same height, and a gate that says so ([ecbf882](https://github.com/JSONbored/metagraphed/commit/ecbf88226bfb17eefee9954a21eb06f9c962bf68))
+* **ui:** regenerate the design-token table after the rail colours ([d3ceccd](https://github.com/JSONbored/metagraphed/commit/d3ceccd77005d75de2b63a34ba20728f404ce3bd))
+* **ui:** say something when a section is empty, and keep the site when data fails ([#11688](https://github.com/JSONbored/metagraphed/issues/11688)) ([a92be8d](https://github.com/JSONbored/metagraphed/commit/a92be8d93fd9d641a715c33dd3d33ddce8da2a52))
+* **ui:** stop listing the same accounts twice, and make a dead-looking filter answer ([f4a1441](https://github.com/JSONbored/metagraphed/commit/f4a14413c36c9c4794e063863311e9b7fcb0a37d))
+* **ui:** stop listing the same accounts twice, and make a dead-looking filter answer ([4b5179e](https://github.com/JSONbored/metagraphed/commit/4b5179e273722a21592cc84b45fa9cb7c3a843d9))
+* **ui:** summary strips on the pages that carry a table, and tables that fit their card ([b5181e1](https://github.com/JSONbored/metagraphed/commit/b5181e11ac9e9962ca003a0a24a310693f5e5e94))
+* **ui:** summary strips on the pages that carry a table, and tables that fit their card ([d5bd939](https://github.com/JSONbored/metagraphed/commit/d5bd939759717e85c798eff84e14424334265c56))
+* **ui:** the prose face on /news, its sidebar order, and one over-precise column ([#11682](https://github.com/JSONbored/metagraphed/issues/11682)) ([8b84979](https://github.com/JSONbored/metagraphed/commit/8b84979cf7d927fa5c188864353d7571edc4191e))
+* **ui:** the summary numbers are separate cards, not one boxed strip ([004c07a](https://github.com/JSONbored/metagraphed/commit/004c07a76119507df65691976974b2aeadff6686))
+
 ## [1.2.0](https://github.com/JSONbored/metagraphed/compare/ui-v1.1.0...ui-v1.2.0) (2026-08-23)
 
 
