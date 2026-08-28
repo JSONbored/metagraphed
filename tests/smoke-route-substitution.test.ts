@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import { API_ROUTES } from "../src/contracts.ts";
 import {
   apiRouteUrl,
+  assertX402Challenge,
   fixtureSurfaceIdFromIndex,
   isTimeout,
   liveSmokeApiRoutes,
+  liveSmokePaymentRoutes,
   timeoutMs,
 } from "../scripts/smoke-live-api.ts";
 import { QUERY_TIMEOUT_MS } from "../src/r2-sql.ts";
@@ -111,6 +114,102 @@ describe("the live smoke set is GET-only (#9650)", () => {
       liveSmokeApiRoutes("7:subnet-api:new_v2").length < API_ROUTES.length,
       true,
       "the smoke set must be strictly smaller than the contract",
+    );
+  });
+});
+
+describe("payment-required routes stay in the live smoke (#11736)", () => {
+  const fixture = "7:subnet-api:new_v2";
+  const exportPath = "/api/v1/export/chain-events";
+
+  test("required-payment GETs are separated from the free 200 sweep", () => {
+    const publicRoutes = liveSmokeApiRoutes(fixture);
+    const paymentRoutes = liveSmokePaymentRoutes(fixture);
+    assert.equal(
+      publicRoutes.some((route) => route.path === exportPath),
+      false,
+    );
+    assert.equal(
+      paymentRoutes.some((route) => route.path === exportPath),
+      true,
+    );
+
+    const expected = API_ROUTES.filter(
+      (route) =>
+        (route.method ?? "GET") === "GET" &&
+        !["webhook-subscription", "alert-trigger"].includes(route.id),
+    )
+      .map((route) => route.id)
+      .sort();
+    const actual = [...publicRoutes, ...paymentRoutes]
+      .map((route) => route.id)
+      .sort();
+    assert.deepEqual(
+      actual,
+      expected,
+      "a GET route disappeared while the smoke set was partitioned",
+    );
+  });
+
+  test("accepts a complete production-shaped x402 challenge", () => {
+    const url = `https://api.metagraph.sh${exportPath}`;
+    const body = {
+      x402Version: 2,
+      error: "Payment required",
+      resource: {
+        url,
+        description: "metagraphed export call",
+        mimeType: "application/json",
+      },
+      accepts: [
+        {
+          scheme: "exact",
+          network: "eip155:84532",
+          amount: "24000",
+          asset: "0xasset",
+          payTo: "0xrecipient",
+          maxTimeoutSeconds: 60,
+        },
+      ],
+      extensions: {},
+    };
+    const headers = new Headers({
+      "access-control-allow-origin": "*",
+      "cache-control": "no-store",
+      "payment-required": Buffer.from(JSON.stringify(body)).toString("base64"),
+    });
+
+    assert.doesNotThrow(() =>
+      assertX402Challenge(exportPath, url, { body, headers, status: 402 }),
+    );
+  });
+
+  test("rejects a missing or malformed payment challenge", () => {
+    const url = `https://api.metagraph.sh${exportPath}`;
+    const body = {
+      x402Version: 2,
+      resource: { url, mimeType: "application/json" },
+      accepts: [],
+    };
+    const headers = new Headers({
+      "access-control-allow-origin": "*",
+      "cache-control": "no-store",
+    });
+
+    assert.throws(
+      () =>
+        assertX402Challenge(exportPath, url, { body, headers, status: 402 }),
+      /missing payment-required challenge header/,
+    );
+
+    headers.set(
+      "payment-required",
+      Buffer.from(JSON.stringify(body)).toString("base64"),
+    );
+    assert.throws(
+      () =>
+        assertX402Challenge(exportPath, url, { body, headers, status: 402 }),
+      /at least one payment leg/,
     );
   });
 });
