@@ -88,7 +88,19 @@ export function resolveRouteFile(route: string, index: Map<string, string>): str
   const matches = [...index.entries()]
     .filter(([pattern]) => {
       if (!pattern.includes("$")) return false;
-      const rx = new RegExp(`^${pattern.replace(/\$[A-Za-z0-9_]+/g, "[^/]+")}$`);
+      const escaped = pattern
+        .split("/")
+        .map((segment) => {
+          if (segment === "$") return ".*";
+          if (segment.startsWith("$")) return "[^/]+";
+          return segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        })
+        .join("/");
+      // TanStack's terminal `$` is a splat and accepts both the bare index
+      // (`/docs`) and descendants (`/docs/mcp`). Named `$param` segments still
+      // consume exactly one non-empty path segment.
+      const splatIndex = pattern.endsWith("/$");
+      const rx = new RegExp(`^${splatIndex ? escaped.slice(0, -3) + "(?:/.*)?" : escaped}$`);
       return rx.test(normalize(route));
     })
     .sort((a, b) => b[0].length - a[0].length);

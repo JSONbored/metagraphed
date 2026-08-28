@@ -10,8 +10,9 @@ import {
   FilterSelect,
   RangeControl,
   Raw,
-  RawCode,
+  Skeleton,
   type DataTableColumn,
+  type FactCells,
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -21,6 +22,7 @@ import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { agentResourcesQuery } from "@/lib/metagraphed/queries";
+import { ErrorState } from "@/components/metagraphed/states";
 import {
   agentFacts,
   connectSnippets,
@@ -35,6 +37,34 @@ const API_PATHS = ["/api/v1/agent-resources"];
 function ApiSources() {
   useRegisterApiSource(API_PATHS);
   return null;
+}
+
+/** Preserve the connection panel's working geometry while its server card arrives. */
+function AgentConnectionSkeleton() {
+  return (
+    <div className="mg-agent-connection" aria-busy="true">
+      <span className="sr-only">Loading MCP connection</span>
+      <div className="mg-agent-connection-head">
+        <div className="mg-agent-connection-identity">
+          <span className="mg-agent-connection-stamp" aria-hidden="true">
+            <span>MCP</span>
+            <span>/core</span>
+          </span>
+          <div>
+            <p className="mg-agent-connection-eyebrow">Metagraphed MCP · Bittensor in a box</p>
+            <p className="mg-agent-connection-title">Loading connection details</p>
+          </div>
+        </div>
+        <Skeleton className="h-8 w-56 max-w-full" />
+      </div>
+      <Skeleton className="min-h-12 w-full" />
+      <div className="mg-agent-connection-meta" aria-hidden="true">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -60,7 +90,9 @@ export function AgentsPage() {
         install?: string;
         core_endpoint?: string;
         endpoint?: string;
+        recommended_endpoint?: string;
         server_card?: string;
+        transport?: string;
         tools?: Record<string, unknown>[];
       }
     | undefined;
@@ -69,6 +101,24 @@ export function AgentsPage() {
   const shown = useMemo(() => filterTools(tools, q, family), [tools, q, family]);
   const snippets = useMemo(() => connectSnippets(mcp), [mcp]);
   const snippet = snippets.find((item) => item.value === harness) ?? snippets[0];
+  const transport =
+    mcp?.transport === "streamable-http"
+      ? "Streamable HTTP"
+      : mcp?.transport
+        ? mcp.transport.replaceAll("-", " ")
+        : null;
+  const hasCoreEndpoint = Boolean(mcp?.recommended_endpoint ?? mcp?.core_endpoint);
+  const heroCells: FactCells | undefined = resources.isPending
+    ? [
+        { label: "MCP tools", value: "—", loading: true },
+        { label: "Application subnets covered", value: "—", loading: true },
+        { label: "Callable services", value: "—", loading: true },
+      ]
+    : (factCells(
+        agentFacts(payload?.summary as Parameters<typeof agentFacts>[0], tools.length, {
+          count: formatNumber,
+        }),
+      ) ?? undefined);
 
   const columns: DataTableColumn<ToolRow>[] = [
     { key: "name", label: "Tool", kind: "identifier", width: 280, value: (row) => row.name },
@@ -105,7 +155,8 @@ export function AgentsPage() {
     <AppShell>
       <ApiSources />
       <EntityHero
-        name="Agents"
+        className="mg-hero--entity mg-hero--mcp"
+        name="MCP"
         action={
           <RouterLink href="/docs/mcp" className="mg-hero-action">
             Read the MCP docs
@@ -119,13 +170,7 @@ export function AgentsPage() {
         // A STRIP, not chips (#11696). This page's subject is a table, and its
         // headline counts were 11px `Fact` chips inside the sentence -- set
         // smaller than the rows they frame. The lede stays prose.
-        cells={
-          factCells(
-            agentFacts(payload?.summary as Parameters<typeof agentFacts>[0], tools.length, {
-              count: formatNumber,
-            }),
-          ) ?? undefined
-        }
+        cells={heroCells}
         live={{
           updatedAt: (payload?.generated_at as string | undefined) ?? null,
           source: "server card",
@@ -135,30 +180,70 @@ export function AgentsPage() {
       />
 
       <AnalyticsSection
+        className="mg-agents-connect"
         id="connect"
         name="Connect"
         question="One line to point an agent here."
-        controls={
-          <RangeControl
-            label="Harness"
-            options={snippets.map((item) => ({ value: item.value, label: item.label }))}
-            value={harness}
-            onChange={setHarness}
-          />
-        }
         visual={
-          snippet ? (
-            <>
-              <RawCode>{snippet.code}</RawCode>
-              <CopyableCode value={snippet.code} className="max-w-full" />
-            </>
+          resources.isPending ? (
+            <AgentConnectionSkeleton />
+          ) : resources.isError ? (
+            <ErrorState
+              error={resources.error}
+              context="MCP connection details"
+              onRetry={() => void resources.refetch()}
+            />
+          ) : snippet ? (
+            <div className="mg-agent-connection">
+              <div className="mg-agent-connection-head">
+                <div className="mg-agent-connection-identity">
+                  <span className="mg-agent-connection-stamp" aria-hidden="true">
+                    <span>MCP</span>
+                    <span>/core</span>
+                  </span>
+                  <div>
+                    <p className="mg-agent-connection-eyebrow">
+                      Metagraphed MCP · Bittensor in a box
+                    </p>
+                    <p className="mg-agent-connection-title">
+                      {hasCoreEndpoint ? "Recommended core endpoint" : "MCP connection"}
+                    </p>
+                  </div>
+                </div>
+                <RangeControl
+                  label="Harness"
+                  options={snippets.map((item) => ({ value: item.value, label: item.label }))}
+                  value={harness}
+                  onChange={setHarness}
+                />
+              </div>
+              <CopyableCode
+                value={snippet.code}
+                label={`Copy ${snippet.label} setup`}
+                truncate={false}
+                className="mg-agent-connection-command"
+              />
+              <div className="mg-agent-connection-meta" aria-label="Connection properties">
+                {transport ? <span>{transport}</span> : null}
+                {hasCoreEndpoint ? <span>Core discovery</span> : null}
+                <span>Full registry callable</span>
+              </div>
+            </div>
           ) : null
         }
         // `/mcp/core` and not `/mcp`: the core listing is 23 of the 243 tools
         // at a ninth of the token cost and still CALLS all 243, so it is the
         // endpoint an agent should be given. The full one is a `Raw` row for
         // the caller who wants every tool listed up front.
-        footnote={snippet ? `${snippet.hint} · core endpoint · server card` : "server card"}
+        footnote={
+          resources.isPending
+            ? "Loading MCP connection details · server card"
+            : resources.isError
+              ? "MCP connection details are unavailable · server card"
+              : snippet
+                ? `${snippet.hint} · core endpoint · server card`
+                : "server card"
+        }
       />
 
       <AnalyticsSection
@@ -175,6 +260,15 @@ export function AgentsPage() {
             source="mcp-tool"
             storageKey="mg-agents-columns"
             loading={resources.isPending}
+            error={
+              resources.isError ? (
+                <ErrorState
+                  error={resources.error}
+                  context="MCP tools"
+                  onRetry={() => void resources.refetch()}
+                />
+              ) : undefined
+            }
             search={{ value: q, onChange: setQ, placeholder: "Tool, family or question" }}
             filters={
               <FilterField label="Family">
@@ -195,9 +289,15 @@ export function AgentsPage() {
         // description, no family, no core/full flag -- so the family is
         // derived from the tool's own name, which is a grouping the naming
         // convention already encodes rather than a taxonomy invented here.
-        footnote={`${formatNumber(shown.length)} of ${formatNumber(
-          tools.length,
-        )} · families derived from tool names · server card`}
+        footnote={
+          resources.isPending
+            ? "Loading MCP tools · families are derived from tool names · server card"
+            : resources.isError
+              ? "MCP tool registry unavailable · server card"
+              : `${formatNumber(shown.length)} of ${formatNumber(
+                  tools.length,
+                )} · families derived from tool names · server card`
+        }
       />
 
       <Raw rows={rawRows} />

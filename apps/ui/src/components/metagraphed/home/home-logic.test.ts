@@ -109,18 +109,24 @@ describe("chainPoints / lastCompleteDay", () => {
   ] as ChainActivityDay[];
 
   it("sorts into time order and reads the metric asked for", () => {
-    expect(chainPoints(days, "blocks").map((p) => p.v)).toEqual([7200, 7200, 1588]);
-    expect(chainPoints(days, "extrinsics").map((p) => p.v)).toEqual([140000, 143325, 28875]);
+    expect(chainPoints(days, "blocks", "2026-08-23").map((p) => p.v)).toEqual([7200, 7200]);
+    expect(chainPoints(days, "extrinsics", "2026-08-23").map((p) => p.v)).toEqual([140000, 143325]);
   });
 
   it("quotes the last COMPLETE day, not the one in progress", () => {
     // The newest row is today so far -- 1,588 blocks against a full day's
     // 7,200 -- and quoting it reads as a collapse in throughput, not a clock.
-    expect(lastCompleteDay(days)?.day).toBe("2026-08-22");
+    expect(lastCompleteDay(days, "2026-08-23")?.day).toBe("2026-08-22");
   });
 
-  it("falls back to the only day it has, and survives none", () => {
+  it("keeps the newest row when it is already complete", () => {
+    expect(lastCompleteDay(days, "2026-08-24")?.day).toBe("2026-08-23");
+  });
+
+  it("keeps historical callers compatible and survives no complete rows", () => {
+    expect(chainPoints(days, "blocks")).toHaveLength(3);
     expect(lastCompleteDay([days[0]!])?.day).toBe("2026-08-23");
+    expect(lastCompleteDay([days[0]!], "2026-08-23")).toBeNull();
     expect(lastCompleteDay([])).toBeNull();
   });
 });

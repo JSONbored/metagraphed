@@ -304,7 +304,7 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     };
   }, [api, coldkeyAddress]);
 
-  const economicsQ = useQuery(economicsQuery());
+  const economicsQ = useQuery(economicsQuery({ fields: "detail" }));
   const bootstrapSpotPriceTao =
     economicsQ.data?.data.find((row) => row.netuid === netuid)?.alpha_price_tao ?? null;
 

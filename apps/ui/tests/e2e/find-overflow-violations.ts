@@ -37,6 +37,50 @@ export function findOverflowViolations(viewportWidth) {
     return false;
   }
 
+  // Rich editors keep inactive panels and text-input buffers mounted outside
+  // the viewport. They have geometry, but they cannot paint: inactive
+  // GraphiQL tools use opacity: 0 and CodeMirror positions its 1000px input
+  // inside a zero-height overflow-hidden buffer. Treating either as visible
+  // overflow makes adding a real editor route to the sweep impossible while
+  // saying nothing about what a reader can actually see.
+  //
+  // Keep this deliberately narrower than a general overflow:hidden escape:
+  // visibly clipped content is still a UX failure and must still be reported.
+  function isNonRendering(el) {
+    let node = el;
+    while (node && node !== document.body) {
+      const style = getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
+        return true;
+      }
+      const rect = node.getBoundingClientRect();
+      const clipsX = style.overflowX === "hidden" || style.overflowX === "clip";
+      const clipsY = style.overflowY === "hidden" || style.overflowY === "clip";
+      if ((rect.width === 0 && clipsX) || (rect.height === 0 && clipsY)) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  // CodeMirror deliberately makes its own scroll surface 50px wider than its
+  // viewport and clips that implementation gutter at the editor boundary. It
+  // remains a real, user-scrollable container; only the surplus scrollbar
+  // gutter is hidden. This is distinct from an ordinary overflowing child:
+  // require both an actually scrollable element and an in-viewport clipping
+  // ancestor before excluding it.
+  function isScrollableSurfaceClippedInFrame(el) {
+    const ownOverflowX = getComputedStyle(el).overflowX;
+    if (ownOverflowX !== "auto" && ownOverflowX !== "scroll") return false;
+    let node = el.parentElement;
+    while (node && node !== document.body) {
+      const style = getComputedStyle(node);
+      const clips = style.overflowX === "hidden" || style.overflowX === "clip";
+      if (clips && !violates(node.getBoundingClientRect())) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
   // Deliberately stops before <body>: body/html's own overflow-x: clip is
   // the global guard being worked around above, not a per-component
   // containment decision -- treating it as "handled" here would hide
@@ -55,6 +99,8 @@ export function findOverflowViolations(viewportWidth) {
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) continue;
     if (!violates(rect)) continue;
+    if (isNonRendering(el)) continue;
+    if (isScrollableSurfaceClippedInFrame(el)) continue;
     if (isContainedByScroll(el)) continue;
     if (hasViolatingAncestor(el)) continue;
     out.push({ tag: el.tagName, cls: typeof el.className === "string" ? el.className : "" });

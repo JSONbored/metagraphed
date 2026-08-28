@@ -39,7 +39,8 @@ import {
   Workflow,
   Zap,
 } from "lucide-react";
-import { askQuestion, searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
+import { askQuestion, semanticSearchQuery } from "@/lib/metagraphed/queries";
+import { searchQuery } from "@/lib/metagraphed/search-query";
 import { classNames, formatDecimal } from "@/lib/metagraphed/format";
 import { isChecksumValidSs58, isValidH160, normalizeH160 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -378,7 +379,12 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
     return () => window.clearTimeout(t);
   }, [q]);
 
-  const { data, isFetching } = useQuery({
+  const {
+    data,
+    isFetching,
+    isError: isIndexSearchError,
+    refetch: refetchIndexSearch,
+  } = useQuery({
     ...searchQuery(debounced, 20),
     retry: 0,
   });
@@ -710,6 +716,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
   const showNoMatches =
     debounced &&
     !isFetching &&
+    !isIndexSearchError &&
     hits.length === 0 &&
     filteredRoutes.length === 0 &&
     navigateTargets.length === 0;
@@ -819,14 +826,31 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
 
         {view !== "results" ? null : (
           <>
+            {debounced && isIndexSearchError ? (
+              <div
+                role="status"
+                className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-11 text-ink-muted"
+              >
+                <span>Registry suggestions are temporarily unavailable.</span>
+                <button
+                  type="button"
+                  onClick={() => void refetchIndexSearch()}
+                  className="shrink-0 text-11 text-ink hover:text-ink-strong underline underline-offset-2 transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : null}
             <CommandEmpty>
               {isFetching
                 ? "Searching…"
-                : showNoMatches
-                  ? `No matches for "${debounced}"`
-                  : debounced
-                    ? "No matches."
-                    : "Start typing to search."}
+                : isIndexSearchError
+                  ? "Registry suggestions are unavailable."
+                  : showNoMatches
+                    ? `No matches for "${debounced}"`
+                    : debounced
+                      ? "No matches."
+                      : "Start typing to search."}
             </CommandEmpty>
 
             {showNoMatches ? (

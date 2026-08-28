@@ -19,13 +19,13 @@ describe("SeriesPaletteRegistry", () => {
     expect(r.keys()).toEqual(["a", "b", "c", "d"]);
   });
 
-  it(`collapses everything past ${CHART_RAMP_SIZE} into Other, drawn in the eleventh ramp colour`, () => {
+  it(`collapses everything past ${CHART_RAMP_SIZE} into Other, drawn in the neutral residual colour`, () => {
     const r = new SeriesPaletteRegistry();
     const keys = Array.from({ length: 14 }, (_, i) => `s${i + 1}`);
     r.assign(keys);
     const p = r.palette();
-    expect(p.colorOf("s11")).toBe("var(--chart-11)");
-    expect(p.colorOf("s12")).toBe("var(--chart-11)");
+    expect(p.colorOf("s11")).toBe("var(--chart-residual)");
+    expect(p.colorOf("s12")).toBe("var(--chart-residual)");
     expect(p.isOther("s13")).toBe(true);
     expect(p.isOther("s3")).toBe(false);
     expect(p.indexOf("s14")).toBeNull();
@@ -36,7 +36,7 @@ describe("SeriesPaletteRegistry", () => {
     const r = new SeriesPaletteRegistry();
     r.assign([OTHER_KEY, "x"]);
     expect(r.palette().colorOf("x")).toBe("var(--chart-1)");
-    expect(r.palette().colorOf(OTHER_KEY)).toBe("var(--chart-11)");
+    expect(r.palette().colorOf(OTHER_KEY)).toBe("var(--chart-residual)");
   });
 });
 

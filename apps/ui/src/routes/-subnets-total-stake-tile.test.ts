@@ -26,7 +26,7 @@ const page = read("./-subnets-index-page.tsx");
 
 describe("#6271 the /subnets stake figure is measured, not written down", () => {
   it("sums it from the economics rows rather than stating a number", () => {
-    expect(page).toContain("economicsQuery()");
+    expect(page).toContain('economicsQuery({ fields: "directory" })');
     expect(page).toMatch(/const totalStake = econRows\.reduce\(/);
     expect(page).toContain("row.total_stake_alpha ?? 0");
   });

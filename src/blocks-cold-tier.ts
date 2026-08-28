@@ -412,10 +412,27 @@ export async function loadBlockColdTier(
   /** Which chain to read (#8700). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildBlock> | null> {
-  const seam = await resolveBlocksSeam(env, {}, network);
   const asNumber = safeBlockNumber(ref);
   const asHash = asNumber === null ? safeHexLiteral(ref) : null;
   if (asNumber === null && asHash === null) return null;
+
+  // The configured floor is an already-verified contiguous lakehouse range,
+  // not a speculative cache hint. A height inside it cannot be routed to the
+  // hot store by a newer watermark, so do not put the watermark's R2 read in
+  // front of the historical direct-link path merely to rediscover that fact.
+  // Hashes have always tried the hot store first and then the lakehouse, with
+  // no seam-based source decision at all. They likewise have no use for the
+  // watermark. Only a mainnet number above this stable floor needs the moving
+  // seam to determine whether the decoder has since extended lakehouse cover.
+  const floor = blocksSeamFloor(env);
+  const needsResolvedSeam =
+    network === DEFAULT_CHAIN_NETWORK && asNumber !== null && asNumber > floor;
+  if (asNumber !== null && !needsResolvedSeam) {
+    return loadBlockFromR2Sql(env, ref, network);
+  }
+  const seam = needsResolvedSeam
+    ? await resolveBlocksSeam(env, {}, network)
+    : floor;
 
   // Mainnet-only, for the same reason the feed's head leg is.
   const db =

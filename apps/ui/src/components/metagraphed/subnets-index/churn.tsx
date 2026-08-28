@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, RankGrid, StackedColumns, type RankGridItem } from "@jsonbored/ui-kit";
+import { ErrorState } from "@/components/metagraphed/states";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import { chainSubnetLifecycleQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { churnByDay, churnWindow } from "./subnets-index-logic";
@@ -14,7 +16,15 @@ import { churnByDay, churnWindow } from "./subnets-index-logic";
  * covers rather than the one the section would like to cover.
  */
 export function ChurnSection() {
-  const { data } = useQuery({ ...chainSubnetLifecycleQuery(500), retry: 0 });
+  const { ref, nearViewport } = useNearViewport("0px 0px");
+  const query = useQuery({
+    ...chainSubnetLifecycleQuery(500),
+    // Lifecycle history is a fourth, distinct analysis after the crawlable
+    // directory. Its empty/error states remain truthful once it is reached.
+    enabled: nearViewport,
+    retry: 0,
+  });
+  const { data } = query;
   const entries = data?.data.entries ?? [];
   const columns = churnByDay(entries);
   const window = churnWindow(entries);
@@ -32,8 +42,27 @@ export function ChurnSection() {
       id="churn"
       name="Churn"
       question="Subnets registering and deregistering, by day."
+      visualRef={ref}
       visual={
-        columns.length > 0 ? (
+        !nearViewport ? (
+          <p className="mg-section-empty">Lifecycle history loads as this section approaches.</p>
+        ) : query.isPending ? (
+          <StackedColumns
+            columns={[]}
+            seriesOrder={["registered", "deregistered"]}
+            formatValue={(value) => formatNumber(value)}
+            ariaLabel="Subnet registrations and deregistrations by day"
+            columnSource="subnet-churn-day"
+            loading
+            loadingColumns={14}
+          />
+        ) : query.isError ? (
+          <ErrorState
+            error={query.error}
+            onRetry={() => void query.refetch()}
+            context="subnet lifecycle history"
+          />
+        ) : columns.length > 0 ? (
           <StackedColumns
             columns={columns}
             seriesOrder={["registered", "deregistered"]}
@@ -44,7 +73,16 @@ export function ChurnSection() {
         ) : null
       }
       legend={
-        recent.length > 0 ? (
+        !nearViewport ? null : query.isPending ? (
+          <RankGrid
+            items={[]}
+            cols={5}
+            ariaLabel="The ten most recent lifecycle transitions"
+            source="subnet-churn"
+            loading
+            loadingItems={5}
+          />
+        ) : recent.length > 0 ? (
           <RankGrid
             items={recent}
             cols={5}
@@ -54,9 +92,15 @@ export function ChurnSection() {
         ) : null
       }
       footnote={
-        window
-          ? `${window[0]} → ${window[1]} · ${formatNumber(entries.length)} transitions · the whole captured history, chain-direct`
-          : "no lifecycle transitions captured yet"
+        !nearViewport
+          ? "deferred below the fold · lifecycle history loads as this section approaches"
+          : query.isPending
+            ? "loading captured subnet lifecycle history"
+            : query.isError
+              ? "subnet lifecycle history could not be loaded"
+              : window
+                ? `${window[0]} → ${window[1]} · ${formatNumber(entries.length)} transitions · the whole captured history, chain-direct`
+                : "no lifecycle transitions captured yet"
       }
     />
   );

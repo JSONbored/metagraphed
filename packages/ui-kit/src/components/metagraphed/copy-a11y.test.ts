@@ -34,6 +34,18 @@ describe("copy/share controls are keyboard-focus-visible (#6370, #6371)", () => 
   }
 });
 
+describe("CopyableCode wrapping", () => {
+  it("wraps an explicitly untruncated value at every viewport width", () => {
+    const markup = html(
+      React.createElement(CopyableCode, { value: VALUE, truncate: false }),
+    );
+
+    expect(markup).toContain("whitespace-normal");
+    expect(markup).toContain("break-all");
+    expect(markup).not.toContain("sm:whitespace-normal");
+  });
+});
+
 describe("copy controls announce the result to screen readers (#6372)", () => {
   const cases: Array<[string, React.ReactElement]> = [
     ["CopyButton", React.createElement(CopyButton, { value: VALUE })],

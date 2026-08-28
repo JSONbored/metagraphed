@@ -10,7 +10,10 @@ export const CLAIMED = new Set(["official", "provider-claimed"]);
 
 export interface ProviderRow {
   slug: string;
+  /** Published name, kept separate from the table label for duplicate records. */
   name: string;
+  /** Human-readable name, qualified with the record ID only when names collide. */
+  displayName: string;
   kind: string | null;
   authority: string | null;
   host: string | null;
@@ -47,7 +50,7 @@ export function providerRows(
     const id = str(row.id);
     if (id) byId.set(id, row);
   }
-  return (Array.isArray(providers) ? providers : []).map((provider) => {
+  const rows = (Array.isArray(providers) ? providers : []).map((provider) => {
     const slug = str(provider.slug) ?? str(provider.id) ?? "";
     const hp = byId.get(slug);
     const netuids = Array.isArray(provider.netuids)
@@ -56,6 +59,7 @@ export function providerRows(
     return {
       slug,
       name: str(provider.name) ?? slug,
+      displayName: str(provider.name) ?? slug,
       kind: str(provider.kind),
       authority: str(provider.authority),
       host: str(provider.website) ?? str(provider.homepage) ?? str(provider.website_url),
@@ -67,6 +71,16 @@ export function providerRows(
       iconUrl: typeof provider.icon_url === "string" ? provider.icon_url : str(provider.logo_url),
     };
   });
+  const nameCounts = new Map<string, number>();
+  for (const row of rows) {
+    const key = row.name.toLowerCase();
+    nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+  }
+  return rows.map((row) =>
+    (nameCounts.get(row.name.toLowerCase()) ?? 0) > 1
+      ? { ...row, displayName: `${row.name} · ${row.slug}` }
+      : row,
+  );
 }
 
 export interface Fact {
@@ -139,7 +153,7 @@ export function providerLeaders(rows: readonly ProviderRow[], limit = 18): Leade
     .slice(0, limit)
     .map((row) => ({
       key: row.slug,
-      name: row.name,
+      name: row.displayName,
       sub: row.kind ?? undefined,
       value: String(row.endpoints),
       href: `/providers/${row.slug}`,
@@ -174,7 +188,7 @@ export function filterProviders(
     if (filters.kind && row.kind !== filters.kind) return false;
     if (filters.authority && row.authority !== filters.authority) return false;
     if (!q) return true;
-    return [row.name, row.slug, row.host].some(
+    return [row.name, row.displayName, row.slug, row.host].some(
       (field) => typeof field === "string" && field.toLowerCase().includes(q),
     );
   });

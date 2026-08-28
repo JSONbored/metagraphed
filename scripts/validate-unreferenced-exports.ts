@@ -92,8 +92,11 @@ export const MAX_UNREFERENCED_EXPORTS: number = 730;
  * `apps/ui`'s figure is dominated by per-route `Route` objects and view-model
  * types that a route file names but no other module imports. Neither is dead;
  * both are worth a number that cannot grow.
+ *
+ * 153 after the sitewide route pass removed one UI export from the measured
+ * residue. Lock the gain in rather than leaving unused-export capacity behind.
  */
-export const MAX_UNREFERENCED_EXPORTS_UI: number = 154;
+export const MAX_UNREFERENCED_EXPORTS_UI: number = 153;
 
 /** Whether a knip issue belongs to the UI workspaces rather than the backend. */
 export function isUiFile(file: string): boolean {

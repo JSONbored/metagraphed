@@ -1,4 +1,10 @@
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { classNames } from "@/lib/format";
 
 /**
@@ -42,6 +48,35 @@ export function pickActiveSection(
   return ids.find((id) => visible.has(id)) ?? current;
 }
 
+export interface SectionNavScrollState {
+  hasOverflow: boolean;
+  atStart: boolean;
+  atEnd: boolean;
+}
+
+/**
+ * A native horizontal scrollbar reads as a rendering defect in an in-page
+ * nav, especially against the dark canvas. Keep the track visually quiet,
+ * but expose whether there are more sections through a compact direction
+ * cue. This helper keeps the boundary math deterministic and independently
+ * testable.
+ */
+export function sectionNavScrollState({
+  scrollWidth,
+  clientWidth,
+  scrollLeft,
+}: Pick<
+  HTMLElement,
+  "scrollWidth" | "clientWidth" | "scrollLeft"
+>): SectionNavScrollState {
+  const hasOverflow = scrollWidth > clientWidth + 1;
+  return {
+    hasOverflow,
+    atStart: !hasOverflow || scrollLeft <= 1,
+    atEnd: !hasOverflow || scrollLeft + clientWidth >= scrollWidth - 1,
+  };
+}
+
 export function useActiveSection(ids: readonly string[]): string | null {
   const [active, setActive] = useState<string | null>(ids[0] ?? null);
   useEffect(() => {
@@ -71,6 +106,39 @@ export function useActiveSection(ids: readonly string[]): string | null {
 export function SectionNav({ items, link, className }: SectionNavProps) {
   const anchors = items.filter((i) => !i.href).map((i) => i.id);
   const active = useActiveSection(anchors);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [scrollState, setScrollState] = useState<SectionNavScrollState>({
+    hasOverflow: false,
+    atStart: true,
+    atEnd: true,
+  });
+
+  const syncScrollState = () => {
+    const node = scrollRef.current;
+    if (!node) return;
+    const next = sectionNavScrollState(node);
+    setScrollState((current) =>
+      current.hasOverflow === next.hasOverflow &&
+      current.atStart === next.atStart &&
+      current.atEnd === next.atEnd
+        ? current
+        : next,
+    );
+  };
+
+  // A page can change its section count or its available width without a
+  // browser resize (for example, when a sidebar closes). Measure both the
+  // initial layout and size changes so the scroll cue never becomes stale.
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+    syncScrollState();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(syncScrollState);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [items]);
+
   if (items.length === 0) return null;
   const LinkCmp = link ?? DefaultLink;
   return (
@@ -78,30 +146,39 @@ export function SectionNav({ items, link, className }: SectionNavProps) {
       className={classNames("mg-section-nav", className)}
       aria-label="Sections"
       data-mg-section-nav=""
+      data-overflow={scrollState.hasOverflow ? "true" : undefined}
+      data-scroll-start={scrollState.atStart ? "true" : undefined}
+      data-scroll-end={scrollState.atEnd ? "true" : undefined}
     >
-      <ul>
-        {items.map((item) =>
-          item.href ? (
-            <li key={item.id}>
-              <LinkCmp
-                href={item.href}
-                aria-current={item.current ? "page" : undefined}
-              >
-                {item.name}
-              </LinkCmp>
-            </li>
-          ) : (
-            <li key={item.id}>
-              <a
-                href={`#${item.id}`}
-                aria-current={active === item.id ? "location" : undefined}
-              >
-                {item.name}
-              </a>
-            </li>
-          ),
-        )}
-      </ul>
+      <div
+        ref={scrollRef}
+        className="mg-section-nav-scroll"
+        onScroll={syncScrollState}
+      >
+        <ul>
+          {items.map((item) =>
+            item.href ? (
+              <li key={item.id}>
+                <LinkCmp
+                  href={item.href}
+                  aria-current={item.current ? "page" : undefined}
+                >
+                  {item.name}
+                </LinkCmp>
+              </li>
+            ) : (
+              <li key={item.id}>
+                <a
+                  href={`#${item.id}`}
+                  aria-current={active === item.id ? "location" : undefined}
+                >
+                  {item.name}
+                </a>
+              </li>
+            ),
+          )}
+        </ul>
+      </div>
     </nav>
   );
 }

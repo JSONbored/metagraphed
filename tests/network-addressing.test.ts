@@ -63,7 +63,25 @@ describe("network alias set (#8698)", () => {
     // and every alias the router accepts must be advertised.
     const { handleRequest } = await import("../workers/api.ts");
     const { createLocalArtifactEnv } = await import("../scripts/lib.ts");
-    const env = createLocalArtifactEnv() as unknown as Env;
+    // This is a routing assertion, not an artifact-build assertion. Supplying
+    // one stable object keeps it independent of network-routing.test.ts's
+    // concurrent testnet artifact build; otherwise this file can observe the
+    // testnet tree between its directory creation and coverage.json write and
+    // misreport that transient filesystem state as a missing network alias.
+    const env = createLocalArtifactEnv(
+      {
+        METAGRAPH_ARCHIVE: {
+          async get() {
+            return {
+              async json() {
+                return { schema_version: 1 };
+              },
+            };
+          },
+        },
+      },
+      { requireBuiltArtifacts: false },
+    ) as unknown as Env;
 
     // Data aliases must serve registry routes...
     for (const alias of DATA_NETWORK_ALIASES) {

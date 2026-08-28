@@ -83,15 +83,11 @@ function isRedirectOnly(routePath: string): boolean {
  * render no page of our own or cannot be given a fixture.
  */
 const NOT_SWEPT: Record<string, string> = {
-  "/docs/$":
-    "fumadocs owns this layout and type scale; allowedFamilies() already grants it Plex Sans",
   "/docs/raw/$": "a plain-text response, not a page",
   "/docs/llms.txt": "a plain-text response, not a page",
-  "/news/$": "the same fumadocs layout as /docs/$",
   "/news/raw/$": "a plain-text response, not a page",
   "/news/llms.txt": "a plain-text response, not a page",
   "/api/search": "a JSON endpoint, not a page",
-  "/graphql/explorer": "GraphiQL is a third-party editor with its own stylesheet",
 };
 
 describe("the design sweep covers every route the router serves", () => {

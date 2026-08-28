@@ -264,8 +264,26 @@ describe("endpointFacts", () => {
 
   it("omits the healthy share when nothing was probed", () => {
     expect(endpointFacts({ endpoint_count: 10, by_status: { unknown: 10 } }, 0, null, fmt)).toEqual(
-      [{ key: "tracked", label: "Tracked", value: "10" }],
+      [
+        { key: "tracked", label: "Tracked", value: "10" },
+        { key: "pools", label: "RPC pools", value: "0" },
+      ],
     );
+  });
+
+  it("reserves only the unresolved headline readings without turning them into zero", () => {
+    const facts = endpointFacts({ endpoint_count: 10, by_status: { ok: 1 } }, null, null, fmt, {
+      pools: true,
+      incidents: true,
+    });
+    expect(facts.find((fact) => fact.key === "pools")).toMatchObject({
+      value: "—",
+      loading: true,
+    });
+    expect(facts.find((fact) => fact.key === "incidents")).toMatchObject({
+      value: "—",
+      loading: true,
+    });
   });
 
   it("is empty with no summary", () => {

@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Github, Menu, Rss, Search } from "lucide-react";
 import {
   API_BASE,
@@ -24,13 +23,13 @@ import {
 } from "@jsonbored/ui-kit";
 import { SettingsPopover, SettingsPanel } from "./settings-popover";
 import { classNames } from "@/lib/metagraphed/format";
-import { freshnessQuery } from "@/lib/metagraphed/queries";
-import { CommandPalette } from "./command-palette";
+import { CommandPalette, preloadCommandPalette } from "./command-palette";
 import { NavOmnibox } from "./nav-omnibox";
 import { ApiSourceProvider, useApiSourceCtx } from "@/lib/metagraphed/api-source-context";
 import { DEFINITIONS } from "@/lib/metagraphed/definitions";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
-import { useHydrated } from "@/hooks/use-hydrated";
+
+const LazySourcesLine = lazy(() => import("./app-shell-sources-line"));
 
 // Brand links resolve from build-time env constants, but still run them through
 // the external-URL guard (with a known-good fallback) so a misconfigured
@@ -39,17 +38,18 @@ const GITHUB_HREF = safeExternalUrl(GITHUB_REPO) ?? DEFAULT_GITHUB_REPO;
 const DISCORD_HREF = safeExternalUrl(DISCORD_URL) ?? DEFAULT_DISCORD_URL;
 
 /**
- * The five primary destinations. The header is a thin strip -- wordmark, these
- * five, search, settings -- and nothing else (#11605): no mega-menu, no ticker,
+ * The six primary destinations. The header is a thin strip -- wordmark, these
+ * six, search, settings -- and nothing else (#11605): no mega-menu, no ticker,
  * no breadcrumb strip, no incident banner. A route's own sections are
  * navigated on the page, not from the chrome.
  */
-const PRIMARY_NAV: ReadonlyArray<{ to: string; label: string }> = [
+const PRIMARY_NAV: ReadonlyArray<{ to: string; label: string; badge?: string }> = [
   { to: "/subnets", label: "Subnets" },
   { to: "/validators", label: "Validators" },
   { to: "/chain", label: "Chain" },
   { to: "/accounts", label: "Accounts" },
   { to: "/apis", label: "APIs" },
+  { to: "/agents", label: "MCP", badge: "New" },
 ];
 
 /** The element to return focus to when an overlay opened from the keyboard closes. */
@@ -94,8 +94,8 @@ export function AppShell({
    * Render the chrome without the two lines that read data.
    *
    * For the router's error and pending fallbacks (#11686), which render where
-   * no `QueryClientProvider` is in scope: `SourcesLine`'s `useQuery` throws
-   * "No QueryClient set" there, and an error fallback that throws takes the
+   * no `QueryClientProvider` is in scope: the deferred source-status line's
+   * query would throw "No QueryClient set" there, and an error fallback that throws takes the
    * whole SSR stream down -- every route then answered with the dependency-free
    * recovery HTML, which is not this design system at all. The header, the nav
    * and the footer links need no data and are exactly what a reader whose data
@@ -115,6 +115,7 @@ export function AppShell({
   // trigger, so capture the invoking element and restore focus on close.
   const paletteTriggerRef = useRef<HTMLElement | null>(null);
   const openPaletteFrom = useCallback((trigger: HTMLElement | null) => {
+    preloadCommandPalette();
     paletteTriggerRef.current = trigger;
     setPaletteOpen(true);
   }, []);
@@ -217,13 +218,22 @@ export function AppShell({
                         to={item.to}
                         aria-current={active ? "page" : undefined}
                         className={classNames(
-                          "inline-flex items-center rounded px-3 h-8 text-13 transition-colors",
-                          active
-                            ? "text-ink-strong bg-layer"
-                            : "text-ink-muted hover:text-ink-strong hover:bg-layer",
+                          "inline-flex items-center rounded border px-3 h-8 text-13 transition-colors",
+                          item.badge
+                            ? active
+                              ? "border-agent/60 bg-agent-surface text-ink-strong"
+                              : "border-agent/35 text-agent hover:border-agent/60 hover:bg-agent-surface"
+                            : active
+                              ? "border-transparent text-ink-strong bg-layer"
+                              : "border-transparent text-ink-muted hover:text-ink-strong hover:bg-layer",
                         )}
                       >
                         {item.label}
+                        {item.badge ? (
+                          <span className="ml-1.5 border-l border-agent/35 pl-1.5 text-10 font-semibold text-agent">
+                            {item.badge}
+                          </span>
+                        ) : null}
                       </Link>
                     );
                   })}
@@ -243,15 +253,19 @@ export function AppShell({
                   {/* Below md the omnibox is hidden, which would leave the palette
                     reachable only via keyboard shortcuts -- none of which exist
                     on a touch device. */}
-                  <button
-                    type="button"
-                    onClick={(e) => openPaletteFrom(e.currentTarget)}
-                    aria-label="Open search"
-                    title="Search"
-                    className="md:hidden inline-flex items-center justify-center rounded border border-border min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-rule-strong transition-colors"
-                  >
-                    <Search className="size-4" aria-hidden="true" />
-                  </button>
+                  {chromeOnly ? null : (
+                    <button
+                      type="button"
+                      onClick={(e) => openPaletteFrom(e.currentTarget)}
+                      onPointerEnter={preloadCommandPalette}
+                      onFocus={preloadCommandPalette}
+                      aria-label="Open search"
+                      title="Search"
+                      className="md:hidden inline-flex items-center justify-center rounded border border-border min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-rule-strong transition-colors"
+                    >
+                      <Search className="size-4" aria-hidden="true" />
+                    </button>
+                  )}
                   <div className="hidden md:inline-flex">
                     <SettingsPopover />
                   </div>
@@ -285,11 +299,22 @@ export function AppShell({
                         onClick={() => setMobileOpen(false)}
                         aria-current={active ? "page" : undefined}
                         className={classNames(
-                          "flex items-center min-h-11 px-2 rounded text-16 transition-colors",
-                          active ? "text-ink-strong bg-layer" : "text-ink hover:bg-layer",
+                          "flex items-center min-h-11 border px-2 rounded text-16 transition-colors",
+                          item.badge
+                            ? active
+                              ? "border-agent/60 bg-agent-surface text-ink-strong"
+                              : "border-agent/35 text-agent hover:border-agent/60 hover:bg-agent-surface"
+                            : active
+                              ? "border-transparent text-ink-strong bg-layer"
+                              : "border-transparent text-ink hover:bg-layer",
                         )}
                       >
                         {item.label}
+                        {item.badge ? (
+                          <span className="ml-auto border-l border-agent/35 pl-2 text-10 font-semibold text-agent">
+                            {item.badge}
+                          </span>
+                        ) : null}
                       </Link>
                     );
                   })}
@@ -319,7 +344,13 @@ export function AppShell({
               key={pathname}
               className={classNames(
                 "flex-1 w-full",
-                fullBleedMain ? "" : "px-4 md:px-10 max-w-shell-max mx-auto pb-12 pt-10 md:pt-12",
+                fullBleedMain
+                  ? ""
+                  : // The route hero owns its own editorial breathing room. A
+                    // second desktop-only 16px step here made every directory
+                    // and live reading start lower than its compact layout did
+                    // on tablet, before any useful data appeared.
+                    "px-4 pt-6 sm:pt-8 md:px-10 md:pt-8 lg:pt-8 max-w-shell-max mx-auto pb-12",
               )}
             >
               {children}
@@ -421,7 +452,7 @@ function SiteFooter({ chromeOnly }: { chromeOnly: boolean }) {
             <span>
               © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
             </span>
-            {chromeOnly ? null : <SourcesLine />}
+            {chromeOnly ? null : <DeferredSourcesLine />}
           </div>
         </div>
       </div>
@@ -461,32 +492,56 @@ function PageSourcesLine() {
   );
 }
 
-/** `sources N · stale N · openapi` -- the one liveness line in the chrome. */
-function SourcesLine() {
-  const hydrated = useHydrated();
-  const freshness = useQuery({ ...freshnessQuery(), retry: 0, enabled: hydrated });
-  const f = hydrated ? freshness.data?.data : undefined;
-  const stale = f?.stale_count ?? 0;
-  const sources = f?.sources?.length ?? 0;
+/**
+ * Keep the non-critical liveness query and its large shared query module out of
+ * the initial graph. Most visits never reach the footer; when one gets close,
+ * load it with enough margin that the count is ready by the time it is visible.
+ */
+function DeferredSourcesLine() {
+  const anchorRef = useRef<HTMLSpanElement | null>(null);
+  const [nearViewport, setNearViewport] = useState(false);
+
+  useEffect(() => {
+    const anchor = anchorRef.current;
+    if (!anchor || nearViewport) return;
+    if (!("IntersectionObserver" in window)) {
+      setNearViewport(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setNearViewport(true);
+        observer.disconnect();
+      },
+      { rootMargin: "400px 0px" },
+    );
+    observer.observe(anchor);
+    return () => observer.disconnect();
+  }, [nearViewport]);
+
   return (
-    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
-      <span>
-        sources <span className="text-ink-strong">{sources}</span>
-      </span>
-      <span aria-hidden="true">·</span>
-      <span>
-        stale{" "}
-        <span className={classNames(stale ? "text-health-warn" : "text-ink-strong")}>{stale}</span>
-      </span>
-      <span aria-hidden="true">·</span>
-      <ExternalLink
-        bare
-        href={`${API_BASE}/api/v1/openapi.json`}
-        className="hover:text-ink-strong transition-colors"
-      >
-        openapi
-      </ExternalLink>
+    <span ref={anchorRef} className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+      {nearViewport ? (
+        <Suspense fallback={<SourcesLineFallback />}>
+          <LazySourcesLine />
+        </Suspense>
+      ) : (
+        <SourcesLineFallback />
+      )}
     </span>
+  );
+}
+
+function SourcesLineFallback() {
+  return (
+    <ExternalLink
+      bare
+      href={`${API_BASE}/api/v1/openapi.json`}
+      className="hover:text-ink-strong transition-colors"
+    >
+      openapi
+    </ExternalLink>
   );
 }
 

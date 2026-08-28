@@ -77,6 +77,16 @@ export function SchemasPage() {
     [rows],
   );
   const driftShown = showAllDrift ? rows : rows.filter((row) => row.drift !== "unchanged");
+  const headlineFacts = useMemo(() => {
+    if (schemas.isPending) {
+      return [
+        { key: "tracked", label: "Tracked", value: "—", loading: true },
+        { key: "moved", label: "Moved", value: "—", loading: true },
+      ];
+    }
+    if (schemas.isError) return [];
+    return schemaFacts(summary, subnetsCovered, { count: formatNumber });
+  }, [schemas.isError, schemas.isPending, subnetsCovered, summary]);
 
   const columns: DataTableColumn<SchemaRow>[] = [
     {
@@ -179,6 +189,7 @@ export function SchemasPage() {
     <AppShell>
       <ApiSources />
       <EntityHero
+        className="mg-hero--directory"
         name="Schemas"
         sentence={
           <FactSentence>
@@ -188,9 +199,7 @@ export function SchemasPage() {
         // A STRIP, not chips (#11696). This page's subject is a table, and its
         // headline counts were 11px `Fact` chips inside the sentence -- set
         // smaller than the rows they frame. The lede stays prose.
-        cells={
-          factCells(schemaFacts(summary, subnetsCovered, { count: formatNumber })) ?? undefined
-        }
+        cells={factCells(headlineFacts) ?? undefined}
         live={{
           updatedAt: summary.observed_at,
           source: "snapshot",
@@ -205,7 +214,18 @@ export function SchemasPage() {
         name="Drift"
         question="Which schemas changed, and how much surface changed with them."
         visual={
-          rails.length > 0 ? (
+          schemas.isPending ? (
+            <RankedRails
+              items={[]}
+              formatValue={(value: number) => `${formatNumber(value)} paths`}
+              scale="sqrt"
+              columns={{ value: "Paths", name: "Subnet", track: "Size of the spec that moved" }}
+              ariaLabel="Schemas that changed since the last capture"
+              source="schema-drift"
+              loading
+              loadingRows={10}
+            />
+          ) : rails.length > 0 ? (
             <RankedRails
               items={rails}
               formatValue={(value: number) => `${formatNumber(value)} paths`}
@@ -228,22 +248,34 @@ export function SchemasPage() {
             storageKey="mg-schemas-columns"
             loading={schemas.isPending}
             filters={
-              <button
-                type="button"
-                className="mg-section-more"
-                onClick={() => setShowAllDrift((v) => !v)}
-              >
-                {showAllDrift ? "Only what moved" : `Show all ${formatNumber(rows.length)}`}
-              </button>
+              schemas.isPending ? undefined : (
+                <button
+                  type="button"
+                  className="mg-section-more"
+                  onClick={() => setShowAllDrift((v) => !v)}
+                >
+                  {showAllDrift ? "Only what moved" : `Show all ${formatNumber(rows.length)}`}
+                </button>
+              )
             }
-            empty="Nothing moved since the last capture."
+            empty={
+              schemas.isError
+                ? "Schema captures are temporarily unavailable."
+                : "Nothing moved since the last capture."
+            }
           />
         }
         // Ranked on the size of the spec, not on a diff score: no change
         // weight is published, and a subnet whose 35-path spec changed moved
         // more than one whose capture failed. The seven that could not be
         // captured are in the table below rather than as empty rails.
-        footnote="ranked by paths in the captured spec · snapshot"
+        footnote={
+          schemas.isPending
+            ? "Loading schema captures · snapshot"
+            : schemas.isError
+              ? "Schema captures are temporarily unavailable · snapshot"
+              : "ranked by paths in the captured spec · snapshot"
+        }
       />
 
       <AnalyticsSection
@@ -251,7 +283,18 @@ export function SchemasPage() {
         name="Size"
         question="How much each captured spec actually documents."
         visual={
-          sizeRails.length > 0 ? (
+          schemas.isPending ? (
+            <RankedRails
+              items={[]}
+              formatValue={(value: number) => `${formatNumber(value)} paths`}
+              scale="sqrt"
+              columns={{ value: "Paths", name: "Subnet", track: "Documented operations" }}
+              ariaLabel="Captured schemas by size"
+              source="schema-size"
+              loading
+              loadingRows={10}
+            />
+          ) : sizeRails.length > 0 ? (
             <RankedRails
               items={sizeRails}
               formatValue={(value: number) => `${formatNumber(value)} paths`}
@@ -268,7 +311,13 @@ export function SchemasPage() {
         // so there is no series to draw. This asks the closest question the
         // data can answer, and the one that says whether a subnet's "has an
         // OpenAPI" is three paths or three hundred.
-        footnote="current snapshot · no per-week history is published · snapshot"
+        footnote={
+          schemas.isPending
+            ? "Loading captured schemas · snapshot"
+            : schemas.isError
+              ? "Schema captures are temporarily unavailable · snapshot"
+              : "current snapshot · no per-week history is published · snapshot"
+        }
       />
 
       {/* #11320: below the data on purpose -- see hub-prose.tsx. */}

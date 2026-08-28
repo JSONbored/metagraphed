@@ -275,28 +275,19 @@ async function setTheme(page, baseUrl, theme) {
   });
 }
 
-/** `networkidle` is the right wait condition (it's what lets a late-mounting
- * chart or a client-side non-suspense query settle before capture -- see
- * capture-operational-status-screenshots.ts), but a just-spawned dev
- * server's first hit on a route pays Vite's cold transform/optimize cost on
- * top of the app's own data fetches, occasionally blowing past a single
- * timeout. Retry once, then fall back to the cheaper `load` condition plus a
- * fixed settle wait rather than failing the whole capture run outright. */
+/** Navigate once, then give finite pages a chance to become network-idle.
+ * Real-time explorer routes intentionally poll and may never reach that
+ * state, so network-idle must be a bounded enhancement rather than the
+ * navigation contract. Retrying the entire navigation both doubled capture
+ * time and discarded an already-rendered live page. The fixed settle wait in
+ * captureVariant still lets client-only queries and charts paint. */
 async function gotoRoute(page, url) {
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
   try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
-    return;
+    await page.waitForLoadState("networkidle", { timeout: 5000 });
   } catch (err) {
-    console.warn(`networkidle wait failed for ${url}, retrying once: ${err.message}`);
+    console.warn(`networkidle wait skipped for live route ${url}: ${err.message}`);
   }
-  try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
-    return;
-  } catch (err) {
-    console.warn(`networkidle retry failed for ${url}, falling back to "load": ${err.message}`);
-  }
-  await page.goto(url, { waitUntil: "load", timeout: 60_000 });
-  await page.waitForTimeout(2000);
 }
 
 /** Scrolls `sectionId` into view, accounting for the sticky masthead's live

@@ -1,6 +1,9 @@
-import { z } from "zod";
-
-import { tableSearchSchema, matchesQuery } from "@/lib/metagraphed/url-state";
+import {
+  tableSearchSchema,
+  matchesQuery,
+  stringSearch,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import type { Surface } from "@/lib/metagraphed/types";
 
 /**
@@ -10,12 +13,12 @@ import type { Surface } from "@/lib/metagraphed/types";
  * `tableSearchSchema` — so the sibling /subnets route's schema stays lean.
  */
 export const surfacesSearchSchema = tableSearchSchema.extend({
-  public_safe: z.string().catch("").default(""),
-  auth: z.string().catch("").default(""),
-  rate_limited: z.string().catch("").default(""),
+  public_safe: stringSearch(),
+  auth: stringSearch(),
+  rate_limited: stringSearch(),
 });
 
-export type SurfacesSearch = z.infer<typeof surfacesSearchSchema>;
+export type SurfacesSearch = SearchOutput<typeof surfacesSearchSchema>;
 
 /**
  * Whether a surface row passes the active /surfaces filters. Kept pure so every

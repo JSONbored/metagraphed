@@ -86,6 +86,7 @@ export function SettingsPage() {
     <AppShell>
       <ApiSources />
       <EntityHero
+        className="mg-hero--settings"
         name="Settings"
         sentence={
           <FactSentence>
@@ -103,6 +104,7 @@ export function SettingsPage() {
       <InstallAppRow />
 
       <AnalyticsSection
+        className="mg-settings-preferences"
         id="preferences"
         name="Preferences"
         question="How this browser draws the site."
@@ -183,7 +185,7 @@ export function SettingsPage() {
         name="Webhooks"
         question="Where the change feed is posted."
         visual={<WebhookSubscriptionManager />}
-        footnote="self-service against the public subscription API · no account model"
+        footnote="self-service with an issued subscription token · no account model"
       />
 
       <AnalyticsSection

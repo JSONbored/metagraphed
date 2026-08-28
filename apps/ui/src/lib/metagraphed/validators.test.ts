@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeGlobalValidators, validatorsQuery } from "./queries";
+import { normalizeGlobalValidators, projectOperatorValidator, validatorsQuery } from "./queries";
 
 describe("normalizeGlobalValidators", () => {
   it("normalizes a representative global validators payload", () => {
@@ -135,5 +135,53 @@ describe("validatorsQuery", () => {
     const options = validatorsQuery();
     expect(options.queryKey).toContain("subnet_count");
     expect(options.queryKey).toContain(20);
+  });
+
+  it("keeps the operator projection in its own cache lane", () => {
+    const options = validatorsQuery({ projection: "operator" });
+    expect(options.queryKey).toContain("operator");
+  });
+});
+
+describe("projectOperatorValidator", () => {
+  it("keeps only operator-ranking fields and narrows identity", () => {
+    const validator = normalizeGlobalValidators({
+      validators: [
+        {
+          hotkey: "hk",
+          coldkey: "ck",
+          coldkey_identity: {
+            has_identity: true,
+            name: "Operator",
+            url: "https://example.com",
+            description: "not used by the directory",
+          },
+          subnet_count: 2,
+          uid_count: 3,
+          take: 0.1,
+          total_stake_tao: 42,
+          total_emission_tao: 1,
+          nominator_count: 4,
+          apy_estimate: 0.2,
+          stake_dominance: 0.3,
+          subnets: [{ netuid: 1, uid: 2, stake_tao: 3, emission_tao: 4 }],
+        },
+      ],
+    }).validators[0]!;
+
+    expect(projectOperatorValidator(validator)).toEqual({
+      hotkey: "hk",
+      coldkey: "ck",
+      coldkey_identity: { has_identity: true, name: "Operator" },
+      subnet_count: 2,
+      uid_count: 3,
+      take: 0.1,
+      total_stake_tao: 42,
+      total_emission_tao: 1,
+      nominator_count: 4,
+      apy_estimate: 0.2,
+      stake_dominance: 0.3,
+      subnets: [],
+    });
   });
 });

@@ -10,6 +10,8 @@ import {
 } from "@jsonbored/ui-kit";
 import { accountEventsInfiniteQuery } from "@/lib/metagraphed/queries";
 import { RouterLink } from "@/components/metagraphed/router-link";
+import { useNearViewport } from "@/hooks/use-near-viewport";
+import { ErrorState } from "@/components/metagraphed/states";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { AccountEvent } from "@/lib/metagraphed/types";
 import { EVENT_SCAN_CAP, eventKindOptions, fmtTao } from "./account-detail-logic";
@@ -29,18 +31,22 @@ export function ActivitySection({
   nameOf,
   kinds,
   eventCount,
+  summaryPending,
   scanCapped,
 }: {
   ss58: string;
   nameOf: (netuid: number) => string;
   kinds: readonly { kind: string; count: number }[];
-  eventCount: number;
+  eventCount: number | null;
+  summaryPending: boolean;
   scanCapped: boolean;
 }) {
   const [kind, setKind] = useState("");
+  const { ref, nearViewport } = useNearViewport("320px 0px");
 
   const query = useInfiniteQuery({
     ...accountEventsInfiniteQuery(ss58, { limit: PAGE, ...(kind ? { kind } : {}) }),
+    enabled: nearViewport,
     retry: 0,
   });
 
@@ -48,6 +54,7 @@ export function ActivitySection({
     () => (query.data?.pages ?? []).flatMap((page) => page.data),
     [query.data],
   );
+  const initialError = query.isError && events.length === 0;
 
   const columns: DataTableColumn<AccountEvent>[] = [
     { key: "observed_at", label: "When", kind: "time", value: (row) => row.observed_at ?? null },
@@ -87,6 +94,7 @@ export function ActivitySection({
       id="activity"
       name="Activity"
       question="Every first-party event, newest first."
+      visualRef={ref}
       controls={
         <FilterField label="Kind">
           <FilterSelect value={kind} onChange={(event) => setKind(event.target.value)}>
@@ -100,40 +108,59 @@ export function ActivitySection({
         </FilterField>
       }
       visual={
-        <>
-          <DataTable
-            rows={events}
-            columns={columns}
-            rowKey={(row) => `${row.block_number}-${row.event_index}`}
-            caption="Account events"
-            link={RouterLink}
-            source="account-event"
-            paginate={false}
-            loading={query.isPending}
-            empty="No events match this filter."
-            mobile="cards"
-            dense
-            storageKey="account-events-columns"
-          />
-          // Only while there IS more to fetch. The table states its own // range and total in its
-          pager, so a terminal "end of list" strip // beneath it is the same fact twice, in two
-          vocabularies (#11696).
-          {query.hasNextPage || query.error ? (
-            <LoadMore
-              hasMore={Boolean(query.hasNextPage)}
-              isLoading={query.isFetchingNextPage}
-              onLoadMore={() => void query.fetchNextPage()}
-              shown={events.length}
-              total={kind ? undefined : eventCount}
-              error={query.error as Error | null}
+        !nearViewport ? (
+          <p className="mg-section-empty">Activity evidence loads as this section approaches.</p>
+        ) : (
+          <>
+            <DataTable
+              rows={events}
+              columns={columns}
+              rowKey={(row) => `${row.block_number}-${row.event_index}`}
+              caption="Account events"
+              link={RouterLink}
+              source="account-event"
+              paginate={false}
+              loading={query.isPending}
+              error={
+                initialError ? (
+                  <ErrorState
+                    error={query.error}
+                    onRetry={() => void query.refetch()}
+                    context="account events"
+                  />
+                ) : undefined
+              }
+              empty="No events match this filter."
+              mobile="cards"
+              dense
+              storageKey="account-events-columns"
             />
-          ) : null}
-        </>
+            {/* A cursor feed has no terminal range to repeat beneath the table. */}
+            {query.hasNextPage || (query.error && events.length > 0) ? (
+              <LoadMore
+                hasMore={Boolean(query.hasNextPage)}
+                isLoading={query.isFetchingNextPage}
+                onLoadMore={() => void query.fetchNextPage()}
+                shown={events.length}
+                total={kind ? undefined : (eventCount ?? undefined)}
+                error={query.error as Error | null}
+              />
+            ) : null}
+          </>
+        )
       }
       footnote={
-        scanCapped
-          ? `More than ${formatNumber(EVENT_SCAN_CAP)} events: the summary above describes the scanned prefix, not the whole account. This feed is complete — page through it.`
-          : `${formatNumber(eventCount)} events · chain-direct`
+        !nearViewport
+          ? "deferred below the fold · account events start only as this section approaches"
+          : query.isPending
+            ? "Loading account events · chain-direct"
+            : initialError
+              ? "Account events are temporarily unavailable · chain-direct"
+              : scanCapped
+                ? `More than ${formatNumber(EVENT_SCAN_CAP)} events: the summary above describes the scanned prefix, not the whole account. This feed is complete — page through it.`
+                : eventCount === null
+                  ? `${formatNumber(events.length)} loaded · account total ${summaryPending ? "loading" : "unavailable"} · chain-direct`
+                  : `${formatNumber(eventCount)} events · chain-direct`
       }
     />
   );

@@ -38,12 +38,21 @@
 // it -- src/extrinsics-cold-tier.ts's header makes exactly this argument for
 // why it refuses to gate on the seam at all. Refusing rows we hold would be the
 // same failure in a new place, so the order is: hot, then cold, then decline.
+//
+// There is one safe early decline: the watermark also carries each table's
+// individual decode ceiling. If the relevant table's published ceiling is
+// below a numeric block, it is impossible for its lakehouse query to answer --
+// not merely unlikely -- so the slow query is skipped. A per-table ceiling is
+// never positive evidence, and absent or stale diagnostics keep the full
+// hot-then-cold path.
 
 import { buildBlockExtrinsics, buildExtrinsic } from "./extrinsics.ts";
 import { buildBlockEvents, formatAccountEvent } from "./account-events.ts";
 import { decodeChainEventArgs } from "./chain-event-args.ts";
 import { resolveBlocksSeam } from "./blocks-cold-tier.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { type ChainFirehoseTopic } from "./chain-firehose-topics.ts";
+import { resolveDecodeWatermark } from "./decode-watermark.ts";
 import { safeBlockNumber } from "./r2-sql.ts";
 import { readStore, type OptionalRowQuerier } from "./read-store.ts";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
@@ -728,6 +737,8 @@ export async function answerBlockDetail<T>(
     hot: (height: number) => Promise<T | null>;
     cold: () => Promise<T | null>;
     isEmpty: (data: T) => boolean;
+    /** The lakehouse table the cold loader reads, when it has a decoder ledger. */
+    coldCoverageTable?: ChainFirehoseTopic;
   },
   /** Which chain this ref belongs to (#8700). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
@@ -738,7 +749,15 @@ export async function answerBlockDetail<T>(
   // rather than leaving each caller to guard its own hot leg is what stops a
   // testnet ref from being resolved against mainnet's D1 by `resolveHotRef`
   // below, which no per-caller guard would have caught.
-  const seam = await resolveBlocksSeam(env, {}, network);
+  // Both promises share decode-watermark.ts's per-network memo. Keeping the
+  // full object here avoids a second R2 read while retaining the seam's one
+  // authoritative route decision.
+  const [seam, watermark] = await Promise.all([
+    resolveBlocksSeam(env, {}, network),
+    network === DEFAULT_CHAIN_NETWORK
+      ? resolveDecodeWatermark(env, {}, network)
+      : Promise.resolve(null),
+  ]);
   const numeric = safeBlockNumber(ref);
   if (network !== DEFAULT_CHAIN_NETWORK) {
     const cold = await ops.cold();
@@ -779,8 +798,22 @@ export async function answerBlockDetail<T>(
     if (hot) return { kind: "answer", data: hot, tier: "hot" };
   }
 
+  const coldCeiling = ops.coldCoverageTable
+    ? (watermark?.perTable?.[ops.coldCoverageTable] ?? null)
+    : null;
+  if (coldCeiling !== null && resolved.height > coldCeiling) {
+    return {
+      kind: "gap",
+      block: resolved.height,
+      seam,
+      coverage: await chainDetailCoverage(env),
+    };
+  }
+
   // Above the seam and not covered. The lakehouse can still hold it (the
-  // watermark is a MIN across four tables), so ask before declining.
+  // watermark is a MIN across four tables), so ask before declining. The
+  // branch above is the narrow exception: that table's own published ceiling
+  // proves the query cannot find rows for this block.
   const cold = await ops.cold();
   if (cold && !ops.isEmpty(cold))
     return { kind: "answer", data: cold, tier: "cold" };
@@ -826,6 +859,7 @@ export async function answerExtrinsicDetail(
     hot: () => loadExtrinsicHotTier(env, ref),
     cold,
     isEmpty: (data) => !data.extrinsic,
+    coldCoverageTable: "extrinsics",
   });
 }
 

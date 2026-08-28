@@ -203,13 +203,55 @@ describe("healthFacts", () => {
         fmt,
       ).map((f) => [f.key, f.value]),
     ).toEqual([
-      ["probed", "621"],
-      ["ok", "523"],
-      ["degraded", "91"],
       ["failed", "7"],
+      ["degraded", "91"],
+      ["ok", "523"],
+      ["probed", "621"],
       ["incidents", "4"],
       ["self", "operational"],
     ]);
+    expect(
+      healthFacts(
+        { surface_count: 621, status_counts: { ok: 523, degraded: 91, failed: 7 } },
+        0,
+        "operational",
+        fmt,
+      ).slice(0, 4),
+    ).toMatchObject([
+      { key: "failed", tone: "bad" },
+      { key: "degraded", tone: "warn" },
+      { key: "ok", tone: "good" },
+      { key: "probed" },
+    ]);
+    expect(
+      healthFacts(
+        { surface_count: 621, status_counts: { ok: 523, degraded: 91, failed: 7 } },
+        4,
+        "operational",
+        fmt,
+      ).find((fact) => fact.key === "self"),
+    ).toMatchObject({ kind: "text" });
+  });
+
+  it("does not turn a pending incident read into a zero", () => {
+    expect(
+      healthFacts({ status_counts: { failed: 7 } }, null, null, fmt).find(
+        (fact) => fact.key === "incidents",
+      ),
+    ).toMatchObject({ label: "Open records", value: "—", loading: true });
+  });
+
+  it("keeps a failed incident read unknown without presenting it as pending", () => {
+    expect(
+      healthFacts({ status_counts: { failed: 7 } }, null, null, fmt, "error").find(
+        (fact) => fact.key === "incidents",
+      ),
+    ).toMatchObject({ label: "Open records", value: "—" });
+    expect(
+      healthFacts({ status_counts: { failed: 7 } }, null, null, fmt, "error").find(
+        (fact) => fact.key === "incidents",
+      )?.loading,
+    ).toBeUndefined();
   });
 
   it("keeps a genuine zero, and reports zero open incidents rather than omitting it", () => {

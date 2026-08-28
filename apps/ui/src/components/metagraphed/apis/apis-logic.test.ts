@@ -5,6 +5,7 @@ import {
   catalogFacts,
   driftRails,
   facet,
+  interfaceCoverage,
   kindSegments,
   schemaFacts,
   schemaRows,
@@ -53,6 +54,31 @@ describe("kindSegments", () => {
   });
 });
 
+describe("interfaceCoverage", () => {
+  it("uses the published per-subnet aggregate, never a non-additive composition", () => {
+    expect(
+      interfaceCoverage(
+        {
+          docs: { present: 129 },
+          "subnet-api": { present: 120 },
+          community: { present: 93 },
+          invalid: { present: Number.NaN },
+        },
+        129,
+      ),
+    ).toEqual([
+      { key: "docs", label: "docs", value: 129, share: 1 },
+      { key: "subnet-api", label: "subnet-api", value: 120, share: 120 / 129 },
+    ]);
+  });
+
+  it("keeps a published count when the total subnet count is unavailable", () => {
+    expect(interfaceCoverage({ docs: { present: 9 } }, null)).toEqual([
+      { key: "docs", label: "docs", value: 9, share: null },
+    ]);
+  });
+});
+
 describe("facet", () => {
   it("is the sorted distinct set, trimmed and non-empty", () => {
     expect(facet(surfaces, (s) => s.kind)).toEqual(["docs", "openapi"]);
@@ -80,7 +106,7 @@ describe("catalogFacts", () => {
     expect(facts.map((f) => f.label)).toEqual([
       "Surfaces",
       "Across subnets",
-      "Kinds",
+      "Coverage dimensions",
       "Probed",
       "First-party",
     ]);

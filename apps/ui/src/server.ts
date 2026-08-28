@@ -105,6 +105,8 @@ export const SEO_DEFAULT_TAGS =
 const SITEMAP_STATIC_PATHS = [
   "/",
   "/subnets",
+  "/validators",
+  "/accounts",
   "/apis/providers",
   "/apis",
   "/apis/endpoints",
@@ -122,6 +124,11 @@ const SITEMAP_STATIC_PATHS = [
   "/apis/schemas",
   "/contribute",
   "/about",
+  "/agents",
+  "/graphql/explorer",
+  "/settings",
+  "/privacy",
+  "/terms",
 ];
 
 /**

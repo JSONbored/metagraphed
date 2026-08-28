@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
-import { z } from "zod";
+import {
+  defineSearchSchema,
+  stripDefaultSearchParams,
+  stringSearch,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { ComparePage } from "./-compare-page";
 
 /**
@@ -13,12 +17,12 @@ import { ComparePage } from "./-compare-page";
  * arrays inside `validateSearch` would make TanStack serialise the ARRAY back
  * out (`?subnets=%5B19%2C1%5D`) and 307 every shared link to that shape.
  */
-export const compareSearchSchema = z.object({
-  subnets: z.string().catch("").default(""),
-  validators: z.string().catch("").default(""),
+export const compareSearchSchema = defineSearchSchema({
+  subnets: stringSearch(),
+  validators: stringSearch(),
 });
 
-export type CompareSearch = z.infer<typeof compareSearchSchema>;
+export type CompareSearch = SearchOutput<typeof compareSearchSchema>;
 
 /** `"19,1"` → `[19, 1]`, at most three, invalid entries dropped. */
 export function parseNetuids(value: string): number[] {

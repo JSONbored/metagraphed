@@ -12,6 +12,47 @@ import { formatPct } from "@/lib/metagraphed/format";
 export const PAGE_SIZE = 50;
 export const PAGE_SIZES = [25, 50, 100] as const;
 
+/** The URL state the Blocks directory sends to its conjunctive API filter set. */
+export interface BlocksFeedSearch {
+  limit: number;
+  offset: number;
+  author: string;
+  spec_version: string;
+  block_start: string;
+  block_end: string;
+  min_extrinsics: string;
+  min_events: string;
+}
+
+const BLOCK_FILTER_KEYS = [
+  "author",
+  "spec_version",
+  "block_start",
+  "block_end",
+  "min_extrinsics",
+  "min_events",
+] as const;
+
+/**
+ * The Blocks route accepts every key in the public /api/v1/blocks conjunctive
+ * filter set. Keep that handoff in one pure function: dropping a URL filter
+ * makes a shared technical view look filtered while returning the newest
+ * unfiltered rows instead.
+ */
+export function blockQueryParams(search: BlocksFeedSearch): Record<string, string | number> {
+  const params: Record<string, string | number> = { limit: search.limit, offset: search.offset };
+  for (const key of BLOCK_FILTER_KEYS) {
+    const value = search[key].trim();
+    if (value) params[key] = value;
+  }
+  return params;
+}
+
+/** Whether the URL narrows the Blocks feed beyond its pagination window. */
+export function hasBlockFilters(search: BlocksFeedSearch): boolean {
+  return BLOCK_FILTER_KEYS.some((key) => Boolean(search[key].trim()));
+}
+
 /**
  * The chain's target block time. Not read from a hyperparameter: the runtime
  * does not publish one, and /api/v1/blocks/summary's own `block_time.mean_ms`
@@ -108,15 +149,11 @@ export function pageFacet<Row>(
 }
 
 /**
- * The offset pager's `total`, for a feed that publishes no count.
- *
- * /api/v1/blocks and /api/v1/extrinsics return newest-first pages and no
- * total, so the honest bound is everything read so far plus one more page
- * WHILE a full page says there may be one. A short page settles it exactly.
- * Reporting a larger guess would put a Next button in front of nothing.
+ * `/blocks` and `/extrinsics` publish pages, not a collection total. A full
+ * page supports one fact only: that asking for the following page is useful.
  */
-export function boundedTotal(offset: number, rowCount: number, limit: number): number {
-  return offset + rowCount + (rowCount === limit ? limit : 0);
+export function hasNextPage(rowCount: number, limit: number): boolean {
+  return rowCount === limit;
 }
 
 /** 1-based page number for an offset pager. */
@@ -128,6 +165,8 @@ export interface Fact {
   key: string;
   label: string;
   value: string;
+  /** A secondary source is still arriving; preserve the hero strip without inventing a reading. */
+  loading?: boolean;
 }
 
 /**
@@ -150,10 +189,19 @@ export function blocksFacts(
     | undefined,
   head: number | null,
   fmt: { count: (n: number) => string; seconds: (s: number) => string },
+  loading = false,
 ): Fact[] {
   const facts: Fact[] = [];
   const at = head ?? summary?.last_block ?? null;
   if (at != null) facts.push({ key: "head", label: "Head block", value: `#${fmt.count(at)}` });
+  if (loading) {
+    facts.push(
+      { key: "cadence", label: "Block time", value: "—", loading: true },
+      { key: "throughput", label: "Extrinsics per block", value: "—", loading: true },
+      { key: "authors", label: "Nakamoto", value: "—", loading: true },
+    );
+    return facts;
+  }
   const mean = summary?.block_time?.mean_ms;
   if (typeof mean === "number" && mean > 0) {
     facts.push({ key: "cadence", label: "Block time", value: fmt.seconds(mean / 1000) });
@@ -222,7 +270,15 @@ export function eventsFacts(
     | null
     | undefined,
   fmt: { count: (n: number) => string },
+  loading = false,
 ): Fact[] {
+  if (loading) {
+    return [
+      { key: "events", label: "Events in sample", value: "—", loading: true },
+      { key: "top", label: "Most frequent", value: "—", loading: true },
+      { key: "kinds", label: "Distinct kinds", value: "—", loading: true },
+    ];
+  }
   const activity = stats?.activity ?? [];
   if (activity.length === 0) return [];
   const total = activity.reduce((sum, row) => sum + (row.count ?? 0), 0);

@@ -1,5 +1,6 @@
 import { useMemo, useRef, type CSSProperties } from "react";
 import { classNames } from "@/lib/format";
+import { Skeleton } from "../skeleton";
 import { useActiveEntity, useEntityMark } from "../interaction/active-entity";
 import { ChartTooltip } from "../interaction/chart-tooltip";
 import { markAriaLabel, momentumAriaLabel } from "./chart-aria";
@@ -15,8 +16,7 @@ import {
 } from "./line-geometry";
 
 /**
- * The single-series history chart (#11608), built to the measured grammar of
- * opencode.ai/data's model "momentum" plot: the full history as a muted
+ * The single-series history chart (#11608): the full history as a muted
  * 1.5px line, the selected window re-drawn over it in the accent, three 6px
  * square markers (history start, window start, window end), a delta chip
  * hanging off the window end, a months row beneath -- and nothing else: no
@@ -58,6 +58,8 @@ export interface LineWithWindowProps {
   /** Accessible name for the marker rule; required whenever `marker` is set. */
   markerLabel?: string;
   className?: string;
+  /** Reserve the summary and plot geometry until a time-series source answers. */
+  loading?: boolean;
 }
 
 const defaultFormat = (v: number) => String(v);
@@ -90,6 +92,7 @@ export function LineWithWindow({
   marker,
   markerLabel,
   className,
+  loading = false,
 }: LineWithWindowProps) {
   const placed = useMemo(() => placePoints(points), [points]);
   const inside = useMemo(() => windowPoints(placed, window), [placed, window]);
@@ -101,6 +104,17 @@ export function LineWithWindow({
   const activePoint = active
     ? placed.find((p) => keyFor(p) === active.key)
     : undefined;
+
+  if (loading) {
+    return (
+      <LineSkeleton
+        id={id}
+        ariaLabel={ariaLabel}
+        compact={compact}
+        className={className}
+      />
+    );
+  }
 
   const markerPoint =
     typeof marker === "number" ? placed.find((p) => p.t === marker) : undefined;
@@ -280,6 +294,41 @@ export function LineWithWindow({
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+/** The real chart's summary, plot, and cadence row without invented values. */
+function LineSkeleton({
+  id,
+  ariaLabel,
+  compact,
+  className,
+}: Pick<LineWithWindowProps, "id" | "ariaLabel" | "compact" | "className">) {
+  return (
+    <div
+      id={id}
+      className={classNames("mg-line", className)}
+      data-mg-line=""
+      data-compact={compact ? "true" : undefined}
+      data-loading="true"
+    >
+      {compact ? null : (
+        <div className="mg-line-summary" aria-hidden="true">
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-3 w-52 max-w-full" />
+        </div>
+      )}
+      <div
+        className="mg-line-plot"
+        role="group"
+        aria-label={ariaLabel}
+        aria-busy="true"
+      >
+        <span className="sr-only">Loading {ariaLabel}</span>
+        <Skeleton className="h-full w-full" />
+      </div>
+      {compact ? null : <Skeleton className="h-3 w-full" aria-hidden="true" />}
     </div>
   );
 }

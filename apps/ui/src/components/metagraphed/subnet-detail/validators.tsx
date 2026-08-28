@@ -10,6 +10,8 @@ import {
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { formatNumber, formatPct } from "@/lib/metagraphed/format";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { ErrorState } from "@/components/metagraphed/states";
 import { taoCompact, scoreStr } from "@/components/metagraphed/neuron-format";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 
@@ -75,7 +77,13 @@ const COLUMNS: DataTableColumn<MetagraphNeuron>[] = [
  */
 export function ValidatorsSection({ netuid }: { netuid: number }) {
   const [expanded, setExpanded] = useState(false);
-  const { data, isPending } = useQuery({ ...subnetValidatorsQuery(netuid), retry: 0 });
+  const { data, isPending, isError, error, refetch } = useQuery({
+    ...subnetValidatorsQuery(netuid),
+    retry: 0,
+  });
+  const hydrated = useHydrated();
+  const loading = !hydrated || isPending;
+  const showLoading = hydrated && isPending;
   const validators = data?.data.validators ?? [];
 
   const items: RankedRailItem[] = [...validators]
@@ -100,7 +108,24 @@ export function ValidatorsSection({ netuid }: { netuid: number }) {
       name="Validators"
       question="Who validates here and what they take."
       visual={
-        items.length > 0 ? (
+        showLoading ? (
+          <RankedRails
+            items={[]}
+            formatValue={(v) => `${taoCompact(v)} τ`}
+            scale="sqrt"
+            columns={{ value: "Stake", name: "Validator", track: "Share of validator stake" }}
+            ariaLabel={`Subnet ${netuid} validators by stake`}
+            source={`sn-${netuid}-validator`}
+            loading
+            loadingRows={10}
+          />
+        ) : isError ? (
+          <ErrorState
+            error={error}
+            onRetry={() => void refetch()}
+            context="subnet validator records"
+          />
+        ) : items.length > 0 ? (
           <RankedRails
             items={items}
             formatValue={(v) => `${taoCompact(v)} τ`}
@@ -112,7 +137,11 @@ export function ValidatorsSection({ netuid }: { netuid: number }) {
         ) : null
       }
       footnote={
-        validators.length > 10 && !expanded ? (
+        loading ? (
+          "Loading validator records · chain-direct"
+        ) : isError ? (
+          "chain-direct · retry the affected record above"
+        ) : validators.length > 10 && !expanded ? (
           <button type="button" className="mg-section-more" onClick={() => setExpanded(true)}>
             Show all {formatNumber(validators.length)} validators
           </button>

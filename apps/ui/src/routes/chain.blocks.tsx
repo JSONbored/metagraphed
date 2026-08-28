@@ -1,21 +1,26 @@
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
+import {
+  defineSearchSchema,
+  numberSearch,
+  stripDefaultSearchParams,
+  stringSearch,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
 import { BlocksPage } from "./-chain-stream-page";
 
-const blocksSearchSchema = z.object({
-  limit: z.number().int().min(1).max(100).catch(50).default(50),
-  offset: z.number().int().min(0).catch(0).default(0),
+const blocksSearchSchema = defineSearchSchema({
+  limit: numberSearch(50, { integer: true, min: 1, max: 100 }),
+  offset: numberSearch(0, { integer: true, min: 0 }),
   // Server-side filters wired to the /api/v1/blocks conjunctive set.
-  author: z.string().catch("").default(""),
-  spec_version: z.string().catch("").default(""),
-  block_start: z.string().catch("").default(""),
-  block_end: z.string().catch("").default(""),
-  min_extrinsics: z.string().catch("").default(""),
-  min_events: z.string().catch("").default(""),
+  author: stringSearch(),
+  spec_version: stringSearch(),
+  block_start: stringSearch(),
+  block_end: stringSearch(),
+  min_extrinsics: stringSearch(),
+  min_events: stringSearch(),
 });
 
-export type BlocksSearch = z.infer<typeof blocksSearchSchema>;
+export type BlocksSearch = SearchOutput<typeof blocksSearchSchema>;
 
 export const Route = createFileRoute("/chain/blocks")({
   validateSearch: blocksSearchSchema,

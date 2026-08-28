@@ -5897,6 +5897,7 @@ const rootValue = {
                   chainNetworkFromChainName(network),
                 ),
               isEmpty: isEmptyExtrinsicPayload,
+              coldCoverageTable: "extrinsics",
             },
             // Off mainnet `answerBlockDetail` skips the hot tier entirely --
             // blocks_head and the whole hot path are written by the mainnet
@@ -5961,6 +5962,7 @@ const rootValue = {
                   chainNetworkFromChainName(network),
                 ),
               isEmpty: isEmptyEventPayload,
+              coldCoverageTable: "account_events",
             },
             // Off mainnet `answerBlockDetail` skips the hot tier entirely --
             // blocks_head and the whole hot path are written by the mainnet

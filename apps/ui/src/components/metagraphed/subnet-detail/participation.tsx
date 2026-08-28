@@ -6,6 +6,9 @@ import {
   subnetRegistrationsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatPct, formatTao } from "@/lib/metagraphed/format";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { useNearViewport } from "@/hooks/use-near-viewport";
+import { ErrorState } from "@/components/metagraphed/states";
 import type { SubnetEconomics } from "@/lib/metagraphed/types";
 
 /**
@@ -19,13 +22,29 @@ import type { SubnetEconomics } from "@/lib/metagraphed/types";
 export function ParticipationSection({
   netuid,
   economics,
+  economicsPending = false,
 }: {
   netuid: number;
   economics: SubnetEconomics | null;
+  economicsPending?: boolean;
 }) {
-  const cost = useQuery({ ...subnetCostToParticipateQuery(netuid), retry: 0 });
-  const registrations = useQuery({ ...subnetRegistrationsQuery(netuid, "30d"), retry: 0 });
-  const deregistrations = useQuery({ ...subnetDeregistrationsQuery(netuid, "30d"), retry: 0 });
+  const { ref, nearViewport } = useNearViewport();
+  const cost = useQuery({
+    ...subnetCostToParticipateQuery(netuid),
+    enabled: nearViewport,
+    retry: 0,
+  });
+  const registrations = useQuery({
+    ...subnetRegistrationsQuery(netuid, "30d"),
+    enabled: nearViewport,
+    retry: 0,
+  });
+  const deregistrations = useQuery({
+    ...subnetDeregistrationsQuery(netuid, "30d"),
+    enabled: nearViewport,
+    retry: 0,
+  });
+  const hydrated = useHydrated();
 
   const entry = cost.data?.data.entry_cost;
   const earnings = cost.data?.data.earnings;
@@ -39,6 +58,7 @@ export function ParticipationSection({
     {
       label: "Registration cost",
       value: entry?.registration_cost_tao != null ? formatTao(entry.registration_cost_tao) : "—",
+      loading: cost.isPending,
     },
     {
       label: "Permit floor",
@@ -46,6 +66,7 @@ export function ParticipationSection({
         entry?.validator_permit_floor_tao != null
           ? formatTao(entry.validator_permit_floor_tao)
           : "—",
+      loading: cost.isPending,
     },
     {
       label: "Earning floor",
@@ -53,14 +74,17 @@ export function ParticipationSection({
         entry?.validator_earning_floor_tao != null
           ? formatTao(entry.validator_earning_floor_tao)
           : "—",
+      loading: cost.isPending,
     },
     {
       label: "Slots",
       value: maxUids != null ? `${formatNumber(used)} / ${formatNumber(maxUids)}` : "—",
+      loading: economicsPending,
     },
     {
       label: "Registrations 30d",
       value: formatNumber(registrations.data?.data.registrations ?? null),
+      loading: registrations.isPending,
     },
     {
       label: "Miners earning nothing",
@@ -68,6 +92,7 @@ export function ParticipationSection({
         typeof zeroPct === "number"
           ? `${formatPct(zeroPct, 0)}`
           : formatNumber(deregistrations.data?.data.deregistrations ?? null),
+      loading: cost.isPending || (typeof zeroPct !== "number" && deregistrations.isPending),
       delta:
         typeof zeroPct === "number" && zeroPct > 0.5
           ? { text: "most", tone: "bad" }
@@ -94,15 +119,51 @@ export function ParticipationSection({
       value: deregistrations.data?.data.deregistrations ?? 0,
     },
   ].filter((row) => row.value > 0);
+  const churnPending = registrations.isPending || deregistrations.isPending;
+  const churnLoading = nearViewport && (!hydrated || churnPending);
+  const showChurnLoading = nearViewport && hydrated && churnPending;
+  const churnUnavailable = registrations.isError || deregistrations.isError;
+  const churnError = registrations.error ?? deregistrations.error;
 
   return (
     <AnalyticsSection
       id="participation"
       name="Participation"
       question="What it costs to register and what a slot earns."
-      visual={<FactStrip cells={cells} variant="grid" />}
+      visualRef={ref}
+      visual={
+        !nearViewport ? (
+          <p className="mg-section-empty">
+            Participation evidence loads as this section approaches.
+          </p>
+        ) : cost.isError ? (
+          <ErrorState
+            error={cost.error}
+            onRetry={() => void cost.refetch()}
+            context="subnet participation floors"
+          />
+        ) : (
+          <FactStrip cells={cells} variant="grid" />
+        )
+      }
       legend={
-        churn.length > 0 ? (
+        showChurnLoading ? (
+          <RankedRails
+            items={[]}
+            formatValue={(v) => formatNumber(v)}
+            columns={{ value: "Count", name: "Slot movement", track: "Share of movement" }}
+            ariaLabel={`Subnet ${netuid} slot movement over 30 days`}
+            source={`sn-${netuid}-churn`}
+            loading
+            loadingRows={3}
+          />
+        ) : churnUnavailable ? (
+          <ErrorState
+            error={churnError}
+            onRetry={() => void Promise.all([registrations.refetch(), deregistrations.refetch()])}
+            context="30-day registration activity"
+          />
+        ) : churn.length > 0 ? (
           <RankedRails
             items={churn}
             formatValue={(v) => formatNumber(v)}
@@ -112,7 +173,17 @@ export function ParticipationSection({
           />
         ) : null
       }
-      footnote="30d · a declared minimum is the floor to run, not the spec to earn"
+      footnote={
+        !nearViewport
+          ? "deferred below the fold · avoids participation and churn requests before they are useful"
+          : cost.isError
+            ? "chain-direct · retry the affected record above"
+            : churnLoading
+              ? "Loading 30d registration activity · chain-direct"
+              : churnUnavailable
+                ? "chain-direct · retry the affected record above"
+                : "30d · a declared minimum is the floor to run, not the spec to earn"
+      }
     />
   );
 }

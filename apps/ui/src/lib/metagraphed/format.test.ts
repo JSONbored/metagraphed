@@ -14,6 +14,7 @@ import {
   formatSubnetAge,
   formatTao,
   formatUsdApprox,
+  formatUsd,
   humaniseSeconds,
   isStaleFreshness,
   isUsableTimestamp,
@@ -224,6 +225,22 @@ describe("formatUsdApprox", () => {
     expect(formatUsdApprox(1, 1.234)).toBe("$1.23");
     expect(formatUsdApprox(0.01, 5)).toBe("$0.05");
     expect(formatUsdApprox(0.001, 1)).toBe("$0.001");
+  });
+});
+
+describe("formatUsd", () => {
+  it("keeps an observed dollar value distinct from a TAO approximation", () => {
+    expect(formatUsd(null)).toBe("—");
+    expect(formatUsd(Number.NaN)).toBe("—");
+    expect(formatUsd(0)).toBe("$0");
+    expect(formatUsd(2685.673993)).toBe("$2,685.67");
+    expect(formatUsd(1_300_000)).toBe("$1.30M");
+  });
+
+  it("preserves useful sub-dollar precision and a negative sign", () => {
+    expect(formatUsd(0.0125)).toBe("$0.0125");
+    expect(formatUsd(-15.5)).toBe("−$15.5");
+    expect(formatUsd(undefined, "unavailable")).toBe("unavailable");
   });
 });
 

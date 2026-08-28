@@ -449,8 +449,10 @@ export interface AgentResources {
   published_at?: string | null;
   copyable_agent: { title: string; description: string; url: string };
   mcp: {
+    core_endpoint?: string;
     endpoint: string;
     install: string;
+    recommended_endpoint?: string;
     server_card: string;
     transport: string;
     tools: { name: string; title?: string }[];
@@ -1945,6 +1947,95 @@ export interface SubnetRecycled {
   queried_at: string | null;
 }
 
+/** Windows the revenue contracts can truthfully aggregate. */
+export type RevenueWindow = "1d" | "7d" | "30d";
+
+/** Evidence class published beside every external-revenue figure. */
+export type RevenueProvenance =
+  | "chain-verified"
+  | "probe-derived"
+  | "operator-attested"
+  | "third-party-reported"
+  | "proxy-only"
+  | "none";
+
+/** A TAO denominator and, when the index could price it, its USD leg. */
+export interface RevenueBasis {
+  tao: number | null;
+  usd: number | null;
+}
+
+/** The chain-measured emission baseline used for a subnet's revenue comparison. */
+export interface RevenueEmission extends RevenueBasis {
+  basis: "tao_total" | null;
+  alternates: {
+    alpha_out_priced: RevenueBasis | null;
+    owner_take: RevenueBasis | null;
+  };
+}
+
+/** One published source considered for a subnet's external-revenue total. */
+export interface RevenueSource {
+  surface_id: string;
+  provenance: RevenueProvenance | null;
+  currency: string | null;
+  grain: string | null;
+  supersedes?: string[];
+  amount_usd: number | null;
+  /** Null is malformed/unavailable input, not an excluded source. */
+  contributes: boolean | null;
+  excluded_reason: string | null;
+  periods_observed?: number;
+  periods_expected?: number;
+  response_hash?: string | null;
+  observed_at?: string | null;
+}
+
+/** One independently evaluated invariant published with a revenue response. */
+export interface RevenueVerificationCheck {
+  name: string;
+  ok: boolean | null;
+  detail: string | null;
+}
+
+/** External revenue against the TAO directed into one subnet over one window. */
+export interface SubnetRevenue {
+  netuid: number;
+  window_days: number | null;
+  emission: RevenueEmission;
+  /** Null means not observed; a real zero is intentionally preserved. */
+  revenue_usd: number | null;
+  provenance: RevenueProvenance | null;
+  searched_at: string | null;
+  /** Null means not observed, never an implicit 0%. */
+  coverage_ratio: number | null;
+  /** Null when revenue is absent or zero, because the division is undefined. */
+  subsidy_multiple: number | null;
+  sources: RevenueSource[];
+  verification: {
+    verified: boolean | null;
+    checks: RevenueVerificationCheck[];
+  };
+}
+
+/** /api/v1/subnets/{netuid}/revenue, normalized for a single subnet page. */
+export interface SubnetRevenueArtifact {
+  schema_version: number;
+  generated_at: string | null;
+  netuid: number;
+  revenue: SubnetRevenue;
+}
+
+/** /api/v1/chain/revenue-coverage, including unobserved subnets by design. */
+export interface ChainRevenueCoverage {
+  schema_version: number;
+  generated_at: string | null;
+  window_days: number | null;
+  observed_count: number | null;
+  subnet_count: number | null;
+  subnets: SubnetRevenue[];
+}
+
 /** Idle stake for one subnet (#6789 backend, #6994 UI): stake delegated to a
  *  hotkey currently earning zero dividends. idle_stake_tao is null only on a
  *  cold/absent snapshot; a real 0 means no idle stake. */
@@ -2730,15 +2821,31 @@ export interface GlobalValidator {
   subnets: GlobalValidatorSubnet[];
 }
 
+/** Minimal validator shape used to group the network-wide operator directory. */
+export interface OperatorValidator {
+  hotkey: string;
+  coldkey: string | null;
+  coldkey_identity: Pick<ColdkeyIdentity, "has_identity" | "name"> | null;
+  subnet_count: number;
+  uid_count: number;
+  take: number | null;
+  total_stake_tao: number;
+  total_emission_tao: number;
+  nominator_count: number | null;
+  apy_estimate: number | null;
+  stake_dominance: number | null;
+  subnets: GlobalValidatorSubnet[];
+}
+
 /** Network-wide validator leaderboard from GET /api/v1/validators. */
-export interface GlobalValidators {
+export interface GlobalValidators<Validator = GlobalValidator> {
   schema_version?: number;
   sort: GlobalValidatorSort;
   limit: number;
   validator_count: number;
   captured_at?: string;
   block_number?: number;
-  validators: GlobalValidator[];
+  validators: Validator[];
 }
 
 /**

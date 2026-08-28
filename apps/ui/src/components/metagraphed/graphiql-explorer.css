@@ -35,8 +35,54 @@ body.graphiql-dark [data-radix-popper-content-wrapper] {
   --font-family-mono: var(--font-mono);
 }
 
+/* GraphiQL ships its own 12/13/15/18/22/29px scale, four radii and a light
+   theme shadow. Map that embedded product onto the same compact editorial
+   grammar as the page around it instead of letting the iframe-like surface
+   look like a second design system. */
+body.graphiql-light .graphiql-container,
+body.graphiql-light .CodeMirror-info,
+body.graphiql-light .CodeMirror-lint-tooltip,
+body.graphiql-light .graphiql-dialog,
+body.graphiql-light .graphiql-dialog-overlay,
+body.graphiql-light .graphiql-tooltip,
+body.graphiql-light [data-radix-popper-content-wrapper],
+body.graphiql-dark .graphiql-container,
+body.graphiql-dark .CodeMirror-info,
+body.graphiql-dark .CodeMirror-lint-tooltip,
+body.graphiql-dark .graphiql-dialog,
+body.graphiql-dark .graphiql-dialog-overlay,
+body.graphiql-dark .graphiql-tooltip,
+body.graphiql-dark [data-radix-popper-content-wrapper] {
+  --font-size-hint: calc(11rem / 16);
+  --font-size-caption: calc(11rem / 16);
+  --font-size-inline-code: calc(13rem / 16);
+  --font-size-body: calc(13rem / 16);
+  --font-size-h4: 1rem;
+  --font-size-h3: calc(28rem / 16);
+  --font-size-h2: calc(40rem / 16);
+  --border-radius-2: var(--radius);
+  --border-radius-4: var(--radius);
+  --border-radius-8: var(--radius);
+  --border-radius-12: var(--radius);
+  --popover-box-shadow: none;
+}
+
 .mg-graphiql-frame .graphiql-container {
   border-radius: inherit;
+}
+
+/* Several split-pane selectors use partial-corner declarations, so replacing
+   GraphiQL's radius variables alone still computes compound 4px/0px values.
+   These are one visual frame here; give its visible layers the one site radius
+   and remove the remaining light-theme editor lift. */
+.mg-graphiql-frame .graphiql-container .graphiql-sessions,
+.mg-graphiql-frame .graphiql-container .graphiql-tabs,
+.mg-graphiql-frame .graphiql-container .graphiql-tab,
+.mg-graphiql-frame .graphiql-container .graphiql-un-styled,
+.mg-graphiql-frame .graphiql-container .graphiql-editors,
+.mg-graphiql-frame .graphiql-container .graphiql-execute-button {
+  border-radius: var(--radius);
+  box-shadow: none;
 }
 
 /*
@@ -45,21 +91,22 @@ body.graphiql-dark [data-radix-popper-content-wrapper] {
  * behavior — at mobile/tablet widths they eat a disproportionate share of the
  * frame. Narrow them progressively.
  *
- * The query/response split (a JS-driven flex-grow ratio, see
- * graphiql-explorer-body.tsx) is left at its default below 1024px: flex
- * items default to min-width: auto, so CodeMirror's unwrapped query content
- * already keeps the editor pane at a readable width and naturally collapses
- * the (empty, until a query runs) response pane on narrow viewports --
- * forcing min-width: 0 there to let a wider ratio apply instead just clips
- * the query text. At >=1024px there's enough absolute width that CodeMirror
- * never needs the min-width floor, so it's safe to let the (wider) seeded
- * ratio govern and reclaim the otherwise-empty response pane.
+ * The query/response split is JS-driven (see graphiql-explorer-body.tsx).
+ * Every flex layer must be allowed to shrink inside the page frame; without
+ * these floors GraphiQL's editor internals can establish a wider intrinsic
+ * width than the viewport. On phones a side-by-side split leaves the response
+ * pane only a few pixels wide, so the two workspaces stack and share the
+ * available height instead.
  */
-@media (min-width: 1024px) {
-  .mg-graphiql-frame .graphiql-editors,
-  .mg-graphiql-frame .graphiql-response {
-    min-width: 0;
-  }
+.mg-graphiql-frame #graphiql-session,
+.mg-graphiql-frame .graphiql-editors,
+.mg-graphiql-frame .graphiql-response,
+.mg-graphiql-frame .graphiql-query-editor,
+.mg-graphiql-frame .graphiql-editor-tool,
+.mg-graphiql-frame .graphiql-plugin,
+.mg-graphiql-frame .CodeMirror {
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (max-width: 1023px) {
@@ -78,6 +125,22 @@ body.graphiql-dark [data-radix-popper-content-wrapper] {
   /* Reclaim session-header space on narrow viewports; the page's own
      "Explorer" heading already identifies the widget. */
   .mg-graphiql-frame .graphiql-logo {
+    display: none;
+  }
+
+  .mg-graphiql-frame #graphiql-session {
+    flex-direction: column;
+  }
+
+  .mg-graphiql-frame .graphiql-editors,
+  .mg-graphiql-frame .graphiql-response {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+  }
+
+  /* GraphiQL's divider only implements horizontal resizing. The panes share
+     height evenly on phones, so the inactive horizontal handle is removed. */
+  .mg-graphiql-frame .graphiql-horizontal-drag-bar {
     display: none;
   }
 }

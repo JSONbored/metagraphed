@@ -141,6 +141,8 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-text: var(--accent-text);
+  --color-agent: var(--agent);
+  --color-agent-surface: var(--agent-surface);
   --color-brand: var(--brand);
   --color-focus: var(--focus);
   --color-destructive: var(--destructive);
@@ -218,6 +220,12 @@
   --accent-foreground: #ffffff;
   --focus: #0f8f66;
 
+  /* Agent-facing product emphasis. Violet keeps MCP distinct from the green
+     live/success language while remaining part of the analytical palette's
+     cool side. It is a semantic interface token, never a chart series. */
+  --agent: #6946d7;
+  --agent-surface: color-mix(in oklab, var(--agent) 8%, transparent);
+
   --good: #1a8f4a;
   --warn: #a86a00;
   --bad: #b83239;
@@ -275,6 +283,9 @@
   --chart-9: #d79a00;
   --chart-10: #e06e00;
   --chart-11: #d9484c;
+  /* A rolled-up remainder is not a negative health state. Keep it visibly
+     separate from named categorical series without borrowing the alert red. */
+  --chart-residual: #6f7b7d;
   --chart-idle: #e5e5e5; /* the recoloured non-active series */
 
   /* Third-party brand mark (ClaudeIcon) -- fixed regardless of theme. */
@@ -300,6 +311,9 @@
   --accent-text: #3ddc97;
   --accent-foreground: #161616;
   --focus: #3ddc97;
+
+  --agent: #b49cff;
+  --agent-surface: color-mix(in oklab, var(--agent) 10%, transparent);
 
   --good: #3fc66e;
   --warn: #e9b84a;
@@ -357,6 +371,7 @@
   --chart-9: #ffb900;
   --chart-10: #ff8904;
   --chart-11: #ff6467;
+  --chart-residual: #718082;
   --chart-idle: #303030;
 }
 
@@ -372,8 +387,11 @@
   --mg-space-2xl: 3rem; /* 48 */
   --mg-space-3xl: 4rem; /* 64 */
 
-  /* Section rhythm (opencode-measured): 80×40 desktop, 64×32 tablet, 48×24
-     mobile; 40px under a section heading; 28px rank rows; 44px table rows. */
+  /* Section rhythm: 80×40 desktop, 64×32 compact desktop,
+     52×24 tablet and 40×0 inside the shell's 16px phone gutter; 40px under a
+     section heading; 28px rank rows; 44px table rows. A small screen must not
+     inherit both the shell gutter and a second inner gutter before it can show
+     any data. */
   --mg-section-y: 80px;
   --mg-section-x: 40px;
   --mg-heading-gap: 40px;
@@ -417,10 +435,16 @@
     --mg-section-x: 32px;
   }
 }
+@media (max-width: 1023px) {
+  :root {
+    --mg-section-y: 52px;
+    --mg-section-x: 24px;
+  }
+}
 @media (max-width: 40rem) {
   :root {
-    --mg-section-y: 48px;
-    --mg-section-x: 24px;
+    --mg-section-y: 40px;
+    --mg-section-x: 0px;
   }
 }
 
@@ -456,7 +480,7 @@
     scroll-behavior: smooth;
   }
   /* Table headers are the one place uppercase + tracking exist: 10px, 600,
-     muted, 0.05em -- the blockmachine header discipline on v2 tokens. */
+     muted, 0.05em -- a compact data-header treatment on v2 tokens. */
   thead th {
     font-size: 10px;
     line-height: 1.4;
@@ -758,8 +782,50 @@
     z-index: var(--mg-z-sticky);
     background: var(--canvas);
     border-bottom: 1px solid var(--rule);
-    padding: 0 var(--mg-section-x);
+    overflow: hidden;
+  }
+  /* The scroll target lives inside the sticky wrapper so a platform-native
+     scrollbar cannot cut a bright rail across a dark, editorial nav. A small
+     ruled chevron, rather than a soft fade, says when more sections are
+     available; keyboard focus still scrolls each link into view. */
+  .mg-section-nav-scroll {
     overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 var(--mg-section-x);
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .mg-section-nav-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .mg-section-nav[data-overflow="true"]::after,
+  .mg-section-nav[data-overflow="true"]::before {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    width: 28px;
+    background: var(--canvas);
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .mg-section-nav[data-overflow="true"]::after {
+    right: 0;
+    content: "›";
+    border-left: 1px solid var(--rule);
+  }
+  .mg-section-nav[data-overflow="true"]::before {
+    left: 0;
+    content: "‹";
+    border-right: 1px solid var(--rule);
+  }
+  .mg-section-nav[data-scroll-start="true"]::before,
+  .mg-section-nav[data-scroll-end="true"]::after {
+    display: none;
   }
   .mg-section-nav ul {
     display: flex;
@@ -884,6 +950,26 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* Strings such as a service verdict or transport are not magnitudes. They
+     keep the same baseline slot as a metric without impersonating a 28px
+     number, and the shorter sans treatment makes their whole meaning visible
+     in six-cell strips. */
+  .mg-fact-value--text {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.55;
+    font-weight: 600;
+  }
+  /* A quiet, static placeholder. Pending, missing and zero are distinct data
+     states; a blank em dash made the first indistinguishable from the second.
+     This reserves the value's height without adding perpetual animation. */
+  .mg-fact-loading {
+    display: block;
+    width: min(72%, 9rem);
+    height: 35px;
+    border-radius: var(--radius);
+    background: var(--surface-2);
+  }
   .mg-fact-delta {
     flex: none;
     font-size: 10px;
@@ -907,6 +993,14 @@
       grid-auto-flow: row;
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+    /* Four readings in three columns left an orphaned card below the primary
+       row on tablet. A two-by-two instrument panel scans as a unit and
+       preserves enough width for real figures such as stake and block height.
+       Two-card strips use the same balanced geometry. */
+    .mg-facts:not([data-variant="grid"])[data-count="2"],
+    .mg-facts:not([data-variant="grid"])[data-count="4"] {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
   @media (max-width: 639px) {
     /* `:not(...)` on both, so the two rules carry the SAME specificity and
@@ -922,6 +1016,24 @@
     .mg-fact-value {
       font-size: 16px;
       line-height: 1.55;
+    }
+    .mg-fact-loading {
+      height: 25px;
+    }
+    /* A phone must show the whole current reading, not a partially clipped
+       metric rail. The two-column panel makes each fact directly comparable;
+       spanning the final card on an odd count removes the stranded-card
+       silhouette without inventing an empty placeholder. */
+    .mg-fact {
+      gap: 4px;
+      padding: 12px;
+    }
+    .mg-fact dt {
+      min-height: calc(1 * 11px * 1.45);
+    }
+    .mg-facts[data-count="3"] .mg-fact:last-child,
+    .mg-facts[data-count="5"] .mg-fact:last-child {
+      grid-column: 1 / -1;
     }
   }
 
@@ -1012,68 +1124,1849 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    padding: var(--mg-section-y) var(--mg-section-x) 40px;
+    /* A route's app shell already gives the content column 48px of room below
+       the sticky header. Another full 80px inside every entity hero pushed a
+       directory's first useful reading a third of a viewport down before its
+       own title began. Keep the editorial air, but spend 40px of it on the
+       data the route exists to show. */
+    padding: calc(var(--mg-section-y) - 40px) var(--mg-section-x) 40px;
   }
-  /* The landing hero: the one place 64px and the dotted plane are allowed
-     (#11618). The plane is a static 2px dot grid clipped to the hero, so it
-     costs nothing to a reader with reduced motion -- there is no motion. */
-  .mg-landing {
-    position: relative;
+  /* Directories are instruments, not landing pages. Their high-level context
+     still needs to be visible, but the table or ranked list is the reason a
+     reader came. This compact variant preserves the same fact semantics while
+     getting an actionable row materially closer to the first desktop view. */
+  .mg-hero--directory {
+    gap: 12px;
+    padding-top: 24px;
+    padding-bottom: 28px;
+  }
+  .mg-hero--directory .mg-facts {
+    gap: 10px;
+  }
+  .mg-hero--directory .mg-fact {
+    gap: 4px;
+    padding: 12px;
+  }
+  .mg-hero--directory .mg-fact dt {
+    min-height: calc(1 * 11px * 1.45);
+  }
+  .mg-hero--directory .mg-fact-value {
+    font-size: 28px;
+    line-height: 1.35;
+  }
+  .mg-directory-section {
+    padding-top: min(48px, var(--mg-section-y));
+  }
+  /* The subnet directory's table already has a full caption, search, and
+     filters. Repeating "Directory. Search and compare every subnet." above
+     it cost a full mobile viewport row without adding a decision or action.
+     Keep the semantic section heading for assistive technology, but let the
+     instrument begin directly after the local navigation. */
+  .mg-directory-section--table-first > .mg-section-head {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
     overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .mg-directory-section.mg-directory-section--table-first {
+    padding-top: min(32px, var(--mg-section-y));
+  }
+
+  /* Entity pages answer a particular question; their current readings should
+     support that answer rather than arrive as a second gallery of cards. A
+     ruled metric ledger keeps the figures scannable while letting the first
+     analytic visual carry the page's emotional and informational weight. */
+  .mg-hero--entity {
+    gap: 14px;
+    padding-top: 32px;
+    padding-bottom: 26px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .mg-hero--entity .mg-fact-sentence {
+    max-width: none;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .mg-hero--entity .mg-fact-chip {
+    padding-inline: 4px;
+    font-size: 10px;
+    line-height: 17px;
+  }
+  /* Subnet evidence is a compact factual reading, not a row of status
+     badges. Removing the filled-chip treatment gives the current metric
+     ledger visual priority and lets the evidence wrap naturally on a phone. */
+  .mg-hero--subnet .mg-fact-sentence {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+  }
+  .mg-hero--subnet .mg-fact-chip {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .mg-hero--entity .mg-facts {
+    gap: 0;
+    padding: 2px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .mg-hero--entity .mg-fact {
+    justify-content: center;
+    min-height: 78px;
+    padding: 12px 16px;
+    border: 0;
+    border-left: 1px solid var(--rule);
+    border-radius: 0;
+    background: transparent;
+  }
+  .mg-hero--entity .mg-fact:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .mg-hero--entity .mg-fact:last-child {
+    padding-right: 0;
+  }
+  .mg-hero--entity .mg-fact dt {
+    min-height: auto;
+  }
+  .mg-hero--entity .mg-fact-value {
+    font-size: 28px;
+  }
+  @media (max-width: 639px) {
+    /* Block navigation has exactly two compact controls. Keep them beside the
+       height so a reader can step through neighbouring blocks without the
+       title/actions/author sequence becoming three separate visual rows. */
+    .mg-hero--block .mg-hero-title {
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+    .mg-hero--block .mg-hero-title h1 {
+      min-width: 0;
+      font-size: clamp(24px, 7.5vw, 28px);
+      white-space: nowrap;
+    }
+    .mg-hero--block .mg-hero-actions {
+      width: auto;
+      margin-left: auto;
+    }
+  }
+
+  /* The full decoded event stream is useful forensic evidence, but it is not
+     the first answer on a block page. This ruled disclosure keeps it one
+     deliberate interaction away from the fast extrinsics ledger. */
+  .mg-block-event-stream {
+    display: grid;
+    gap: 24px;
+    padding: 32px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .mg-block-event-stream-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .mg-block-event-stream-kicker {
+    margin: 0 0 5px;
+    color: var(--ink-muted);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+  .mg-block-event-stream h2 {
+    margin: 0;
+    color: var(--ink-strong);
+    font-size: var(--text-28);
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .mg-block-event-stream-detail,
+  .mg-block-event-stream-empty {
+    max-width: 58ch;
+    margin: 8px 0 0;
+    color: var(--ink-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .mg-block-event-stream-body {
+    display: grid;
+    gap: 24px;
+  }
+  .mg-block-event-trigger {
+    flex: none;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--rule-strong);
+    border-radius: 0;
+    background: var(--canvas);
+    color: var(--ink-strong);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    transition:
+      border-color var(--mg-motion),
+      background-color var(--mg-motion),
+      color var(--mg-motion);
+  }
+  .mg-block-event-trigger:hover {
+    border-color: var(--ink-muted);
+    background: var(--layer);
+  }
+  .mg-block-event-trigger:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* Chain and health are live operational readings, not an entity profile or
+     a catalogue. Their figures form one ruled instrument: the lead reading
+     establishes the current state, then the smaller readings establish why it
+     matters. This keeps the important chart or incident list close enough to
+     compare against the current snapshot. */
+  .mg-hero--operational {
+    gap: 14px;
+    padding-top: 32px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  .mg-hero--operational .mg-fact-sentence {
+    max-width: 48rem;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .mg-hero--operational .mg-facts {
+    display: grid;
+    grid-auto-flow: unset;
+    gap: 0;
+    padding: 2px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .mg-hero--chain .mg-facts {
+    grid-template-columns: minmax(12rem, 1.45fr) repeat(4, minmax(0, 1fr));
+  }
+  .mg-hero--health .mg-facts {
+    grid-template-columns:
+      minmax(12rem, 1.5fr) repeat(4, minmax(0, 1fr))
+      minmax(10.5rem, 1.2fr);
+  }
+  .mg-hero--operational .mg-fact {
+    justify-content: center;
+    min-height: 78px;
+    padding: 12px 16px;
+    border: 0;
+    border-left: 1px solid var(--rule);
+    border-radius: 0;
+    background: transparent;
+  }
+  .mg-hero--operational .mg-fact:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .mg-hero--operational .mg-fact:last-child {
+    padding-right: 0;
+  }
+  .mg-hero--operational .mg-fact dt {
+    min-height: auto;
+  }
+  .mg-hero--operational .mg-fact-value {
+    font-size: 16px;
+  }
+  .mg-hero--chain .mg-fact:first-child .mg-fact-value,
+  .mg-hero--health .mg-fact:first-child .mg-fact-value {
+    font-size: 40px;
+  }
+  .mg-hero--health .mg-fact:first-child[data-tone="good"] .mg-fact-value {
+    color: var(--good);
+  }
+  .mg-hero--health .mg-fact:first-child[data-tone="warn"] .mg-fact-value {
+    color: var(--warn);
+  }
+  .mg-hero--health .mg-fact:first-child[data-tone="bad"] .mg-fact-value {
+    color: var(--bad);
+  }
+
+  /* Comparison is a focused decision page: show the selected scope directly
+     above the ledger and remove the generic page-intro gap. The table keeps
+     its own visible entity headers, so this is a light orientation line, not
+     a second competing selection control. */
+  .mg-hero--compare {
+    gap: 12px;
+    padding-top: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .mg-hero--compare .mg-fact-sentence {
+    max-width: none;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .mg-compare-ledger-section {
+    padding-top: min(48px, var(--mg-section-y));
+  }
+  .mg-compare-ledger-section .mg-section-head {
+    margin-bottom: 24px;
+  }
+
+  /* The three chain streams are directories. Their job is to get a specific
+     block, event, or extrinsic into view, so inherit the compact directory
+     masthead and reduce the otherwise empty handoff before the first table. */
+  .mg-chain-stream-content > .mg-section:first-child {
+    padding-top: min(48px, var(--mg-section-y));
+  }
+
+  /* Settings is a small local form, not another analytics dashboard. Its
+     preference controls have a readable working measure at wide sizes and
+     sit alongside the question they answer; subsequent account and wallet
+     sections retain their full-width functional layouts. */
+  .mg-hero--settings {
+    gap: 12px;
+    padding-top: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .mg-hero--settings .mg-fact-sentence {
+    max-width: 48rem;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  @media (min-width: 1024px) {
+    .mg-settings-preferences {
+      display: grid;
+      grid-template-columns: minmax(13rem, 0.31fr) minmax(0, 0.69fr);
+      column-gap: clamp(40px, 7vw, 104px);
+      align-items: start;
+      padding-top: min(52px, var(--mg-section-y));
+      padding-bottom: min(64px, var(--mg-section-y));
+    }
+    .mg-settings-preferences .mg-section-head {
+      display: grid;
+      grid-column: 1;
+      grid-row: 1;
+      margin: 0;
+    }
+    .mg-settings-preferences .mg-section-visual {
+      grid-column: 2;
+      grid-row: 1;
+      max-width: 48rem;
+    }
+    .mg-settings-preferences .mg-section-note {
+      grid-column: 1;
+      margin: 20px 0 0;
+    }
+  }
+
+  /* The agent page is an integration handoff, so the single usable command
+     gets the dominant column rather than arriving after another full-width
+     dashboard section. The narrow column tells the reader exactly what the
+     command accomplishes; the wide column is reserved for the task itself. */
+  @media (min-width: 1024px) {
+    .mg-agents-connect {
+      display: grid;
+      grid-template-columns: minmax(12rem, 0.27fr) minmax(0, 0.73fr);
+      column-gap: clamp(40px, 6vw, 88px);
+      align-items: start;
+      padding-top: min(52px, var(--mg-section-y));
+      padding-bottom: min(64px, var(--mg-section-y));
+    }
+    .mg-agents-connect .mg-section-head {
+      display: grid;
+      grid-column: 1;
+      grid-row: 1;
+      margin: 0;
+    }
+    .mg-agents-connect .mg-section-visual {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .mg-agents-connect .mg-section-note {
+      grid-column: 1;
+      margin: 20px 0 0;
+    }
+  }
+
+  /* A live page starts with a decision, not a full-width prose heading above
+     its evidence. At desktop size the first chain chart and incident table
+     occupy the reading column beside that decision. Subsequent sections keep
+     their normal rhythm so the page does not become a repeated two-column
+     template. */
+  @media (min-width: 1024px) {
+    .mg-chain-throughput,
+    .mg-health-incidents {
+      display: grid;
+      grid-template-columns: minmax(13rem, 0.31fr) minmax(0, 0.69fr);
+      column-gap: clamp(40px, 7vw, 104px);
+      align-items: start;
+      padding-top: min(56px, var(--mg-section-y));
+      padding-bottom: min(64px, var(--mg-section-y));
+    }
+    .mg-chain-throughput .mg-section-head,
+    .mg-health-incidents .mg-section-head {
+      display: grid;
+      grid-column: 1;
+      grid-row: 1;
+      gap: 20px;
+      margin: 0;
+    }
+    .mg-chain-throughput .mg-section-controls {
+      padding-top: 0;
+    }
+    .mg-chain-throughput .mg-section-visual,
+    .mg-health-incidents .mg-section-visual {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .mg-chain-throughput .mg-section-note {
+      grid-column: 2;
+      margin: 16px 0 0;
+    }
+    .mg-health-incidents .mg-section-note {
+      grid-column: 1;
+      margin: 20px 0 0;
+    }
+  }
+
+  @media (min-width: 40.0625rem) and (max-width: 1023px) {
+    .mg-hero {
+      gap: 14px;
+      padding: 16px var(--mg-section-x) 32px;
+    }
+    .mg-hero--directory {
+      gap: 12px;
+      padding-top: 16px;
+      padding-bottom: 24px;
+    }
+    .mg-hero--entity {
+      gap: 12px;
+      padding-top: 24px;
+      padding-bottom: 24px;
+    }
+    .mg-hero--entity .mg-facts {
+      gap: 14px 24px;
+      padding: 10px 0;
+    }
+    .mg-hero--entity .mg-fact {
+      min-height: 62px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+    .mg-hero--entity .mg-fact-value {
+      font-size: 28px;
+    }
+    .mg-hero--operational {
+      gap: 12px;
+      padding-top: 24px;
+      padding-bottom: 24px;
+    }
+    .mg-hero--compare {
+      gap: 10px;
+      padding-top: 16px;
+      padding-bottom: 20px;
+    }
+    .mg-hero--settings {
+      gap: 10px;
+      padding-top: 16px;
+      padding-bottom: 20px;
+    }
+    .mg-hero--operational .mg-facts,
+    .mg-hero--chain .mg-facts,
+    .mg-hero--health .mg-facts {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px 24px;
+      padding: 10px 0;
+    }
+    .mg-hero--operational .mg-fact {
+      min-height: 62px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+    .mg-hero--operational .mg-fact-value {
+      font-size: 16px;
+    }
+    .mg-hero--chain .mg-fact:first-child .mg-fact-value,
+    .mg-hero--health .mg-fact:first-child .mg-fact-value {
+      font-size: 28px;
+    }
+  }
+  @media (max-width: 40rem) {
+    .mg-hero {
+      gap: 12px;
+      padding: 16px 0 24px;
+    }
+    .mg-hero--directory {
+      gap: 10px;
+      padding-top: 16px;
+      padding-bottom: 20px;
+    }
+    .mg-hero--directory .mg-facts {
+      gap: 0;
+      padding: 0;
+      border-top: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+    }
+    /* A directory's facts establish coverage before the reader searches; they
+       should not use the same card-wall grammar as a landing-page feature.
+       The ruled ledger saves a meaningful slice of the phone viewport for the
+       first result while preserving every figure and an easy left-to-right
+       comparison. Desktop keeps its more spacious scan strip. */
+    .mg-hero--directory .mg-fact {
+      justify-content: flex-start;
+      min-height: 0;
+      padding: 10px 0 11px;
+      border: 0;
+      border-bottom: 1px solid var(--rule);
+      border-radius: 0;
+      background: transparent;
+    }
+    .mg-hero--directory .mg-fact:nth-child(odd) {
+      padding-right: 12px;
+    }
+    .mg-hero--directory .mg-fact:nth-child(even) {
+      padding-left: 12px;
+      border-left: 1px solid var(--rule);
+    }
+    .mg-hero--directory .mg-fact:first-child {
+      padding-left: 0;
+    }
+    .mg-hero--directory .mg-facts[data-count="2"] .mg-fact,
+    .mg-hero--directory
+      .mg-facts[data-count="4"]
+      .mg-fact:nth-last-child(-n + 2),
+    .mg-hero--directory
+      .mg-facts[data-count="6"]
+      .mg-fact:nth-last-child(-n + 2) {
+      /* The two final facts in a four- or six-cell ledger already sit against
+         the strip's closing rule; no duplicate inner rule. */
+      border-bottom: 0;
+    }
+    .mg-hero--directory .mg-facts[data-count="3"] .mg-fact:last-child,
+    .mg-hero--directory .mg-facts[data-count="5"] .mg-fact:last-child {
+      padding-right: 0;
+      border-left: 0;
+      border-bottom: 0;
+    }
+    .mg-hero--directory .mg-fact-value {
+      font-size: 16px;
+      line-height: 1.55;
+    }
+    .mg-hero--entity {
+      gap: 10px;
+      padding-top: 16px;
+      padding-bottom: 18px;
+    }
+    .mg-hero--entity .mg-fact-sentence {
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .mg-hero--entity .mg-facts {
+      gap: 0;
+      padding: 0;
+      border-bottom: 0;
+    }
+    .mg-hero--entity .mg-fact {
+      justify-content: flex-start;
+      min-height: 0;
+      padding: 10px 0 11px;
+      border: 0;
+      border-bottom: 1px solid var(--rule);
+      background: transparent;
+    }
+    .mg-hero--entity .mg-fact:first-child {
+      padding-left: 0;
+    }
+    .mg-hero--entity .mg-fact:nth-child(odd) {
+      padding-right: 12px;
+    }
+    .mg-hero--entity .mg-fact:nth-child(even) {
+      padding-left: 12px;
+      border-left: 1px solid var(--rule);
+    }
+    .mg-hero--entity .mg-facts[data-count="3"] .mg-fact:last-child,
+    .mg-hero--entity .mg-facts[data-count="5"] .mg-fact:last-child {
+      padding-right: 0;
+      border-left: 0;
+    }
+    .mg-hero--entity .mg-fact-value {
+      font-size: 16px;
+      line-height: 1.45;
+    }
+    .mg-hero--operational {
+      gap: 10px;
+      padding-top: 16px;
+      padding-bottom: 18px;
+    }
+    .mg-hero--compare {
+      gap: 10px;
+      padding-top: 16px;
+      padding-bottom: 18px;
+    }
+    .mg-hero--compare .mg-fact-sentence {
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .mg-hero--settings {
+      gap: 10px;
+      padding-top: 16px;
+      padding-bottom: 18px;
+    }
+    .mg-hero--settings .mg-fact-sentence {
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .mg-compare-ledger-section {
+      padding-top: 32px;
+    }
+    .mg-chain-stream-content > .mg-section:first-child {
+      padding-top: 32px;
+    }
+    .mg-hero--operational .mg-fact-sentence {
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .mg-hero--operational .mg-facts,
+    .mg-hero--chain .mg-facts,
+    .mg-hero--health .mg-facts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0;
+      padding: 0;
+      border-bottom: 0;
+    }
+    .mg-hero--operational .mg-fact {
+      justify-content: flex-start;
+      /* The primary live reading is deliberately larger. Reserve that same
+         amount in every peer so the two-column mobile instrument remains a
+         coherent grid rather than a leading card beside shorter fragments. */
+      min-height: 84px;
+      padding: 10px 0 11px;
+      border: 0;
+      border-bottom: 1px solid var(--rule);
+      background: transparent;
+    }
+    .mg-hero--operational .mg-fact:first-child {
+      padding-left: 0;
+    }
+    .mg-hero--operational .mg-fact:nth-child(odd) {
+      padding-right: 12px;
+    }
+    .mg-hero--operational .mg-fact:nth-child(even) {
+      padding-left: 12px;
+      border-left: 1px solid var(--rule);
+    }
+    .mg-hero--chain .mg-fact:first-child {
+      grid-column: 1 / -1;
+      padding-right: 0;
+      border-left: 0;
+    }
+    .mg-hero--chain .mg-facts[data-count="5"] .mg-fact:last-child {
+      grid-column: auto;
+      padding-left: 12px;
+      padding-right: 0;
+      border-left: 1px solid var(--rule);
+    }
+    .mg-hero--chain .mg-fact:nth-child(even) {
+      padding-left: 0;
+      padding-right: 12px;
+      border-left: 0;
+    }
+    .mg-hero--chain .mg-fact:nth-child(odd):not(:first-child) {
+      padding-left: 12px;
+      padding-right: 0;
+      border-left: 1px solid var(--rule);
+    }
+    .mg-hero--operational .mg-fact-value {
+      font-size: 16px;
+      line-height: 1.45;
+    }
+    .mg-hero--chain .mg-fact:first-child .mg-fact-value,
+    .mg-hero--health .mg-fact:first-child .mg-fact-value {
+      font-size: 28px;
+    }
+    .mg-directory-section {
+      padding-top: 32px;
+    }
+    .mg-block-event-stream {
+      gap: 16px;
+      padding: 24px 0;
+    }
+    .mg-block-event-stream-head {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .mg-block-event-stream h2 {
+      font-size: var(--text-16);
+      line-height: 1.55;
+    }
+    .mg-block-event-trigger {
+      width: 100%;
+      min-height: 44px;
+    }
+    .mg-block-event-stream-body {
+      gap: 20px;
+    }
+  }
+
+  /* Revenue belongs to the subnet's value-flow reading, not as an eighth
+     competing page question. It remains an independently addressable,
+     evidence-only subsection after the emission chart and its source note. */
+  .mg-revenue-evidence {
+    display: grid;
+    gap: 20px;
+    margin-top: 32px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule);
+  }
+  .mg-revenue-evidence .mg-section-head,
+  .mg-revenue-evidence .mg-section-visual,
+  .mg-revenue-evidence .mg-section-note {
+    margin: 0;
+  }
+  .mg-revenue-evidence-sources {
+    margin-top: 4px;
+  }
+  @media (max-width: 40rem) {
+    .mg-revenue-evidence {
+      gap: 16px;
+      margin-top: 24px;
+      padding-top: 24px;
+    }
+  }
+
+  /* Homepage operational index: one thesis, one exact lookup, one restrained
+     agent handoff, and live explorer evidence share a ruled surface. */
+  .mg-home-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-top: 1px solid var(--rule-strong);
+    border-bottom: 1px solid var(--rule-strong);
+    background: var(--canvas);
+  }
+  .mg-home-command-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 0.88fr) minmax(28rem, 1.12fr);
+    min-height: clamp(24rem, 37vw, 29rem);
+  }
+  .mg-home-intro {
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    padding: var(--mg-section-y) var(--mg-section-x);
-    max-height: 350px;
+    align-items: flex-start;
+    min-width: 0;
+    padding: clamp(44px, 5vw, 72px) var(--mg-section-x);
+    border-right: 1px solid var(--rule-strong);
   }
-  .mg-landing::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(var(--rule-strong) 1px, transparent 1px);
-    background-size: 6px 6px;
-    opacity: 0.5;
-    pointer-events: none;
-  }
-  .mg-landing > * {
-    position: relative;
-  }
-  .mg-landing h1 {
+  .mg-home-intro h1 {
+    max-width: 9ch;
     margin: 0;
-    font-size: var(--text-64);
-    line-height: 1.05;
-    font-weight: 600;
     color: var(--ink-strong);
+    font-size: var(--text-64);
+    font-weight: 600;
+    line-height: 0.92;
     text-wrap: balance;
   }
-  /* A solid cut-out so the sentence reads against the plane rather than
-     through it. */
-  .mg-landing-lede {
-    align-self: flex-start;
-    margin: 0;
-    padding: 4px 8px;
-    background: var(--canvas);
-    font-size: 16px;
-    line-height: 1.5;
+  .mg-home-intro .mg-home-lede {
+    max-width: 40ch;
+    margin: 18px 0 0;
     color: var(--ink);
-    max-width: 60ch;
+    font-size: var(--text-16);
+    line-height: 1.55;
+    text-wrap: pretty;
   }
-  .mg-landing-meta {
-    align-self: flex-start;
-    padding: 2px 6px;
+  .mg-home .mg-search-box--landing {
+    width: min(100%, 35rem);
+    margin-top: 30px;
+  }
+  .mg-home .mg-search-box-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 52px;
+    overflow: hidden;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius);
     background: var(--canvas);
-    font-size: 10px;
-    line-height: 16px;
+    transition:
+      border-color var(--mg-motion),
+      background-color var(--mg-motion);
+  }
+  .mg-home .mg-search-box-form:hover {
+    border-color: var(--ink-muted);
+  }
+  .mg-home .mg-search-box-form:focus-within {
+    border-color: var(--focus);
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .mg-home .mg-search-box-field {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    align-items: center;
+  }
+  .mg-home .mg-search-box-icon {
+    position: absolute;
+    left: 15px;
+    width: 15px;
+    height: 15px;
+    color: var(--ink-muted);
+    pointer-events: none;
+  }
+  .mg-home .mg-search-box-input {
+    width: 100%;
+    min-width: 0;
+    min-height: 50px;
+    padding: 0 14px 0 43px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--ink-strong);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .mg-home .mg-search-box-input::placeholder {
     color: var(--ink-muted);
   }
-  @media (max-width: 767px) {
-    .mg-landing {
-      max-height: none;
+  .mg-home .mg-search-box-submit {
+    min-width: 96px;
+    min-height: 50px;
+    border: 0;
+    border-left: 1px solid var(--rule-strong);
+    border-radius: 0;
+    background: var(--ink-strong);
+    color: var(--canvas);
+    font-size: 13px;
+    font-weight: 600;
+    transition:
+      background-color var(--mg-motion),
+      color var(--mg-motion);
+  }
+  .mg-home .mg-search-box-submit:hover:not(:disabled) {
+    background: var(--ink);
+  }
+  .mg-home .mg-search-box-submit:disabled {
+    background: var(--canvas-subtle);
+    color: var(--ink-muted);
+  }
+  .mg-home-mcp-install {
+    width: min(100%, 35rem);
+    margin-top: 12px;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--agent) 42%, var(--rule-strong));
+    border-radius: var(--radius);
+    background: var(--agent-surface);
+  }
+  .mg-home-mcp-head {
+    display: flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 8px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--agent) 24%, var(--rule));
+  }
+  .mg-home-mcp-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+  }
+  .mg-home-mcp-mark {
+    display: inline-flex;
+    flex: none;
+    min-width: 34px;
+    min-height: 26px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in oklab, var(--agent) 55%, var(--rule-strong));
+    color: var(--agent);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .mg-home-mcp-identity p {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .mg-home-mcp-identity p:first-child {
+    color: var(--ink-strong);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .mg-home-mcp-head > a {
+    flex: none;
+    color: var(--agent);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-decoration: none;
+  }
+  .mg-home-mcp-head > a:hover {
+    color: var(--ink-strong);
+  }
+  .mg-home-mcp-head > a:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+  .mg-home .mg-home-mcp-command {
+    width: 100%;
+    min-height: 50px;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .mg-home .mg-home-mcp-command:hover {
+    border: 0;
+    background: color-mix(in oklab, var(--agent) 8%, transparent);
+  }
+  .mg-home .mg-home-mcp-command > span:first-child {
+    color: var(--agent);
+    font-weight: 600;
+  }
+  .mg-home .mg-home-mcp-command code {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+  .mg-home .mg-home-mcp-command > span:last-child {
+    margin-left: auto;
+  }
+  .mg-home-pulse {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: clamp(40px, 4.5vw, 68px) var(--mg-section-x) 24px;
+    overflow: hidden;
+    background: var(--canvas);
+  }
+  .mg-home-pulse > :not(.mg-home-dot-field) {
+    position: relative;
+    z-index: 1;
+  }
+  .mg-home-pulse .mg-home-dot-field {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    color: var(--rule-strong);
+    opacity: 0.38;
+    pointer-events: none;
+  }
+  .mg-home-pulse-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .mg-home-pulse-head > div > p {
+    margin: 0 0 7px;
+    color: var(--ink-muted);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+  .mg-home-pulse-head h2 {
+    max-width: 18ch;
+    margin: 0;
+    color: var(--ink-strong);
+    font-size: var(--text-28);
+    font-weight: 500;
+    line-height: 1.08;
+    text-wrap: balance;
+  }
+  .mg-home-pulse-head > span {
+    flex: none;
+    color: var(--ink-muted);
+    font-size: 10px;
+    line-height: 1.4;
+    text-align: right;
+  }
+  .mg-home-pulse-composition {
+    gap: 18px;
+    margin-top: clamp(30px, 4vw, 48px);
+  }
+  .mg-home-pulse-composition .mg-composition-bar {
+    height: clamp(36px, 4vw, 54px);
+    gap: 2px;
+    border-radius: 0;
+  }
+  .mg-home-pulse-composition .mg-rank-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 16px;
+  }
+  .mg-home-pulse-composition .mg-rank-grid-row {
+    grid-template-columns: 7px minmax(0, 1fr) auto;
+    min-height: 30px;
+    padding: 0;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 0;
+    background: transparent;
+    font-size: 10px;
+  }
+  .mg-home-pulse-composition .mg-rank-grid-rank,
+  .mg-home-pulse-composition .mg-rank-grid-share {
+    display: none;
+  }
+  .mg-home-pulse-composition .mg-rank-grid-row:hover,
+  .mg-home-pulse-composition .mg-rank-grid-row[data-active="true"] {
+    border-color: var(--ink-muted);
+    background: transparent;
+    box-shadow: none;
+  }
+  .mg-home-pulse-composition .mg-rank-grid-value {
+    font-size: 10px;
+  }
+  .mg-home-pulse-empty {
+    min-height: 126px;
+    margin: 30px 0 0;
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .mg-home-pulse-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
+    color: var(--ink-muted);
+    font-size: 10px;
+    line-height: 1.45;
+  }
+  .mg-home-pulse-foot a {
+    flex: none;
+    color: var(--ink-strong);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .mg-home-pulse-foot a:hover {
+    color: var(--accent-text);
+  }
+  .mg-home-pulse-foot a:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+  .mg-home-pulse-foot a span {
+    margin-left: 5px;
+    color: var(--accent-text);
+    font-size: 16px;
+    line-height: 0;
+  }
+
+  /* A live explorer instrument, deliberately not a ticker. The reader owns
+     the horizontal rail; it receives one brief arrival cue only when the
+     indexed head actually advances. */
+  .mg-live-blocks {
+    position: relative;
+    z-index: 1;
+    padding: 20px var(--mg-section-x) 18px;
+    border-top: 1px solid var(--rule-strong);
+    background: var(--canvas);
+  }
+  .mg-live-blocks-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .mg-live-blocks-kicker {
+    margin: 0 0 5px;
+    color: var(--ink-muted);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+  .mg-live-blocks h2 {
+    margin: 0;
+    color: var(--ink-strong);
+    font-size: var(--text-16);
+    font-weight: 600;
+    line-height: 1.55;
+  }
+  .mg-live-blocks-status {
+    max-width: 32ch;
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.45;
+    text-align: right;
+  }
+  .mg-live-blocks-viewport {
+    margin-top: 16px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 1px;
+    scroll-snap-type: x proximity;
+    scrollbar-color: var(--rule-strong) transparent;
+    scrollbar-width: thin;
+  }
+  .mg-live-blocks-viewport:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+  .mg-live-blocks-list {
+    display: grid;
+    grid-auto-columns: clamp(10.5rem, 13vw, 12.75rem);
+    grid-auto-flow: column;
+    gap: 1px;
+    width: max-content;
+    margin: 0;
+    padding: 1px;
+    list-style: none;
+    background: var(--rule);
+  }
+  .mg-live-block {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 5px;
+    min-height: 126px;
+    padding: 14px;
+    outline: 1px solid transparent;
+    outline-offset: -1px;
+    background: var(--canvas);
+    color: var(--ink);
+    scroll-snap-align: start;
+    text-decoration: none;
+    transition:
+      background-color var(--mg-motion),
+      color var(--mg-motion);
+  }
+  .mg-live-block:hover {
+    background: var(--layer);
+    color: var(--ink-strong);
+  }
+  .mg-live-block:focus-visible {
+    z-index: 1;
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+  .mg-live-block-label {
+    color: var(--ink-muted);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+  .mg-live-block-open {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    color: var(--ink-subtle);
+    font-size: 13px;
+    line-height: 1.5;
+    transition: color var(--mg-motion);
+  }
+  .mg-live-block:hover .mg-live-block-open,
+  .mg-live-block:focus-visible .mg-live-block-open {
+    color: var(--accent-text);
+  }
+  .mg-live-block strong {
+    color: var(--ink-strong);
+    font-family: var(--font-mono);
+    font-size: var(--text-16);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.55;
+  }
+  .mg-live-block-counts {
+    display: grid;
+    gap: 2px;
+    align-content: start;
+    color: var(--ink-muted);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .mg-live-block-activity {
+    display: block;
+    align-self: end;
+    height: 3px;
+    overflow: hidden;
+    background: var(--surface-2);
+  }
+  .mg-live-block-activity > span {
+    display: block;
+    height: 100%;
+    width: var(--mg-live-block-activity);
+    background: var(--accent);
+  }
+  .mg-live-block--loading {
+    grid-template-rows: 12px 24px 1fr;
+  }
+  .mg-live-block--loading > span {
+    display: block;
+    width: 62%;
+    height: 10px;
+    background: var(--surface-2);
+  }
+  .mg-live-block--loading > span:nth-child(2) {
+    width: 86%;
+    height: 18px;
+  }
+  .mg-live-block--loading > span:nth-child(3) {
+    width: 100%;
+    height: 3px;
+    align-self: end;
+  }
+  @keyframes mg-live-block-arrival {
+    0% {
+      outline-color: var(--accent);
+      background: color-mix(in oklab, var(--accent) 10%, var(--canvas));
     }
-    .mg-landing h1 {
-      font-size: var(--text-40);
+    100% {
+      outline-color: transparent;
+      background: var(--canvas);
     }
   }
+  .mg-live-block[data-arrived="true"] {
+    animation: mg-live-block-arrival 720ms ease-out;
+  }
+  .mg-live-blocks-empty {
+    margin: 16px 0 0;
+    color: var(--ink-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .mg-live-blocks-empty a {
+    color: var(--ink-strong);
+    font-weight: 600;
+  }
+  .mg-live-blocks-empty a:hover {
+    color: var(--accent-text);
+  }
+  .mg-live-blocks-empty a:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  /* In the homepage hero the live rail is a second analytical reading inside
+     the emission instrument—not a separate page-wide band below it. */
+  .mg-live-blocks--hero {
+    margin-top: 24px;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--rule);
+    background: transparent;
+  }
+  .mg-live-blocks--hero .mg-live-blocks-head {
+    align-items: center;
+  }
+  .mg-live-blocks--hero .mg-live-blocks-kicker {
+    margin-bottom: 3px;
+  }
+  .mg-live-blocks--hero h2 {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .mg-live-blocks--hero .mg-live-blocks-status {
+    max-width: 25ch;
+    font-size: 10px;
+  }
+  .mg-live-blocks--hero .mg-live-blocks-viewport {
+    margin-top: 10px;
+  }
+  .mg-live-blocks--hero .mg-live-blocks-list {
+    /* A desktop first read holds four to five blocks. The whole 12-block
+       window stays directly reachable in the same rail, newest on the left. */
+    grid-auto-columns: clamp(7rem, 11vw, 9rem);
+  }
+  .mg-live-blocks--hero .mg-live-block {
+    min-height: 102px;
+    padding: 10px;
+  }
+  .mg-live-blocks--hero .mg-live-block-open {
+    top: 8px;
+    right: 8px;
+  }
+  .mg-live-blocks--hero .mg-live-block-activity {
+    height: 2px;
+  }
+  .mg-live-blocks--hero .mg-live-blocks-empty {
+    margin-top: 10px;
+    font-size: 11px;
+  }
+
+  /* A bounded, count-backed block matrix for the stream route. It is an
+     activity reading of the result page, not a claimed historical heatmap:
+     each square is a real block and its full values remain in the nearby
+     reading and directory table. */
+  .mg-block-activity {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: min(36px, var(--mg-section-y)) 0;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  .mg-block-activity-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .mg-block-activity-head > div > p {
+    margin: 0 0 5px;
+    color: var(--ink-muted);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+  .mg-block-activity-head h2 {
+    margin: 0;
+    color: var(--ink-strong);
+    font-size: var(--text-20);
+    font-weight: 500;
+    line-height: 1.35;
+  }
+  .mg-block-activity-head > p,
+  .mg-block-activity-note,
+  .mg-block-activity-axis {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .mg-block-activity-head > p {
+    text-align: right;
+  }
+  .mg-block-activity-reading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 7px 16px;
+    min-height: 50px;
+    padding: 11px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .mg-block-activity-reading > span:first-child {
+    color: var(--ink-muted);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .mg-block-activity-reading strong {
+    color: var(--ink-strong);
+    font-family: var(--font-mono);
+    font-size: var(--text-20);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+  .mg-block-activity-reading > span:not(:first-child) {
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .mg-block-activity-reading a {
+    margin-left: auto;
+    color: var(--ink-strong);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .mg-block-activity-reading a:hover {
+    color: var(--accent-text);
+  }
+  .mg-block-activity-reading a:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+  .mg-block-activity-reading a span {
+    margin-left: 4px;
+    color: var(--accent-text);
+    font-size: var(--text-13);
+  }
+  .mg-block-activity-axis {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: -8px;
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+  .mg-block-activity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+    gap: 1px;
+    margin: 0;
+    padding: 1px;
+    list-style: none;
+    background: var(--rule);
+  }
+  .mg-block-activity-mark {
+    --mg-block-activity-opacity: 0;
+    position: relative;
+    display: block;
+    min-height: 46px;
+    overflow: hidden;
+    outline: 1px solid transparent;
+    outline-offset: -1px;
+    background: var(--canvas);
+  }
+  .mg-block-activity-mark > span {
+    position: absolute;
+    inset: 0;
+    display: block;
+    background: var(--accent);
+    opacity: var(--mg-block-activity-opacity);
+    transition: opacity var(--mg-motion);
+  }
+  .mg-block-activity-mark[data-activity-level="0"] {
+    --mg-block-activity-opacity: 0;
+  }
+  .mg-block-activity-mark[data-activity-level="1"] {
+    --mg-block-activity-opacity: 0.24;
+  }
+  .mg-block-activity-mark[data-activity-level="2"] {
+    --mg-block-activity-opacity: 0.46;
+  }
+  .mg-block-activity-mark[data-activity-level="3"] {
+    --mg-block-activity-opacity: 0.7;
+  }
+  .mg-block-activity-mark[data-activity-level="4"] {
+    --mg-block-activity-opacity: 1;
+  }
+  .mg-block-activity-mark[data-activity-level="unknown"] > span {
+    background: var(--rule-strong);
+    opacity: 1;
+  }
+  .mg-block-activity-mark:hover,
+  .mg-block-activity-mark[data-active="true"] {
+    z-index: 1;
+    outline-color: var(--ink-strong);
+  }
+  .mg-block-activity-mark:focus-visible {
+    z-index: 2;
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+  @keyframes mg-block-activity-arrival {
+    0%,
+    58% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  .mg-block-activity-mark[data-arrived="true"] {
+    z-index: 3;
+  }
+  .mg-block-activity-mark[data-arrived="true"]::after {
+    position: absolute;
+    z-index: 1;
+    inset: 2px;
+    border: 2px solid var(--ink-strong);
+    content: "";
+    pointer-events: none;
+    animation: mg-block-activity-arrival 720ms ease-out;
+  }
+  .mg-block-activity-note {
+    max-width: 76ch;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mg-block-activity-mark > span {
+      transition: none;
+    }
+  }
+  .mg-home-aux-links {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 0 var(--mg-section-x);
+    border-top: 1px solid var(--rule-strong);
+    background: var(--canvas);
+  }
+  .mg-home-aux-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 46px;
+    padding: 0 20px;
+    border-right: 1px solid var(--rule);
+    color: var(--ink-muted);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-decoration: none;
+    transition:
+      background-color var(--mg-motion),
+      color var(--mg-motion);
+  }
+  .mg-home-aux-links a:first-child {
+    padding-left: 0;
+  }
+  .mg-home-aux-links a:hover {
+    color: var(--ink-strong);
+    background: color-mix(in oklab, var(--layer) 72%, transparent);
+  }
+  .mg-home-aux-links a:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -3px;
+  }
+  /* The stories deliberately change composition by question: ranked evidence
+     and health keep their reading lens beside the data at wide sizes, while
+     chain activity keeps its time series as the page-wide beat. */
+  @media (min-width: 1024px) {
+    .mg-home-story--emission,
+    .mg-home-story--health {
+      display: grid;
+      grid-template-columns: minmax(13rem, 0.35fr) minmax(0, 0.65fr);
+      column-gap: clamp(44px, 7vw, 112px);
+      align-items: start;
+    }
+    .mg-home-story--emission .mg-section-head,
+    .mg-home-story--health .mg-section-head {
+      grid-column: 1;
+      grid-row: 1;
+      display: grid;
+      gap: 22px;
+      margin: 0;
+    }
+    .mg-home-story--emission .mg-section-controls {
+      padding-top: 0;
+    }
+    .mg-home-story--emission .mg-section-visual,
+    .mg-home-story--health .mg-section-visual {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .mg-home-story--health .mg-section-legend {
+      grid-column: 2;
+      margin-top: 24px;
+    }
+    .mg-home-story--emission .mg-section-note,
+    .mg-home-story--health .mg-section-note {
+      grid-column: 1;
+      margin: 20px 0 0;
+    }
+  }
+  @media (max-width: 1023px) {
+    .mg-home-command-grid {
+      grid-template-columns: minmax(0, 1fr);
+      min-height: 0;
+    }
+    .mg-home-intro {
+      padding-block: 52px 44px;
+      border-right: 0;
+      border-bottom: 1px solid var(--rule-strong);
+    }
+    .mg-home-intro h1 {
+      font-size: var(--text-40);
+    }
+    .mg-home-pulse {
+      min-height: 0;
+      padding-block: 40px 24px;
+    }
+  }
+  @media (max-width: 639px) {
+    .mg-home-intro {
+      padding-block: 40px 32px;
+    }
+    .mg-home-intro h1 {
+      max-width: 10ch;
+      font-size: var(--text-40);
+      line-height: 0.94;
+    }
+    .mg-home-intro .mg-home-lede {
+      max-width: 34ch;
+      margin-top: 16px;
+      font-size: var(--text-16);
+      line-height: 1.5;
+    }
+    .mg-home .mg-search-box--landing {
+      margin-top: 24px;
+    }
+    .mg-home .mg-search-box-submit {
+      min-width: 84px;
+    }
+    .mg-home-mcp-install {
+      margin-top: 10px;
+    }
+    .mg-home .mg-home-mcp-command {
+      align-items: flex-start;
+    }
+    .mg-home .mg-home-mcp-command > span:last-child {
+      margin-top: 2px;
+    }
+    .mg-home-pulse {
+      padding-block: 32px 20px;
+    }
+    .mg-home-pulse-head {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .mg-home-pulse-head h2 {
+      max-width: 14ch;
+      font-size: var(--text-28);
+    }
+    .mg-home-pulse-head > span {
+      text-align: left;
+    }
+    .mg-home-pulse-composition {
+      margin-top: 26px;
+    }
+    .mg-home-pulse-composition .mg-composition-bar {
+      height: 32px;
+    }
+    .mg-home-pulse-composition .mg-rank-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 10px;
+    }
+    .mg-home-pulse-foot {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .mg-live-blocks {
+      padding-top: 18px;
+      padding-bottom: 16px;
+    }
+    .mg-live-blocks-head {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .mg-live-blocks-status {
+      max-width: none;
+      text-align: left;
+    }
+    .mg-live-blocks-viewport {
+      margin-right: calc(var(--mg-section-x) * -1);
+      padding-right: var(--mg-section-x);
+    }
+    .mg-live-blocks-list {
+      grid-auto-columns: min(76vw, 17rem);
+    }
+    .mg-live-block {
+      min-height: 118px;
+      padding: 12px;
+    }
+    .mg-live-blocks--hero {
+      margin-top: 20px;
+      padding-top: 14px;
+    }
+    .mg-live-blocks--hero .mg-live-blocks-head {
+      align-items: flex-start;
+      gap: 5px;
+    }
+    /* Keep the twelve-block instrument for the dedicated explorer instead of
+       crowding the already dense first mobile read with a horizontal rail. */
+    .mg-live-blocks--hero {
+      display: none;
+    }
+    .mg-block-activity {
+      gap: 12px;
+      padding-block: 28px;
+    }
+    .mg-block-activity-head {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .mg-block-activity-head > p {
+      text-align: left;
+    }
+    .mg-block-activity-reading {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 12px;
+      padding: 10px 0;
+    }
+    .mg-block-activity-reading > span:first-child {
+      grid-column: 1 / -1;
+    }
+    .mg-block-activity-reading strong {
+      font-size: var(--text-16);
+    }
+    .mg-block-activity-reading a {
+      grid-column: 1 / -1;
+      margin-left: 0;
+    }
+    .mg-home-aux-links {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      padding: 0;
+    }
+    .mg-home-aux-links a,
+    .mg-home-aux-links a:first-child {
+      min-height: 44px;
+      padding: 0;
+      border-right: 0;
+      border-bottom: 1px solid var(--rule);
+    }
+    .mg-home-aux-links a:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  /* The MCP handoff is a working connection panel, not a second documentation
+     card. It deliberately has one copyable command, its harness adjacent to
+     the command, and just enough live protocol context to make the choice
+     legible without repeating the page's tool table. */
+  .mg-agent-connection {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    gap: 16px;
+    overflow: hidden;
+    padding: 16px;
+    border: 1px solid color-mix(in oklab, var(--accent) 42%, var(--rule-strong));
+    background: var(--layer);
+  }
+  .mg-agent-connection::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-left: 3px solid var(--accent);
+    content: "";
+    pointer-events: none;
+  }
+  .mg-agent-connection-head,
+  .mg-agent-connection-identity,
+  .mg-agent-connection-meta {
+    display: flex;
+    align-items: center;
+  }
+  .mg-agent-connection-head {
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .mg-agent-connection-identity {
+    min-width: 0;
+    gap: 12px;
+  }
+  .mg-agent-connection-stamp {
+    display: grid;
+    flex: none;
+    grid-template-rows: auto auto;
+    align-content: center;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 7px;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: var(--accent-foreground);
+    font-family: var(--font-mono);
+    line-height: 1;
+    text-align: center;
+  }
+  .mg-agent-connection-stamp > span:first-child {
+    font-size: 11px;
+    font-weight: 650;
+  }
+  .mg-agent-connection-stamp > span:last-child {
+    margin-top: 4px;
+    font-size: 10px;
+    opacity: 0.78;
+  }
+  .mg-agent-connection-eyebrow,
+  .mg-agent-connection-title {
+    margin: 0;
+  }
+  .mg-agent-connection-eyebrow {
+    overflow: hidden;
+    color: var(--accent-text);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .mg-agent-connection-title {
+    margin-top: 2px;
+    color: var(--ink-strong);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.45;
+  }
+  .mg-agent-connection-command {
+    width: 100%;
+    min-height: 48px;
+    justify-content: space-between;
+    gap: 16px;
+    border-color: var(--rule-strong);
+    background: var(--canvas);
+    color: var(--ink-strong);
+  }
+  .mg-agent-connection-command:hover {
+    border-color: var(--accent);
+  }
+  .mg-agent-connection-command code {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .mg-agent-connection-meta {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .mg-agent-connection-meta > span + span {
+    padding-left: 12px;
+    border-left: 1px solid var(--rule);
+  }
+  @media (max-width: 639px) {
+    .mg-agent-connection-head {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .mg-agent-connection-head .mg-range {
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    .mg-agent-connection-eyebrow {
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+    }
+    .mg-agent-connection-command {
+      align-items: flex-start;
+    }
+    /* The command is the mobile task. Its accessible copy label still names
+       the selected harness, while the visible label yields its width to the
+       code and the copy icon remains an explicit affordance. */
+    .mg-agent-connection-command > span:first-child {
+      display: none;
+    }
+    .mg-agent-connection-meta > span + span {
+      padding-left: 0;
+      border-left: 0;
+    }
+  }
+
   .mg-hero-crumbs {
     display: flex;
     flex-wrap: wrap;
@@ -1197,7 +3090,7 @@
   }
 
   /* ------------------------------------------------------------------
-     StackedColumns (#11608): the opencode "Top Models" grammar. The axis
+     StackedColumns (#11608): an interactive composition grammar. The axis
      row sits above the plot; each column is a button on a dotted lane; the
      stack is a grid of percentage rows; a 2px canvas border separates
      segments; a non-active series is recoloured --chart-idle. */
@@ -1214,15 +3107,45 @@
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      #000 24px,
-      #000 calc(100% - 24px),
-      transparent
-    );
   }
   .mg-stack-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .mg-stack-scroll:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  /* A crisp cue tells a reader that time continues off-screen. It changes at
+     the same boundaries as the scroll position, so the chart never hides a
+     datum behind a soft fade. */
+  .mg-stack[data-overflow="true"]::before,
+  .mg-stack[data-overflow="true"]::after {
+    position: absolute;
+    top: 8px;
+    z-index: 2;
+    display: grid;
+    width: 16px;
+    height: 24px;
+    place-items: center;
+    border: 1px solid var(--rule);
+    background: var(--canvas);
+    color: var(--ink-muted);
+    font-size: var(--text-16);
+    line-height: 1;
+    pointer-events: none;
+  }
+  .mg-stack[data-overflow="true"]::before {
+    left: 0;
+    content: "‹";
+    border-left: 0;
+  }
+  .mg-stack[data-overflow="true"]::after {
+    right: 0;
+    content: "›";
+    border-right: 0;
+  }
+  .mg-stack[data-scroll-start="true"]::before,
+  .mg-stack[data-scroll-end="true"]::after {
     display: none;
   }
   .mg-stack-chart {
@@ -1318,8 +3241,9 @@
     width: calc(100% - var(--mg-stack-gap));
     transform: translateX(-50%);
     background: var(--rule);
-    mask-image: radial-gradient(circle, #000 0.75px, transparent 0.9px);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Ccircle cx='2' cy='2' r='.75' fill='%23000'/%3E%3C/svg%3E");
     mask-size: var(--mg-stack-dot) var(--mg-stack-dot);
+    mask-repeat: repeat;
     mask-position: center bottom;
   }
   .mg-stack-col:focus-visible::before {
@@ -1327,6 +3251,23 @@
   }
   .mg-stack-col[data-active="true"]::before {
     background: var(--rule-strong);
+  }
+  .mg-stack-col--skeleton {
+    cursor: default;
+  }
+  /* Preserve the measured timeline footprint while the series is unknown.
+     One neutral bar says "reading"; painted segments would imply a recipient
+     mix before the endpoint has answered. */
+  .mg-stack-skeleton-stack {
+    position: absolute;
+    right: calc(var(--mg-stack-gap) / 2);
+    bottom: 0;
+    left: calc(var(--mg-stack-gap) / 2);
+    z-index: 1;
+    height: var(--mg-stack-h);
+    min-height: 0;
+    border-top: 4px solid var(--canvas);
+    background: var(--surface-2);
   }
   .mg-stack-stack {
     position: absolute;
@@ -1363,7 +3304,7 @@
   }
 
   /* ------------------------------------------------------------------
-     LineWithWindow (#11608): the opencode "momentum" grammar. Muted full
+     LineWithWindow (#11608): a focused time-window grammar. Muted full
      history, accent window, three 6px markers, a delta chip at the window
      end, months beneath. No gridlines, no fill, no y-axis. */
   .mg-line {
@@ -1632,6 +3573,11 @@
   .mg-rails-row:focus-visible {
     box-shadow: inset 0 0 0 1px var(--focus);
   }
+  .mg-rails-row--skeleton,
+  .mg-rank-grid-row--skeleton {
+    cursor: default;
+    pointer-events: none;
+  }
   .mg-rails-value {
     font-size: 11px;
     font-weight: 600;
@@ -1701,9 +3647,8 @@
   }
 
   /* A two-track rail is TWO SERIES, which is what the categorical ramp is for.
-     A single-track rail stays graphite: one bar is not a category, and the
-     reference design's own rails are graphite for exactly that reason. The
-     active override below still wins -- it comes later at equal specificity. */
+     A single-track rail stays graphite: one bar is a measure, not a category.
+     The active override below still wins -- it comes later at equal specificity. */
   .mg-rails[data-secondary="true"] .mg-rails-track > b {
     background: var(--chart-1);
   }
@@ -1741,41 +3686,27 @@
     position: relative;
     height: 7px;
     min-width: 0;
-    background:
-      linear-gradient(
-        to right,
-        transparent calc(20% - 0.5px),
-        var(--rule-strong) calc(20% - 0.5px),
-        var(--rule-strong) calc(20% + 0.5px),
-        transparent calc(20% + 0.5px)
-      ),
-      linear-gradient(
-        to right,
-        transparent calc(40% - 0.5px),
-        var(--rule-strong) calc(40% - 0.5px),
-        var(--rule-strong) calc(40% + 0.5px),
-        transparent calc(40% + 0.5px)
-      ),
-      linear-gradient(
-        to right,
-        transparent calc(60% - 0.5px),
-        var(--rule-strong) calc(60% - 0.5px),
-        var(--rule-strong) calc(60% + 0.5px),
-        transparent calc(60% + 0.5px)
-      ),
-      linear-gradient(
-        to right,
-        transparent calc(80% - 0.5px),
-        var(--rule-strong) calc(80% - 0.5px),
-        var(--rule-strong) calc(80% + 0.5px),
-        transparent calc(80% + 0.5px)
-      ),
-      var(--raised);
+    background: var(--raised);
+  }
+  .mg-marker-rail-ticks {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    pointer-events: none;
+  }
+  .mg-marker-rail-ticks > b {
+    display: block;
+    min-width: 0;
+    border-right: 1px solid var(--rule-strong);
+  }
+  .mg-marker-rail-ticks > b:last-child {
+    border-right: 0;
   }
   .mg-marker-rail-track[data-empty="true"] {
     background: var(--layer);
   }
-  .mg-marker-rail-track > i {
+  .mg-marker-rail-marker {
     position: absolute;
     top: 0;
     left: var(--pos, 0%);
@@ -1909,7 +3840,9 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* LeaderCards. */
+  /* LeaderCards are rank grids, not miniature profile-card galleries. The
+     outlined matrix keeps each result equally scannable while the typography
+     tells rank, identity, and value apart. */
   .mg-leaders {
     display: grid;
     gap: 16px;
@@ -1918,9 +3851,11 @@
   .mg-leaders-featured,
   .mg-leaders-compact {
     display: grid;
-    gap: 8px;
+    gap: 1px;
     margin: 0;
-    padding: 0;
+    padding: 1px;
+    border: 1px solid var(--rule);
+    background: var(--rule);
     list-style: none;
     min-width: 0;
   }
@@ -1938,10 +3873,10 @@
     display: grid;
     gap: 8px;
     overflow: hidden;
-    padding: 16px;
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    background: var(--layer);
+    padding: 12px;
+    border: 0;
+    border-radius: 0;
+    background: var(--canvas);
     color: var(--ink);
     text-decoration: none;
     outline: none;
@@ -1951,9 +3886,9 @@
       box-shadow var(--mg-motion);
   }
   .mg-leader[data-variant="featured"] {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    min-height: 154px;
+    grid-template-columns: auto 20px minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 92px;
   }
   .mg-leader[data-variant="compact"] {
     grid-template-columns: auto 20px minmax(0, 1fr) auto;
@@ -1963,17 +3898,13 @@
   .mg-leader:hover,
   .mg-leader:focus-visible,
   .mg-leader[data-active="true"] {
-    border-color: var(--rule-strong);
     background: var(--raised);
-    box-shadow: 0 0 0 0.5px var(--rule-strong);
+    box-shadow: none;
   }
   .mg-leader-rank {
     font-size: 13px;
     color: var(--ink-muted);
     font-variant-numeric: tabular-nums;
-  }
-  .mg-leader[data-variant="featured"] .mg-leader-rank {
-    grid-column: 1 / -1;
   }
   .mg-leader-avatar {
     display: inline-flex;
@@ -1989,19 +3920,11 @@
     font-weight: 600;
     color: var(--ink-muted);
   }
-  .mg-leader[data-variant="featured"] .mg-leader-avatar {
-    grid-row: 3;
-    grid-column: 1;
-  }
   .mg-leader-copy {
     display: grid;
     gap: 4px;
     min-width: 0;
     font-size: 13px;
-  }
-  .mg-leader[data-variant="featured"] .mg-leader-copy {
-    grid-row: 3;
-    grid-column: 2;
   }
   .mg-leader-copy > strong {
     overflow: hidden;
@@ -2025,11 +3948,6 @@
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  .mg-leader[data-variant="featured"] .mg-leader-figures {
-    grid-row: 3;
-    grid-column: 3;
-    align-self: end;
-  }
   .mg-leader-value {
     color: var(--ink);
   }
@@ -2043,42 +3961,30 @@
   .mg-leader-delta[data-state="negative"] {
     color: var(--bad);
   }
-  /* 13px scaled ×13 = the reference's 168px glyph without a 7th font size
-     (the token contract allows six; a transform is not a size). */
-  .mg-leader-watermark {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1;
-    color: var(--ink);
-    opacity: 0.1;
-    transform: scale(13);
-    transform-origin: top right;
-    pointer-events: none;
-    user-select: none;
+  /* A 768px view is neither a phone nor a full desktop. At that width three
+     featured records fit as a deliberate comparison row, whereas the desktop
+     260px minimum forced a lopsided 2+1 mosaic. Below the available 616px the
+     auto-fit rule still becomes two columns instead of compressing evidence. */
+  @media (min-width: 640px) and (max-width: 1023px) {
+    .mg-leaders-featured {
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    }
   }
   @media (max-width: 639px) {
+    /* The old sideways lead-card carousel showed half of the next card and
+       spent most of the viewport on ornamental initials. A directory's first
+       mobile comparison must instead be complete: rank, identity and actual
+       value share one full-width row. This also removes the soft edge mask,
+       which reads as a decorative fade rather than a functional control. */
     .mg-leaders-featured {
-      display: flex;
-      overflow-x: auto;
-      scrollbar-width: none;
-      margin-inline: calc(var(--mg-section-x, 16px) * -1);
-      padding-inline: var(--mg-section-x, 16px);
-      mask-image: linear-gradient(
-        to right,
-        transparent,
-        #000 16px,
-        #000 calc(100% - 16px),
-        transparent
-      );
+      grid-template-columns: minmax(0, 1fr);
     }
-    .mg-leaders-featured::-webkit-scrollbar {
-      display: none;
-    }
-    .mg-leaders-featured > li {
-      flex: 0 0 280px;
+    .mg-leader[data-variant="featured"] {
+      grid-template-columns: auto 20px minmax(0, 1fr) auto;
+      grid-template-rows: auto;
+      align-items: center;
+      min-height: 88px;
+      padding: 12px;
     }
     .mg-leaders-compact {
       grid-template-columns: minmax(0, 1fr);
@@ -2099,8 +4005,15 @@
     overflow: hidden;
   }
   .mg-composition-bar > i {
-    flex: 0 0 var(--share, 0%);
-    min-width: 2px;
+    /* `--share` is a percentage of the whole bar.  Using it as a fixed flex
+       basis made the percentages consume 100% *before* the canvas gaps were
+       added, so the final segment physically extended past its clipped bar.
+       Give the available space (after gaps) to the segments by relative
+       weight instead.  `min-width: 0` matters for a long tail of small
+       segments on a narrow viewport: visual clipping must not become a
+       hidden layout overflow. */
+    flex: var(--weight, 0) 1 0%;
+    min-width: 0;
     background: var(--swatch);
     transition: background-color var(--mg-motion);
   }
@@ -2110,8 +4023,8 @@
 
   /* ------------------------------------------------------------------
      DataTable (#11610): the one table. Caption row, a head that pins inside
-     a bounded viewport, 44px rows (36px dense), and a card layout below
-     640px built from the SAME markup (`td::before` reads `data-label`), so
+     a bounded viewport, 44px rows (36px dense), and a card layout through
+     tablet built from the SAME markup (`td::before` reads `data-label`), so
      the server-rendered HTML always carries every row and every row link. */
   .mg-dt {
     /* 56px, not 44px, and the padding is on the cell rather than implied by
@@ -2459,6 +4372,25 @@
   .mg-dt-viewport-bounded {
     max-height: var(--mg-list-viewport-max, 70vh);
     overscroll-behavior: contain;
+    /* A bounded list needs a visible continuation cue, but the browser's
+       bright default rail reads as an accidental form control in dark mode.
+       Keep the thumb narrow and token-driven instead. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule-strong) transparent;
+  }
+  .mg-dt-viewport-bounded::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .mg-dt-viewport-bounded::-webkit-scrollbar-track,
+  .mg-dt-viewport-bounded::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  .mg-dt-viewport-bounded::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: var(--radius);
+    background: var(--rule-strong);
+    background-clip: content-box;
   }
   /* FIXED, so a declared column width is a width rather than a minimum.
      Under `auto` the browser grows any column whose content is longer than its
@@ -2543,10 +4475,11 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  /* The row's subject: the one cell a reader scans down. Bigger and at full
-     ink, against `--ink-muted` figures and an `--ink-subtle` demoted column
-     -- three levels, so the eye has somewhere to land (#11695). */
-  .mg-dt tbody td:first-child {
+  /* The row's subject: the nominated identity, not necessarily the first
+     technical rank or UID. Bigger and at full ink against `--ink-muted`
+     figures and an `--ink-subtle` demoted column, so the eye has somewhere
+     to land while the technical column keeps its supporting role. */
+  .mg-dt tbody td[data-lead="true"] {
     font-size: 16px;
     color: var(--ink-strong);
   }
@@ -2578,7 +4511,7 @@
   .mg-dt-row[data-active="true"] td {
     background: var(--layer);
   }
-  .mg-dt-row[data-active="true"] td:first-child {
+  .mg-dt-row[data-active="true"] td[data-lead="true"] {
     box-shadow: inset 2px 0 0 var(--accent);
   }
   .mg-dt-row[data-expandable="true"] {
@@ -2835,9 +4768,11 @@
     outline: 1px solid var(--focus);
     outline-offset: 1px;
   }
-  /* Cards below 640px, from the same markup: the head goes, every row
-     becomes a bordered block and each cell prints its own label. */
-  @media (max-width: 639px) {
+  /* Below the desktop table breakpoint, card-mode tables keep their data
+     model but trade cramped columns for an authored evidence grid. At 768px
+     the old table technically fitted, yet its nine fields were all ellipses;
+     a three-column tablet grid gives each fact enough room to mean something. */
+  @media (max-width: 1023px) {
     /* A SHORT table flows into the page; a long one keeps the same bounded,
        internally-scrolling viewport it has on a desktop.
        This used to drop the bound for every cards table, and the cost was
@@ -2865,29 +4800,71 @@
       display: none;
     }
     .mg-dt[data-mobile="cards"] .mg-dt-row {
-      padding: 8px 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 12px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--rule);
     }
     .mg-dt[data-mobile="cards"] tbody td {
-      display: grid;
-      grid-template-columns: minmax(0, 10ch) minmax(0, 1fr);
-      align-items: center;
-      gap: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      gap: 2px;
       height: auto;
-      min-height: 24px;
-      padding: 2px 16px;
+      min-height: 44px;
+      padding: 8px 0;
       border-bottom: 0;
       text-align: left;
+      font-size: 13px;
+      line-height: 1.35;
+      color: var(--ink-muted);
     }
     .mg-dt[data-mobile="cards"] tbody td::before {
       content: attr(data-label);
       font-size: 10px;
+      line-height: 1.3;
       text-transform: uppercase;
       color: var(--ink-subtle);
+    }
+    /* The designated identity sits above a two-column field grid. It lets a
+       reader scan a list by names, then compare the values below, instead of
+       making eight equally weighted label/value lines compete for attention. */
+    .mg-dt[data-mobile="cards"] tbody td[data-mobile-lead="true"] {
+      grid-column: 1 / -1;
+      order: -1;
+      min-height: 0;
+      padding-top: 0;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--rule);
+      font-size: 16px;
+      color: var(--ink-strong);
+    }
+    .mg-dt[data-mobile="cards"]
+      .mg-dt-row[data-active="true"]
+      td[data-lead="true"] {
+      box-shadow: none;
+    }
+    .mg-dt[data-mobile="cards"]
+      .mg-dt-row[data-active="true"]
+      td[data-mobile-lead="true"] {
+      box-shadow: inset 2px 0 0 var(--accent);
     }
     .mg-dt[data-mobile="cards"] tbody td[data-align="right"] {
       text-align: left;
     }
+  }
+
+  @media (min-width: 640px) and (max-width: 1023px) {
+    .mg-dt[data-mobile="cards"] .mg-dt-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0 20px;
+      padding: 16px 20px;
+    }
+  }
+
+  @media (max-width: 639px) {
     .mg-dt-search {
       max-width: none;
       flex: 1 1 140px;
@@ -3401,14 +5378,20 @@
 .mg-dt-menu-trigger,
 .mg-dt-pager button,
 .mg-section-more,
-.mg-section-nav a {
+.mg-section-nav a,
+.mg-live-meta-refresh,
+.mg-rails-more,
+.mg-definition-button,
+.mg-definition-trigger,
+button[aria-label="Back to top"] {
   position: relative;
 }
-/* The three controls that are always too small on a phone, given the same
+/* The shared controls that are always too small on a phone, given the same
    expansion (#11683). Measured on a Pixel 5: /validators renders 25
    `.mg-dt-disclosure` row-expanders under 44px, and a `RangeControl`'s
-   segments, a table's menu trigger, its pager buttons, the "Show all"
-   link and the section nav's own links are under it on nearly every route.
+   segments, a table's menu trigger, its pager buttons, inline refresh and
+   glossary affordances, the "Show all" links and the section nav's own links
+   are under it on nearly every route.
    None of them paints any differently -- the ::after is an invisible hit
    area on coarse pointers only -- so the design contract is untouched and
    only the thing a thumb has to hit changes. */
@@ -3418,7 +5401,12 @@
 .mg-dt-menu-trigger::after,
 .mg-dt-pager button::after,
 .mg-section-more::after,
-.mg-section-nav a::after {
+.mg-section-nav a::after,
+.mg-live-meta-refresh::after,
+.mg-rails-more::after,
+.mg-definition-button::after,
+.mg-definition-trigger::after,
+button[aria-label="Back to top"]::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -3436,7 +5424,12 @@
   .mg-dt-menu-trigger::after,
   .mg-dt-pager button::after,
   .mg-section-more::after,
-  .mg-section-nav a::after {
+  .mg-section-nav a::after,
+  .mg-live-meta-refresh::after,
+  .mg-rails-more::after,
+  .mg-definition-button::after,
+  .mg-definition-trigger::after,
+  button[aria-label="Back to top"]::after {
     display: none;
   }
 }
@@ -3467,6 +5460,12 @@
     scroll-behavior: auto;
   }
   .mg-progress-track {
+    animation: none;
+  }
+  .mg-live-block[data-arrived="true"] {
+    animation: none;
+  }
+  .mg-block-activity-mark[data-arrived="true"]::after {
     animation: none;
   }
   html.theme-transition,

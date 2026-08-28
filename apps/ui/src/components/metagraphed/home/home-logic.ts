@@ -120,10 +120,11 @@ export function emissionRails(
     }));
 }
 
-/** Chain activity days → chronological points for one measured counter. */
+/** Chain activity days → chronological COMPLETE-day points for one measured counter. */
 export function chainPoints(
   days: readonly ChainActivityDay[],
   metric: ChainMetric,
+  asOfDay?: string,
 ): { t: number; v: number }[] {
   const pick = (day: ChainActivityDay) =>
     metric === "extrinsics"
@@ -131,16 +132,23 @@ export function chainPoints(
       : metric === "events"
         ? day.event_count
         : day.block_count;
-  return days
-    .map((day) => {
-      const value = pick(day);
-      const t = Date.parse(`${day.day}T00:00:00Z`);
-      return typeof value === "number" && Number.isFinite(value) && Number.isFinite(t)
-        ? { t, v: value }
-        : null;
-    })
-    .filter((point): point is { t: number; v: number } => point !== null)
-    .sort((a, b) => a.t - b.t);
+  return (
+    days
+      // `/chain/activity` includes the current UTC day while it is still being
+      // accumulated. A partial bar beside complete days reads as a throughput
+      // collapse, so the public chart ends on the day before the response was
+      // generated. Keep the filter tied to API time, not the visitor's clock.
+      .filter((day) => !asOfDay || day.day < asOfDay)
+      .map((day) => {
+        const value = pick(day);
+        const t = Date.parse(`${day.day}T00:00:00Z`);
+        return typeof value === "number" && Number.isFinite(value) && Number.isFinite(t)
+          ? { t, v: value }
+          : null;
+      })
+      .filter((point): point is { t: number; v: number } => point !== null)
+      .sort((a, b) => a.t - b.t)
+  );
 }
 
 /**
@@ -150,9 +158,14 @@ export function chainPoints(
  * against a full day's 7,200 when read at 05:17 UTC -- and quoting it as
  * "blocks today" reads as a collapse in throughput rather than a clock.
  */
-export function lastCompleteDay(days: readonly ChainActivityDay[]): ChainActivityDay | null {
-  const sorted = [...days].sort((a, b) => b.day.localeCompare(a.day));
-  return sorted[1] ?? sorted[0] ?? null;
+export function lastCompleteDay(
+  days: readonly ChainActivityDay[],
+  asOfDay?: string,
+): ChainActivityDay | null {
+  const sorted = days
+    .filter((day) => !asOfDay || day.day < asOfDay)
+    .sort((a, b) => b.day.localeCompare(a.day));
+  return sorted[0] ?? null;
 }
 
 export interface SurfaceRail {

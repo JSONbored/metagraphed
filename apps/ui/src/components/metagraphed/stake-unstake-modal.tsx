@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import {
@@ -70,6 +70,10 @@ export interface StakeUnstakeModalProps {
   netuid: number;
   subnetName?: string;
   validatorName?: string;
+  /** Opens after its trigger has mounted when a lightweight launcher loads this module on demand. */
+  openOnMount?: boolean;
+  /** Lets a deferred trigger explicitly receive focus when the sheet closes. */
+  onCloseAutoFocus?: () => void;
   trigger: (open: () => void) => ReactNode;
 }
 
@@ -78,6 +82,8 @@ export function StakeUnstakeModal({
   netuid,
   subnetName,
   validatorName,
+  openOnMount = false,
+  onCloseAutoFocus,
   trigger,
 }: StakeUnstakeModalProps) {
   const [open, setOpen] = useState(false);
@@ -94,6 +100,14 @@ export function StakeUnstakeModal({
   // while the real submission is still awaiting a signature.
   const confirmInFlightRef = useRef(false);
   const flow = useStakeFlow(hotkey, netuid);
+
+  // The Sheet trigger needs to exist before the dialog opens so Radix can
+  // restore focus to it on Escape. A lazily loaded delegate action therefore
+  // opens after mount, rather than rendering the dialog open on its first
+  // frame with no trigger in its focus history.
+  useEffect(() => {
+    if (openOnMount) setOpen(true);
+  }, [openOnMount]);
 
   const handleOpenChange = (next: boolean) => {
     if (next) {
@@ -126,7 +140,15 @@ export function StakeUnstakeModal({
           SubnetCompareDrawer (#6527) and TakeManagementModal (#6531): Radix
           tracks it and returns focus. */}
       <SheetTrigger asChild>{trigger(() => setOpen(true))}</SheetTrigger>
-      <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col overflow-y-auto sm:max-w-lg"
+        onCloseAutoFocus={(event) => {
+          if (!onCloseAutoFocus) return;
+          event.preventDefault();
+          onCloseAutoFocus();
+        }}
+      >
         <SheetHeader>
           <SheetTitle className="font-display text-16">
             {ACTION_VERB[flow.action]} ·{" "}

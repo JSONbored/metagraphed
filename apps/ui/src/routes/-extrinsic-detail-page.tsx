@@ -5,6 +5,7 @@ import {
   EntityHero,
   Fact,
   FactSentence,
+  LoadMore,
   Raw,
   TimeAgo,
   truncateIdentifier,
@@ -14,6 +15,8 @@ import {
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { RouterLink } from "@/components/metagraphed/router-link";
+import { ErrorState } from "@/components/metagraphed/states";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -41,6 +44,12 @@ function ApiSources() {
 }
 
 const SIGNER_LIMIT = 10;
+// A decoded call normally emits only a handful of events. Asking the
+// lakehouse for its 50-row feed default made the cold path scan substantially
+// farther before proving the page was complete. Ten keeps the first forensic
+// answer compact; the existing cursor affordance retains lossless continuation
+// for unusually event-heavy calls.
+const EXTRINSIC_EVENT_PAGE_SIZE = 10;
 
 /**
  * One extrinsic (#11621). Hero, three sections, `Raw`.
@@ -66,10 +75,14 @@ export function ExtrinsicDetailPage() {
   const extrinsic = useSuspenseQuery(extrinsicQuery(hash)).data.data as Extrinsic | null;
   const block = extrinsic?.block_number ?? null;
   const index = extrinsic?.extrinsic_index ?? null;
+  const { ref: peersRef, nearViewport: peersNearViewport } =
+    useNearViewport<HTMLDivElement>("0px 0px");
 
   const events = useInfiniteQuery({
     ...chainEventsInfiniteQuery(
-      block == null || index == null ? {} : { block, extrinsic: index, limit: 50 },
+      block == null || index == null
+        ? {}
+        : { block, extrinsic: index, limit: EXTRINSIC_EVENT_PAGE_SIZE },
     ),
     enabled: block != null && index != null,
     retry: 0,
@@ -91,15 +104,32 @@ export function ExtrinsicDetailPage() {
         ? { call_hash: callHash, limit: SIGNER_LIMIT + 1 }
         : { signer: extrinsic?.signer ?? "", limit: SIGNER_LIMIT + 1 },
     ),
-    enabled: Boolean(callHash || extrinsic?.signer),
+    // The related-call table answers a later question than the arguments and
+    // decoded results above it. Keep the table's place and state explicit,
+    // but defer this additional cross-extrinsic lookup until a reader reaches
+    // it on the detail route.
+    enabled: peersNearViewport && Boolean(callHash || extrinsic?.signer),
     retry: 0,
   });
 
   const args = useMemo(() => argRows(extrinsic?.call_args), [extrinsic]);
-  const eventRows = useMemo(
-    () => (events.data?.pages ?? []).flatMap((page) => page.data) as ChainEvent[],
-    [events.data],
-  );
+  const eventRows = useMemo(() => {
+    // A misbehaving upstream cursor must not duplicate rows in a forensic
+    // record. The page keeps the first instance, then reports the cursor
+    // problem through `LoadMore` below rather than pretending those repeated
+    // rows are separate emitted events.
+    const seen = new Set<string>();
+    return (events.data?.pages ?? [])
+      .flatMap((page) => page.data)
+      .filter((event) => {
+        const key = `${event.block_number ?? "?"}-${event.event_index ?? "?"}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }) as ChainEvent[];
+  }, [events.data]);
+  const eventCursorInvalid =
+    events.data?.pages.some((page) => page.cursorInvalid === true) ?? false;
   // This extrinsic is not one of "the signer's other calls".
   const peerRows = useMemo(
     () =>
@@ -201,6 +231,7 @@ export function ExtrinsicDetailPage() {
     <AppShell>
       <ApiSources />
       <EntityHero
+        className="mg-hero--entity"
         crumbs={[
           { label: "Chain", href: "/chain" },
           { label: "Extrinsics", href: "/chain/extrinsics" },
@@ -245,40 +276,78 @@ export function ExtrinsicDetailPage() {
         source="extrinsic-event"
         loading={events.isPending}
         paginate={false}
+        error={
+          events.isError ? (
+            <ErrorState
+              error={events.error}
+              onRetry={() => void events.refetch()}
+              context="decoded events"
+            />
+          ) : undefined
+        }
         empty="No events are decoded for this extrinsic."
       />
+      {/* A raw event record can exceed the initial 50-row read. The detail
+          page must offer its continuation instead of implying page one is
+          every event this call produced. */}
+      {events.hasNextPage || ((events.error || eventCursorInvalid) && eventRows.length > 0) ? (
+        <LoadMore
+          hasMore={Boolean(events.hasNextPage)}
+          isLoading={events.isFetchingNextPage}
+          onLoadMore={() => void events.fetchNextPage()}
+          shown={eventRows.length}
+          error={events.error}
+          cursorInvalid={eventCursorInvalid}
+        />
+      ) : null}
 
-      <DataTable
-        id={callHash ? "multisig-chain" : "signer"}
-        rows={peerRows}
-        columns={peerColumns}
-        rowKey={(row) => row.extrinsic_hash || `${row.block_number}-${row.extrinsic_index}`}
-        caption={
-          callHash ? "Other calls referencing this call hash" : "This signer's other recent calls"
-        }
-        rowHref={(row) => (row.extrinsic_hash ? `/extrinsics/${row.extrinsic_hash}` : undefined)}
-        link={RouterLink}
-        source="extrinsic-peer"
-        loading={peers.isPending}
-        paginate={false}
-        // #6426: a failed lookup and a genuine zero are different answers.
-        // The retired section rendered the same "no siblings" copy for both,
-        // so a reader could not tell "there are none" from "we could not find
-        // out"; `DataTable` keeps them apart because `error` and `empty` are
-        // separate slots.
-        error={
-          peers.isError
-            ? callHash
-              ? "Couldn't look up the calls referencing this hash."
-              : "Couldn't look up this signer's other calls."
-            : undefined
-        }
-        empty={
-          callHash
-            ? "No other extrinsics reference this call hash yet."
-            : "No other recent calls from this signer."
-        }
-      />
+      <div ref={peersRef} data-mg-extrinsic-peer="">
+        {!peersNearViewport ? (
+          <p className="mg-section-empty">Related extrinsics load as this section approaches.</p>
+        ) : (
+          <DataTable
+            id={callHash ? "multisig-chain" : "signer"}
+            rows={peerRows}
+            columns={peerColumns}
+            rowKey={(row) => row.extrinsic_hash || `${row.block_number}-${row.extrinsic_index}`}
+            caption={
+              callHash
+                ? "Other calls referencing this call hash"
+                : "This signer's other recent calls"
+            }
+            rowHref={(row) =>
+              row.extrinsic_hash ? `/extrinsics/${row.extrinsic_hash}` : undefined
+            }
+            link={RouterLink}
+            source="extrinsic-peer"
+            loading={peers.isPending}
+            paginate={false}
+            // #6426: a failed lookup and a genuine zero are different answers.
+            // The retired section rendered the same "no siblings" copy for both,
+            // so a reader could not tell "there are none" from "we could not find
+            // out"; `DataTable` keeps them apart because `error` and `empty` are
+            // separate slots.
+            error={
+              peers.isError ? (
+                <ErrorState
+                  error={peers.error}
+                  onRetry={() => void peers.refetch()}
+                  context={
+                    callHash
+                      ? "calls referencing this call hash"
+                      : "this signer's other recent calls"
+                  }
+                />
+              ) : undefined
+            }
+            empty={
+              callHash
+                ? "No other extrinsics reference this call hash yet."
+                : "No other recent calls from this signer."
+            }
+          />
+        )}
+      </div>
 
       <Raw rows={rawRows} />
     </AppShell>

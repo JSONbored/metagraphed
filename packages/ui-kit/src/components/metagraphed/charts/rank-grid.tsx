@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { classNames } from "@/lib/format";
+import { Skeleton } from "../skeleton";
 import { useEntityMark } from "../interaction/active-entity";
 import { markAriaLabel } from "./chart-aria";
 
@@ -35,6 +36,10 @@ export interface RankGridProps {
   start?: number;
   onActivate?: (item: RankGridItem) => void;
   className?: string;
+  /** Preserve the compact rank-grid geometry until all contributing reads answer. */
+  loading?: boolean;
+  /** Number of grid cells to reserve while loading. */
+  loadingItems?: number;
 }
 
 export function RankGrid({
@@ -45,26 +50,58 @@ export function RankGrid({
   start = 1,
   onActivate,
   className,
+  loading = false,
+  loadingItems = cols,
 }: RankGridProps) {
+  const placeholders = Math.max(1, loadingItems);
   return (
     <ol
       className={classNames("mg-rank-grid", className)}
       style={{ "--cols": cols } as CSSProperties}
       role="group"
       aria-label={ariaLabel}
-      data-marks
+      aria-busy={loading || undefined}
+      data-marks={loading ? undefined : ""}
       data-mg-rank-grid=""
     >
-      {items.map((item, i) => (
-        <RankRow
-          key={item.key}
-          item={item}
-          rank={start + i}
-          source={source}
-          onActivate={onActivate}
-        />
-      ))}
+      {loading ? <span className="sr-only">Loading {ariaLabel}</span> : null}
+      {loading
+        ? Array.from({ length: placeholders }, (_, index) => (
+            <RankRowSkeleton key={`skeleton-${index}`} />
+          ))
+        : items.map((item, i) => (
+            <RankRow
+              key={item.key}
+              item={item}
+              rank={start + i}
+              source={source}
+              onActivate={onActivate}
+            />
+          ))}
     </ol>
+  );
+}
+
+/** A loading cell keeps the exact rank-grid columns without presenting a false key. */
+function RankRowSkeleton() {
+  return (
+    <li aria-hidden="true">
+      <div className="mg-rank-grid-row mg-rank-grid-row--skeleton">
+        <span className="mg-rank-grid-rank">
+          <Skeleton className="h-3 w-3" />
+        </span>
+        <Skeleton className="h-3 w-3" />
+        <span className="mg-rank-grid-name">
+          <Skeleton className="h-3 w-3/5" />
+        </span>
+        <span className="mg-rank-grid-value">
+          <Skeleton className="h-3 w-8" />
+        </span>
+        <span className="mg-rank-grid-share">
+          <Skeleton className="h-3 w-7" />
+        </span>
+      </div>
+    </li>
   );
 }
 

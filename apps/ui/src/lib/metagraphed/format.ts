@@ -122,6 +122,25 @@ export function formatUsdApprox(
 }
 
 /**
+ * A directly observed USD amount, not a TAO conversion.
+ *
+ * Revenue contracts already publish dollars over their measured window, so
+ * routing them through {@link formatUsdApprox} would imply a second,
+ * client-side price conversion. Keep this formatter separate: it rounds
+ * whole-dollar amounts to cents, preserves sub-dollar precision, and only
+ * abbreviates values at the million scale where a ledger cell would stop
+ * being scannable.
+ */
+export function formatUsd(value: number | null | undefined, fallback = "—"): string {
+  if (value == null || !Number.isFinite(value)) return fallback;
+  const sign = value < 0 ? "−" : "";
+  const amount = Math.abs(value);
+  if (amount >= 1_000_000) return `${sign}$${(amount / 1_000_000).toFixed(2)}M`;
+  if (amount >= 1) return `${sign}$${formatNumber(Number(amount.toFixed(2)))}`;
+  return `${sign}$${formatNumber(amount)}`;
+}
+
+/**
  * The upstream registry frequently emits "1970-01-01T00:00:00.000Z" as a
  * placeholder when an artifact hasn't been timestamped yet. Treat any
  * pre-2000 date as "unknown" so the UI doesn't claim freshness/staleness

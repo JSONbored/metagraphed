@@ -94,6 +94,7 @@ export const FACT_PROPS: PropRow[] = [
   ...props("FactCell", [
     ["label", "string", true, "11px muted label."],
     ["value", "ReactNode", true, "28px mono 500, tabular."],
+    ["loading", "boolean", false, "Shows an aria-busy static value placeholder."],
     [
       "delta",
       '{ text, tone: "good" | "bad" | "neutral" }',
@@ -204,7 +205,7 @@ export const DATA_TABLE_PROPS: PropRow[] = [
     ["empty", "ReactNode", false, "Shown instead of rows when there are none."],
     ["error", "ReactNode", false, "Shown instead of rows when the query failed."],
     ["dense", "boolean", false, "Shorter rows for a long list."],
-    ["mobile", '"cards" | "scroll"', false, "Forces the sub-640px mode instead of measuring it."],
+    ["mobile", '"cards" | "scroll"', false, "Forces the card or scroll mode through tablet."],
     ["source", "string", false, 'Entity-mark namespace; defaults to "table".'],
     ["storageKey", "string", false, "Persists the column selection; omit to keep it per-mount."],
     ["shareUrl", "string", false, 'Copied by the menu\'s "Copy link"; defaults to the URL.'],
@@ -218,6 +219,7 @@ export const DATA_TABLE_PROPS: PropRow[] = [
     ["width", "number | string", false, "Fixed column width."],
     ["sortable", "boolean", false, "Adds the sort control to the header."],
     ["demote", "boolean", false, "Hidden until the reader turns it on in the menu."],
+    ["lead", "boolean", false, "The row's primary identity; it leads desktop and card layouts."],
     ["wrap", "boolean", false, "Lets the cell wrap; cells are one line by default."],
     [
       "kind",
@@ -406,7 +408,7 @@ export const FILTER_PROPS: PropRow[] = [
 export const COPY_PROPS: PropRow[] = props("CopyableCode", [
   ["value", "string", true, "The text copied to the clipboard, shown as `<code>`."],
   ["label", "string", false, "A muted prefix inside the chip and the copy announcement."],
-  ["truncate", "boolean", false, "Defaults to true; false wraps from 640px up instead."],
+  ["truncate", "boolean", false, "Defaults to true; false wraps instead."],
   ["className", "string", false, "Appended to the button."],
 ]);
 

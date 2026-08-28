@@ -108,6 +108,23 @@ describe("RankedRails", () => {
     expect(html).toMatch(/<a [^>]*href="\/a"[^>]*class="mg-rails-row"/);
     expect(html).not.toContain("mg-rails-more");
   });
+
+  it("keeps the rail grid and columns visible while a source is pending", () => {
+    const html = render(
+      h(RankedRails, {
+        items: [],
+        formatValue: String,
+        ariaLabel: "Stake by subnet",
+        columns: { value: "Stake", name: "Subnet", track: "Share of holdings" },
+        loading: true,
+        loadingRows: 4,
+      }),
+    );
+    expect(html).toContain('aria-busy="true"');
+    expect((html.match(/mg-rails-row--skeleton/g) ?? []).length).toBe(4);
+    expect(html).toContain("Loading Stake by subnet");
+    expect(html).not.toContain("data-marks");
+  });
 });
 
 describe("MarkerRail", () => {
@@ -124,10 +141,30 @@ describe("MarkerRail", () => {
       "<span>Uptime</span><span>Surface</span><span>0–100%</span>",
     );
     expect(html).toContain("--pos:99.8%");
+    expect((html.match(/mg-marker-rail-ticks/g) ?? []).length).toBe(
+      MARKER_SPECIMEN.length,
+    );
+    expect(html).toContain('class="mg-marker-rail-marker"');
     expect(html).toContain('class="mg-marker-rail-track" data-empty="true"');
     expect(html).toContain('<span class="mg-rails-value">—</span>');
     expect(html).toContain('<span class="mg-rails-tag">openapi</span>');
     expect(html).toContain('aria-label="SSE feed"');
+  });
+
+  it("keeps the marker-rail columns visible while the probe read is pending", () => {
+    const html = render(
+      h(MarkerRail, {
+        formatValue: String,
+        columns: { ratio: "Ready", name: "Pool", scale: "Eligible members" },
+        ariaLabel: "RPC pool readiness",
+        loading: true,
+        loadingRows: 3,
+      }),
+    );
+    expect(html).toContain('aria-busy="true"');
+    expect((html.match(/mg-rails-row--skeleton/g) ?? []).length).toBe(3);
+    expect(html).toContain("Loading RPC pool readiness");
+    expect(html).not.toContain("data-marks");
   });
 });
 
@@ -165,6 +202,21 @@ describe("RankGrid", () => {
     expect(html).toContain("--swatch:var(--chart-1)");
     expect(html).toContain("--swatch:var(--faint)");
   });
+
+  it("reserves compact key cells while dependent reads are pending", () => {
+    const html = render(
+      h(RankGrid, {
+        items: [],
+        cols: 4,
+        ariaLabel: "Related keys",
+        loading: true,
+      }),
+    );
+    expect(html).toContain('aria-busy="true"');
+    expect((html.match(/mg-rank-grid-row--skeleton/g) ?? []).length).toBe(4);
+    expect(html).toContain("Loading Related keys");
+    expect(html).not.toContain("data-marks");
+  });
 });
 
 describe("LeaderCards", () => {
@@ -174,11 +226,28 @@ describe("LeaderCards", () => {
     );
     expect((html.match(/data-variant="featured"/g) ?? []).length).toBe(3);
     expect((html.match(/data-variant="compact"/g) ?? []).length).toBe(9);
-    expect((html.match(/class="mg-leader-watermark"/g) ?? []).length).toBe(3);
+    expect(html).not.toContain("mg-leader-watermark");
     expect(html).toContain(
       '<span class="mg-leader-delta" data-state="new">New</span>',
     );
     expect(html).toContain('aria-label="#1 Targon · 1.89M τ total"');
+  });
+
+  it("preserves featured and compact reading geometry while a leaderboard loads", () => {
+    const html = render(
+      h(LeaderCards, {
+        items: [],
+        featured: 3,
+        loading: true,
+        loadingItems: 7,
+        ariaLabel: "Accounts ranked by stake",
+      }),
+    );
+    expect(html).toContain('aria-busy="true"');
+    expect((html.match(/data-variant="featured"/g) ?? []).length).toBe(3);
+    expect((html.match(/data-variant="compact"/g) ?? []).length).toBe(4);
+    expect(html).toContain("Loading Accounts ranked by stake");
+    expect(html).not.toContain("data-marks");
   });
 
   it("deltaLabel", () => {
@@ -201,6 +270,7 @@ describe("CompositionBreakdown", () => {
     );
     expect(html).toContain('data-entity="Targon"');
     expect(html).toContain("--share:41%");
+    expect(html).toContain("--weight:0.41");
     expect(html).toContain(
       'aria-label="Emission split: Targon 41%, Chutes 41%, Affine 18%"',
     );
@@ -223,7 +293,23 @@ describe("CompositionBreakdown", () => {
     );
     expect(html).toContain('data-entity="Other"');
     expect(html).not.toContain('data-entity="c"');
-    expect(html).toContain("--swatch:var(--chart-11)");
+    expect(html).toContain("--swatch:var(--chart-residual)");
+  });
+
+  it("keeps the composition bar and legend geometry while its source is pending", () => {
+    const html = render(
+      h(CompositionBreakdown, {
+        formatValue: String,
+        ariaLabel: "Emission split",
+        loading: true,
+      }),
+    );
+    expect(html).toContain('data-loading="true"');
+    expect(html).toContain(
+      'role="group" aria-label="Emission split" aria-busy="true"',
+    );
+    expect((html.match(/mg-rank-grid-row--skeleton/g) ?? []).length).toBe(4);
+    expect(html).not.toContain("data-marks");
   });
 });
 

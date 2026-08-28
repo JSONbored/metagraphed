@@ -12,7 +12,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
-import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { compareQuery, compareValidatorsQuery } from "@/lib/metagraphed/queries";
 import { formatDecimal, formatNumber, formatPct, formatTao } from "@/lib/metagraphed/format";
 import { resolveAddress, truncateSs58 } from "@/lib/metagraphed/resolve-address";
@@ -55,12 +55,21 @@ export function ComparePage() {
     <AppShell>
       <ApiSources />
       <EntityHero
+        className="mg-hero--compare"
         name="Compare"
         sentence={
           <FactSentence>
             {kind === "validators"
-              ? `${validators.length} validator${validators.length === 1 ? "" : "s"}, side by side`
-              : `${subnets.length} subnet${subnets.length === 1 ? "" : "s"}, side by side`}
+              ? validators.length < 2
+                ? validators.length === 1
+                  ? "One validator selected. Add one more to compare."
+                  : "Pick two validators to compare."
+                : `${validators.length} selected validators, side by side.`
+              : subnets.length < 2
+                ? subnets.length === 1
+                  ? `SN${subnets[0]} selected. Add one more to compare.`
+                  : "Pick two subnets to compare."
+                : `${subnets.map((netuid) => `SN${netuid}`).join(" · ")}, side by side.`}
           </FactSentence>
         }
         secondary={
@@ -218,6 +227,7 @@ function SubnetLedger({ netuids }: { netuids: number[] }) {
 
   return (
     <AnalyticsSection
+      className="mg-compare-ledger-section"
       id="ledger"
       name="Side by side"
       question="Every fact these subnets publish, with the better value marked."
@@ -225,11 +235,21 @@ function SubnetLedger({ netuids }: { netuids: number[] }) {
     >
       {!enabled ? (
         <EmptyState
-          title="Pick two subnets"
-          description="Add a second subnet from the Compare control on the subnets table to see them side by side."
+          title={netuids.length === 1 ? "Add one more subnet" : "Pick two subnets"}
+          description={
+            netuids.length === 1
+              ? "Choose one more subnet from the directory to unlock the comparison."
+              : "Choose any two subnets from the directory to see their published facts side by side."
+          }
+          action={{ label: "Browse subnets", href: "/subnets" }}
         />
       ) : isPending ? (
-        <Skeleton className="h-96 w-full" />
+        <CompareLedger
+          entities={entities}
+          groups={groups}
+          loading
+          ariaLabel={`Loading comparison of ${entities.map((e) => e.name).join(", ")}`}
+        />
       ) : isError ? (
         <ErrorState error={error} onRetry={() => void refetch()} context="the comparison" />
       ) : (
@@ -342,6 +362,7 @@ function ValidatorLedger({ hotkeys }: { hotkeys: string[] }) {
 
   return (
     <AnalyticsSection
+      className="mg-compare-ledger-section"
       id="ledger"
       name="Side by side"
       question="What each operator takes, holds and is trusted with."
@@ -349,11 +370,21 @@ function ValidatorLedger({ hotkeys }: { hotkeys: string[] }) {
     >
       {!enabled ? (
         <EmptyState
-          title="Pick two validators"
-          description="Add a second operator from the Compare control on the validators table to see them side by side."
+          title={hotkeys.length === 1 ? "Add one more validator" : "Pick two validators"}
+          description={
+            hotkeys.length === 1
+              ? "Choose one more validator from the directory to unlock the comparison."
+              : "Choose any two validators from the directory to see their published facts side by side."
+          }
+          action={{ label: "Browse validators", href: "/validators" }}
         />
       ) : isPending ? (
-        <Skeleton className="h-96 w-full" />
+        <CompareLedger
+          entities={entities}
+          groups={groups}
+          loading
+          ariaLabel={`Loading comparison of ${entities.map((e) => e.name).join(", ")}`}
+        />
       ) : isError ? (
         <ErrorState error={error} onRetry={() => void refetch()} context="the comparison" />
       ) : (

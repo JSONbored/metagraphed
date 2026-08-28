@@ -78,6 +78,19 @@ describe("visual grammar guardrails (#8255)", () => {
     expect(rule.slice(0, rule.indexOf("}"))).toMatch(/animation:\s*none/);
   });
 
+  it("stops finite block-arrival cues under prefers-reduced-motion", () => {
+    const css = read(root("../../../../../packages/ui-kit/src/styles.css"));
+    const block = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    for (const selector of [
+      '.mg-live-block[data-arrived="true"]',
+      '.mg-block-activity-mark[data-arrived="true"]::after',
+    ]) {
+      expect(block).toContain(selector);
+      const rule = block.slice(block.indexOf(selector));
+      expect(rule.slice(0, rule.indexOf("}"))).toMatch(/animation:\s*none/);
+    }
+  });
+
   it("has no full-bleed accent fill — accent may colour a mark, not fill a region", () => {
     // The distinction that matters is proportional vs. full-bleed, not the
     // colour itself. A bar sized `width: ${pct}%`, a sparkline stroke, an 8px

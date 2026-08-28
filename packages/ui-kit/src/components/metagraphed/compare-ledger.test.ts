@@ -115,6 +115,18 @@ describe("CompareLedger markup", () => {
     expect(render({ highlightBest: false })).not.toContain("data-best");
   });
 
+  it("keeps the selected columns and metric labels while values load", () => {
+    const html = render({ loading: true });
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain("Emission share");
+    expect(html).toContain("Apex");
+    expect(html).not.toContain("6.1%");
+    expect(html).not.toContain("data-best");
+    expect((html.match(/animate-pulse/g) ?? []).length).toBe(
+      entities.length * groups[0].rows.length,
+    );
+  });
+
   it("renders a missing value as an em dash and formats through the row's own formatter", () => {
     const html = renderToStaticMarkup(
       h(CompareLedger, {

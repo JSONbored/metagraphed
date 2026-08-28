@@ -1,8 +1,13 @@
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
+import {
+  defineSearchSchema,
+  enumSearch,
+  stripDefaultSearchParams,
+  stringSearch,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { z } from "zod";
-import { Skeleton } from "@jsonbored/ui-kit";
+import { RouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
 import { EndpointsPage } from "./-endpoints-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
@@ -17,16 +22,16 @@ import { hubMeta } from "@/lib/metagraphed/hub-copy";
  * `compare` (row expansion and the compare tray went with the tab strip),
  * `sort`/`order`/`page`/`pageSize` (the table owns all four).
  */
-const endpointsSearchSchema = z.object({
-  q: z.string().catch("").default(""),
-  status: z.string().catch("").default(""),
-  kind: z.string().catch("").default(""),
-  provider: z.string().catch("").default(""),
-  latency: z.enum(["slowest", "fastest", "archive"]).catch("slowest").default("slowest"),
-  incidents: z.enum(["open", "all"]).catch("open").default("open"),
+const endpointsSearchSchema = defineSearchSchema({
+  q: stringSearch(),
+  status: stringSearch(),
+  kind: stringSearch(),
+  provider: stringSearch(),
+  latency: enumSearch(["slowest", "fastest", "archive"] as const, "slowest"),
+  incidents: enumSearch(["open", "all"] as const, "open"),
 });
 
-export type EndpointsSearch = z.infer<typeof endpointsSearchSchema>;
+export type EndpointsSearch = SearchOutput<typeof endpointsSearchSchema>;
 
 export const Route = createFileRoute("/apis/endpoints")({
   validateSearch: endpointsSearchSchema,
@@ -34,6 +39,6 @@ export const Route = createFileRoute("/apis/endpoints")({
   head: () => ({
     meta: hubMeta("/apis/endpoints"),
   }),
-  pendingComponent: () => <Skeleton className="mx-auto my-6 h-96 w-full max-w-shell" />,
+  pendingComponent: RouteLoadingSkeleton,
   component: EndpointsPage,
 });

@@ -78,6 +78,13 @@ describe("every swept route resolves to a page", () => {
   it("throws on a route no file declares", () => {
     expect(() => resolveRouteFile("/not-a-real-route", index)).toThrow(/No createFileRoute/);
   });
+
+  it("resolves a terminal splat for both its index and descendants", () => {
+    const routes = new Map([["/docs/$", "docs.$.tsx"]]);
+    expect(resolveRouteFile("/docs", routes)).toBe("docs.$.tsx");
+    expect(resolveRouteFile("/docs/mcp", routes)).toBe("docs.$.tsx");
+    expect(resolveRouteFile("/docs/api-reference/subnets", routes)).toBe("docs.$.tsx");
+  });
 });
 
 describe("no route grows a NEW live-production dependency", () => {

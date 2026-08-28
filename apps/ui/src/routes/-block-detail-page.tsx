@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from "react";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useInfiniteQuery, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   CompositionBreakdown,
@@ -8,6 +8,7 @@ import {
   Fact,
   FactSentence,
   LineWithWindow,
+  LoadMore,
   Raw,
   TimeAgo,
   truncateIdentifier,
@@ -18,12 +19,13 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { RouterLink } from "@/components/metagraphed/router-link";
+import { ErrorState } from "@/components/metagraphed/states";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 import {
   blockChainEventsQuery,
-  blockExtrinsicsQuery,
+  blockExtrinsicsInfiniteQuery,
   blockQuery,
   blocksQuery,
 } from "@/lib/metagraphed/queries";
@@ -31,13 +33,15 @@ import type { Block, ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
 import { extrinsicColumns } from "@/components/metagraphed/chain-stream/chain-stream-columns";
 import { argRows } from "@/components/metagraphed/chain-detail/chain-detail-logic";
 import {
-  CADENCE_SPAN,
+  CADENCE_BLOCK_LIMIT,
+  blockFactCells,
   blockFacts,
   cadencePoints,
   cadenceRange,
   eventLabel,
   eventsByPallet,
   neighbourHrefs,
+  shouldFetchCountedBlockDetail,
 } from "@/components/metagraphed/chain-detail/chain-detail-logic";
 import { Route } from "./blocks.$ref";
 
@@ -47,6 +51,7 @@ const API_PATHS = [
   "/api/v1/blocks/{ref}/extrinsics",
   "/api/v1/blocks/{ref}/chain-events",
 ];
+const BLOCK_EXTRINSIC_PAGE_SIZE = 100;
 
 function ApiSources() {
   useRegisterApiSource(API_PATHS);
@@ -77,13 +82,35 @@ export function BlockDetailPage() {
   // every field, and the page renders a hero about nothing.
   const block = useSuspenseQuery(blockQuery(ref)).data.data as Block | null;
   const number = block?.block_number ?? null;
+  const [technicalDetailsOpen, setTechnicalDetailsOpen] = useState(false);
 
-  const extrinsics = useQuery({ ...blockExtrinsicsQuery(ref, { limit: 100 }), retry: 0 });
-  const events = useQuery({ ...blockChainEventsQuery(ref), retry: 0 });
+  // A reader can walk prev/next without remounting this route. Start the next
+  // block from its immediate record rather than carrying a secondary,
+  // potentially slow forensic fetch across the navigation.
+  useEffect(() => {
+    setTechnicalDetailsOpen(false);
+  }, [ref]);
+
+  const shouldFetchExtrinsics = shouldFetchCountedBlockDetail(block?.extrinsic_count);
+  const shouldFetchEvents =
+    technicalDetailsOpen && shouldFetchCountedBlockDetail(block?.event_count);
+  const extrinsics = useInfiniteQuery({
+    ...blockExtrinsicsInfiniteQuery(ref, BLOCK_EXTRINSIC_PAGE_SIZE, block?.extrinsic_count),
+    enabled: shouldFetchExtrinsics,
+    retry: 0,
+  });
+  // Decoded events can be a substantial all-events payload. The block header
+  // already gives the exact count, so keep the primary extrinsic ledger fast
+  // and only ask for the full technical record when a reader opens it.
+  const events = useQuery({
+    ...blockChainEventsQuery(ref),
+    enabled: shouldFetchEvents,
+    retry: 0,
+  });
   const [start, end] = number == null ? [0, 0] : cadenceRange(number);
   const window = useQuery({
-    ...blocksQuery({ block_start: start, block_end: end, limit: 2 * CADENCE_SPAN + 1 }),
-    enabled: number != null,
+    ...blocksQuery({ block_start: start, block_end: end, limit: CADENCE_BLOCK_LIMIT }),
+    enabled: technicalDetailsOpen && number != null,
     retry: 0,
   });
 
@@ -111,12 +138,17 @@ export function BlockDetailPage() {
   }, [neighbours.prev, neighbours.next, navigate]);
 
   const rows = useMemo(
-    () => (extrinsics.data?.data.extrinsics ?? []) as Extrinsic[],
+    () => (extrinsics.data?.pages ?? []).flatMap((page) => page.data.extrinsics as Extrinsic[]),
     [extrinsics.data],
   );
+  const extrinsicTotal =
+    block?.extrinsic_count ?? extrinsics.data?.pages[0]?.data.extrinsic_count ?? null;
   const eventRows = useMemo(() => (events.data?.data.events ?? []) as ChainEvent[], [events.data]);
   const segments = useMemo(() => eventsByPallet(eventRows), [eventRows]);
   const points = useMemo(() => cadencePoints((window.data?.data ?? []) as Block[]), [window.data]);
+  const heroFacts = blockFacts(block, { count: formatNumber });
+  const heroCells = blockFactCells(block, { count: formatNumber });
+  const eventCount = block?.event_count;
 
   const eventColumns: DataTableColumn<ChainEvent>[] = [
     {
@@ -165,6 +197,7 @@ export function BlockDetailPage() {
     <AppShell>
       <ApiSources />
       <EntityHero
+        className="mg-hero--entity mg-hero--block"
         crumbs={[
           { label: "Chain", href: "/chain" },
           { label: "Blocks", href: "/chain/blocks" },
@@ -201,13 +234,16 @@ export function BlockDetailPage() {
               fallback={block?.author ? truncateIdentifier(block.author) : "an unknown key"}
             />{" "}
             {block?.observed_at ? <TimeAgo at={block.observed_at} /> : null}.{" "}
-            {blockFacts(block, { count: formatNumber }).map((fact) => (
-              <Fact key={fact.key}>
-                {fact.label} {fact.value}
-              </Fact>
-            ))}
+            {!heroCells
+              ? heroFacts.map((fact) => (
+                  <Fact key={fact.key}>
+                    {fact.label} {fact.value}
+                  </Fact>
+                ))
+              : null}
           </FactSentence>
         }
+        cells={heroCells}
         live={{ updatedAt: block?.observed_at ?? null, source: "chain-direct" }}
       />
 
@@ -239,46 +275,139 @@ export function BlockDetailPage() {
             </dl>
           );
         }}
-        loading={extrinsics.isPending}
+        loading={shouldFetchExtrinsics && extrinsics.isPending}
+        paginate={false}
+        error={
+          extrinsics.isError && rows.length === 0 ? (
+            <ErrorState
+              error={extrinsics.error}
+              onRetry={() => void extrinsics.refetch()}
+              context="block extrinsics"
+            />
+          ) : undefined
+        }
         empty="This block carried no extrinsics."
       />
-
-      {segments.length > 0 ? (
-        <CompositionBreakdown
-          segments={segments}
-          formatValue={(value) => formatNumber(value)}
-          legendCols={4}
-          ariaLabel="Events by pallet"
-          source="block-pallet"
+      {extrinsics.hasNextPage || (extrinsics.error && rows.length > 0) ? (
+        <LoadMore
+          hasMore={Boolean(extrinsics.hasNextPage)}
+          isLoading={extrinsics.isFetchingNextPage}
+          onLoadMore={() => void extrinsics.fetchNextPage()}
+          shown={rows.length}
+          total={extrinsicTotal ?? undefined}
+          error={extrinsics.error}
         />
       ) : null}
-      <DataTable
-        id="events"
-        rows={eventRows}
-        columns={eventColumns}
-        rowKey={(row) => `${row.event_index ?? "?"}`}
-        caption="Events emitted"
-        link={RouterLink}
-        source="block-event"
-        loading={events.isPending}
-        empty="No decoded events for this block."
-      />
 
-      {points.length > 1 && number != null ? (
-        <LineWithWindow
-          compact
-          points={points}
-          window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
-          unit="seconds between blocks"
-          formatValue={(value) => `${formatDecimal(value, 1)}s`}
-          formatDate={(t) => `#${formatNumber(t)}`}
-          formatRange={(from, to) => `#${formatNumber(from)} → #${formatNumber(to)}`}
-          marker={number}
-          markerLabel={`This block, #${formatNumber(number)}`}
-          ariaLabel={`Block time within ${CADENCE_SPAN} blocks either side of #${formatNumber(number)}`}
-          source="block-cadence"
-        />
-      ) : null}
+      <section
+        className="mg-block-event-stream"
+        aria-labelledby="block-event-stream-title"
+        aria-busy={
+          technicalDetailsOpen && ((shouldFetchEvents && events.isPending) || window.isPending)
+            ? true
+            : undefined
+        }
+      >
+        <div className="mg-block-event-stream-head">
+          <div>
+            <p className="mg-block-event-stream-kicker">Technical record</p>
+            <h2 id="block-event-stream-title">Decoded event stream</h2>
+            <p className="mg-block-event-stream-detail">
+              {typeof eventCount === "number"
+                ? `${formatNumber(eventCount)} decoded event${eventCount === 1 ? "" : "s"} reported for this block.`
+                : "Inspect decoded events and local block cadence when the index provides them."}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="mg-block-event-trigger"
+            aria-expanded={technicalDetailsOpen}
+            aria-controls="block-technical-record"
+            onClick={() => setTechnicalDetailsOpen((open) => !open)}
+          >
+            {technicalDetailsOpen ? "Hide technical record" : "Inspect decoded events"}
+          </button>
+        </div>
+
+        {technicalDetailsOpen ? (
+          <div id="block-technical-record" className="mg-block-event-stream-body">
+            {shouldFetchEvents && events.isPending ? (
+              <CompositionBreakdown
+                formatValue={(value) => formatNumber(value)}
+                legendCols={4}
+                ariaLabel="Events by pallet"
+                source="block-pallet"
+                loading
+                loadingItems={4}
+              />
+            ) : segments.length > 0 ? (
+              <CompositionBreakdown
+                segments={segments}
+                formatValue={(value) => formatNumber(value)}
+                legendCols={4}
+                ariaLabel="Events by pallet"
+                source="block-pallet"
+              />
+            ) : null}
+            <DataTable
+              id="events"
+              rows={eventRows}
+              columns={eventColumns}
+              rowKey={(row) => `${row.event_index ?? "?"}`}
+              caption="Events emitted"
+              link={RouterLink}
+              source="block-event"
+              loading={shouldFetchEvents && events.isPending}
+              error={
+                events.isError ? (
+                  <ErrorState
+                    error={events.error}
+                    onRetry={() => void events.refetch()}
+                    context="decoded events"
+                  />
+                ) : undefined
+              }
+              empty="No decoded events for this block."
+            />
+
+            {window.isPending && number != null ? (
+              <LineWithWindow
+                compact
+                points={[]}
+                window={{ from: 0, to: 0 }}
+                unit="seconds between blocks"
+                ariaLabel={`Block cadence around #${formatNumber(number)}`}
+                loading
+              />
+            ) : window.isError ? (
+              <ErrorState
+                error={window.error}
+                onRetry={() => void window.refetch()}
+                context="block cadence"
+              />
+            ) : points.length > 1 && number != null ? (
+              <LineWithWindow
+                compact
+                points={points}
+                window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
+                unit="seconds between blocks"
+                formatValue={(value) => `${formatDecimal(value, 1)}s`}
+                formatDate={(t) => `#${formatNumber(t)}`}
+                formatRange={(from, to) => `#${formatNumber(from)} → #${formatNumber(to)}`}
+                marker={number}
+                markerLabel={`This block, #${formatNumber(number)}`}
+                ariaLabel={`Block cadence around #${formatNumber(number)}`}
+                source="block-cadence"
+              />
+            ) : window.isSuccess ? (
+              <p className="mg-block-event-stream-empty">
+                The indexed window does not yet contain enough consecutive blocks for a cadence
+                reading.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
 
       <Raw rows={rawRows} />
     </AppShell>

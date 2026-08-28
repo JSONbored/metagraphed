@@ -3,14 +3,13 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   AnalyticsSection,
-  CompositionBreakdown,
   DataTable,
   EntityHero,
   FactSentence,
   FilterField,
   FilterInput,
-  FilterSelect,
   LoadMore,
+  RankedRails,
   Raw,
   SectionNav,
   type DataTableColumn,
@@ -18,20 +17,17 @@ import {
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { factCells } from "@/lib/metagraphed/facts";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
+import { ErrorState } from "@/components/metagraphed/states";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
+import { formatAbsoluteTime, formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { coverageQuery, surfacesInfiniteQuery } from "@/lib/metagraphed/queries";
 import type { Surface } from "@/lib/metagraphed/types";
 import type { CoverageCounts } from "@/components/metagraphed/apis/apis-logic";
-import {
-  apisNav,
-  catalogFacts,
-  facet,
-  kindSegments,
-} from "@/components/metagraphed/apis/apis-logic";
+import { apisNav, catalogFacts, interfaceCoverage } from "@/components/metagraphed/apis/apis-logic";
 import { matchesSurfaceFilters } from "@/lib/metagraphed/surface-filters";
 import { Route } from "./apis.index";
 
@@ -80,24 +76,34 @@ export function ApisCatalogPage() {
   if (search.auth === "none") serverParams.auth_required = "false";
   if (search.rate_limited) serverParams.rate_limited = "true";
 
-  const feed = useInfiniteQuery({ ...surfacesInfiniteQuery(serverParams), retry: 0 });
   const coverage = useQuery({ ...coverageQuery(), retry: 0 });
-  // The kind breakdown is of the WHOLE catalog, not of the current filter: a
-  // composition that redraws itself to 100% of one kind whenever that kind is
-  // selected is a chart of the filter, not of the network.
-  const all = useInfiniteQuery({ ...surfacesInfiniteQuery({ limit: 500 }), retry: 0 });
+  // Wait for the coverage instrument above this section to settle before
+  // observing the catalog. Otherwise its shorter first-frame skeleton can
+  // briefly put the catalog in view and start a 200-row read that the final
+  // layout leaves below the fold.
+  const { ref: catalogRef, nearViewport: catalogNearViewport } = useNearViewport(
+    "0px 0px",
+    !coverage.isPending,
+  );
+  const feed = useInfiniteQuery({
+    ...surfacesInfiniteQuery(serverParams),
+    enabled: catalogNearViewport,
+    retry: 0,
+  });
+  const coverageData = coverage.data?.data as CoverageCounts | undefined;
 
   const surfaces = useMemo(
     () => (feed.data?.pages ?? []).flatMap((page) => page.data) as Surface[],
     [feed.data],
   );
-  const catalogue = useMemo(
-    () => (all.data?.pages ?? []).flatMap((page) => page.data) as Surface[],
-    [all.data],
+  const coverageRows = useMemo(
+    () =>
+      interfaceCoverage(
+        coverageData?.completeness?.dimension_coverage,
+        coverageData?.chain_subnet_count,
+      ),
+    [coverageData],
   );
-  const segments = useMemo(() => kindSegments(catalogue), [catalogue]);
-  const kinds = useMemo(() => facet(catalogue, (s) => s.kind), [catalogue]);
-  const providers = useMemo(() => facet(catalogue, (s) => s.provider), [catalogue]);
   // `matchesSurfaceFilters` over the server-narrowed rows: re-applying every
   // facet is harmless and keeps the predicate correct however the server
   // answers, and it is where the free-text `q` is actually applied.
@@ -105,6 +111,9 @@ export function ApisCatalogPage() {
     () => surfaces.filter((surface) => matchesSurfaceFilters(surface, search)),
     [surfaces, search],
   );
+  const refreshAll = () => {
+    void Promise.all([coverage.refetch(), ...(catalogNearViewport ? [feed.refetch()] : [])]);
+  };
 
   const columns: DataTableColumn<Surface>[] = [
     {
@@ -184,6 +193,7 @@ export function ApisCatalogPage() {
     <AppShell>
       <ApiSources />
       <EntityHero
+        className="mg-hero--directory"
         name="APIs"
         sentence={<FactSentence>Every public interface this registry has verified.</FactSentence>}
         // A STRIP, not chips (#11696). This page's subject is a table, and its
@@ -191,114 +201,165 @@ export function ApisCatalogPage() {
         // smaller than the rows they frame. The lede stays prose.
         cells={
           factCells(
-            catalogFacts(coverage.data?.data as CoverageCounts | undefined, segments.length, {
+            catalogFacts(coverageData, coverageRows.length, {
               count: formatNumber,
             }),
           ) ?? undefined
         }
         live={{
-          updatedAt: (coverage.data?.data.generated_at as string | undefined) ?? null,
+          updatedAt: (coverageData?.generated_at as string | undefined) ?? null,
           source: "registry",
-          onRefresh: () => void coverage.refetch(),
-          refreshing: coverage.isFetching,
+          onRefresh: refreshAll,
+          refreshing: feed.isFetching || coverage.isFetching,
         }}
       />
       <SectionNav items={apisNav(pathname)} link={RouterLink} />
 
       <AnalyticsSection
-        id="kinds"
-        name="By kind"
-        question="What kinds of interface the network publishes."
+        id="coverage"
+        name="Interface coverage"
+        question="How widely each public interface type is published."
         visual={
-          segments.length > 0 ? (
-            <CompositionBreakdown
-              segments={segments}
-              formatValue={(value) => formatNumber(value)}
-              legendCols={4}
-              ariaLabel="Surfaces by kind"
-              source="surface-kind"
-              // The legend IS the rank grid -- it already prints rank, key,
-              // count and share -- so a second grid beside it would be the
-              // same twelve rows twice. A row narrows the catalog below rather
-              // than navigating: the table is on this page.
-              onActivate={(key) => setSearch({ kind: search.kind === key ? "" : key })}
+          coverage.isPending ? (
+            <RankedRails
+              items={[]}
+              formatValue={(value) => `${formatNumber(value)} subnets`}
+              columns={{
+                value: "Subnets",
+                name: "Interface",
+                track: "Share of network",
+              }}
+              ariaLabel="Subnet coverage by public interface type"
+              source="interface-coverage"
+              loading
+              loadingRows={6}
+            />
+          ) : coverage.isError ? (
+            <ErrorState
+              error={coverage.error}
+              onRetry={() => void coverage.refetch()}
+              context="published interface coverage"
+            />
+          ) : coverageRows.length > 0 ? (
+            <RankedRails
+              items={coverageRows.map((row) => ({
+                ...row,
+                detail: [
+                  { key: "subnets", label: "Subnets", value: formatNumber(row.value) },
+                  {
+                    key: "coverage",
+                    label: "Network coverage",
+                    value: formatPct(row.share),
+                  },
+                ],
+              }))}
+              formatValue={(value) =>
+                `${formatNumber(value)} / ${formatNumber(coverageData?.chain_subnet_count ?? 0)}`
+              }
+              max={coverageData?.chain_subnet_count}
+              columns={{
+                value: "Subnets",
+                name: "Interface",
+                track: "Share of network",
+              }}
+              ariaLabel="Subnet coverage by public interface type"
+              source="interface-coverage"
             />
           ) : null
         }
-        footnote="every catalogued surface · registry"
+        empty={coverage.isPending ? false : "No public interface coverage is published."}
+        footnote={
+          coverage.isPending
+            ? "Loading published interface coverage · registry"
+            : coverage.isError
+              ? "Published interface coverage is temporarily unavailable · registry"
+              : "of all chain subnets · one subnet may publish more than one interface · registry"
+        }
       />
 
       <AnalyticsSection
         id="catalog"
         name="Catalog"
         question="Every surface this registry has verified."
+        visualRef={catalogRef}
         visual={
-          <DataTable
-            id="catalog"
-            rows={rows}
-            columns={columns}
-            rowKey={(row) => row.id}
-            caption="Every verified surface"
-            link={RouterLink}
-            source="surface"
-            storageKey="mg-apis-columns"
-            expand={surfaceDetail}
-            loading={feed.isPending}
-            search={{
-              value: search.q,
-              onChange: (q) => setSearch({ q }),
-              placeholder: "Name, provider or subnet",
-            }}
-            filters={
-              <>
-                <FilterField label="Kind">
-                  <FilterSelect
-                    value={search.kind}
-                    onChange={(event) => setSearch({ kind: event.target.value })}
-                  >
-                    <option value="">Any kind</option>
-                    {kinds.map((kind) => (
-                      <option key={kind} value={kind}>
-                        {kind}
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </FilterField>
-                <FilterField label="Provider">
-                  <FilterSelect
-                    value={search.provider}
-                    onChange={(event) => setSearch({ provider: event.target.value })}
-                  >
-                    <option value="">Any provider</option>
-                    {providers.map((provider) => (
-                      <option key={provider} value={provider}>
-                        {provider}
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </FilterField>
-                <FilterField label="Subnet">
-                  <FilterInput
-                    value={search.netuid}
-                    onChange={(event) => setSearch({ netuid: event.target.value })}
-                    placeholder="netuid"
-                    inputMode="numeric"
-                    leadingIcon={false}
-                    aria-label="Subnet netuid"
+          !catalogNearViewport ? (
+            <p className="mg-section-empty">
+              Verified interface rows load as this section approaches.
+            </p>
+          ) : (
+            <DataTable
+              id="catalog"
+              rows={rows}
+              columns={columns}
+              rowKey={(row) => row.id}
+              caption="Every verified surface"
+              link={RouterLink}
+              source="surface"
+              storageKey="mg-apis-columns"
+              expand={surfaceDetail}
+              loading={feed.isPending}
+              error={
+                feed.isError ? (
+                  <ErrorState
+                    error={feed.error}
+                    onRetry={() => void feed.refetch()}
+                    context="verified interfaces"
                   />
-                </FilterField>
-              </>
-            }
-            empty="No surfaces match these filters."
-          />
+                ) : undefined
+              }
+              search={{
+                value: search.q,
+                onChange: (q) => setSearch({ q }),
+                placeholder: "Name, provider or subnet",
+              }}
+              filters={
+                <>
+                  <FilterField label="Kind">
+                    <FilterInput
+                      value={search.kind}
+                      onChange={(event) => setSearch({ kind: event.target.value })}
+                      placeholder="e.g. subnet-api"
+                      leadingIcon={false}
+                      aria-label="Surface kind"
+                    />
+                  </FilterField>
+                  <FilterField label="Provider">
+                    <FilterInput
+                      value={search.provider}
+                      onChange={(event) => setSearch({ provider: event.target.value })}
+                      placeholder="provider slug"
+                      leadingIcon={false}
+                      aria-label="Surface provider"
+                    />
+                  </FilterField>
+                  <FilterField label="Subnet">
+                    <FilterInput
+                      value={search.netuid}
+                      onChange={(event) => setSearch({ netuid: event.target.value })}
+                      placeholder="netuid"
+                      inputMode="numeric"
+                      leadingIcon={false}
+                      aria-label="Subnet netuid"
+                    />
+                  </FilterField>
+                </>
+              }
+              empty="No surfaces match these filters."
+            />
+          )
         }
         footnote={
           <>
-            {`${formatNumber(rows.length)} shown · facets applied server-side · registry `}
-            // Only while there IS more to fetch. The table states its own // range and total in its
-            pager, so a terminal "end of list" strip // beneath it is the same fact twice, in two
-            vocabularies (#11696).
-            {feed.hasNextPage || feed.error ? (
+            {!catalogNearViewport
+              ? "deferred below the fold · verified interface rows start only as this section approaches "
+              : feed.isPending
+                ? "Loading verified interfaces · registry "
+                : feed.isError
+                  ? "Verified interfaces are temporarily unavailable · registry "
+                  : `${formatNumber(rows.length)} shown · facets applied server-side · registry `}
+            {/* A cursor feed has no terminal range to repeat beneath the table. */}
+            {feed.hasNextPage || (feed.error && surfaces.length > 0) ? (
               <LoadMore
                 hasMore={feed.hasNextPage}
                 isLoading={feed.isFetchingNextPage}

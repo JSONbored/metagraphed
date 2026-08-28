@@ -1,8 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
-import { Skeleton } from "@jsonbored/ui-kit";
-import { providerQuery } from "@/lib/metagraphed/queries";
+import { RouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
 import {
   firstPartyLogoPath,
   healthFromStatusCounts,
@@ -32,6 +31,7 @@ export const Route = createFileRoute("/providers/$slug")({
   // to the slug on any failure.
   loader: async ({ context, params }) => {
     try {
+      const { providerQuery } = await import("@/lib/metagraphed/queries");
       const { data, meta } = await context.queryClient.ensureQueryData(providerQuery(params.slug));
       return {
         // #11314: the record's publish timestamp -- see recordModifiedAt for why
@@ -119,7 +119,7 @@ export const Route = createFileRoute("/providers/$slug")({
       ],
     };
   },
-  pendingComponent: () => <Skeleton className="mx-auto my-6 h-96 w-full max-w-shell" />,
+  pendingComponent: RouteLoadingSkeleton,
   component: ProviderDetail,
   notFoundComponent: () => (
     <AppShell>

@@ -16,6 +16,7 @@ import {
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
+import { ErrorState } from "@/components/metagraphed/states";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -54,7 +55,8 @@ export function GapsPage() {
       resetScroll: false,
     });
 
-  const gaps = useSuspenseQuery(gapsQuery()).data;
+  const gapsQueryResult = useSuspenseQuery(gapsQuery());
+  const gaps = gapsQueryResult.data;
   const coverage = useQuery({ ...coverageQuery(), retry: 0 });
 
   const rows = useMemo(() => gapRows(gaps.data), [gaps.data]);
@@ -169,6 +171,7 @@ export function GapsPage() {
     <AppShell>
       <ApiSources />
       <EntityHero
+        className="mg-hero--directory"
         name="Contribute"
         action={
           <RouterLink href="/docs/contributing" className="mg-hero-action">
@@ -189,10 +192,13 @@ export function GapsPage() {
         live={{
           updatedAt: (gaps.meta?.generated_at as string | undefined) ?? null,
           source: "registry",
+          onRefresh: () => void Promise.all([gapsQueryResult.refetch(), coverage.refetch()]),
+          refreshing: gapsQueryResult.isFetching || coverage.isFetching,
         }}
       />
 
       <AnalyticsSection
+        className="mg-directory-section"
         id="queue"
         name="Queue"
         question="What to add next, in the order the registry ranks it."
@@ -270,7 +276,23 @@ export function GapsPage() {
         name="Coverage"
         question="What share of subnets publish each kind of surface."
         visual={
-          markers.length > 0 ? (
+          coverage.isPending ? (
+            <MarkerRail
+              loading
+              loadingRows={6}
+              max={100}
+              formatValue={(value) => `${value}%`}
+              columns={{ ratio: "Covered", name: "Surface kind", scale: "Share of subnets" }}
+              ariaLabel="Subnets publishing each kind of surface"
+              source="coverage-dimension"
+            />
+          ) : coverage.isError ? (
+            <ErrorState
+              error={coverage.error}
+              onRetry={() => void coverage.refetch()}
+              context="registry coverage"
+            />
+          ) : markers.length > 0 ? (
             <MarkerRail
               items={markers}
               max={100}
@@ -286,7 +308,15 @@ export function GapsPage() {
         // one, per surface kind, over the whole set -- which is the question a
         // contributor is asking. The rail is the only rendering of it now:
         // /apis/schemas drew the same field on the same day (#11693).
-        footnote={`of ${formatNumber(total)} subnets · registry`}
+        footnote={
+          coverage.isPending
+            ? "Loading registry coverage"
+            : coverage.isError
+              ? "Registry coverage is temporarily unavailable"
+              : markers.length > 0
+                ? `of ${formatNumber(total)} subnets · registry`
+                : "No registry coverage dimensions are published"
+        }
       />
 
       <Raw rows={rawRows} />

@@ -6,6 +6,12 @@ export interface HeadlineFact {
   key: string;
   label: string;
   value: ReactNode;
+  /** See FactCellData.kind: a compact textual reading, not a headline figure. */
+  kind?: "text";
+  /** The reading is still arriving and must not impersonate a measured zero. */
+  loading?: boolean;
+  /** An evidence-derived state; visual treatment remains opt-in at the route. */
+  tone?: "good" | "warn" | "bad";
   /** A signed change shown right of the value; `tone` colours it. */
   delta?: { text: string; tone: "good" | "bad" | "neutral" };
 }
@@ -27,9 +33,14 @@ export interface HeadlineFact {
  * exists to keep out of this repo, whether or not it scans this workspace.
  */
 export function factCells(facts: readonly HeadlineFact[]): FactCells | null {
-  const cells = facts
-    .slice(0, 6)
-    .map(({ label, value, delta }) => (delta ? { label, value, delta } : { label, value }));
+  const cells = facts.slice(0, 6).map(({ label, value, kind, loading, tone, delta }) => ({
+    label,
+    value,
+    ...(kind ? { kind } : {}),
+    ...(loading ? { loading } : {}),
+    ...(tone ? { tone } : {}),
+    ...(delta ? { delta } : {}),
+  }));
   switch (cells.length) {
     case 2:
       return [cells[0]!, cells[1]!];

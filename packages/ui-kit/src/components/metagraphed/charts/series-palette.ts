@@ -5,12 +5,12 @@
  * data re-orders between refetches or which chart draws it: the first time a
  * key is seen it takes the next free ramp index, and that assignment is kept
  * in a page-level registry (the `ActiveEntityProvider` tree owns one). Keys
- * beyond the ten assignable swatches collapse into `Other`, which takes the
- * eleventh ramp colour -- the reference draws Other in a ramp colour, not
- * grey, so it still reads as a share of the column.
+ * beyond the ten assignable swatches collapse into `Other`, which takes a
+ * dedicated neutral. A rolled-up remainder is a factual aggregate, not an
+ * eleventh peer category or a negative health state.
  */
 export const CHART_RAMP_SIZE = 10;
-export const OTHER_COLOR = "var(--chart-11)";
+export const OTHER_COLOR = "var(--chart-residual)";
 export const OTHER_KEY = "Other";
 
 /**
@@ -22,7 +22,7 @@ export const OTHER_KEY = "Other";
 export const RESIDUAL_KEY = "rest";
 
 export interface SeriesPalette {
-  /** `--chart-1` … `--chart-10`, or `--chart-11` for a collapsed series. */
+  /** `--chart-1` … `--chart-10`, or the neutral residual swatch. */
   colorOf: (key: string) => string;
   /** 1-based ramp index, or null for a collapsed series. */
   indexOf: (key: string) => number | null;

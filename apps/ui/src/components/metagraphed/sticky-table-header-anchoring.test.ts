@@ -98,10 +98,10 @@ describe("sticky table header anchoring", () => {
 
   it("routes every sticky table header through the kit, never a page's own copy", () => {
     // /subnets carried its own `.mg-subnets-sticky-head` copy of the same
-    // idea, and that copy is what drifted -- wrong offset, and gated to
-    // >=1024px while the table renders from 768px. A page-local definition of
-    // "how a table header sticks" is the actual root cause; keeping every one
-    // of them in the kit is the fix.
+    // idea, and that copy is what drifted -- it used the app-header offset
+    // inside a list scrollport. A page-local definition of "how a table header
+    // sticks" is the actual root cause; keeping every one of them in the kit
+    // is the fix.
     expect(appStyles).not.toContain(".mg-subnets-sticky-head {");
     expect(subnetsPage).not.toContain("mg-subnets-sticky-head");
     expect(subnetsPage).not.toContain("position: sticky");
@@ -127,11 +127,11 @@ describe("sticky table header anchoring", () => {
     expect(kitStyles).not.toContain(".mg-table-head-pinned");
   });
 
-  it("does not gate that stickiness above the width where the table renders", () => {
-    // DataTable swaps to cards below 640px, so the table is on screen from
-    // there up. The old rule sat inside `@media (min-width: 1024px)`,
-    // leaving 768-1023px with a static header that scrolled out of the
-    // bounded box entirely -- a full-height table of unlabelled columns.
+  it("keeps the desktop table pin independent of the card-layout breakpoint", () => {
+    // Card mode intentionally covers 768-1023px. Keeping the pin outside a
+    // viewport rule means the 1024px desktop table receives the same
+    // scrollport-relative declaration as wider tables, without a second
+    // near-duplicate source of truth.
     // Assert the declaration is not inside a media query, by MATCHING braces
     // rather than counting two different things.
     //

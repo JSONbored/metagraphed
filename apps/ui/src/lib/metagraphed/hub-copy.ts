@@ -100,13 +100,13 @@ export const HUB_COPY = {
   "/subnets": {
     // SUBNET_SLOT_CAP, not a literal and not a fetch: the count is capped by
     // the protocol, so a registration changes which project holds a netuid,
-    // never how many exist. 128 rather than 129 because root (netuid 0) is
-    // governance, not a subnet anyone browsing this list means — a title
-    // claiming 129 would disagree with the rows beneath it.
-    title: `All ${SUBNET_SLOT_CAP} Bittensor subnets — live API health${BRAND}`,
+    // never how many exist. Name the 128 as APPLICATION subnets and root
+    // separately: the directory intentionally renders all 129 chain netuids,
+    // so the old "All 128 subnets" title contradicted the first visible fact.
+    title: `All ${SUBNET_SLOT_CAP} Bittensor application subnets + root${BRAND}`,
     description:
-      `All ${SUBNET_SLOT_CAP} Bittensor subnets, plus root: which expose a public API, whether it ` +
-      "answered our last probe, and the endpoints and economics behind each.",
+      `All ${SUBNET_SLOT_CAP} Bittensor application subnets plus root—with public APIs, ` +
+      "last-probe status, endpoints, and live economics for each.",
     intro: {
       lede: {
         heading: "Every Bittensor subnet, and what it actually exposes",
@@ -239,7 +239,7 @@ export const HUB_COPY = {
     },
   },
   "/chain": {
-    // "block explorer" is the phrase that competes with taostats, so it leads.
+    // "block explorer" names the primary task, so it leads.
     // "events" over "extrinsics" because the tag had two characters spare and
     // more people search it — extrinsics stays in the description.
     title: `Bittensor block explorer — blocks & events${BRAND}`,

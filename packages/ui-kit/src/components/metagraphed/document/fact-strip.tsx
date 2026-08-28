@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Children, type ReactNode } from "react";
 import { classNames } from "@/lib/format";
 import { Definition } from "../interaction/definition";
 
@@ -18,6 +18,22 @@ import { Definition } from "../interaction/definition";
 export interface FactCellData {
   label: string;
   value: ReactNode;
+  /**
+   * A compact text reading (a service verdict, endpoint or transport) rather
+   * than an instrument figure. Metrics stay mono and 28px; text stays legible
+   * in a narrow cell instead of truncating like a very large number.
+   */
+  kind?: "text";
+  /**
+   * The value is still being read. A pending instrument must not look like a
+   * measured zero or an unavailable value: those are three different states.
+   */
+  loading?: boolean;
+  /**
+   * An evidence-derived state for a fact. A tone is deliberately opt-in: a
+   * metric does not become good or bad merely because it is large or small.
+   */
+  tone?: "good" | "warn" | "bad";
   /** A signed change shown right of the value; `tone` colours it. */
   delta?: { text: string; tone: "good" | "bad" | "neutral" };
 }
@@ -57,11 +73,15 @@ export function FactStrip({
   variant = "row",
   className,
 }: FactStripProps) {
+  // Some migration-era callers still compose FactCell children. Treat their
+  // count the same way as the `cells` shorthand so the mobile layout can make
+  // an intentional choice about a two-reading grid versus a scrollable rail.
+  const count = cells?.length ?? Children.count(children);
   return (
     <dl
       className={classNames("mg-facts", className)}
       data-variant={variant}
-      data-count={cells?.length}
+      data-count={count || undefined}
     >
       {cells?.map((cell) => (
         <FactCell key={cell.label} {...cell} />
@@ -81,12 +101,15 @@ export interface FactCellProps extends FactCellData {
 export function FactCell({
   label,
   value,
+  kind,
+  loading = false,
+  tone,
   delta,
   hint,
   className,
 }: FactCellProps) {
   return (
-    <div className={classNames("mg-fact", className)}>
+    <div className={classNames("mg-fact", className)} data-tone={tone}>
       <dt>
         {label}
         {/* The "?" appears wherever the GLOSSARY has a sentence for this
@@ -97,9 +120,23 @@ export function FactCell({
             help affordance rather than an empty button (#11696). */}
         <Definition term={label} sentence={hint} />
       </dt>
-      <dd>
-        <span className="mg-fact-value">{value}</span>
-        {delta ? (
+      <dd aria-busy={loading || undefined}>
+        {loading ? (
+          <>
+            <span className="mg-fact-loading" aria-hidden="true" />
+            <span className="sr-only">Loading {label}</span>
+          </>
+        ) : (
+          <span
+            className={classNames(
+              "mg-fact-value",
+              kind === "text" && "mg-fact-value--text",
+            )}
+          >
+            {value}
+          </span>
+        )}
+        {!loading && delta ? (
           <span className="mg-fact-delta" data-tone={delta.tone}>
             {delta.text}
           </span>

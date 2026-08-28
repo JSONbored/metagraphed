@@ -208,6 +208,12 @@ describe("renderCardMarkup (#8489)", () => {
     expect(markup).not.toMatch(/width:1200px;height:630px;padding/);
   });
 
+  it("uses the same flat paper field as the product, without a generated gradient", () => {
+    const markup = renderCardMarkup(base);
+    expect(markup).toContain("background:#F8F7F2");
+    expect(markup).not.toMatch(/(?:linear|radial)-gradient/);
+  });
+
   it("omits the eyebrow pill entirely when there is none", () => {
     expect(renderCardMarkup({ ...base, eyebrow: null })).not.toContain("border-radius:999px");
   });

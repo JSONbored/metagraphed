@@ -5,7 +5,7 @@ import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { PushDevicesManager } from "@/components/metagraphed/push-devices-manager";
 import { classNames } from "@/lib/metagraphed/format";
 import { DataTable, TimeAgo, type DataTableColumn } from "@jsonbored/ui-kit";
-import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { useWallet } from "@/hooks/use-wallet";
 import { useWatchToken } from "@/hooks/use-watch-token";
 
@@ -191,6 +191,7 @@ function AlertsPanel({ token, onSignOut }: { token: string; onSignOut: () => voi
       });
       return res.data.triggers;
     },
+    retry: 0,
   });
 
   const triggers = listQuery.data ?? [];
@@ -261,7 +262,13 @@ function AlertsPanel({ token, onSignOut }: { token: string; onSignOut: () => voi
         storageKey="mg.alerts.columns"
         loading={listQuery.isPending}
         error={
-          listQuery.isError ? <ErrorPanel message={describeApiError(listQuery.error)} /> : null
+          listQuery.isError ? (
+            <ErrorState
+              error={listQuery.error}
+              onRetry={() => void listQuery.refetch()}
+              context="alert triggers"
+            />
+          ) : undefined
         }
         empty={<AlertsEmptyState />}
         // Every trigger has controls and a delivery log, so every row expands
@@ -340,14 +347,18 @@ function DeliveryHistory({
   isPending,
   isError,
   error,
+  onRetry,
 }: {
   deliveries: DeliveryRecordView[];
   isPending: boolean;
   isError: boolean;
   error: unknown;
+  onRetry: () => void;
 }) {
   if (isPending) return <Skeleton className="h-10 w-full" />;
-  if (isError) return <ErrorPanel message={describeApiError(error)} />;
+  if (isError) {
+    return <ErrorState error={error} onRetry={onRetry} context="alert deliveries" />;
+  }
   if (deliveries.length === 0) {
     return (
       <p className="text-13 text-ink-muted">
@@ -411,6 +422,7 @@ function TriggerControls({
       );
       return res.data.deliveries;
     },
+    retry: 0,
   });
 
   function invalidateList() {
@@ -552,6 +564,7 @@ function TriggerControls({
         isPending={deliveriesQuery.isPending}
         isError={deliveriesQuery.isError}
         error={deliveriesQuery.error}
+        onRetry={() => void deliveriesQuery.refetch()}
       />
     </div>
   );

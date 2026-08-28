@@ -1,20 +1,60 @@
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { ExternalLink, safeExternalUrl } from "@jsonbored/ui-kit";
+import { Search as SearchIcon } from "lucide-react";
 import { ApiError } from "@/lib/metagraphed/client";
 import { searchResolveQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { captureEvent } from "@/lib/analytics";
+import { searchQuery, type SearchIndexHit } from "@/lib/metagraphed/search-query";
 import type { ResolvedIdentifier, SemanticSearchResult } from "@/lib/metagraphed/types";
 
 const RESULT_LIMIT = 8;
+
+type ResultLinkData = {
+  kind?: string;
+  type?: string | null;
+  netuid?: number | null;
+  url?: string | null;
+};
+
+export type SearchResultDestination =
+  | { kind: "subnet"; netuid: number }
+  | { kind: "internal"; href: string }
+  | { kind: "external"; href: string }
+  | null;
+
+function safeInternalPath(href?: string | null): string | undefined {
+  return href?.startsWith("/") && !href.startsWith("//") ? href : undefined;
+}
+
+/** The destination has to respect the specific indexed resource, not merely
+ * its owning subnet. A documentation match should open that documentation;
+ * only a subnet record itself should default to the subnet overview. */
+export function resultDestination(result: ResultLinkData): SearchResultDestination {
+  const kind = (result.kind ?? result.type ?? "").toLowerCase();
+  if (kind === "subnet" && result.netuid != null) {
+    return { kind: "subnet", netuid: result.netuid };
+  }
+  const internal = safeInternalPath(result.url);
+  if (internal) return { kind: "internal", href: internal };
+  const external = safeExternalUrl(result.url ?? undefined);
+  if (external) return { kind: "external", href: external };
+  // Some older surface records have no direct URL. Their owning subnet is a
+  // useful, honest fallback rather than rendering a decorative dead row.
+  return result.netuid != null ? { kind: "subnet", netuid: result.netuid } : null;
+}
 
 /** Distinguishes a 429 (rate-limited) and 503 (AI disabled/unavailable) search rejection from a generic failure — same AI-endpoint family as ask-box's describeAskError. */
 export function describeSearchError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 429) return "Rate-limited — try again shortly.";
     if (error.status === 503) return error.message || "AI is temporarily unavailable.";
-    return error.message || "Couldn't search — try again.";
+    // A route/proxy outage used to expose a bare server “Not Found” in the
+    // homepage. It neither explains the user's next step nor reflects their
+    // query, so reserve server copy for the one useful client error (400).
+    if (error.status === 400) return error.message || "Couldn't search — try again.";
   }
   return "Couldn't search — try again.";
 }
@@ -35,8 +75,48 @@ export function resultMeta(result: SemanticSearchResult): string {
   return `${netuidPrefix}${formatScore(result.score)}`;
 }
 
+function ResultLink({
+  destination,
+  children,
+  ariaLabel,
+}: {
+  destination: SearchResultDestination;
+  children: React.ReactNode;
+  ariaLabel?: string;
+}) {
+  const className = "block hover:bg-card";
+  if (destination?.kind === "subnet") {
+    return (
+      <Link to="/subnets/$netuid" params={{ netuid: destination.netuid }} className={className}>
+        {children}
+      </Link>
+    );
+  }
+  if (destination?.kind === "internal") {
+    return (
+      <a href={destination.href} className={className}>
+        {children}
+      </a>
+    );
+  }
+  if (destination?.kind === "external") {
+    return (
+      <ExternalLink
+        href={destination.href}
+        bare
+        ariaLabel={ariaLabel ?? "Open external result in a new tab"}
+        className={className}
+      >
+        {children}
+      </ExternalLink>
+    );
+  }
+  return <>{children}</>;
+}
+
 function ResultRow({ result }: { result: SemanticSearchResult }) {
   const tags = [...result.categories, ...result.service_kinds].slice(0, 3);
+  const destination = resultDestination(result);
   const content = (
     <div className="flex items-center justify-between gap-3 px-3 py-2.5">
       <div className="min-w-0">
@@ -57,24 +137,25 @@ function ResultRow({ result }: { result: SemanticSearchResult }) {
           </div>
         ) : null}
       </div>
-      <span className="shrink-0 text-10 text-ink-muted">{resultMeta(result)}</span>
+      <span className="shrink-0 text-10 text-ink-muted">
+        {resultMeta(result)}
+        {destination?.kind === "external" ? <span aria-hidden="true"> ↗</span> : null}
+      </span>
     </div>
   );
 
-  if (result.netuid != null) {
-    return (
-      <li>
-        <Link
-          to="/subnets/$netuid"
-          params={{ netuid: result.netuid }}
-          className="block hover:bg-card"
-        >
-          {content}
-        </Link>
-      </li>
-    );
-  }
-  return <li>{content}</li>;
+  return (
+    <li>
+      <ResultLink
+        destination={destination}
+        ariaLabel={
+          destination?.kind === "external" ? `Open ${resultLabel(result)} in a new tab` : undefined
+        }
+      >
+        {content}
+      </ResultLink>
+    </li>
+  );
 }
 
 /** Human label for a resolved kind — the word a user would use for it. */
@@ -157,12 +238,64 @@ function SearchResults({ results }: { results: SemanticSearchResult[] }) {
   );
 }
 
-export function SearchBox() {
+export function keywordResultLabel(result: SearchIndexHit): string {
+  return result.title ?? result.slug ?? "Untitled";
+}
+
+export function keywordResultMeta(result: SearchIndexHit): string {
+  const kind = result.kind ?? result.type ?? "indexed item";
+  return result.netuid != null ? `SN${result.netuid} · ${kind}` : kind;
+}
+
+function KeywordResultRow({ result }: { result: SearchIndexHit }) {
+  const destination = resultDestination(result);
+  const content = (
+    <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+      <div className="min-w-0">
+        <p className="truncate text-13 text-ink-strong">{keywordResultLabel(result)}</p>
+        {result.subtitle ? (
+          <p className="truncate text-13 text-ink-muted">{result.subtitle}</p>
+        ) : null}
+      </div>
+      <span className="shrink-0 text-10 text-ink-muted">
+        {keywordResultMeta(result)}
+        {destination?.kind === "external" ? <span aria-hidden="true"> ↗</span> : null}
+      </span>
+    </div>
+  );
+  return (
+    <li>
+      <ResultLink
+        destination={destination}
+        ariaLabel={
+          destination?.kind === "external"
+            ? `Open ${keywordResultLabel(result)} in a new tab`
+            : undefined
+        }
+      >
+        {content}
+      </ResultLink>
+    </li>
+  );
+}
+
+function KeywordResults({ results }: { results: SearchIndexHit[] }) {
+  if (results.length === 0) return null;
+  return (
+    <ul className="mt-2 divide-y divide-border rounded border border-border bg-card">
+      {results.map((result) => (
+        <KeywordResultRow key={result.id} result={result} />
+      ))}
+    </ul>
+  );
+}
+
+export function SearchBox({ variant = "default" }: { variant?: "default" | "landing" }) {
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
-  const { data, isFetching, isError, error } = useQuery({
+  const semantic = useQuery({
     ...semanticSearchQuery(submitted, RESULT_LIMIT),
     retry: 0,
   });
@@ -171,14 +304,25 @@ export function SearchBox() {
   // hash or address -- must never wait on, or fail because of, the embedding
   // path, so a 503 from semantic search leaves these matches intact.
   const resolved = useQuery({ ...searchResolveQuery(submitted), retry: 0 });
+  // The compact index is deliberately requested only after semantic ranking
+  // fails. This keeps the normal fast path to two requests, while an AI or
+  // proxy failure still leaves people with useful registry results instead of
+  // a dead-end error message.
+  const indexSearch = useQuery({
+    ...searchQuery(submitted, RESULT_LIMIT),
+    enabled: Boolean(submitted) && semantic.isError,
+    retry: 0,
+  });
+  const searchIsFetching = semantic.isFetching || (semantic.isError && indexSearch.isFetching);
   const matches = resolved.data?.data.matches ?? [];
+  const indexedResults = indexSearch.data?.data ?? [];
 
   useEffect(() => {
-    if (!isFetching && startedAtRef.current != null) {
+    if (!searchIsFetching && startedAtRef.current != null) {
       setLatencyMs(Date.now() - startedAtRef.current);
       startedAtRef.current = null;
     }
-  }, [isFetching]);
+  }, [searchIsFetching]);
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -187,32 +331,54 @@ export function SearchBox() {
     captureEvent("agent_live_test_run", { mode: "search" });
     startedAtRef.current = Date.now();
     setLatencyMs(null);
-    setSubmitted(trimmed);
+    // setState intentionally ignores an identical string. Refetching here
+    // makes “try again” actually retry after a transient search failure.
+    if (trimmed === submitted) {
+      void semantic.refetch();
+    } else {
+      setSubmitted(trimmed);
+    }
   }
 
+  const landing = variant === "landing";
+
   return (
-    <div>
-      <form onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-start">
-        <label className="flex-1">
+    <div className={classNames("mg-search-box", landing && "mg-search-box--landing")}>
+      <form
+        onSubmit={onSubmit}
+        className={
+          landing ? "mg-search-box-form" : "flex flex-col gap-2 sm:flex-row sm:items-start"
+        }
+      >
+        <label className={classNames("flex-1", landing && "mg-search-box-field")}>
           <span className="sr-only">Search the subnet registry</span>
+          {landing ? <SearchIcon className="mg-search-box-icon" aria-hidden="true" /> : null}
           <input
             type="text"
             required
-            placeholder="video generation"
+            placeholder={landing ? "Block, subnet, or address" : "video generation"}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded border border-border bg-card px-3 py-2 text-13 text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
+            className={
+              landing
+                ? "mg-search-box-input"
+                : "w-full rounded border border-border bg-card px-3 py-2 text-13 text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
+            }
           />
         </label>
         <button
           type="submit"
-          disabled={isFetching || !query.trim()}
+          disabled={searchIsFetching || !query.trim()}
           className={classNames(
-            "shrink-0 rounded border border-accent/40 bg-accent/10 px-4 py-2 text-13 font-medium text-accent hover:bg-accent/15",
-            "disabled:cursor-not-allowed disabled:opacity-50",
+            landing
+              ? "mg-search-box-submit"
+              : "shrink-0 rounded border border-accent/40 bg-accent/10 px-4 py-2 text-13 font-medium text-accent hover:bg-accent/15",
+            landing
+              ? "disabled:cursor-not-allowed"
+              : "disabled:cursor-not-allowed disabled:opacity-50",
           )}
         >
-          {isFetching ? "Searching…" : "Search"}
+          {searchIsFetching ? "Searching…" : "Search"}
         </button>
       </form>
 
@@ -220,15 +386,29 @@ export function SearchBox() {
           point of resolving separately. */}
       {submitted ? <IdentifierMatches matches={matches} /> : null}
 
-      {isError ? (
+      {semantic.isError && indexSearch.isFetching ? (
+        <p className="mt-3 text-13 text-ink-muted">Finding keyword matches…</p>
+      ) : null}
+
+      {semantic.isError && indexedResults.length > 0 ? (
+        <section className="mt-3" aria-label="Keyword search matches">
+          <p className="text-13 text-ink-muted">
+            Semantic ranking is unavailable — showing keyword matches from the index.
+          </p>
+          <KeywordResults results={indexedResults} />
+          {latencyMs != null ? <p className="mt-2 text-10 text-ink-muted">{latencyMs}ms</p> : null}
+        </section>
+      ) : null}
+
+      {semantic.isError && !indexSearch.isFetching && indexedResults.length === 0 ? (
         <p role="alert" className="mt-3 font-mono text-13 text-health-warn">
-          {describeSearchError(error)}
+          {describeSearchError(semantic.error)}
         </p>
       ) : null}
 
-      {!isError && submitted && data ? (
+      {!semantic.isError && submitted && semantic.data ? (
         <>
-          <SearchResults results={data.data.results} />
+          <SearchResults results={semantic.data.data.results} />
           {latencyMs != null ? <p className="mt-2 text-10 text-ink-muted">{latencyMs}ms</p> : null}
         </>
       ) : null}

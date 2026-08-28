@@ -231,6 +231,7 @@ export interface Fact {
   key: string;
   label: string;
   value: string;
+  loading?: boolean;
 }
 
 /**
@@ -248,9 +249,10 @@ export function endpointFacts(
     | { endpoint_count?: number; monitored_count?: number; by_status?: Record<string, number> }
     | null
     | undefined,
-  pools: number,
+  pools: number | null,
   openIncidents: number | null,
   fmt: { count: (n: number) => string },
+  pending: { pools?: boolean; incidents?: boolean } = {},
 ): Fact[] {
   if (!summary) return [];
   const status = summary.by_status ?? {};
@@ -273,11 +275,23 @@ export function endpointFacts(
       value: `${Math.round((ok / measured) * 100)}% of ${fmt.count(measured)}`,
     });
   }
-  if (pools > 0) facts.push({ key: "pools", label: "RPC pools", value: fmt.count(pools) });
+  if (pools != null || pending.pools) {
+    facts.push({
+      key: "pools",
+      label: "RPC pools",
+      value: pools == null ? "—" : fmt.count(pools),
+      ...(pending.pools ? { loading: true } : {}),
+    });
+  }
   if (degraded > 0)
     facts.push({ key: "degraded", label: "Degraded now", value: fmt.count(degraded) });
-  if (openIncidents != null) {
-    facts.push({ key: "incidents", label: "Open incidents", value: fmt.count(openIncidents) });
+  if (openIncidents != null || pending.incidents) {
+    facts.push({
+      key: "incidents",
+      label: "Open incidents",
+      value: openIncidents == null ? "—" : fmt.count(openIncidents),
+      ...(pending.incidents ? { loading: true } : {}),
+    });
   }
   return facts;
 }

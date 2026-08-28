@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
 import {
   AnalyticsPage,
   AnalyticsSection,
@@ -22,7 +23,9 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
+import { ErrorState } from "@/components/metagraphed/states";
 import {
   CHAIN_WINDOWS,
   callSegments,
@@ -40,6 +43,7 @@ import {
   type GovernanceRow,
 } from "@/components/metagraphed/chain-hub/chain-hub-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import {
   blocksSummaryQuery,
   chainActivityQuery,
@@ -88,18 +92,53 @@ export function ExplorerPage() {
   const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
   const [govKind, setGovKind] = useState("");
+  const { ref: throughputRef, nearViewport: throughputNearViewport } = useNearViewport("0px 0px");
+  const { ref: feesRef, nearViewport: feesNearViewport } = useNearViewport("0px 0px");
+  const { ref: flowRef, nearViewport: flowNearViewport } = useNearViewport("0px 0px");
+  const { ref: concentrationRef, nearViewport: concentrationNearViewport } =
+    useNearViewport("0px 0px");
+  const { ref: emissionRef, nearViewport: emissionNearViewport } = useNearViewport("0px 0px");
+  const { ref: governanceRef, nearViewport: governanceNearViewport } = useNearViewport("0px 0px");
 
   const { data: activity } = useSuspenseQuery(chainActivityQuery(window));
   const blocks = useQuery({ ...blocksSummaryQuery(), retry: 0 });
-  const calls = useQuery({ ...chainCallsQuery(window), retry: 0 });
-  const fees = useQuery({ ...chainFeesQuery(window), retry: 0 });
-  const flow = useQuery({ ...chainStakeFlowQuery(window), retry: 0 });
-  const concentration = useQuery({ ...chainConcentrationQuery(), retry: 0 });
-  const runtime = useQuery({ ...runtimeVersionHistoryQuery(), retry: 0 });
-  const sudo = useQuery({ ...sudoCallsQuery({ limit: 50 }), retry: 0 });
-  const config = useQuery({ ...governanceConfigChangesQuery({ limit: 50 }), retry: 0 });
-  const pipeline = useQuery({ ...emissionPipelineQuery(), retry: 0 });
-  const economics = useQuery({ ...economicsQuery({ fields: "identity" }), retry: 0 });
+  const calls = useQuery({
+    ...chainCallsQuery(window),
+    enabled: throughputNearViewport,
+    retry: 0,
+  });
+  const fees = useQuery({ ...chainFeesQuery(window), enabled: feesNearViewport, retry: 0 });
+  const flow = useQuery({ ...chainStakeFlowQuery(window), enabled: flowNearViewport, retry: 0 });
+  const concentration = useQuery({
+    ...chainConcentrationQuery(),
+    enabled: concentrationNearViewport,
+    retry: 0,
+  });
+  const runtime = useQuery({
+    ...runtimeVersionHistoryQuery(),
+    enabled: governanceNearViewport,
+    retry: 0,
+  });
+  const sudo = useQuery({
+    ...sudoCallsQuery({ limit: 50 }),
+    enabled: governanceNearViewport,
+    retry: 0,
+  });
+  const config = useQuery({
+    ...governanceConfigChangesQuery({ limit: 50 }),
+    enabled: governanceNearViewport,
+    retry: 0,
+  });
+  const pipeline = useQuery({
+    ...emissionPipelineQuery(),
+    enabled: emissionNearViewport,
+    retry: 0,
+  });
+  const economics = useQuery({
+    ...economicsQuery({ fields: "identity" }),
+    enabled: emissionNearViewport || flowNearViewport,
+    retry: 0,
+  });
 
   const nameOf = useMemo(() => {
     const map = new Map<number, string>();
@@ -135,6 +174,11 @@ export function ExplorerPage() {
   );
   const aggregate = pipeline.data?.data.aggregate;
   const tally = useMemo(() => pipelineTally(pipeline.data?.data.subnets ?? []), [pipeline.data]);
+  const governanceLoading =
+    governanceNearViewport && (runtime.isPending || sudo.isPending || config.isPending);
+  const governanceUnavailable =
+    governanceNearViewport && runtime.isError && sudo.isError && config.isError;
+  const governanceError = runtime.error ?? sudo.error ?? config.error;
 
   const setWindow = (next: ChainWindowValue) => {
     navigate({ search: (prev) => ({ ...prev, window: next }), replace: true });
@@ -145,19 +189,11 @@ export function ExplorerPage() {
   // reads as two measurements of one thing (#11693). The strip keeps them.
   const sentence: FactNodes = [
     <Fact key="per">
-      {summary?.throughput?.mean_extrinsics_per_block
-        ? `${formatDecimal(summary.throughput.mean_extrinsics_per_block, 1)} extrinsics/block`
-        : "—"}
-    </Fact>,
-    <Fact key="nakamoto">
-      {stake?.nakamoto_coefficient
-        ? `Nakamoto ${formatNumber(stake.nakamoto_coefficient)}`
-        : "Nakamoto —"}
-    </Fact>,
-    <Fact key="spec">
-      {runtime.data?.data.current_spec_version
-        ? `spec ${runtime.data.data.current_spec_version}`
-        : "spec —"}
+      {blocks.isPending
+        ? "loading throughput"
+        : summary?.throughput?.mean_extrinsics_per_block
+          ? `${formatDecimal(summary.throughput.mean_extrinsics_per_block, 1)} extrinsics/block`
+          : "—"}
     </Fact>,
   ];
 
@@ -165,12 +201,14 @@ export function ExplorerPage() {
     {
       label: "Head block",
       value: summary?.last_block ? formatNumber(summary.last_block) : "—",
+      loading: blocks.isPending,
     },
     {
       label: "Block time p50",
       value: summary?.block_time?.p50_ms
         ? `${formatDecimal(summary.block_time.p50_ms / 1000, 1)}s`
         : "—",
+      loading: blocks.isPending,
     },
     // The last COMPLETE day, not the one in progress -- see lastCompleteDay.
     { label: `Extrinsics ${latest?.day ?? ""}`.trim(), value: fmtCount(latest?.extrinsic_count) },
@@ -185,6 +223,7 @@ export function ExplorerPage() {
         (fees.data?.data.daily ?? []).reduce((acc, day) => acc + (day.total_fee_tao ?? 0), 0),
         4,
       ),
+      loading: fees.isPending,
     },
     {
       label: "Per extrinsic",
@@ -193,6 +232,7 @@ export function ExplorerPage() {
           Math.max(1, (fees.data?.data.daily ?? []).length),
         6,
       ),
+      loading: fees.isPending,
     },
     {
       label: `Tips ${window}`,
@@ -200,8 +240,13 @@ export function ExplorerPage() {
         (fees.data?.data.daily ?? []).reduce((acc, day) => acc + (day.total_tip_tao ?? 0), 0),
         4,
       ),
+      loading: fees.isPending,
     },
-    { label: "Days measured", value: formatNumber(fees.data?.data.day_count ?? 0) },
+    {
+      label: "Days measured",
+      value: formatNumber(fees.data?.data.day_count ?? 0),
+      loading: fees.isPending,
+    },
   ];
 
   const concentrationRail = useMemo(() => {
@@ -249,9 +294,11 @@ export function ExplorerPage() {
     <AppShell>
       <ApiSources />
       <AnalyticsPage
+        className="mg-page--chain-story"
         sections={SECTIONS}
         hero={
           <EntityHero
+            className="mg-hero--operational mg-hero--chain"
             name="Chain"
             sentence={
               <FactSentence>
@@ -262,15 +309,18 @@ export function ExplorerPage() {
             live={{
               updatedAt: activity.data.observed_at ?? null,
               source: "chain-direct",
-              onRefresh: () => void queryClient.invalidateQueries({ queryKey: ["mg"] }),
+              onRefresh: () =>
+                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
             }}
           />
         }
       >
         <AnalyticsSection
+          className="mg-chain-throughput"
           id="throughput"
           name="Throughput"
           question="What the chain's extrinsics are actually doing."
+          visualRef={throughputRef}
           controls={
             <RangeControl
               label="Window"
@@ -280,11 +330,24 @@ export function ExplorerPage() {
             />
           }
           visual={
-            segments.length > 0 ? (
+            !throughputNearViewport ? (
+              <p className="mg-section-empty">Call activity loads as this section approaches.</p>
+            ) : calls.isPending ? (
+              <CompositionBreakdown
+                formatValue={(value) => fmtCount(value)}
+                legendCols={3}
+                ariaLabel="Extrinsics by call module"
+                source="chain-call"
+                loading
+              />
+            ) : segments.length > 0 ? (
               <CompositionBreakdown
                 segments={segments}
                 formatValue={(value) => fmtCount(value)}
-                legendCols={4}
+                // Throughput sits beside its reading lens on wide screens.
+                // Three columns retain the whole module name and measured
+                // value instead of turning the ranked legend into ellipses.
+                legendCols={3}
                 ariaLabel="Extrinsics by call module"
                 source="chain-call"
               />
@@ -303,11 +366,17 @@ export function ExplorerPage() {
           // are the same extrinsics one at a time.
           footnote={
             <>
-              {`${window} · ${fmtCount(
-                calls.data?.data.total_extrinsics,
-              )} extrinsics across ${formatNumber(
-                calls.data?.data.call_count ?? 0,
-              )} modules · chain-direct · row by row: `}
+              {!throughputNearViewport
+                ? "Call activity loads as this section approaches · row by row: "
+                : calls.isPending
+                  ? `Loading ${window} call mix · chain-direct · row by row: `
+                  : calls.isError
+                    ? "Call mix is temporarily unavailable · chain-direct · row by row: "
+                    : `${window} · ${fmtCount(
+                        calls.data?.data.total_extrinsics,
+                      )} extrinsics across ${formatNumber(
+                        calls.data?.data.call_count ?? 0,
+                      )} modules · chain-direct · row by row: `}
               <RouterLink href="/chain/blocks" className="mg-section-more">
                 blocks
               </RouterLink>
@@ -326,8 +395,22 @@ export function ExplorerPage() {
           id="fees"
           name="Fees"
           question="What the chain charged."
+          visualRef={feesRef}
           visual={
-            points.length > 1 ? (
+            !feesNearViewport ? (
+              <p className="mg-section-empty">Fee history loads as this section approaches.</p>
+            ) : fees.isPending ? (
+              <LineWithWindow
+                id="chain-fees"
+                points={[]}
+                window={{ from: 0, to: 0 }}
+                unit="τ"
+                formatValue={(value) => fmtTao(value, 4)}
+                ariaLabel={`Daily fees, ${window}`}
+                source="chain-fees"
+                loading
+              />
+            ) : points.length > 1 ? (
               <LineWithWindow
                 id="chain-fees"
                 points={points}
@@ -339,15 +422,47 @@ export function ExplorerPage() {
               />
             ) : null
           }
-          legend={<FactStrip cells={feeCells} />}
-          footnote={`${window} · signed extrinsics only · chain-direct`}
+          legend={feesNearViewport ? <FactStrip cells={feeCells} /> : null}
+          footnote={
+            !feesNearViewport
+              ? "deferred below the fold · fee history loads as this section approaches"
+              : fees.isPending
+                ? `Loading ${window} fees · chain-direct`
+                : fees.isError
+                  ? "Fee history is temporarily unavailable · chain-direct"
+                  : `${window} · signed extrinsics only · chain-direct`
+          }
         />
         <AnalyticsSection
           id="stake-flow"
           name="Stake flow"
           question="Where stake moved."
+          visualRef={flowRef}
           visual={
-            flowRailItems.length > 0 ? (
+            !flowNearViewport ? (
+              <p className="mg-section-empty">
+                Stake-flow evidence loads as this section approaches.
+              </p>
+            ) : flow.isPending ? (
+              <RankedRails
+                items={[]}
+                formatValue={(value) => fmtTao(value, 0)}
+                formatSecondary={(value) => fmtTao(value, 0)}
+                scale="sqrt"
+                columns={{
+                  value: "Staked in",
+                  name: "Subnet",
+                  track: "Against the largest inflow",
+                  secondary: "Unstaked out",
+                }}
+                limit={12}
+                ariaLabel="Stake moved per subnet"
+                source="chain-flow"
+                loading
+                loadingRows={12}
+                loadingSecondary
+              />
+            ) : flowRailItems.length > 0 ? (
               <RankedRails
                 items={flowRailItems}
                 formatValue={(value) => fmtTao(value, 0)}
@@ -365,17 +480,40 @@ export function ExplorerPage() {
               />
             ) : null
           }
-          footnote={`${window} · the 12 busiest, ordered by inflow · net ${fmtTao(
-            flow.data?.data.network?.net_flow_tao,
-            0,
-          )} across ${formatNumber(flow.data?.data.subnet_count ?? 0)} subnets · chain-direct`}
+          footnote={
+            !flowNearViewport
+              ? "deferred below the fold · stake-flow evidence loads as this section approaches"
+              : flow.isPending
+                ? `Loading ${window} stake flow · chain-direct`
+                : flow.isError
+                  ? "Stake flow is temporarily unavailable · chain-direct"
+                  : `${window} · the 12 busiest, ordered by inflow · net ${fmtTao(
+                      flow.data?.data.network?.net_flow_tao,
+                      0,
+                    )} across ${formatNumber(flow.data?.data.subnet_count ?? 0)} subnets · chain-direct`
+          }
         />
         <AnalyticsSection
           id="concentration"
           name="Concentration"
           question="How concentrated the stake is."
+          visualRef={concentrationRef}
           visual={
-            concentrationRail.length > 0 ? (
+            !concentrationNearViewport ? (
+              <p className="mg-section-empty">
+                Stake concentration loads as this section approaches.
+              </p>
+            ) : concentration.isPending ? (
+              <MarkerRail
+                loading
+                loadingRows={4}
+                max={100}
+                formatValue={(value) => `${formatDecimal(value, 1)}%`}
+                columns={{ ratio: "Share", name: "Measure", scale: "0–100%" }}
+                ariaLabel="Stake concentration measures"
+                source="chain-concentration"
+              />
+            ) : concentrationRail.length > 0 ? (
               <MarkerRail
                 items={concentrationRail}
                 max={100}
@@ -386,21 +524,47 @@ export function ExplorerPage() {
               />
             ) : null
           }
-          empty="No concentration measure for this window."
+          empty={
+            concentration.isError
+              ? "Stake concentration is temporarily unavailable."
+              : "No concentration measure for this window."
+          }
           footnote={
-            stake
-              ? `${formatNumber(stake.holders ?? 0)} holders · Nakamoto ${formatNumber(
-                  stake.nakamoto_coefficient ?? 0,
-                )} — the smallest number of holders that together control half the stake · chain-direct`
-              : undefined
+            !concentrationNearViewport
+              ? "deferred below the fold · stake concentration loads as this section approaches"
+              : concentration.isPending
+                ? "Loading stake concentration · chain-direct"
+                : concentration.isError
+                  ? "Stake concentration is temporarily unavailable · chain-direct"
+                  : stake
+                    ? `${formatNumber(stake.holders ?? 0)} holders · Nakamoto ${formatNumber(
+                        stake.nakamoto_coefficient ?? 0,
+                      )} — the smallest number of holders that together control half the stake · chain-direct`
+                    : "No concentration reading is published for this window · chain-direct"
           }
         />
         <AnalyticsSection
           id="emission"
           name="Emission"
           question="How a subnet's published share becomes the share it is paid."
+          visualRef={emissionRef}
           visual={
-            emissionRail.length > 0 ? (
+            !emissionNearViewport ? (
+              <p className="mg-section-empty">
+                Emission evidence loads as this section approaches.
+              </p>
+            ) : pipeline.isPending ? (
+              <RankedRails
+                items={[]}
+                formatValue={(value: number) => fmtShare(value, 3)}
+                scale="sqrt"
+                columns={{ value: "Paid share", name: "Subnet", track: "Share of block emission" }}
+                ariaLabel="Subnets by the share of emission they receive"
+                source="chain-emission"
+                loading
+                loadingRows={12}
+              />
+            ) : emissionRail.length > 0 ? (
               <RankedRails
                 items={emissionRail}
                 formatValue={(value: number) => fmtShare(value, 3)}
@@ -412,34 +576,55 @@ export function ExplorerPage() {
             ) : null
           }
           legend={
-            <FactStrip
-              cells={[
-                {
-                  label: "Paid",
-                  value: `${formatNumber(tally.paid)} / ${formatNumber(tally.total)}`,
-                },
-                {
-                  label: "Block emission",
-                  value: fmtTao(pipeline.data?.data.block_emission_tao, 4),
-                },
-                { label: "Pool liquidity", value: fmtTao(aggregate?.tao_in_emission, 4) },
-                { label: "Chain buys", value: fmtTao(aggregate?.excess_tao, 4) },
-              ]}
-            />
+            emissionNearViewport ? (
+              <FactStrip
+                cells={[
+                  {
+                    label: "Paid",
+                    value: `${formatNumber(tally.paid)} / ${formatNumber(tally.total)}`,
+                    loading: pipeline.isPending,
+                  },
+                  {
+                    label: "Block emission",
+                    value: fmtTao(pipeline.data?.data.block_emission_tao, 4),
+                    loading: pipeline.isPending,
+                  },
+                  {
+                    label: "Pool liquidity",
+                    value: fmtTao(aggregate?.tao_in_emission, 4),
+                    loading: pipeline.isPending,
+                  },
+                  {
+                    label: "Chain buys",
+                    value: fmtTao(aggregate?.excess_tao, 4),
+                    loading: pipeline.isPending,
+                  },
+                ]}
+              />
+            ) : null
           }
           // Ranked by what a subnet is PAID, not by what it would be paid
           // before the gate -- ranking by the pre-gate figure puts a disabled
           // subnet above a paid one, which is the gate stated backwards.
-          footnote={`live chain state · ${formatNumber(tally.unpaid)} receive nothing: ${formatNumber(
-            tally.ineligible,
-          )} never eligible, ${formatNumber(tally.disabled)} with emission off, ${formatNumber(
-            tally.zeroWeighted,
-          )} zeroed by the weighting · chain-direct`}
+          footnote={
+            !emissionNearViewport
+              ? "deferred below the fold · emission evidence loads as this section approaches"
+              : pipeline.isPending
+                ? "Loading live emission state · chain-direct"
+                : pipeline.isError
+                  ? "Live emission state is temporarily unavailable · chain-direct"
+                  : `live chain state · ${formatNumber(tally.unpaid)} receive nothing: ${formatNumber(
+                      tally.ineligible,
+                    )} never eligible, ${formatNumber(tally.disabled)} with emission off, ${formatNumber(
+                      tally.zeroWeighted,
+                    )} zeroed by the weighting · chain-direct`
+          }
         />
         <AnalyticsSection
           id="governance"
           name="Governance"
           question="What changed about how the chain runs."
+          visualRef={governanceRef}
           controls={
             <FilterField label="Kind">
               <FilterSelect value={govKind} onChange={(event) => setGovKind(event.target.value)}>
@@ -453,26 +638,56 @@ export function ExplorerPage() {
             </FilterField>
           }
           visual={
-            <DataTable
-              rows={shownGov}
-              columns={govColumns}
-              rowKey={(row) => row.key}
-              caption="Runtime upgrades, sudo calls and config changes"
-              link={RouterLink}
-              source="chain-governance"
-              pageSize={25}
-              mobile="cards"
-              dense
-              storageKey="chain-governance-columns"
-            />
+            !governanceNearViewport ? (
+              <p className="mg-section-empty">
+                Governance changes load as this section approaches.
+              </p>
+            ) : (
+              <DataTable
+                rows={shownGov}
+                columns={govColumns}
+                rowKey={(row) => row.key}
+                caption="Runtime upgrades, sudo calls and config changes"
+                link={RouterLink}
+                source="chain-governance"
+                pageSize={25}
+                mobile="cards"
+                dense
+                storageKey="chain-governance-columns"
+                loading={governanceLoading}
+                error={
+                  governanceUnavailable && governanceError ? (
+                    <ErrorState
+                      error={governanceError}
+                      context="governance changes"
+                      onRetry={() => {
+                        void runtime.refetch();
+                        void sudo.refetch();
+                        void config.refetch();
+                      }}
+                    />
+                  ) : undefined
+                }
+                empty="No governance changes were indexed for this history."
+              />
+            )
           }
           // Three routes and three tables answered one question, and a reader
           // had to know which of the three a change would have landed in.
-          footnote={`${formatNumber(shownGov.length)} of ${formatNumber(
-            gov.length,
-          )} changes · runtime upgrades, sudo calls and AdminUtils config, one stream · chain-direct`}
+          footnote={
+            !governanceNearViewport
+              ? "deferred below the fold · governance changes load as this section approaches"
+              : governanceLoading
+                ? "Loading governance changes · chain-direct"
+                : governanceUnavailable
+                  ? "Governance sources are temporarily unavailable · chain-direct"
+                  : `${formatNumber(shownGov.length)} of ${formatNumber(
+                      gov.length,
+                    )} changes · runtime upgrades, sudo calls and AdminUtils config, one stream · chain-direct`
+          }
         />
         <Raw rows={rawRows} title="Chain API" />
+        <HubSections path="/chain" />
       </AnalyticsPage>
     </AppShell>
   );

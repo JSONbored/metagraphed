@@ -160,7 +160,11 @@ function accountEventRow(block: number, index = 0) {
 }
 
 /** An env whose R2 bucket publishes a decode watermark at `height`. */
-function withWatermark(env: Record<string, unknown>, height: number) {
+function withWatermark(
+  env: Record<string, unknown>,
+  height: number,
+  perTable?: Record<string, number>,
+) {
   return {
     ...env,
     METAGRAPH_ARCHIVE: {
@@ -168,7 +172,10 @@ function withWatermark(env: Record<string, unknown>, height: number) {
         if (key !== DECODE_WATERMARK_KEY) return null;
         return {
           async text() {
-            return JSON.stringify({ decoded_through: height });
+            return JSON.stringify({
+              decoded_through: height,
+              ...(perTable ? { per_table: perTable } : {}),
+            });
           },
         };
       },
@@ -547,6 +554,43 @@ describe("answerBlockDetail — the seam decides, and a gap DECLINES", () => {
       ops(null, { count: 12 }),
     );
     assert.equal(answer.kind === "answer" && answer.tier, "cold");
+  });
+
+  test("an uncovered block skips a cold query only beyond that table's published ceiling", async () => {
+    const { env } = runner(registry([ABOVE + 500]));
+    let coldReads = 0;
+    const skipped = await answerBlockDetail(
+      withWatermark(env, ABOVE - 1, { extrinsics: ABOVE - 1 }),
+      String(ABOVE),
+      {
+        hot: async () => null,
+        cold: async () => {
+          coldReads += 1;
+          return { count: 12 };
+        },
+        isEmpty: (data: { count: number }) => data.count === 0,
+        coldCoverageTable: "extrinsics",
+      },
+    );
+    assert.equal(skipped.kind, "gap");
+    assert.equal(coldReads, 0, "a known cold-table miss must not run R2 SQL");
+
+    // A table can lead the global MIN. Its own ceiling reaches this block, so
+    // it remains a possible cold answer even though another table holds back
+    // the shared seam.
+    resetDecodeWatermarkCache();
+    const { env: partialEnv } = runner(registry([ABOVE + 500]));
+    const partial = await answerBlockDetail(
+      withWatermark(partialEnv, SEAM, { extrinsics: ABOVE }),
+      String(ABOVE),
+      {
+        hot: async () => null,
+        cold: async () => ({ count: 12 }),
+        isEmpty: (data: { count: number }) => data.count === 0,
+        coldCoverageTable: "extrinsics",
+      },
+    );
+    assert.equal(partial.kind === "answer" && partial.tier, "cold");
   });
 
   test("above the seam, uncovered, and nothing holds it: GAP", async () => {

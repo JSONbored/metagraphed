@@ -33,3 +33,49 @@
   --color-fd-success: var(--health-ok);
   --color-fd-warning: var(--health-warn);
 }
+
+/* Fumadocs' prose preset assigns its own 14/20/24px type ladder to the
+   descendants inside headings and tables, after ui-kit's `.mg-prose` rules
+   have styled their parents. Keep the article hierarchy while mapping every
+   descendant back onto the site's seven-size contract. */
+.mg-prose :where(h2, h2 > a) {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.mg-prose :where(h3, h3 > a) {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mg-prose :where(td) {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mg-prose :where(th) {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mg-prose :where(th code) {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+
+.mg-prose :where(code) {
+  border-radius: var(--radius);
+}
+
+/* Fumadocs rounds only the lower corners of the final code sample in a tab.
+   It is still one visible panel, so keep its outline on the site's single
+   four-corner radius rather than introducing a compound token. */
+.mg-prose figure.shiki {
+  border-radius: var(--radius);
+}

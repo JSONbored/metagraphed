@@ -3,8 +3,12 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AnalyticsSection } from "./analytics-section";
 import { AnalyticsPage, MAX_SECTIONS, sectionItems } from "./analytics-page";
-import { pickActiveSection, SectionNav } from "./section-nav";
-import { FactStrip, type FactCells } from "./fact-strip";
+import {
+  pickActiveSection,
+  sectionNavScrollState,
+  SectionNav,
+} from "./section-nav";
+import { FactCell, FactStrip, type FactCells } from "./fact-strip";
 import { Fact, FactSentence } from "./fact-sentence";
 import { LiveMeta } from "./live-meta";
 import { RangeControl } from "./range-control";
@@ -101,6 +105,38 @@ describe("SectionNav", () => {
     );
     expect(html).toContain('href="#a" aria-current="location"');
     expect(html).toContain('href="#b">Beta');
+    expect(html).toContain('class="mg-section-nav-scroll"');
+  });
+
+  it("keeps the scroll cue state accurate at both edges", () => {
+    expect(
+      sectionNavScrollState({
+        scrollWidth: 300,
+        clientWidth: 300,
+        scrollLeft: 0,
+      }),
+    ).toEqual({ hasOverflow: false, atStart: true, atEnd: true });
+    expect(
+      sectionNavScrollState({
+        scrollWidth: 400,
+        clientWidth: 300,
+        scrollLeft: 0,
+      }),
+    ).toEqual({ hasOverflow: true, atStart: true, atEnd: false });
+    expect(
+      sectionNavScrollState({
+        scrollWidth: 400,
+        clientWidth: 300,
+        scrollLeft: 50,
+      }),
+    ).toEqual({ hasOverflow: true, atStart: false, atEnd: false });
+    expect(
+      sectionNavScrollState({
+        scrollWidth: 400,
+        clientWidth: 300,
+        scrollLeft: 100,
+      }),
+    ).toEqual({ hasOverflow: true, atStart: false, atEnd: true });
   });
 });
 
@@ -125,6 +161,44 @@ describe("FactStrip", () => {
     expect(
       renderToStaticMarkup(h(FactStrip, { cells, variant: "grid" })),
     ).toContain('data-variant="grid"');
+  });
+
+  it("distinguishes a pending value from zero or unavailable data", () => {
+    const cells: FactCells = [
+      { label: "Head block", value: "—", loading: true },
+      { label: "Finalized", value: "0" },
+    ];
+    const html = renderToStaticMarkup(h(FactStrip, { cells }));
+    expect(html).toContain('<dd aria-busy="true">');
+    expect(html).toContain(
+      '<span class="mg-fact-loading" aria-hidden="true"></span>',
+    );
+    expect(html).toContain('<span class="sr-only">Loading Head block</span>');
+    expect(html).not.toContain('<span class="mg-fact-value">—</span>');
+    expect(html).toContain('<span class="mg-fact-value">0</span>');
+  });
+
+  it("counts composed fact cells as well as the shorthand array", () => {
+    const html = renderToStaticMarkup(
+      h(
+        FactStrip,
+        null,
+        h(FactCell, { label: "One", value: "1" }),
+        h(FactCell, { label: "Two", value: "2" }),
+        h(FactCell, { label: "Three", value: "3" }),
+      ),
+    );
+    expect(html).toContain('data-count="3"');
+  });
+
+  it("renders a text reading with the compact text treatment", () => {
+    const cells: FactCells = [
+      { label: "Metagraphed itself", value: "operational", kind: "text" },
+      { label: "Open incidents", value: "0" },
+    ];
+    expect(renderToStaticMarkup(h(FactStrip, { cells }))).toContain(
+      '<span class="mg-fact-value mg-fact-value--text">operational</span>',
+    );
   });
 });
 

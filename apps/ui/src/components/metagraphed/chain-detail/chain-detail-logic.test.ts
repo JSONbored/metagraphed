@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Block, ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
 import {
+  CADENCE_BLOCK_LIMIT,
   CADENCE_SPAN,
   argRows,
+  blockFactCells,
   blockFacts,
   cadencePoints,
   cadenceRange,
@@ -10,12 +12,18 @@ import {
   extrinsicFacts,
   extrinsicTitle,
   neighbourHrefs,
+  shouldFetchCountedBlockDetail,
 } from "./chain-detail-logic";
 
 const at = (ms: number) => new Date(ms).toISOString();
 const T = 1_800_000_000_000;
 
 describe("cadenceRange", () => {
+  it("keeps the centred request inside the blocks endpoint limit", () => {
+    expect(CADENCE_BLOCK_LIMIT).toBeLessThanOrEqual(100);
+    expect(CADENCE_BLOCK_LIMIT).toBe(2 * CADENCE_SPAN + 1);
+  });
+
   it("spans the block either side", () => {
     expect(cadenceRange(1000)).toEqual([1000 - CADENCE_SPAN, 1000 + CADENCE_SPAN]);
   });
@@ -181,6 +189,42 @@ describe("blockFacts", () => {
 
   it("is empty for no block", () => {
     expect(blockFacts(null, fmt)).toEqual([]);
+  });
+});
+
+describe("blockFactCells", () => {
+  it("turns two or three block readings into a ruled metric ledger", () => {
+    expect(
+      blockFactCells(
+        {
+          block_number: 1,
+          block_hash: "0x1",
+          extrinsic_count: 21,
+          event_count: 164,
+          spec_version: 448,
+        } as Block,
+        fmt,
+      ),
+    ).toEqual([
+      { label: "Extrinsics", value: "21" },
+      { label: "Events", value: "164" },
+      { label: "Runtime spec", value: "448" },
+    ]);
+  });
+
+  it("keeps a lone known reading in the sentence rather than drawing a broken ledger", () => {
+    expect(
+      blockFactCells({ block_number: 1, block_hash: "0x1", event_count: 0 } as Block, fmt),
+    ).toBe(undefined);
+  });
+});
+
+describe("shouldFetchCountedBlockDetail", () => {
+  it("skips only a header-confirmed zero", () => {
+    expect(shouldFetchCountedBlockDetail(0)).toBe(false);
+    expect(shouldFetchCountedBlockDetail(1)).toBe(true);
+    expect(shouldFetchCountedBlockDetail(null)).toBe(true);
+    expect(shouldFetchCountedBlockDetail(undefined)).toBe(true);
   });
 });
 

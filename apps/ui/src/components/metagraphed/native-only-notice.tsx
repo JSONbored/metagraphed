@@ -1,6 +1,6 @@
 import { Compass } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { coverageQuery } from "@/lib/metagraphed/queries";
+import { lightweightCoverageQuery } from "@/lib/metagraphed/coverage-query";
 import { getNetwork } from "@/lib/metagraphed/config";
 
 /**
@@ -23,7 +23,7 @@ export function NativeOnlyNotice({ context }: { context?: string }) {
   // Coverage is one of the few artifacts every network publishes, so this
   // never itself 404s. Plain (non-suspense) query: it must not throw inside an
   // error fallback.
-  const { data: coverage } = useQuery(coverageQuery());
+  const { data: coverage } = useQuery(lightweightCoverageQuery());
   const notes = typeof coverage?.data?.notes === "string" ? coverage.data.notes.trim() : "";
 
   return (

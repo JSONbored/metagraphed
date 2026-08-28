@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
-import { z } from "zod";
+import {
+  defineSearchSchema,
+  stripDefaultSearchParams,
+  stringSearch,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { GapsPage } from "./-gaps-page";
 
 /**
@@ -13,13 +17,13 @@ import { GapsPage } from "./-gaps-page";
  * used as given now: a page that re-ranked gaps would send contributors
  * somewhere the lane did not ask them to go.
  */
-const searchSchema = z.object({
-  q: z.string().catch("").default(""),
-  missing: z.string().catch("").default(""),
-  severity: z.string().catch("").default(""),
+const searchSchema = defineSearchSchema({
+  q: stringSearch(),
+  missing: stringSearch(),
+  severity: stringSearch(),
 });
 
-export type ContributeSearch = z.infer<typeof searchSchema>;
+export type ContributeSearch = SearchOutput<typeof searchSchema>;
 
 export const Route = createFileRoute("/contribute")({
   validateSearch: searchSchema,
@@ -32,7 +36,7 @@ export const Route = createFileRoute("/contribute")({
         content:
           "Registry gaps, profile completeness, adapter candidates, and enrichment priorities. Corrections via the public repo.",
       },
-      { property: "og:title", content: "Gaps — Metagraphed" },
+      { property: "og:title", content: "Contribute — Metagraphed" },
       {
         property: "og:description",
         content:

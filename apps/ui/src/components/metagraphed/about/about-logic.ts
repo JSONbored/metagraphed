@@ -79,7 +79,11 @@ export function aboutFacts(
   const age = num(sources.freshness, "avg_age_seconds");
   const active = num(sources.coverage, "netuids_active");
   return [
-    { label: "Active subnets", value: active == null ? null : String(active), href: "/subnets" },
+    {
+      label: "Application subnets",
+      value: active == null ? null : String(active),
+      href: "/subnets",
+    },
     {
       label: "Adapter-backed",
       value:
