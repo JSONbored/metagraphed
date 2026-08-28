@@ -1,7 +1,51 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { gotoThroughRestart } from "./server-restart.ts";
 
+const DISPLAY_MARK = fileURLToPath(
+  new URL("../../public/logos/display/metagraphed.webp", import.meta.url),
+);
+const FIRST_PROVIDER_CANONICAL = "https://avatars.githubusercontent.com/u/154099142?s=200&v=4";
+
 test.describe("Providers directory verification state", () => {
+  test("uses display-sized marks without downloading canonical sources", async ({ page }) => {
+    const displayMark = await readFile(DISPLAY_MARK);
+    const canonicalRequests: string[] = [];
+    await page.route("**/logos/display/**", async (route) => {
+      await route.fulfill({ status: 200, contentType: "image/webp", body: displayMark });
+    });
+    await page.route(FIRST_PROVIDER_CANONICAL, async (route) => {
+      canonicalRequests.push(route.request().url());
+      await route.continue();
+    });
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await gotoThroughRestart(page, "/apis/providers");
+
+    const mark = page.locator('img[src^="/logos/display/"]').first();
+    await expect(mark).toBeVisible();
+    await expect(mark).toHaveAttribute("src", /\/logos\/display\/.+\.webp$/);
+    await expect
+      .poll(() => mark.evaluate((image: HTMLImageElement) => image.naturalWidth))
+      .toBeGreaterThan(0);
+    expect(canonicalRequests).toEqual([]);
+  });
+
+  test("falls back to the canonical source when a derivative fails", async ({ page }) => {
+    let failedDerivatives = 0;
+    await page.route("**/logos/display/**", async (route) => {
+      failedDerivatives += 1;
+      await route.abort("failed");
+    });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await gotoThroughRestart(page, "/apis/providers");
+
+    await expect.poll(() => failedDerivatives).toBeGreaterThan(0);
+    const fallback = page.locator(`img[src="${FIRST_PROVIDER_CANONICAL}"]`);
+    await expect(fallback).toHaveAttribute("src", FIRST_PROVIDER_CANONICAL);
+  });
+
   test("keeps the registry directory usable when the independent verification lane fails", async ({
     page,
   }) => {
