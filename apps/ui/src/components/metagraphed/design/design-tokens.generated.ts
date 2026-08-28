@@ -45,7 +45,7 @@ export const DESIGN_TOKENS: readonly DesignToken[] = [
     light: "rgba(22, 22, 22, 0.11)",
     dark: "rgba(255, 255, 255, 0.11)",
     theme: "--color-rule",
-    refs: 81,
+    refs: 82,
   },
   {
     name: "--rule-strong",

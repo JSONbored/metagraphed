@@ -4570,6 +4570,25 @@
     color: var(--ink-strong);
     font-weight: inherit;
   }
+  .mg-hub-prose :where(section) {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr);
+    gap: 32px;
+    padding: 32px 0;
+  }
+  .mg-hub-prose :where(section):first-child {
+    border-top: 1px solid var(--rule);
+  }
+  .mg-hub-prose :where(p) {
+    margin: 0;
+  }
+  @media (max-width: 767px) {
+    .mg-hub-prose :where(section) {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+      padding: 20px 0;
+    }
+  }
 }
 .mg-panel-pad {
   padding: var(--mg-panel-pad);
