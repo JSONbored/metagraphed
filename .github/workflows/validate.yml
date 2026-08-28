@@ -742,6 +742,7 @@ jobs:
           run_step npm run validate:module-state-resets
           run_step npm run validate:pg-json-binds
           run_step npm run validate:retired-store-vocabulary
+          run_step npm run validate:logo-thumbnails
           run_step npm run validate:subnet-slot-cap
           report_steps
 

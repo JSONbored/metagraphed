@@ -120,6 +120,7 @@ function checkCommands(): Step[] {
     step("validate:graphql-tier-parity"),
     step("validate:committed-seed"),
     step("validate:artifact-budgets"),
+    step("validate:logo-thumbnails"),
     step("validate:docs"),
     // Companion to validate:docs: it checks each artifact/route is MENTIONED
     // in docs/backend-artifact-contracts.md, this one checks a bullet did not
@@ -259,6 +260,7 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     step("validate:graphql-tier-parity"),
     step("validate:committed-seed"),
     step("validate:artifact-budgets"),
+    step("validate:logo-thumbnails"),
     step("validate:docs"),
     // Companion to validate:docs: it checks each artifact/route is MENTIONED
     // in docs/backend-artifact-contracts.md, this one checks a bullet did not

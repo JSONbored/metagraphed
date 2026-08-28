@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as React2 from 'react';
-import { createContext, useState, useEffect, useMemo, useCallback, useReducer, useContext, useRef, useLayoutEffect, useId, Children, isValidElement } from 'react';
+import { createContext, useState, useEffect, useMemo, useRef, useCallback, useReducer, useContext, useLayoutEffect, useId, Children, isValidElement } from 'react';
 import { Command as Command$1 } from 'cmdk';
 import { X, Search, ArrowUp, Check, Copy, RotateCcw, AlertTriangle, Filter, Inbox, ExternalLink as ExternalLink$1, AlertCircle, RefreshCw, Lock } from 'lucide-react';
 import * as SheetPrimitive from '@radix-ui/react-dialog';
@@ -649,6 +649,31 @@ function safeImageUrl(input) {
     return null;
   }
 }
+var FIRST_PARTY_LOGO_HOSTS = /* @__PURE__ */ new Set(["metagraph.sh", "www.metagraph.sh"]);
+var DISPLAY_LOGO_MAX_CSS_SIZE = 48;
+var FIRST_PARTY_LOGO_PATH = /^\/logos\/(?:(cache)\/)?([a-z0-9][a-z0-9._-]*)\.(?:gif|ico|jpe?g|png|svg|webp)$/iu;
+var FIRST_PARTY_DISPLAY_PATH = /^\/logos\/display\/(?:(?:cache)\/)?[a-z0-9][a-z0-9._-]*\.webp$/iu;
+var DISPLAY_LOGO_ENTITY_KEY = /^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/iu;
+function firstPartyDisplayLogoUrl(input, size) {
+  if (size > DISPLAY_LOGO_MAX_CSS_SIZE) return null;
+  const safe = safeImageUrl(input);
+  if (!safe) return null;
+  const parsed = new URL(safe);
+  if (!FIRST_PARTY_LOGO_HOSTS.has(normaliseImageHostname(parsed.hostname)) || parsed.port) {
+    return null;
+  }
+  const match = FIRST_PARTY_LOGO_PATH.exec(parsed.pathname);
+  if (!match || match[2].includes("..") || match[2].endsWith("."))
+    return null;
+  const cache = match[1] ? "cache/" : "";
+  return `/logos/display/${cache}${match[2]}.webp`;
+}
+function providerDisplayLogoUrl(providerSlug, iconUrl, size) {
+  if (size > DISPLAY_LOGO_MAX_CSS_SIZE || !iconUrl) return null;
+  const key = String(providerSlug ?? "").trim().toLowerCase();
+  if (!DISPLAY_LOGO_ENTITY_KEY.test(key) || key.includes("..")) return null;
+  return `/logos/display/${key}.webp`;
+}
 function shouldUseAnonymousCors(candidate) {
   return isProxiedIcon(candidate);
 }
@@ -662,13 +687,20 @@ function buildCandidateChain({
 }) {
   const out = [];
   const push = (u) => {
-    const safe = safeImageUrl(u);
+    const safe = u && FIRST_PARTY_DISPLAY_PATH.test(u) ? u : safeImageUrl(u);
     if (!safe) return;
     if (failedUrls.has(safe)) return;
     if (!out.includes(safe)) out.push(safe);
   };
-  push(pickIconSource(iconUrl, theme));
-  if (lookup) push(resolveBrandOverride(lookup, theme));
+  const primary = pickIconSource(iconUrl, theme);
+  push(providerDisplayLogoUrl(lookup?.providerSlug, primary, size));
+  push(firstPartyDisplayLogoUrl(primary, size));
+  push(primary);
+  if (lookup) {
+    const override = resolveBrandOverride(lookup, theme);
+    push(firstPartyDisplayLogoUrl(override, size));
+    push(override);
+  }
   const host = extractHost(url);
   if (host) push(buildProxyIconUrl(host, size * 2, theme));
   push(buildProxyGithubAvatarUrl(repoUrl, 192, theme));
@@ -777,6 +809,7 @@ function BrandIcon({
   const [index, setIndex] = useState(initialIndex);
   const [loaded, setLoaded] = useState(false);
   const [needsContrastTile, setNeedsContrastTile] = useState(false);
+  const imageRef = useRef(null);
   useEffect(() => {
     setIndex(initialIndex);
     setLoaded(false);
@@ -797,6 +830,12 @@ function BrandIcon({
   }, []);
   const onImgError = useCallback(() => {
     if (candidate) failedUrls.add(candidate);
+    advance();
+  }, [candidate, advance]);
+  useEffect(() => {
+    const image = imageRef.current;
+    if (!candidate || !image?.complete || image.naturalWidth > 0) return;
+    failedUrls.add(candidate);
     advance();
   }, [candidate, advance]);
   const onImgLoad = useCallback(
@@ -880,6 +919,7 @@ function BrandIcon({
         /* @__PURE__ */ jsx(
           "img",
           {
+            ref: imageRef,
             src: candidate,
             alt: "",
             width: size,

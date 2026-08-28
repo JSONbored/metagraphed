@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { classNames } from "@/lib/format";
 import { useTheme, type ResolvedTheme } from "@/lib/theme";
 import {
@@ -133,6 +133,67 @@ function safeImageUrl(input?: string | null): string | null {
   }
 }
 
+const FIRST_PARTY_LOGO_HOSTS = new Set(["metagraph.sh", "www.metagraph.sh"]);
+const DISPLAY_LOGO_MAX_CSS_SIZE = 48;
+const FIRST_PARTY_LOGO_PATH =
+  /^\/logos\/(?:(cache)\/)?([a-z0-9][a-z0-9._-]*)\.(?:gif|ico|jpe?g|png|svg|webp)$/iu;
+const FIRST_PARTY_DISPLAY_PATH =
+  /^\/logos\/display\/(?:(?:cache)\/)?[a-z0-9][a-z0-9._-]*\.webp$/iu;
+const DISPLAY_LOGO_ENTITY_KEY = /^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/iu;
+
+/**
+ * Return the deterministic 96px UI derivative for a trusted first-party mark.
+ *
+ * Only the two first-party hosts and the exact committed logo path grammar are
+ * eligible. Arbitrary registry-controlled hosts never get rewritten, and
+ * larger future uses keep the original source. The original is pushed after
+ * this candidate in the chain, so a missing derivative is a normal image
+ * fallback rather than a broken mark.
+ */
+export function firstPartyDisplayLogoUrl(
+  input: string | null | undefined,
+  size: number,
+): string | null {
+  if (size > DISPLAY_LOGO_MAX_CSS_SIZE) return null;
+  const safe = safeImageUrl(input);
+  if (!safe) return null;
+  const parsed = new URL(safe);
+  if (
+    !FIRST_PARTY_LOGO_HOSTS.has(normaliseImageHostname(parsed.hostname)) ||
+    parsed.port
+  ) {
+    return null;
+  }
+  const match = FIRST_PARTY_LOGO_PATH.exec(parsed.pathname);
+  if (!match || match[2]!.includes("..") || match[2]!.endsWith("."))
+    return null;
+  const cache = match[1] ? "cache/" : "";
+  return `/logos/display/${cache}${match[2]}.webp`;
+}
+
+/**
+ * Prefer the committed local mark for a provider whose public registry image
+ * may still point at its original host.
+ *
+ * The filename is derived only from the provider's normalised route slug, not
+ * from the remote URL. The URL is used solely as an existence signal: entries
+ * without any published mark do not incur a speculative local 404. A missing
+ * committed derivative is still safe -- the ordinary remote candidate is next
+ * in the chain and receives the same validation as before.
+ */
+export function providerDisplayLogoUrl(
+  providerSlug: string | null | undefined,
+  iconUrl: string | null | undefined,
+  size: number,
+): string | null {
+  if (size > DISPLAY_LOGO_MAX_CSS_SIZE || !iconUrl) return null;
+  const key = String(providerSlug ?? "")
+    .trim()
+    .toLowerCase();
+  if (!DISPLAY_LOGO_ENTITY_KEY.test(key) || key.includes("..")) return null;
+  return `/logos/display/${key}.webp`;
+}
+
 interface ChainInputs {
   url?: string | null;
   iconUrl?: IconSource | null;
@@ -173,14 +234,25 @@ function buildCandidateChain({
 }: ChainInputs): string[] {
   const out: string[] = [];
   const push = (u: string | null | undefined) => {
-    const safe = safeImageUrl(u);
+    // Display paths are generated here only after firstPartyDisplayLogoUrl has
+    // validated the canonical absolute source. Keeping them relative makes
+    // previews and local Worker builds load their own committed derivative,
+    // instead of adding a cross-origin miss before the fallback is deployed.
+    const safe = u && FIRST_PARTY_DISPLAY_PATH.test(u) ? u : safeImageUrl(u);
     if (!safe) return;
     if (failedUrls.has(safe)) return;
     if (!out.includes(safe)) out.push(safe);
   };
 
-  push(pickIconSource(iconUrl, theme));
-  if (lookup) push(resolveBrandOverride(lookup, theme));
+  const primary = pickIconSource(iconUrl, theme);
+  push(providerDisplayLogoUrl(lookup?.providerSlug, primary, size));
+  push(firstPartyDisplayLogoUrl(primary, size));
+  push(primary);
+  if (lookup) {
+    const override = resolveBrandOverride(lookup, theme);
+    push(firstPartyDisplayLogoUrl(override, size));
+    push(override);
+  }
 
   const host = extractHost(url);
   if (host) push(buildProxyIconUrl(host, size * 2, theme));
@@ -349,6 +421,7 @@ export function BrandIcon({
   const [index, setIndex] = useState(initialIndex);
   const [loaded, setLoaded] = useState(false);
   const [needsContrastTile, setNeedsContrastTile] = useState(false);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     setIndex(initialIndex);
@@ -374,6 +447,18 @@ export function BrandIcon({
 
   const onImgError = useCallback(() => {
     if (candidate) failedUrls.add(candidate);
+    advance();
+  }, [candidate, advance]);
+
+  // A local derivative can fail before React hydrates the server-rendered
+  // <img>. In that case the browser has already dispatched `error`, so the
+  // JSX handler never observes it and the transparent placeholder would stay
+  // stuck forever. Reconcile the element's completed state on hydration and
+  // enter the same fallback chain as an ordinary post-hydration error.
+  useEffect(() => {
+    const image = imageRef.current;
+    if (!candidate || !image?.complete || image.naturalWidth > 0) return;
+    failedUrls.add(candidate);
     advance();
   }, [candidate, advance]);
 
@@ -467,6 +552,7 @@ export function BrandIcon({
         </span>
       ) : null}
       <img
+        ref={imageRef}
         key={candidate ?? "x"}
         src={candidate!}
         alt=""
