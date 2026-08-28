@@ -3,11 +3,13 @@ import type { SchemaInfo, Surface } from "@/lib/metagraphed/types";
 import {
   apisNav,
   catalogFacts,
+  catalogHeadlineFacts,
   driftRails,
   facet,
   interfaceCoverage,
   kindSegments,
   schemaFacts,
+  schemaHeadlineFacts,
   schemaRows,
   schemaSummary,
   shortHash,
@@ -117,6 +119,27 @@ describe("catalogFacts", () => {
   it("omits what the response does not carry, and is empty with no response", () => {
     expect(catalogFacts({ surface_count: 5 }, 0, fmt).map((f) => f.key)).toEqual(["surfaces"]);
     expect(catalogFacts(null, 3, fmt)).toEqual([]);
+  });
+});
+
+describe("catalogHeadlineFacts", () => {
+  const labels = ["Surfaces", "Across subnets", "Coverage dimensions", "Probed", "First-party"];
+
+  it("keeps the same five slots while loading and on error", () => {
+    for (const state of ["pending", "error"] as const) {
+      const facts = catalogHeadlineFacts(undefined, 0, state, fmt);
+      expect(facts.map((fact) => fact.label)).toEqual(labels);
+      expect(facts.map((fact) => fact.value)).toEqual(["—", "—", "—", "—", "—"]);
+      expect(facts.map((fact) => fact.loading)).toEqual(
+        Array(5).fill(state === "pending" ? true : undefined),
+      );
+    }
+  });
+
+  it("fills a missing ready value without collapsing the strip", () => {
+    const facts = catalogHeadlineFacts({ surface_count: 5 }, 0, "ready", fmt);
+    expect(facts.map((fact) => fact.label)).toEqual(labels);
+    expect(facts.map((fact) => fact.value)).toEqual(["5", "—", "—", "—", "—"]);
   });
 });
 
@@ -261,6 +284,36 @@ describe("schemaFacts", () => {
 
   it("is empty with no summary", () => {
     expect(schemaFacts(null, 5, fmt)).toEqual([]);
+  });
+});
+
+describe("schemaHeadlineFacts", () => {
+  const labels = ["Tracked", "Captured", "Subnets", "Moved", "Not captured"];
+
+  it("keeps the same five slots while loading and on error", () => {
+    for (const state of ["pending", "error"] as const) {
+      const facts = schemaHeadlineFacts(undefined, 0, state, fmt);
+      expect(facts.map((fact) => fact.label)).toEqual(labels);
+      expect(facts.map((fact) => fact.value)).toEqual(["—", "—", "—", "—", "—"]);
+      expect(facts.map((fact) => fact.loading)).toEqual(
+        Array(5).fill(state === "pending" ? true : undefined),
+      );
+    }
+  });
+
+  it("uses the same ordered slots for settled data", () => {
+    const facts = schemaHeadlineFacts(
+      {
+        surface_count: 64,
+        by_status: { captured: 57 },
+        by_drift_status: { changed: 1, new: 1, "not-captured": 7 },
+      },
+      59,
+      "ready",
+      fmt,
+    );
+    expect(facts.map((fact) => fact.label)).toEqual(labels);
+    expect(facts.map((fact) => fact.value)).toEqual(["64", "57", "59", "2", "7"]);
   });
 });
 

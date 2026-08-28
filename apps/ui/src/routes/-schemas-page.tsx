@@ -23,7 +23,7 @@ import { schemasQuery } from "@/lib/metagraphed/queries";
 import {
   apisNav,
   driftRails,
-  schemaFacts,
+  schemaHeadlineFacts,
   schemaRows,
   schemaSummary,
   shortHash,
@@ -78,14 +78,12 @@ export function SchemasPage() {
   );
   const driftShown = showAllDrift ? rows : rows.filter((row) => row.drift !== "unchanged");
   const headlineFacts = useMemo(() => {
-    if (schemas.isPending) {
-      return [
-        { key: "tracked", label: "Tracked", value: "—", loading: true },
-        { key: "moved", label: "Moved", value: "—", loading: true },
-      ];
-    }
-    if (schemas.isError) return [];
-    return schemaFacts(summary, subnetsCovered, { count: formatNumber });
+    return schemaHeadlineFacts(
+      summary,
+      subnetsCovered,
+      schemas.isPending ? "pending" : schemas.isError ? "error" : "ready",
+      { count: formatNumber },
+    );
   }, [schemas.isError, schemas.isPending, subnetsCovered, summary]);
 
   const columns: DataTableColumn<SchemaRow>[] = [

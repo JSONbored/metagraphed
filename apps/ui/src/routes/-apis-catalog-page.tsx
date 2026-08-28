@@ -27,7 +27,11 @@ import { formatAbsoluteTime, formatNumber, formatPct } from "@/lib/metagraphed/f
 import { coverageQuery, surfacesInfiniteQuery } from "@/lib/metagraphed/queries";
 import type { Surface } from "@/lib/metagraphed/types";
 import type { CoverageCounts } from "@/components/metagraphed/apis/apis-logic";
-import { apisNav, catalogFacts, interfaceCoverage } from "@/components/metagraphed/apis/apis-logic";
+import {
+  apisNav,
+  catalogHeadlineFacts,
+  interfaceCoverage,
+} from "@/components/metagraphed/apis/apis-logic";
 import { matchesSurfaceFilters } from "@/lib/metagraphed/surface-filters";
 import { Route } from "./apis.index";
 
@@ -201,9 +205,12 @@ export function ApisCatalogPage() {
         // smaller than the rows they frame. The lede stays prose.
         cells={
           factCells(
-            catalogFacts(coverageData, coverageRows.length, {
-              count: formatNumber,
-            }),
+            catalogHeadlineFacts(
+              coverageData,
+              coverageRows.length,
+              coverage.isPending ? "pending" : coverage.isError ? "error" : "ready",
+              { count: formatNumber },
+            ),
           ) ?? undefined
         }
         live={{
@@ -232,7 +239,7 @@ export function ApisCatalogPage() {
               ariaLabel="Subnet coverage by public interface type"
               source="interface-coverage"
               loading
-              loadingRows={6}
+              loadingRows={7}
             />
           ) : coverage.isError ? (
             <ErrorState
@@ -268,13 +275,10 @@ export function ApisCatalogPage() {
           ) : null
         }
         empty={coverage.isPending ? false : "No public interface coverage is published."}
-        footnote={
-          coverage.isPending
-            ? "Loading published interface coverage · registry"
-            : coverage.isError
-              ? "Published interface coverage is temporarily unavailable · registry"
-              : "of all chain subnets · one subnet may publish more than one interface · registry"
-        }
+        // Methodology does not change with query state. Keeping this note
+        // stable also avoids replacing a short loading sentence with a
+        // two-line settled sentence after the rails resolve on mobile.
+        footnote="of all chain subnets · one subnet may publish more than one interface · registry"
       />
 
       <AnalyticsSection
