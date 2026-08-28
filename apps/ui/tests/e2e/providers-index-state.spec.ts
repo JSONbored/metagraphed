@@ -9,6 +9,24 @@ const DISPLAY_MARK = fileURLToPath(
 const FIRST_PROVIDER_CANONICAL = "https://avatars.githubusercontent.com/u/154099142?s=200&v=4";
 
 test.describe("Providers directory verification state", () => {
+  test("keeps exhaustive rankings behind an explicit mobile disclosure", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await gotoThroughRestart(page, "/apis/providers");
+
+    const leaders = page.locator("[data-mg-leaders]");
+    const showAll = page.getByRole("button", { name: "Show all 18" });
+    const directory = page.getByRole("table", { name: "Providers" });
+
+    await expect(leaders.locator("li")).toHaveCount(3);
+    await expect(showAll).toBeVisible();
+    await expect(directory).toBeAttached();
+
+    await showAll.click();
+    await expect(leaders.locator("li")).toHaveCount(18);
+    await expect(showAll).toHaveCount(0);
+    await expect(page.getByText("endpoints served · registry")).toBeVisible();
+  });
+
   test("uses display-sized marks without downloading canonical sources", async ({ page }) => {
     const displayMark = await readFile(DISPLAY_MARK);
     const canonicalRequests: string[] = [];

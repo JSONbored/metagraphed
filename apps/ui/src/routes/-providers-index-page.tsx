@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
@@ -37,6 +37,7 @@ import {
 import { Route } from "./apis.providers";
 
 const API_PATHS = ["/api/v1/providers", "/api/v1/source-health"];
+const LEADER_PREVIEW = 3;
 
 function ApiSources() {
   useRegisterApiSource(API_PATHS, ["/metagraph/providers.json"]);
@@ -52,6 +53,7 @@ function ApiSources() {
  * search bar outside the table (the table has one).
  */
 export function ProvidersPage() {
+  const [leadersExpanded, setLeadersExpanded] = useState(false);
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/apis/providers" });
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -82,6 +84,7 @@ export function ProvidersPage() {
   const kinds = useMemo(() => facet(rows, (row) => row.kind), [rows]);
   const authorities = useMemo(() => facet(rows, (row) => row.authority), [rows]);
   const leaders = useMemo(() => providerLeaders(rows), [rows]);
+  const shownLeaders = leadersExpanded ? leaders : leaders.slice(0, LEADER_PREVIEW);
 
   const columns: DataTableColumn<ProviderRow>[] = [
     {
@@ -218,8 +221,8 @@ export function ProvidersPage() {
         visual={
           leaders.length > 0 ? (
             <LeaderCards
-              items={leaders}
-              featured={3}
+              items={shownLeaders}
+              featured={LEADER_PREVIEW}
               ariaLabel="Providers by endpoints served"
               source="provider"
             />
@@ -229,7 +232,19 @@ export function ProvidersPage() {
         // /api/v1/providers is a snapshot with no previous count to compare
         // against. A delta computed from anything else would look like growth
         // and not be.
-        footnote="endpoints served · registry"
+        footnote={
+          leadersExpanded || leaders.length <= LEADER_PREVIEW ? (
+            "endpoints served · registry"
+          ) : (
+            <button
+              type="button"
+              className="mg-section-more"
+              onClick={() => setLeadersExpanded(true)}
+            >
+              Show all {leaders.length}
+            </button>
+          )
+        }
       />
 
       <AnalyticsSection
