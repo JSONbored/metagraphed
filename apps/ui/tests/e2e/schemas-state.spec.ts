@@ -6,6 +6,7 @@ test.describe("Schema capture query state", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
+    await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
 
     let release: (() => void) | undefined;
     const continueRead = new Promise<void>((resolve) => {
@@ -17,7 +18,9 @@ test.describe("Schema capture query state", () => {
     });
 
     await gotoThroughRestart(page, "/apis/schemas");
+    await page.evaluate(() => document.fonts.ready);
 
+    const hero = page.locator(".mg-hero").first();
     const drift = page.getByRole("group", {
       name: "Schemas that changed since the last capture",
     });
@@ -29,12 +32,21 @@ test.describe("Schema capture query state", () => {
     await expect(drift.locator(".mg-rails-row--skeleton")).toHaveCount(10);
     await expect(size.locator(".mg-rails-row--skeleton")).toHaveCount(10);
     await expect(table.locator(".mg-dt-skeleton")).toHaveCount(8);
+    await expect(hero.locator(".mg-fact")).toHaveCount(5);
+    await expect(hero.locator(".mg-fact dt")).toHaveText([
+      "Tracked",
+      "Captured",
+      "Subnets",
+      "Moved?",
+      "Not captured?",
+    ]);
+    await expect(hero.locator(".mg-fact-loading")).toHaveCount(5);
     await expect(page.getByText("Loading schema captures · snapshot")).toBeVisible();
     await expect(page.getByText("Loading captured schemas · snapshot")).toBeVisible();
     await expect(page.getByText("Show all 0")).toHaveCount(0);
-    await expect(page.getByText("Tracked").locator("..").locator(".mg-fact-loading")).toHaveCount(
-      1,
-    );
+    const driftTopBefore = await page
+      .locator("section#drift")
+      .evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
 
     const dimensions = await page.evaluate(() => ({
       document: document.documentElement.scrollWidth,
@@ -43,8 +55,13 @@ test.describe("Schema capture query state", () => {
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
 
     release?.();
+    await expect(hero.locator(".mg-fact-loading")).toHaveCount(0);
     await expect(drift).not.toHaveAttribute("aria-busy", "true");
     await expect(size).not.toHaveAttribute("aria-busy", "true");
     await expect(table.locator(".mg-dt-skeleton")).toHaveCount(0);
+    const driftTopAfter = await page
+      .locator("section#drift")
+      .evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+    expect(Math.abs(driftTopAfter - driftTopBefore)).toBeLessThanOrEqual(1);
   });
 });

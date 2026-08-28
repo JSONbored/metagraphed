@@ -8,6 +8,73 @@ const DELAYED_READS = [
 ];
 
 test.describe("API directory query states", () => {
+  test("keeps the catalog hero and coverage geometry stable while coverage resolves", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+
+    let release: (() => void) | undefined;
+    const continueRead = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/api/v1/coverage*", async (route) => {
+      await continueRead;
+      await route.continue();
+    });
+
+    await gotoThroughRestart(page, "/apis");
+    await page.evaluate(() => document.fonts.ready);
+
+    const hero = page.locator(".mg-hero").first();
+    const coverage = page.getByRole("group", {
+      name: "Subnet coverage by public interface type",
+    });
+    const catalog = page.locator("section#catalog");
+    await expect(hero.locator(".mg-fact")).toHaveCount(5);
+    await expect(hero.locator(".mg-fact dt")).toHaveText([
+      "Surfaces",
+      "Across subnets",
+      "Coverage dimensions",
+      "Probed",
+      "First-party",
+    ]);
+    await expect(hero.locator(".mg-fact-loading")).toHaveCount(5);
+    await expect(coverage.locator(".mg-rails-row--skeleton")).toHaveCount(7);
+    const coverageLayoutBefore = await page.locator("section#coverage").evaluate((section) => ({
+      height: section.getBoundingClientRect().height,
+      head: section.querySelector(".mg-rails-head")?.getBoundingClientRect().height,
+      rows: Array.from(
+        section.querySelectorAll(".mg-rails-row"),
+        (row) => row.getBoundingClientRect().height,
+      ),
+      footnote: section.querySelector(".mg-section-note")?.getBoundingClientRect().height,
+    }));
+    const catalogTopBefore = await catalog.evaluate(
+      (element) => element.getBoundingClientRect().top + window.scrollY,
+    );
+
+    release?.();
+    await expect(hero.locator(".mg-fact-loading")).toHaveCount(0);
+    await expect(coverage).not.toHaveAttribute("aria-busy", "true");
+    const coverageLayoutAfter = await page.locator("section#coverage").evaluate((section) => ({
+      height: section.getBoundingClientRect().height,
+      head: section.querySelector(".mg-rails-head")?.getBoundingClientRect().height,
+      rows: Array.from(
+        section.querySelectorAll(".mg-rails-row"),
+        (row) => row.getBoundingClientRect().height,
+      ),
+      footnote: section.querySelector(".mg-section-note")?.getBoundingClientRect().height,
+    }));
+    const catalogTopAfter = await catalog.evaluate(
+      (element) => element.getBoundingClientRect().top + window.scrollY,
+    );
+    expect(
+      Math.abs(catalogTopAfter - catalogTopBefore),
+      JSON.stringify({ coverageLayoutBefore, coverageLayoutAfter }),
+    ).toBeLessThanOrEqual(1);
+  });
+
   test("starts the catalog page only when a reader reaches its rows", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
 
@@ -158,6 +225,9 @@ test.describe("API directory query states", () => {
     await gotoThroughRestart(page, "/apis");
 
     await expect(page.getByText("Couldn't load published interface coverage")).toBeVisible();
+    const hero = page.locator(".mg-hero").first();
+    await expect(hero.locator(".mg-fact")).toHaveCount(5);
+    await expect(hero.locator(".mg-fact-loading")).toHaveCount(0);
     await page.locator("section#catalog").scrollIntoViewIfNeeded();
     await expect(page.getByText("Couldn't load verified interfaces")).toBeVisible();
     await expect(page.getByText("No public interface coverage is published.")).toHaveCount(0);

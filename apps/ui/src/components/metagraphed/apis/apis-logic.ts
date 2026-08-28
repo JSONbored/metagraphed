@@ -106,6 +106,49 @@ export interface Fact {
   key: string;
   label: string;
   value: string;
+  loading?: boolean;
+}
+
+export type HeadlineFactState = "pending" | "error" | "ready";
+
+const CATALOG_FACT_SLOTS = [
+  { key: "surfaces", label: "Surfaces" },
+  { key: "subnets", label: "Across subnets" },
+  { key: "interface-dimensions", label: "Coverage dimensions" },
+  { key: "probed", label: "Probed" },
+  { key: "official", label: "First-party" },
+] as const;
+
+const SCHEMA_FACT_SLOTS = [
+  { key: "tracked", label: "Tracked" },
+  { key: "captured", label: "Captured" },
+  { key: "subnets", label: "Subnets" },
+  { key: "moved", label: "Moved" },
+  { key: "missing", label: "Not captured" },
+] as const;
+
+/**
+ * Preserve the hero's information architecture while its values change.
+ *
+ * Inserting new fact cells after a cold query resolves moves every section
+ * below the hero. A stable set of semantic slots lets the loading and error
+ * states tell the truth with an em dash without changing the page geometry.
+ */
+function stableFactSlots(
+  slots: readonly { key: string; label: string }[],
+  facts: readonly Fact[],
+  state: HeadlineFactState,
+): Fact[] {
+  const byKey = new Map(facts.map((fact) => [fact.key, fact]));
+  return slots.map((slot) => {
+    const fact = state === "ready" ? byKey.get(slot.key) : undefined;
+    if (fact) return { ...fact, label: slot.label };
+    return {
+      ...slot,
+      value: "—",
+      ...(state === "pending" ? { loading: true } : {}),
+    };
+  });
 }
 
 /**
@@ -162,6 +205,20 @@ export function catalogFacts(
     });
   }
   return facts;
+}
+
+/** Five stable catalog hero slots across pending, error, and ready states. */
+export function catalogHeadlineFacts(
+  coverage: CoverageCounts | null | undefined,
+  interfaceDimensions: number,
+  state: HeadlineFactState,
+  fmt: { count: (n: number) => string },
+): Fact[] {
+  return stableFactSlots(
+    CATALOG_FACT_SLOTS,
+    catalogFacts(coverage, interfaceDimensions, fmt),
+    state,
+  );
 }
 
 export interface SchemaRow {
@@ -339,4 +396,14 @@ export function schemaFacts(
     facts.push({ key: "missing", label: "Not captured", value: fmt.count(drift["not-captured"]) });
   }
   return facts;
+}
+
+/** Five stable schema hero slots across pending, error, and ready states. */
+export function schemaHeadlineFacts(
+  summary: Parameters<typeof schemaFacts>[0],
+  subnetsCovered: number,
+  state: HeadlineFactState,
+  fmt: { count: (n: number) => string },
+): Fact[] {
+  return stableFactSlots(SCHEMA_FACT_SLOTS, schemaFacts(summary, subnetsCovered, fmt), state);
 }
