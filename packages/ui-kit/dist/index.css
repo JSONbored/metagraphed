@@ -1558,11 +1558,11 @@
     align-items: center;
     justify-content: center;
     border: 1px solid color-mix(in oklab, var(--agent) 55%, var(--rule-strong));
-    color: var(--agent);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 600;
-    line-height: 1.4;
+  }
+  .mg-home-mcp-mark img {
+    display: block;
+    width: 26px;
+    height: 22px;
   }
   .mg-home-mcp-identity p {
     margin: 0;

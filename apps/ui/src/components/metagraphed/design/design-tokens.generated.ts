@@ -71,7 +71,7 @@ export const DESIGN_TOKENS: readonly DesignToken[] = [
     refs: 3,
   },
   { name: "--focus", light: "#0f8f66", dark: "#3ddc97", theme: "--color-focus", refs: 36 },
-  { name: "--agent", light: "#6946d7", dark: "#b49cff", theme: "--color-agent", refs: 10 },
+  { name: "--agent", light: "#6946d7", dark: "#b49cff", theme: "--color-agent", refs: 9 },
   {
     name: "--agent-surface",
     light: "color-mix(in oklab, var(--agent) 8%, transparent)",

@@ -26,6 +26,8 @@ describe("homepage masthead", () => {
 
   it("makes MCP a quiet, working first-viewport handoff", () => {
     expect(masthead).toContain('className="mg-home-mcp-install"');
+    expect(masthead).toContain('src="/favicon-transparent.svg"');
+    expect(masthead).not.toContain("\n                        MCP\n");
     expect(masthead).toContain("<CopyableCode");
     expect(masthead).toContain('label="Install"');
     expect(masthead).toContain("value={MCP_INSTALL_COMMAND}");

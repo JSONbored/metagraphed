@@ -230,7 +230,7 @@ export function OverviewPage() {
                   <div className="mg-home-mcp-head">
                     <div className="mg-home-mcp-identity">
                       <span className="mg-home-mcp-mark" aria-hidden="true">
-                        MCP
+                        <img src="/favicon-transparent.svg" alt="" width={26} height={22} />
                       </span>
                       <div>
                         <p id="home-mcp-title">Metagraphed MCP</p>
