@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
+import {
+  TRAILING_WINDOWS,
+  booleanSearch,
+  defineSearchSchema,
+  enumSearch,
+  stripDefaultSearchParams,
+  stringSearch,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { SubnetsPage } from "./-subnets-index-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
@@ -17,23 +24,20 @@ import { hubMeta } from "@/lib/metagraphed/hub-copy";
  * `domain` and `api` are the two filters `/subnets/category/$slug` and
  * `/subnets/with-api` became when those routes folded in here.
  */
-export const subnetsSearchSchema = z.object({
-  q: z.string().catch("").default(""),
-  domain: z.string().catch("").default(""),
-  health: z.string().catch("").default(""),
+export const subnetsSearchSchema = defineSearchSchema({
+  q: stringSearch(),
+  domain: stringSearch(),
+  health: stringSearch(),
   // A boolean, not the string "1". TanStack's search serialiser quotes a
   // string that would parse back as a number, so `api: "1"` reached the URL
   // as `api=%221%22` -- which the retired route's redirect then produced and
   // no reader could type.
-  api: z.boolean().catch(false).default(false),
-  metric: z
-    .enum(["emission", "stake", "price", "validators"])
-    .catch("emission")
-    .default("emission"),
-  window: z.enum(TRAILING_WINDOWS).catch("30d").default("30d"),
+  api: booleanSearch(false),
+  metric: enumSearch(["emission", "stake", "price", "validators"] as const, "emission"),
+  window: enumSearch(TRAILING_WINDOWS, "30d"),
 });
 
-export type SubnetsSearch = z.infer<typeof subnetsSearchSchema>;
+export type SubnetsSearch = SearchOutput<typeof subnetsSearchSchema>;
 
 export const Route = createFileRoute("/subnets/")({
   validateSearch: subnetsSearchSchema,

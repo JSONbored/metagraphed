@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, CompositionBreakdown } from "@jsonbored/ui-kit";
+import { ErrorState } from "@/components/metagraphed/states";
 import { domainsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { fmtPct } from "./subnets-index-logic";
@@ -14,7 +15,8 @@ import { fmtPct } from "./subnets-index-logic";
  * /subnets/category/* was, and why it is gone).
  */
 export function DomainsSection({ onPick }: { onPick: (domain: string) => void }) {
-  const { data } = useQuery({ ...domainsQuery(), retry: 0 });
+  const query = useQuery({ ...domainsQuery(), retry: 0 });
+  const { data } = query;
   const domains = (data?.data ?? []).filter((row) => (row.subnet_count ?? 0) > 0);
 
   const segments = domains
@@ -34,7 +36,22 @@ export function DomainsSection({ onPick }: { onPick: (domain: string) => void })
       name="Domains"
       question="What the network is building."
       visual={
-        segments.length > 0 ? (
+        query.isPending ? (
+          <CompositionBreakdown
+            formatValue={(value) => fmtPct(value, 1)}
+            legendCols={4}
+            ariaLabel="Emission share by capability domain"
+            source="subnet-domain"
+            loading
+            loadingItems={4}
+          />
+        ) : query.isError ? (
+          <ErrorState
+            error={query.error}
+            onRetry={() => void query.refetch()}
+            context="capability domains"
+          />
+        ) : segments.length > 0 ? (
           <CompositionBreakdown
             segments={segments}
             formatValue={(value) => fmtPct(value, 1)}
@@ -45,9 +62,15 @@ export function DomainsSection({ onPick }: { onPick: (domain: string) => void })
           />
         ) : null
       }
-      footnote={`${formatNumber(domains.length)} domains · ${formatNumber(
-        classified,
-      )} subnets classified · pick one to filter the directory`}
+      footnote={
+        query.isPending
+          ? "loading capability-domain coverage"
+          : query.isError
+            ? "capability-domain coverage could not be loaded"
+            : `${formatNumber(domains.length)} domains · ${formatNumber(
+                classified,
+              )} subnets classified · pick one to filter the directory`
+      }
     />
   );
 }

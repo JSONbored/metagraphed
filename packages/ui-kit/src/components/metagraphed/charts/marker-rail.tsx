@@ -1,7 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
 import { classNames } from "@/lib/format";
+import { Skeleton } from "../skeleton";
 import { useEntityMark } from "../interaction/active-entity";
 import { markAriaLabel } from "./chart-aria";
+
+const SCALE_INTERVALS = [0, 1, 2, 3, 4] as const;
 
 /**
  * A bounded ratio per row (#11609): uptime %, readiness /100, trust 0–1,
@@ -20,7 +23,8 @@ export interface MarkerRailItem {
 }
 
 export interface MarkerRailProps {
-  items: readonly MarkerRailItem[];
+  /** Omit while loading; otherwise the ratio rows to display. */
+  items?: readonly MarkerRailItem[];
   /** The rail's upper bound (100 for percentages, 1 for ratios). */
   max?: number;
   formatValue: (value: number) => string;
@@ -29,6 +33,10 @@ export interface MarkerRailProps {
   source?: string;
   onActivate?: (item: MarkerRailItem) => void;
   className?: string;
+  /** Preserve the ratio-rail geometry while the source has not answered. */
+  loading?: boolean;
+  /** Number of ratio rows to reserve while loading. */
+  loadingRows?: number;
 }
 
 /** Marker position as a 0–100 percentage. */
@@ -49,7 +57,10 @@ export function MarkerRail({
   source = "marker-rail",
   onActivate,
   className,
+  loading = false,
+  loadingRows = 5,
 }: MarkerRailProps) {
+  const placeholders = Math.max(1, loadingRows);
   return (
     <div
       className={classNames("mg-marker-rail", className)}
@@ -64,19 +75,47 @@ export function MarkerRail({
         className="mg-rails-rows"
         role="group"
         aria-label={ariaLabel}
-        data-marks
+        aria-busy={loading || undefined}
+        data-marks={loading ? undefined : ""}
       >
-        {items.map((item) => (
-          <MarkerRow
-            key={item.key}
-            item={item}
-            max={max}
-            formatValue={formatValue}
-            source={source}
-            onActivate={onActivate}
-          />
-        ))}
+        {loading ? <span className="sr-only">Loading {ariaLabel}</span> : null}
+        {loading
+          ? Array.from({ length: placeholders }, (_, index) => (
+              <MarkerRowSkeleton key={`skeleton-${index}`} />
+            ))
+          : (items ?? []).map((item) => (
+              <MarkerRow
+                key={item.key}
+                item={item}
+                max={max}
+                formatValue={formatValue}
+                source={source}
+                onActivate={onActivate}
+              />
+            ))}
       </div>
+    </div>
+  );
+}
+
+/** Same three-column marker rail; no ratio is implied before a probe answers. */
+function MarkerRowSkeleton() {
+  return (
+    <div className="mg-rails-row mg-rails-row--skeleton" aria-hidden="true">
+      <span className="mg-rails-value">
+        <Skeleton className="ml-auto h-3 w-10" />
+      </span>
+      <span className="mg-rails-name">
+        <Skeleton className="h-3 w-3/5" />
+      </span>
+      <span className="mg-marker-rail-track">
+        <span className="mg-marker-rail-ticks" aria-hidden="true">
+          {SCALE_INTERVALS.map((interval) => (
+            <b key={interval} />
+          ))}
+        </span>
+        <Skeleton className="h-full w-full" />
+      </span>
     </div>
   );
 }
@@ -120,8 +159,16 @@ function MarkerRow({
         className="mg-marker-rail-track"
         data-empty={pos === null ? "true" : undefined}
       >
+        <span className="mg-marker-rail-ticks" aria-hidden="true">
+          {SCALE_INTERVALS.map((interval) => (
+            <b key={interval} />
+          ))}
+        </span>
         {pos === null ? null : (
-          <i style={{ "--pos": `${pos}%` } as CSSProperties} />
+          <i
+            className="mg-marker-rail-marker"
+            style={{ "--pos": `${pos}%` } as CSSProperties}
+          />
         )}
       </span>
     </>

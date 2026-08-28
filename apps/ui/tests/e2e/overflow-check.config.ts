@@ -84,6 +84,17 @@ export const ROUTES = [
   "/health",
   "/contribute",
   "/agents",
+  // Content is a route family too. One docs index, one prose guide, one
+  // generated API operation, the digest archive, and one digest detail cover
+  // the distinct Fumadocs layouts that the product-route-only sweep omitted.
+  "/docs",
+  "/docs/mcp",
+  "/docs/api-reference/subnets/subnets-by-network",
+  "/news",
+  "/news/sn19/2026-w17",
+  // The remaining canonical interactive route. /graphql itself is a 301 and
+  // is covered by the redirect suite; this is the page a reader receives.
+  "/graphql/explorer",
   // The provider detail template. `lium` is a real provider with 156
   // endpoints, so the widths this stresses are a real operator page's rather
   // than a one-row stub's.
@@ -91,12 +102,23 @@ export const ROUTES = [
 ];
 
 /**
- * Routes that issue no API request, so `harPathForRoute` has nothing to point
- * at. Derived rather than asserted: `declaredApiPaths` (har-coverage.ts) reads
- * each route's own `useRegisterApiSource`, and a route that declares nothing
- * genuinely fetches nothing.
+ * Routes that issue no browser API request, so `harPathForRoute` has nothing
+ * to point at. Most genuinely fetch nothing; the API-reference operation page
+ * performs an SSR-only OpenAPI read that api-stub.ts seeds from the committed
+ * generated artifact.
  */
-export const NO_API_ROUTES = new Set(["/privacy", "/terms", "/design/primitives"]);
+export const NO_API_ROUTES = new Set([
+  "/privacy",
+  "/terms",
+  "/design/primitives",
+  "/docs",
+  "/docs/mcp",
+  // The operation page issues no browser request/HAR. Its SSR OpenAPI read is
+  // served hermetically from the committed artifact by api-stub.ts.
+  "/docs/api-reference/subnets/subnets-by-network",
+  "/news",
+  "/news/sn19/2026-w17",
+]);
 
 export const VIEWPORTS = [
   { name: "mobile", width: 375, height: 812 },
@@ -105,23 +127,15 @@ export const VIEWPORTS = [
   { name: "desktop-lg", width: 1280, height: 800 },
 ];
 
-// Routes allowed to render an error state, and why.
+// Routes allowed to render an error state. Kept as an explicit set so any
+// future exception has to be documented beside the design sweep rather than
+// silently weakening its "real content rendered" assertion.
 //
-// The sweep asserts a route rendered real content rather than an error card,
-// because "no new overflow violations" is also what a broken page looks like.
-// This route is the documented exception: its SSR `useSuspenseQuery` fetches
-// /api/v1/accounts/{ss58} on the SERVER, where `page.routeFromHAR` cannot
-// intercept it, so the request reaches live production on every run. When that
-// endpoint degrades (observed: 503 `account_summary_unavailable`) the page
-// renders an error card and no fixture can prevent it.
-//
-// This is an allowlist, not a fix. Removing the entry requires making SSR
-// fetches hermetic -- attempted via a loopback API stub and abandoned, because
-// workerd's outbound fetch to localhost fails under the parallel sweep far
-// more often than production does.
-export const ERROR_STATE_ALLOWED = new Set([
-  "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
-]);
+// Empty today: account detail no longer suspends SSR on its slow lifetime
+// history aggregate. It renders a truthful pending state while independent
+// balance, identity and positions evidence remains usable, so a summary fault
+// is no longer a reason to permit a route-wide error card.
+export const ERROR_STATE_ALLOWED = new Set<string>();
 
 // route@width combinations known to render an empty list, and why.
 //

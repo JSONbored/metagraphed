@@ -78,6 +78,9 @@ async function openExtrinsic(
   await page.route((url) => isRelatedCalls(url.toString()), relatedResponder);
 
   await gotoThroughRestart(page, ROUTE);
+  // Related calls are intentionally a later forensic question: enter their
+  // anchored table before asserting its request/result states.
+  await page.locator("[data-mg-extrinsic-peer]").scrollIntoViewIfNeeded();
   // The client retries a failed query 3x with backoff (router.tsx), so give the
   // error state time to settle rather than asserting on a mid-retry skeleton.
   const section = page.locator("#multisig-chain");
@@ -97,11 +100,10 @@ test.describe("#6426 Related Multisig calls error state", () => {
     const section = page.locator("#multisig-chain");
     // The client retries a failed query 3x with backoff before isError flips
     // (router.tsx), so allow well past that window rather than the 5s default.
-    await expect(
-      section.getByText("Couldn't look up the calls referencing this hash."),
-    ).toBeVisible({
-      timeout: RENDER_TIMEOUT_MS,
-    });
+    await expect(section.getByRole("alert")).toContainText(
+      "Couldn't load calls referencing this call hash",
+      { timeout: RENDER_TIMEOUT_MS },
+    );
     // The whole point: a fetch failure must NOT read as "no related calls".
     await expect(
       section.getByText("No other extrinsics reference this call hash yet."),
@@ -121,8 +123,8 @@ test.describe("#6426 Related Multisig calls error state", () => {
     await expect(
       section.getByText("No other extrinsics reference this call hash yet."),
     ).toBeVisible({ timeout: RENDER_TIMEOUT_MS });
-    await expect(
-      section.getByText("Couldn't look up the calls referencing this hash."),
-    ).toHaveCount(0);
+    await expect(section.getByText("Couldn't load calls referencing this call hash.")).toHaveCount(
+      0,
+    );
   });
 });

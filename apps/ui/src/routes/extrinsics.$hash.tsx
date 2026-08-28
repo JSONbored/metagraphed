@@ -1,7 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
-import { extrinsicQuery } from "@/lib/metagraphed/queries";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall, isValidExtrinsicHash } from "@/lib/metagraphed/extrinsics";
 import { ExtrinsicDetailPage } from "./-extrinsic-detail-page";
@@ -27,6 +26,7 @@ export const Route = createFileRoute("/extrinsics/$hash")({
   loader: async ({ context, params }) => {
     let result;
     try {
+      const { extrinsicQuery } = await import("@/lib/metagraphed/queries");
       result = await context.queryClient.ensureQueryData(extrinsicQuery(params.hash));
     } catch (error) {
       // #11000: a throttled PRIMARY query has no page to render, and answering

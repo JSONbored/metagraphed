@@ -66,6 +66,7 @@ export const DEFINITIONS = {
   "Emission share": "The fraction of each block's TAO emission the chain directs to this subnet.",
   "Alpha price": "What one unit of this subnet's alpha token costs in TAO on its own pool.",
   "Total stake": "All TAO and alpha staked to this subnet's validators, valued in TAO.",
+  "Stake value (τ)": "All TAO and alpha staked to this validator, valued in TAO.",
   "Validator take": "The share of rewards a validator keeps before paying its nominators.",
   Nominators: "Wallets that stake to a validator and receive its rewards minus take.",
   "Validator permit":

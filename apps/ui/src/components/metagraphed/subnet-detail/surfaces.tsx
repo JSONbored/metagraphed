@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, DataTable, MarkerRail, type DataTableColumn } from "@jsonbored/ui-kit";
 import { subnetSurfacesQuery, subnetUptimeQuery } from "@/lib/metagraphed/queries";
 import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { useNearViewport } from "@/hooks/use-near-viewport";
+import { ErrorState } from "@/components/metagraphed/states";
 import type { Surface } from "@/lib/metagraphed/types";
 import { surfaceRail, uptimeBySurface } from "./subnet-detail-logic";
 
@@ -49,13 +52,26 @@ const COLUMNS: DataTableColumn<Surface & { uptime: number | null }>[] = [
  */
 export function SurfacesSection({ netuid, name }: { netuid: number; name?: string }) {
   const [expanded, setExpanded] = useState(false);
-  const surfaces = useQuery({ ...subnetSurfacesQuery(netuid), retry: 0 });
-  const uptime = useQuery({ ...subnetUptimeQuery(netuid, "90d"), retry: 0 });
+  const { ref, nearViewport } = useNearViewport();
+  const surfaces = useQuery({
+    ...subnetSurfacesQuery(netuid),
+    enabled: nearViewport,
+    retry: 0,
+  });
+  const uptime = useQuery({
+    ...subnetUptimeQuery(netuid, "90d"),
+    enabled: nearViewport,
+    retry: 0,
+  });
+  const hydrated = useHydrated();
 
   const rows = surfaces.data?.data ?? [];
   const byId = uptimeBySurface(uptime.data?.data.surfaces ?? []);
   const rail = surfaceRail(rows, byId, name);
   const measured = rail.filter((row) => row.value !== null).length;
+  const isPending = surfaces.isPending || uptime.isPending;
+  const loading = nearViewport && (!hydrated || isPending);
+  const showLoading = nearViewport && hydrated && isPending;
   const tableRows = rows.map((row: Surface) => ({
     ...row,
     uptime: row.id ? (byId.get(row.id) ?? null) : null,
@@ -66,8 +82,45 @@ export function SurfacesSection({ netuid, name }: { netuid: number; name?: strin
       id="surfaces"
       name="Surfaces"
       question="What this subnet publishes and whether it is up."
+      visualRef={ref}
       visual={
-        rail.length > 0 ? (
+        !nearViewport ? (
+          <p className="mg-section-empty">Surface evidence loads as this section approaches.</p>
+        ) : showLoading ? (
+          <MarkerRail
+            max={100}
+            formatValue={(v) => `${formatDecimal(v, 1)}%`}
+            columns={{ ratio: "Uptime", name: "Surface", scale: "0–100%" }}
+            ariaLabel={`Subnet ${netuid} surface uptime over 90 days`}
+            source={`sn-${netuid}-surface`}
+            loading
+            loadingRows={8}
+          />
+        ) : surfaces.isError ? (
+          <ErrorState
+            error={surfaces.error}
+            onRetry={() => void surfaces.refetch()}
+            context="published subnet surfaces"
+          />
+        ) : uptime.isError ? (
+          <div className="flex flex-col gap-3">
+            {rail.length > 0 ? (
+              <MarkerRail
+                items={rail.slice(0, 12)}
+                max={100}
+                formatValue={(v) => `${formatDecimal(v, 1)}%`}
+                columns={{ ratio: "Uptime", name: "Surface", scale: "0–100%" }}
+                ariaLabel={`Subnet ${netuid} published surfaces`}
+                source={`sn-${netuid}-surface`}
+              />
+            ) : null}
+            <ErrorState
+              error={uptime.error}
+              onRetry={() => void uptime.refetch()}
+              context="90-day surface uptime"
+            />
+          </div>
+        ) : rail.length > 0 ? (
           <MarkerRail
             items={rail.slice(0, 12)}
             max={100}
@@ -79,7 +132,15 @@ export function SurfacesSection({ netuid, name }: { netuid: number; name?: strin
         ) : null
       }
       footnote={
-        rows.length > 12 && !expanded ? (
+        !nearViewport ? (
+          "deferred below the fold · avoids surface and uptime requests before they are useful"
+        ) : loading ? (
+          "Loading surfaces and 90d uptime · registry"
+        ) : surfaces.isError ? (
+          "registry · retry the affected record above"
+        ) : uptime.isError ? (
+          `${formatNumber(rows.length)} published surfaces · retry the affected record above`
+        ) : rows.length > 12 && !expanded ? (
           <button type="button" className="mg-section-more" onClick={() => setExpanded(true)}>
             Show all {formatNumber(rows.length)} surfaces
           </button>

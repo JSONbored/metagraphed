@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
 import {
   AnalyticsPage,
   AnalyticsSection,
@@ -18,7 +19,9 @@ import {
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { RouterLink } from "@/components/metagraphed/router-link";
+import { ErrorState } from "@/components/metagraphed/states";
 import { AccountLookup } from "@/components/metagraphed/accounts-index/lookup";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import {
   HOLDER_METRICS,
   HOLDER_SORT,
@@ -38,7 +41,6 @@ import { Route } from "./accounts.index";
 
 const SECTIONS = [
   { id: "holders", name: "Holders" },
-  { id: "concentration", name: "Concentration" },
   { id: "active", name: "Active" },
 ] as const;
 
@@ -56,6 +58,7 @@ export function AccountsPage() {
   const queryClient = useQueryClient();
   const [metric, setMetric] = useState<HolderMetric>("stake");
   const [signerQuery, setSignerQuery] = useState("");
+  const { ref: activeRef, nearViewport: activeNearViewport } = useNearViewport("0px 0px");
 
   const { data: byStake } = useSuspenseQuery(
     accountsListQuery({ sort: HOLDER_SORT.stake, limit: LISTED }),
@@ -64,11 +67,18 @@ export function AccountsPage() {
     ...accountsListQuery({ sort: HOLDER_SORT[metric], limit: LISTED }),
     retry: 0,
   });
-  const signers = useQuery({ ...chainSignersQuery("7d"), retry: 0 });
+  const signers = useQuery({
+    ...chainSignersQuery("7d"),
+    // The holders directory is this route's immediate answer. Keep the
+    // separate signing-activity ledger anchored and explicit, but do not ask
+    // it to compete with the first account ranking before a reader reaches it.
+    enabled: activeNearViewport,
+    retry: 0,
+  });
 
   const accounts = byStake.data.accounts;
   const { segments, listedTotal } = useMemo(() => concentrationSegments(accounts, 10), [accounts]);
-  const cards = holderCards(ranked.data?.data.accounts ?? accounts, metric, 18, listedTotal);
+  const cards = holderCards(ranked.data?.data.accounts ?? [], metric, 18, listedTotal);
   const active = useMemo(() => activeRows(signers.data?.data.signers ?? []), [signers.data]);
   const shownActive = useMemo(() => {
     const query = signerQuery.trim().toLowerCase();
@@ -95,7 +105,6 @@ export function AccountsPage() {
   const cells: FactCells = [
     { label: "Stake listed", value: fmtTaoCompact(listedTotal) },
     { label: "Top 10 share", value: topShare === null ? "—" : `${formatPct(topShare, 1)}` },
-    { label: "Signers 7d", value: formatNumber(active.length) },
   ];
 
   const activeColumns: DataTableColumn<ActiveRow>[] = [
@@ -130,6 +139,7 @@ export function AccountsPage() {
         sections={SECTIONS}
         hero={
           <EntityHero
+            className="mg-hero--directory"
             name="Accounts"
             sentence={
               <>
@@ -141,7 +151,8 @@ export function AccountsPage() {
             live={{
               updatedAt: byStake.meta?.generated_at ?? null,
               source: "chain-direct index",
-              onRefresh: () => void queryClient.invalidateQueries({ queryKey: ["mg"] }),
+              onRefresh: () =>
+                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
             }}
           />
         }
@@ -159,7 +170,22 @@ export function AccountsPage() {
             />
           }
           visual={
-            cards.length > 0 ? (
+            ranked.isPending ? (
+              <LeaderCards
+                items={[]}
+                featured={3}
+                loading
+                loadingItems={LISTED}
+                ariaLabel={`Accounts ranked by ${metric}`}
+                source="account-holder"
+              />
+            ) : ranked.isError ? (
+              <ErrorState
+                error={ranked.error}
+                onRetry={() => void ranked.refetch()}
+                context="account holder ranking"
+              />
+            ) : cards.length > 0 ? (
               <LeaderCards
                 items={cards.map((card) => ({ ...card, initials: card.name.slice(0, 2) }))}
                 featured={3}
@@ -168,36 +194,66 @@ export function AccountsPage() {
               />
             ) : null
           }
-          footnote={`top ${formatNumber(LISTED)} by ${metric} · shares are of the ${fmtTaoCompact(
-            listedTotal,
-          )} these ${formatNumber(accounts.length)} hold, not of all stake · chain-direct index`}
+          footnote={
+            ranked.isPending
+              ? `loading accounts ranked by ${metric}`
+              : ranked.isError
+                ? `the ${metric} account ranking could not be loaded`
+                : `top ${formatNumber(LISTED)} by ${metric} · shares are of the ${fmtTaoCompact(
+                    listedTotal,
+                  )} these ${formatNumber(accounts.length)} hold, not of all stake · chain-direct index`
+          }
         />
         <AnalyticsSection
           id="active"
           name="Active"
           question="The accounts signing the most transactions."
+          visualRef={activeRef}
           visual={
-            <DataTable
-              rows={shownActive}
-              columns={activeColumns}
-              rowKey={(row) => row.signer}
-              caption="Signing accounts"
-              rowHref={(row) => `/accounts/${row.signer}`}
-              link={RouterLink}
-              source="account-signer"
-              paginate={false}
-              mobile="cards"
-              search={{
-                value: signerQuery,
-                onChange: setSignerQuery,
-                placeholder: "Find a signer",
-              }}
-              storageKey="accounts-signers-columns"
-            />
+            !activeNearViewport ? (
+              <p className="mg-section-empty">Signing activity loads as this section approaches.</p>
+            ) : (
+              <DataTable
+                rows={shownActive}
+                columns={activeColumns}
+                rowKey={(row) => row.signer}
+                caption="Signing accounts"
+                rowHref={(row) => `/accounts/${row.signer}`}
+                link={RouterLink}
+                source="account-signer"
+                paginate={false}
+                mobile="cards"
+                loading={signers.isPending}
+                error={
+                  signers.isError ? (
+                    <ErrorState
+                      error={signers.error}
+                      onRetry={() => void signers.refetch()}
+                      context="recent signing activity"
+                    />
+                  ) : undefined
+                }
+                empty="No signing activity was indexed in this window."
+                search={{
+                  value: signerQuery,
+                  onChange: setSignerQuery,
+                  placeholder: "Find a signer",
+                }}
+                storageKey="accounts-signers-columns"
+              />
+            )
           }
-          footnote={`7d · ${formatNumber(shownActive.length)} of ${formatNumber(
-            active.length,
-          )} signers · chain-direct`}
+          footnote={
+            !activeNearViewport
+              ? "deferred below the fold · signing activity loads as this section approaches"
+              : signers.isPending
+                ? "loading 7d signing activity"
+                : signers.isError
+                  ? "7d signing activity could not be loaded"
+                  : `7d · ${formatNumber(shownActive.length)} of ${formatNumber(
+                      active.length,
+                    )} signers · chain-direct`
+          }
         />
         <Raw rows={rawRows} title="Account index API" />
       </AnalyticsPage>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellRing, Loader2, Trash2 } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
+import { ErrorState } from "@/components/metagraphed/states";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import {
   describeDevice,
@@ -52,6 +53,7 @@ export function PushDevicesManager({ token }: { token: string }) {
       }>("/api/v1/watch/push-subscriptions", { init: { headers: watchHeaders(token) } });
       return { devices: res.data.subscriptions, max: res.data.max_devices };
     },
+    retry: 0,
   });
 
   const subscribeMutation = useMutation({
@@ -92,16 +94,25 @@ export function PushDevicesManager({ token }: { token: string }) {
   });
 
   const devices = devicesQuery.data?.devices ?? [];
-  const max = devicesQuery.data?.max ?? 3;
+  const max = devicesQuery.data?.max;
   const unsupported = pushUnavailableReason() !== null;
   const permission = notificationPermission();
-  const atLimit = devices.length >= max;
+  const atLimit = devicesQuery.isSuccess && max != null && devices.length >= max;
+  const deviceCount = devicesQuery.isSuccess ? devices.length : "—";
+  const deviceLimit = devicesQuery.isSuccess ? max : "—";
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-13 text-ink-muted">
-          Push devices · {devices.length}/{max}
+        <span
+          className="text-13 text-ink-muted"
+          aria-live="polite"
+          aria-busy={devicesQuery.isPending || undefined}
+          title={
+            devicesQuery.isError ? "Push-device records are temporarily unavailable" : undefined
+          }
+        >
+          Push devices · {deviceCount}/{deviceLimit}
         </span>
         <button
           type="button"
@@ -151,10 +162,21 @@ export function PushDevicesManager({ token }: { token: string }) {
         source="push-devices"
         paginate={false}
         loading={devicesQuery.isPending}
+        error={
+          devicesQuery.isError ? (
+            <ErrorState
+              error={devicesQuery.error}
+              onRetry={() => void devicesQuery.refetch()}
+              context="push devices"
+            />
+          ) : undefined
+        }
         empty={
-          <p className="text-13 text-ink-muted">
-            No devices yet. Enable push to get alerts without a page open.
-          </p>
+          !devicesQuery.isPending && !devicesQuery.isError ? (
+            <p className="text-13 text-ink-muted">
+              No devices yet. Enable push to get alerts without a page open.
+            </p>
+          ) : undefined
         }
       />
     </div>

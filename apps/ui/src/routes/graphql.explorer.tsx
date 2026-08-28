@@ -8,7 +8,7 @@ export const Route = createFileRoute("/graphql/explorer")({
       {
         name: "description",
         content:
-          "Interactive GraphiQL explorer for the Metagraphed API — schema-aware autocomplete, docs, live queries, and chainEvents subscriptions against the public /api/v1/graphql endpoint. No API key.",
+          "Explore the public Metagraphed GraphQL API with schema-aware autocomplete, docs, live queries, and chainEvents subscriptions. No API key.",
       },
     ],
   }),

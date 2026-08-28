@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import {
   AnalyticsPage,
   BrandIcon,
@@ -16,13 +18,14 @@ import {
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { RouterLink } from "@/components/metagraphed/router-link";
-import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
+import { StakeUnstakeLauncher } from "@/components/metagraphed/stake-unstake-launcher";
 import { WatchEntitySheet } from "@/components/metagraphed/watch-entity-sheet";
 import { CopyLinkButton } from "@/components/metagraphed/copy-link-button";
 import { apiSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { MomentumSection } from "@/components/metagraphed/subnet-detail/momentum";
 import { EmissionSplitSection } from "@/components/metagraphed/subnet-detail/emission-split";
+import { RevenueSection } from "@/components/metagraphed/subnet-detail/revenue";
 import { ValidatorsSection } from "@/components/metagraphed/subnet-detail/validators";
 import { SurfacesSection } from "@/components/metagraphed/subnet-detail/surfaces";
 import { ActivitySection } from "@/components/metagraphed/subnet-detail/activity";
@@ -30,7 +33,9 @@ import { ParticipationSection } from "@/components/metagraphed/subnet-detail/par
 import { PeersSection } from "@/components/metagraphed/subnet-detail/peers";
 import {
   emissionRank,
+  subnetUptimePct,
   topValidator,
+  uptimeSentence,
   type Window,
 } from "@/components/metagraphed/subnet-detail/subnet-detail-logic";
 import {
@@ -65,7 +70,7 @@ const apiPaths = (netuid: number) => [
 /** The page's seven questions, in the order it answers them. */
 const SECTIONS = [
   { id: "momentum", name: "Momentum" },
-  { id: "emission-split", name: "Emission split" },
+  { id: "emission-split", name: "Value flow" },
   { id: "validators", name: "Validators" },
   { id: "surfaces", name: "Surfaces" },
   { id: "activity", name: "Activity" },
@@ -102,6 +107,46 @@ function ApiSources({ paths }: { paths: string[] }) {
   return null;
 }
 
+/**
+ * Ownership history belongs in the raw disclosure, not in the first detail
+ * read. The closed disclosure has no layout box, so its intersection anchor
+ * naturally waits for a reader to open and reach this evidence.
+ */
+function OwnershipHistory({ netuid }: { netuid: number }) {
+  const { ref, nearViewport } = useNearViewport<HTMLDivElement>("160px 0px");
+  const ownership = useQuery({
+    ...subnetOwnershipHistoryQuery(netuid),
+    enabled: nearViewport,
+    retry: 0,
+  });
+  const changes = ownership.data?.data.ownership_changes ?? [];
+
+  return (
+    <div ref={ref}>
+      {!nearViewport ? (
+        <p className="mg-section-empty">Ownership history loads when this raw record is opened.</p>
+      ) : ownership.isPending ? (
+        <p className="mg-section-empty">Loading ownership history.</p>
+      ) : ownership.isError ? (
+        <p className="mg-section-empty">Ownership history is unavailable.</p>
+      ) : changes.length > 0 ? (
+        <DataTable
+          rows={changes}
+          columns={OWNERSHIP_COLUMNS}
+          rowKey={(change) => `${change.block_number}-${change.new_coldkey}`}
+          caption={`SN${netuid} ownership history`}
+          link={RouterLink}
+          source={`sn-${netuid}-ownership`}
+          dense
+          mobile="cards"
+        />
+      ) : (
+        <p className="mg-section-empty">No ownership changes have been recorded.</p>
+      )}
+    </div>
+  );
+}
+
 export function SubnetDetailPage() {
   const { netuid } = Route.useParams();
   const { window } = Route.useSearch();
@@ -111,17 +156,15 @@ export function SubnetDetailPage() {
 
   const { data: profileResult } = useSuspenseQuery(subnetProfileQuery(netuid));
   const profile = profileResult.data;
-  const economics = useQuery({ ...economicsQuery(), retry: 0 });
+  const economics = useQuery({ ...economicsQuery({ fields: "detail" }), retry: 0 });
   const uptime = useQuery({ ...subnetUptimeQuery(netuid, "90d"), retry: 0 });
   const validators = useQuery({ ...subnetValidatorsQuery(netuid), retry: 0 });
-  const ownership = useQuery({ ...subnetOwnershipHistoryQuery(netuid), retry: 0 });
 
   const rows = economics.data?.data ?? [];
   const row = rows.find((entry) => entry.netuid === netuid) ?? null;
   const rank = emissionRank(rows, netuid);
-  const reliability = uptime.data?.data.reliability;
-  const uptimePct =
-    typeof reliability?.uptime_ratio === "number" ? reliability.uptime_ratio * 100 : null;
+  const uptimePct = subnetUptimePct(uptime.data?.data);
+  const uptimeState = uptime.isPending ? "pending" : uptime.isError ? "error" : "ready";
   const delegateTarget = topValidator(validators.data?.data.validators ?? []);
   const surfaceCount = profile.surface_count ?? profile.surfaces?.length ?? 0;
   const activeUids =
@@ -130,34 +173,58 @@ export function SubnetDetailPage() {
   const name = profile.name ?? profile.native_name ?? `Subnet ${netuid}`;
 
   const sentence: FactNodes = [
-    <Fact key="rank">{rank != null ? `Ranked #${rank} by emission` : "Unranked"}</Fact>,
+    <Fact key="rank">
+      {economics.isPending
+        ? "loading emission rank"
+        : rank != null
+          ? `Ranked #${rank} by emission`
+          : "Unranked"}
+    </Fact>,
     <Fact key="surfaces">
       {surfaceCount > 0 ? `${formatNumber(surfaceCount)} surfaces published` : "No surfaces yet"}
     </Fact>,
     <Fact key="uids">
       {row?.max_uids ? `${formatNumber(activeUids)}/${formatNumber(row.max_uids)} UIDs` : "—"}
     </Fact>,
-    <Fact key="up">
-      {uptimePct != null ? `${formatDecimal(uptimePct, 1)}% up over 90d` : "Never probed"}
-    </Fact>,
+    <Fact key="up">{uptimeSentence(uptimePct, uptimeState)}</Fact>,
     <Fact key="registration">
-      {row?.registration_allowed === false ? "Registration closed" : "Registration open"}
+      {economics.isPending
+        ? "loading registration state"
+        : row?.registration_allowed === true
+          ? "Registration open"
+          : row?.registration_allowed === false
+            ? "Registration closed"
+            : "Registration state unavailable"}
     </Fact>,
     <Fact key="curation">{profile.curation_level ?? "uncurated"}</Fact>,
   ];
 
   const cells: FactCells = [
-    { label: "Alpha price", value: row ? formatTao(row.alpha_price_tao) : "—" },
+    {
+      label: "Alpha price",
+      value: row ? formatTao(row.alpha_price_tao) : "—",
+      loading: economics.isPending,
+    },
     {
       label: "Emission share",
       value: typeof row?.emission_share === "number" ? `${formatPct(row.emission_share, 3)}` : "—",
+      loading: economics.isPending,
     },
-    { label: "Total stake", value: row ? `${taoCompact(row.total_stake_alpha)} α` : "—" },
+    {
+      label: "Total stake",
+      value: row ? `${taoCompact(row.total_stake_alpha)} α` : "—",
+      loading: economics.isPending,
+    },
     {
       label: "Miners / Validators",
       value: `${formatNumber(row?.miner_count ?? null)} / ${formatNumber(row?.validator_count ?? null)}`,
+      loading: economics.isPending,
     },
-    { label: "Uptime 90d", value: uptimePct != null ? `${formatDecimal(uptimePct, 1)}%` : "—" },
+    {
+      label: "Uptime 90d",
+      value: uptimePct != null ? `${formatDecimal(uptimePct, 1)}%` : "—",
+      loading: uptime.isPending,
+    },
     {
       label: "Readiness",
       value:
@@ -185,6 +252,11 @@ export function SubnetDetailPage() {
       value: `${API_BASE}${path}`,
       href: `${API_BASE}${path}`,
     })),
+    {
+      label: "revenue",
+      value: `${API_BASE}/api/v1/subnets/${netuid}/revenue`,
+      href: `${API_BASE}/api/v1/subnets/${netuid}/revenue`,
+    },
   ];
 
   return (
@@ -194,6 +266,7 @@ export function SubnetDetailPage() {
         sections={SECTIONS}
         hero={
           <EntityHero
+            className="mg-hero--entity mg-hero--subnet"
             crumbs={[{ label: "Subnets", href: "/subnets" }, { label: `SN${netuid}` }]}
             avatar={
               <BrandIcon
@@ -208,16 +281,11 @@ export function SubnetDetailPage() {
             name={name}
             action={
               delegateTarget?.hotkey ? (
-                <StakeUnstakeModal
+                <StakeUnstakeLauncher
                   hotkey={delegateTarget.hotkey}
                   netuid={netuid}
                   subnetName={name}
                   validatorName={`UID ${delegateTarget.uid}`}
-                  trigger={(open) => (
-                    <button type="button" className="mg-hero-action" onClick={open}>
-                      Delegate
-                    </button>
-                  )}
                 />
               ) : null
             }
@@ -236,7 +304,8 @@ export function SubnetDetailPage() {
             live={{
               updatedAt: profileResult.meta?.generated_at ?? null,
               source: "chain + registry",
-              onRefresh: () => void queryClient.invalidateQueries({ queryKey: ["mg"] }),
+              onRefresh: () =>
+                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
             }}
           />
         }
@@ -246,12 +315,24 @@ export function SubnetDetailPage() {
           window={window}
           onWindow={(next: Window) => void navigate({ search: { window: next }, replace: true })}
         />
-        <EmissionSplitSection netuid={netuid} window={window} />
+        <EmissionSplitSection netuid={netuid} window={window}>
+          <RevenueSection netuid={netuid} />
+        </EmissionSplitSection>
         <ValidatorsSection netuid={netuid} />
         <SurfacesSection netuid={netuid} name={name} />
         <ActivitySection netuid={netuid} />
-        <ParticipationSection netuid={netuid} economics={row} />
-        <PeersSection netuid={netuid} economics={rows} />
+        <ParticipationSection
+          netuid={netuid}
+          economics={row}
+          economicsPending={economics.isPending}
+        />
+        <PeersSection
+          netuid={netuid}
+          economics={rows}
+          economicsPending={economics.isPending}
+          economicsError={economics.isError ? economics.error : null}
+          onRetryEconomics={() => void economics.refetch()}
+        />
         <Raw rows={rawRows} title={`SN${netuid} identifiers, sources and API`}>
           <RawCode label="curl">
             {apiSnippet("curl", `${API_BASE}/api/v1/subnets/${netuid}/profile`)}
@@ -260,18 +341,7 @@ export function SubnetDetailPage() {
             {`[![SN${netuid} uptime](${API_BASE}/api/v1/subnets/${netuid}/badge.svg)](https://metagraph.sh/subnets/${netuid})`}
           </RawCode>
           {profile.description ? <p className="mg-raw-prose">{profile.description}</p> : null}
-          {(ownership.data?.data.ownership_changes ?? []).length > 0 ? (
-            <DataTable
-              rows={ownership.data?.data.ownership_changes ?? []}
-              columns={OWNERSHIP_COLUMNS}
-              rowKey={(change) => `${change.block_number}-${change.new_coldkey}`}
-              caption={`SN${netuid} ownership history`}
-              link={RouterLink}
-              source={`sn-${netuid}-ownership`}
-              dense
-              mobile="cards"
-            />
-          ) : null}
+          <OwnershipHistory netuid={netuid} />
         </Raw>
       </AnalyticsPage>
     </AppShell>

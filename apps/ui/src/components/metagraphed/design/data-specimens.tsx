@@ -123,7 +123,7 @@ export function TableSection() {
     <AnalyticsSection
       id="data-table"
       name="DataTable"
-      question="Every list in the app: eight cell kinds, sorting, paging, a column menu, CSV, and cards below 640px."
+      question="Every list in the app: eight cell kinds, sorting, paging, a column menu, CSV, and cards through tablet."
       visual={
         <DataTable
           id="table-specimen"
@@ -363,7 +363,7 @@ export function CopySection() {
         </div>
       }
       legend={<PropsTable rows={COPY_PROPS} caption="CopyableCode props" />}
-      footnote="11px chip on --card · 12px copy glyph that swaps for a check on success · 1px border, 4px radius · truncates by default, wraps from 640px up"
+      footnote="11px chip on --card · 12px copy glyph that swaps for a check on success · 1px border, 4px radius · truncates by default, wraps when explicit"
     />
   );
 }

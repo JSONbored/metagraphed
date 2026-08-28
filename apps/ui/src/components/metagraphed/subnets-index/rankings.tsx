@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, BrandIcon, LeaderCards, RangeControl } from "@jsonbored/ui-kit";
+import { ErrorState } from "@/components/metagraphed/states";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import { economicsQuery, subnetMoversQuery } from "@/lib/metagraphed/queries";
 import {
   METRIC_OPTIONS,
@@ -46,6 +48,7 @@ export function RankingsSection({
   domainOf: (netuid: number) => string | undefined;
 }) {
   const resolved = resolveWindow(metric, window);
+  const { ref, nearViewport } = useNearViewport("0px 0px");
   // The movers slice is aligned with the metric so the deltas that DO land
   // are the ones the ranking is about; the levels come from economics, which
   // covers every subnet. Price has no movers dimension -- its change is an
@@ -56,11 +59,17 @@ export function RankingsSection({
       sort: metric === "price" ? "stake" : MOVERS_SORT[metric],
       limit: MOVERS_LIMIT,
     }),
+    // The directory is the route's opening answer. Movers provide a separate
+    // comparative reading below it, so wait until that evidence region is
+    // actually approached instead of competing with the first result list.
+    enabled: nearViewport,
     retry: 0,
   });
-  const economics = useQuery({ ...economicsQuery(), retry: 0 });
+  const economics = useQuery({ ...economicsQuery({ fields: "directory" }), retry: 0 });
 
   const [expanded, setExpanded] = useState(false);
+  const loading = movers.isPending || economics.isPending;
+  const error = movers.isError ? movers.error : economics.isError ? economics.error : null;
   const ranked = rankSubnets(
     metric,
     resolved,
@@ -79,6 +88,7 @@ export function RankingsSection({
       id="rankings"
       name="Rankings"
       question="The subnets that carry the network."
+      visualRef={ref}
       controls={
         <>
           <RangeControl
@@ -96,7 +106,27 @@ export function RankingsSection({
         </>
       }
       visual={
-        shown.length > 0 ? (
+        !nearViewport ? (
+          <p className="mg-section-empty">Subnet rankings load as this section approaches.</p>
+        ) : loading ? (
+          <LeaderCards
+            items={[]}
+            featured={FEATURED}
+            loading
+            loadingItems={FEATURED}
+            ariaLabel={`Subnets ranked by ${metric} over ${resolved}`}
+            source="subnet-rank"
+          />
+        ) : error ? (
+          <ErrorState
+            error={error}
+            onRetry={() => {
+              void movers.refetch();
+              void economics.refetch();
+            }}
+            context="subnet rankings"
+          />
+        ) : shown.length > 0 ? (
           <LeaderCards
             items={shown.map((row) => ({
               key: String(row.netuid),
@@ -115,7 +145,13 @@ export function RankingsSection({
         ) : null
       }
       footnote={
-        expanded || ranked.length <= FEATURED ? (
+        !nearViewport ? (
+          "deferred below the fold · subnet rankings load as this section approaches"
+        ) : loading ? (
+          `loading ${resolved} subnet rankings by ${metric}`
+        ) : error ? (
+          "subnet ranking data could not be loaded"
+        ) : expanded || ranked.length <= FEATURED ? (
           `${resolved} · ${FOOTNOTE[metric]} · chain-direct`
         ) : (
           <button type="button" className="mg-section-more" onClick={() => setExpanded(true)}>

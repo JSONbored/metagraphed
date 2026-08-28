@@ -2,6 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, RankGrid, RankedRails, type RankGridItem } from "@jsonbored/ui-kit";
 import { subnetEventSummaryQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatPct } from "@/lib/metagraphed/format";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { useNearViewport } from "@/hooks/use-near-viewport";
+import { ErrorState } from "@/components/metagraphed/states";
 import { activityKindRail, categoryTotals } from "./subnet-detail-logic";
 
 /**
@@ -15,7 +18,15 @@ import { activityKindRail, categoryTotals } from "./subnet-detail-logic";
  * they are the same geometry the validators and surfaces sections use.
  */
 export function ActivitySection({ netuid }: { netuid: number }) {
-  const { data } = useQuery({ ...subnetEventSummaryQuery(netuid, "30d"), retry: 0 });
+  const { ref, nearViewport } = useNearViewport();
+  const { data, isPending, isError, error, refetch } = useQuery({
+    ...subnetEventSummaryQuery(netuid, "30d"),
+    enabled: nearViewport,
+    retry: 0,
+  });
+  const hydrated = useHydrated();
+  const loading = nearViewport && (!hydrated || isPending);
+  const showLoading = nearViewport && hydrated && isPending;
   const summary = data?.data;
   const rail = activityKindRail(summary?.event_kinds ?? []);
   const categories = categoryTotals(summary?.categories ?? []);
@@ -32,8 +43,28 @@ export function ActivitySection({ netuid }: { netuid: number }) {
       id="activity"
       name="Activity"
       question="On-chain events by kind, last 30 days."
+      visualRef={ref}
       visual={
-        rail.length > 0 ? (
+        !nearViewport ? (
+          <p className="mg-section-empty">Activity evidence loads as this section approaches.</p>
+        ) : showLoading ? (
+          <RankedRails
+            items={[]}
+            formatValue={(v) => formatNumber(v)}
+            scale="sqrt"
+            columns={{ value: "Events", name: "Kind", track: "Share of events" }}
+            ariaLabel={`Subnet ${netuid} events by kind, 30 days`}
+            source={`sn-${netuid}-event`}
+            loading
+            loadingRows={10}
+          />
+        ) : isError ? (
+          <ErrorState
+            error={error}
+            onRetry={() => void refetch()}
+            context="30-day subnet event activity"
+          />
+        ) : rail.length > 0 ? (
           <RankedRails
             items={rail}
             formatValue={(v) => formatNumber(v)}
@@ -45,7 +76,16 @@ export function ActivitySection({ netuid }: { netuid: number }) {
         ) : null
       }
       legend={
-        legend.length > 0 ? (
+        showLoading ? (
+          <RankGrid
+            items={[]}
+            cols={4}
+            ariaLabel="Events by category"
+            source={`sn-${netuid}-event-category`}
+            loading
+            loadingItems={4}
+          />
+        ) : legend.length > 0 ? (
           <RankGrid
             items={legend}
             cols={4}
@@ -54,9 +94,17 @@ export function ActivitySection({ netuid }: { netuid: number }) {
           />
         ) : null
       }
-      footnote={`30d · ${formatNumber(summary?.total_events ?? 0)} events across ${formatNumber(
-        summary?.kind_count ?? 0,
-      )} kinds · chain-direct`}
+      footnote={
+        !nearViewport
+          ? "deferred below the fold · avoids an event-summary request before it is useful"
+          : loading
+            ? "Loading 30d event activity · chain-direct"
+            : isError
+              ? "chain-direct · retry the affected record above"
+              : `30d · ${formatNumber(summary?.total_events ?? 0)} events across ${formatNumber(
+                  summary?.kind_count ?? 0,
+                )} kinds · chain-direct`
+      }
     />
   );
 }

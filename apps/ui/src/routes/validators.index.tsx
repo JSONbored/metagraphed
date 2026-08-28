@@ -1,6 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
+import {
+  booleanSearch,
+  defineSearchSchema,
+  numberSearch,
+  stripDefaultSearchParams,
+  stringSearch,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { ValidatorsPage } from "./-validators-index-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
@@ -14,13 +20,13 @@ import { hubMeta } from "@/lib/metagraphed/hub-copy";
  * `validateSearch` REPLACES the search object, so an unread key is dropped on
  * the next parse rather than sitting inert.
  */
-export const validatorsSearchSchema = z.object({
-  q: z.string().catch("").default(""),
-  minStake: z.number().catch(0).default(0),
-  named: z.boolean().catch(false).default(false),
+export const validatorsSearchSchema = defineSearchSchema({
+  q: stringSearch(),
+  minStake: numberSearch(0),
+  named: booleanSearch(false),
 });
 
-export type ValidatorsSearch = z.infer<typeof validatorsSearchSchema>;
+export type ValidatorsSearch = SearchOutput<typeof validatorsSearchSchema>;
 
 export const Route = createFileRoute("/validators/")({
   validateSearch: validatorsSearchSchema,

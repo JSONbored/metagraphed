@@ -1,18 +1,17 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { z } from "zod";
-import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
+import {
+  TRAILING_WINDOWS,
+  defineSearchSchema,
+  enumSearch,
+  stripDefaultSearchParams,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
-import {
-  entityNotFoundMeta,
-  isMissingEntityError,
-  isNotFoundMatch,
-} from "@/lib/metagraphed/entity-not-found-meta";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { entityNotFoundMeta, isNotFoundMatch } from "@/lib/metagraphed/entity-not-found-meta";
 import { ogImageMeta } from "@/lib/metagraphed/og-card";
-import { accountQuery } from "@/lib/metagraphed/queries";
 import { AccountDetailPage } from "./-accounts-ss58-page";
 
 /**
@@ -24,11 +23,11 @@ import { AccountDetailPage } from "./-accounts-ss58-page";
  * REPLACES the search object, so a key with no reader is dropped on the next
  * parse rather than sitting inert.
  */
-export const accountSearchSchema = z.object({
-  window: z.enum(TRAILING_WINDOWS).catch("30d").default("30d"),
+export const accountSearchSchema = defineSearchSchema({
+  window: enumSearch(TRAILING_WINDOWS, "30d"),
 });
 
-export type SearchParams = z.infer<typeof accountSearchSchema>;
+export type SearchParams = SearchOutput<typeof accountSearchSchema>;
 
 export const Route = createFileRoute("/accounts/$ss58")({
   validateSearch: accountSearchSchema,
@@ -41,33 +40,13 @@ export const Route = createFileRoute("/accounts/$ss58")({
     if (!isValidSs58(ss58)) throw notFound();
     return { ss58 };
   },
-  // #8489: primes accountQuery -- the same query the page itself reads -- so
-  // the OG card can show real activity figures instead of only a truncated
-  // ss58. Shared cache, so this moves the request earlier rather than adding
-  // one. Non-fatal; a failure falls back to the address-only card.
-  loader: async ({ context, params }) => {
-    try {
-      const { data } = await context.queryClient.ensureQueryData(accountQuery(params.ss58));
-      return {
-        eventCount:
-          typeof data.event_count === "number" && Number.isFinite(data.event_count)
-            ? data.event_count
-            : null,
-        subnetCount:
-          typeof data.subnet_count === "number" && Number.isFinite(data.subnet_count)
-            ? data.subnet_count
-            : null,
-      };
-    } catch (error) {
-      // #8624: only a 404 from our own API means "no such entity". Any other
-      // failure keeps returning null so the page still renders and the
-      // component's own query drives the error path -- marking a page noindex
-      // on a transient blip would de-index real entities during an outage.
-      if (isMissingEntityError(error)) throw notFound();
-      return null;
-    }
-  },
-  head: ({ params, loaderData, match }) => {
+  // The account summary is intentionally not a route loader. It composes a
+  // lifetime aggregate and a recent-event feed and can take several seconds
+  // for active accounts; awaiting it here held back the address, balances,
+  // identity and positions even though those reads are independent. The page
+  // now renders its truthful pending state immediately and fills the summary
+  // client-side without turning one slow evidence lane into route-wide TTFB.
+  head: ({ params, match }) => {
     if (isNotFoundMatch(match)) {
       return entityNotFoundMeta("Account", "No on-chain record exists for this Bittensor address.");
     }
@@ -99,14 +78,6 @@ export const Route = createFileRoute("/accounts/$ss58")({
           title: label,
           subtitle: "Cross-subnet activity, registrations, and chain-event history.",
           eyebrow: "Account",
-          stats: [
-            ...(loaderData?.eventCount != null
-              ? [{ label: "Events", value: formatNumber(loaderData.eventCount) }]
-              : []),
-            ...(loaderData?.subnetCount != null
-              ? [{ label: "Subnets", value: String(loaderData.subnetCount) }]
-              : []),
-          ],
         }),
       ],
     };

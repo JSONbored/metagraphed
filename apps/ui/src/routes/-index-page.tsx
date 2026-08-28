@@ -1,21 +1,24 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import {
   AnalyticsPage,
   AnalyticsSection,
   CompositionBreakdown,
   CopyableCode,
   FactStrip,
-  LeaderCards,
   LineWithWindow,
   MarkerRail,
   RangeControl,
   RankedRails,
-  TimeAgo,
   type FactCells,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { HubSections } from "@/components/metagraphed/hub-prose";
+import { LIVE_BLOCK_LIMIT, LiveBlockRail } from "@/components/metagraphed/live-block-rail";
 import { SearchBox } from "@/components/metagraphed/search-box";
+import { ErrorState } from "@/components/metagraphed/states";
+import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import {
   CHAIN_METRICS,
   chainPoints,
@@ -31,6 +34,7 @@ import {
 } from "@/components/metagraphed/home/home-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import {
+  blocksQuery,
   blocksSummaryQuery,
   bulkHealthTrendsQuery,
   chainActivityQuery,
@@ -40,17 +44,16 @@ import {
 import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 
 const SECTIONS = [
-  { id: "value", name: "Value" },
-  { id: "emission", name: "Emission" },
-  { id: "chain", name: "Chain" },
-  { id: "health", name: "Health" },
-  { id: "agents", name: "Agents" },
+  { id: "emission", name: "Emission movement" },
+  { id: "chain", name: "Chain activity" },
+  { id: "health", name: "Surface health" },
 ] as const;
 
 const API_PATHS = [
   "/api/v1/economics",
   "/api/v1/subnets/movers",
   "/api/v1/chain/activity",
+  "/api/v1/blocks",
   "/api/v1/blocks/summary",
   "/api/v1/health/trends",
 ];
@@ -61,34 +64,60 @@ const EMISSION_WINDOWS = [
   { value: "90d", label: "90d" },
 ] as const;
 
-/** The three ways an agent points at this registry. */
-const AGENT_SNIPPETS = [
-  {
-    value: "claude",
-    label: "Claude",
-    code: "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core",
-  },
-  {
-    value: "chatgpt",
-    label: "ChatGPT",
-    code: "https://api.metagraph.sh/mcp/core",
-  },
-  {
-    value: "curl",
-    label: "curl",
-    code: "curl -s https://api.metagraph.sh/api/v1/subnets | jq '.data.subnets[0]'",
-  },
-] as const;
+const HERO_BLOCK_RAIL_MEDIA_QUERY = "(min-width: 640px)";
+const MCP_INSTALL_COMMAND =
+  "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core";
+
+/**
+ * The live block rail is intentionally absent from the compact phone hero.
+ * Match its data work to that visual decision: the lower chain fact strip
+ * still obtains the current head from the summary query, but a phone does not
+ * download an invisible 12-row feed. Listens for resizing so an open page can
+ * gain or lose the desktop instrument without a reload.
+ */
+function useHeroBlockRailEnabled(): boolean {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(HERO_BLOCK_RAIL_MEDIA_QUERY);
+    const update = () => setEnabled(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  return enabled;
+}
 
 function ApiSources() {
   useRegisterApiSource(API_PATHS);
   return null;
 }
 
+/** A quiet structural field, deliberately separate from the network data. */
+function HomeDotField() {
+  return (
+    <svg
+      className="mg-home-dot-field"
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 1200 460"
+      preserveAspectRatio="none"
+    >
+      <defs>
+        <pattern id="mg-home-dot-pattern" width="10" height="10" patternUnits="userSpaceOnUse">
+          <circle cx="1.25" cy="1.25" r="0.8" />
+        </pattern>
+      </defs>
+      <rect width="1200" height="460" fill="url(#mg-home-dot-pattern)" />
+    </svg>
+  );
+}
+
 export function OverviewPage() {
   const [emissionWindow, setEmissionWindow] = useState<EmissionWindow>("30d");
   const [chainMetric, setChainMetric] = useState<ChainMetric>("extrinsics");
-  const [agent, setAgent] = useState<(typeof AGENT_SNIPPETS)[number]["value"]>("claude");
+  const heroBlockRailEnabled = useHeroBlockRailEnabled();
 
   const { data: economics } = useSuspenseQuery(economicsQuery({ fields: "identity" }));
   const movers = useQuery({
@@ -97,6 +126,15 @@ export function OverviewPage() {
   });
   const activity = useQuery({ ...chainActivityQuery("30d"), retry: 0 });
   const blocks = useQuery({ ...blocksSummaryQuery(), retry: 0 });
+  // The block rail polls only while this tab is visible. It advances the
+  // explorer reading without holding a permanent stream connection open.
+  const blockRefetchInterval = useRefetchInterval(15_000, heroBlockRailEnabled);
+  const blockFeed = useQuery({
+    ...blocksQuery({ limit: LIVE_BLOCK_LIMIT }),
+    enabled: heroBlockRailEnabled,
+    refetchInterval: blockRefetchInterval,
+    retry: 0,
+  });
   const health = useQuery({ ...bulkHealthTrendsQuery(), retry: 0 });
 
   // Names come from the economics rows this page already holds. Fetching the
@@ -108,138 +146,219 @@ export function OverviewPage() {
   }, [economics.data]);
 
   const rows = economics.data;
-  const { segments, accounted } = useMemo(() => valueSegments(rows, 10), [rows]);
+  // The masthead tells the first, immediate story: the leading five named
+  // subnet shares plus the rest of the network. Keeping that in the same
+  // economics projection as the rest of the page avoids making a second,
+  // duplicate request just to decorate the landing view.
+  const { segments, accounted } = useMemo(() => valueSegments(rows, 5), [rows]);
   const rails = useMemo(
     () => emissionRails(movers.data?.data.movers ?? [], nameOf),
     [movers.data, nameOf],
   );
   const days = activity.data?.data.days ?? [];
-  const points = chainPoints(days, chainMetric);
-  const complete = lastCompleteDay(days);
+  const activityAsOfDay = activity.data?.meta.generated_at?.slice(0, 10);
+  const points = chainPoints(days, chainMetric, activityAsOfDay);
+  const complete = lastCompleteDay(days, activityAsOfDay);
   const healthSubnets = health.data?.data.windows?.["7d"]?.subnets ?? [];
   const worst = healthRail(healthSubnets, nameOf);
   const healthy = healthSubnets.filter((subnet) => (subnet.uptime_ratio ?? 0) >= 0.99).length;
+  const lowestUptime =
+    health.isError || worst[0]?.value == null ? "—" : `${formatDecimal(worst[0].value, 1)}%`;
+  const latestBlock = blockFeed.data?.data[0] ?? null;
+  const headBlock = latestBlock?.block_number ?? blocks.data?.data.last_block ?? null;
+  const headBlockLoading = blockFeed.isPending && blocks.isPending;
 
   const chainCells: FactCells = [
-    { label: "Blocks", value: fmtCount(complete?.block_count) },
-    { label: "Extrinsics", value: fmtCount(complete?.extrinsic_count) },
-    { label: "Events", value: fmtCount(complete?.event_count) },
+    {
+      label: "Blocks",
+      value: activity.isError ? "—" : fmtCount(complete?.block_count),
+      loading: activity.isPending,
+    },
+    {
+      label: "Extrinsics",
+      value: activity.isError ? "—" : fmtCount(complete?.extrinsic_count),
+      loading: activity.isPending,
+    },
+    {
+      label: "Events",
+      value: activity.isError ? "—" : fmtCount(complete?.event_count),
+      loading: activity.isPending,
+    },
     {
       label: "Head block",
-      value: blocks.data?.data.last_block ? formatNumber(blocks.data.data.last_block) : "—",
+      value: typeof headBlock === "number" ? formatNumber(headBlock) : "—",
+      loading: headBlockLoading,
     },
   ];
 
   const healthCells: FactCells = [
     {
       label: "Subnets at 99%+",
-      value: `${formatNumber(healthy)} / ${formatNumber(healthSubnets.length)}`,
+      value: health.isError
+        ? "—"
+        : `${formatNumber(healthy)} / ${formatNumber(healthSubnets.length)}`,
+      loading: health.isPending,
     },
-    { label: "Probed", value: formatNumber(healthSubnets.length) },
+    {
+      label: "Probed",
+      value: health.isError ? "—" : formatNumber(healthSubnets.length),
+      loading: health.isPending,
+    },
     {
       label: "Lowest uptime",
-      value: worst[0]?.value != null ? `${formatDecimal(worst[0].value, 1)}%` : "—",
+      value: lowestUptime,
+      loading: health.isPending,
     },
-  ];
-
-  const agentCells: FactCells = [
-    { label: "Tools", value: "243" },
-    { label: "Key", value: "none" },
-    { label: "Transport", value: "streamable-http" },
   ];
 
   return (
     <AppShell>
       <ApiSources />
       <AnalyticsPage
+        className="mg-home"
         sections={SECTIONS}
         hero={
-          <header className="mg-landing">
-            <span className="mg-landing-meta">
-              Updated <TimeAgo at={economics.meta?.generated_at ?? null} />
-            </span>
-            <h1>Bittensor, measured.</h1>
-            <p className="mg-landing-lede">
-              Every subnet, validator and account on one chain-direct index — the numbers, where
-              they came from, and the API that serves them.
-            </p>
-            <SearchBox />
+          <header className="mg-home-hero" data-mg-home-hero="">
+            <div className="mg-home-command-grid">
+              <div className="mg-home-intro">
+                <h1>Bittensor, measured.</h1>
+                <p className="mg-home-lede">
+                  Public, source-linked Bittensor data for people—and the same registry for agents.
+                </p>
+                <SearchBox variant="landing" />
+                <aside className="mg-home-mcp-install" aria-labelledby="home-mcp-title">
+                  <div className="mg-home-mcp-head">
+                    <div className="mg-home-mcp-identity">
+                      <span className="mg-home-mcp-mark" aria-hidden="true">
+                        <img src="/favicon-transparent.svg" alt="" width={26} height={22} />
+                      </span>
+                      <div>
+                        <p id="home-mcp-title">Metagraphed MCP</p>
+                        <p>Bittensor in a box.</p>
+                      </div>
+                    </div>
+                    <Link to="/agents">
+                      Setup <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+                  <CopyableCode
+                    label="Install"
+                    value={MCP_INSTALL_COMMAND}
+                    className="mg-home-mcp-command"
+                  />
+                </aside>
+              </div>
+              <section id="value" className="mg-home-pulse" aria-labelledby="home-allocation-title">
+                <HomeDotField />
+                <div className="mg-home-pulse-head">
+                  <div>
+                    <p>Network allocation</p>
+                    <h2 id="home-allocation-title">Latest daily emission.</h2>
+                  </div>
+                  <span>Source-linked economics</span>
+                </div>
+                {segments.length > 0 ? (
+                  <CompositionBreakdown
+                    segments={segments}
+                    formatValue={(value) => fmtShare(value, 3)}
+                    legendCols={3}
+                    ariaLabel="Latest indexed daily emission share across the five largest subnets"
+                    source="home-subnet"
+                    className="mg-home-pulse-composition"
+                  />
+                ) : (
+                  <p className="mg-home-pulse-empty">
+                    No current emission composition is available.
+                  </p>
+                )}
+                <LiveBlockRail
+                  compact
+                  blocks={blockFeed.data?.data ?? []}
+                  loading={blockFeed.isPending}
+                  error={blockFeed.isError}
+                  updatedAt={latestBlock?.observed_at ?? null}
+                />
+                <div className="mg-home-pulse-foot">
+                  <span>{fmtShare(accounted, 1)} of latest daily emission accounted for</span>
+                  <Link to="/subnets">
+                    Compare every subnet <span aria-hidden="true">→</span>
+                  </Link>
+                </div>
+              </section>
+            </div>
+            <nav className="mg-home-aux-links" aria-label="More ways to explore">
+              <Link to="/validators">Inspect validators</Link>
+              <Link to="/chain">Read chain activity</Link>
+              <Link to="/apis">Browse APIs and surfaces</Link>
+            </nav>
           </header>
         }
       >
         <AnalyticsSection
-          id="value"
-          name="Value"
-          question="How the network's emission is distributed across subnets."
-          visual={
-            segments.length > 0 ? (
-              <CompositionBreakdown
-                segments={segments}
-                formatValue={(value) => fmtShare(value, 3)}
-                legendCols={5}
-                ariaLabel="Daily emission share by subnet"
-                source="home-subnet"
-              />
-            ) : null
-          }
-          legend={
-            segments.length > 0 ? (
-              <LeaderCards
-                items={segments
-                  .filter((segment) => Boolean(segment.href))
-                  .slice(0, 12)
-                  .map((segment) => ({
-                    key: segment.key,
-                    name: segment.label,
-                    sub: `SN${segment.key}`,
-                    value: fmtShare(segment.value, 3),
-                    href: segment.href!,
-                    initials: segment.key,
-                  }))}
-                featured={3}
-                ariaLabel="Subnets by emission share"
-                source="home-subnet"
-              />
-            ) : null
-          }
-          // Today's composition, not 56 days of it: no route serves a
-          // per-subnet daily price or emission series, and assembling one
-          // from 129 per-subnet reads would be 129 requests for one chart.
-          footnote={`${formatNumber(rows.length)} subnets · ${fmtShare(
-            accounted,
-            1,
-          )} of daily emission accounted for · a snapshot, not a series · chain-direct`}
-        />
-        <AnalyticsSection
           id="emission"
-          name="Emission"
-          question="Who earns the daily emission."
+          name="Emission movement"
+          question="Where daily alpha moved after the comparison opened."
+          className="mg-home-story mg-home-story--emission"
           controls={
             <RangeControl
-              label="Window"
+              label="Compare"
               options={EMISSION_WINDOWS}
               value={emissionWindow}
               onChange={(next) => setEmissionWindow(next as EmissionWindow)}
             />
           }
           visual={
-            rails.length > 0 ? (
+            movers.isPending ? (
+              <RankedRails
+                items={[]}
+                loading
+                loadingRows={10}
+                formatValue={(value) => fmtAlpha(value)}
+                scale="sqrt"
+                columns={{
+                  value: "Daily emission",
+                  name: "Subnet",
+                  track: "Relative to the top 15",
+                }}
+                ariaLabel={`Daily subnet emission at the end of the ${emissionWindow} comparison`}
+                source="home-subnet"
+              />
+            ) : movers.isError ? (
+              <ErrorState
+                error={movers.error}
+                context="the emission comparison"
+                onRetry={() => void movers.refetch()}
+              />
+            ) : rails.length > 0 ? (
               <RankedRails
                 items={rails}
                 formatValue={(value) => fmtAlpha(value)}
                 scale="sqrt"
-                columns={{ value: "Emission", name: "Subnet", track: "Share of the top 15" }}
-                ariaLabel={`Subnets by emission over ${emissionWindow}`}
+                columns={{
+                  value: "Daily emission",
+                  name: "Subnet",
+                  track: "Relative to the top 15",
+                }}
+                ariaLabel={`Daily subnet emission at the end of the ${emissionWindow} comparison`}
                 source="home-subnet"
               />
-            ) : null
+            ) : (
+              <p className="text-13 text-ink-muted">No current emission comparison is available.</p>
+            )
           }
-          footnote={`${emissionWindow} · alpha emitted on the last day of the window · chain-direct`}
+          footnote={
+            movers.isPending
+              ? `Loading ${emissionWindow} emission comparison · chain-direct`
+              : movers.isError
+                ? "Emission comparison unavailable · chain-direct"
+                : `${emissionWindow} comparison · bars show end-date daily alpha; tooltips show change from the start · chain-direct`
+          }
         />
         <AnalyticsSection
           id="chain"
           name="Chain"
-          question="What the chain has been doing."
+          question="What moved after the final UTC day closed."
+          className="mg-home-story mg-home-story--chain"
           controls={
             <RangeControl
               label="Metric"
@@ -249,30 +368,72 @@ export function OverviewPage() {
             />
           }
           visual={
-            points.length > 1 ? (
+            activity.isPending ? (
+              <LineWithWindow
+                id="home-chain"
+                points={[]}
+                window={{ from: 0, to: 0 }}
+                unit={chainMetric}
+                formatValue={(value) => fmtCount(value)}
+                ariaLabel={`Complete-day ${chainMetric}, trailing 30 days`}
+                source="home-chain"
+                loading
+              />
+            ) : activity.isError ? (
+              <ErrorState
+                error={activity.error}
+                context="complete-day chain activity"
+                onRetry={() => void activity.refetch()}
+              />
+            ) : points.length > 1 ? (
               <LineWithWindow
                 id="home-chain"
                 points={points}
                 window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
                 unit={chainMetric}
                 formatValue={(value) => fmtCount(value)}
-                ariaLabel={`Daily ${chainMetric}, 30 days`}
+                ariaLabel={`Complete-day ${chainMetric}, trailing 30 days`}
                 source="home-chain"
               />
-            ) : null
+            ) : (
+              <p className="text-13 text-ink-muted">No complete-day chain activity is available.</p>
+            )
           }
           legend={<FactStrip cells={chainCells} />}
-          // The newest row is the day in progress -- 1,588 blocks against a
-          // full day's 7,200 when read at 05:17 UTC -- and quoting it reads
-          // as a collapse in throughput rather than a clock.
-          footnote={`30d · the strip reads ${complete?.day ?? "—"}, the last complete day · chain-direct`}
+          // Chart and strip deliberately share the same complete-day cutoff.
+          // Letting the chart include today's partial value while the strip
+          // excludes it makes the two summaries contradict one another.
+          footnote={
+            activity.isPending
+              ? "Loading 30d complete-day chain activity · chain-direct"
+              : activity.isError
+                ? "Complete-day chain activity unavailable · chain-direct"
+                : `30d · chart and strip end ${complete?.day ?? "—"}, the last complete UTC day · chain-direct`
+          }
         />
         <AnalyticsSection
           id="health"
           name="Health"
-          question="Which subnets' public surfaces are answering."
+          question="Which public surfaces need attention."
+          className="mg-home-story mg-home-story--health"
           visual={
-            worst.length > 0 ? (
+            health.isPending ? (
+              <MarkerRail
+                loading
+                loadingRows={10}
+                max={100}
+                formatValue={(value) => `${formatDecimal(value, 1)}%`}
+                columns={{ ratio: "Uptime", name: "Subnet", scale: "0–100%" }}
+                ariaLabel="The ten lowest subnet uptimes over 7 days"
+                source="home-subnet"
+              />
+            ) : health.isError ? (
+              <ErrorState
+                error={health.error}
+                context="surface health"
+                onRetry={() => void health.refetch()}
+              />
+            ) : worst.length > 0 ? (
               <MarkerRail
                 items={worst}
                 max={100}
@@ -281,35 +442,20 @@ export function OverviewPage() {
                 ariaLabel="The ten lowest subnet uptimes over 7 days"
                 source="home-subnet"
               />
-            ) : null
+            ) : (
+              <p className="text-13 text-ink-muted">No surface health readings are available.</p>
+            )
           }
           legend={<FactStrip cells={healthCells} />}
-          footnote="7d · the ten LOWEST, because those are the ones worth acting on · live prober"
-        />
-        <AnalyticsSection
-          id="agents"
-          name="Agents"
-          question="Point any agent at this registry."
-          controls={
-            <RangeControl
-              label="Client"
-              options={AGENT_SNIPPETS.map((snippet) => ({
-                value: snippet.value,
-                label: snippet.label,
-              }))}
-              value={agent}
-              onChange={(next) => setAgent(next as typeof agent)}
-            />
+          footnote={
+            health.isPending
+              ? "Loading 7d surface health · live prober"
+              : health.isError
+                ? "Surface health unavailable · live prober"
+                : "7d · the ten LOWEST, because those are the ones worth acting on · live prober"
           }
-          visual={
-            <CopyableCode
-              label={AGENT_SNIPPETS.find((snippet) => snippet.value === agent)!.label}
-              value={AGENT_SNIPPETS.find((snippet) => snippet.value === agent)!.code}
-            />
-          }
-          legend={<FactStrip cells={agentCells} />}
-          footnote="/mcp/core lists 23 tools at a ninth of the tokens and can still call all 243"
         />
+        <HubSections path="/" />
       </AnalyticsPage>
     </AppShell>
   );

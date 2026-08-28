@@ -1,18 +1,12 @@
 import { useMemo } from "react";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import {
-  AnalyticsPage,
-  EntityHero,
-  Fact,
-  FactSentence,
-  Raw,
-  type FactCells,
-  type FactNodes,
-  type RawRow,
-} from "@jsonbored/ui-kit";
+import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
+import { AnalyticsPage, EntityHero, Raw, type FactCells, type RawRow } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RankingsSection } from "@/components/metagraphed/subnets-index/rankings";
 import { DirectorySection } from "@/components/metagraphed/subnets-index/directory";
+import { RevenueCoverageSection } from "@/components/metagraphed/subnets-index/revenue";
 import { DomainsSection } from "@/components/metagraphed/subnets-index/domains";
 import { ChurnSection } from "@/components/metagraphed/subnets-index/churn";
 import {
@@ -20,7 +14,6 @@ import {
   filterDirectory,
   specSubnets,
   fmtAlpha,
-  fmtPct,
   type RankMetric,
   type RankWindow,
 } from "@/components/metagraphed/subnets-index/subnets-index-logic";
@@ -28,7 +21,6 @@ import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import {
   SUBNETS_ALL_LIMIT,
   agentCatalogMapQuery,
-  chainSubnetLifecycleQuery,
   domainsQuery,
   economicsQuery,
   subnetHealthMapQuery,
@@ -57,6 +49,7 @@ import { Route, type SubnetsSearch } from "./subnets.index";
 const SECTIONS = [
   { id: "directory", name: "Directory" },
   { id: "rankings", name: "Rankings" },
+  { id: "revenue", name: "Revenue" },
   { id: "domains", name: "Domains" },
   { id: "churn", name: "Churn" },
 ] as const;
@@ -71,6 +64,25 @@ const API_PATHS = [
   "/api/v1/agent-catalog",
 ];
 
+// Every field the directory actually reads. The unprojected registry row now
+// carries dozens of enrichment fields and made this SSR document cross its
+// 430 KiB payload ratchet as that data grew, even though none was displayed.
+const SUBNET_DIRECTORY_FIELDS = [
+  "netuid",
+  "slug",
+  "name",
+  "native_name",
+  "subnet_type",
+  "surface_count",
+  "status",
+  "logo_url",
+  "website_url",
+  "source_repo",
+  "updated_at",
+  "integration_readiness",
+  "curation_level",
+].join(",");
+
 /** Registers this page's reads with the ⌘J drawer, from inside AppShell's provider. */
 function ApiSources() {
   useRegisterApiSource(API_PATHS);
@@ -82,11 +94,12 @@ export function SubnetsPage() {
   const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: listed } = useSuspenseQuery(subnetsQuery({ limit: SUBNETS_ALL_LIMIT }));
-  const economics = useQuery({ ...economicsQuery(), retry: 0 });
+  const { data: listed } = useSuspenseQuery(
+    subnetsQuery({ limit: SUBNETS_ALL_LIMIT, fields: SUBNET_DIRECTORY_FIELDS }),
+  );
+  const economics = useQuery({ ...economicsQuery({ fields: "directory" }), retry: 0 });
   const domains = useQuery({ ...domainsQuery(), retry: 0 });
   const health = useQuery({ ...subnetHealthMapQuery(), retry: 0 });
-  const lifecycle = useQuery({ ...chainSubnetLifecycleQuery(500), retry: 0 });
   const catalog = useQuery({ ...agentCatalogMapQuery(), retry: 0 });
 
   const subnets = listed.data;
@@ -135,55 +148,44 @@ export function SubnetsPage() {
   );
 
   const totalStake = econRows.reduce((acc, row) => acc + (row.total_stake_alpha ?? 0), 0);
-  // `alpha_price_change_7d` is a PERCENTAGE on the wire; every renderer below
-  // takes a fraction. See pctToFraction in subnets-index-logic.
-  const priced = econRows
-    .map((row) => row.alpha_price_change_7d)
-    .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
-    .sort((a, b) => a - b)
-    .map((pct) => pct / 100);
-  const medianChange = priced.length > 0 ? priced[Math.floor(priced.length / 2)]! : null;
   const probedStates = Object.values(health.data?.data ?? {});
   const healthy = probedStates.filter((entry) => entry.health === "ok").length;
   const probedCount = probedStates.length;
-  const churn7d = (lifecycle.data?.data.entries ?? []).filter((entry) => {
-    if (!entry.observed_at) return false;
-    return Date.now() - Date.parse(entry.observed_at) <= 7 * 86_400_000;
-  }).length;
-
-  const sentence: FactNodes = [
-    <Fact key="count">{`${formatNumber(subnets.length)} subnets`}</Fact>,
-    <Fact key="health">
-      {probedCount > 0
-        ? `${formatNumber(healthy)}/${formatNumber(probedCount)} probed healthy`
-        : "none probed"}
-    </Fact>,
-    <Fact key="stake">{`${fmtAlpha(totalStake)} α staked`}</Fact>,
-    <Fact key="domains">{`${formatNumber(domainNames.length)} domains`}</Fact>,
-    <Fact key="churn">{`${formatNumber(churn7d)} lifecycle changes this week`}</Fact>,
-  ];
 
   const cells: FactCells = [
     {
-      label: "Publishing an API",
-      value: `${formatNumber(withApi.size)} / ${formatNumber(subnets.length)}`,
+      label: "Indexed",
+      value: formatNumber(subnets.length),
     },
-    { label: "Total stake", value: `${fmtAlpha(totalStake)} α` },
-    // No delta chip: the value IS the change, and a chip repeating it beside
-    // itself reads as two different numbers that happen to agree.
-    { label: "Median price Δ7d", value: fmtPct(medianChange, 1) },
-    { label: "Lifecycle changes 7d", value: formatNumber(churn7d) },
+    // The directory's coverage is a real first-scan reading. Individual
+    // health, price movement, and lifecycle changes remain where a reader can
+    // compare them in the directory or their dedicated analytic section;
+    // duplicating all of them above the first result made the mobile route
+    // read like a dashboard before it read like an explorer.
+    {
+      label: "Probed healthy",
+      value: probedCount > 0 ? `${formatNumber(healthy)} / ${formatNumber(probedCount)}` : "—",
+      loading: health.isPending,
+    },
+    { label: "Total stake", value: `${fmtAlpha(totalStake)} α`, loading: economics.isPending },
   ];
 
   const rawRows: RawRow[] = API_PATHS.map((path) => ({
     label: path.replace("/api/v1/", ""),
     value: `${API_BASE}${path}`,
     href: `${API_BASE}${path}`,
-  })).concat({
-    label: "subnets.json artifact",
-    value: `${API_BASE}/metagraph/subnets.json`,
-    href: `${API_BASE}/metagraph/subnets.json`,
-  });
+  })).concat(
+    {
+      label: "revenue coverage",
+      value: `${API_BASE}/api/v1/chain/revenue-coverage`,
+      href: `${API_BASE}/api/v1/chain/revenue-coverage`,
+    },
+    {
+      label: "subnets.json artifact",
+      value: `${API_BASE}/metagraph/subnets.json`,
+      href: `${API_BASE}/metagraph/subnets.json`,
+    },
+  );
 
   const setSearch = (next: Partial<SubnetsSearch>) => {
     navigate({ search: (prev) => ({ ...prev, ...next }), replace: true });
@@ -196,13 +198,14 @@ export function SubnetsPage() {
         sections={SECTIONS}
         hero={
           <EntityHero
+            className="mg-hero--directory"
             name="Subnets"
-            sentence={<FactSentence>{sentence}</FactSentence>}
             cells={cells}
             live={{
               updatedAt: listed.meta?.generated_at ?? null,
               source: "registry + chain",
-              onRefresh: () => void queryClient.invalidateQueries({ queryKey: ["mg"] }),
+              onRefresh: () =>
+                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
             }}
           />
         }
@@ -228,9 +231,11 @@ export function SubnetsPage() {
           nameOf={nameOf}
           domainOf={domainOf}
         />
+        <RevenueCoverageSection nameOf={nameOf} />
         <DomainsSection onPick={(domain) => setSearch({ domain })} />
         <ChurnSection />
         <Raw rows={rawRows} title="Subnet registry API and artifacts" />
+        <HubSections path="/subnets" />
       </AnalyticsPage>
     </AppShell>
   );

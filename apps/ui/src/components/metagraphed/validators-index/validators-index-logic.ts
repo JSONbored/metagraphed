@@ -7,7 +7,7 @@
  * delegator is actually choosing between.
  */
 import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
-import type { GlobalValidator } from "@/lib/metagraphed/types";
+import type { OperatorValidator } from "@/lib/metagraphed/types";
 import { formatAmount, formatPct } from "@/lib/metagraphed/format";
 
 /**
@@ -29,7 +29,7 @@ export interface OperatorRow {
   name: string;
   /** Whether the name is self-declared or a truncated key standing in for one. */
   named: boolean;
-  keys: GlobalValidator[];
+  keys: OperatorValidator[];
   keyCount: number;
   primaryHotkey: string;
   coldkey: string | null;
@@ -60,7 +60,7 @@ export interface OperatorRow {
   dominance: number | null;
 }
 
-const declaredName = (validator: GlobalValidator): string | null => {
+const declaredName = (validator: OperatorValidator): string | null => {
   const identity = validator.coldkey_identity;
   const name = identity?.has_identity ? identity.name : null;
   const trimmed = typeof name === "string" ? name.trim() : "";
@@ -77,8 +77,8 @@ export const shortKey = (key: string): string =>
  * keys sharing nothing but their anonymity are not the same team, and
  * merging them would invent an operator that does not exist.
  */
-export function operatorRows(validators: readonly GlobalValidator[]): OperatorRow[] {
-  const groups = new Map<string, GlobalValidator[]>();
+export function operatorRows(validators: readonly OperatorValidator[]): OperatorRow[] {
+  const groups = new Map<string, OperatorValidator[]>();
   for (const validator of validators) {
     const key = declaredName(validator) ?? validator.hotkey;
     const group = groups.get(key);

@@ -210,39 +210,78 @@ export interface Fact {
   key: string;
   label: string;
   value: string;
+  /** A compact service-state string rather than a headline metric. */
+  kind?: "text";
+  /** The recorded-incident read has not completed yet. */
+  loading?: boolean;
+  /** A state directly reported by the health payload, never an inferred grade. */
+  tone?: "good" | "warn" | "bad";
 }
 
 /**
  * The hero.
  *
- * The three status counts are of PROBED surfaces — /api/v1/health's `global`
- * block counts only what the prober watches, which is the set this page is
- * about. The self-health verdict rides at the end because "is the thing
- * telling me what is broken itself broken" is the one question a status page
- * must answer before any of its own numbers mean anything.
+ * The probe snapshot and the recorded-incident feed deliberately remain
+ * separate facts. A current failed probe does not prove that an incident row
+ * has been opened, and an older incident record does not change the current
+ * probe reading. Lead with the time-aligned probe state, then show the record
+ * count as supporting evidence rather than presenting the two as one grade.
  */
 export function healthFacts(
   global: { surface_count?: number; status_counts?: Record<string, number> } | null | undefined,
-  openIncidents: number,
+  openIncidents: number | null,
   verdict: string | null,
   fmt: { count: (n: number) => string },
+  incidentState?: "pending" | "error" | "ready",
 ): Fact[] {
   if (!global) return [];
   const counts = global.status_counts ?? {};
   const facts: Fact[] = [];
+  const failed = counts.failed;
+  if (typeof failed === "number") {
+    facts.push({
+      key: "failed",
+      label: "Failed probes",
+      value: fmt.count(failed),
+      tone: failed > 0 ? "bad" : "good",
+    });
+  }
+  const degraded = counts.degraded;
+  if (typeof degraded === "number") {
+    facts.push({
+      key: "degraded",
+      label: "Degraded",
+      value: fmt.count(degraded),
+      tone: degraded > 0 ? "warn" : "good",
+    });
+  }
+  const ok = counts.ok;
+  if (typeof ok === "number") {
+    facts.push({ key: "ok", label: "Healthy", value: fmt.count(ok), tone: "good" });
+  }
   if (typeof global.surface_count === "number") {
-    facts.push({ key: "probed", label: "Probed surfaces", value: fmt.count(global.surface_count) });
+    facts.push({ key: "probed", label: "Probed", value: fmt.count(global.surface_count) });
   }
-  for (const [key, label] of [
-    ["ok", "ok"],
-    ["degraded", "degraded"],
-    ["failed", "down"],
-  ] as const) {
-    if (typeof counts[key] === "number") {
-      facts.push({ key, label, value: fmt.count(counts[key]) });
-    }
+  // Preserve the long-standing boundary contract for callers that only know
+  // the value: null means pending unless the route explicitly says the read
+  // failed. A concrete count is always ready, including zero.
+  const incidentsReady = incidentState === "ready" || openIncidents != null;
+  const incidentsPending = incidentState === "pending" || (!incidentState && openIncidents == null);
+  facts.push({
+    key: "incidents",
+    label: "Open records",
+    // A missing incident response has two distinct meanings. Pending keeps
+    // the fact visibly in flight; a failed read is an unknown, never a quiet
+    // zero with the reassuring green treatment that implies no incidents.
+    value: incidentsReady && openIncidents != null ? fmt.count(openIncidents) : "—",
+    ...(incidentsPending
+      ? { loading: true }
+      : incidentsReady && openIncidents != null
+        ? { tone: openIncidents > 0 ? ("bad" as const) : ("good" as const) }
+        : {}),
+  });
+  if (verdict) {
+    facts.push({ key: "self", label: "Site status", value: verdict, kind: "text" });
   }
-  facts.push({ key: "incidents", label: "Open incidents", value: fmt.count(openIncidents) });
-  if (verdict) facts.push({ key: "self", label: "Metagraphed itself", value: verdict });
   return facts;
 }

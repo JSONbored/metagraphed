@@ -16,6 +16,8 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ErrorState } from "@/components/metagraphed/states";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
@@ -75,8 +77,18 @@ export function HealthPage() {
       resetScroll: false,
     });
 
-  const health = useSuspenseQuery(healthSubnetsQuery()).data;
-  const trends = useQuery({ ...bulkHealthTrendsQuery(), retry: 0 });
+  const healthQuery = useSuspenseQuery(healthSubnetsQuery());
+  const health = healthQuery.data;
+  const { ref: trendsRef, nearViewport: trendsNearViewport } = useNearViewport("0px 0px");
+  // The page opens with recorded incidents, while the bulk trend payload feeds
+  // the later uptime rail, table, and chart. Keep those stable sections in the
+  // document but wait until their first visual is actually in view before
+  // asking for all trend windows.
+  const trends = useQuery({
+    ...bulkHealthTrendsQuery(),
+    enabled: trendsNearViewport,
+    retry: 0,
+  });
   const incidents = useQuery({ ...globalIncidentsQuery(search.window), retry: 0 });
   const self = useQuery({ ...selfHealthQuery(), retry: 0 });
 
@@ -220,6 +232,7 @@ export function HealthPage() {
     <AppShell>
       <ApiSources />
       <EntityHero
+        className="mg-hero--operational mg-hero--health"
         name="Health"
         sentence={
           <FactSentence>
@@ -233,35 +246,53 @@ export function HealthPage() {
           factCells(
             healthFacts(
               health.data.global as Parameters<typeof healthFacts>[0],
-              openRows.length,
+              incidents.isPending || incidents.isError ? null : openRows.length,
               (self.data?.data?.verdict as string | undefined) ?? null,
               { count: formatNumber },
+              incidents.isPending ? "pending" : incidents.isError ? "error" : "ready",
             ),
           ) ?? undefined
         }
         live={{
           updatedAt: health.data.observed_at ?? null,
           source: "probed every 15 min",
-          onRefresh: () => void incidents.refetch(),
-          refreshing: incidents.isFetching,
+          onRefresh: () =>
+            void Promise.all([
+              healthQuery.refetch(),
+              incidents.refetch(),
+              self.refetch(),
+              ...(trendsNearViewport ? [trends.refetch()] : []),
+            ]),
+          refreshing:
+            healthQuery.isFetching || incidents.isFetching || trends.isFetching || self.isFetching,
         }}
       />
 
       <AnalyticsSection
+        className="mg-health-incidents"
         id="incidents"
         name="Incidents"
-        question="What is down now, and what was."
+        question="Recorded outage events in this window."
         visual={
           <DataTable
             id="incidents"
             rows={shownIncidents}
             columns={incidentColumns}
             rowKey={(row) => row.key}
-            caption="Surface incidents"
+            caption="Recorded surface incidents"
             link={RouterLink}
             source="incident"
             storageKey="mg-health-incidents-columns"
             loading={incidents.isPending}
+            error={
+              incidents.isError ? (
+                <ErrorState
+                  error={incidents.error}
+                  onRetry={() => void incidents.refetch()}
+                  context="recorded incidents"
+                />
+              ) : undefined
+            }
             filters={
               <FilterField label="State">
                 <FilterSelect
@@ -273,21 +304,28 @@ export function HealthPage() {
                 </FilterSelect>
               </FilterField>
             }
-            empty="Nothing is down in this window."
+            empty="No incident records are currently open in this window."
           />
         }
         // One row per INCIDENT, not per surface: /api/v1/incidents groups by
         // surface, which answers "which surfaces had trouble" -- but a surface
         // with three separate outages is three answers to "what is broken".
-        footnote={`${formatNumber(openRows.length)} open of ${formatNumber(
-          rows.length,
-        )} in ${window} · probe-derived`}
+        footnote={
+          incidents.isPending
+            ? "Loading recorded incidents · probe-derived"
+            : incidents.isError
+              ? "Recorded incidents are temporarily unavailable · probe-derived"
+              : `${formatNumber(openRows.length)} open of ${formatNumber(
+                  rows.length,
+                )} in ${window} · probe-derived`
+        }
       />
 
       <AnalyticsSection
         id="by-subnet"
         name="By subnet"
         question="Uptime over the window, worst first."
+        visualRef={trendsRef}
         controls={
           <RangeControl
             label="Window"
@@ -297,7 +335,25 @@ export function HealthPage() {
           />
         }
         visual={
-          subnets.some((row) => row.uptimePct != null) ? (
+          !trendsNearViewport ? (
+            <p className="mg-section-empty">Uptime evidence loads as this section approaches.</p>
+          ) : trends.isPending ? (
+            <MarkerRail
+              loading
+              loadingRows={8}
+              max={100}
+              formatValue={(value) => `${value}%`}
+              columns={{ ratio: "Uptime", name: "Subnet", scale: "Share of probes that answered" }}
+              ariaLabel="Subnet uptime, worst first"
+              source="subnet-health"
+            />
+          ) : trends.isError ? (
+            <ErrorState
+              error={trends.error}
+              onRetry={() => void trends.refetch()}
+              context="subnet uptime"
+            />
+          ) : subnets.some((row) => row.uptimePct != null) ? (
             <MarkerRail
               items={subnets
                 .filter((row) => row.uptimePct != null)
@@ -317,24 +373,34 @@ export function HealthPage() {
           ) : null
         }
         legend={
-          <DataTable
-            id="subnet-health"
-            rows={subnets}
-            columns={subnetColumns}
-            rowKey={(row) => String(row.netuid)}
-            caption="Every probed subnet"
-            rowHref={(row) => `/subnets/${row.netuid}`}
-            link={RouterLink}
-            source="subnet-health"
-            storageKey="mg-health-subnets-columns"
-            empty="No subnet has been probed in this window."
-          />
+          trendsNearViewport && !trends.isError ? (
+            <DataTable
+              id="subnet-health"
+              rows={subnets}
+              columns={subnetColumns}
+              rowKey={(row) => String(row.netuid)}
+              caption="Every probed subnet"
+              rowHref={(row) => `/subnets/${row.netuid}`}
+              link={RouterLink}
+              source="subnet-health"
+              storageKey="mg-health-subnets-columns"
+              empty="No subnet has been probed in this window."
+            />
+          ) : null
         }
         // A subnet with no trend sample sorts LAST: `null` is "we have not
         // measured this", and ordering it beside the genuinely broken ones
         // would put the unknown at the top of a page whose job is naming what
         // is broken.
-        footnote={`${formatNumber(subnets.length)} probed subnets · ${window} · probe-derived`}
+        footnote={
+          !trendsNearViewport
+            ? "deferred below the fold · uptime evidence loads as this section approaches"
+            : trends.isPending
+              ? `Loading ${window} uptime · probe-derived`
+              : trends.isError
+                ? "Uptime trend is temporarily unavailable · probe-derived"
+                : `${formatNumber(subnets.length)} probed subnets · ${window} · probe-derived`
+        }
       />
 
       <AnalyticsSection
@@ -342,7 +408,23 @@ export function HealthPage() {
         name="Trend"
         question="What share of probes answered, day by day."
         visual={
-          points.length > 1 ? (
+          !trendsNearViewport ? (
+            <p className="mg-section-empty">Network trend loads with the uptime evidence above.</p>
+          ) : trends.isPending ? (
+            <LineWithWindow
+              points={[]}
+              window={{ from: 0, to: 0 }}
+              unit="% of probes answered"
+              formatValue={(value) => `${value}%`}
+              ariaLabel={`Healthy share over ${window}`}
+              source="health-trend"
+              loading
+            />
+          ) : trends.isError ? (
+            <p className="text-13 leading-relaxed text-ink-muted">
+              Health trend unavailable. Retry the uptime reading above.
+            </p>
+          ) : points.length > 1 ? (
             <LineWithWindow
               points={points}
               window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
@@ -353,7 +435,15 @@ export function HealthPage() {
             />
           ) : null
         }
-        footnote={`${window} · sample-weighted across subnets · probe-derived`}
+        footnote={
+          !trendsNearViewport
+            ? "deferred below the fold · begins with the subnet uptime reading"
+            : trends.isPending
+              ? `Loading ${window} trend · probe-derived`
+              : trends.isError
+                ? "Health trend is temporarily unavailable · probe-derived"
+                : `${window} · sample-weighted across subnets · probe-derived`
+        }
       />
 
       <AnalyticsSection
@@ -361,7 +451,23 @@ export function HealthPage() {
         name="Self-health"
         question="Whether the thing telling you this is itself up."
         visual={
-          components.length > 0 ? (
+          self.isPending ? (
+            <MarkerRail
+              loading
+              loadingRows={4}
+              max={100}
+              formatValue={(value) => `${value}%`}
+              columns={{ ratio: "Uptime", name: "Component", scale: "Share of checks that passed" }}
+              ariaLabel="metagraphed's own component uptime"
+              source="self-health"
+            />
+          ) : self.isError ? (
+            <ErrorState
+              error={self.error}
+              onRetry={() => void self.refetch()}
+              context="self-health"
+            />
+          ) : components.length > 0 ? (
             <MarkerRail
               items={components.map((component) => ({
                 key: component.key,
@@ -383,9 +489,13 @@ export function HealthPage() {
         // a component measured for a week must not read as 8% available because
         // the other 83 days are missing.
         footnote={
-          self.isError
-            ? "self-health is unavailable — this section cannot tell you whether the site is up"
-            : "over the days each component reports · self-probed"
+          self.isPending
+            ? "Loading self-health · self-probed"
+            : self.isError
+              ? "self-health is unavailable — this section cannot tell you whether the site is up"
+              : components.length === 0
+                ? "No self-health components are published"
+                : "over the days each component reports · self-probed"
         }
       />
 

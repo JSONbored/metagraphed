@@ -11,9 +11,11 @@ import {
   emissionTotals,
   domainPeers,
   surfaceRail,
+  subnetUptimePct,
   topValidator,
   trailing,
   uptimeBySurface,
+  uptimeSentence,
   volumeOver,
   windowDays,
   withoutSubnetPrefix,
@@ -187,6 +189,45 @@ describe("surfaceRail / uptimeBySurface", () => {
     const keys = surfaceRail(surfaces, new Map()).map((row) => row.key);
     expect(keys).not.toContain("c");
     expect(keys).not.toContain("d");
+  });
+});
+
+describe("subnet uptime summary", () => {
+  it("prefers the API's sample-weighted aggregate", () => {
+    expect(
+      subnetUptimePct({
+        reliability: { uptime_ratio: 0.9985 },
+        surfaces: [{ surface_id: "a", samples: 10, uptime_ratio: 0.5, days: [] }],
+      }),
+    ).toBeCloseTo(99.85);
+  });
+
+  it("reconstructs a weighted aggregate when an older response omits it", () => {
+    expect(
+      subnetUptimePct({
+        surfaces: [
+          { surface_id: "a", samples: 90, uptime_ratio: 1, days: [] },
+          {
+            surface_id: "b",
+            reliability: { sample_count: 10, uptime_ratio: 0.5 },
+            days: [],
+          },
+          { surface_id: "ignored", uptime_ratio: 0, days: [] },
+        ],
+      }),
+    ).toBeCloseTo(95);
+  });
+
+  it("does not invent an aggregate without usable samples", () => {
+    expect(subnetUptimePct(null)).toBeNull();
+    expect(subnetUptimePct({ surfaces: [] })).toBeNull();
+  });
+
+  it("never calls a loading or failed read unprobed", () => {
+    expect(uptimeSentence(null, "pending")).toBe("Loading 90d uptime");
+    expect(uptimeSentence(null, "error")).toBe("90d uptime unavailable");
+    expect(uptimeSentence(null, "ready")).toBe("Not yet probed");
+    expect(uptimeSentence(99.85, "ready")).toBe("99.8% up over 90d");
   });
 });
 

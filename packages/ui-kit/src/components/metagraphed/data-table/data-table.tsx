@@ -29,6 +29,7 @@ import {
   sortRows,
   toCsv,
   truncateIdentifier,
+  visibleRangeLabel,
   type CellValue,
   type SortState,
 } from "./data-table-logic";
@@ -38,8 +39,8 @@ import {
  * caption row carries the count, the search box, up to three filters and the
  * table menu (columns · CSV · copy link); the head pins inside a bounded
  * viewport when the list is long; rows are entity marks, so hovering one
- * lights the same key in any chart on the page; below 640px a narrow table
- * becomes label/value cards and a wide one scrolls.
+ * lights the same key in any chart on the page; through tablet, a narrow
+ * table becomes label/value cards and a wide one scrolls.
  *
  * One DOM in every mode — the cards are CSS, not a second render — so the
  * server-rendered HTML always contains every row and every row link.
@@ -62,6 +63,15 @@ export interface DataTableColumn<Row> {
   sortable?: boolean;
   /** Hidden until the reader turns it on in the table menu. */
   demote?: boolean;
+  /**
+   * The row's primary identity. It is the strongest desktop cell, the route
+   * link, and the identity line for card layouts. Defaults to the first
+   * visible column, so a directory can lead with a human-readable name while
+   * retaining a technical rank or UID before it.
+   */
+  lead?: boolean;
+  /** @deprecated Use `lead`; retained for existing callers. */
+  mobileLead?: boolean;
   /**
    * Let this cell wrap onto more lines.
    *
@@ -101,8 +111,18 @@ export interface DataTableProps<Row> {
   caption: string;
   /** Hide the caption text but keep it for assistive tech. */
   captionHidden?: boolean;
-  /** The full result size when it is larger than `rows` (server paging). */
+  /** The exact full result size when it is larger than `rows` (server paging). */
   total?: number;
+  /**
+   * Whether a server-paged response may have a following page when its exact
+   * total is unavailable. Do not use this together with a fabricated `total`.
+   */
+  hasMore?: boolean;
+  /**
+   * Exact count to print beside the caption. `null` intentionally suppresses
+   * it when the source cannot state a total.
+   */
+  captionCount?: number | null;
   /** Controlled sort. Omit both to let the table sort itself. */
   sort?: SortState | null;
   onSort?: (sort: SortState | null) => void;
@@ -140,6 +160,13 @@ export interface DataTableProps<Row> {
   error?: ReactNode;
   dense?: boolean;
   mobile?: "cards" | "scroll";
+  /**
+   * Emit the cards layout's visual labels once as table-scoped CSS rather
+   * than once per cell. Crawlable directories retain every row and link, so
+   * this avoids repeating the same nine column labels hundreds of times in
+   * their server HTML without changing the mobile reading order.
+   */
+  compactMobileLabels?: boolean;
   /** Entity-mark namespace, so two tables on a page do not collide. */
   source?: string;
   /** Persists the column selection; omit to keep it per-mount. */
@@ -214,6 +241,8 @@ export function DataTable<Row>({
   caption,
   captionHidden,
   total,
+  hasMore = false,
+  captionCount: captionCountProp,
   sort: sortProp,
   onSort,
   page: pageProp,
@@ -233,6 +262,7 @@ export function DataTable<Row>({
   error,
   dense,
   mobile,
+  compactMobileLabels,
   source = "table",
   storageKey,
   shareUrl,
@@ -316,8 +346,21 @@ export function DataTable<Row>({
     () => (onSort ? [...rows] : sortRows(rows, sort, valueOf)),
     [rows, sort, valueOf, onSort],
   );
-  const pages = pageCount(total ?? sorted.length, pageSize);
-  const paging = paginate ?? (!onPage ? sorted.length > pageSize : true);
+  // A client-owned page is slicing the complete in-memory row set, so its
+  // length is exact even when the caller did not spell out `total`.
+  const hasExactTotal = typeof total === "number" || !onPage;
+  const exactTotal = total ?? sorted.length;
+  // Without an exact total, show only the current page and a possible next
+  // page. The prior approximation existed solely to enable Next, but the UI
+  // rendered that bound as a fact in its caption and range.
+  const pages = hasExactTotal
+    ? pageCount(exactTotal, pageSize)
+    : hasMore
+      ? page + 1
+      : Math.max(1, page);
+  const paging =
+    paginate ??
+    (!onPage ? sorted.length > pageSize : hasExactTotal || hasMore || page > 1);
   const visibleRows = useMemo(
     () => (onPage || !paging ? sorted : pageSlice(sorted, page, pageSize)),
     [sorted, page, pageSize, onPage, paging],
@@ -325,7 +368,18 @@ export function DataTable<Row>({
 
   const bounded = shouldBoundViewport(visibleRows.length);
   const mobileMode = mobile ?? pickMobileMode(shown.length);
-  const rowCount = total ?? rows.length;
+  const useCompactMobileLabels = compactMobileLabels && mobileMode === "cards";
+  const nominatedLeadKey = shown.find(
+    (column) => column.lead ?? column.mobileLead,
+  )?.key;
+  const mobileLeadKey =
+    mobileMode === "cards" ? (nominatedLeadKey ?? shown[0]?.key) : undefined;
+  // One row remains one route link. A directory may nominate its readable
+  // name as the lead, which also makes that name the route link at every
+  // viewport instead of emitting a duplicate anchor for each server row.
+  const rowLinkKey = nominatedLeadKey ?? shown[0]?.key;
+  const captionCount =
+    captionCountProp === undefined ? (total ?? rows.length) : captionCountProp;
 
   const handleSort = (key: string) => {
     const next = nextSort(sort, key);
@@ -355,15 +409,28 @@ export function DataTable<Row>({
          served HTML on a route that sits on a payload ratchet. */
       data-expandable={expand ? "true" : undefined}
       data-mobile={mobileMode}
+      data-mobile-label-template={
+        useCompactMobileLabels ? captionId : undefined
+      }
       data-dense={dense ? "true" : undefined}
     >
+      {useCompactMobileLabels ? (
+        <style>
+          {shown
+            .map(
+              (column, index) =>
+                `[data-mobile-label-template=${JSON.stringify(captionId)}] tbody td:nth-child(${index + 1})::before{content:${JSON.stringify(column.label)}}`,
+            )
+            .join("")}
+        </style>
+      ) : null}
       <div className="mg-dt-caption">
         <p id={captionId} className={captionHidden ? "sr-only" : "mg-dt-title"}>
           {caption}
-          {rowCount > 0 ? (
+          {captionCount != null && captionCount > 0 ? (
             <span className="mg-dt-count">
               {" "}
-              ({rowCount.toLocaleString("en-US")})
+              ({captionCount.toLocaleString("en-US")})
             </span>
           ) : null}
         </p>
@@ -413,7 +480,7 @@ export function DataTable<Row>({
           bounded ? "mg-dt-viewport-bounded" : null,
         )}
       >
-        <table aria-labelledby={captionId}>
+        <table aria-labelledby={captionId} aria-busy={loading || undefined}>
           <thead>
             <tr>
               {shown.map((column) => {
@@ -472,17 +539,38 @@ export function DataTable<Row>({
           <tbody>
             {loading ? (
               Array.from({ length: 8 }, (_, i) => (
-                <tr key={`skeleton-${i}`} className="mg-dt-skeleton">
-                  {shown.map((column) => (
-                    <td
-                      key={column.key}
-                      data-label={
-                        mobileMode === "cards" ? column.label : undefined
-                      }
-                    >
-                      <Skeleton className="h-3 w-full" />
-                    </td>
-                  ))}
+                <tr key={`skeleton-${i}`} className="mg-dt-row mg-dt-skeleton">
+                  {shown.map((column) => {
+                    const align =
+                      column.align ??
+                      (column.kind === "number" ||
+                      column.kind === "delta" ||
+                      column.kind === "tint"
+                        ? "right"
+                        : undefined);
+                    return (
+                      <td
+                        key={column.key}
+                        data-label={
+                          mobileMode === "cards" && !useCompactMobileLabels
+                            ? column.label
+                            : undefined
+                        }
+                        data-lead={
+                          column.key === rowLinkKey ? "true" : undefined
+                        }
+                        data-mobile-lead={
+                          column.key === mobileLeadKey ? "true" : undefined
+                        }
+                        data-align={align}
+                        data-demote={column.demote ? "true" : undefined}
+                        data-wrap={column.wrap ? "true" : undefined}
+                        data-kind={column.kind === "tint" ? "tint" : undefined}
+                      >
+                        <Skeleton className="h-3 w-full" />
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             ) : hasRows ? (
@@ -492,7 +580,9 @@ export function DataTable<Row>({
                   row={row}
                   entityKey={rowKey(row)}
                   expansionId={`${captionId}-${rowKey(row)}`}
-                  cardLabels={mobileMode === "cards"}
+                  cardLabels={mobileMode === "cards" && !useCompactMobileLabels}
+                  mobileLeadKey={mobileLeadKey}
+                  rowLinkKey={rowLinkKey}
                   columns={shown}
                   href={rowHref?.(row)}
                   link={link}
@@ -523,7 +613,9 @@ export function DataTable<Row>({
       {paging && pages > 1 ? (
         <div className="mg-dt-footer">
           <span className="mg-dt-range">
-            {rangeLabel(page, pageSize, total ?? sorted.length)}
+            {hasExactTotal
+              ? rangeLabel(page, pageSize, exactTotal)
+              : visibleRangeLabel(page, pageSize, rows.length)}
           </span>
           <nav className="mg-dt-pager" aria-label={`${caption} pages`}>
             <button
@@ -571,6 +663,8 @@ function Row<Row_>({
   expansionId,
   columns,
   cardLabels,
+  mobileLeadKey,
+  rowLinkKey,
   href,
   link,
   onActivate,
@@ -585,6 +679,10 @@ function Row<Row_>({
   columns: ReadonlyArray<DataTableColumn<Row_>>;
   /** Cells print their own label only where the cards layout reads it. */
   cardLabels: boolean;
+  /** The one identity line in a purpose-built mobile card. */
+  mobileLeadKey?: string;
+  /** The one cell that carries the row's navigable identity. */
+  rowLinkKey?: string;
   href?: string;
   link?: SectionNavLink;
   onActivate?: () => void;
@@ -624,25 +722,36 @@ function Row<Row_>({
         data-expandable={expandable ? "true" : undefined}
         data-expanded={expanded ? "true" : undefined}
       >
-        {columns.map((column, index) => (
-          <Cell
-            key={column.key}
-            row={row}
-            column={column}
-            label={cardLabels ? column.label : undefined}
-            /* The first cell carries the row's link, so a row is one tab stop. */
-            href={index === 0 ? href : undefined}
-            link={link}
-            disclosure={
-              index === 0 && expandable
-                ? { expanded, controls: expansionId, onToggle: onExpand }
-                : undefined
-            }
-            onActivate={
-              index === 0 && !href && !expandable ? onActivate : undefined
-            }
-          />
-        ))}
+        {columns.map((column, index) => {
+          const mobileLead = column.key === mobileLeadKey;
+          const lead = column.key === rowLinkKey;
+          return (
+            <Cell
+              key={column.key}
+              row={row}
+              column={column}
+              label={cardLabels ? column.label : undefined}
+              lead={lead}
+              mobileLead={mobileLead}
+              /* The first visible cell is normally the row link. A directory
+                 may nominate a readable identity instead, which keeps a
+                 phone reader's obvious target and a crawler's one-link-per-
+                 row invariant in agreement. */
+              href={column.key === rowLinkKey ? href : undefined}
+              link={link}
+              disclosure={
+                index === 0 && expandable
+                  ? { expanded, controls: expansionId, onToggle: onExpand }
+                  : undefined
+              }
+              onActivate={
+                column.key === rowLinkKey && !href && !expandable
+                  ? onActivate
+                  : undefined
+              }
+            />
+          );
+        })}
       </tr>
       {expandable && expanded ? (
         <tr className="mg-dt-expansion" id={expansionId}>
@@ -687,6 +796,8 @@ function Cell<Row_>({
   row,
   column,
   label,
+  lead,
+  mobileLead,
   href,
   link,
   onActivate,
@@ -695,6 +806,8 @@ function Cell<Row_>({
   row: Row_;
   column: DataTableColumn<Row_>;
   label?: string;
+  lead: boolean;
+  mobileLead: boolean;
   href?: string;
   link?: SectionNavLink;
   /** Renders the cell as the row's expand/collapse control. */
@@ -819,6 +932,8 @@ function Cell<Row_>({
   return (
     <td
       data-label={label}
+      data-lead={lead ? "true" : undefined}
+      data-mobile-lead={mobileLead ? "true" : undefined}
       data-align={align}
       /* Read back in CSS for the third ink level: a column the table itself
          calls secondary should not shout at the same volume as the figure the

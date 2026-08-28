@@ -196,6 +196,12 @@ export async function loadChainEventsColdTier(
     // Single-block lookup: exact, already cheap, no window needed.
     where.push(`block_number = ${block}`);
     if (extrinsic !== null) where.push(`extrinsic_index = ${extrinsic}`);
+    // A block can contain more than the feed's page limit. Its event indexes
+    // are unique within that block, so the same opaque cursor that advances
+    // the network-wide feed advances this exact lookup without widening it.
+    // Ignoring the cursor here returned page one repeatedly: detail readers
+    // either saw a hard 50-event ceiling or a duplicate second page.
+    if (cursor) where.push(`event_index < ${cursor[2]}`);
   } else {
     // The ceiling this page reads down from. A cursor seeks strictly below its
     // own row, `before` is the legacy block-exclusive form, and page 1 reads
@@ -285,7 +291,10 @@ export async function loadChainEventsColdTier(
   if (last) {
     return {
       count: rows.length,
-      next_before: safeBlockNumber(last.block_number),
+      // `before` moves a network-wide block window. An exact block lookup
+      // has no older window to hand it, and publishing it here would invite a
+      // legacy caller to repeat this same page; only the event cursor applies.
+      next_before: block === null ? safeBlockNumber(last.block_number) : null,
       next_cursor: encodeCursor([
         safeBlockNumber(last.observed_at),
         safeBlockNumber(last.block_number),

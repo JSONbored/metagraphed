@@ -1,3 +1,4 @@
+import type { FactCells } from "@jsonbored/ui-kit";
 import type { Block, ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
 import { callLabel, eventLabel } from "@/components/metagraphed/chain-stream/chain-stream-logic";
 
@@ -7,8 +8,15 @@ import { callLabel, eventLabel } from "@/components/metagraphed/chain-stream/cha
  * thin enough to read in one sitting.
  */
 
+/**
+ * The blocks endpoint permits at most 100 rows. Keep the centred cadence
+ * window one row below that ceiling: an odd count keeps the subject in the
+ * middle without asking the API for an invalid 101-row response.
+ */
+export const CADENCE_BLOCK_LIMIT = 99;
+
 /** How many blocks either side of the subject the cadence line covers. */
-export const CADENCE_SPAN = 50;
+export const CADENCE_SPAN = (CADENCE_BLOCK_LIMIT - 1) / 2;
 
 /** The [start, end] block range a cadence line asks the feed for. */
 export function cadenceRange(block: number, span = CADENCE_SPAN): [number, number] {
@@ -154,6 +162,40 @@ export function blockFacts(
   const spec = block.spec_version;
   if (typeof spec === "number") facts.push({ key: "spec", label: "spec", value: fmt.count(spec) });
   return facts;
+}
+
+/**
+ * The block hero's ruled metric ledger.
+ *
+ * A single known reading remains in the sentence: a one-cell fact strip
+ * would look like a missing comparison. Two or three known readings form a
+ * scan-friendly ledger, with the runtime spec written out instead of the
+ * cramped inline "spec" label.
+ */
+export function blockFactCells(
+  block: Block | null | undefined,
+  fmt: { count: (n: number) => string },
+): FactCells | undefined {
+  const facts = blockFacts(block, fmt).map((fact) => ({
+    label:
+      fact.key === "spec"
+        ? "Runtime spec"
+        : `${fact.label.slice(0, 1).toUpperCase()}${fact.label.slice(1)}`,
+    value: fact.value,
+  }));
+
+  if (facts.length === 2) return [facts[0]!, facts[1]!];
+  if (facts.length === 3) return [facts[0]!, facts[1]!, facts[2]!];
+  return undefined;
+}
+
+/**
+ * A header-published zero is already decisive evidence: a second detail read
+ * can only return the same empty collection. Unknown counts still fetch, so
+ * the UI never infers absence from a missing or delayed header field.
+ */
+export function shouldFetchCountedBlockDetail(count: number | null | undefined): boolean {
+  return count !== 0;
 }
 
 /** The extrinsic hero's sentence facts. */

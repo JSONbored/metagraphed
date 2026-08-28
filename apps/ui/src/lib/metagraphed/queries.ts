@@ -206,6 +206,15 @@ import type {
   SubnetHyperparamsHistoryEntry,
   SubnetStakeQuote,
   SubnetRecycled,
+  SubnetRevenue,
+  SubnetRevenueArtifact,
+  RevenueBasis,
+  RevenueEmission,
+  RevenueProvenance,
+  RevenueSource,
+  RevenueVerificationCheck,
+  ChainRevenueCoverage,
+  RevenueWindow,
   SubnetIdleStake,
   ChainIdleStake,
   ChainIdleStakeSubnet,
@@ -282,6 +291,7 @@ import type {
   GlobalValidators,
   GlobalValidatorSort,
   GlobalValidatorSubnet,
+  OperatorValidator,
   ValidatorDetail,
   ValidatorDetailSubnet,
   ColdkeyIdentity,
@@ -831,9 +841,43 @@ export const lineageQuery = () =>
 /** The three fields a composition or a name lookup needs from an economics row. */
 const ECONOMICS_IDENTITY_FIELDS = ["netuid", "name", "emission_share"] as const;
 
+const ECONOMICS_DIRECTORY_FIELDS = [
+  "netuid",
+  "name",
+  "emission_share",
+  "total_stake_alpha",
+  "alpha_price_tao",
+  "alpha_price_change_7d",
+  "alpha_price_change_1m",
+  "validator_count",
+  "subnet_volume_tao",
+] as const;
+
+const ECONOMICS_DETAIL_FIELDS = [
+  "netuid",
+  "name",
+  "emission_share",
+  "total_stake_alpha",
+  "alpha_price_tao",
+  "max_uids",
+  "miner_count",
+  "validator_count",
+  "registration_allowed",
+  "owner_coldkey",
+  "owner_hotkey",
+] as const;
+
+type EconomicsFields = "all" | "detail" | "directory" | "identity";
+
+const ECONOMICS_FIELDS: Record<Exclude<EconomicsFields, "all">, readonly string[]> = {
+  detail: ECONOMICS_DETAIL_FIELDS,
+  directory: ECONOMICS_DIRECTORY_FIELDS,
+  identity: ECONOMICS_IDENTITY_FIELDS,
+};
+
 /**
- * @param fields `"all"` for the full row, `"identity"` for netuid + name +
- * emission share.
+ * @param fields `"all"` for the full row or a named route projection. Named
+ * projections are sent to the API, not merely removed after download.
  *
  * The response is 129 rows of ~45 fields, and a page that only composes
  * emission share inlines the whole thing as SSR dehydration -- 176 KB of the
@@ -842,11 +886,12 @@ const ECONOMICS_IDENTITY_FIELDS = ["netuid", "name", "emission_share"] as const;
  * of the query KEY so two callers asking for different shapes cannot share a
  * cache entry and read rows that are missing a field.
  */
-export const economicsQuery = ({ fields = "all" }: { fields?: "all" | "identity" } = {}) =>
+export const economicsQuery = ({ fields = "all" }: { fields?: EconomicsFields } = {}) =>
   queryOptions({
     queryKey: k("economics", fields),
     queryFn: async ({ signal }) => {
       const res = await apiFetch<{ subnets?: unknown }>("/api/v1/economics", {
+        params: fields === "all" ? undefined : { fields: ECONOMICS_FIELDS[fields].join(",") },
         signal,
       });
       const rows = normalizeEconomicsSubnets(res.data?.subnets);
@@ -855,7 +900,7 @@ export const economicsQuery = ({ fields = "all" }: { fields?: "all" | "identity"
           fields === "all"
             ? rows
             : rows.map((row) =>
-                Object.fromEntries(ECONOMICS_IDENTITY_FIELDS.map((field) => [field, row[field]])),
+                Object.fromEntries(ECONOMICS_FIELDS[fields].map((field) => [field, row[field]])),
               ),
         meta: res.meta,
         url: res.url,
@@ -2132,6 +2177,55 @@ export const blockExtrinsicsQuery = (ref: string, params?: QueryParams) =>
         signal,
       });
       return { ...res, data: normalizeBlockExtrinsics(res.data) } as ApiResult<BlockExtrinsics>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/**
+ * Offset-paginated extrinsics for one immutable block.
+ *
+ * A block can contain more than the endpoint's 100-row page ceiling. The
+ * detail route used to issue one `limit=100` request and silently stop there,
+ * even when the block header reported a larger exact count. Keep the first
+ * request byte-for-byte compatible with the existing cache key (no explicit
+ * `offset=0`), then walk subsequent pages by the exact number already shown.
+ */
+export const blockExtrinsicsInfiniteQuery = (
+  ref: string,
+  pageSize = 100,
+  knownTotal?: number | null,
+) =>
+  infiniteQueryOptions({
+    // `knownTotal` only improves termination; it does not identify different
+    // data. Keeping it out of the key lets an intent-prefetched first page be
+    // reused when the block record later supplies its exact count.
+    queryKey: k("block-extrinsics-infinite", ref, pageSize),
+    initialPageParam: 0,
+    queryFn: async ({ pageParam, signal }) => {
+      const offset = pageParam as number;
+      const params: QueryParams = {
+        limit: pageSize,
+        ...(offset > 0 ? { offset } : {}),
+      };
+      const res = await apiFetch<unknown>(`/api/v1/blocks/${blockRefPathSegment(ref)}/extrinsics`, {
+        params,
+        signal,
+      });
+      return {
+        ...res,
+        data: normalizeBlockExtrinsics(res.data),
+      } as ApiResult<BlockExtrinsics>;
+    },
+    getNextPageParam: (last, pages) => {
+      const shown = pages.reduce((count, page) => count + page.data.extrinsics.length, 0);
+      if (last.data.extrinsics.length < pageSize) return undefined;
+      // The subresource's `extrinsic_count` is the number in THIS PAGE (100,
+      // then 62 for a 162-call block), not the block total. Only the header's
+      // count can terminate an exactly-full page without an extra empty read.
+      if (typeof knownTotal === "number" && Number.isFinite(knownTotal) && shown >= knownTotal) {
+        return undefined;
+      }
+      return shown;
     },
     staleTime: STALE_SHORT,
   });
@@ -5112,9 +5206,26 @@ export const subnetProfileQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-profile", netuid),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/profile`, { signal });
+      // The page reads identity, links, counts, and descriptive metadata from
+      // `profile`/`subnet`. Surfaces, endpoints, and candidates each have their
+      // own independently cached section query below. Asking the profile
+      // endpoint for all seven sections made SN19's request 115 KB instead of
+      // 8 KB and then dehydrated three duplicate collections into the HTML.
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/profile`, {
+        params: { sections: "profile,subnet" },
+        signal,
+      });
+      const profile = normalizeSubnetProfile(res.data, netuid);
       return {
-        data: normalizeSubnetProfile(res.data, netuid),
+        // The production projection omits these already. Explicitly omit them
+        // here too so an older server or the pathname-only E2E fixture cannot
+        // put duplicate collections back into SSR dehydration.
+        data: {
+          ...profile,
+          candidate_surfaces: undefined,
+          endpoints: undefined,
+          surfaces: undefined,
+        },
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetProfile>;
@@ -7258,23 +7369,188 @@ export const subnetOwnerCutQuery = (netuid: number) =>
     staleTime: STALE_MED,
   });
 
+const REVENUE_PROVENANCES = new Set<RevenueProvenance>([
+  "chain-verified",
+  "probe-derived",
+  "operator-attested",
+  "third-party-reported",
+  "proxy-only",
+  "none",
+]);
+
+function nonNegativeInteger(value: unknown): number | null {
+  const number = coerceFiniteNumber(value);
+  return number != null && Number.isInteger(number) && number >= 0 ? number : null;
+}
+
+function positiveInteger(value: unknown): number | null {
+  const number = nonNegativeInteger(value);
+  return number != null && number > 0 ? number : null;
+}
+
+function normalizeRevenueProvenance(value: unknown): RevenueProvenance | null {
+  const provenance = coerceString(value);
+  return provenance && REVENUE_PROVENANCES.has(provenance as RevenueProvenance)
+    ? (provenance as RevenueProvenance)
+    : null;
+}
+
+function normalizeRevenueBasis(raw: unknown): RevenueBasis | null {
+  if (!isRecord(raw)) return null;
+  return {
+    tao: coerceFiniteNumber(raw.tao) ?? null,
+    usd: coerceFiniteNumber(raw.usd) ?? null,
+  };
+}
+
+function normalizeRevenueEmission(raw: unknown): RevenueEmission {
+  const data = isRecord(raw) ? raw : {};
+  const alternates = isRecord(data.alternates) ? data.alternates : {};
+  return {
+    basis: data.basis === "tao_total" ? "tao_total" : null,
+    tao: coerceFiniteNumber(data.tao) ?? null,
+    usd: coerceFiniteNumber(data.usd) ?? null,
+    alternates: {
+      alpha_out_priced: normalizeRevenueBasis(alternates.alpha_out_priced),
+      owner_take: normalizeRevenueBasis(alternates.owner_take),
+    },
+  };
+}
+
+function normalizeRevenueSource(raw: unknown): RevenueSource | null {
+  if (!isRecord(raw)) return null;
+  const surfaceId = coerceString(raw.surface_id);
+  if (!surfaceId) return null;
+  const supersedes = Array.isArray(raw.supersedes)
+    ? raw.supersedes.flatMap((value) => {
+        const id = coerceString(value);
+        return id ? [id] : [];
+      })
+    : undefined;
+  const periodsObserved = nonNegativeInteger(raw.periods_observed);
+  const periodsExpected = nonNegativeInteger(raw.periods_expected);
+  return {
+    surface_id: surfaceId,
+    provenance: normalizeRevenueProvenance(raw.provenance),
+    currency: coerceString(raw.currency) ?? null,
+    grain: coerceString(raw.grain) ?? null,
+    ...(supersedes ? { supersedes } : {}),
+    amount_usd: coerceFiniteNumber(raw.amount_usd) ?? null,
+    // Do not turn a malformed/missing flag into "excluded". The UI needs a
+    // third state for unknown evidence, separate from a real false.
+    contributes: booleanValue(raw.contributes) ?? null,
+    excluded_reason: coerceString(raw.excluded_reason) ?? null,
+    ...(periodsObserved != null ? { periods_observed: periodsObserved } : {}),
+    ...(periodsExpected != null ? { periods_expected: periodsExpected } : {}),
+    ...(coerceString(raw.response_hash) ? { response_hash: coerceString(raw.response_hash) } : {}),
+    ...(coerceString(raw.observed_at) ? { observed_at: coerceString(raw.observed_at) } : {}),
+  };
+}
+
+function normalizeRevenueVerificationCheck(raw: unknown): RevenueVerificationCheck | null {
+  if (!isRecord(raw)) return null;
+  const name = coerceString(raw.name);
+  if (!name) return null;
+  return {
+    name,
+    ok: booleanValue(raw.ok) ?? null,
+    detail: coerceString(raw.detail) ?? null,
+  };
+}
+
+function normalizeRevenueVerification(raw: unknown): SubnetRevenue["verification"] {
+  const data = isRecord(raw) ? raw : {};
+  return {
+    verified: booleanValue(data.verified) ?? null,
+    checks: Array.isArray(data.checks)
+      ? data.checks.flatMap((check) => {
+          const normalized = normalizeRevenueVerificationCheck(check);
+          return normalized ? [normalized] : [];
+        })
+      : [],
+  };
+}
+
+/**
+ * Revenue data is evidence data: a null ratio means no readable revenue was
+ * observed, not a zero. Normalize every nullable value at the boundary so a
+ * card cannot accidentally coerce the normal absence case into a claim.
+ */
+export function normalizeSubnetRevenue(raw: unknown, fallbackNetuid: number): SubnetRevenue {
+  const data = isRecord(raw) ? raw : {};
+  const sources = Array.isArray(data.sources)
+    ? data.sources.flatMap((source) => {
+        const normalized = normalizeRevenueSource(source);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: nonNegativeInteger(data.netuid) ?? fallbackNetuid,
+    window_days: positiveInteger(data.window_days),
+    emission: normalizeRevenueEmission(data.emission),
+    revenue_usd: coerceFiniteNumber(data.revenue_usd) ?? null,
+    provenance: normalizeRevenueProvenance(data.provenance),
+    searched_at: coerceString(data.searched_at) ?? null,
+    coverage_ratio: coerceFiniteNumber(data.coverage_ratio) ?? null,
+    subsidy_multiple: coerceFiniteNumber(data.subsidy_multiple) ?? null,
+    sources,
+    verification: normalizeRevenueVerification(data.verification),
+  };
+}
+
+/** /api/v1/subnets/{netuid}/revenue's outer artifact. */
+export function normalizeSubnetRevenueArtifact(
+  raw: unknown,
+  fallbackNetuid: number,
+): SubnetRevenueArtifact {
+  const data = isRecord(raw) ? raw : {};
+  const netuid = nonNegativeInteger(data.netuid) ?? fallbackNetuid;
+  return {
+    schema_version: positiveInteger(data.schema_version) ?? 1,
+    generated_at: coerceString(data.generated_at) ?? null,
+    netuid,
+    revenue: normalizeSubnetRevenue(data.revenue, netuid),
+  };
+}
+
+/** /api/v1/chain/revenue-coverage's complete, intentionally non-sparse list. */
+export function normalizeChainRevenueCoverage(raw: unknown): ChainRevenueCoverage {
+  const data = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(data.subnets)
+    ? data.subnets.flatMap((subnet) => {
+        if (!isRecord(subnet)) return [];
+        const netuid = nonNegativeInteger(subnet.netuid);
+        return netuid == null ? [] : [normalizeSubnetRevenue(subnet, netuid)];
+      })
+    : [];
+  return {
+    schema_version: positiveInteger(data.schema_version) ?? 1,
+    generated_at: coerceString(data.generated_at) ?? null,
+    window_days: positiveInteger(data.window_days),
+    observed_count: nonNegativeInteger(data.observed_count),
+    subnet_count: nonNegativeInteger(data.subnet_count),
+    subnets,
+  };
+}
+
 // #10447: one subnet's external revenue against the TAO the network emits to
 // it. coverage_ratio and subsidy_multiple stay NULL when revenue is not
 // observed — 127 of 129 subnets are in that state, and coercing null to 0 here
 // would render every one of them as "0% covered", which is a false claim about
 // each. An observed 0 is a different value and survives as a real 0.
-export const subnetRevenueQuery = (netuid: number) =>
+export const subnetRevenueQuery = (netuid: number, window: RevenueWindow = "1d") =>
   queryOptions({
-    queryKey: k("subnet-revenue", netuid),
+    queryKey: k("subnet-revenue", netuid, window),
     queryFn: async ({ signal }) => {
       const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/revenue`, {
+        params: { window },
         signal,
       });
       return {
-        data: isRecord(res.data) ? res.data : {},
+        data: normalizeSubnetRevenueArtifact(res.data, netuid),
         meta: res.meta,
         url: res.url,
-      } as ApiResult<Record<string, unknown>>;
+      } as ApiResult<SubnetRevenueArtifact>;
     },
     staleTime: STALE_MED,
   });
@@ -7282,18 +7558,19 @@ export const subnetRevenueQuery = (netuid: number) =>
 // #10447: every subnet's coverage in one response. Subnets with no observed
 // revenue are included with null ratios rather than dropped — omitting them
 // would make the covered set look like the whole network.
-export const chainRevenueCoverageQuery = () =>
+export const chainRevenueCoverageQuery = (window: RevenueWindow = "1d") =>
   queryOptions({
-    queryKey: k("chain-revenue-coverage"),
+    queryKey: k("chain-revenue-coverage", window),
     queryFn: async ({ signal }) => {
       const res = await apiFetch<unknown>(`/api/v1/chain/revenue-coverage`, {
+        params: { window },
         signal,
       });
       return {
-        data: isRecord(res.data) ? res.data : {},
+        data: normalizeChainRevenueCoverage(res.data),
         meta: res.meta,
         url: res.url,
-      } as ApiResult<Record<string, unknown>>;
+      } as ApiResult<ChainRevenueCoverage>;
     },
     staleTime: STALE_MED,
   });
@@ -8437,11 +8714,35 @@ export const subnetValidatorsQuery = (netuid: number) =>
  * shapes must not share a cache entry, or whichever ran second would read rows
  * that are missing a field it needs.
  */
-export const validatorsQuery = ({
+export function projectOperatorValidator(validator: GlobalValidator): OperatorValidator {
+  return {
+    hotkey: validator.hotkey,
+    coldkey: validator.coldkey,
+    coldkey_identity:
+      validator.coldkey_identity === null
+        ? null
+        : {
+            has_identity: validator.coldkey_identity.has_identity,
+            name: validator.coldkey_identity.name,
+          },
+    subnet_count: validator.subnet_count,
+    uid_count: validator.uid_count,
+    take: validator.take,
+    total_stake_tao: validator.total_stake_tao,
+    total_emission_tao: validator.total_emission_tao,
+    nominator_count: validator.nominator_count,
+    apy_estimate: validator.apy_estimate,
+    stake_dominance: validator.stake_dominance,
+    subnets: [],
+  };
+}
+
+export const validatorsQuery = <Projection extends "full" | "operator" = "full">({
   sort = "subnet_count",
   limit = 20,
   subnets = true,
   identity = true,
+  projection = "full" as Projection,
 }: {
   sort?: GlobalValidatorSort;
   limit?: number;
@@ -8458,9 +8759,11 @@ export const validatorsQuery = ({
    * dehydration (#11616).
    */
   identity?: boolean;
+  /** Keep only fields the operator directory and peer ranking actually read. */
+  projection?: Projection;
 } = {}) =>
   queryOptions({
-    queryKey: k("global-validators", sort, limit, subnets, identity),
+    queryKey: k("global-validators", sort, limit, subnets, identity, projection),
     queryFn: async ({ signal }) => {
       const res = await apiFetch<Partial<GlobalValidators>>("/api/v1/validators", {
         params: { sort, limit },
@@ -8468,31 +8771,39 @@ export const validatorsQuery = ({
       });
       const data = normalizeGlobalValidators(res.data);
       const projected =
-        subnets && identity
-          ? data
-          : {
-              ...data,
-              validators: data.validators.map((v) => ({
-                ...v,
-                ...(subnets ? {} : { subnets: [] }),
-                ...(identity || v.coldkey_identity === null
-                  ? {}
-                  : {
-                      coldkey_identity: {
-                        has_identity: v.coldkey_identity.has_identity,
-                        name: v.coldkey_identity.name,
-                        url: null,
-                        github: null,
-                        image: null,
-                        discord: null,
-                        description: null,
-                        additional: null,
-                        captured_at: null,
-                      },
-                    }),
-              })),
-            };
-      return { data: projected, meta: res.meta, url: res.url } as ApiResult<GlobalValidators>;
+        projection === "operator"
+          ? { ...data, validators: data.validators.map(projectOperatorValidator) }
+          : subnets && identity
+            ? data
+            : {
+                ...data,
+                validators: data.validators.map((v) => ({
+                  ...v,
+                  ...(subnets ? {} : { subnets: [] }),
+                  ...(identity || v.coldkey_identity === null
+                    ? {}
+                    : {
+                        coldkey_identity: {
+                          has_identity: v.coldkey_identity.has_identity,
+                          name: v.coldkey_identity.name,
+                          url: null,
+                          github: null,
+                          image: null,
+                          discord: null,
+                          description: null,
+                          additional: null,
+                          captured_at: null,
+                        },
+                      }),
+                })),
+              };
+      return {
+        data: projected,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<
+        GlobalValidators<Projection extends "operator" ? OperatorValidator : GlobalValidator>
+      >;
     },
     staleTime: STALE_SHORT,
   });
@@ -10129,6 +10440,8 @@ export function normalizeAgentResources(raw: unknown): AgentResources {
   const copyableAgent = recordValue(d.copyable_agent);
   const mcp = recordValue(d.mcp);
   const summary = recordValue(d.summary);
+  const coreEndpoint = stringValue(mcp.core_endpoint);
+  const recommendedEndpoint = stringValue(mcp.recommended_endpoint);
   const tools = Array.isArray(mcp.tools)
     ? mcp.tools
         .map((tool) => {
@@ -10153,8 +10466,10 @@ export function normalizeAgentResources(raw: unknown): AgentResources {
       url: stringValue(copyableAgent.url),
     },
     mcp: {
+      ...(coreEndpoint ? { core_endpoint: coreEndpoint } : {}),
       endpoint: stringValue(mcp.endpoint),
       install: stringValue(mcp.install),
+      ...(recommendedEndpoint ? { recommended_endpoint: recommendedEndpoint } : {}),
       server_card: stringValue(mcp.server_card),
       transport: stringValue(mcp.transport, "MCP"),
       tools,
@@ -10997,23 +11312,6 @@ export const changelogQuery = () =>
       return { ...res, data: normalizeChangelogEntries(res.data) };
     },
     staleTime: STALE_LONG,
-  });
-
-export const searchQuery = (q: string, limit = 20) =>
-  queryOptions({
-    queryKey: k("search-index", q, limit),
-    // Typeahead uses the slim /search-index (the same documents, ranking, and q/limit
-    // filtering as /search, but without the per-document token blobs) for a lighter,
-    // faster browser round-trip on every keystroke (#3490).
-    queryFn: ({ signal }) =>
-      fetchList<{ id: string; kind?: string; title?: string; url?: string }>(
-        "/api/v1/search-index",
-        "documents",
-        { q, limit },
-        signal,
-      ),
-    enabled: q.trim().length > 0,
-    staleTime: STALE_SHORT,
   });
 
 // Vector-similarity fallback for the keyword-only /api/v1/search-index above.

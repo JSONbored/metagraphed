@@ -31,6 +31,24 @@ describe("factCells", () => {
     expect(first).toEqual({ label: "A", value: 1, delta: { text: "+2%", tone: "good" } });
   });
 
+  it("carries a text kind through for a compact non-numeric reading", () => {
+    expect(
+      factCells([
+        { key: "self", label: "Metagraphed itself", value: "operational", kind: "text" },
+        fact("count"),
+      ])?.[0],
+    ).toEqual({ label: "Metagraphed itself", value: "operational", kind: "text" });
+  });
+
+  it("carries a pending reading through instead of silently rendering its placeholder", () => {
+    expect(
+      factCells([
+        { key: "incident", label: "Open incidents", value: "—", loading: true },
+        fact("count"),
+      ])?.[0],
+    ).toEqual({ label: "Open incidents", value: "—", loading: true });
+  });
+
   it("leaves `delta` off entirely when there is none, rather than passing undefined", () => {
     expect(factCells([fact("a"), fact("b")])![0]).not.toHaveProperty("delta");
   });

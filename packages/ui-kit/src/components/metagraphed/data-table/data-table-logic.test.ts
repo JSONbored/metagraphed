@@ -14,6 +14,7 @@ import {
   sortRows,
   toCsv,
   truncateIdentifier,
+  visibleRangeLabel,
 } from "./data-table-logic";
 
 describe("nextSort", () => {
@@ -89,6 +90,12 @@ describe("paging", () => {
     expect(rangeLabel(1, 50, 1021)).toBe("1–50 of 1,021");
     expect(rangeLabel(3, 50, 125)).toBe("101–125 of 125");
     expect(rangeLabel(1, 50, 0)).toBe("0");
+  });
+
+  it("does not invent a total for a server page that only proves its slice", () => {
+    expect(visibleRangeLabel(1, 50, 50)).toBe("1–50");
+    expect(visibleRangeLabel(3, 50, 17)).toBe("101–117");
+    expect(visibleRangeLabel(1, 50, 0)).toBe("0");
   });
 
   it("elides the pager once there are more than seven pages", () => {

@@ -129,7 +129,47 @@ describe("DataTable markup", () => {
     const html = render();
     expect(html).toContain('data-label="Stake"');
     expect(html).toContain('data-mobile="cards"');
-    expect(render({ mobile: "scroll" })).toContain('data-mobile="scroll"');
+    expect((html.match(/data-mobile-lead="true"/g) ?? []).length).toBe(3);
+    const scroll = render({ mobile: "scroll" });
+    expect(scroll).toContain('data-mobile="scroll"');
+    expect(scroll).not.toContain('data-mobile-lead="true"');
+  });
+
+  it("can emit repeated mobile labels once for a large crawlable directory", () => {
+    const html = render({ compactMobileLabels: true });
+    expect(html).toContain("data-mobile-label-template=");
+    expect(html).toContain('td:nth-child(2)::before{content:"Hotkey"}');
+    expect(html).not.toContain('data-label="Hotkey"');
+    // The cards still nominate exactly one identity per row; only the
+    // repeated visual labels move to the table-scoped rule.
+    expect((html.match(/data-mobile-lead="true"/g) ?? []).length).toBe(3);
+  });
+
+  it("can nominate a readable identity while retaining one row link", () => {
+    const html = render({
+      rowHref: (r: Row) => `/validators/${r.id}`,
+      columns: [
+        columns[0]!,
+        { ...columns[1]!, lead: true },
+        ...columns.slice(2),
+      ],
+    });
+    expect(html).toMatch(
+      /<td[^>]*data-label="Hotkey"[^>]*data-lead="true"[^>]*data-mobile-lead="true"/,
+    );
+    // The nominated identity is also the one crawlable route link per row,
+    // so a desktop or phone reader can tap the identity it sees first without
+    // duplicating anchors in the server-rendered index.
+    expect((html.match(/class="mg-dt-rowlink"/g) ?? []).length).toBe(3);
+    expect(html).toMatch(
+      /<td[^>]*data-label="Hotkey"[^>]*data-lead="true"[^>]*data-mobile-lead="true"[^>]*><a[^>]*href="\/validators\/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9"/,
+    );
+  });
+
+  it("keeps the first visible column as the lead when none is nominated", () => {
+    const html = render();
+    expect((html.match(/data-lead="true"/g) ?? []).length).toBe(3);
+    expect(html).toMatch(/<td[^>]*data-lead="true"[^>]*>Targon<\/td>/);
   });
 
   it("makes the first cell the row's link so a row is one tab stop", () => {
@@ -191,7 +231,11 @@ describe("DataTable markup", () => {
 
   it("renders skeleton rows while loading", () => {
     const html = render({ loading: true });
-    expect((html.match(/class="mg-dt-skeleton"/g) ?? []).length).toBe(8);
+    expect((html.match(/class="mg-dt-row mg-dt-skeleton"/g) ?? []).length).toBe(
+      8,
+    );
+    expect(html).toMatch(/<table[^>]*aria-busy="true"/);
+    expect(html).toContain('data-mobile-lead="true"');
     expect(html).not.toContain("Targon");
   });
 
@@ -205,6 +249,21 @@ describe("DataTable markup", () => {
     const all = render({ pageSize: 2, paginate: false });
     expect((all.match(/class="mg-dt-row"/g) ?? []).length).toBe(3);
     expect(all).not.toContain("mg-dt-footer");
+  });
+
+  it("keeps an unknown server total out of both the caption and page range", () => {
+    const page = render({
+      rows: rows.slice(0, 2),
+      page: 1,
+      onPage: () => {},
+      pageSize: 2,
+      hasMore: true,
+      captionCount: null,
+    });
+    expect(page).toContain(">Validators</p>");
+    expect(page).not.toContain("Validators (2)");
+    expect(page).toContain("1–2</span>");
+    expect(page).not.toContain("1–2 of");
   });
 
   it("sorts itself when no one else owns the sort", () => {

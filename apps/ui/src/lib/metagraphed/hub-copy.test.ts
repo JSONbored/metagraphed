@@ -44,10 +44,11 @@ describe("hub copy targets the query, not the brand", () => {
   it("states the subnet count from the protocol cap, never a literal", () => {
     // A registration changes WHICH project holds a netuid, not how many exist,
     // so this is a constant rather than a fetch — and 128 rather than 129,
-    // because root is governance and a title claiming 129 would disagree with
-    // the rows the page lists. scripts/validate-subnet-slot-cap.ts fails CI if
-    // the registry stops matching.
+    // because root is governance rather than an application subnet. The title
+    // names both groups because the directory intentionally renders both.
+    // scripts/validate-subnet-slot-cap.ts fails CI if the registry stops matching.
     expect(HUB_COPY["/subnets"].title).toContain(String(SUBNET_SLOT_CAP));
+    expect(HUB_COPY["/subnets"].title).toContain("application subnets + root");
     expect(HUB_COPY["/subnets"].title).not.toContain("129");
   });
 });

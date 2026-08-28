@@ -8,6 +8,8 @@ import {
 } from "@jsonbored/ui-kit";
 import { subnetHistoryQuery, subnetOhlcQuery } from "@/lib/metagraphed/queries";
 import { deltaCell, formatTao } from "@/lib/metagraphed/format";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { ErrorState } from "@/components/metagraphed/states";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import {
   WINDOW_OPTIONS,
@@ -40,6 +42,9 @@ export function MomentumSection({
   const days = windowDays(window);
   const ohlc = useQuery({ ...subnetOhlcQuery(netuid, { interval: "1d", days: 90 }), retry: 0 });
   const history = useQuery({ ...subnetHistoryQuery(netuid, "90d"), retry: 0 });
+  const hydrated = useHydrated();
+  const loading = !hydrated || ohlc.isPending || history.isPending;
+  const showPriceLoading = hydrated && ohlc.isPending;
 
   const candles = ohlc.data?.data.candles ?? [];
   const points = closePoints(candles, days);
@@ -63,11 +68,13 @@ export function MomentumSection({
     {
       label: `Alpha price ${window} ago`,
       value: opening ? formatTao(opening.v) : "—",
+      loading: ohlc.isPending,
       delta: deltaCell(priceChange),
     },
     {
       label: `Total stake ${window} ago`,
       value: openingStake ? `${taoCompact(openingStake.total_stake_alpha)} α` : "—",
+      loading: history.isPending,
       delta: deltaCell(stakeChange),
     },
     {
@@ -77,9 +84,14 @@ export function MomentumSection({
       // cell was not displaying. The share is a hero fact; this is the flow.
       label: "Daily emission",
       value: latest ? `${taoCompact(latest.total_emission_alpha)} α` : "—",
+      loading: history.isPending,
       delta: deltaCell(emissionChange),
     },
-    { label: `Volume ${window}`, value: volume != null ? `${taoCompact(volume)} τ` : "—" },
+    {
+      label: `Volume ${window}`,
+      value: volume != null ? `${taoCompact(volume)} τ` : "—",
+      loading: ohlc.isPending,
+    },
   ];
 
   return (
@@ -91,7 +103,24 @@ export function MomentumSection({
         <RangeControl label="Window" options={WINDOW_OPTIONS} value={window} onChange={onWindow} />
       }
       visual={
-        points.length > 1 ? (
+        showPriceLoading ? (
+          <LineWithWindow
+            id={`sn-${netuid}-price`}
+            points={[]}
+            window={{ from: 0, to: 0 }}
+            unit="τ"
+            formatValue={(v) => formatTao(v)}
+            ariaLabel={`Subnet ${netuid} alpha price, ${window}`}
+            source={`sn-${netuid}-price`}
+            loading
+          />
+        ) : ohlc.isError ? (
+          <ErrorState
+            error={ohlc.error}
+            onRetry={() => void ohlc.refetch()}
+            context={`${window} alpha price history`}
+          />
+        ) : points.length > 1 ? (
           <LineWithWindow
             id={`sn-${netuid}-price`}
             points={points}
@@ -103,8 +132,24 @@ export function MomentumSection({
           />
         ) : null
       }
-      legend={<FactStrip cells={cells} />}
-      footnote={`${window} · daily close, chain-direct`}
+      legend={
+        history.isError ? (
+          <ErrorState
+            error={history.error}
+            onRetry={() => void history.refetch()}
+            context={`${window} subnet stake and emission history`}
+          />
+        ) : (
+          <FactStrip cells={cells} />
+        )
+      }
+      footnote={
+        loading
+          ? `Loading ${window} price and stake readings · chain-direct`
+          : ohlc.isError || history.isError
+            ? "chain-direct · retry the affected record above"
+            : `${window} · daily close, chain-direct`
+      }
     />
   );
 }

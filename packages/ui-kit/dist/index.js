@@ -1131,7 +1131,7 @@ function CopyableCode({
             {
               className: classNames(
                 "min-w-0 text-ink-strong",
-                truncate ? "truncate" : "truncate sm:whitespace-normal sm:break-all"
+                truncate ? "truncate" : "whitespace-normal break-all"
               ),
               children: value
             }
@@ -1722,10 +1722,12 @@ function AnalyticsSection({
   name,
   question,
   visual,
+  visualRef,
   legend,
   footnote,
   controls,
   children,
+  after,
   empty,
   className
 }) {
@@ -1735,6 +1737,7 @@ function AnalyticsSection({
   return /* @__PURE__ */ jsxs(
     "section",
     {
+      ref: visualRef,
       id,
       className: classNames("mg-section", className),
       "aria-labelledby": headingId,
@@ -1754,7 +1757,8 @@ function AnalyticsSection({
         children,
         legend ? /* @__PURE__ */ jsx("div", { className: "mg-section-legend", children: legend }) : null,
         showEmpty ? /* @__PURE__ */ jsx("p", { className: "mg-section-empty", children: empty ?? "No data in this window." }) : null,
-        footnote ? /* @__PURE__ */ jsx("p", { className: "mg-section-note", children: footnote }) : null
+        footnote ? /* @__PURE__ */ jsx("p", { className: "mg-section-note", children: footnote }) : null,
+        after
       ]
     }
   );
@@ -1779,6 +1783,18 @@ function SectionHead({
 }
 function pickActiveSection(ids, visible, current) {
   return ids.find((id) => visible.has(id)) ?? current;
+}
+function sectionNavScrollState({
+  scrollWidth,
+  clientWidth,
+  scrollLeft
+}) {
+  const hasOverflow = scrollWidth > clientWidth + 1;
+  return {
+    hasOverflow,
+    atStart: !hasOverflow || scrollLeft <= 1,
+    atEnd: !hasOverflow || scrollLeft + clientWidth >= scrollWidth - 1
+  };
 }
 function useActiveSection(ids) {
   const [active, setActive] = useState(ids[0] ?? null);
@@ -1808,6 +1824,29 @@ function useActiveSection(ids) {
 function SectionNav({ items, link, className }) {
   const anchors = items.filter((i) => !i.href).map((i) => i.id);
   const active = useActiveSection(anchors);
+  const scrollRef = useRef(null);
+  const [scrollState, setScrollState] = useState({
+    hasOverflow: false,
+    atStart: true,
+    atEnd: true
+  });
+  const syncScrollState = () => {
+    const node = scrollRef.current;
+    if (!node) return;
+    const next = sectionNavScrollState(node);
+    setScrollState(
+      (current) => current.hasOverflow === next.hasOverflow && current.atStart === next.atStart && current.atEnd === next.atEnd ? current : next
+    );
+  };
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+    syncScrollState();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(syncScrollState);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [items]);
   if (items.length === 0) return null;
   const LinkCmp = link ?? DefaultLink;
   return /* @__PURE__ */ jsx(
@@ -1816,23 +1855,34 @@ function SectionNav({ items, link, className }) {
       className: classNames("mg-section-nav", className),
       "aria-label": "Sections",
       "data-mg-section-nav": "",
-      children: /* @__PURE__ */ jsx("ul", { children: items.map(
-        (item) => item.href ? /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(
-          LinkCmp,
-          {
-            href: item.href,
-            "aria-current": item.current ? "page" : void 0,
-            children: item.name
-          }
-        ) }, item.id) : /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(
-          "a",
-          {
-            href: `#${item.id}`,
-            "aria-current": active === item.id ? "location" : void 0,
-            children: item.name
-          }
-        ) }, item.id)
-      ) })
+      "data-overflow": scrollState.hasOverflow ? "true" : void 0,
+      "data-scroll-start": scrollState.atStart ? "true" : void 0,
+      "data-scroll-end": scrollState.atEnd ? "true" : void 0,
+      children: /* @__PURE__ */ jsx(
+        "div",
+        {
+          ref: scrollRef,
+          className: "mg-section-nav-scroll",
+          onScroll: syncScrollState,
+          children: /* @__PURE__ */ jsx("ul", { children: items.map(
+            (item) => item.href ? /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(
+              LinkCmp,
+              {
+                href: item.href,
+                "aria-current": item.current ? "page" : void 0,
+                children: item.name
+              }
+            ) }, item.id) : /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(
+              "a",
+              {
+                href: `#${item.id}`,
+                "aria-current": active === item.id ? "location" : void 0,
+                children: item.name
+              }
+            ) }, item.id)
+          ) })
+        }
+      )
     }
   );
 }
@@ -1876,12 +1926,13 @@ function FactStrip({
   variant = "row",
   className
 }) {
+  const count = cells?.length ?? Children.count(children);
   return /* @__PURE__ */ jsxs(
     "dl",
     {
       className: classNames("mg-facts", className),
       "data-variant": variant,
-      "data-count": cells?.length,
+      "data-count": count || void 0,
       children: [
         cells?.map((cell) => /* @__PURE__ */ jsx(FactCell, { ...cell }, cell.label)),
         children
@@ -1892,18 +1943,36 @@ function FactStrip({
 function FactCell({
   label,
   value,
+  kind,
+  loading = false,
+  tone,
   delta,
   hint,
   className
 }) {
-  return /* @__PURE__ */ jsxs("div", { className: classNames("mg-fact", className), children: [
+  return /* @__PURE__ */ jsxs("div", { className: classNames("mg-fact", className), "data-tone": tone, children: [
     /* @__PURE__ */ jsxs("dt", { children: [
       label,
       /* @__PURE__ */ jsx(Definition, { term: label, sentence: hint })
     ] }),
-    /* @__PURE__ */ jsxs("dd", { children: [
-      /* @__PURE__ */ jsx("span", { className: "mg-fact-value", children: value }),
-      delta ? /* @__PURE__ */ jsx("span", { className: "mg-fact-delta", "data-tone": delta.tone, children: delta.text }) : null
+    /* @__PURE__ */ jsxs("dd", { "aria-busy": loading || void 0, children: [
+      loading ? /* @__PURE__ */ jsxs(Fragment, { children: [
+        /* @__PURE__ */ jsx("span", { className: "mg-fact-loading", "aria-hidden": "true" }),
+        /* @__PURE__ */ jsxs("span", { className: "sr-only", children: [
+          "Loading ",
+          label
+        ] })
+      ] }) : /* @__PURE__ */ jsx(
+        "span",
+        {
+          className: classNames(
+            "mg-fact-value",
+            kind === "text" && "mg-fact-value--text"
+          ),
+          children: value
+        }
+      ),
+      !loading && delta ? /* @__PURE__ */ jsx("span", { className: "mg-fact-delta", "data-tone": delta.tone, children: delta.text }) : null
     ] })
   ] });
 }
@@ -2452,7 +2521,7 @@ function EmptyState({
 
 // src/components/metagraphed/charts/series-palette.ts
 var CHART_RAMP_SIZE = 10;
-var OTHER_COLOR = "var(--chart-11)";
+var OTHER_COLOR = "var(--chart-residual)";
 var OTHER_KEY = "Other";
 var RESIDUAL_KEY = "rest";
 var SeriesPaletteRegistry = class {
@@ -2506,6 +2575,18 @@ function collapseOther(segments, registry, label = OTHER_KEY) {
     kept.push({ key: OTHER_KEY, label: residualLabel ?? label, value: other });
   return kept;
 }
+function stackScrollState({
+  clientWidth,
+  scrollWidth,
+  scrollLeft
+}) {
+  const overflow = scrollWidth > clientWidth + 1;
+  return {
+    overflow,
+    atStart: !overflow || scrollLeft <= 1,
+    atEnd: !overflow || scrollLeft + clientWidth >= scrollWidth - 1
+  };
+}
 var defaultFormat = (v) => String(v);
 var BAR_PX = 15;
 function StackedColumns({
@@ -2517,7 +2598,9 @@ function StackedColumns({
   formatValue = defaultFormat,
   ariaLabel,
   columnSource = "stacked-columns",
-  className
+  className,
+  loading = false,
+  loadingColumns = 30
 }) {
   const ownRegistry = useRef(null);
   if (!registry && !ownRegistry.current)
@@ -2525,12 +2608,21 @@ function StackedColumns({
   const reg = registry ?? ownRegistry.current;
   reg.assign(seriesOrder);
   const palette = reg.palette();
+  const displayColumns = useMemo(
+    () => loading ? Array.from({ length: Math.max(1, loadingColumns) }, (_, index) => ({
+      key: `skeleton-${index}`,
+      label: "",
+      total: 0,
+      segments: []
+    })) : columns,
+    [columns, loading, loadingColumns]
+  );
   const rows = useMemo(
-    () => columns.map((c) => ({
+    () => displayColumns.map((c) => ({
       ...c,
       segments: collapseOther(c.segments, reg, other)
     })),
-    [columns, reg, other]
+    [displayColumns, reg, other]
   );
   const seriesKeys = useMemo(() => {
     const keys = reg.keys().filter((k) => rows.some((r) => r.segments.some((s) => s.key === k)));
@@ -2543,24 +2635,42 @@ function StackedColumns({
   const scrollRef = useRef(null);
   const [cadence, setCadence] = useState(7);
   const [gap, setGap] = useState(12);
+  const [scrollState, setScrollState] = useState({
+    overflow: false,
+    atStart: true,
+    atEnd: true
+  });
+  const updateScrollState = useCallback((el) => {
+    const next = stackScrollState(el);
+    setScrollState(
+      (previous) => previous.overflow === next.overflow && previous.atStart === next.atStart && previous.atEnd === next.atEnd ? previous : next
+    );
+  }, []);
   useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
+    if (!el) return;
     const update = () => {
       const width = el.clientWidth;
       setCadence(width >= 768 ? 7 : 14);
       const pitch = width / Math.max(1, rows.length);
       setGap(pitch >= BAR_PX + 12 ? 12 : pitch >= BAR_PX + 8 ? 8 : 6);
+      updateScrollState(el);
     };
     update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [rows.length]);
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    ro?.observe(el);
+    el.addEventListener("scroll", update, { passive: true });
+    return () => {
+      ro?.disconnect();
+      el.removeEventListener("scroll", update);
+    };
+  }, [rows.length, updateScrollState]);
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-  }, [rows.length]);
+    if (!el) return;
+    el.scrollLeft = el.scrollWidth;
+    updateScrollState(el);
+  }, [rows.length, updateScrollState]);
   const max = Math.max(1, ...rows.map((r) => r.total));
   return /* @__PURE__ */ jsxs(
     "div",
@@ -2568,50 +2678,64 @@ function StackedColumns({
       id,
       className: classNames("mg-stack", className),
       "data-mg-stack": "",
+      "data-loading": loading || void 0,
       "data-series-active": activeSeries ? "true" : void 0,
+      "data-overflow": scrollState.overflow ? "true" : void 0,
+      "data-scroll-start": scrollState.atStart ? "true" : void 0,
+      "data-scroll-end": scrollState.atEnd ? "true" : void 0,
       style: {
         "--mg-stack-count": rows.length,
         "--mg-stack-gap": `${gap}px`
       },
       children: [
         /* @__PURE__ */ jsx(ChartTooltip, { top: 110 }),
-        /* @__PURE__ */ jsx("div", { ref: scrollRef, className: "mg-stack-scroll", children: /* @__PURE__ */ jsxs("div", { className: "mg-stack-chart", children: [
-          /* @__PURE__ */ jsx("div", { className: "mg-stack-axis", "aria-hidden": "true", children: rows.map((c, i) => /* @__PURE__ */ jsx(
-            "div",
-            {
-              "data-entity": c.key,
-              "data-active": active?.key === c.key ? "true" : void 0,
-              "data-label-hidden": i % cadence !== 0 ? "true" : void 0,
-              children: /* @__PURE__ */ jsxs("span", { className: "mg-stack-axis-label", children: [
-                /* @__PURE__ */ jsx("span", { className: "mg-stack-axis-total", children: formatValue(c.total) }),
-                /* @__PURE__ */ jsx("span", { children: c.axisLabel ?? c.label })
-              ] })
-            },
-            c.key
-          )) }),
-          /* @__PURE__ */ jsx(
-            "div",
-            {
-              className: "mg-stack-bars",
-              role: "group",
-              "aria-label": ariaLabel,
-              "data-marks": true,
-              children: rows.map((c) => /* @__PURE__ */ jsx(
-                Column,
+        /* @__PURE__ */ jsx(
+          "div",
+          {
+            ref: scrollRef,
+            className: "mg-stack-scroll",
+            tabIndex: scrollState.overflow ? 0 : void 0,
+            "aria-label": scrollState.overflow ? `${ariaLabel}. Scroll horizontally to inspect more periods.` : void 0,
+            children: /* @__PURE__ */ jsxs("div", { className: "mg-stack-chart", children: [
+              /* @__PURE__ */ jsx("div", { className: "mg-stack-axis", "aria-hidden": "true", children: rows.map((c, i) => /* @__PURE__ */ jsx(
+                "div",
                 {
-                  column: c,
-                  max,
-                  palette,
-                  activeSeries,
-                  formatValue,
-                  source: columnSource
+                  "data-entity": c.key,
+                  "data-active": active?.key === c.key ? "true" : void 0,
+                  "data-label-hidden": i % cadence !== 0 ? "true" : void 0,
+                  children: /* @__PURE__ */ jsx("span", { className: "mg-stack-axis-label", children: loading ? /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-8" }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+                    /* @__PURE__ */ jsx("span", { className: "mg-stack-axis-total", children: formatValue(c.total) }),
+                    /* @__PURE__ */ jsx("span", { children: c.axisLabel ?? c.label })
+                  ] }) })
                 },
                 c.key
-              ))
-            }
-          )
-        ] }) }),
-        /* @__PURE__ */ jsx("div", { className: "mg-sr-table", children: /* @__PURE__ */ jsxs("table", { children: [
+              )) }),
+              /* @__PURE__ */ jsx(
+                "div",
+                {
+                  className: "mg-stack-bars",
+                  role: "group",
+                  "aria-label": ariaLabel,
+                  "aria-busy": loading || void 0,
+                  "data-marks": loading ? void 0 : "",
+                  children: loading ? rows.map((c, index) => /* @__PURE__ */ jsx(ColumnSkeleton, { index }, c.key)) : rows.map((c) => /* @__PURE__ */ jsx(
+                    Column,
+                    {
+                      column: c,
+                      max,
+                      palette,
+                      activeSeries,
+                      formatValue,
+                      source: columnSource
+                    },
+                    c.key
+                  ))
+                }
+              )
+            ] })
+          }
+        ),
+        !loading ? /* @__PURE__ */ jsx("div", { className: "mg-sr-table", children: /* @__PURE__ */ jsxs("table", { children: [
           /* @__PURE__ */ jsx("caption", { children: ariaLabel }),
           /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsxs("tr", { children: [
             /* @__PURE__ */ jsx("th", { scope: "col", children: "Period" }),
@@ -2625,8 +2749,20 @@ function StackedColumns({
               c.segments.find((s) => s.key === k)?.value ?? 0
             ) }, k))
           ] }, c.key)) })
-        ] }) })
+        ] }) }) : null
       ]
+    }
+  );
+}
+function ColumnSkeleton({ index }) {
+  const height = 32 + index * 19 % 53;
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      className: "mg-stack-col mg-stack-col--skeleton",
+      "aria-hidden": "true",
+      style: { "--mg-stack-h": `${height}%` },
+      children: /* @__PURE__ */ jsx("span", { className: "mg-stack-skeleton-stack" })
     }
   );
 }
@@ -2863,7 +2999,8 @@ function LineWithWindow({
   compact = false,
   marker,
   markerLabel,
-  className
+  className,
+  loading = false
 }) {
   const placed = useMemo(() => placePoints(points), [points]);
   const inside = useMemo(() => windowPoints(placed, window2), [placed, window2]);
@@ -2872,6 +3009,17 @@ function LineWithWindow({
   const keyFor = keyOf ?? ((p) => `${source}:${p.t}`);
   const { active } = useActiveEntity();
   const activePoint = active ? placed.find((p) => keyFor(p) === active.key) : void 0;
+  if (loading) {
+    return /* @__PURE__ */ jsx(
+      LineSkeleton,
+      {
+        id,
+        ariaLabel,
+        compact,
+        className
+      }
+    );
+  }
   const markerPoint = typeof marker === "number" ? placed.find((p) => p.t === marker) : void 0;
   const first = placed[0];
   const wStart = inside[0];
@@ -3031,6 +3179,46 @@ function LineWithWindow({
     }
   );
 }
+function LineSkeleton({
+  id,
+  ariaLabel,
+  compact,
+  className
+}) {
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      id,
+      className: classNames("mg-line", className),
+      "data-mg-line": "",
+      "data-compact": compact ? "true" : void 0,
+      "data-loading": "true",
+      children: [
+        compact ? null : /* @__PURE__ */ jsxs("div", { className: "mg-line-summary", "aria-hidden": "true", children: [
+          /* @__PURE__ */ jsx(Skeleton, { className: "h-8 w-24" }),
+          /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-52 max-w-full" })
+        ] }),
+        /* @__PURE__ */ jsxs(
+          "div",
+          {
+            className: "mg-line-plot",
+            role: "group",
+            "aria-label": ariaLabel,
+            "aria-busy": "true",
+            children: [
+              /* @__PURE__ */ jsxs("span", { className: "sr-only", children: [
+                "Loading ",
+                ariaLabel
+              ] }),
+              /* @__PURE__ */ jsx(Skeleton, { className: "h-full w-full" })
+            ]
+          }
+        ),
+        compact ? null : /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-full", "aria-hidden": "true" })
+      ]
+    }
+  );
+}
 function Hit({
   entityKey,
   label,
@@ -3090,12 +3278,16 @@ function RankedRails({
   ariaLabel,
   source = "ranked-rails",
   onActivate,
-  className
+  className,
+  loading = false,
+  loadingRows = 6,
+  loadingSecondary = false
 }) {
   const [expanded, setExpanded] = useState(false);
   const cap = max ?? Math.max(0, ...items.map((i) => Math.max(i.value, i.secondary ?? 0)));
   const shown = expanded ? items : items.slice(0, limit);
-  const hasSecondary = items.some((i) => i.secondary !== void 0);
+  const placeholders = Math.max(1, Math.min(loadingRows, limit));
+  const hasSecondary = items.some((i) => i.secondary !== void 0) || loading && loadingSecondary;
   const secondaryCap = secondaryScale === "own" ? Math.max(0, ...items.map((i) => i.secondary ?? 0)) : cap;
   return /* @__PURE__ */ jsxs(
     "div",
@@ -3116,28 +3308,41 @@ function RankedRails({
             className: "mg-rails-rows",
             role: "group",
             "aria-label": ariaLabel,
-            "data-marks": true,
+            "aria-busy": loading || void 0,
+            "data-marks": loading ? void 0 : "",
             children: [
-              /* @__PURE__ */ jsx(ChartTooltip, { top: "mark", offsetLeft: 268 }),
-              shown.map((item) => /* @__PURE__ */ jsx(
-                Rail,
+              loading ? /* @__PURE__ */ jsxs("span", { className: "sr-only", children: [
+                "Loading ",
+                ariaLabel
+              ] }) : null,
+              loading ? Array.from({ length: placeholders }, (_, index) => /* @__PURE__ */ jsx(
+                RailSkeleton,
                 {
-                  item,
-                  cap,
-                  secondaryCap,
-                  scale,
-                  formatValue,
-                  formatSecondary: formatSecondary ?? formatValue,
-                  hasSecondary,
-                  source,
-                  onActivate
+                  hasSecondary
                 },
-                item.key
-              ))
+                `skeleton-${index}`
+              )) : /* @__PURE__ */ jsxs(Fragment, { children: [
+                /* @__PURE__ */ jsx(ChartTooltip, { top: "mark", offsetLeft: 268 }),
+                shown.map((item) => /* @__PURE__ */ jsx(
+                  Rail,
+                  {
+                    item,
+                    cap,
+                    secondaryCap,
+                    scale,
+                    formatValue,
+                    formatSecondary: formatSecondary ?? formatValue,
+                    hasSecondary,
+                    source,
+                    onActivate
+                  },
+                  item.key
+                ))
+              ] })
             ]
           }
         ),
-        items.length > limit && !expanded ? /* @__PURE__ */ jsxs(
+        items.length > limit && !expanded && !loading ? /* @__PURE__ */ jsxs(
           "button",
           {
             type: "button",
@@ -3152,6 +3357,14 @@ function RankedRails({
       ]
     }
   );
+}
+function RailSkeleton({ hasSecondary }) {
+  return /* @__PURE__ */ jsxs("div", { className: "mg-rails-row mg-rails-row--skeleton", "aria-hidden": "true", children: [
+    /* @__PURE__ */ jsx("span", { className: "mg-rails-value", children: /* @__PURE__ */ jsx(Skeleton, { className: "ml-auto h-3 w-10" }) }),
+    /* @__PURE__ */ jsx("span", { className: "mg-rails-name", children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-3/5" }) }),
+    /* @__PURE__ */ jsx("span", { className: "mg-rails-track", children: /* @__PURE__ */ jsx(Skeleton, { className: "h-full w-3/5" }) }),
+    hasSecondary ? /* @__PURE__ */ jsx("span", { className: "mg-rails-track", "data-secondary": true, children: /* @__PURE__ */ jsx(Skeleton, { className: "h-full w-2/5" }) }) : null
+  ] });
 }
 function Rail({
   item,
@@ -3204,6 +3417,7 @@ function Rail({
   const { role: _role, ...linkMark } = mark;
   return item.href ? /* @__PURE__ */ jsx("a", { ...linkMark, href: item.href, className: "mg-rails-row", children: body }) : /* @__PURE__ */ jsx("button", { type: "button", ...mark, className: "mg-rails-row", children: body });
 }
+var SCALE_INTERVALS = [0, 1, 2, 3, 4];
 function markerPosition(value, max) {
   if (value === null || !Number.isFinite(value) || !(max > 0)) return null;
   return Math.round(Math.min(1, Math.max(0, value / max)) * 1e3) / 10;
@@ -3216,8 +3430,11 @@ function MarkerRail({
   ariaLabel,
   source = "marker-rail",
   onActivate,
-  className
+  className,
+  loading = false,
+  loadingRows = 5
 }) {
+  const placeholders = Math.max(1, loadingRows);
   return /* @__PURE__ */ jsxs(
     "div",
     {
@@ -3229,29 +3446,46 @@ function MarkerRail({
           /* @__PURE__ */ jsx("span", { children: columns.name }),
           /* @__PURE__ */ jsx("span", { children: columns.scale })
         ] }),
-        /* @__PURE__ */ jsx(
+        /* @__PURE__ */ jsxs(
           "div",
           {
             className: "mg-rails-rows",
             role: "group",
             "aria-label": ariaLabel,
-            "data-marks": true,
-            children: items.map((item) => /* @__PURE__ */ jsx(
-              MarkerRow,
-              {
-                item,
-                max,
-                formatValue,
-                source,
-                onActivate
-              },
-              item.key
-            ))
+            "aria-busy": loading || void 0,
+            "data-marks": loading ? void 0 : "",
+            children: [
+              loading ? /* @__PURE__ */ jsxs("span", { className: "sr-only", children: [
+                "Loading ",
+                ariaLabel
+              ] }) : null,
+              loading ? Array.from({ length: placeholders }, (_, index) => /* @__PURE__ */ jsx(MarkerRowSkeleton, {}, `skeleton-${index}`)) : (items ?? []).map((item) => /* @__PURE__ */ jsx(
+                MarkerRow,
+                {
+                  item,
+                  max,
+                  formatValue,
+                  source,
+                  onActivate
+                },
+                item.key
+              ))
+            ]
           }
         )
       ]
     }
   );
+}
+function MarkerRowSkeleton() {
+  return /* @__PURE__ */ jsxs("div", { className: "mg-rails-row mg-rails-row--skeleton", "aria-hidden": "true", children: [
+    /* @__PURE__ */ jsx("span", { className: "mg-rails-value", children: /* @__PURE__ */ jsx(Skeleton, { className: "ml-auto h-3 w-10" }) }),
+    /* @__PURE__ */ jsx("span", { className: "mg-rails-name", children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-3/5" }) }),
+    /* @__PURE__ */ jsxs("span", { className: "mg-marker-rail-track", children: [
+      /* @__PURE__ */ jsx("span", { className: "mg-marker-rail-ticks", "aria-hidden": "true", children: SCALE_INTERVALS.map((interval) => /* @__PURE__ */ jsx("b", {}, interval)) }),
+      /* @__PURE__ */ jsx(Skeleton, { className: "h-full w-full" })
+    ] })
+  ] });
 }
 function MarkerRow({
   item,
@@ -3274,12 +3508,21 @@ function MarkerRow({
       item.tag ? /* @__PURE__ */ jsx("span", { className: "mg-rails-tag", children: item.tag }) : null,
       /* @__PURE__ */ jsx("span", { children: item.label })
     ] }),
-    /* @__PURE__ */ jsx(
+    /* @__PURE__ */ jsxs(
       "span",
       {
         className: "mg-marker-rail-track",
         "data-empty": pos === null ? "true" : void 0,
-        children: pos === null ? null : /* @__PURE__ */ jsx("i", { style: { "--pos": `${pos}%` } })
+        children: [
+          /* @__PURE__ */ jsx("span", { className: "mg-marker-rail-ticks", "aria-hidden": "true", children: SCALE_INTERVALS.map((interval) => /* @__PURE__ */ jsx("b", {}, interval)) }),
+          pos === null ? null : /* @__PURE__ */ jsx(
+            "i",
+            {
+              className: "mg-marker-rail-marker",
+              style: { "--pos": `${pos}%` }
+            }
+          )
+        ]
       }
     )
   ] });
@@ -3293,29 +3536,48 @@ function RankGrid({
   source = "rank-grid",
   start = 1,
   onActivate,
-  className
+  className,
+  loading = false,
+  loadingItems = cols
 }) {
-  return /* @__PURE__ */ jsx(
+  const placeholders = Math.max(1, loadingItems);
+  return /* @__PURE__ */ jsxs(
     "ol",
     {
       className: classNames("mg-rank-grid", className),
       style: { "--cols": cols },
       role: "group",
       "aria-label": ariaLabel,
-      "data-marks": true,
+      "aria-busy": loading || void 0,
+      "data-marks": loading ? void 0 : "",
       "data-mg-rank-grid": "",
-      children: items.map((item, i) => /* @__PURE__ */ jsx(
-        RankRow,
-        {
-          item,
-          rank: start + i,
-          source,
-          onActivate
-        },
-        item.key
-      ))
+      children: [
+        loading ? /* @__PURE__ */ jsxs("span", { className: "sr-only", children: [
+          "Loading ",
+          ariaLabel
+        ] }) : null,
+        loading ? Array.from({ length: placeholders }, (_, index) => /* @__PURE__ */ jsx(RankRowSkeleton, {}, `skeleton-${index}`)) : items.map((item, i) => /* @__PURE__ */ jsx(
+          RankRow,
+          {
+            item,
+            rank: start + i,
+            source,
+            onActivate
+          },
+          item.key
+        ))
+      ]
     }
   );
+}
+function RankRowSkeleton() {
+  return /* @__PURE__ */ jsx("li", { "aria-hidden": "true", children: /* @__PURE__ */ jsxs("div", { className: "mg-rank-grid-row mg-rank-grid-row--skeleton", children: [
+    /* @__PURE__ */ jsx("span", { className: "mg-rank-grid-rank", children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-3" }) }),
+    /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-3" }),
+    /* @__PURE__ */ jsx("span", { className: "mg-rank-grid-name", children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-3/5" }) }),
+    /* @__PURE__ */ jsx("span", { className: "mg-rank-grid-value", children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-8" }) }),
+    /* @__PURE__ */ jsx("span", { className: "mg-rank-grid-share", children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-7" }) })
+  ] }) });
 }
 function RankRow({
   item,
@@ -3356,8 +3618,13 @@ function LeaderCards({
   featured = 3,
   ariaLabel,
   source = "leader-cards",
-  className
+  className,
+  loading = false,
+  loadingItems = featured
 }) {
+  const placeholders = Math.max(featured, loadingItems);
+  const leadCount = Math.min(featured, placeholders);
+  const compactCount = Math.max(0, placeholders - leadCount);
   const lead = items.slice(0, featured);
   const rest = items.slice(featured);
   return /* @__PURE__ */ jsxs(
@@ -3366,10 +3633,15 @@ function LeaderCards({
       className: classNames("mg-leaders", className),
       role: "group",
       "aria-label": ariaLabel,
-      "data-marks": true,
+      "aria-busy": loading || void 0,
+      "data-marks": loading ? void 0 : "",
       "data-mg-leaders": "",
       children: [
-        lead.length > 0 ? /* @__PURE__ */ jsx("ol", { className: "mg-leaders-featured", start: 1, children: lead.map((item, i) => /* @__PURE__ */ jsx(
+        loading ? /* @__PURE__ */ jsxs("span", { className: "sr-only", children: [
+          "Loading ",
+          ariaLabel
+        ] }) : null,
+        loading ? /* @__PURE__ */ jsx("ol", { className: "mg-leaders-featured", start: 1, children: Array.from({ length: leadCount }, (_, index) => /* @__PURE__ */ jsx(LeaderSkeleton, { variant: "featured" }, `featured-${index}`)) }) : lead.length > 0 ? /* @__PURE__ */ jsx("ol", { className: "mg-leaders-featured", start: 1, children: lead.map((item, i) => /* @__PURE__ */ jsx(
           LeaderCard,
           {
             item,
@@ -3379,7 +3651,7 @@ function LeaderCards({
           },
           item.key
         )) }) : null,
-        rest.length > 0 ? /* @__PURE__ */ jsx("ol", { className: "mg-leaders-compact", start: lead.length + 1, children: rest.map((item, i) => /* @__PURE__ */ jsx(
+        loading && compactCount > 0 ? /* @__PURE__ */ jsx("ol", { className: "mg-leaders-compact", start: leadCount + 1, children: Array.from({ length: compactCount }, (_, index) => /* @__PURE__ */ jsx(LeaderSkeleton, { variant: "compact" }, `compact-${index}`)) }) : rest.length > 0 ? /* @__PURE__ */ jsx("ol", { className: "mg-leaders-compact", start: lead.length + 1, children: rest.map((item, i) => /* @__PURE__ */ jsx(
           LeaderCard,
           {
             item,
@@ -3392,6 +3664,17 @@ function LeaderCards({
       ]
     }
   );
+}
+function LeaderSkeleton({ variant }) {
+  return /* @__PURE__ */ jsx("li", { "aria-hidden": "true", children: /* @__PURE__ */ jsxs("div", { className: "mg-leader", "data-variant": variant, children: [
+    /* @__PURE__ */ jsx("span", { className: "mg-leader-rank", children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-4" }) }),
+    /* @__PURE__ */ jsx("span", { className: "mg-leader-avatar", children: /* @__PURE__ */ jsx(Skeleton, { className: "size-5" }) }),
+    /* @__PURE__ */ jsxs("span", { className: "mg-leader-copy", children: [
+      /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-24 max-w-full" }),
+      /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-14 max-w-full" })
+    ] }),
+    /* @__PURE__ */ jsx("span", { className: "mg-leader-figures", children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-12" }) })
+  ] }) });
 }
 function LeaderCard({
   item,
@@ -3423,8 +3706,7 @@ function LeaderCard({
         /* @__PURE__ */ jsxs("span", { className: "mg-leader-figures", children: [
           /* @__PURE__ */ jsx("span", { className: "mg-leader-value", children: item.value }),
           delta.state !== "none" ? /* @__PURE__ */ jsx("span", { className: "mg-leader-delta", "data-state": delta.state, children: delta.text }) : null
-        ] }),
-        variant === "featured" ? /* @__PURE__ */ jsx("span", { className: "mg-leader-watermark", "aria-hidden": "true", children: initials }) : null
+        ] })
       ]
     }
   ) });
@@ -3439,13 +3721,29 @@ function CompositionBreakdown({
   ariaLabel,
   source = "composition",
   onActivate,
-  className
+  className,
+  loading = false,
+  loadingItems
 }) {
   const own = useRef(null);
   if (!registry && !own.current) own.current = new SeriesPaletteRegistry();
   const reg = registry ?? own.current;
+  const { active, set, clear } = useActiveEntity();
+  const barRef = useRef(null);
+  if (loading) {
+    return /* @__PURE__ */ jsx(
+      CompositionSkeleton,
+      {
+        ariaLabel,
+        className,
+        legendCols,
+        loadingItems
+      }
+    );
+  }
+  const presentSegments = segments ?? [];
   const isResidual = (key) => key === OTHER_KEY || key === RESIDUAL_KEY;
-  const ordered = [...segments].sort((a, b) => {
+  const ordered = [...presentSegments].sort((a, b) => {
     if (isResidual(a.key) !== isResidual(b.key))
       return isResidual(a.key) ? 1 : -1;
     return b.value - a.value;
@@ -3455,8 +3753,6 @@ function CompositionBreakdown({
   const palette = reg.palette();
   const shown = collapseOther(ordered, reg, other).filter((s) => s.value > 0);
   const total = shown.reduce((sum, s) => sum + s.value, 0);
-  const { active, set, clear } = useActiveEntity();
-  const barRef = useRef(null);
   const activeKey = active && shown.some((s) => s.key === active.key) ? active.key : null;
   const legend = shown.map((s) => ({
     key: s.key,
@@ -3467,7 +3763,7 @@ function CompositionBreakdown({
     value: formatValue(s.value),
     share: total > 0 ? `${Math.round(s.value / total * 1e3) / 10}%` : void 0,
     swatch: palette.colorOf(s.key),
-    href: segments.find((o) => o.key === s.key)?.href
+    href: presentSegments.find((o) => o.key === s.key)?.href
   }));
   return /* @__PURE__ */ jsxs(
     "div",
@@ -3507,6 +3803,11 @@ function CompositionBreakdown({
                 },
                 style: {
                   "--share": total > 0 ? `${s.value / total * 100}%` : "0%",
+                  // Keep the human-readable percentage for inspection and use
+                  // the unitless share as the flex weight. The latter allocates
+                  // the remaining bar width after inter-segment gaps, instead
+                  // of adding every gap on top of 100% fixed-width segments.
+                  "--weight": total > 0 ? String(s.value / total) : "0",
                   "--swatch": palette.colorOf(s.key)
                 }
               },
@@ -3522,6 +3823,51 @@ function CompositionBreakdown({
             ariaLabel,
             source,
             onActivate: onActivate ? (item) => onActivate(item.key) : void 0
+          }
+        )
+      ]
+    }
+  );
+}
+function CompositionSkeleton({
+  ariaLabel,
+  className,
+  legendCols,
+  loadingItems
+}) {
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      className: classNames("mg-composition", className),
+      "data-mg-composition": "",
+      "data-loading": "true",
+      children: [
+        /* @__PURE__ */ jsxs(
+          "div",
+          {
+            className: "mg-composition-bar",
+            role: "group",
+            "aria-label": ariaLabel,
+            "aria-busy": "true",
+            children: [
+              /* @__PURE__ */ jsxs("span", { className: "sr-only", children: [
+                "Loading ",
+                ariaLabel
+              ] }),
+              /* @__PURE__ */ jsx(Skeleton, { className: "h-full flex-[1.25]" }),
+              /* @__PURE__ */ jsx(Skeleton, { className: "h-full flex-1" }),
+              /* @__PURE__ */ jsx(Skeleton, { className: "h-full flex-[0.75]" })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsx(
+          RankGrid,
+          {
+            items: [],
+            cols: legendCols,
+            ariaLabel: `${ariaLabel} legend`,
+            loading: true,
+            loadingItems: loadingItems ?? legendCols
           }
         )
       ]
@@ -3722,6 +4068,13 @@ function rangeLabel(page, pageSize, total) {
   const n = (v) => v.toLocaleString("en-US");
   return `${n(start)}\u2013${n(end)} of ${n(total)}`;
 }
+function visibleRangeLabel(page, pageSize, rowCount) {
+  if (rowCount <= 0 || pageSize <= 0) return "0";
+  const start = Math.max(1, (page - 1) * pageSize + 1);
+  const end = start + rowCount - 1;
+  const n = (value) => value.toLocaleString("en-US");
+  return start === end ? n(start) : `${n(start)}\u2013${n(end)}`;
+}
 function pageWindow(page, pages) {
   if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
   const window2 = /* @__PURE__ */ new Set([1, pages, page]);
@@ -3814,6 +4167,8 @@ function DataTable({
   caption,
   captionHidden,
   total,
+  hasMore = false,
+  captionCount: captionCountProp,
   sort: sortProp,
   onSort,
   page: pageProp,
@@ -3833,6 +4188,7 @@ function DataTable({
   error,
   dense,
   mobile,
+  compactMobileLabels,
   source = "table",
   storageKey,
   shareUrl,
@@ -3894,15 +4250,23 @@ function DataTable({
     () => onSort ? [...rows] : sortRows(rows, sort, valueOf),
     [rows, sort, valueOf, onSort]
   );
-  const pages = pageCount(total ?? sorted.length, pageSize);
-  const paging = paginate ?? (!onPage ? sorted.length > pageSize : true);
+  const hasExactTotal = typeof total === "number" || !onPage;
+  const exactTotal = total ?? sorted.length;
+  const pages = hasExactTotal ? pageCount(exactTotal, pageSize) : hasMore ? page + 1 : Math.max(1, page);
+  const paging = paginate ?? (!onPage ? sorted.length > pageSize : hasExactTotal || hasMore || page > 1);
   const visibleRows = useMemo(
     () => onPage || !paging ? sorted : pageSlice(sorted, page, pageSize),
     [sorted, page, pageSize, onPage, paging]
   );
   const bounded = shouldBoundViewport(visibleRows.length);
   const mobileMode = mobile ?? pickMobileMode(shown.length);
-  const rowCount = total ?? rows.length;
+  const useCompactMobileLabels = compactMobileLabels && mobileMode === "cards";
+  const nominatedLeadKey = shown.find(
+    (column) => column.lead ?? column.mobileLead
+  )?.key;
+  const mobileLeadKey = mobileMode === "cards" ? nominatedLeadKey ?? shown[0]?.key : void 0;
+  const rowLinkKey = nominatedLeadKey ?? shown[0]?.key;
+  const captionCount = captionCountProp === void 0 ? total ?? rows.length : captionCountProp;
   const handleSort = (key) => {
     const next = nextSort(sort, key);
     if (onSort) onSort(next);
@@ -3925,15 +4289,19 @@ function DataTable({
       "data-mg-data-table": "",
       "data-expandable": expand ? "true" : void 0,
       "data-mobile": mobileMode,
+      "data-mobile-label-template": useCompactMobileLabels ? captionId : void 0,
       "data-dense": dense ? "true" : void 0,
       children: [
+        useCompactMobileLabels ? /* @__PURE__ */ jsx("style", { children: shown.map(
+          (column, index) => `[data-mobile-label-template=${JSON.stringify(captionId)}] tbody td:nth-child(${index + 1})::before{content:${JSON.stringify(column.label)}}`
+        ).join("") }) : null,
         /* @__PURE__ */ jsxs("div", { className: "mg-dt-caption", children: [
           /* @__PURE__ */ jsxs("p", { id: captionId, className: captionHidden ? "sr-only" : "mg-dt-title", children: [
             caption,
-            rowCount > 0 ? /* @__PURE__ */ jsxs("span", { className: "mg-dt-count", children: [
+            captionCount != null && captionCount > 0 ? /* @__PURE__ */ jsxs("span", { className: "mg-dt-count", children: [
               " ",
               "(",
-              rowCount.toLocaleString("en-US"),
+              captionCount.toLocaleString("en-US"),
               ")"
             ] }) : null
           ] }),
@@ -3986,7 +4354,7 @@ function DataTable({
               "mg-dt-viewport",
               bounded ? "mg-dt-viewport-bounded" : null
             ),
-            children: /* @__PURE__ */ jsxs("table", { "aria-labelledby": captionId, children: [
+            children: /* @__PURE__ */ jsxs("table", { "aria-labelledby": captionId, "aria-busy": loading || void 0, children: [
               /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { children: shown.map((column) => {
                 const active = sort?.key === column.key;
                 return /* @__PURE__ */ jsxs(
@@ -4018,20 +4386,31 @@ function DataTable({
                   column.key
                 );
               }) }) }),
-              /* @__PURE__ */ jsx("tbody", { children: loading ? Array.from({ length: 8 }, (_, i) => /* @__PURE__ */ jsx("tr", { className: "mg-dt-skeleton", children: shown.map((column) => /* @__PURE__ */ jsx(
-                "td",
-                {
-                  "data-label": mobileMode === "cards" ? column.label : void 0,
-                  children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-full" })
-                },
-                column.key
-              )) }, `skeleton-${i}`)) : hasRows ? visibleRows.map((row) => /* @__PURE__ */ jsx(
+              /* @__PURE__ */ jsx("tbody", { children: loading ? Array.from({ length: 8 }, (_, i) => /* @__PURE__ */ jsx("tr", { className: "mg-dt-row mg-dt-skeleton", children: shown.map((column) => {
+                const align = column.align ?? (column.kind === "number" || column.kind === "delta" || column.kind === "tint" ? "right" : void 0);
+                return /* @__PURE__ */ jsx(
+                  "td",
+                  {
+                    "data-label": mobileMode === "cards" && !useCompactMobileLabels ? column.label : void 0,
+                    "data-lead": column.key === rowLinkKey ? "true" : void 0,
+                    "data-mobile-lead": column.key === mobileLeadKey ? "true" : void 0,
+                    "data-align": align,
+                    "data-demote": column.demote ? "true" : void 0,
+                    "data-wrap": column.wrap ? "true" : void 0,
+                    "data-kind": column.kind === "tint" ? "tint" : void 0,
+                    children: /* @__PURE__ */ jsx(Skeleton, { className: "h-3 w-full" })
+                  },
+                  column.key
+                );
+              }) }, `skeleton-${i}`)) : hasRows ? visibleRows.map((row) => /* @__PURE__ */ jsx(
                 Row,
                 {
                   row,
                   entityKey: rowKey(row),
                   expansionId: `${captionId}-${rowKey(row)}`,
-                  cardLabels: mobileMode === "cards",
+                  cardLabels: mobileMode === "cards" && !useCompactMobileLabels,
+                  mobileLeadKey,
+                  rowLinkKey,
                   columns: shown,
                   href: rowHref?.(row),
                   link,
@@ -4049,7 +4428,7 @@ function DataTable({
           }
         ),
         paging && pages > 1 ? /* @__PURE__ */ jsxs("div", { className: "mg-dt-footer", children: [
-          /* @__PURE__ */ jsx("span", { className: "mg-dt-range", children: rangeLabel(page, pageSize, total ?? sorted.length) }),
+          /* @__PURE__ */ jsx("span", { className: "mg-dt-range", children: hasExactTotal ? rangeLabel(page, pageSize, exactTotal) : visibleRangeLabel(page, pageSize, rows.length) }),
           /* @__PURE__ */ jsxs("nav", { className: "mg-dt-pager", "aria-label": `${caption} pages`, children: [
             /* @__PURE__ */ jsx(
               "button",
@@ -4095,6 +4474,8 @@ function Row({
   expansionId,
   columns,
   cardLabels,
+  mobileLeadKey,
+  rowLinkKey,
   href,
   link,
   onActivate,
@@ -4124,19 +4505,25 @@ function Row({
         className: "mg-dt-row",
         "data-expandable": expandable ? "true" : void 0,
         "data-expanded": expanded ? "true" : void 0,
-        children: columns.map((column, index) => /* @__PURE__ */ jsx(
-          Cell,
-          {
-            row,
-            column,
-            label: cardLabels ? column.label : void 0,
-            href: index === 0 ? href : void 0,
-            link,
-            disclosure: index === 0 && expandable ? { expanded, controls: expansionId, onToggle: onExpand } : void 0,
-            onActivate: index === 0 && !href && !expandable ? onActivate : void 0
-          },
-          column.key
-        ))
+        children: columns.map((column, index) => {
+          const mobileLead = column.key === mobileLeadKey;
+          const lead = column.key === rowLinkKey;
+          return /* @__PURE__ */ jsx(
+            Cell,
+            {
+              row,
+              column,
+              label: cardLabels ? column.label : void 0,
+              lead,
+              mobileLead,
+              href: column.key === rowLinkKey ? href : void 0,
+              link,
+              disclosure: index === 0 && expandable ? { expanded, controls: expansionId, onToggle: onExpand } : void 0,
+              onActivate: column.key === rowLinkKey && !href && !expandable ? onActivate : void 0
+            },
+            column.key
+          );
+        })
       }
     ),
     expandable && expanded ? /* @__PURE__ */ jsx("tr", { className: "mg-dt-expansion", id: expansionId, children: /* @__PURE__ */ jsx("td", { colSpan: columns.length, children: expansion }) }) : null
@@ -4165,6 +4552,8 @@ function Cell({
   row,
   column,
   label,
+  lead,
+  mobileLead,
   href,
   link,
   onActivate,
@@ -4239,6 +4628,8 @@ function Cell({
     "td",
     {
       "data-label": label,
+      "data-lead": lead ? "true" : void 0,
+      "data-mobile-lead": mobileLead ? "true" : void 0,
       "data-align": align,
       "data-demote": column.demote ? "true" : void 0,
       "data-wrap": column.wrap ? "true" : void 0,
@@ -4412,6 +4803,7 @@ function CompareLedger({
   entities,
   groups,
   highlightBest = true,
+  loading = false,
   ariaLabel,
   className
 }) {
@@ -4421,7 +4813,7 @@ function CompareLedger({
       className: classNames("mg-compare", className),
       "data-mg-compare": "",
       style: { "--mg-compare-cols": entities.length },
-      children: /* @__PURE__ */ jsx("div", { className: "mg-compare-scroll", children: /* @__PURE__ */ jsxs("table", { "aria-label": ariaLabel, children: [
+      children: /* @__PURE__ */ jsx("div", { className: "mg-compare-scroll", children: /* @__PURE__ */ jsxs("table", { "aria-busy": loading || void 0, "aria-label": ariaLabel, children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsxs("tr", { children: [
           /* @__PURE__ */ jsx("th", { scope: "col", children: /* @__PURE__ */ jsx("span", { className: "sr-only", children: "Metric" }) }),
           entities.map((entity) => /* @__PURE__ */ jsx("th", { scope: "col", children: /* @__PURE__ */ jsxs("span", { className: "mg-compare-entity", children: [
@@ -4444,7 +4836,7 @@ function CompareLedger({
         groups.map((group) => /* @__PURE__ */ jsxs("tbody", { children: [
           /* @__PURE__ */ jsx("tr", { className: "mg-compare-group", children: /* @__PURE__ */ jsx("th", { scope: "colgroup", colSpan: entities.length + 1, children: group.label }) }),
           group.rows.map((row) => {
-            const winners = highlightBest ? bestIndices(row) : [];
+            const winners = loading || !highlightBest ? [] : bestIndices(row);
             const format = row.format ?? defaultFormat4;
             return /* @__PURE__ */ jsxs("tr", { children: [
               /* @__PURE__ */ jsx("th", { scope: "row", children: row.label }),
@@ -4455,8 +4847,8 @@ function CompareLedger({
                   {
                     "data-best": winners.includes(i) ? "true" : void 0,
                     children: [
-                      /* @__PURE__ */ jsx("span", { className: "mg-compare-value", children: value === null ? "\u2014" : format(value) }),
-                      row.spark?.[i] ? /* @__PURE__ */ jsx("span", { className: "mg-compare-spark", children: row.spark[i] }) : null
+                      /* @__PURE__ */ jsx("span", { className: "mg-compare-value", children: loading ? /* @__PURE__ */ jsx(Skeleton, { className: "ml-auto h-3 w-4/5 max-w-24" }) : value === null ? "\u2014" : format(value) }),
+                      !loading && row.spark?.[i] ? /* @__PURE__ */ jsx("span", { className: "mg-compare-spark", children: row.spark[i] }) : null
                     ]
                   },
                   entity.key

@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
-import { z } from "zod";
+import {
+  TRAILING_WINDOWS,
+  defineSearchSchema,
+  enumSearch,
+  stripDefaultSearchParams,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { HealthPage } from "./-health-page";
 
 /**
@@ -14,14 +19,14 @@ import { HealthPage } from "./-health-page";
  *
  * The mega-menu's Health deep links are updated to match.
  */
-const healthSearchSchema = z.object({
+const healthSearchSchema = defineSearchSchema({
   // `TRAILING_WINDOWS`, not a fourth copy of the same three strings: it is the
   // single owner of that vocabulary (validate:schema-vocabularies enforces it).
-  window: z.enum(TRAILING_WINDOWS).catch("7d").default("7d"),
-  incidents: z.enum(["open", "all"]).catch("open").default("open"),
+  window: enumSearch(TRAILING_WINDOWS, "7d"),
+  incidents: enumSearch(["open", "all"] as const, "open"),
 });
 
-export type HealthSearch = z.infer<typeof healthSearchSchema>;
+export type HealthSearch = SearchOutput<typeof healthSearchSchema>;
 
 export const Route = createFileRoute("/health")({
   validateSearch: healthSearchSchema,

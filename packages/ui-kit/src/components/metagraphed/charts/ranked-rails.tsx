@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { classNames } from "@/lib/format";
+import { Skeleton } from "../skeleton";
 import {
   useEntityMark,
   type ActiveEntityData,
@@ -52,6 +53,12 @@ export interface RankedRailsProps {
   source?: string;
   onActivate?: (item: RankedRailItem) => void;
   className?: string;
+  /** Preserve the ranked-rail geometry while the source has not answered. */
+  loading?: boolean;
+  /** Number of rail rows to reserve while loading. */
+  loadingRows?: number;
+  /** The settled rail has two series, so reserve both tracks while loading. */
+  loadingSecondary?: boolean;
 }
 
 /** Track fill as a 0–100 percentage. */
@@ -78,13 +85,19 @@ export function RankedRails({
   source = "ranked-rails",
   onActivate,
   className,
+  loading = false,
+  loadingRows = 6,
+  loadingSecondary = false,
 }: RankedRailsProps) {
   const [expanded, setExpanded] = useState(false);
   const cap =
     max ??
     Math.max(0, ...items.map((i) => Math.max(i.value, i.secondary ?? 0)));
   const shown = expanded ? items : items.slice(0, limit);
-  const hasSecondary = items.some((i) => i.secondary !== undefined);
+  const placeholders = Math.max(1, Math.min(loadingRows, limit));
+  const hasSecondary =
+    items.some((i) => i.secondary !== undefined) ||
+    (loading && loadingSecondary);
   const secondaryCap =
     secondaryScale === "own"
       ? Math.max(0, ...items.map((i) => i.secondary ?? 0))
@@ -107,25 +120,38 @@ export function RankedRails({
         className="mg-rails-rows"
         role="group"
         aria-label={ariaLabel}
-        data-marks
+        aria-busy={loading || undefined}
+        data-marks={loading ? undefined : ""}
       >
-        <ChartTooltip top="mark" offsetLeft={268} />
-        {shown.map((item) => (
-          <Rail
-            key={item.key}
-            item={item}
-            cap={cap}
-            secondaryCap={secondaryCap}
-            scale={scale}
-            formatValue={formatValue}
-            formatSecondary={formatSecondary ?? formatValue}
-            hasSecondary={hasSecondary}
-            source={source}
-            onActivate={onActivate}
-          />
-        ))}
+        {loading ? <span className="sr-only">Loading {ariaLabel}</span> : null}
+        {loading ? (
+          Array.from({ length: placeholders }, (_, index) => (
+            <RailSkeleton
+              key={`skeleton-${index}`}
+              hasSecondary={hasSecondary}
+            />
+          ))
+        ) : (
+          <>
+            <ChartTooltip top="mark" offsetLeft={268} />
+            {shown.map((item) => (
+              <Rail
+                key={item.key}
+                item={item}
+                cap={cap}
+                secondaryCap={secondaryCap}
+                scale={scale}
+                formatValue={formatValue}
+                formatSecondary={formatSecondary ?? formatValue}
+                hasSecondary={hasSecondary}
+                source={source}
+                onActivate={onActivate}
+              />
+            ))}
+          </>
+        )}
       </div>
-      {items.length > limit && !expanded ? (
+      {items.length > limit && !expanded && !loading ? (
         <button
           type="button"
           className="mg-rails-more"
@@ -133,6 +159,28 @@ export function RankedRails({
         >
           Show all {items.length}
         </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Same grid tracks as a settled rail; loading never substitutes a generic panel. */
+function RailSkeleton({ hasSecondary }: { hasSecondary: boolean }) {
+  return (
+    <div className="mg-rails-row mg-rails-row--skeleton" aria-hidden="true">
+      <span className="mg-rails-value">
+        <Skeleton className="ml-auto h-3 w-10" />
+      </span>
+      <span className="mg-rails-name">
+        <Skeleton className="h-3 w-3/5" />
+      </span>
+      <span className="mg-rails-track">
+        <Skeleton className="h-full w-3/5" />
+      </span>
+      {hasSecondary ? (
+        <span className="mg-rails-track" data-secondary>
+          <Skeleton className="h-full w-2/5" />
+        </span>
       ) : null}
     </div>
   );

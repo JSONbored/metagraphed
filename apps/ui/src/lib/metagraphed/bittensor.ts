@@ -20,10 +20,10 @@
  * Active application subnets, capped by the protocol.
  *
  * **128, not 129.** 129 is `chain_subnet_count` — this plus root. Root
- * (netuid 0) is governance and emission routing, not a subnet anyone browsing
- * a list of subnets means, and a title claiming 129 would disagree with the
- * 128 rows the page lists. A heading that renames the thing it labels is the
- * same defect as a breadcrumb that renames its own target (#11303).
+ * (netuid 0) is governance and emission routing, not an application subnet.
+ * A directory may deliberately list all 129 chain netuids, but any label on
+ * this constant must say "application subnets" so it does not rename the
+ * thing it counts (#11303).
  *
  * `scripts/validate-subnet-slot-cap.ts` fails CI if the registry stops
  * matching this. Bittensor governance has discussed raising the cap; a red

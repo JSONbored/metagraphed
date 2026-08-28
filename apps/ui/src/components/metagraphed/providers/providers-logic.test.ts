@@ -66,6 +66,23 @@ describe("providerRows", () => {
     expect(providerRows([{ slug: "bare" }] as unknown as Provider[], [])[0]!.name).toBe("bare");
   });
 
+  it("qualifies only duplicate published names, without merging their records", () => {
+    const rows = providerRows(
+      [
+        { id: "alpha", name: "Example", endpoint_count: 0 },
+        { id: "example-network", name: "Example", endpoint_count: 14 },
+        { id: "unique", name: "Unique", endpoint_count: 2 },
+      ] as unknown as Provider[],
+      [],
+    );
+    expect(rows).toHaveLength(3);
+    expect(rows.map((row) => row.displayName)).toEqual([
+      "Example · alpha",
+      "Example · example-network",
+      "Unique",
+    ]);
+  });
+
   it("is empty for nothing", () => {
     expect(providerRows(null, null)).toEqual([]);
   });

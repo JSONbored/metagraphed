@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
-import { z } from "zod";
+import {
+  defineSearchSchema,
+  enumSearch,
+  stripDefaultSearchParams,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { ExplorerPage } from "./-explorer-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
@@ -10,11 +14,11 @@ import { hubMeta } from "@/lib/metagraphed/hub-copy";
  * Bare /chain is the overview, so the hub's landing page is the network at a
  * glance rather than a redirect into one of its tabs.
  */
-const overviewSearchSchema = z.object({
-  window: z.enum(["7d", "30d"]).catch("7d").default("7d"),
+const overviewSearchSchema = defineSearchSchema({
+  window: enumSearch(["7d", "30d"] as const, "7d"),
 });
 
-export type ChainOverviewSearch = z.infer<typeof overviewSearchSchema>;
+export type ChainOverviewSearch = SearchOutput<typeof overviewSearchSchema>;
 
 export const Route = createFileRoute("/chain/")({
   validateSearch: overviewSearchSchema,

@@ -27,6 +27,7 @@
 import { createServer } from "node:http";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { HAR_DIR, DATED_ENDPOINT_PATTERNS } from "./har-path.ts";
 
 const port = Number(process.argv[2] ?? 8081);
@@ -38,9 +39,54 @@ const port = Number(process.argv[2] ?? 8081);
 // page's SSR `useSuspenseQuery` actually blocks on is not.
 const recording = process.argv.includes("--record");
 const SUPPLEMENT = path.join(HAR_DIR, "ssr-supplement.json");
+const OPENAPI_ARTIFACT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../../../public/metagraph/openapi.json",
+);
 const UPSTREAM = "https://api.metagraph.sh";
 
 type Recorded = { status: number; contentType: string; body: Buffer };
+
+// The validator detail record has an intentionally independent nominator
+// movement read. It was added after the original detail HAR and has no
+// browser-captured counterpart because its fixture route used to stop before
+// secondary requests settled. Keep this narrowly scoped test record here
+// instead of treating its deterministic 404 as a product error in the
+// responsive matrix.
+const VALIDATOR_NOMINATOR_FIXTURE_PATH =
+  "/api/v1/validators/5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u/nominators";
+const validatorNominatorsFixture: Recorded = {
+  status: 200,
+  contentType: "application/json",
+  body: Buffer.from(
+    JSON.stringify({
+      ok: true,
+      data: {
+        nominators: [
+          {
+            coldkey: "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
+            staked_tao: 214_000,
+            unstaked_tao: 2_400,
+            net_staked_tao: 211_600,
+            gross_staked_tao: 216_400,
+            event_count: 14,
+            last_observed_at: "2026-08-22T10:00:00.000Z",
+          },
+          {
+            coldkey: "5CUbyC1234567890abcdefghijklmnopqrstuvwxyzxi2XSG",
+            staked_tao: 97_500,
+            unstaked_tao: 0,
+            net_staked_tao: 97_500,
+            gross_staked_tao: 97_500,
+            event_count: 6,
+            last_observed_at: "2026-08-21T10:00:00.000Z",
+          },
+        ],
+      },
+      meta: { generated_at: "2026-08-22T10:00:00.000Z" },
+    }),
+  ),
+};
 
 /** pathname + search -> response, the precise match. */
 const byUrl = new Map<string, Recorded>();
@@ -114,6 +160,23 @@ for (const file of readdirSync(HAR_DIR).filter((f) => f.endsWith(".har"))) {
   }
 }
 
+// The generated API-reference page slices the OpenAPI document during SSR.
+// No browser request exists to capture in a HAR, and duplicating the 3.5 MB
+// generated document as base64 in ssr-supplement.json would make the fixture
+// larger and easier to let drift. Replay the same committed artifact the docs
+// build consumes instead, keeping this route hermetic without a second copy.
+if (!existsSync(OPENAPI_ARTIFACT)) {
+  throw new Error(`[api-stub] committed OpenAPI artifact is missing: ${OPENAPI_ARTIFACT}`);
+}
+const openapiRecorded: Recorded = {
+  status: 200,
+  contentType: "application/json",
+  body: readFileSync(OPENAPI_ARTIFACT),
+};
+entryCount += 1;
+byUrl.set("/metagraph/openapi.json", openapiRecorded);
+byPath.set("/metagraph/openapi.json", openapiRecorded);
+
 // The SSR-only supplement, recorded by `--record` and committed alongside
 // the HARs. Loaded last so a real HAR always wins.
 type Supplement = Record<string, { status: number; contentType: string; bodyBase64: string }>;
@@ -146,10 +209,52 @@ for (const [key, value] of Object.entries(supplement)) {
  */
 type Match = { recorded: Recorded; exact: boolean };
 
+function recordedBlockCount(recorded: Recorded): number {
+  try {
+    const payload = JSON.parse(recorded.body.toString("utf8")) as {
+      data?: { blocks?: unknown };
+    };
+    return Array.isArray(payload.data?.blocks) ? payload.data.blocks.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Return the richest recorded blocks feed for a non-exact bounded request.
+ *
+ * The app asks for a deliberate display window (the homepage asks for 12),
+ * while HAR capture often only contains a one-row poll and a larger directory
+ * response. Serving the one-row path fallback makes the visual fixture lie:
+ * it appears that the application only has one block to render. The product
+ * component owns the final windowing, so a larger recorded payload is the
+ * faithful deterministic fallback until this exact query is captured.
+ */
+function recordedBlocksWindow(url: URL): Recorded | null {
+  if (url.pathname !== "/api/v1/blocks") return null;
+
+  const requestedLimit = Number(url.searchParams.get("limit"));
+  if (!Number.isSafeInteger(requestedLimit) || requestedLimit < 1) return null;
+
+  const candidates = [...byUrl.entries()]
+    .filter(([key]) => new URL(key, "http://fixture.local").pathname === url.pathname)
+    .map(([, recorded]) => ({ recorded, count: recordedBlockCount(recorded) }))
+    .filter(({ count }) => count > 0)
+    .sort((left, right) => right.count - left.count);
+
+  return (
+    candidates.find(({ count }) => count >= requestedLimit)?.recorded ??
+    candidates[0]?.recorded ??
+    null
+  );
+}
+
 function lookup(rawUrl: string): Match | null {
   const url = new URL(rawUrl, `http://127.0.0.1:${port}`);
   const exact = byUrl.get(url.pathname + url.search);
   if (exact) return { recorded: exact, exact: true };
+  const blocksWindow = recordedBlocksWindow(url);
+  if (blocksWindow) return { recorded: blocksWindow, exact: false };
   const fallback =
     byPath.get(url.pathname) ??
     byPattern.find((p) => p.pattern.test(url.pathname))?.recorded ??
@@ -216,6 +321,12 @@ const server = createServer((req, res) => {
     res.end(recorded.body);
   };
 
+  const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
+  if (url.pathname === VALIDATOR_NOMINATOR_FIXTURE_PATH) {
+    serve(validatorNominatorsFixture);
+    return;
+  }
+
   const hit = lookup(req.url ?? "/");
   // While recording, only an EXACT hit is a hit. The path fallback answers
   // `?limit=50` with whatever `?limit=1` returned, so a recording run saw no
@@ -228,7 +339,6 @@ const server = createServer((req, res) => {
     return;
   }
 
-  const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
   const pathAndQuery = url.pathname + url.search;
   if (recording) {
     void record(pathAndQuery).then((recorded) => {

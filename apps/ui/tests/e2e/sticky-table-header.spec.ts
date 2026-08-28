@@ -30,15 +30,14 @@ import { gotoThroughRestart } from "./server-restart.ts";
 // called the broken tree green.
 const ROUTES = ["/subnets", "/chain/blocks", "/chain/extrinsics", "/validators"];
 
-// Both sides of the `md` breakpoint where ListShell swaps cards for a table.
-// 768 is not decoration: /subnets shipped with its sticky rule gated to
-// `@media (min-width: 1024px)` while the table itself renders from 768px, so
-// tablet had a `position: static` header that scrolled out of the bounded box
-// and left the reader 129 rows of unlabelled numbers.
-const VIEWPORTS = [
-  { name: "tablet", width: 768, height: 1024 },
+// Dense explorer tables become authored cards through tablet. The wide table
+// begins at 1024px, where all its fields can remain legible and the sticky
+// column heads become a useful aid rather than an extra compressed row.
+const TABLE_VIEWPORTS = [
+  { name: "desktop-md", width: 1024, height: 800 },
   { name: "desktop", width: 1280, height: 800 },
 ];
+const CARD_VIEWPORT = { name: "tablet", width: 768, height: 1024 };
 
 // Playwright's default is 30s per test, and these do not fit in it: the
 // settle sequence (goto, up to 5s for networkidle or a 2s fallback, fonts)
@@ -144,7 +143,40 @@ for (const route of ROUTES) {
       );
     }
 
-    for (const viewport of VIEWPORTS) {
+    test(`uses an evidence-card grid at ${CARD_VIEWPORT.name} (${CARD_VIEWPORT.width}px)`, async ({
+      page,
+    }) => {
+      await page.routeFromHAR(harPath, {
+        url: "**/api.metagraph.sh/**",
+        notFound: "fallback",
+        update: false,
+      });
+      for (const pattern of DATED_ENDPOINT_PATTERNS) {
+        const fixture = findHarFixture(harPath, pattern);
+        if (fixture) await page.route(pattern, (r) => r.fulfill(fixture));
+      }
+      await page.setViewportSize({
+        width: CARD_VIEWPORT.width,
+        height: CARD_VIEWPORT.height,
+      });
+      await gotoThroughRestart(page, route);
+      try {
+        await page.waitForLoadState("networkidle", { timeout: 5000 });
+      } catch {
+        await page.waitForTimeout(2000);
+      }
+      await page.evaluate(() => document.fonts.ready);
+
+      const table = page.locator('.mg-dt[data-mobile="cards"]').first();
+      await expect(table).toBeVisible({ timeout: 20_000 });
+      await expect(table.locator("thead")).toBeHidden();
+      const row = table.locator("tbody .mg-dt-row").first();
+      await expect(row).toBeVisible();
+      await expect(row).toHaveCSS("display", "grid");
+      await expect(row.locator('td[data-mobile-lead="true"]')).toHaveCount(1);
+    });
+
+    for (const viewport of TABLE_VIEWPORTS) {
       test(`table header pins to its own scrollport at ${viewport.name} (${viewport.width}px)`, async ({
         page,
       }) => {

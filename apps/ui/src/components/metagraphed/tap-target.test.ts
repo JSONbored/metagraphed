@@ -34,8 +34,9 @@ describe("mg-tap-target (#8254)", () => {
 
   it("gives every undersized shared control the same hit area", () => {
     // Measured on a Pixel 5 (#11683): /validators alone rendered 25 row
-    // disclosures under 44px, and the pager, the range switch, the table menu,
-    // "Show all" and the section nav were under it on nearly every route.
+    // disclosures under 44px, and the pager, range switch, table menu,
+    // inline refresh, glossary, "Show all," and the section nav were under it
+    // on nearly every route.
     // Named here so removing one from the sheet fails rather than silently
     // shrinking a thumb target back.
     const start = css.indexOf(".mg-tap-target::after");
@@ -47,6 +48,11 @@ describe("mg-tap-target (#8254)", () => {
       ".mg-dt-pager button::after",
       ".mg-section-more::after",
       ".mg-section-nav a::after",
+      ".mg-live-meta-refresh::after",
+      ".mg-rails-more::after",
+      ".mg-definition-button::after",
+      ".mg-definition-trigger::after",
+      'button[aria-label="Back to top"]::after',
     ]) {
       expect(rule, `${selector} lost its hit area`).toContain(selector);
     }
@@ -61,7 +67,16 @@ describe("mg-tap-target (#8254)", () => {
     expect(body).toContain("display: none");
     // Every control that gets the slop must also be released from it on a
     // mouse, or the invisible boxes overlap and swallow neighbouring clicks.
-    for (const selector of [".mg-dt-disclosure", ".mg-range-option", ".mg-dt-pager button"]) {
+    for (const selector of [
+      ".mg-dt-disclosure",
+      ".mg-range-option",
+      ".mg-dt-pager button",
+      ".mg-live-meta-refresh",
+      ".mg-rails-more",
+      ".mg-definition-button",
+      ".mg-definition-trigger",
+      'button[aria-label="Back to top"]',
+    ]) {
       expect(body, `${selector} keeps its hit slop on a mouse`).toContain(`${selector}::after`);
     }
   });

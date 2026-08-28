@@ -1,7 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
-import { ErrorState, Skeleton } from "./components/metagraphed/states";
+import { ErrorState } from "./components/metagraphed/states";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { recoverFromChunkLoadFailure } from "@/lib/chunk-reload-recovery";
+import { RouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
 
 // Outlet-scoped default boundary: a loader error in any route that doesn't
 // define its own errorComponent renders here instead of bubbling to __root's
@@ -54,17 +55,5 @@ export function DefaultRouteError({ error, reset }: { error: unknown; reset: () 
 // the error fallback is: a navigation that blanks the header and the nav makes
 // the site look like it went down for as long as the loader runs.
 export function DefaultRoutePending() {
-  return (
-    <AppShell chromeOnly>
-      <div
-        className="mx-auto flex w-full max-w-3xl flex-col gap-3 py-10"
-        role="status"
-        aria-busy="true"
-      >
-        <Skeleton className="h-6 w-1/3" />
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    </AppShell>
-  );
+  return <RouteLoadingSkeleton />;
 }

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, DataTable, RankedRails, type DataTableColumn } from "@jsonbored/ui-kit";
 import { accountPositionsQuery } from "@/lib/metagraphed/queries";
 import { RouterLink } from "@/components/metagraphed/router-link";
+import { ErrorState } from "@/components/metagraphed/states";
 import { formatNumber, formatPct } from "@/lib/metagraphed/format";
 import type { AccountPosition } from "@/lib/metagraphed/types";
 import { fmtCompactTao, fmtTao, positionsBySubnet } from "./account-detail-logic";
@@ -23,9 +24,11 @@ export function PositionsSection({
   nameOf: (netuid: number) => string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const { data } = useQuery({ ...accountPositionsQuery(ss58), retry: 0 });
+  const query = useQuery({ ...accountPositionsQuery(ss58), retry: 0 });
+  const { data, isPending, isError } = query;
   const positions = data?.data.positions ?? [];
   const rows = positionsBySubnet(positions, nameOf);
+  const unavailable = isError && !data;
 
   const columns: DataTableColumn<AccountPosition>[] = [
     {
@@ -60,7 +63,24 @@ export function PositionsSection({
       name="Positions"
       question="Where the stake sits."
       visual={
-        rows.length > 0 ? (
+        isPending ? (
+          <RankedRails
+            items={[]}
+            formatValue={fmtCompactTao}
+            scale="sqrt"
+            columns={{ value: "Stake", name: "Subnet", track: "Share of holdings" }}
+            ariaLabel="Stake by subnet"
+            source="account-subnet"
+            loading
+            loadingRows={8}
+          />
+        ) : unavailable ? (
+          <ErrorState
+            error={query.error}
+            onRetry={() => void query.refetch()}
+            context="live positions"
+          />
+        ) : rows.length > 0 ? (
           <RankedRails
             items={rows.map((row) => ({
               key: `sn-${row.netuid}`,
@@ -85,11 +105,13 @@ export function PositionsSection({
           />
         ) : null
       }
+      empty={isPending ? false : unavailable ? false : "No positions recorded for this account."}
       footnote={
-        // The rail is by subnet; the table is the per-hotkey evidence behind
-        // it and is worth reaching even when the two happen to have the same
-        // row count (an account holding every subnet through one hotkey).
-        positions.length > 0 && !expanded ? (
+        isPending ? (
+          "Loading live positions"
+        ) : unavailable ? (
+          "Positions unavailable · live chain"
+        ) : positions.length > 0 && !expanded ? (
           <button type="button" className="mg-section-more" onClick={() => setExpanded(true)}>
             Show every position ({formatNumber(positions.length)})
           </button>

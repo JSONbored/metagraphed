@@ -48,6 +48,13 @@ describe("#8818 the /accounts figures never fabricate a zero", () => {
   it("states the scan cap rather than printing a capped count as a total", () => {
     // Above the cap the summary describes the scanned prefix; printing it as
     // a total understates a whale by an unknown amount.
-    expect(source).toContain("scanCapped ? `> ${formatNumber(EVENT_SCAN_CAP)}`");
+    expect(source).toMatch(/scanCapped\s*\? `> \$\{formatNumber\(EVENT_SCAN_CAP\)\}`/);
+  });
+
+  it("does not suspend the whole account route on the history aggregate", () => {
+    expect(source).toContain("const summaryQuery = useQuery({ ...accountQuery(ss58), retry: 0 });");
+    expect(source).not.toContain("useSuspenseQuery(accountQuery(ss58))");
+    expect(source).toContain("loading: summaryQuery.isPending");
+    expect(source).toContain('summary === null\n          ? "—"');
   });
 });

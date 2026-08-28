@@ -90,6 +90,23 @@ export function rangeLabel(
 }
 
 /**
+ * The precise slice represented by a server-paged response whose total is
+ * deliberately unknown. Unlike `rangeLabel`, this must not imply that the
+ * reader has reached the end of the collection.
+ */
+export function visibleRangeLabel(
+  page: number,
+  pageSize: number,
+  rowCount: number,
+): string {
+  if (rowCount <= 0 || pageSize <= 0) return "0";
+  const start = Math.max(1, (page - 1) * pageSize + 1);
+  const end = start + rowCount - 1;
+  const n = (value: number) => value.toLocaleString("en-US");
+  return start === end ? n(start) : `${n(start)}–${n(end)}`;
+}
+
+/**
  * `1 2 3 … 12` — first, last, and a window around the current page, with
  * `null` marking each elision. Never longer than 7 slots.
  */

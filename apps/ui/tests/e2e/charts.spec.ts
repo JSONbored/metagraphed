@@ -89,6 +89,20 @@ test.describe("StackedColumns at 375", () => {
     expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
     // Scrolled to the latest column on mount.
     expect(geometry.scrollLeft).toBeGreaterThan(0);
+    await expect(chart).toHaveAttribute("data-overflow", "true");
+    await expect(chart).toHaveAttribute("data-scroll-end", "true");
+    await expect(chart).not.toHaveAttribute("data-scroll-start", "true");
+    await expect(scroll).toHaveAttribute(
+      "aria-label",
+      /Scroll horizontally to inspect more periods/,
+    );
+    expect(await scroll.evaluate((el) => getComputedStyle(el).maskImage)).toBe("none");
+    await scroll.evaluate((el) => {
+      el.scrollLeft = 0;
+      el.dispatchEvent(new Event("scroll"));
+    });
+    await expect(chart).toHaveAttribute("data-scroll-start", "true");
+    await expect(chart).not.toHaveAttribute("data-scroll-end", "true");
     expect(geometry.stacks.length).toBe(56);
     for (const w of geometry.stacks) expect(w).toBeGreaterThanOrEqual(15);
     // The page itself never scrolls sideways.

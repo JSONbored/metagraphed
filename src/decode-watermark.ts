@@ -100,7 +100,12 @@ export interface DecodeWatermark {
    * parseable timestamp. Every completed run rewrites this even when it
    * appended nothing, so a quiet lane is distinguishable from a stopped one. */
   updatedAt: number | null;
-  /** Per-table `mg_decode_hi`, for diagnosis only -- routing uses the min. */
+  /**
+   * Per-table `mg_decode_hi` values. The global seam still uses their minimum;
+   * an individual value can only be used as a negative bound: a request above
+   * it cannot have rows in that table yet. It must never be used to claim that
+   * a row exists at or below it.
+   */
   perTable: Record<string, number> | null;
 }
 

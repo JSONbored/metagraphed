@@ -4,7 +4,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { ActiveEntityProvider } from "../interaction/active-entity";
 import { momentumAriaLabel } from "./chart-aria";
 import { LineWithWindow, lineSpecimen } from "./line-with-window";
-import { StackedColumns, stackedSpecimen } from "./stacked-columns";
+import {
+  StackedColumns,
+  stackScrollState,
+  stackedSpecimen,
+} from "./stacked-columns";
 
 // SSR-markup checks in the suite's plain-node environment; hover, keyboard
 // and the scroll position are covered by the Playwright interaction project.
@@ -37,7 +41,7 @@ describe("StackedColumns", () => {
       expect(html).toContain(`--swatch:var(--chart-${i + 1})`);
     }
     expect(html).toContain('data-entity="Other"');
-    expect(html).toContain("--swatch:var(--chart-11)");
+    expect(html).toContain("--swatch:var(--chart-residual)");
     expect(html).not.toContain("--chart-12");
   });
 
@@ -66,6 +70,36 @@ describe("StackedColumns", () => {
     );
     // SSR renders the tooltip host empty; it fills in after mount.
     expect(html).not.toContain("mg-chart-tooltip-head");
+  });
+
+  it("keeps the temporal plot's geometry while its series is loading", () => {
+    const loading = render(
+      h(StackedColumns, {
+        columns: [],
+        seriesOrder: spec.seriesOrder,
+        ariaLabel: "Daily emission by subnet",
+        loading: true,
+        loadingColumns: 7,
+      }),
+    );
+    expect(loading).toContain('data-loading="true"');
+    expect(loading).toContain(
+      'class="mg-stack-bars" role="group" aria-label="Daily emission by subnet" aria-busy="true"',
+    );
+    expect((loading.match(/mg-stack-col--skeleton/g) ?? []).length).toBe(7);
+    expect(loading).not.toContain("mg-sr-table");
+  });
+
+  it("reports an explicit horizontal-scroll boundary state instead of fading data", () => {
+    expect(
+      stackScrollState({ clientWidth: 240, scrollWidth: 600, scrollLeft: 0 }),
+    ).toEqual({ overflow: true, atStart: true, atEnd: false });
+    expect(
+      stackScrollState({ clientWidth: 240, scrollWidth: 600, scrollLeft: 360 }),
+    ).toEqual({ overflow: true, atStart: false, atEnd: true });
+    expect(
+      stackScrollState({ clientWidth: 240, scrollWidth: 240, scrollLeft: 0 }),
+    ).toEqual({ overflow: false, atStart: true, atEnd: true });
   });
 });
 
@@ -143,6 +177,23 @@ describe("LineWithWindow", () => {
     expect(empty).not.toContain("mg-line-end");
     expect(empty).toContain('aria-label="Tokens: no data in the window"');
     expect(empty).toContain("<strong>—</strong>");
+  });
+
+  it("keeps the chart's full geometry while a time series is loading", () => {
+    const loading = render(
+      h(LineWithWindow, {
+        ...spec,
+        unit: "tokens",
+        ariaLabel: "Tokens per day",
+        loading: true,
+      }),
+    );
+    expect(loading).toContain('data-loading="true"');
+    expect(loading).toContain('class="mg-line-summary"');
+    expect(loading).toContain(
+      'class="mg-line-plot" role="group" aria-label="Tokens per day" aria-busy="true"',
+    );
+    expect(loading).not.toContain("mg-line-hit");
   });
 });
 

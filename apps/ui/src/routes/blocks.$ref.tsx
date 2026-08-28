@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { BlockDetailLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
-import { blockQuery } from "@/lib/metagraphed/queries";
 import { isValidBlockRef } from "@/lib/metagraphed/blocks";
 import { BlockDetailPage } from "./-block-detail-page";
 import {
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/blocks/$ref")({
   loader: async ({ context, params }) => {
     let result;
     try {
+      const { blockQuery } = await import("@/lib/metagraphed/queries");
       result = await context.queryClient.ensureQueryData(blockQuery(params.ref));
     } catch (error) {
       // #11000: a throttled PRIMARY query has no page to render, and answering
@@ -67,6 +68,7 @@ export const Route = createFileRoute("/blocks/$ref")({
       ],
     };
   },
+  pendingComponent: BlockDetailLoadingSkeleton,
   notFoundComponent: () => (
     <AppShell>
       <PageHeading

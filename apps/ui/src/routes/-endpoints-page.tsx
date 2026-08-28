@@ -22,6 +22,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
+import { ErrorState } from "@/components/metagraphed/states";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
@@ -50,6 +51,15 @@ import { Route } from "./apis.endpoints";
 
 const API_PATHS = ["/api/v1/endpoints", "/api/v1/rpc/pools", "/api/v1/endpoint-incidents"];
 const PROXY_URL = `${API_BASE}/api/v1/rpc/proxy`;
+
+// The latency rail, directory, filter facets, and expanded row each read one
+// of these fields. Everything else in an endpoint record is either a
+// collection-level summary (requested separately) or is not visible on this
+// route. Keeping the projection here makes that payload contract auditable at
+// the route that owns it rather than relying on the normalizer to discard data
+// after it has already crossed the network.
+const ENDPOINT_PAGE_FIELDS =
+  "id,provider,operator,kind,url,netuid,subnet_name,subnet_slug,status,latency_ms,last_checked,last_ok,observed_at,archive_support,pool_eligible,auth_required";
 
 function ApiSources() {
   useRegisterApiSource(API_PATHS);
@@ -89,7 +99,10 @@ export function EndpointsPage() {
    * It has no text search, so `q` is the one filter applied to the rows in
    * hand, and the section footnote says how many are in hand.
    */
-  const serverParams: Record<string, string | number> = { limit: 200 };
+  const serverParams: Record<string, string | number> = {
+    limit: 200,
+    fields: ENDPOINT_PAGE_FIELDS,
+  };
   if (search.status && search.status !== "monitored") serverParams.status = search.status;
   if (search.kind) serverParams.kind = search.kind;
   if (search.provider) serverParams.provider = search.provider;
@@ -115,6 +128,14 @@ export function EndpointsPage() {
   );
   const openIncidents = useMemo(() => incidentList.filter((row) => row.open), [incidentList]);
   const shownIncidents = search.incidents === "open" ? openIncidents : incidentList;
+  const refreshAll = () => {
+    void Promise.all([
+      feed.refetch(),
+      summaryQuery.refetch(),
+      pools.refetch(),
+      incidents.refetch(),
+    ]);
+  };
 
   const columns: DataTableColumn<EndpointRow>[] = [
     {
@@ -259,6 +280,7 @@ export function EndpointsPage() {
     <AppShell>
       <ApiSources />
       <EntityHero
+        className="mg-hero--directory"
         name="Endpoints"
         sentence={
           <FactSentence>What the registry can reach, and how it answered last time.</FactSentence>
@@ -270,17 +292,19 @@ export function EndpointsPage() {
           factCells(
             endpointFacts(
               summary as Parameters<typeof endpointFacts>[0],
-              poolList.length,
-              openIncidents.length,
+              pools.isPending ? null : poolList.length,
+              incidents.isPending ? null : openIncidents.length,
               { count: formatNumber },
+              { pools: pools.isPending, incidents: incidents.isPending },
             ),
           ) ?? undefined
         }
         live={{
           updatedAt: summary?.observed_at ?? rows[0]?.lastChecked ?? null,
           source: "probed every 15 min",
-          onRefresh: () => void feed.refetch(),
-          refreshing: feed.isFetching,
+          onRefresh: refreshAll,
+          refreshing:
+            feed.isFetching || summaryQuery.isFetching || pools.isFetching || incidents.isFetching,
         }}
       />
       <SectionNav items={apisNav(pathname)} link={RouterLink} />
@@ -290,7 +314,24 @@ export function EndpointsPage() {
         name="Pools"
         question="The managed RPC pools, and how much of each can be routed to."
         visual={
-          poolList.length > 0 ? (
+          pools.isPending ? (
+            <MarkerRail
+              items={[]}
+              max={100}
+              formatValue={(value) => `${value}%`}
+              columns={{ ratio: "Ready", name: "Pool", scale: "Members that can be routed to" }}
+              ariaLabel="RPC pool readiness"
+              source="rpc-pool"
+              loading
+              loadingRows={5}
+            />
+          ) : pools.isError ? (
+            <ErrorState
+              error={pools.error}
+              onRetry={() => void pools.refetch()}
+              context="managed RPC pools"
+            />
+          ) : poolList.length > 0 ? (
             <MarkerRail
               items={poolList.map((pool) => ({
                 key: pool.id,
@@ -308,6 +349,7 @@ export function EndpointsPage() {
             />
           ) : null
         }
+        empty={pools.isPending ? false : "No managed RPC pools are published."}
         // Readiness, not health: a member can be up and still ineligible --
         // behind on blocks, missing an RPC method, rate-limited -- and what a
         // caller needs before pointing a client at a pool is how many members
@@ -334,7 +376,24 @@ export function EndpointsPage() {
           />
         }
         visual={
-          rails.length > 0 ? (
+          feed.isPending ? (
+            <RankedRails
+              items={[]}
+              formatValue={(value: number) => `${formatNumber(value)} ms`}
+              scale="sqrt"
+              columns={{ value: "p50", name: "Provider · kind", track: "Last probe" }}
+              ariaLabel="Endpoint latency"
+              source="endpoint-latency"
+              loading
+              loadingRows={8}
+            />
+          ) : feed.isError ? (
+            <ErrorState
+              error={feed.error}
+              onRetry={() => void feed.refetch()}
+              context="endpoint latency"
+            />
+          ) : rails.length > 0 ? (
             <RankedRails
               items={rails}
               formatValue={(value: number) => `${formatNumber(value)} ms`}
@@ -345,6 +404,7 @@ export function EndpointsPage() {
             />
           ) : null
         }
+        empty={feed.isPending ? false : "No endpoints reported latency for this view."}
         // Only endpoints that REPORTED a latency are ranked: `latency_ms: null`
         // means unmeasured, and ranking it as 0 would put every dead endpoint
         // at the top of "fastest".
@@ -367,6 +427,15 @@ export function EndpointsPage() {
             storageKey="mg-endpoints-columns"
             expand={endpointDetail}
             loading={feed.isPending}
+            error={
+              feed.isError ? (
+                <ErrorState
+                  error={feed.error}
+                  onRetry={() => void feed.refetch()}
+                  context="tracked endpoints"
+                />
+              ) : undefined
+            }
             search={{
               value: search.q,
               onChange: (q) => setSearch({ q }),
@@ -424,7 +493,7 @@ export function EndpointsPage() {
           // "1545 of 1545 - end of list" strip directly beneath it was the
           // same fact twice, in two vocabularies (#11696). An error still
           // shows, because a feed that stopped early is not the end of a list.
-          feed.hasNextPage || feed.error ? (
+          feed.hasNextPage || (feed.error && rows.length > 0) ? (
             <LoadMore
               hasMore={feed.hasNextPage}
               isLoading={feed.isFetchingNextPage}
@@ -435,9 +504,15 @@ export function EndpointsPage() {
             />
           ) : null
         }
-        footnote={`${formatNumber(shown.length)} shown of ${formatNumber(
-          summary?.endpoint_count ?? rows.length,
-        )} tracked · facets applied server-side · probe-derived`}
+        footnote={
+          feed.isPending
+            ? "Loading tracked endpoints · probe-derived"
+            : feed.isError
+              ? "Tracked endpoints are temporarily unavailable · probe-derived"
+              : `${formatNumber(shown.length)} shown of ${formatNumber(
+                  summary?.endpoint_count ?? rows.length,
+                )} tracked · facets applied server-side · probe-derived`
+        }
       />
 
       <AnalyticsSection
@@ -456,6 +531,15 @@ export function EndpointsPage() {
             storageKey="mg-incidents-columns"
             expand={incidentDetail}
             loading={incidents.isPending}
+            error={
+              incidents.isError ? (
+                <ErrorState
+                  error={incidents.error}
+                  onRetry={() => void incidents.refetch()}
+                  context="endpoint incidents"
+                />
+              ) : undefined
+            }
             filters={
               <FilterField label="State">
                 <FilterSelect
@@ -475,11 +559,15 @@ export function EndpointsPage() {
           />
         }
         footnote={
-          incidentList.length === openIncidents.length
-            ? `${formatNumber(openIncidents.length)} recorded, all still open · probe-derived`
-            : `${formatNumber(openIncidents.length)} open of ${formatNumber(
-                incidentList.length,
-              )} recorded · probe-derived`
+          incidents.isPending
+            ? "Loading recorded incidents · probe-derived"
+            : incidents.isError
+              ? "Recorded incidents are temporarily unavailable · probe-derived"
+              : incidentList.length === openIncidents.length
+                ? `${formatNumber(openIncidents.length)} recorded, all still open · probe-derived`
+                : `${formatNumber(openIncidents.length)} open of ${formatNumber(
+                    incidentList.length,
+                  )} recorded · probe-derived`
         }
       />
 

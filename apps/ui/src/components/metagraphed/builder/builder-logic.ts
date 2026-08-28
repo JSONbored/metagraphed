@@ -285,7 +285,11 @@ export function agentFacts(
   if (tools > 0) facts.push({ key: "tools", label: "MCP tools", value: fmt.count(tools) });
   const subnets = num(summary?.subnet_count);
   if (subnets != null)
-    facts.push({ key: "subnets", label: "Subnets covered", value: fmt.count(subnets) });
+    facts.push({
+      key: "subnets",
+      label: "Application subnets covered",
+      value: fmt.count(subnets),
+    });
   const services = num(summary?.callable_service_count);
   if (services != null) {
     facts.push({ key: "services", label: "Callable services", value: fmt.count(services) });

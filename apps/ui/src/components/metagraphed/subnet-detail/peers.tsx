@@ -6,10 +6,12 @@ import {
   RankGrid,
   type RankGridItem,
 } from "@jsonbored/ui-kit";
+import { ErrorState } from "@/components/metagraphed/states";
 import { domainsQuery } from "@/lib/metagraphed/queries";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import type { SubnetEconomics } from "@/lib/metagraphed/types";
 import { formatPct } from "@/lib/metagraphed/format";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import { domainPeers, emissionNeighbours } from "./subnet-detail-logic";
 
 /**
@@ -23,11 +25,22 @@ import { domainPeers, emissionNeighbours } from "./subnet-detail-logic";
 export function PeersSection({
   netuid,
   economics,
+  economicsPending = false,
+  economicsError = null,
+  onRetryEconomics,
 }: {
   netuid: number;
   economics: readonly SubnetEconomics[];
+  economicsPending?: boolean;
+  economicsError?: unknown;
+  onRetryEconomics?: () => void;
 }) {
-  const domains = useQuery({ ...domainsQuery(), retry: 0 });
+  const { ref, nearViewport } = useNearViewport();
+  const domains = useQuery({ ...domainsQuery(), enabled: nearViewport, retry: 0 });
+  const economicsFailed = economicsError != null;
+  // Economics is the comparison's essential input. Do not hide a known
+  // failure behind an unrelated domain request that may still be in flight.
+  const loading = nearViewport && !economicsFailed && (economicsPending || domains.isPending);
   const domain = (domains.data?.data ?? []).find((row) => row.netuids?.includes(netuid));
   const peers = domain
     ? domainPeers(economics, domain.netuids ?? [], 10)
@@ -63,12 +76,36 @@ export function PeersSection({
       id="peers"
       name="Peers"
       question={
-        domain
-          ? `Subnets in the ${domain.domain} domain by emission.`
-          : "Subnets ranked either side of it by emission."
+        !nearViewport
+          ? "Peer context loads as this section approaches."
+          : loading
+            ? "Finding the right peer group for comparison."
+            : domain
+              ? `Subnets in the ${domain.domain} domain by emission.`
+              : domains.isError
+                ? "Closest subnets by emission while domain context is unavailable."
+                : "Subnets ranked either side of it by emission."
       }
+      visualRef={ref}
       visual={
-        items.length > 0 ? (
+        !nearViewport ? (
+          <p className="mg-section-empty">Peer context loads as this section approaches.</p>
+        ) : loading ? (
+          <RankGrid
+            items={[]}
+            cols={5}
+            ariaLabel="Loading subnet peer comparison"
+            source={`sn-${netuid}-peer`}
+            loading
+            loadingItems={5}
+          />
+        ) : economicsFailed ? (
+          <ErrorState
+            error={economicsError}
+            onRetry={onRetryEconomics}
+            context="the subnet peer comparison"
+          />
+        ) : items.length > 0 ? (
           <RankGrid
             items={items}
             cols={5}
@@ -78,7 +115,16 @@ export function PeersSection({
         ) : null
       }
       legend={
-        compare.length > 0 ? (
+        loading ? (
+          <LeaderCards
+            items={[]}
+            featured={0}
+            loading
+            loadingItems={4}
+            ariaLabel="Loading comparable subnets"
+            source={`sn-${netuid}-compare`}
+          />
+        ) : compare.length > 0 ? (
           <LeaderCards
             items={compare}
             featured={0}
@@ -88,9 +134,17 @@ export function PeersSection({
         ) : null
       }
       footnote={
-        domain
-          ? `${domain.subnet_count ?? peers.length} subnets · registry domain`
-          : "no registry domain · ranked by emission share"
+        !nearViewport
+          ? "deferred below the fold · avoids a peer-context request before it is useful"
+          : loading
+            ? "loading subnet peer context"
+            : economicsFailed
+              ? "subnet economic context could not be loaded"
+              : domain
+                ? `${domain.subnet_count ?? peers.length} subnets · registry domain`
+                : domains.isError
+                  ? "registry domain unavailable · ranked by emission share"
+                  : "no registry domain · ranked by emission share"
       }
     />
   );

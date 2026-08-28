@@ -16,6 +16,7 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ErrorState } from "@/components/metagraphed/states";
 import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
@@ -88,7 +89,7 @@ export function ProvidersPage() {
       label: "Provider",
       kind: "link",
       width: 240,
-      value: (row) => row.name,
+      value: (row) => row.displayName,
       href: (row) => `/providers/${row.slug}`,
       render: (row) => (
         <span className="mg-dt-entity">
@@ -103,7 +104,7 @@ export function ProvidersPage() {
             providerSlug={row.slug}
             fallback={initials(row.name)}
           />
-          {row.name}
+          {row.displayName}
         </span>
       ),
     },
@@ -182,6 +183,7 @@ export function ProvidersPage() {
     <AppShell>
       <ApiSources />
       <EntityHero
+        className="mg-hero--directory"
         name="Providers"
         sentence={
           <FactSentence>The teams and operators behind these public interfaces.</FactSentence>
@@ -203,8 +205,8 @@ export function ProvidersPage() {
           // knows exactly when it was built.
           updatedAt: health.data?.data.generated_at ?? rows[0]?.updatedAt ?? null,
           source: "registry",
-          onRefresh: () => void providers.refetch(),
-          refreshing: providers.isFetching,
+          onRefresh: () => void Promise.all([providers.refetch(), health.refetch()]),
+          refreshing: providers.isFetching || health.isFetching,
         }}
       />
       <SectionNav items={apisNav(pathname)} link={RouterLink} />
@@ -235,64 +237,79 @@ export function ProvidersPage() {
         name="Directory"
         question="Every provider, and whether their sources still resolve."
         visual={
-          <DataTable
-            id="providers"
-            rows={shown}
-            columns={columns}
-            rowKey={(row) => row.slug}
-            caption="Providers"
-            rowHref={(row) => `/providers/${row.slug}`}
-            link={RouterLink}
-            source="provider"
-            storageKey="mg-providers-columns"
-            expand={providerDetail}
-            loading={false}
-            // Every row, not a first page of fifty: the crawlable-index gate
-            // reads the SERVER-RENDERED HTML and 138 provider pages are
-            // indexable only because this page links to them. The bounded
-            // viewport still keeps the table one screen tall.
-            paginate={false}
-            search={{
-              value: search.q,
-              onChange: (q) => setSearch({ q }),
-              placeholder: "Name, slug or host",
-            }}
-            filters={
-              <>
-                <FilterField label="Kind">
-                  <FilterSelect
-                    value={search.kind}
-                    onChange={(event) => setSearch({ kind: event.target.value })}
-                  >
-                    <option value="">Any kind</option>
-                    {kinds.map((kind) => (
-                      <option key={kind} value={kind}>
-                        {kind}
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </FilterField>
-                <FilterField label="Authority">
-                  <FilterSelect
-                    value={search.authority}
-                    onChange={(event) => setSearch({ authority: event.target.value })}
-                  >
-                    <option value="">Any authority</option>
-                    {authorities.map((authority) => (
-                      <option key={authority} value={authority}>
-                        {authority}
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </FilterField>
-              </>
-            }
-            empty="No providers match these filters."
-          />
+          <>
+            {health.isError ? (
+              <ErrorState
+                error={health.error}
+                onRetry={() => void health.refetch()}
+                context="provider source verification"
+              />
+            ) : null}
+            <DataTable
+              id="providers"
+              rows={shown}
+              columns={columns}
+              rowKey={(row) => row.slug}
+              caption="Providers"
+              rowHref={(row) => `/providers/${row.slug}`}
+              link={RouterLink}
+              source="provider"
+              storageKey="mg-providers-columns"
+              expand={providerDetail}
+              loading={false}
+              // Every row, not a first page of fifty: the crawlable-index gate
+              // reads the SERVER-RENDERED HTML and 138 provider pages are
+              // indexable only because this page links to them. The bounded
+              // viewport still keeps the table one screen tall.
+              paginate={false}
+              search={{
+                value: search.q,
+                onChange: (q) => setSearch({ q }),
+                placeholder: "Name, slug or host",
+              }}
+              filters={
+                <>
+                  <FilterField label="Kind">
+                    <FilterSelect
+                      value={search.kind}
+                      onChange={(event) => setSearch({ kind: event.target.value })}
+                    >
+                      <option value="">Any kind</option>
+                      {kinds.map((kind) => (
+                        <option key={kind} value={kind}>
+                          {kind}
+                        </option>
+                      ))}
+                    </FilterSelect>
+                  </FilterField>
+                  <FilterField label="Authority">
+                    <FilterSelect
+                      value={search.authority}
+                      onChange={(event) => setSearch({ authority: event.target.value })}
+                    >
+                      <option value="">Any authority</option>
+                      {authorities.map((authority) => (
+                        <option key={authority} value={authority}>
+                          {authority}
+                        </option>
+                      ))}
+                    </FilterSelect>
+                  </FilterField>
+                </>
+              }
+              empty="No providers match these filters."
+            />
+          </>
         }
-        footnote={`${formatNumber(shown.length)} of ${formatNumber(
-          rows.length,
-        )} · source health from the verification lane · registry`}
+        footnote={
+          health.isPending
+            ? `${formatNumber(shown.length)} of ${formatNumber(rows.length)} · verifying sources · registry`
+            : health.isError
+              ? `${formatNumber(shown.length)} of ${formatNumber(rows.length)} · source verification unavailable · registry`
+              : `${formatNumber(shown.length)} of ${formatNumber(
+                  rows.length,
+                )} · source health from the verification lane · registry`
+        }
       />
 
       {/* #11320: below the data on purpose -- see hub-prose.tsx. */}

@@ -6,6 +6,8 @@ import {
   accountPositionsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { useNearViewport } from "@/hooks/use-near-viewport";
+import { ErrorState } from "@/components/metagraphed/states";
 import { relatedKeys } from "./account-detail-logic";
 
 /**
@@ -17,15 +19,21 @@ import { relatedKeys } from "./account-detail-logic";
  * them.
  */
 export function KeysSection({ ss58 }: { ss58: string }) {
-  const positions = useQuery({ ...accountPositionsQuery(ss58), retry: 0 });
-  const children = useQuery({ ...accountChildrenQuery(ss58), retry: 0 });
-  const parents = useQuery({ ...accountParentsQuery(ss58), retry: 0 });
+  const { ref, nearViewport } = useNearViewport("320px 0px");
+  const positions = useQuery({ ...accountPositionsQuery(ss58), enabled: nearViewport, retry: 0 });
+  const children = useQuery({ ...accountChildrenQuery(ss58), enabled: nearViewport, retry: 0 });
+  const parents = useQuery({ ...accountParentsQuery(ss58), enabled: nearViewport, retry: 0 });
+  const loading = nearViewport && (positions.isPending || children.isPending || parents.isPending);
+  const unavailable = positions.isError || children.isError || parents.isError;
 
-  const rows = relatedKeys(
-    positions.data?.data.positions ?? [],
-    children.data?.data.subnets?.flatMap((subnet) => subnet.entries) ?? [],
-    parents.data?.data.subnets?.flatMap((subnet) => subnet.entries) ?? [],
-  );
+  const rows =
+    loading || unavailable
+      ? []
+      : relatedKeys(
+          positions.data?.data.positions ?? [],
+          children.data?.data.subnets?.flatMap((subnet) => subnet.entries) ?? [],
+          parents.data?.data.subnets?.flatMap((subnet) => subnet.entries) ?? [],
+        );
 
   const items: RankGridItem[] = rows.slice(0, 20).map((row) => ({
     key: row.key,
@@ -40,15 +48,48 @@ export function KeysSection({ ss58 }: { ss58: string }) {
       id="keys"
       name="Keys"
       question="Hotkeys, children and parents linked to this account."
+      visualRef={ref}
       visual={
-        items.length > 0 ? (
+        !nearViewport ? (
+          <p className="mg-section-empty">Key relationships load as this section approaches.</p>
+        ) : loading ? (
+          <RankGrid
+            items={[]}
+            cols={4}
+            ariaLabel="Related keys"
+            source="account-key"
+            loading
+            loadingItems={4}
+          />
+        ) : unavailable ? (
+          <ErrorState
+            error={positions.error ?? children.error ?? parents.error}
+            onRetry={() =>
+              void Promise.all([positions.refetch(), children.refetch(), parents.refetch()])
+            }
+            context="related key relationships"
+          />
+        ) : items.length > 0 ? (
           <RankGrid items={items} cols={4} ariaLabel="Related keys" source="account-key" />
         ) : null
       }
+      empty={
+        !nearViewport || loading
+          ? false
+          : unavailable
+            ? false
+            : "No hotkey, child, or parent tie recorded for this account."
+      }
       footnote={
-        items.length > 0
-          ? `${formatNumber(rows.length)} related keys · live chain`
-          : "no hotkey, child or parent tie recorded for this account"
+        !nearViewport
+          ? "deferred below the fold · key relationships start only as this section approaches"
+          : loading
+            ? "Loading live key relationships"
+            : unavailable
+              ? "Related keys unavailable · live chain"
+              : items.length > 0
+                ? `${formatNumber(rows.length)} related keys · live chain`
+                : "No hotkey, child, or parent tie recorded for this account"
       }
     />
   );

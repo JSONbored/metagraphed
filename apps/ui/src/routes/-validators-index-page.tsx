@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
 import {
   AnalyticsPage,
   AnalyticsSection,
@@ -20,10 +21,12 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { EmptyState } from "@/components/metagraphed/states";
+import { HubSections } from "@/components/metagraphed/hub-prose";
+import { EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { ValidatorCompareBar } from "@/components/metagraphed/compare-bar";
 import { ValidatorCompareToggle } from "@/components/metagraphed/compare-toggle";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import {
   ALL_VALIDATORS_LIMIT,
   concentration,
@@ -65,6 +68,7 @@ export function ValidatorsPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
+  const { ref: costRef, nearViewport: costNearViewport } = useNearViewport("0px 0px");
 
   const { data: listed } = useSuspenseQuery(
     validatorsQuery({
@@ -72,9 +76,17 @@ export function ValidatorsPage() {
       limit: ALL_VALIDATORS_LIMIT,
       subnets: false,
       identity: false,
+      projection: "operator",
     }),
   );
-  const economics = useQuery({ ...validatorEconomicsQuery(130), retry: 0 });
+  const economics = useQuery({
+    ...validatorEconomicsQuery(130),
+    // Permit cost is a distinct third reading after the directory. Preserve
+    // its anchor and its loading/error geometry without fetching a 130-row
+    // comparison before a reader chooses to inspect it.
+    enabled: costNearViewport,
+    retry: 0,
+  });
 
   const validators = listed.data.validators;
   const operators = useMemo(() => operatorRows(validators), [validators]);
@@ -263,6 +275,7 @@ export function ValidatorsPage() {
         sections={SECTIONS}
         hero={
           <EntityHero
+            className="mg-hero--directory"
             name="Validators"
             sentence={
               <FactSentence>
@@ -273,7 +286,8 @@ export function ValidatorsPage() {
             live={{
               updatedAt: listed.meta?.generated_at ?? null,
               source: "chain-direct index",
-              onRefresh: () => void queryClient.invalidateQueries({ queryKey: ["mg"] }),
+              onRefresh: () =>
+                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
             }}
           />
         }
@@ -301,6 +315,7 @@ export function ValidatorsPage() {
           id="operators"
           name="Operators"
           question="Every operator, ranked."
+          className="mg-directory-section"
           visual={
             <DataTable
               rows={shown}
@@ -314,7 +329,6 @@ export function ValidatorsPage() {
               rowHref={(row) => `/validators/${row.primaryHotkey}`}
               link={RouterLink}
               source="validator-operator"
-              paginate={false}
               mobile="cards"
               storageKey="validators-operators-columns"
               empty={
@@ -394,8 +408,28 @@ export function ValidatorsPage() {
           id="cost"
           name="Cost to validate"
           question="What a permit costs, per subnet."
+          visualRef={costRef}
           visual={
-            costRows.length > 0 ? (
+            !costNearViewport ? (
+              <p className="mg-section-empty">Permit costs load as this section approaches.</p>
+            ) : economics.isPending ? (
+              <RankedRails
+                items={[]}
+                formatValue={(value) => fmtStake(value)}
+                scale="sqrt"
+                columns={{ value: "Permit floor", name: "Subnet", track: "Relative cost" }}
+                ariaLabel="Cheapest subnets to hold a validator permit on"
+                source="validator-cost"
+                loading
+                loadingRows={10}
+              />
+            ) : economics.isError ? (
+              <ErrorState
+                error={economics.error}
+                onRetry={() => void economics.refetch()}
+                context="validator permit costs"
+              />
+            ) : costRows.length > 0 ? (
               <RankedRails
                 items={costRows.slice(0, 15).map((row) => ({
                   key: `sn-${row.netuid}`,
@@ -434,9 +468,18 @@ export function ValidatorsPage() {
               />
             ) : null
           }
-          footnote={`the 15 cheapest of ${formatNumber(costRows.length)} ranked subnets · a permit is the floor to VALIDATE, not to earn`}
+          footnote={
+            !costNearViewport
+              ? "deferred below the fold · permit costs load as this section approaches"
+              : economics.isPending
+                ? "loading validator permit-cost readings"
+                : economics.isError
+                  ? "validator permit-cost readings could not be loaded"
+                  : `the 15 cheapest of ${formatNumber(costRows.length)} ranked subnets · a permit is the floor to VALIDATE, not to earn`
+          }
         />
         <Raw rows={rawRows} title="Validator index API" />
+        <HubSections path="/validators" />
       </AnalyticsPage>
     </AppShell>
   );

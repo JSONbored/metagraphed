@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
 import {
   AnalyticsPage,
   AnalyticsSection,
@@ -21,7 +22,10 @@ import {
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { CopyLinkButton } from "@/components/metagraphed/copy-link-button";
-import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
+import { ErrorState } from "@/components/metagraphed/states";
+import { StakeUnstakeLauncher } from "@/components/metagraphed/stake-unstake-launcher";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 import {
   ALL_VALIDATORS_LIMIT,
   operatorRows,
@@ -67,6 +71,11 @@ const WINDOWS = [
   { value: "90d", label: "90d" },
 ] as const;
 
+// The first membership ledger needs a subnet's identity only. Keep the
+// all-subnet name map small rather than hydrating directory-only fields the
+// validator profile never renders.
+const VALIDATOR_SUBNET_NAME_FIELDS = "netuid,name";
+
 const apiPaths = (hotkey: string) => [
   `/api/v1/validators/${hotkey}`,
   `/api/v1/validators/${hotkey}/history`,
@@ -86,22 +95,40 @@ export function ValidatorDetailPage() {
   const queryClient = useQueryClient();
   const [showAllNominators, setShowAllNominators] = useState(false);
   const paths = useMemo(() => apiPaths(hotkey), [hotkey]);
+  const hydrated = useHydrated();
 
   const { data: detailResult } = useSuspenseQuery(validatorDetailQuery(hotkey));
   const detail = detailResult.data;
-  const history = useQuery({ ...validatorHistoryQuery(hotkey, window), retry: 0 });
-  const nominators = useQuery({
-    ...validatorNominatorsQuery(hotkey, { limit: 200 }),
+  const { ref: nominatorsRef, nearViewport: nominatorsNearViewport } = useNearViewport("0px 0px");
+  const { ref: momentumRef, nearViewport: momentumNearViewport } = useNearViewport("0px 0px");
+  const { ref: peersRef, nearViewport: peersNearViewport } = useNearViewport("0px 0px");
+  // Memberships answer the route's first scan. The movement history, delegator
+  // ledger, and global peer ranking are all later evidence regions, so retain
+  // their anchors and stateful instruments but do not make their large reads
+  // compete with the identity and membership data on a cold profile.
+  const history = useQuery({
+    ...validatorHistoryQuery(hotkey, window),
+    enabled: momentumNearViewport,
     retry: 0,
   });
-  const subnets = useQuery({ ...subnetsQuery({ limit: SUBNETS_ALL_LIMIT }), retry: 0 });
+  const nominators = useQuery({
+    ...validatorNominatorsQuery(hotkey, { limit: 200 }),
+    enabled: nominatorsNearViewport,
+    retry: 0,
+  });
+  const subnets = useQuery({
+    ...subnetsQuery({ limit: SUBNETS_ALL_LIMIT, fields: VALIDATOR_SUBNET_NAME_FIELDS }),
+    retry: 0,
+  });
   const allValidators = useQuery({
     ...validatorsQuery({
       sort: "total_stake",
       limit: ALL_VALIDATORS_LIMIT,
       subnets: false,
       identity: false,
+      projection: "operator",
     }),
+    enabled: peersNearViewport,
     retry: 0,
   });
 
@@ -131,6 +158,12 @@ export function ValidatorDetailPage() {
   }, [allValidators.data, hotkey]);
 
   const permits = memberships.filter((membership) => membership.validator_permit).length;
+  const nominatorsLoading = nominatorsNearViewport && (!hydrated || nominators.isPending);
+  const showNominatorsLoading = nominatorsNearViewport && hydrated && nominators.isPending;
+  const historyLoading = momentumNearViewport && (!hydrated || history.isPending);
+  const showHistoryLoading = momentumNearViewport && hydrated && history.isPending;
+  const peersLoading = peersNearViewport && (!hydrated || allValidators.isPending);
+  const showPeersLoading = peersNearViewport && hydrated && allValidators.isPending;
 
   // The sentence carries IDENTITY, the strip carries the numbers (#11693).
   // Four of the six chips here restated a cell verbatim -- "116 memberships"
@@ -144,7 +177,7 @@ export function ValidatorDetailPage() {
   ];
 
   const cells: FactCells = [
-    { label: "Total stake", value: fmtStake(detail.total_stake_tao) },
+    { label: "Stake value (τ)", value: fmtStake(detail.total_stake_tao) },
     {
       label: "Est. APY",
       value: typeof detail.apy_estimate === "number" ? `${formatPct(detail.apy_estimate, 1)}` : "—",
@@ -176,7 +209,7 @@ export function ValidatorDetailPage() {
     { key: "uid", label: "UID", kind: "number", sortable: true, value: (row) => row.uid },
     {
       key: "stake_alpha",
-      label: "Stake",
+      label: "Stake (α)",
       kind: "number",
       sortable: true,
       value: (row) => row.stake_alpha ?? null,
@@ -184,7 +217,7 @@ export function ValidatorDetailPage() {
     },
     {
       key: "emission_alpha",
-      label: "Emission",
+      label: "Emission (α)",
       kind: "number",
       sortable: true,
       value: (row) => row.emission_alpha ?? null,
@@ -227,13 +260,15 @@ export function ValidatorDetailPage() {
   // owns where a number IS; this section owns where it came from.
   const momentumCells: FactCells = [
     {
-      label: `Stake ${window} ago`,
+      label: `Stake value ${window} ago`,
       value: fmtStake(stakeSeries[0]?.v),
+      loading: history.isPending,
       delta: deltaCell(changeOver(stakeSeries)),
     },
     {
       label: `Yield ${window} ago`,
       value: typeof yieldSeries[0]?.v === "number" ? `${formatPct(yieldSeries[0].v, 1)}` : "—",
+      loading: history.isPending,
       delta: deltaCell(changeOver(yieldSeries)),
     },
   ];
@@ -264,18 +299,14 @@ export function ValidatorDetailPage() {
         sections={SECTIONS}
         hero={
           <EntityHero
+            className="mg-hero--entity"
             crumbs={[{ label: "Validators", href: "/validators" }, { label: operator }]}
             name={operator}
             action={
-              <StakeUnstakeModal
+              <StakeUnstakeLauncher
                 hotkey={hotkey}
                 netuid={memberships[0]?.netuid ?? 0}
                 validatorName={operator}
-                trigger={(open) => (
-                  <button type="button" className="mg-hero-action" onClick={open}>
-                    Delegate
-                  </button>
-                )}
               />
             }
             secondary={
@@ -294,7 +325,8 @@ export function ValidatorDetailPage() {
             live={{
               updatedAt: detailResult.meta?.generated_at ?? null,
               source: "chain-direct index",
-              onRefresh: () => void queryClient.invalidateQueries({ queryKey: ["mg"] }),
+              onRefresh: () =>
+                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
             }}
           />
         }
@@ -302,7 +334,7 @@ export function ValidatorDetailPage() {
         <AnalyticsSection
           id="stake"
           name="Stake by subnet"
-          question="Where the stake is, and what it earns there."
+          question="Raw alpha positions by subnet, alongside their native emission."
           visual={
             stakeRails.length > 0 ? (
               <RankedRails
@@ -315,10 +347,10 @@ export function ValidatorDetailPage() {
                 // every row drew the same flat line (#11693).
                 secondaryScale="own"
                 columns={{
-                  value: "Stake",
+                  value: "Stake (α)",
                   name: "Subnet",
-                  track: "Stake, against the largest",
-                  secondary: "Emission, against the largest",
+                  track: "Raw α stake, against the largest",
+                  secondary: "α emission, against the largest",
                 }}
                 limit={12}
                 ariaLabel="Stake and emission by subnet"
@@ -331,12 +363,12 @@ export function ValidatorDetailPage() {
           // series to stack. Momentum below carries the time dimension.
           footnote={`the ${formatNumber(stakeRails.length)} largest of ${formatNumber(
             memberships.length,
-          )} memberships · a snapshot, not a series · chain-direct`}
+          )} raw α positions · units vary by subnet; the hero total is TAO-valued · a snapshot, not a series · chain-direct`}
         />
         <AnalyticsSection
           id="memberships"
           name="Per-subnet"
-          question="Every membership, ranked by stake."
+          question="Every membership, ranked by raw α stake."
           visual={
             <DataTable
               rows={memberships}
@@ -360,8 +392,24 @@ export function ValidatorDetailPage() {
           id="nominators"
           name="Nominators"
           question="Who delegates here."
+          visualRef={nominatorsRef}
           visual={
-            nominatorRows.length > 0 ? (
+            !nominatorsNearViewport ? (
+              <p className="mg-section-empty">
+                Nominator movement loads as this section approaches.
+              </p>
+            ) : showNominatorsLoading ? (
+              <RankedRails
+                items={[]}
+                formatValue={(value) => fmtStake(value)}
+                scale="sqrt"
+                columns={{ value: "Moved", name: "Delegator", track: "Share of delegation" }}
+                ariaLabel="Nominators by stake moved"
+                source="validator-nominator"
+                loading
+                loadingRows={10}
+              />
+            ) : nominatorRows.length > 0 ? (
               <RankedRails
                 items={showAllNominators ? nominatorRows : nominatorRows.slice(0, 10)}
                 formatValue={(value) => fmtStake(value)}
@@ -370,10 +418,22 @@ export function ValidatorDetailPage() {
                 ariaLabel="Nominators by stake moved"
                 source="validator-nominator"
               />
+            ) : nominators.isError ? (
+              <ErrorState
+                error={nominators.error}
+                onRetry={() => void nominators.refetch()}
+                context="nominator movement"
+              />
             ) : null
           }
           footnote={
-            nominatorRows.length > 10 && !showAllNominators ? (
+            !nominatorsNearViewport ? (
+              "deferred below the fold · nominator movement loads as this section approaches"
+            ) : nominatorsLoading ? (
+              "Loading nominator movement · chain-direct"
+            ) : nominators.isError ? (
+              "chain-direct · retry the affected record above"
+            ) : nominatorRows.length > 10 && !showAllNominators ? (
               <button
                 type="button"
                 className="mg-section-more"
@@ -393,6 +453,7 @@ export function ValidatorDetailPage() {
           id="momentum"
           name="Momentum"
           question="Stake and yield over time."
+          visualRef={momentumRef}
           controls={
             <RangeControl
               label="Window"
@@ -404,36 +465,93 @@ export function ValidatorDetailPage() {
             />
           }
           visual={
-            stakeSeries.length > 1 ? (
+            !momentumNearViewport ? (
+              <p className="mg-section-empty">
+                Stake and yield history loads as this section approaches.
+              </p>
+            ) : showHistoryLoading ? (
+              <LineWithWindow
+                id={`validator-${hotkey}-stake`}
+                points={[]}
+                window={{ from: 0, to: 0 }}
+                unit="τ"
+                formatValue={(value) => fmtStake(value)}
+                ariaLabel={`Stake value, ${window}`}
+                source={`validator-${hotkey}-stake`}
+                loading
+              />
+            ) : stakeSeries.length > 1 ? (
               <LineWithWindow
                 id={`validator-${hotkey}-stake`}
                 points={stakeSeries}
                 window={{ from: stakeSeries[0]!.t, to: stakeSeries[stakeSeries.length - 1]!.t }}
                 unit="τ"
                 formatValue={(value) => fmtStake(value)}
-                ariaLabel={`Total stake, ${window}`}
+                ariaLabel={`Stake value, ${window}`}
                 source={`validator-${hotkey}-stake`}
+              />
+            ) : history.isError ? (
+              <ErrorState
+                error={history.error}
+                onRetry={() => void history.refetch()}
+                context="validator stake and yield history"
               />
             ) : null
           }
-          legend={<FactStrip cells={momentumCells} />}
-          footnote={`${window} · daily snapshots · yield annualised simply from the daily reward rate, not compounded`}
+          legend={momentumNearViewport ? <FactStrip cells={momentumCells} /> : null}
+          footnote={
+            !momentumNearViewport
+              ? "deferred below the fold · stake and yield history loads as this section approaches"
+              : historyLoading
+                ? `Loading ${window} stake and yield history · chain-direct`
+                : history.isError
+                  ? "chain-direct · retry the affected record above"
+                  : `${window} · daily snapshots · yield annualised simply from the daily reward rate, not compounded`
+          }
         />
         <AnalyticsSection
           id="peers"
           name="Peers"
           question="The operators ranked either side of this one."
+          visualRef={peersRef}
           visual={
-            peers.length > 0 ? (
+            !peersNearViewport ? (
+              <p className="mg-section-empty">
+                Nearby operator ranking loads as this section approaches.
+              </p>
+            ) : showPeersLoading ? (
+              <RankGrid
+                items={[]}
+                cols={4}
+                ariaLabel="Operators near this one by stake"
+                source="validator-peer"
+                loading
+                loadingItems={4}
+              />
+            ) : peers.length > 0 ? (
               <RankGrid
                 items={peers}
                 cols={4}
                 ariaLabel="Operators near this one by stake"
                 source="validator-peer"
               />
+            ) : allValidators.isError ? (
+              <ErrorState
+                error={allValidators.error}
+                onRetry={() => void allValidators.refetch()}
+                context="nearby operators"
+              />
             ) : null
           }
-          footnote="by total stake across every subnet · chain-direct"
+          footnote={
+            !peersNearViewport
+              ? "deferred below the fold · nearby operators load as this section approaches"
+              : peersLoading
+                ? "Loading nearby operators · chain-direct"
+                : allValidators.isError
+                  ? "chain-direct · retry the affected record above"
+                  : "by total stake across every subnet · chain-direct"
+          }
         />
         <Raw rows={rawRows} title="Validator identifiers and API" />
       </AnalyticsPage>

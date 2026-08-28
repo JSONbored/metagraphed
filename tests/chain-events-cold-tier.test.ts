@@ -157,20 +157,33 @@ describe("loadChainEventsColdTier", () => {
     assert.match(q[0]!, /block_number < 8759336 OR event_index < 4/);
   });
 
-  test("a block lookup needs no window and stays exact", async () => {
+  test("a block lookup needs no window, stays exact, and advances its cursor", async () => {
     // Single-block reads are already cheap (1.55 MB measured); windowing them
     // would be pointless and could exclude the block itself.
-    const q = sqlFetch([eventRow(8_000_000, 0)]);
+    const q = sqlFetch([eventRow(8_000_000, 3), eventRow(8_000_000, 2)]);
     const page = await loadChainEventsColdTier(TOKEN, {
-      limit: 50,
+      limit: 2,
       block: 8_000_000,
       extrinsic: 3,
     });
     assert.match(q[0]!, /block_number = 8000000/);
     assert.match(q[0]!, /extrinsic_index = 3/);
     assert.doesNotMatch(q[0]!, /block_number >=/);
-    // Nothing below a single block to walk to.
+    assert.ok(
+      page!.next_cursor,
+      "a full block-scoped page must keep its continuation",
+    );
+    // There is no older block window to walk after an exact lookup.
     assert.equal(page!.next_before, null);
+
+    const nextQuery = sqlFetch([eventRow(8_000_000, 1)]);
+    await loadChainEventsColdTier(TOKEN, {
+      limit: 2,
+      block: 8_000_000,
+      extrinsic: 3,
+      cursor: page!.next_cursor!,
+    });
+    assert.match(nextQuery[0]!, /event_index < 2/);
   });
 
   test("composes the pallet and method filters", async () => {

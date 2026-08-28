@@ -12487,6 +12487,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
               cold: () =>
                 loadBlockExtrinsicsColdTier(ctx.env, ref, { limit, offset }),
               isEmpty: isEmptyExtrinsicPayload,
+              coldCoverageTable: "extrinsics",
             }),
             () => buildBlockExtrinsics([], ref, null, { limit, offset }),
           ),
@@ -12532,6 +12533,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
               cold: () =>
                 loadBlockEventsColdTier(ctx.env, ref, { limit, offset }),
               isEmpty: isEmptyEventPayload,
+              coldCoverageTable: "account_events",
             }),
             () => buildBlockEvents([], ref, null, { limit, offset }),
           ),

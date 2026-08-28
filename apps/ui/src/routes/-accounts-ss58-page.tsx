@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
 import {
   AnalyticsPage,
   EntityHero,
@@ -55,6 +56,11 @@ const SECTIONS = [
   { id: "keys", name: "Keys" },
 ] as const;
 
+// Account detail only needs the display name for position and flow labels.
+// Fetching the directory's complete registry record here adds fields that
+// cannot change this page's first answer.
+const ACCOUNT_SUBNET_NAME_FIELDS = "netuid,name";
+
 const apiPaths = (ss58: string) => [
   `/api/v1/accounts/${ss58}`,
   `/api/v1/accounts/${ss58}/balance`,
@@ -82,13 +88,21 @@ export function AccountDetailPage() {
   const queryClient = useQueryClient();
   const paths = useMemo(() => apiPaths(ss58), [ss58]);
 
-  const { data: summaryResult } = useSuspenseQuery(accountQuery(ss58));
-  const summary = summaryResult.data;
+  // This aggregate is deliberately non-suspending. The endpoint composes a
+  // lifetime scan and a recent-event feed, while the four other first-screen
+  // reads are independent and normally much faster. Suspending here made that
+  // one slow lane hold the entire route response for several seconds.
+  const summaryQuery = useQuery({ ...accountQuery(ss58), retry: 0 });
+  const summaryResult = summaryQuery.data;
+  const summary = summaryResult?.data ?? null;
   const balance = useQuery({ ...accountBalanceQuery(ss58), retry: 0 });
   const identity = useQuery({ ...accountIdentityQuery(ss58), retry: 0 });
   const positions = useQuery({ ...accountPositionsQuery(ss58), retry: 0 });
   const flow = useQuery({ ...accountStakeFlowQuery(ss58, { window }), retry: 0 });
-  const subnets = useQuery({ ...subnetsQuery({ limit: SUBNETS_ALL_LIMIT }), retry: 0 });
+  const subnets = useQuery({
+    ...subnetsQuery({ limit: SUBNETS_ALL_LIMIT, fields: ACCOUNT_SUBNET_NAME_FIELDS }),
+    retry: 0,
+  });
 
   const nameOf = useMemo(() => {
     const map = new Map<number, string>();
@@ -106,28 +120,31 @@ export function AccountDetailPage() {
   const free = balance.data?.data.balance_tao ?? null;
   const subnetCount = held ? new Set(held.map((position) => position.netuid)).size : null;
   const positionCount = positions.data?.data.position_count ?? null;
-  const scanCapped = Boolean(summary.event_scan_capped);
+  const scanCapped = Boolean(summary?.event_scan_capped);
   const name = identity.data?.data.name?.trim() || short(ss58);
 
   // The sentence dates the account; the strip counts it (#11693). Free, staked,
   // the subnet count and the net flow were chips AND cells, so four of six
   // numbers in this hero were printed twice, one line apart.
-  const sentence: FactNodes = [
-    <Fact key="first">
-      {summary.first_seen_at
-        ? `first seen ${formatRelative(summary.first_seen_at)}`
-        : "first seen —"}
-    </Fact>,
-    <Fact key="last">
-      {summary.last_seen_at
-        ? `last active ${formatRelative(summary.last_seen_at)}`
-        : "last active —"}
-    </Fact>,
-  ];
+  const sentence: FactNodes = summary
+    ? [
+        <Fact key="first">
+          {summary.first_seen_at
+            ? `first seen ${formatRelative(summary.first_seen_at)}`
+            : "first seen —"}
+        </Fact>,
+        " · ",
+        <Fact key="last">
+          {summary.last_seen_at
+            ? `last active ${formatRelative(summary.last_seen_at)}`
+            : "last active —"}
+        </Fact>,
+      ]
+    : [];
 
   const cells: FactCells = [
-    { label: "Free balance", value: fmtTao(free, 4) },
-    { label: "Staked", value: fmtCompactTao(staked) },
+    { label: "Free balance", value: fmtTao(free, 4), loading: balance.isPending },
+    { label: "Staked", value: fmtCompactTao(staked), loading: positions.isPending },
     {
       // One cell, not two. `position_count` and the number of DISTINCT netuids
       // among those positions are different measures, but they agree for most
@@ -139,15 +156,26 @@ export function AccountDetailPage() {
         positionCount === null || subnetCount === null
           ? "—"
           : `${formatNumber(positionCount)} / ${formatNumber(subnetCount)}`,
+      loading: positions.isPending,
     },
     {
       // Never a bare number above the cap: the summary describes the scanned
       // prefix there, and printing it as a total understates a whale by an
       // unknown amount.
       label: "Events",
-      value: scanCapped ? `> ${formatNumber(EVENT_SCAN_CAP)}` : formatNumber(summary.event_count),
+      value:
+        summary === null
+          ? "—"
+          : scanCapped
+            ? `> ${formatNumber(EVENT_SCAN_CAP)}`
+            : formatNumber(summary.event_count),
+      loading: summaryQuery.isPending,
     },
-    { label: `Net flow ${window}`, value: fmtSignedTao(flow.data?.data.net_flow_tao ?? null) },
+    {
+      label: `Net flow ${window}`,
+      value: fmtSignedTao(flow.data?.data.net_flow_tao ?? null),
+      loading: flow.isPending,
+    },
   ];
 
   const rawRows: RawRow[] = [
@@ -170,6 +198,7 @@ export function AccountDetailPage() {
         sections={SECTIONS}
         hero={
           <EntityHero
+            className="mg-hero--entity"
             crumbs={[{ label: "Accounts", href: "/accounts" }, { label: short(ss58) }]}
             name={name}
             secondary={
@@ -182,13 +211,18 @@ export function AccountDetailPage() {
             sentence={
               <FactSentence>
                 What this address holds, where it holds it, and what it has been doing. {sentence}
+                {summaryQuery.isPending ? " Activity history is loading." : null}
+                {summaryQuery.isError
+                  ? " Activity history is temporarily unavailable; the independent evidence below remains usable."
+                  : null}
               </FactSentence>
             }
             cells={cells}
             live={{
-              updatedAt: summaryResult.meta?.generated_at ?? null,
+              updatedAt: summaryResult?.meta?.generated_at ?? null,
               source: "live RPC + chain-direct index",
-              onRefresh: () => void queryClient.invalidateQueries({ queryKey: ["mg"] }),
+              onRefresh: () =>
+                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
             }}
           />
         }
@@ -206,8 +240,9 @@ export function AccountDetailPage() {
         <ActivitySection
           ss58={ss58}
           nameOf={nameOf}
-          kinds={summary.event_kinds ?? []}
-          eventCount={summary.event_count}
+          kinds={summary?.event_kinds ?? []}
+          eventCount={summary?.event_count ?? null}
+          summaryPending={summaryQuery.isPending}
           scanCapped={scanCapped}
         />
         <KeysSection ss58={ss58} />

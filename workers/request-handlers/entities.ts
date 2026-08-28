@@ -6893,6 +6893,7 @@ export async function handleBlockExtrinsics(
     cold: () =>
       loadBlockExtrinsicsColdTier(env, ref, { limit, offset }, network),
     isEmpty: isEmptyExtrinsicPayload,
+    coldCoverageTable: "extrinsics",
   });
   if (answer?.kind === "gap") return chainDetailGapResponse(answer);
   const data =
@@ -6975,6 +6976,7 @@ export async function handleBlockEvents(
       loadBlockEventsHotTier(env, ref, height, { limit, offset }),
     cold: () => loadBlockEventsColdTier(env, ref, { limit, offset }, network),
     isEmpty: isEmptyEventPayload,
+    coldCoverageTable: "account_events",
   });
   if (answer?.kind === "gap") return chainDetailGapResponse(answer);
   const data =

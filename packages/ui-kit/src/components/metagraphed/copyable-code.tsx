@@ -55,9 +55,7 @@ export function CopyableCode({
         <code
           className={classNames(
             "min-w-0 text-ink-strong",
-            truncate
-              ? "truncate"
-              : "truncate sm:whitespace-normal sm:break-all",
+            truncate ? "truncate" : "whitespace-normal break-all",
           )}
         >
           {value}

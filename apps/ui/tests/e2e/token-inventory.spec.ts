@@ -439,7 +439,10 @@ for (const route of ROUTES) {
             }
           }
           await gotoThroughRestart(page, route);
-          await page.waitForLoadState("networkidle").catch(() => {});
+          // HAR-replayed polling routes may never produce Playwright's 500ms
+          // network-idle window. Bound the optional settle check so a page
+          // that has already loaded cannot consume the test's full timeout.
+          await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
           await page.waitForTimeout(300);
 
           const s = await page.evaluate(sweepMain, [DOT_MAX_PX, CONTRACT_RADIUS_PX] as [

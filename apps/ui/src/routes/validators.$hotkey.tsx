@@ -1,6 +1,11 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
-import { z } from "zod";
+import {
+  TRAILING_WINDOWS,
+  defineSearchSchema,
+  enumSearch,
+  stripDefaultSearchParams,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
@@ -14,7 +19,6 @@ import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 import { stringifyJsonLd, validatorDatasetJsonLd } from "@/lib/metagraphed/json-ld";
 import { formatTao } from "@/lib/metagraphed/format";
 import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
-import { validatorDetailQuery } from "@/lib/metagraphed/queries";
 import { ValidatorDetailPage } from "./-validators-hotkey-page";
 
 /**
@@ -25,11 +29,11 @@ import { ValidatorDetailPage } from "./-validators-hotkey-page";
  * now, and the three tabs are three sections on one page. `validateSearch`
  * REPLACES the search object, so an unread key is dropped on the next parse.
  */
-const validatorDetailSearchSchema = z.object({
-  window: z.enum(TRAILING_WINDOWS).catch("30d").default("30d"),
+const validatorDetailSearchSchema = defineSearchSchema({
+  window: enumSearch(TRAILING_WINDOWS, "30d"),
 });
 
-export type ValidatorDetailSearch = z.infer<typeof validatorDetailSearchSchema>;
+export type ValidatorDetailSearch = SearchOutput<typeof validatorDetailSearchSchema>;
 
 export const Route = createFileRoute("/validators/$hotkey")({
   validateSearch: validatorDetailSearchSchema,
@@ -50,6 +54,7 @@ export const Route = createFileRoute("/validators/$hotkey")({
   // truncated-hotkey form.
   loader: async ({ context, params }) => {
     try {
+      const { validatorDetailQuery } = await import("@/lib/metagraphed/queries");
       const { data, meta } = await context.queryClient.ensureQueryData(
         validatorDetailQuery(params.hotkey),
       );
@@ -118,7 +123,7 @@ export const Route = createFileRoute("/validators/$hotkey")({
           logoHost: loaderData?.logoHost ?? null,
           stats: [
             ...(loaderData?.totalStakeTao != null
-              ? [{ label: "Total stake", value: formatTao(loaderData.totalStakeTao) }]
+              ? [{ label: "Stake value (τ)", value: formatTao(loaderData.totalStakeTao) }]
               : []),
             ...(loaderData?.subnetCount != null
               ? [{ label: "Subnets", value: String(loaderData.subnetCount) }]

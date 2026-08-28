@@ -1,13 +1,16 @@
 import type { ReactNode } from "react";
 import { classNames } from "@/lib/format";
+import { Skeleton } from "../skeleton";
 import { useEntityMark } from "../interaction/active-entity";
 import { markAriaLabel } from "./chart-aria";
 
 /**
- * The leaderboard (#11609): the first `featured` entries as 154px cards in a
- * 3-column grid, the rest as 88px one-row cards in a 4-column grid. Every
- * card is a link and an entity mark. On mobile the featured row scrolls
- * sideways and the compact grid becomes a list.
+ * The leaderboard (#11609): the first `featured` entries lead a three-column
+ * ranked grid, followed by a denser supporting grid. Every entry keeps the
+ * same rank, identity, and value geometry so a directory reads as evidence,
+ * not as a set of miniature profile cards. On a phone the lead entries become
+ * compact full-width rows: a partial carousel makes the first result look cut
+ * off instead of making the comparison legible.
  */
 export interface LeaderCardItem {
   key: string;
@@ -20,7 +23,7 @@ export interface LeaderCardItem {
   delta?: number | "new";
   href: string;
   avatar?: ReactNode;
-  /** Initials for the watermark and the avatar fallback. */
+  /** Initials for the avatar fallback. */
   initials?: string;
 }
 
@@ -31,6 +34,10 @@ export interface LeaderCardsProps {
   ariaLabel: string;
   source?: string;
   className?: string;
+  /** Preserve the featured and compact leaderboard geometry until its ranking answers. */
+  loading?: boolean;
+  /** Number of leaderboard rows to reserve while loading. */
+  loadingItems?: number;
 }
 
 export function deltaLabel(delta: number | "new" | undefined): {
@@ -52,7 +59,12 @@ export function LeaderCards({
   ariaLabel,
   source = "leader-cards",
   className,
+  loading = false,
+  loadingItems = featured,
 }: LeaderCardsProps) {
+  const placeholders = Math.max(featured, loadingItems);
+  const leadCount = Math.min(featured, placeholders);
+  const compactCount = Math.max(0, placeholders - leadCount);
   const lead = items.slice(0, featured);
   const rest = items.slice(featured);
   return (
@@ -60,10 +72,18 @@ export function LeaderCards({
       className={classNames("mg-leaders", className)}
       role="group"
       aria-label={ariaLabel}
-      data-marks
+      aria-busy={loading || undefined}
+      data-marks={loading ? undefined : ""}
       data-mg-leaders=""
     >
-      {lead.length > 0 ? (
+      {loading ? <span className="sr-only">Loading {ariaLabel}</span> : null}
+      {loading ? (
+        <ol className="mg-leaders-featured" start={1}>
+          {Array.from({ length: leadCount }, (_, index) => (
+            <LeaderSkeleton key={`featured-${index}`} variant="featured" />
+          ))}
+        </ol>
+      ) : lead.length > 0 ? (
         <ol className="mg-leaders-featured" start={1}>
           {lead.map((item, i) => (
             <LeaderCard
@@ -76,7 +96,13 @@ export function LeaderCards({
           ))}
         </ol>
       ) : null}
-      {rest.length > 0 ? (
+      {loading && compactCount > 0 ? (
+        <ol className="mg-leaders-compact" start={leadCount + 1}>
+          {Array.from({ length: compactCount }, (_, index) => (
+            <LeaderSkeleton key={`compact-${index}`} variant="compact" />
+          ))}
+        </ol>
+      ) : rest.length > 0 ? (
         <ol className="mg-leaders-compact" start={lead.length + 1}>
           {rest.map((item, i) => (
             <LeaderCard
@@ -90,6 +116,29 @@ export function LeaderCards({
         </ol>
       ) : null}
     </div>
+  );
+}
+
+/** The settled leaderboard's reading geometry, without invented ranks or values. */
+function LeaderSkeleton({ variant }: { variant: "featured" | "compact" }) {
+  return (
+    <li aria-hidden="true">
+      <div className="mg-leader" data-variant={variant}>
+        <span className="mg-leader-rank">
+          <Skeleton className="h-3 w-4" />
+        </span>
+        <span className="mg-leader-avatar">
+          <Skeleton className="size-5" />
+        </span>
+        <span className="mg-leader-copy">
+          <Skeleton className="h-3 w-24 max-w-full" />
+          <Skeleton className="h-3 w-14 max-w-full" />
+        </span>
+        <span className="mg-leader-figures">
+          <Skeleton className="h-3 w-12" />
+        </span>
+      </div>
+    </li>
   );
 }
 
@@ -136,11 +185,6 @@ function LeaderCard({
             </span>
           ) : null}
         </span>
-        {variant === "featured" ? (
-          <span className="mg-leader-watermark" aria-hidden="true">
-            {initials}
-          </span>
-        ) : null}
       </a>
     </li>
   );

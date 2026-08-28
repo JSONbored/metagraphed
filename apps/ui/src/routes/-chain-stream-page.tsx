@@ -1,19 +1,25 @@
-import { useMemo } from "react";
-import { useInfiniteQuery, useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   DataTable,
   FilterField,
   FilterSelect,
   LoadMore,
   truncateIdentifier,
+  type SectionNavLink,
 } from "@jsonbored/ui-kit";
-import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import {
   blocksQuery,
   blocksSummaryQuery,
+  blockExtrinsicsInfiniteQuery,
   chainEventsInfiniteQuery,
   chainEventsStatsQuery,
   extrinsicsQuery,
@@ -24,9 +30,11 @@ import {
   PAGE_SIZES,
   blockRows,
   blocksFacts,
-  boundedTotal,
+  blockQueryParams,
   eventsFacts,
   extrinsicsFacts,
+  hasBlockFilters,
+  hasNextPage,
   pageFacet,
   pageOf,
   withoutNoise,
@@ -36,7 +44,9 @@ import {
   eventColumns,
   extrinsicColumns,
 } from "@/components/metagraphed/chain-stream/chain-stream-columns";
+import { BlockActivityWindow } from "@/components/metagraphed/chain-stream/block-activity-window";
 import { StreamShell, streamEmpty } from "@/components/metagraphed/chain-stream/stream-shell";
+import { ErrorState } from "@/components/metagraphed/states";
 import type { BlocksSearch } from "./chain.blocks";
 import type { EventsSearch } from "./chain.events";
 import type { ExtrinsicsSearch } from "./chain.extrinsics";
@@ -62,6 +72,61 @@ import type { ExtrinsicsSearch } from "./chain.extrinsics";
 
 const fmt = { count: formatNumber, seconds: humaniseSeconds };
 
+/**
+ * Direct block records use a cold lakehouse read for their primary extrinsic
+ * ledger. Chain-stream links are the other common entrance to that record
+ * (beside the homepage rail), so a deliberate hover or keyboard focus warms
+ * its compact identity record and that one ledger. The route preloader owns
+ * the first; this component owns the second. The short dwell protects a
+ * 50-row table from turning ordinary pointer travel into background reads.
+ *
+ * This lives in the stream route chunk rather than the global router link:
+ * pages that cannot render a block link should not pay for the query code.
+ */
+const BlockStreamLink: SectionNavLink = ({ href, children, ...rest }) => {
+  const match = /^\/blocks\/(\d+)$/.exec(href);
+  const blockNumber = match?.[1] ?? null;
+  const queryClient = useQueryClient();
+  const intentTimer = useRef<number | null>(null);
+
+  const clearIntent = useCallback(() => {
+    if (intentTimer.current == null) return;
+    window.clearTimeout(intentTimer.current);
+    intentTimer.current = null;
+  }, []);
+
+  const beginIntent = useCallback(() => {
+    if (blockNumber == null) return;
+    clearIntent();
+    intentTimer.current = window.setTimeout(() => {
+      intentTimer.current = null;
+      void queryClient.prefetchInfiniteQuery({
+        ...blockExtrinsicsInfiniteQuery(blockNumber, 100),
+        retry: 0,
+      });
+    }, 140);
+  }, [blockNumber, clearIntent, queryClient]);
+
+  useEffect(() => clearIntent, [clearIntent]);
+
+  return (
+    <Link
+      to={href}
+      {...rest}
+      preload={blockNumber == null ? undefined : "intent"}
+      preloadDelay={blockNumber == null ? undefined : 140}
+      onPointerEnter={(event) => {
+        if (event.pointerType === "mouse") beginIntent();
+      }}
+      onPointerLeave={clearIntent}
+      onFocus={beginIntent}
+      onBlur={clearIntent}
+    >
+      {children}
+    </Link>
+  );
+};
+
 /* -- Blocks ------------------------------------------------------------- */
 
 const BLOCK_PATHS = ["/api/v1/blocks", "/api/v1/blocks/summary"];
@@ -75,8 +140,8 @@ export function BlocksPage() {
       resetScroll: false,
     });
 
-  const params: Record<string, string | number> = { limit: search.limit, offset: search.offset };
-  if (search.author) params.author = search.author;
+  const params = blockQueryParams(search);
+  const hasFilters = hasBlockFilters(search);
 
   // Only the first page polls: paging back through older blocks must not be
   // yanked out from under the reader by a refresh that reflows the page.
@@ -85,7 +150,12 @@ export function BlocksPage() {
   const summary = useQuery({ ...blocksSummaryQuery(), retry: 0 });
   const rows = useMemo(() => blockRows((feed.data ?? []) as Block[]), [feed.data]);
 
-  const facts = blocksFacts(summary.data?.data, rows[0]?.block_number ?? null, fmt);
+  const facts = blocksFacts(
+    summary.data?.data,
+    rows[0]?.block_number ?? null,
+    fmt,
+    summary.isPending,
+  );
   const authors = useMemo(() => pageFacet(rows, (row) => row.author), [rows]);
 
   return (
@@ -99,6 +169,7 @@ export function BlocksPage() {
       apiPaths={BLOCK_PATHS}
       artifacts={["/metagraph/blocks.json"]}
     >
+      <BlockActivityWindow blocks={rows} filtered={hasFilters || search.offset > 0} />
       <DataTable
         id="blocks"
         rows={rows}
@@ -106,10 +177,11 @@ export function BlocksPage() {
         rowKey={(row) => String(row.block_number)}
         caption="Blocks"
         rowHref={(row) => `/blocks/${row.block_number}`}
-        link={RouterLink}
+        link={BlockStreamLink}
         source="chain-block"
         storageKey="mg-blocks-columns"
-        total={boundedTotal(search.offset, rows.length, search.limit)}
+        hasMore={hasNextPage(rows.length, search.limit)}
+        captionCount={null}
         page={pageOf(search.offset, search.limit)}
         onPage={(page) => setSearch({ offset: (page - 1) * search.limit })}
         pageSize={search.limit}
@@ -130,7 +202,7 @@ export function BlocksPage() {
             </FilterSelect>
           </FilterField>
         }
-        empty={streamEmpty(Boolean(search.author), "blocks", "/api/v1/blocks")}
+        empty={streamEmpty(hasFilters, "blocks", "/api/v1/blocks")}
       />
     </StreamShell>
   );
@@ -183,10 +255,11 @@ export function ExtrinsicsPage() {
         }
         caption="Extrinsics"
         rowHref={(row) => (row.extrinsic_hash ? `/extrinsics/${row.extrinsic_hash}` : undefined)}
-        link={RouterLink}
+        link={BlockStreamLink}
         source="chain-extrinsic"
         storageKey="mg-extrinsics-columns"
-        total={boundedTotal(search.offset, rows.length, search.limit)}
+        hasMore={hasNextPage(rows.length, search.limit)}
+        captionCount={null}
         page={pageOf(search.offset, search.limit)}
         onPage={(page) => setSearch({ offset: (page - 1) * search.limit })}
         pageSize={search.limit}
@@ -283,7 +356,7 @@ export function EventsPage() {
     () => withoutNoise(fetched, search.noise),
     [fetched, search.noise],
   );
-  const facts = eventsFacts(stats.data?.data, fmt);
+  const facts = eventsFacts(stats.data?.data, fmt, stats.isPending);
 
   // The pallet and event lists come from the STATS endpoint, which counts a
   // real block window, rather than from the rows on screen: the feed is
@@ -320,11 +393,20 @@ export function EventsPage() {
         caption={
           hidden > 0 ? `Chain events (${formatNumber(hidden)} plumbing hidden)` : "Chain events"
         }
-        link={RouterLink}
+        link={BlockStreamLink}
         source="chain-event"
         storageKey="mg-events-columns"
         paginate={false}
         loading={feed.isPending}
+        error={
+          feed.isError ? (
+            <ErrorState
+              error={feed.error}
+              context="chain events"
+              onRetry={() => void feed.refetch()}
+            />
+          ) : undefined
+        }
         // The args blob is the one field with no shape worth a column, so it
         // is a row expansion: the reader who needs it gets all of it, and the
         // reader who does not never sees a truncated JSON string in a cell.
@@ -383,10 +465,9 @@ export function EventsPage() {
           "/api/v1/chain-events",
         )}
       />
-      // Only while there IS more to fetch. The table states its own // range and total in its
-      pager, so a terminal "end of list" strip // beneath it is the same fact twice, in two
-      vocabularies (#11696).
-      {feed.hasNextPage || feed.error ? (
+      {/* Only while there is more to fetch. A cursor feed has no total or
+          terminal range to repeat beneath the table. */}
+      {feed.hasNextPage || (feed.error && fetched.length > 0) ? (
         <LoadMore
           hasMore={feed.hasNextPage}
           isLoading={feed.isFetchingNextPage}

@@ -54,9 +54,13 @@ const LEVEL_COLUMNS: DataTableColumn<TaxonomyLevel>[] = [
  * same as every other list of records on the site.
  */
 export function AboutPage() {
-  const coverage = useQuery(coverageQuery());
-  const health = useQuery(healthQuery());
-  const freshness = useQuery(freshnessQuery());
+  // These supporting methodology readings should reach an honest unavailable
+  // state promptly. The hero exposes one deliberate refresh for all three;
+  // silently holding the whole fact rail in an automatic-retry limbo hides
+  // both the failure and the recovery action from the reader.
+  const coverage = useQuery({ ...coverageQuery(), retry: 0 });
+  const health = useQuery({ ...healthQuery(), retry: 0 });
+  const freshness = useQuery({ ...freshnessQuery(), retry: 0 });
 
   const cells = useMemo<FactCells>(() => {
     const facts = aboutFacts({
@@ -64,19 +68,33 @@ export function AboutPage() {
       health: (health.data?.data ?? null) as Record<string, unknown> | null,
       freshness: (freshness.data?.data ?? null) as Record<string, unknown> | null,
     });
-    // Four sources, four cells, one shape: a cell whose query has not landed
-    // (or failed) shows an em dash rather than a zero, because a zero here
-    // would be a claim.
-    const [active, adapters, healthy, fresh] = facts.map((fact) => ({
+    // Four sources, four cells, one shape: a query that has not landed shows a
+    // pending instrument; a failed query names its unavailable reading; only a
+    // completed query without a value shows a dash.
+    const pending = [coverage.isPending, coverage.isPending, health.isPending, freshness.isPending];
+    const errors = [coverage.isError, coverage.isError, health.isError, freshness.isError];
+    const [active, adapters, healthy, fresh] = facts.map((fact, index) => ({
       label: fact.label,
+      loading: pending[index],
+      kind: errors[index] ? "text" : undefined,
       value: (
         <Link to={fact.href} className="text-ink-strong hover:text-accent">
-          {fact.value ?? "—"}
+          {errors[index] ? "Unavailable" : (fact.value ?? "—")}
         </Link>
       ),
     }));
     return [active, adapters, healthy, fresh] as FactCells;
-  }, [coverage.data, health.data, freshness.data]);
+  }, [
+    coverage.data,
+    coverage.isError,
+    coverage.isPending,
+    health.data,
+    health.isError,
+    health.isPending,
+    freshness.data,
+    freshness.isError,
+    freshness.isPending,
+  ]);
 
   const rawRows: RawRow[] = [
     { label: "REST", value: `${API_BASE}/api/v1`, href: `${API_BASE}/api/v1` },
@@ -106,6 +124,14 @@ export function AboutPage() {
           </FactSentence>
         }
         cells={cells}
+        live={{
+          updatedAt: health.data?.data.generated_at ?? null,
+          source: "registry + probes",
+          onRefresh: () => {
+            void Promise.all([coverage.refetch(), health.refetch(), freshness.refetch()]);
+          },
+          refreshing: coverage.isFetching || health.isFetching || freshness.isFetching,
+        }}
       />
 
       <AnalyticsSection

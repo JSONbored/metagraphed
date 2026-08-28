@@ -6,9 +6,13 @@ import {
   formatScore,
   resultLabel,
   resultMeta,
+  resultDestination,
+  keywordResultLabel,
+  keywordResultMeta,
   identifierKindLabel,
   shortenIdentifier,
 } from "./search-box";
+import type { SearchIndexHit } from "@/lib/metagraphed/search-query";
 
 function result(overrides: Partial<SemanticSearchResult> = {}): SemanticSearchResult {
   return {
@@ -45,12 +49,17 @@ describe("describeSearchError", () => {
     ).toBe("AI is temporarily unavailable.");
   });
 
-  it("falls back to the error message for any other ApiError status", () => {
+  it("keeps a useful client error but does not surface raw proxy errors", () => {
     expect(
       describeSearchError(
         new ApiError("Bad request", { status: 400, url: "/api/v1/search/semantic" }),
       ),
     ).toBe("Bad request");
+    expect(
+      describeSearchError(
+        new ApiError("Not Found", { status: 404, url: "/api/v1/search/semantic" }),
+      ),
+    ).toBe("Couldn't search — try again.");
   });
 
   it("uses the generic fallback for an ApiError with no message (e.g. a network failure)", () => {
@@ -106,6 +115,54 @@ describe("resultMeta", () => {
 
   it("omits the subnet prefix when netuid is null", () => {
     expect(resultMeta(result({ netuid: null, score: 0.5 }))).toBe("50%");
+  });
+});
+
+describe("result destinations", () => {
+  it("keeps a subnet record inside the explorer", () => {
+    expect(resultDestination(result({ type: "subnet", netuid: 64 }))).toEqual({
+      kind: "subnet",
+      netuid: 64,
+    });
+  });
+
+  it("opens a matching public surface instead of discarding its precise URL", () => {
+    expect(
+      resultDestination(
+        result({
+          type: "surface",
+          netuid: 19,
+          url: "https://subnet19.example/docs",
+        }),
+      ),
+    ).toEqual({ kind: "external", href: "https://subnet19.example/docs" });
+  });
+
+  it("falls back to the owning subnet only when the surface has no usable URL", () => {
+    expect(resultDestination(result({ type: "surface", netuid: 19, url: null }))).toEqual({
+      kind: "subnet",
+      netuid: 19,
+    });
+  });
+});
+
+describe("keyword result labels", () => {
+  const hit: SearchIndexHit = {
+    id: "subnet:19",
+    type: "subnet",
+    netuid: 19,
+    slug: "sn-19",
+    title: "compute-lab",
+  };
+
+  it("uses the same readable title fallback as semantic results", () => {
+    expect(keywordResultLabel(hit)).toBe("compute-lab");
+    expect(keywordResultLabel({ ...hit, title: undefined })).toBe("sn-19");
+  });
+
+  it("keeps the keyword result's kind and owning subnet visible", () => {
+    expect(keywordResultMeta(hit)).toBe("SN19 · subnet");
+    expect(keywordResultMeta({ id: "provider:compute-lab", kind: "provider" })).toBe("provider");
   });
 });
 

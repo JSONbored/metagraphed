@@ -83,26 +83,6 @@ const TEXT_MUTED = "#616B6C";
 const HAIRLINE = "#E3E2DE";
 const HAIRLINE_ON_SURFACE = "#E9EAEA";
 /**
- * The site's background PATTERN, from packages/ui-kit/src/styles.css's
- * "Premium Blockmachine background: hairline grid + dot field + soft top
- * vignette" on `body`. Matching --paper alone still didn't look like the
- * product, because the product's ground is never a flat fill.
- *
- * Both are `--ink-strong` at low alpha (dot 6%, grid 3.5% in light) which
- * satori can't express, so they ship precomputed over --paper. Sizes are the
- * LIGHT-theme values: --mg-dot-size 24px (dark uses 26px), grid 96px in both.
- *
- * Verified satori actually renders this stack before relying on it -- the
- * local preview uses Chromium, which would happily render a pattern satori
- * silently dropped. A probe confirmed satori emits <pattern>,
- * <radialGradient> and <linearGradient> for exactly these declarations.
- */
-const DOT_COLOR = "#E8E7E3";
-const GRID_COLOR = "#EEEEEA";
-const DOT_SIZE = 24;
-const GRID_SIZE = 96;
-
-/**
  * The card's INK band -- the foot, and the tile our own mark sits in.
  *
  * The body is bone; the foot is ink. That contrast is the app's own (its
@@ -561,7 +541,7 @@ export function renderCardMarkup(opts: {
     (opts.status && isHealthState(opts.status) && HEALTH_COLORS[opts.status]) || INK_ACCENT;
 
   return `
-    <div style="position:relative;display:flex;flex-direction:column;width:1200px;height:630px;background:${GROUND};background-image:radial-gradient(${DOT_COLOR} 1px, transparent 1px),linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px),linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px),radial-gradient(ellipse 110% 60% at 50% 0%, rgba(0,200,153,0.07) 0%, transparent 70%);background-size:${DOT_SIZE}px ${DOT_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, 100% 100%;color:${TEXT_STRONG};font-family:'Space Grotesk','Inter';overflow:hidden;">
+    <div style="position:relative;display:flex;flex-direction:column;width:1200px;height:630px;background:${GROUND};color:${TEXT_STRONG};font-family:'Space Grotesk','Inter';overflow:hidden;">
       <div style="display:flex;width:1200px;height:6px;background:${ACCENT};"></div>
 
       <div style="display:flex;align-items:center;padding:32px 80px;border-bottom:1px solid ${HAIRLINE};">

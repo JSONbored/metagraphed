@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { gzipSync } from "node:zlib";
 
 import { SUBNET_SLOT_CAP } from "../../src/lib/metagraphed/bittensor";
 import { HUB_COPY, HUB_DESCRIPTION_MAX, HUB_TITLE_MAX } from "../../src/lib/metagraphed/hub-copy";
@@ -85,7 +86,7 @@ const MUST_BE_301: ReadonlyArray<readonly [from: string, to: string, carries?: s
   // sections and filters — so they are retired the same way every other
   // consolidation above was, and asserted here for the same reason: the status
   // code IS the property, and a 307 would leave the old URL in the index.
-  ["/revenue", "/subnets", "#rankings"],
+  ["/revenue", "/subnets", "#revenue"],
   ["/leaderboards", "/subnets", "#rankings"],
   ["/subnets/category", "/subnets", "#domains"],
   ["/subnets/category/inference", "/subnets", "domain=inference"],
@@ -517,9 +518,9 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
   // hub quadruple without failing.
   //
   // Measured against the e2e stub, which is what CI runs. Production is larger
-  // for the data-heavy pages — /apis/endpoints 4,948 KB, /validators 1,297 KB —
-  // because the stub's fixtures are smaller; the ratchet still catches a code
-  // change that inflates the document, which is what it is for.
+  // against both the deterministic fixture build and a production-form local
+  // crawl. The ratchet catches a code change that inflates the document; it is
+  // deliberately above current output so ordinary data drift has headroom.
   const MAX_HTML_KIB: Record<keyof typeof HUB_COPY, number> = {
     // #11618 lowered this from 130. The rebuilt landing page reads three
     // fields of an economics row, so it asks for three -- the full response is
@@ -534,16 +535,15 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
     // chevron on a row that has nothing to expand, and the chevron it does
     // render is drawn in CSS rather than an inline SVG per row. 479 -> 418.
     "/subnets": 430,
-    "/validators": 1300,
-    "/apis": 620,
+    // Operator projection + one server-rendered page of links: 1,282 -> 466 KiB.
+    "/validators": 520,
+    "/apis": 100,
     "/apis/providers": 400,
-    // #11326 lowered this from 2,700 after dropping five API fields nothing in
-    // the app reads: 2,609 -> 2,128 KiB here, 4,948 -> 3,883 KiB in production.
-    // Still the heaviest page on the site — it fetches all 3,372 endpoints —
-    // so this ceiling has further to fall.
-    "/apis/endpoints": 2200,
-    "/apis/schemas": 700,
-    "/chain": 240,
+    // The rebuilt endpoint view requests bounded rows instead of dehydrating
+    // the entire catalog: 4,948 KiB in the old production page -> ~58 KiB.
+    "/apis/endpoints": 100,
+    "/apis/schemas": 100,
+    "/chain": 100,
   };
 
   for (const path of Object.keys(HUB_COPY) as Array<keyof typeof HUB_COPY>) {
@@ -587,6 +587,50 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
     expect(inline).not.toContain("emission_alpha");
     // …while the row fields the table actually renders are still there.
     expect(inline).toContain("total_stake_tao");
+  });
+});
+
+test.describe("sitewide payload and entry-bundle ratchets", () => {
+  const ROUTE_FAMILY_HTML_KIB = {
+    "/subnets/19": 150,
+    "/validators/5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u": 190,
+    "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9": 100,
+    "/providers/lium": 80,
+    "/blocks/8713384": 90,
+    "/extrinsics/0x986f1f7da3d93882e8c19bbe3b303ef8ba5454062272446598d17aa599ca4428": 90,
+    "/docs": 240,
+    "/docs/mcp": 270,
+    "/docs/api-reference/subnets/subnets-by-network": 430,
+    "/news": 540,
+    "/news/sn19/2026-w17": 340,
+    "/graphql/explorer": 80,
+  } as const;
+
+  for (const [path, ceiling] of Object.entries(ROUTE_FAMILY_HTML_KIB)) {
+    test(`${path} stays under its route-family HTML ratchet`, async ({ request }) => {
+      const html = await (await request.get(path)).text();
+      const kib = Math.round(Buffer.byteLength(html, "utf8") / 1024);
+      expect(
+        kib,
+        `${path} renders ${kib} KiB against a ${ceiling} KiB route-family ceiling. ` +
+          `Preserve the rendered information, then narrow the query, dehydration, or markup.`,
+      ).toBeLessThanOrEqual(ceiling);
+    });
+  }
+
+  test("the global client entry stays split from route data and Zod", async ({ request }) => {
+    const html = await (await request.get("/")).text();
+    const entryPath = /<script[^>]+type="module"[^>]+src="([^"]+)"/.exec(html)?.[1];
+    expect(entryPath, "the page emitted no module entry script").toBeTruthy();
+    const entry = await (await request.get(entryPath!)).body();
+    const rawKib = Math.round(entry.byteLength / 1024);
+    const gzipKib = Math.round(gzipSync(entry).byteLength / 1024);
+    expect(rawKib, `global entry grew to ${rawKib} KiB`).toBeLessThanOrEqual(740);
+    expect(gzipKib, `global entry grew to ${gzipKib} KiB gzip`).toBeLessThanOrEqual(240);
+    const source = entry.toString("utf8");
+    expect(source, "the global entry contains the full query registry").not.toContain(
+      "subnet-overview",
+    );
   });
 });
 

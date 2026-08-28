@@ -8,7 +8,7 @@ export const Route = createFileRoute("/agents")({
       {
         name: "description",
         content:
-          "Metagraphed is machine-readable end to end: MCP server, agent tool specs, llms.txt, grounded Q&A, semantic search, and bulk data over ~129 Bittensor subnets. Point your agent here.",
+          "Connect AI agents to Metagraphed via MCP, tool specs, llms.txt, grounded Q&A, semantic search, and bulk data across every Bittensor subnet.",
       },
       { property: "og:title", content: "For AI agents — Metagraphed" },
     ],

@@ -1,11 +1,15 @@
-import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
+import {
+  defineSearchSchema,
+  stripDefaultSearchParams,
+  stringSearch,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { Skeleton } from "@jsonbored/ui-kit";
+import { RouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
 import { ProvidersPage } from "./-providers-index-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
-export type ProvidersSearch = z.infer<typeof providersSearchSchema>;
+export type ProvidersSearch = SearchOutput<typeof providersSearchSchema>;
 
 /**
  * #11624 dropped `view` and `sort`.
@@ -15,11 +19,11 @@ export type ProvidersSearch = z.infer<typeof providersSearchSchema>;
  * than one toggle away. `sort` is the table's own, and duplicating it in the
  * URL let the two disagree.
  */
-export const providersSearchSchema = z.object({
-  q: z.string().catch("").default(""),
-  kind: z.string().catch("").default(""),
+export const providersSearchSchema = defineSearchSchema({
+  q: stringSearch(),
+  kind: stringSearch(),
   // `high` is a nav shortcut for official + provider-claimed (see nav-mega-menu-data).
-  authority: z.string().catch("").default(""),
+  authority: stringSearch(),
 });
 
 export const Route = createFileRoute("/apis/providers")({
@@ -28,6 +32,6 @@ export const Route = createFileRoute("/apis/providers")({
   head: () => ({
     meta: hubMeta("/apis/providers"),
   }),
-  pendingComponent: () => <Skeleton className="mx-auto my-6 h-96 w-full max-w-shell" />,
+  pendingComponent: RouteLoadingSkeleton,
   component: ProvidersPage,
 });

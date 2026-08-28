@@ -40,6 +40,47 @@ function DataTierUnavailableNotice({ context }: { context?: string }) {
 }
 
 /**
+ * A block header can reach the live index before its decoded extrinsics or
+ * events land in either detail window. The API names that deliberately as
+ * `block_detail_unavailable`: it is a temporary coverage gap, not evidence
+ * that the block is empty. Treating it as a generic failure makes an explorer
+ * look less trustworthy precisely when its honest state is useful.
+ */
+function BlockDetailUnavailableNotice({
+  context,
+  onRetry,
+}: {
+  context?: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div role="status" className="rounded border border-border bg-surface p-4">
+      <div className="flex items-start gap-3">
+        <Hourglass className="size-4 shrink-0 text-ink-muted" />
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 font-display text-13 font-medium text-ink-strong">
+            Decoded block detail is catching up
+          </div>
+          <p className="text-13 leading-relaxed text-ink-muted">
+            This block is indexed, but {context ?? "its decoded detail"} is not yet available in
+            either verified detail window. It is not an empty block—retry after the indexer
+            reconciles the record.
+          </p>
+          {onRetry ? (
+            <button
+              onClick={onRetry}
+              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
+            >
+              <RefreshCw className="size-3" /> Retry
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * #8384: shown instead of a red error card when a request fails because the
  * visitor is genuinely offline (apiFetch's own catch turns a rejected fetch
  * into `ApiError` with `status: 0` -- the same signal router.tsx's retry
@@ -135,6 +176,12 @@ export function ErrorState({
   // than a red error card for every call site that reads /chain-events*.
   if (isApi && error.code === "data_tier_unavailable") {
     return <DataTierUnavailableNotice context={context} />;
+  }
+  // A present block can sit momentarily between the live-follow and decoded
+  // history windows. Keep its technical-detail state distinct from both a
+  // generic error and a genuinely empty block.
+  if (isApi && error.code === "block_detail_unavailable") {
+    return <BlockDetailUnavailableNotice context={context} onRetry={onRetry} />;
   }
   // #8384: `status: 0` is apiFetch's own signal for "the fetch itself never
   // reached a server" (network error / genuinely offline) -- see that

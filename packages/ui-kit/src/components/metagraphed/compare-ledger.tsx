@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { classNames } from "@/lib/format";
+import { Skeleton } from "@/components/metagraphed/skeleton";
 
 /**
  * The side-by-side ledger (#11611): one column per entity, one row per fact,
@@ -44,6 +45,8 @@ export interface CompareLedgerProps {
   groups: readonly CompareGroup[];
   /** Tint the winning cell of every row that declares a direction. */
   highlightBest?: boolean;
+  /** Keep the selected columns and metric labels in place while values load. */
+  loading?: boolean;
   ariaLabel: string;
   className?: string;
 }
@@ -73,6 +76,7 @@ export function CompareLedger({
   entities,
   groups,
   highlightBest = true,
+  loading = false,
   ariaLabel,
   className,
 }: CompareLedgerProps) {
@@ -83,7 +87,7 @@ export function CompareLedger({
       style={{ "--mg-compare-cols": entities.length } as CSSProperties}
     >
       <div className="mg-compare-scroll">
-        <table aria-label={ariaLabel}>
+        <table aria-busy={loading || undefined} aria-label={ariaLabel}>
           <thead>
             <tr>
               <th scope="col">
@@ -125,7 +129,8 @@ export function CompareLedger({
                 </th>
               </tr>
               {group.rows.map((row) => {
-                const winners = highlightBest ? bestIndices(row) : [];
+                const winners =
+                  loading || !highlightBest ? [] : bestIndices(row);
                 const format = row.format ?? defaultFormat;
                 return (
                   <tr key={row.key}>
@@ -138,9 +143,15 @@ export function CompareLedger({
                           data-best={winners.includes(i) ? "true" : undefined}
                         >
                           <span className="mg-compare-value">
-                            {value === null ? "—" : format(value)}
+                            {loading ? (
+                              <Skeleton className="ml-auto h-3 w-4/5 max-w-24" />
+                            ) : value === null ? (
+                              "—"
+                            ) : (
+                              format(value)
+                            )}
                           </span>
-                          {row.spark?.[i] ? (
+                          {!loading && row.spark?.[i] ? (
                             <span className="mg-compare-spark">
                               {row.spark[i]}
                             </span>

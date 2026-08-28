@@ -15,6 +15,22 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(fileURLToPath(new URL("./app-shell.tsx", import.meta.url)), "utf8");
 
 describe("mobile nav Sheet returns focus to the hamburger", () => {
+  it("gives MCP a restrained, non-live product badge in shared navigation", () => {
+    const navStart = source.indexOf("const PRIMARY_NAV");
+    const nav = source.slice(navStart, source.indexOf("];", navStart));
+    expect(nav).toContain('{ to: "/agents", label: "MCP", badge: "New" }');
+    expect(source).toContain("border-agent/35");
+    expect(source).toContain("text-agent");
+  });
+
+  it("keeps global search available on the homepage and mobile", () => {
+    expect(source).not.toContain("homepage ? null");
+    expect(source).not.toContain("chromeOnly || homepage");
+    expect(source).toContain("{chromeOnly ? null : (");
+    expect(source).toContain("<NavOmnibox");
+    expect(source).toContain('aria-label="Open search"');
+  });
+
   it("keeps a ref on the hamburger button", () => {
     expect(source).toContain("const hamburgerRef = useRef<HTMLButtonElement | null>(null)");
     // The ref is attached to the aria-label="Open menu" button.

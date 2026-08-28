@@ -75,6 +75,7 @@ export function StreamShell({
     <AppShell>
       <ApiSources paths={apiPaths} artifacts={artifacts} />
       <EntityHero
+        className="mg-hero--directory mg-hero--chain-stream"
         crumbs={[{ label: "Chain", href: "/chain" }]}
         name={name}
         sentence={<FactSentence>{lede}</FactSentence>}
@@ -85,7 +86,7 @@ export function StreamShell({
         cells={factCells(facts) ?? undefined}
         live={{ updatedAt, source: "chain-direct", onRefresh, refreshing }}
       />
-      {children}
+      <div className="mg-chain-stream-content">{children}</div>
       <Raw rows={rawRows} />
     </AppShell>
   );

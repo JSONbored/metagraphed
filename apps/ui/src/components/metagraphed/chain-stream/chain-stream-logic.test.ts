@@ -2,14 +2,16 @@ import { describe, expect, it } from "vitest";
 import type { Block, ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
 import {
   TARGET_BLOCK_MS,
+  blockQueryParams,
   blockRows,
   blocksFacts,
-  boundedTotal,
   cadenceTint,
   callLabel,
   eventLabel,
   eventsFacts,
   extrinsicsFacts,
+  hasBlockFilters,
+  hasNextPage,
   pageFacet,
   pageOf,
   topBy,
@@ -18,6 +20,47 @@ import {
 
 const at = (ms: number) => new Date(ms).toISOString();
 const T = 1_800_000_000_000;
+
+describe("blockQueryParams / hasBlockFilters", () => {
+  const base = {
+    limit: 50,
+    offset: 0,
+    author: "",
+    spec_version: "",
+    block_start: "",
+    block_end: "",
+    min_extrinsics: "",
+    min_events: "",
+  };
+
+  it("forwards every documented block filter to the API query", () => {
+    const search = {
+      ...base,
+      author: "5FExample",
+      spec_version: "448",
+      block_start: "8000000",
+      block_end: "8000100",
+      min_extrinsics: "12",
+      min_events: "50",
+    };
+    expect(blockQueryParams(search)).toEqual({
+      limit: 50,
+      offset: 0,
+      author: "5FExample",
+      spec_version: "448",
+      block_start: "8000000",
+      block_end: "8000100",
+      min_extrinsics: "12",
+      min_events: "50",
+    });
+    expect(hasBlockFilters(search)).toBe(true);
+  });
+
+  it("keeps an unfiltered URL clean and ignores whitespace-only values", () => {
+    expect(blockQueryParams({ ...base, author: "   " })).toEqual({ limit: 50, offset: 0 });
+    expect(hasBlockFilters({ ...base, author: "   " })).toBe(false);
+  });
+});
 
 // Newest first, as the feed returns them: 12s, 24s, then a pair sharing a
 // timestamp (one poller pass caught up on two blocks).
@@ -120,15 +163,11 @@ describe("pageFacet", () => {
   });
 });
 
-describe("boundedTotal / pageOf", () => {
-  it("promises one more page only while the page is full", () => {
-    expect(boundedTotal(0, 50, 50)).toBe(100);
-    expect(boundedTotal(100, 50, 50)).toBe(200);
-  });
-
-  it("settles exactly on a short page — no Next in front of nothing", () => {
-    expect(boundedTotal(100, 17, 50)).toBe(117);
-    expect(boundedTotal(0, 0, 50)).toBe(0);
+describe("hasNextPage / pageOf", () => {
+  it("offers a following page only while the response is full", () => {
+    expect(hasNextPage(50, 50)).toBe(true);
+    expect(hasNextPage(17, 50)).toBe(false);
+    expect(hasNextPage(0, 50)).toBe(false);
   });
 
   it("numbers pages from one", () => {
@@ -172,6 +211,15 @@ describe("blocksFacts", () => {
   it("omits every fact the summary does not state, rather than printing a dash", () => {
     expect(blocksFacts(null, null, fmt)).toEqual([]);
     expect(blocksFacts({ block_time: { mean_ms: 0 } }, null, fmt)).toEqual([]);
+  });
+
+  it("preserves the secondary readings as loading instruments until the summary lands", () => {
+    expect(blocksFacts(null, 7, fmt, true)).toEqual([
+      { key: "head", label: "Head block", value: "#7" },
+      { key: "cadence", label: "Block time", value: "—", loading: true },
+      { key: "throughput", label: "Extrinsics per block", value: "—", loading: true },
+      { key: "authors", label: "Nakamoto", value: "—", loading: true },
+    ]);
   });
 });
 
@@ -244,6 +292,14 @@ describe("eventsFacts", () => {
   it("is empty when the stats endpoint has nothing", () => {
     expect(eventsFacts(null, fmt)).toEqual([]);
     expect(eventsFacts({ activity: [] }, fmt)).toEqual([]);
+  });
+
+  it("does not replace a pending activity sample with zero event facts", () => {
+    expect(eventsFacts(null, fmt, true)).toEqual([
+      { key: "events", label: "Events in sample", value: "—", loading: true },
+      { key: "top", label: "Most frequent", value: "—", loading: true },
+      { key: "kinds", label: "Distinct kinds", value: "—", loading: true },
+    ]);
   });
 });
 

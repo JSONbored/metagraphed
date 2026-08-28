@@ -1,9 +1,13 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { z } from "zod";
-import { TRAILING_WINDOWS, stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
+import {
+  TRAILING_WINDOWS,
+  defineSearchSchema,
+  enumSearch,
+  stripDefaultSearchParams,
+  type SearchOutput,
+} from "@/lib/metagraphed/url-state";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
-import { economicsQuery, subnetProfileQuery } from "@/lib/metagraphed/queries";
 import { formatPct, formatTao } from "@/lib/metagraphed/format";
 import { firstPartyLogoPath, logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import {
@@ -17,6 +21,7 @@ import { subnetFeedLinks } from "@/lib/metagraphed/feed-links";
 import { stringifyJsonLd, subnetDatasetJsonLd } from "@/lib/metagraphed/json-ld";
 import { repoSlugFrom, SITE_ORIGIN } from "@/lib/metagraphed/seo-meta";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 
 /**
  * The page has one control -- the momentum window -- and one URL key for it.
@@ -27,11 +32,11 @@ import { API_BASE } from "@/lib/metagraphed/config";
  * so a key that no longer has a reader is not merely unused: it is dropped
  * on the next parse, and a link that carries one is silently rewritten.
  */
-export const subnetSearchSchema = z.object({
-  window: z.enum(TRAILING_WINDOWS).catch("30d").default("30d"),
+export const subnetSearchSchema = defineSearchSchema({
+  window: enumSearch(TRAILING_WINDOWS, "30d"),
 });
 
-export type SearchParams = z.infer<typeof subnetSearchSchema>;
+export type SearchParams = SearchOutput<typeof subnetSearchSchema>;
 
 export const Route = createFileRoute("/subnets/$netuid")({
   validateSearch: subnetSearchSchema,
@@ -48,6 +53,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
   // and the page's own useSuspenseQuery still drives the error/notFound path.
   loader: async ({ context, params }) => {
     try {
+      const { economicsQuery, subnetProfileQuery } = await import("@/lib/metagraphed/queries");
       // Both queries are ones the page itself reads (SubnetMasthead uses
       // economicsQuery for its KPI band), so the shared react-query cache
       // makes this the requests moving earlier, not extra ones.
@@ -59,7 +65,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
       // price, and it carries emission share and total stake alongside.
       const [{ data, meta }, econRes] = await Promise.all([
         context.queryClient.ensureQueryData(subnetProfileQuery(params.netuid)),
-        context.queryClient.ensureQueryData(economicsQuery()).catch(() => null),
+        context.queryClient.ensureQueryData(economicsQuery({ fields: "detail" })).catch(() => null),
       ]);
       const econ = econRes?.data.find((row) => row.netuid === params.netuid);
       const num = (value: unknown): number | null =>
@@ -87,7 +93,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
         // applied to the card that travels.
         alphaPriceTao: num(econ?.alpha_price_tao),
         emissionShare: num(econ?.emission_share),
-        totalStakeTao: num(econ?.total_stake_tao),
+        totalStakeAlpha: num(econ?.total_stake_alpha),
       };
     } catch (error) {
       // #8624: a 404 from our own API is the one signal that means "netuid
@@ -175,8 +181,8 @@ export const Route = createFileRoute("/subnets/$netuid")({
                   },
                 ]
               : []),
-            ...(loaderData?.totalStakeTao != null
-              ? [{ label: "Total stake", value: formatTao(loaderData.totalStakeTao) }]
+            ...(loaderData?.totalStakeAlpha != null
+              ? [{ label: "Alpha stake", value: `${taoCompact(loaderData.totalStakeAlpha)} α` }]
               : []),
           ],
         }),

@@ -1,5 +1,88 @@
-import { z } from "zod";
 import { stripSearchParams } from "@tanstack/react-router";
+
+interface SearchField<T> {
+  defaultValue: T;
+  parse(value: unknown): T;
+}
+
+type SearchFieldMap = Record<string, SearchField<unknown>>;
+type SearchValues<T extends SearchFieldMap> = {
+  [K in keyof T]: T[K] extends SearchField<infer V> ? V : never;
+};
+
+/** Minimal parse contract understood by TanStack Router's validateSearch. */
+export interface SearchSchema<T extends object> {
+  /** Type-only adapter metadata consumed by TanStack Router. */
+  types: { input: Partial<T>; output: T };
+  parse(value: unknown): T;
+  extend<const U extends SearchFieldMap>(fields: U): SearchSchema<T & SearchValues<U>>;
+}
+
+export type SearchOutput<T> = T extends SearchSchema<infer O> ? O : never;
+
+export function stringSearch(defaultValue = ""): SearchField<string> {
+  return {
+    defaultValue,
+    parse: (value) => (typeof value === "string" ? value : defaultValue),
+  };
+}
+
+export function booleanSearch(defaultValue: boolean): SearchField<boolean> {
+  return {
+    defaultValue,
+    parse: (value) => (typeof value === "boolean" ? value : defaultValue),
+  };
+}
+
+export function numberSearch(
+  defaultValue: number,
+  options: { integer?: boolean; min?: number; max?: number } = {},
+): SearchField<number> {
+  return {
+    defaultValue,
+    parse: (value) => {
+      if (typeof value !== "number" || !Number.isFinite(value)) return defaultValue;
+      if (options.integer && !Number.isInteger(value)) return defaultValue;
+      if (options.min != null && value < options.min) return defaultValue;
+      if (options.max != null && value > options.max) return defaultValue;
+      return value;
+    },
+  };
+}
+
+export function enumSearch<const T extends readonly string[]>(
+  values: T,
+  defaultValue: T[number],
+): SearchField<T[number]> {
+  const allowed = new Set<string>(values);
+  return {
+    defaultValue,
+    parse: (value) =>
+      typeof value === "string" && allowed.has(value) ? (value as T[number]) : defaultValue,
+  };
+}
+
+export function defineSearchSchema<const T extends SearchFieldMap>(
+  fields: T,
+): SearchSchema<SearchValues<T>> {
+  return {
+    types: {} as { input: Partial<SearchValues<T>>; output: SearchValues<T> },
+    parse(value: unknown) {
+      const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+      return Object.fromEntries(
+        Object.entries(fields).map(([key, field]) => [
+          key,
+          field.parse((input as Record<string, unknown>)[key]),
+        ]),
+      ) as SearchValues<T>;
+    },
+    extend<const U extends SearchFieldMap>(additional: U) {
+      return defineSearchSchema({ ...fields, ...additional }) as SearchSchema<
+        SearchValues<T> & SearchValues<U>
+      >;
+    },
+  };
+}
 
 /**
  * The trailing windows a route offers when it offers three.
@@ -14,26 +97,26 @@ export const TRAILING_WINDOWS = ["7d", "30d", "90d"] as const;
 export type TrailingWindow = (typeof TRAILING_WINDOWS)[number];
 
 /** Common URL-driven table state schema for /subnets and /surfaces. */
-export const tableSearchSchema = z.object({
-  q: z.string().catch("").default(""),
-  sort: z.string().catch("").default(""),
-  order: z.enum(["asc", "desc"]).catch("asc").default("asc"),
+export const tableSearchSchema = defineSearchSchema({
+  q: stringSearch(),
+  sort: stringSearch(),
+  order: enumSearch(["asc", "desc"] as const, "asc"),
   // Server-driven cursor pagination. `limit` = page size sent to API;
   // `cursor` is an opaque token returned in meta.pagination.next_cursor.
-  limit: z.number().int().min(5).max(200).catch(25).default(25),
-  cursor: z.string().catch("").default(""),
+  limit: numberSearch(25, { integer: true, min: 5, max: 200 }),
+  cursor: stringSearch(),
   // Legacy client-side pagination kept for back-compat with older callers.
-  page: z.number().int().min(1).catch(1).default(1),
-  pageSize: z.number().int().min(5).max(200).catch(25).default(25),
-  curation: z.string().catch("").default(""),
-  health: z.string().catch("").default(""),
-  kind: z.string().catch("").default(""),
-  stale: z.string().catch("").default(""),
-  provider: z.string().catch("").default(""),
-  netuid: z.string().catch("").default(""),
+  page: numberSearch(1, { integer: true, min: 1 }),
+  pageSize: numberSearch(25, { integer: true, min: 5, max: 200 }),
+  curation: stringSearch(),
+  health: stringSearch(),
+  kind: stringSearch(),
+  stale: stringSearch(),
+  provider: stringSearch(),
+  netuid: stringSearch(),
   // #9: agent-catalog capability filters (applied client-side over joined rows).
-  serviceKind: z.string().catch("").default(""),
-  readiness: z.string().catch("").default(""),
+  serviceKind: stringSearch(),
+  readiness: stringSearch(),
   // #6270: root-subnet inclusion toggle for /subnets, applied client-side over
   // the `subnet_type` the list response already returns. A boolean defaulting
   // to true (the endpoints route's `callable` toggle shape) rather than the ""
@@ -46,17 +129,17 @@ export const tableSearchSchema = z.object({
   // live — ?status=inactive returns 0). A client-side inactive filter could
   // only narrow rows the server already sent, so it would be inert by
   // construction; it belongs here only once that route serves non-active rows.
-  includeRoot: z.boolean().catch(true).default(true),
+  includeRoot: booleanSearch(true),
   // #8248: client-only "Watched" quick-tab -- narrows the list to rows
   // starred in the localStorage watchlist (lib/metagraphed/watchlist.ts).
   // Optional/additive so pages that don't offer a watchlist never set it.
-  watched: z.boolean().catch(false).default(false),
+  watched: booleanSearch(false),
   // #8248: domains rollup chip filter (subnets belonging to a capability
   // domain from GET /api/v1/domains). Optional/additive, same as `watched`.
-  domain: z.string().catch("").default(""),
+  domain: stringSearch(),
   // Layout state for list routes that support multiple views + row density.
   // Additive + optional with safe fallbacks so the toggles persist in the URL.
-  view: z.enum(["table", "grid", "matrix"]).catch("table").default("table"),
+  view: enumSearch(["table", "grid", "matrix"] as const, "table"),
 });
 
 /**
@@ -79,11 +162,11 @@ export const tableSearchSchema = z.object({
  * search type. That cast is sound precisely because the middleware only
  * affects what is WRITTEN to the URL, never what is read from it.
  */
-export function stripDefaultSearchParams<T extends z.ZodObject>(schema: T) {
-  return stripSearchParams<z.output<T>>(schema.parse({}) as Partial<z.output<T>>);
+export function stripDefaultSearchParams<T extends object>(schema: SearchSchema<T>) {
+  return stripSearchParams<T>(schema.parse({}) as Partial<T>);
 }
 
-export type TableSearch = z.infer<typeof tableSearchSchema>;
+export type TableSearch = SearchOutput<typeof tableSearchSchema>;
 
 /** Compare a needle against a few string fields case-insensitively. */
 export function matchesQuery(haystacks: Array<unknown>, needle: string): boolean {

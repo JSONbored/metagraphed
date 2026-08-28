@@ -102,10 +102,11 @@ function lakeFetch(rows: unknown[]) {
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 
 /** A bucket stub serving one watermark body (or nothing). */
-function archive(body: unknown) {
+function archive(body: unknown, reads?: string[]) {
   return {
     METAGRAPH_ARCHIVE: {
       async get(key: string) {
+        reads?.push(key);
         if (key !== DECODE_WATERMARK_KEY || body === undefined) return null;
         return {
           async text() {
@@ -609,6 +610,26 @@ describe("loadBlockColdTier", () => {
     assert.match(queries[0]!, new RegExp(`block_number >= ${SEAM - 1}`));
   });
 
+  test("a verified-floor height does not read the moving watermark first", async () => {
+    const { db, sql } = runner([]);
+    const watermarks: string[] = [];
+    const queries = lakeFetch([lakeRow(SEAM)]);
+    const data = await loadBlockColdTier(
+      {
+        ...TOKEN,
+        ...db,
+        // Even a newer watermark cannot change ownership of this verified
+        // range, so this would be a redundant R2 request on every cold link.
+        ...archive({ decoded_through: SEAM + 4_000 }, watermarks),
+      } as never,
+      String(SEAM),
+    );
+    assert.equal(data!.block!.block_number, SEAM);
+    assert.equal(watermarks.length, 0, "the stable floor needs no seam read");
+    assert.equal(sql.length, 0, "the store still does not own this height");
+    assert.equal(queries.length, 1, "the lakehouse remains the sole source");
+  });
+
   test("a height above the seam that D1 lacks is a real absence, not a scan", async () => {
     const { db } = runner([]);
     const queries = lakeFetch([]);
@@ -682,6 +703,25 @@ describe("loadBlockColdTier", () => {
     );
     assert.equal(data!.block!.block_number, SEAM + 7);
     assert.equal(queries.length, 0);
+  });
+
+  test("an off-mainnet hash bypasses the mainnet seam and hot store", async () => {
+    const { db, sql } = runner([]);
+    const watermarks: string[] = [];
+    const queries = lakeFetch([lakeRow(42)]);
+    const data = await loadBlockColdTier(
+      {
+        ...TOKEN,
+        ...db,
+        ...archive({ decoded_through: SEAM + 4_000 }, watermarks),
+      } as never,
+      "0xABCD",
+      "testnet",
+    );
+    assert.equal(data!.block!.block_number, 42);
+    assert.equal(sql.length, 0, "the mainnet-only store is never queried");
+    assert.equal(watermarks.length, 0, "hash fallback needs no seam lookup");
+    assert.ok(queries.length > 0, "the lakehouse remains testnet's source");
   });
 
   test("refuses a ref that is neither a height nor a hash", async () => {

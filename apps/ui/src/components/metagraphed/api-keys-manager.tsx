@@ -3,7 +3,7 @@ import { formatNumber } from "@/lib/metagraphed/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { CopyableCode, DataTable, LineWithWindow, type DataTableColumn } from "@jsonbored/ui-kit";
-import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { useWallet } from "@/hooks/use-wallet";
 import { useApiSession } from "@/hooks/use-api-session";
 import { toLinePoints } from "@/components/metagraphed/metric-history";
@@ -213,6 +213,7 @@ function ApiKeysPanel({
       });
       return res.data.keys;
     },
+    retry: 0,
   });
 
   const createMutation = useMutation({
@@ -246,6 +247,7 @@ function ApiKeysPanel({
       return res.data;
     },
     enabled: activeKeys.length > 0,
+    retry: 0,
   });
 
   // #8611: a blocked account must be able to see that it is blocked. Without
@@ -260,12 +262,19 @@ function ApiKeysPanel({
       });
       return res.data;
     },
+    retry: 0,
   });
   const blockStatus = statusQuery.data;
 
   return (
     <div className="space-y-4">
-      {blockStatus?.blocked ? (
+      {statusQuery.isError ? (
+        <ErrorState
+          error={statusQuery.error}
+          onRetry={() => void statusQuery.refetch()}
+          context="API access status"
+        />
+      ) : blockStatus?.blocked ? (
         <div
           role="alert"
           className="rounded border border-health-down/30 bg-health-down/5 p-3 space-y-1"
@@ -328,18 +337,6 @@ function ApiKeysPanel({
       ) : null}
 
       <div className="space-y-2">
-        {listQuery.isPending ? <Skeleton className="h-16 w-full" /> : null}
-        {listQuery.isError ? (
-          <div
-            role="alert"
-            className="rounded border border-health-down/30 bg-health-down/5 p-3 text-13 text-health-down"
-          >
-            {describeApiError(listQuery.error)}
-          </div>
-        ) : null}
-        {!listQuery.isPending && !listQuery.isError && activeKeys.length === 0 ? (
-          <EmptyState title="No active keys" description="Generate one above to get started." />
-        ) : null}
         <DataTable
           id="api-keys"
           rows={activeKeys}
@@ -349,11 +346,32 @@ function ApiKeysPanel({
           source="api-key"
           paginate={false}
           loading={listQuery.isPending}
-          empty="No active keys — generate one above."
+          error={
+            listQuery.isError ? (
+              <ErrorState
+                error={listQuery.error}
+                onRetry={() => void listQuery.refetch()}
+                context="active API keys"
+              />
+            ) : undefined
+          }
+          empty={
+            !listQuery.isPending && !listQuery.isError ? (
+              <EmptyState title="No active keys" description="Generate one above to get started." />
+            ) : undefined
+          }
         />
       </div>
 
-      {activeKeys.length > 0 ? <UsageDashboard usage={usageQuery.data} token={token} /> : null}
+      {activeKeys.length > 0 ? (
+        <UsageDashboard
+          usage={usageQuery.data}
+          token={token}
+          loading={usageQuery.isPending}
+          error={usageQuery.isError ? usageQuery.error : null}
+          onRetry={() => void usageQuery.refetch()}
+        />
+      ) : null}
     </div>
   );
 }
@@ -361,10 +379,10 @@ function ApiKeysPanel({
 /**
  * Last 7d of this account's tiered-API usage (#8386) -- combined across every
  * active key on the account (api_key_usage_daily is recorded per-account, not
- * per-key; see workers/data-api.ts's handleAccountKeyUsage). Renders nothing
- * while loading or on a genuinely empty window (a brand-new key with no
- * requests yet) -- there's nothing meaningful to show either way, and an
- * empty-chart placeholder would just be noise under the key list above it.
+ * per-key; see workers/data-api.ts's handleAccountKeyUsage). It keeps the
+ * compact chart's footprint while loading and exposes a local retry if the
+ * usage record fails. A genuinely empty window remains quiet for a brand-new
+ * key with no requests yet.
  */
 /**
  * Download the tenant's own usage as CSV (#8609).
@@ -392,7 +410,41 @@ async function exportUsageCsv(token: string) {
   URL.revokeObjectURL(href);
 }
 
-function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; token: string }) {
+function UsageDashboard({
+  usage,
+  token,
+  loading,
+  error,
+  onRetry,
+}: {
+  usage: ApiKeyUsage | undefined;
+  token: string;
+  loading: boolean;
+  error: unknown;
+  onRetry: () => void;
+}) {
+  if (loading) {
+    return (
+      <div className="space-y-3 border-t border-border pt-4" aria-busy="true">
+        <div className="flex items-baseline justify-between gap-2" aria-hidden="true">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+        <LineWithWindow
+          compact
+          loading
+          points={[]}
+          window={{ from: 0, to: 0 }}
+          unit="requests per day"
+          ariaLabel="Loading API-key usage"
+          source="api-key-usage"
+        />
+      </div>
+    );
+  }
+  if (error) {
+    return <ErrorState error={error} onRetry={onRetry} context="API-key usage" />;
+  }
   if (!usage || usage.days.length === 0) return null;
   const chronological = [...usage.days].reverse();
   const requestPoints = toLinePoints(

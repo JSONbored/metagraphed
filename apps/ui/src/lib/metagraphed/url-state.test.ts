@@ -1,12 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { z } from "zod";
 import {
+  defineSearchSchema,
   joinEconomics,
   joinHealth,
   matchesQuery,
+  numberSearch,
   sortBy,
   stripDefaultSearchParams,
+  stringSearch,
   tableSearchSchema,
+  type SearchSchema,
 } from "./url-state";
 
 describe("matchesQuery", () => {
@@ -192,15 +195,17 @@ describe("stripDefaultSearchParams (#8628)", () => {
   // it used to be `object` with the argument asserted past the mismatch, which
   // meant this helper could hand the middleware a shape the middleware would
   // never see, and the tests below would still pass.
-  const apply = <T extends z.ZodObject>(schema: T, search: z.output<T>): Record<string, unknown> =>
-    stripDefaultSearchParams(schema)({ search, next: (s) => s });
+  const apply = <T extends Record<string, unknown>>(
+    schema: SearchSchema<T>,
+    search: T,
+  ): Record<string, unknown> => stripDefaultSearchParams(schema)({ search, next: (s) => s });
 
   it("derives the defaults from the schema rather than a hand-written list", () => {
     // The whole point: nothing here names a default. A changed default must
     // change what gets stripped, with no second place to update.
-    const schema = z.object({
-      a: z.string().catch("hello").default("hello"),
-      b: z.number().catch(42).default(42),
+    const schema = defineSearchSchema({
+      a: stringSearch("hello"),
+      b: numberSearch(42),
     });
     expect(apply(schema, { a: "hello", b: 42 })).toEqual({});
   });

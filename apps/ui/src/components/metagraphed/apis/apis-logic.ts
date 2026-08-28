@@ -43,6 +43,52 @@ export function kindSegments(surfaces: readonly Surface[]): Segment[] {
     .sort((a, b) => b.value - a.value || a.key.localeCompare(b.key));
 }
 
+export interface InterfaceCoverageRow {
+  key: string;
+  label: string;
+  /** Number of subnets where this interface is present. */
+  value: number;
+  /** The share of all chain subnets, not a share of the other rows. */
+  share: number | null;
+}
+
+/**
+ * Per-interface subnet coverage, largest first.
+ *
+ * `/coverage` publishes this aggregation directly. It is deliberately not a
+ * composition: one subnet can publish documentation, an API, and a source
+ * repository at the same time, so the rows are not mutually exclusive and
+ * must not be made to add up to 100%. `community` is likewise a governance
+ * dimension, not a public interface type.
+ */
+export function interfaceCoverage(
+  dimensions: Record<string, { present?: number }> | null | undefined,
+  subnetCount: number | null | undefined,
+): InterfaceCoverageRow[] {
+  if (!dimensions) return [];
+  const total =
+    typeof subnetCount === "number" && Number.isFinite(subnetCount) && subnetCount > 0
+      ? subnetCount
+      : null;
+  return Object.entries(dimensions)
+    .filter(([key, dimension]) => {
+      const present = dimension?.present;
+      return (
+        key !== "community" &&
+        typeof present === "number" &&
+        Number.isFinite(present) &&
+        present >= 0
+      );
+    })
+    .map(([key, dimension]) => ({
+      key,
+      label: key,
+      value: dimension.present!,
+      share: total === null ? null : dimension.present! / total,
+    }))
+    .sort((a, b) => b.value - a.value || a.key.localeCompare(b.key));
+}
+
 /** The distinct values of one surface field, sorted, for a filter select. */
 export function facet(
   surfaces: readonly Surface[],
@@ -75,11 +121,15 @@ export interface CoverageCounts {
   official_surface_count?: number;
   probed_surface_count?: number;
   chain_subnet_count?: number;
+  generated_at?: string;
+  completeness?: {
+    dimension_coverage?: Record<string, { present?: number }>;
+  };
 }
 
 export function catalogFacts(
   coverage: CoverageCounts | null | undefined,
-  kinds: number,
+  interfaceDimensions: number,
   fmt: { count: (n: number) => string },
 ): Fact[] {
   if (!coverage) return [];
@@ -94,7 +144,13 @@ export function catalogFacts(
       value: fmt.count(coverage.chain_subnet_count),
     });
   }
-  if (kinds > 0) facts.push({ key: "kinds", label: "Kinds", value: fmt.count(kinds) });
+  if (interfaceDimensions > 0) {
+    facts.push({
+      key: "interface-dimensions",
+      label: "Coverage dimensions",
+      value: fmt.count(interfaceDimensions),
+    });
+  }
   if (typeof coverage.probed_surface_count === "number") {
     facts.push({ key: "probed", label: "Probed", value: fmt.count(coverage.probed_surface_count) });
   }

@@ -494,6 +494,7 @@ export async function hotTierBlockChainEvents(
       hot: (height) => loadBlockChainEventsHotTier(env, height),
       cold: () => loadBlockChainEventsColdTier(env, block[1]!, network),
       isEmpty: isEmptyChainEventPayload,
+      coldCoverageTable: "chain_events",
     },
     // The tiering itself is network-aware: off mainnet there is no D1 hot leg
     // to route against, so `hot` above is never reached.

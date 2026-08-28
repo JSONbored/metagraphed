@@ -65,14 +65,19 @@ export function DirectorySection({
         key: "name",
         label: "Name",
         kind: "text",
+        lead: true,
         sortable: true,
         value: (row) => row.name ?? `Subnet ${row.netuid}`,
         render: (row) => (
           <span className="mg-dt-entity">
             <BrandIcon
               size={20}
-              url={row.website}
-              repoUrl={row.repo}
+              // The directory can render every subnet at once. Only use the
+              // registry's curated icon here; probing website favicons and
+              // repository avatars for every iconless row creates a fan-out
+              // of doomed proxy requests before reaching the same monogram.
+              // Detail pages keep the richer candidate ladder, where it costs
+              // at most one entity-sized fallback chain.
               iconUrl={row.icon_url}
               netuid={row.netuid}
               name={row.name}
@@ -177,7 +182,8 @@ export function DirectorySection({
     <AnalyticsSection
       id="directory"
       name="Directory"
-      question="Every subnet, sortable."
+      question="Search and compare every subnet."
+      className="mg-directory-section mg-directory-section--table-first"
       visual={
         <>
           <DataTable
@@ -188,8 +194,8 @@ export function DirectorySection({
             // filtered OUT, which the count alone cannot.
             caption={
               rows.length === total
-                ? "Every subnet"
-                : `${formatNumber(rows.length)} of ${formatNumber(total)} subnets`
+                ? "Every application subnet, plus root"
+                : `${formatNumber(rows.length)} of ${formatNumber(total)} chain netuids`
             }
             rowHref={(row) => `/subnets/${row.netuid}`}
             link={RouterLink}
@@ -198,6 +204,7 @@ export function DirectorySection({
             source="subnet-row"
             storageKey="subnets-directory-columns"
             mobile="cards"
+            compactMobileLabels
             search={{
               value: filters.q,
               onChange: (q) => onFilter({ q }),

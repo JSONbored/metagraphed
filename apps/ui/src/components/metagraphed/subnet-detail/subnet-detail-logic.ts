@@ -12,7 +12,9 @@ import type {
   SubnetHistoryPoint,
   SubnetOhlcCandle,
   Surface,
+  Uptime,
 } from "@/lib/metagraphed/types";
+import { formatDecimal } from "@/lib/metagraphed/format";
 
 export type Window = "7d" | "30d" | "90d";
 
@@ -193,6 +195,41 @@ export function uptimeBySurface(
     map.set(row.surface_id, row.uptime_ratio * 100);
   }
   return map;
+}
+
+/** Sample-weighted subnet uptime, preferring the API's own aggregate grade. */
+export function subnetUptimePct(uptime: Uptime | null | undefined): number | null {
+  const aggregate = uptime?.reliability?.uptime_ratio;
+  if (typeof aggregate === "number" && Number.isFinite(aggregate)) return aggregate * 100;
+
+  let weighted = 0;
+  let samples = 0;
+  for (const surface of uptime?.surfaces ?? []) {
+    const ratio = surface.uptime_ratio ?? surface.reliability?.uptime_ratio;
+    const count = surface.samples ?? surface.reliability?.sample_count;
+    if (
+      typeof ratio !== "number" ||
+      !Number.isFinite(ratio) ||
+      typeof count !== "number" ||
+      !Number.isFinite(count) ||
+      count <= 0
+    ) {
+      continue;
+    }
+    weighted += ratio * count;
+    samples += count;
+  }
+  return samples > 0 ? (weighted / samples) * 100 : null;
+}
+
+/** Copy that keeps loading, failure, and genuinely unmeasured states distinct. */
+export function uptimeSentence(
+  uptimePct: number | null,
+  state: "pending" | "error" | "ready",
+): string {
+  if (state === "pending") return "Loading 90d uptime";
+  if (state === "error") return "90d uptime unavailable";
+  return uptimePct == null ? "Not yet probed" : `${formatDecimal(uptimePct, 1)}% up over 90d`;
 }
 
 /**

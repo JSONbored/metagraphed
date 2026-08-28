@@ -15,7 +15,7 @@ import {
   Wifi,
   Workflow,
 } from "lucide-react";
-import { searchQuery } from "@/lib/metagraphed/queries";
+import { searchQuery } from "@/lib/metagraphed/search-query";
 import { classNames } from "@/lib/metagraphed/format";
 import { Kbd, safeExternalUrl } from "@jsonbored/ui-kit";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
@@ -160,7 +160,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, isError } = useQuery({
     ...searchQuery(debounced, 12),
     retry: 0,
   });
@@ -583,6 +583,11 @@ export function NavOmnibox({ onOpenPalette }: Props) {
               {/* Search hits */}
               {isFetching && hits.length === 0 ? (
                 <div className="px-3 py-4 text-center text-11 text-ink-muted">Searching…</div>
+              ) : isError ? (
+                <div role="status" className="px-3 py-4 text-center text-11 text-ink-muted">
+                  Suggestions are temporarily unavailable. Direct routes and directory filters still
+                  work.
+                </div>
               ) : hits.length === 0 && navTargets.length === 0 ? (
                 <div className="px-3 py-4 text-center text-11 text-ink-muted">
                   No results. Try pasting a wallet address, block number, or tx hash.

@@ -7,6 +7,7 @@ import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
 import { rawMarkdownLink } from "@/lib/metagraphed/raw-markdown";
 import { clampText } from "@/lib/metagraphed/truncate";
 import { openapi } from "@/lib/openapi-source";
+import { sliceOpenAPIDocumentForOperation } from "@/lib/openapi-operation-slice";
 import type { OpenAPIPreloaded } from "@/lib/openapi-preload-context";
 import { DocsSplatPage } from "./-docs-splat-page";
 
@@ -142,13 +143,27 @@ const serverLoader = createServerFn({ method: "GET" })
     if (!page) throw notFound();
 
     const openapiMeta = (page.data as { _openapi?: unknown })._openapi;
-    // Cast: openapi.preloadOpenAPIPage's real return type (Record<string,
-    // Document>) doesn't structurally match OpenAPIPreloaded's JsonValue
-    // constraint, needed only so this return value satisfies createServerFn's
-    // type-level serializability check -- see that type's own comment.
-    const preloaded = isOpenAPIFrontmatter(openapiMeta)
-      ? ((await openapi.preloadOpenAPIPage(page)).preloaded as OpenAPIPreloaded)
-      : undefined;
+    // Cast: Fumadocs' Document type doesn't structurally match
+    // OpenAPIPreloaded's recursive JsonValue constraint, needed only so this
+    // return value satisfies createServerFn's type-level serializability
+    // check. The loaded contract and the operation slice are plain JSON.
+    let preloaded: OpenAPIPreloaded;
+    if (isOpenAPIFrontmatter(openapiMeta)) {
+      const loaded = await openapi.getSchema("metagraph");
+      const operationSlug = slugs.at(-1) ?? "";
+      const sliced = sliceOpenAPIDocumentForOperation(
+        loaded.bundled as Record<string, unknown>,
+        operationSlug,
+      );
+      // Keep the whole document only as a compatibility fallback if a
+      // generated page and a newly deployed contract briefly drift. In the
+      // normal case each page serializes its one operation plus transitive
+      // component references instead of all ~300 operations.
+      preloaded = {
+        docs: { metagraph: sliced?.document ?? loaded.bundled },
+        proxyUrl: openapi.options.proxyUrl,
+      } as OpenAPIPreloaded;
+    }
 
     const data = page.data as {
       description?: string;

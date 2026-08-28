@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { classNames } from "@/lib/format";
 
 /**
@@ -7,9 +7,8 @@ import { classNames } from "@/lib/format";
  *
  * The heading is ONE line with two weights -- `Name. One sentence.` -- not a
  * title above a caption: a title/caption pair stacks two blocks and reads as
- * documentation; `Top Models. Usage of models across OpenCode.` reads as a
- * statement, and it is the single most recognisable thing about that page's
- * rhythm. The visual comes FIRST, full width; a compact legend under it; the
+ * documentation; a compact title followed by one direct sentence reads as a
+ * statement. The visual comes FIRST, full width; a compact legend under it; the
  * window and source stated quietly last. No icon slot, no actions slot, no
  * deep-link button, no tone rail.
  */
@@ -22,6 +21,13 @@ export interface AnalyticsSectionProps {
   question?: ReactNode;
   /** The visual. Renders first, at full width. */
   visual?: ReactNode;
+  /**
+   * Optional viewport anchor for a visual that begins loading only as this
+   * section approaches. It is attached to the section, not the inner visual:
+   * an anchor navigation reaches the section heading first and must still
+   * start the evidence read even when the placeholder is farther below.
+   */
+  visualRef?: Ref<HTMLElement>;
   /** A `RankGrid` or nothing. */
   legend?: ReactNode;
   /** `window · source`, one 11px muted line. */
@@ -30,6 +36,8 @@ export interface AnalyticsSectionProps {
   controls?: ReactNode;
   /** Content that is not yet a `visual` (a route mid-migration). */
   children?: ReactNode;
+  /** Supporting evidence that follows the section's visual, legend and source note. */
+  after?: ReactNode;
   /**
    * What to say when there is nothing to draw.
    *
@@ -53,10 +61,12 @@ export function AnalyticsSection({
   name,
   question,
   visual,
+  visualRef,
   legend,
   footnote,
   controls,
   children,
+  after,
   empty,
   className,
 }: AnalyticsSectionProps) {
@@ -69,6 +79,7 @@ export function AnalyticsSection({
     blank(visual) && blank(children) && blank(legend) && empty !== false;
   return (
     <section
+      ref={visualRef}
       id={id}
       className={classNames("mg-section", className)}
       aria-labelledby={headingId}
@@ -92,6 +103,7 @@ export function AnalyticsSection({
         <p className="mg-section-empty">{empty ?? "No data in this window."}</p>
       ) : null}
       {footnote ? <p className="mg-section-note">{footnote}</p> : null}
+      {after}
     </section>
   );
 }

@@ -42,7 +42,7 @@ describe("aboutFacts", () => {
 
   it("reads all four numbers when every source answered", () => {
     expect(aboutFacts(full).map((f) => [f.label, f.value])).toEqual([
-      ["Active subnets", "128"],
+      ["Application subnets", "128"],
       ["Adapter-backed", "2"],
       ["Healthy surfaces", "415/512"],
       ["Avg freshness", "4m"],
