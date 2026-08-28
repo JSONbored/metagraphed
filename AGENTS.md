@@ -51,10 +51,13 @@ devcontainer-aware environment, use it instead of installing Node/Playwright you
    `validate:no-hand-written-mjs` CI gate auto-fails any PR adding a `.mjs`/`.js` file under `src/`,
    `workers/`, `scripts/`, or `tests/`. **UI/frontend work now lives in this repo**
    at `apps/ui/` (folded in from the former `metagraphed-ui` repo via monorepo consolidation,
-   2026-07) — any PR touching visual output (routes, components, styles) **requires a before/after
-   screenshot table and is always held for manual review**, regardless of AI-review confidence; a
-   PR confined to `apps/ui/src/lib/**` / `apps/ui/src/hooks/**` / tests (no visual change) follows
-   the normal gate.
+   2026-07) — an **external-contributor** PR touching visual output (routes, components, styles)
+   requires a before/after screenshot table and is held for manual review, regardless of AI-review
+   confidence. **Maintainer-directed exception:** when a repository maintainer explicitly waives
+   screenshots or authorizes merge after required CI in the current task, follow that direction;
+   do not request the waived evidence again or add a redundant review wait. Never infer this
+   exception. Required code-quality and CI gates still apply. A PR confined to
+   `apps/ui/src/lib/**` / `apps/ui/src/hooks/**` / tests (no visual change) follows the normal gate.
 
 The full procedure, the gate disposition matrix, the surface schema, the validator list, and the
 commit/PR rubric are all in the skill files above — use them.

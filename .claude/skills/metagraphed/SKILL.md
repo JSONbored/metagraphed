@@ -9,10 +9,11 @@ description: >-
   is no review back-and-forth, so a PR must be correct, in-scope, and green before it is pushed.
   Surfaces live in ONE file per subnet (registry/subnets/<slug>.json) — never per-surface
   candidate files, never split across multiple PRs. Also covers frontend PRs against apps/ui/
-  (the web app, folded into this repo via monorepo consolidation) — visual changes require a
-  before/after screenshot table and are always held for manual review. Invoke for any "contribute
-  to / open a PR against / enrich a subnet in / add a surface to / fix a bug in / add a frontend
-  feature to metagraphed" task.
+  (the web app, folded into this repo via monorepo consolidation) — external-contributor visual
+  changes require a before/after screenshot table and are held for manual review; explicitly
+  maintainer-directed work may use the documented override. Invoke for any "contribute to / open a
+  PR against / enrich a subnet in / add a surface to / fix a bug in / add a frontend feature to
+  metagraphed" task.
 ---
 
 # Contributing to metagraphed — the one-shot PR playbook
@@ -364,12 +365,17 @@ one PR.
 - Creative additions beyond an issue's stated scope are welcome but held to a **higher bar** — expect
   extra scrutiny, and call out explicitly in the PR body anything you added beyond the issue.
 
-### Phase C2 — Screenshot contract (required for any visual change)
+### Phase C2 — Screenshot contract (external-contributor visual changes)
 
-**Non-negotiable for any PR that changes rendered output.** PRs without it are auto-closed — no
-exceptions. A real PR (#3757) shipped 10 of its 12 screenshots at 115,000–142,000px tall (a
-full-page capture bug, not a display issue) and sat unreviewable until recaptured. Don't repeat
-that.
+**Non-negotiable for an external-contributor PR that changes rendered output.** Without an explicit
+maintainer override, a PR without this evidence is auto-closed. A real PR (#3757) shipped 10 of its
+12 screenshots at 115,000–142,000px tall (a full-page capture bug, not a display issue) and sat
+unreviewable until recaptured. Don't repeat that.
+
+> **Maintainer-directed override.** When a repository maintainer explicitly waives screenshots for
+> the current task, skip this phase—including static and animated evidence—and do not request the
+> waived evidence again. Never infer the waiver from branch ownership or repository access. Continue
+> to run proportional responsive/interaction validation and every required code/CI gate.
 
 **Recommended: automated capture (#3769).** `apps/ui/tests/e2e/capture-pr-screenshots.ts`
 automates everything below — the two-worktree orchestration, fixed-viewport-only capture, explicit
@@ -562,13 +568,16 @@ step in the `ui` CI job.
 ### Phase C4 — Commit + PR
 
 Conventional Commit (e.g. `feat(ui): add validator directory table`), no AI attribution, `Closes
-#<issue>` — required, and the issue must still be open. Fill the screenshot table if the change is visual.
+#<issue>` — required, and the issue must still be open. External-contributor visual changes must fill
+the screenshot table unless a repository maintainer explicitly waived it for the current task.
 
 ### Phase C5 — Review disposition
 
-**Any visual PR touching `apps/ui/` is always held for manual review**, regardless of AI-review
-confidence — this is a deliberate exception to the normal one-shot autonomous gate. A non-visual
-`apps/ui/` PR (data/hooks/tests only) follows the normal auto-merge/auto-close gate like Path A/B.
+An **external-contributor** visual PR touching `apps/ui/` is held for manual review regardless of
+AI-review confidence. For maintainer-directed work, an explicit authorization to merge after required
+CI is green replaces that manual-review wait; merge when green without asking for the same approval
+again. A non-visual `apps/ui/` PR (data/hooks/tests only) follows the normal auto-merge/auto-close gate
+like Path A/B.
 
 ---
 
@@ -610,10 +619,12 @@ confidence — this is a deliberate exception to the normal one-shot autonomous 
 - [ ] Scoped to `apps/ui/**` only; ≤10 files / ≤1000 LOC where reasonably possible.
 - [ ] Reuses existing design tokens (`apps/ui/src/styles.css`) and shared components rather than
       one-off styling.
-- [ ] If visual: a filled before/after screenshot table (mobile + dark-mode captures where relevant) —
-      missing/malformed table is an automatic close.
-- [ ] If the change is only visible in motion (hover/scroll/transition/animation): a before/after GIF
-      table alongside the static one, per the "Animated evidence" step in Phase C2.
+- [ ] If visual and not explicitly waived by a repository maintainer: a filled before/after screenshot
+      table (mobile + dark-mode captures where relevant) — missing/malformed external-contributor
+      evidence is an automatic close.
+- [ ] If the change is only visible in motion (hover/scroll/transition/animation) and evidence was not
+      explicitly waived: a before/after GIF table alongside the static one, per the "Animated
+      evidence" step in Phase C2.
 - [ ] `lint` + `format:check` + `typecheck` + `test` + `test:e2e` + `build` all green
       (`--workspace=apps/ui`); bundle size still under budget.
 - [ ] If `packages/client/src` or `packages/ui-kit/src` changed: rebuilt and committed the respective
