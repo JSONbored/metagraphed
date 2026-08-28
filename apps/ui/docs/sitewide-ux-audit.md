@@ -420,6 +420,12 @@ Performance is part of the product contract, not a polish pass after visual work
 21. The subnet directory no longer probes arbitrary remote website/repository URLs through the icon
     proxy. Only curated icon evidence is rendered, eliminating the measured 404 fan-out while
     retaining deterministic monogram fallbacks.
+22. The browser analytics client now explicitly disables surveys, product tours, and conversations,
+    which have no application surface. Before this source change, a fresh production 375px homepage
+    read requested `surveys.js` despite all three project surveys being archived: 36,563 compressed
+    bytes and 102,609 decoded bytes. Replay, exception capture, Web Vitals, dead-click telemetry, and
+    feature flags remain enabled. Confirm the missing survey request after deployment; the current
+    numbers are the live baseline, not post-change production proof.
 
 ## Completion proof
 
