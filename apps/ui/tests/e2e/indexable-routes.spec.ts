@@ -472,9 +472,9 @@ test.describe("#11320 the hub pages compete for the category queries", () => {
 
     test(`${path} has the headings a scannable page needs`, async ({ request }) => {
       // A hub that is a bare table answers no informational question. The H2s
-      // come from ui-kit's SectionHeading via HubSections, so this fails if the
-      // prose is dropped or rendered as <span> — which is exactly what
-      // /validators was doing with ten metric definitions already written.
+      // come from HubSections, so this fails if the explanation is dropped or
+      // rendered as <span> — which is exactly what /validators was doing with
+      // ten metric definitions already written.
       const html = await (await request.get(path)).text();
       const headings = [...html.matchAll(/<h2[^>]*>/g)].length;
       expect(headings, `${path} renders ${headings} H2s`).toBeGreaterThanOrEqual(3);

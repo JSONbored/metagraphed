@@ -1,4 +1,3 @@
-import { SectionHead } from "@jsonbored/ui-kit";
 import { HUB_COPY, type HubPath } from "@/lib/metagraphed/hub-copy";
 
 /**
@@ -19,10 +18,10 @@ import { HUB_COPY, type HubPath } from "@/lib/metagraphed/hub-copy";
  * past the table is the one who wants them. A crawler reads the whole document
  * either way.
  *
- * Rendered through ui-kit's `SectionHeading` rather than hand-written markup:
- * it already emits a real `<h2>` with the canonical section styling and takes
- * an `intro` prose slot, so this adds copy without adding a second opinion
- * about what a section looks like.
+ * The section name is a real `<h2>` and the answer is a paragraph. Long-form
+ * answers must not inherit the 28px analytic-question treatment: that turns a
+ * few useful sentences into several screens of headline copy on a phone and
+ * makes the entire answer part of the document outline.
  */
 
 /**
@@ -46,10 +45,11 @@ export function hubLede(path: HubPath): string {
 export function HubSections({ path }: { path: HubPath }) {
   const { sections } = HUB_COPY[path].intro;
   return (
-    <div className="mt-10 space-y-section">
+    <div className="mg-prose mg-hub-prose mt-10">
       {sections.map((section) => (
         <section key={section.heading}>
-          <SectionHead name={section.heading} question={section.body} />
+          <h2>{section.heading}</h2>
+          <p>{section.body}</p>
         </section>
       ))}
     </div>
