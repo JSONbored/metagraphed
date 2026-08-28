@@ -190,6 +190,17 @@ describe("analytics (PostHog web analytics)", () => {
       expect(options.capture_performance).toEqual({ web_vitals: true });
     });
 
+    it("disables unused interactive extension runtimes", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      const { initAnalytics } = await import("./analytics");
+      initAnalytics();
+      await vi.waitFor(() => expect(init).toHaveBeenCalled());
+      const options = init.mock.calls[0][1];
+      expect(options.disable_surveys).toBe(true);
+      expect(options.disable_product_tours).toBe(true);
+      expect(options.disable_conversations).toBe(true);
+    });
+
     it("configures session replay with input/text masking and a conservative sample rate", async () => {
       vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
       const { initAnalytics } = await import("./analytics");

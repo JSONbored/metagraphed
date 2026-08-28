@@ -166,6 +166,18 @@ function loadPostHog(): Promise<PostHog | null> {
         api_host: POSTHOG_API_HOST,
         ui_host: POSTHOG_UI_HOST,
         defaults: SDK_DEFAULTS_DATE,
+        // These remotely activatable UI products have no application surface.
+        // Leaving the SDK defaults in control still made a fresh configured
+        // page download surveys.js even though every project survey is
+        // archived (measured at 36,563 compressed / 102,609 decoded bytes on
+        // the production 375px homepage, #11744). Tours and conversations are
+        // disabled alongside it so a dashboard toggle cannot inject an
+        // unreviewed interface or a new runtime into the explorer. Feature
+        // flags, replay, exception capture, Web Vitals, and dead-click
+        // telemetry are independent and remain enabled.
+        disable_surveys: true,
+        disable_product_tours: true,
+        disable_conversations: true,
         // Landing directly on a blocked route must never start a recording
         // in the first place -- stopping one after init would already have
         // captured the first frames. SPA navigations are handled by
