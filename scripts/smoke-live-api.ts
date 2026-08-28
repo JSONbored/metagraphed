@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { API_ROUTES } from "../src/contracts.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { QUERY_TIMEOUT_MS } from "../src/r2-sql.ts";
+import { X402_VERSION, x402RequiresPayment } from "../src/x402.ts";
 
 // Live production response bodies (API envelopes, MCP JSON-RPC results) --
 // every field below is read for assertion/reporting only, and an unexpected
@@ -59,10 +61,22 @@ async function runLiveSmoke(): Promise<void> {
   const fixtureSurfaceId =
     process.env.METAGRAPH_LIVE_FIXTURE_SURFACE_ID ||
     (await discoverFixtureSurfaceId());
-  const apiChecks = liveSmokeApiRoutes(fixtureSurfaceId).map((route) => ({
-    route: route.path,
-    url: apiRouteUrl(route.path, healthDate, { surfaceId: fixtureSurfaceId }),
-  }));
+  const apiChecks = [
+    ...liveSmokeApiRoutes(fixtureSurfaceId).map((route) => ({
+      expected: "public" as const,
+      route: route.path,
+      url: apiRouteUrl(route.path, healthDate, {
+        surfaceId: fixtureSurfaceId,
+      }),
+    })),
+    ...liveSmokePaymentRoutes(fixtureSurfaceId).map((route) => ({
+      expected: "payment" as const,
+      route: route.path,
+      url: apiRouteUrl(route.path, healthDate, {
+        surfaceId: fixtureSurfaceId,
+      }),
+    })),
+  ];
   const rawArtifactChecks = [
     "/metagraph/openapi.json",
     "/metagraph/r2-manifest.json",
@@ -84,6 +98,16 @@ async function runLiveSmoke(): Promise<void> {
   for (const check of apiChecks) {
     try {
       const result = await fetchJson(check.url);
+      if (check.expected === "payment") {
+        assertX402Challenge(check.route, check.url, result);
+        results.push({
+          path: new URL(check.url).pathname,
+          route: check.route,
+          status: result.status,
+          source: "x402-challenge",
+        });
+        continue;
+      }
       assert.equal(result.status, 200, `${check.route}: expected HTTP 200`);
       assertHeader(result, "access-control-allow-origin", "*", check.route);
       // AN ETAG IS REQUIRED OF CACHEABLE RESPONSES, not of all of them. A
@@ -650,11 +674,92 @@ export function liveSmokeApiRoutes(
   // Skipping rather than POSTing is deliberate. A smoke POST to a grounded-RAG
   // endpoint would invoke the AI binding on every publish, to assert response
   // properties that endpoint does not promise.
+  return liveSmokeGetRoutes(fixtureSurfaceId).filter(
+    (route) => !x402RequiresPayment(route.path),
+  );
+}
+
+/**
+ * GET routes that deliberately require payment from an anonymous caller.
+ *
+ * These still belong in the live publish smoke. They simply have a different
+ * success contract: a complete, actionable x402 challenge rather than the
+ * free route envelope asserted by `liveSmokeApiRoutes`.
+ */
+export function liveSmokePaymentRoutes(
+  fixtureSurfaceId: string | null = null,
+): Row[] {
+  return liveSmokeGetRoutes(fixtureSurfaceId).filter((route) =>
+    x402RequiresPayment(route.path),
+  );
+}
+
+function liveSmokeGetRoutes(fixtureSurfaceId: string | null): Row[] {
   return API_ROUTES.filter(
     (route) =>
       (route.method ?? "GET") === "GET" &&
       (route.id !== "fixture-detail" || fixtureSurfaceId) &&
       !CALLER_OWNED_ROUTE_IDS.has(route.id),
+  );
+}
+
+/** Validate the unpaid response from a route whose public contract is x402. */
+export function assertX402Challenge(
+  route: string,
+  url: string,
+  result: { body: Row; headers: Headers; status: number },
+): void {
+  assert.equal(result.status, 402, `${route}: expected HTTP 402`);
+  assertHeader(result, "access-control-allow-origin", "*", route);
+  assert.match(
+    result.headers.get("cache-control") || "",
+    /(?:^|,\s*)no-store(?:,|$)/i,
+    `${route}: x402 challenge must not be cached`,
+  );
+
+  const encoded = result.headers.get("payment-required");
+  assert.ok(encoded, `${route}: missing payment-required challenge header`);
+  const headerChallenge = JSON.parse(
+    Buffer.from(encoded, "base64").toString("utf8"),
+  ) as Row;
+  assert.deepEqual(
+    headerChallenge,
+    result.body,
+    `${route}: payment-required header and JSON body disagree`,
+  );
+
+  assert.equal(
+    result.body?.x402Version,
+    X402_VERSION,
+    `${route}: expected x402 v${X402_VERSION}`,
+  );
+  assert.equal(
+    result.body?.resource?.url,
+    url,
+    `${route}: challenge resource does not match the requested URL`,
+  );
+  assert.equal(
+    result.body?.resource?.mimeType,
+    "application/json",
+    `${route}: challenge resource must describe JSON`,
+  );
+
+  const accepts = result.body?.accepts;
+  assert.ok(
+    Array.isArray(accepts) && accepts.length > 0,
+    `${route}: challenge must offer at least one payment leg`,
+  );
+  assert.ok(
+    accepts.some(
+      (leg: Row) =>
+        typeof leg?.scheme === "string" &&
+        typeof leg?.network === "string" &&
+        /^[1-9]\d*$/.test(String(leg?.amount ?? "")) &&
+        typeof leg?.asset === "string" &&
+        typeof leg?.payTo === "string" &&
+        Number(leg?.maxTimeoutSeconds) > 0,
+    ),
+    `${route}: challenge has no actionable payment leg`,
   );
 }
 
