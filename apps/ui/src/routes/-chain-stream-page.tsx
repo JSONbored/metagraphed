@@ -161,7 +161,7 @@ export function BlocksPage() {
   return (
     <StreamShell
       name="Blocks"
-      lede="Every block the indexer has seen, newest first."
+      lede="Inspect decoded economic activity, subnet involvement, authorship, timing, extrinsics, and events for every indexed block—newest first. Trace where value moved, then open any height for its complete record."
       facts={facts}
       updatedAt={rows[0]?.observed_at ?? null}
       refreshing={summary.isFetching}

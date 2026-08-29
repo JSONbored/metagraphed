@@ -1376,12 +1376,12 @@
     grid-column: 2;
     color: var(--ink-strong);
     font-family: var(--font-mono);
-    font-size: clamp(24px, 3vw, 36px);
+    font-size: var(--text-40);
     font-weight: 500;
     font-variant-numeric: tabular-nums;
     line-height: 1.15;
   }
-  .mg-block-economics-total small {
+  .mg-block-economics-total-note {
     color: var(--ink-muted);
     font-family: var(--font-mono);
     font-size: 11px;
@@ -1406,12 +1406,12 @@
     overflow: hidden;
     color: var(--ink-strong);
     font-family: var(--font-mono);
-    font-size: 15px;
+    font-size: var(--text-16);
     font-variant-numeric: tabular-nums;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .mg-block-economics-ledger small {
+  .mg-block-economics-ledger-note {
     color: var(--ink-muted);
     font-size: 10px;
     line-height: 1.4;
