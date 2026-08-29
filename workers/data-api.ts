@@ -9053,8 +9053,7 @@ export function decodeBlockHeader(
   payload: unknown,
 ): { blockTag: string; blockNumber: number; timestampSeconds: number } | null {
   const result = (payload as { result?: unknown })?.result as
-    | { number?: unknown; timestamp?: unknown }
-    | undefined;
+    { number?: unknown; timestamp?: unknown } | undefined;
   if (!result) return null;
   const { number: rawNumber, timestamp: rawTimestamp } = result;
   if (typeof rawNumber !== "string" || typeof rawTimestamp !== "string")
