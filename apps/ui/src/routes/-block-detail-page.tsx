@@ -51,6 +51,7 @@ import {
   isBlockDetailUnavailable,
   shouldRetryBlockDetail,
 } from "@/components/metagraphed/chain-detail/block-detail-retry";
+import { BLOCK_EXTRINSIC_PAGE_SIZE } from "@/lib/metagraphed/block-route-loader";
 import { Route } from "./blocks.$ref";
 
 const API_PATHS = [
@@ -60,7 +61,6 @@ const API_PATHS = [
   "/api/v1/blocks/{ref}/events",
   "/api/v1/blocks/{ref}/chain-events",
 ];
-const BLOCK_EXTRINSIC_PAGE_SIZE = 100;
 const BLOCK_EFFECT_PAGE_SIZE = 100;
 
 function ApiSources() {

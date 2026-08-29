@@ -3,6 +3,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { BlockDetailLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { isValidBlockRef } from "@/lib/metagraphed/blocks";
+import { startBlockRouteQueries } from "@/lib/metagraphed/block-route-loader";
 import { BlockDetailPage } from "./-block-detail-page";
 import {
   entityNotFoundMeta,
@@ -25,9 +26,9 @@ export const Route = createFileRoute("/blocks/$ref")({
   // page's own useSuspenseQuery still drives the not-found/empty path.
   loader: async ({ context, params }) => {
     let result;
+    const pending = await startBlockRouteQueries(context.queryClient, params.ref);
     try {
-      const { blockQuery } = await import("@/lib/metagraphed/queries");
-      result = await context.queryClient.ensureQueryData(blockQuery(params.ref));
+      result = await pending.block;
     } catch (error) {
       // #11000: a throttled PRIMARY query has no page to render, and answering
       // 200-with-an-error-card tells a crawler the render succeeded. Throw the
@@ -50,6 +51,11 @@ export const Route = createFileRoute("/blocks/$ref")({
     // under the confident title "Block 999999999999". `normalizeBlock` folds
     // that envelope to a null `data`, which is the unambiguous absence signal.
     if (!result.data) throw notFound();
+    // On client navigation the ledger keeps resolving in the shared query
+    // cache while the route renders as soon as its authoritative header is
+    // known. Direct server renders deliberately stay progressive: dehydrating
+    // a secondary table bloats HTML and hides its truthful catch-up state.
+    void pending.extrinsics;
     return { blockNumber: result.data.block_number ?? null };
   },
   head: ({ params, loaderData, match }) => {
