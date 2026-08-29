@@ -325,10 +325,10 @@ describe("chain-detail cache key (#11001)", () => {
     );
   });
 
-  test("namespaces by contract version, so a contract change invalidates", () => {
+  test("namespaces by contract version and response shape generation", () => {
     assert.match(
       chainDetailCacheKey(env, url, "mainnet").url,
-      /\/chain-detail\//,
+      /\/chain-detail\/[^/]+\/2\/mainnet\/api\/v1\/blocks\/8803541$/,
     );
   });
 });

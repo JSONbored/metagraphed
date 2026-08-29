@@ -4382,7 +4382,8 @@ function cacheWrite(ctx: Ctx | undefined, write: () => Promise<unknown>): void {
  * than a guess: chainDetailGapResponse states the lane "closes [a gap] within
  * the hour", so an hour is the longest a re-decode can leave a stored answer
  * disagreeing with the store behind it. The key is already namespaced by
- * contract version, so a contract change invalidates independently of this.
+ * contract version and response-shape generation, so either kind of change
+ * invalidates independently of this.
  *
  * Deliberately longer than the 600 s `static` profile the response advertises to
  * clients: that number is a browser's revalidation interval, this one is how
@@ -4390,6 +4391,16 @@ function cacheWrite(ctx: Ctx | undefined, write: () => Promise<unknown>): void {
  * different questions and were never the same number.
  */
 const CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS = 3600;
+
+/**
+ * Cache namespace for the serialized chain-detail response shape.
+ *
+ * The public contract version is intentionally long-lived across compatible
+ * field additions. Those additions can still make a previously cached body
+ * fail the current response audit, so advance this generation whenever a
+ * chain-detail response gains required fields or changes serialization.
+ */
+const CHAIN_DETAIL_CACHE_SCHEMA_GENERATION = "2";
 
 /**
  * Edge-cache key for one chain-detail answer (block / extrinsic detail).
@@ -4408,7 +4419,7 @@ export function chainDetailCacheKey(
   return new Request(
     `https://edge-cache.metagraph.sh/chain-detail/${encodeURIComponent(
       contractVersion(env),
-    )}/${network}${url.pathname}${url.search}`,
+    )}/${CHAIN_DETAIL_CACHE_SCHEMA_GENERATION}/${network}${url.pathname}${url.search}`,
   );
 }
 
