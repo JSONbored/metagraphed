@@ -257,6 +257,33 @@ function EntityLoadingSkeleton({
   return (
     <PendingDocument label={label}>
       <LoadingHero variant="entity" block={block} />
+      {block ? (
+        <section className="mg-block-economics">
+          <div className="mg-block-economics-head">
+            <div className="grid gap-2">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-7 w-64 max-w-full" />
+            </div>
+            <Skeleton className="h-3 w-72 max-w-full" />
+          </div>
+          <div className="mg-block-economics-total">
+            <div className="grid gap-2">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-3 w-44" />
+            </div>
+            <Skeleton className="h-9 w-36" />
+          </div>
+          <div className="mg-block-economics-ledger">
+            {OPERATIONAL_FACT_SKELETONS.map((key) => (
+              <div key={key} className="grid gap-2">
+                <Skeleton className="h-3 w-3/5" />
+                <Skeleton className="h-5 w-4/5" />
+                <Skeleton className="h-3 w-full" />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <div className="mg-section">
         <LoadingTableView table={table} />
       </div>

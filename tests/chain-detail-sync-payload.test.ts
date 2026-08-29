@@ -108,6 +108,14 @@ describe("parseChainDetailSync — the happy path", () => {
         account_event_count: 1,
         observed_at: 1_785_799_000_000,
         synced_at: SYNCED_AT,
+        native_transfer_tao: "0",
+        stake_flow_tao: "1.5",
+        economic_activity_tao: "1.5",
+        fee_tao: "0.000002131419",
+        tip_tao: "0",
+        issuance_tao: "0",
+        subnet_ids: "[1]",
+        economics_complete: 1,
       },
     ]);
     // success arrives as a JSON boolean and is stored as D1's 0/1 flag.

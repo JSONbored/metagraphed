@@ -1,6 +1,7 @@
 import { CopyableCode, truncateIdentifier, type DataTableColumn } from "@jsonbored/ui-kit";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
-import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
+import { RouterLink } from "@/components/metagraphed/router-link";
+import { formatDecimal, formatNumber, formatTao, formatUsd } from "@/lib/metagraphed/format";
 import type { ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
 import { cadenceTint, callLabel, eventLabel, type BlockRow } from "./chain-stream-logic";
 
@@ -63,6 +64,53 @@ export function blockColumns(): DataTableColumn<BlockRow>[] {
       align: "right",
       width: 100,
       value: (row) => row.event_count ?? null,
+    },
+    {
+      key: "economic_activity",
+      label: "Economic activity",
+      width: 150,
+      value: (row) => row.economic_activity_tao ?? null,
+      definition:
+        "Native TAO transfers plus stake added or removed in this block. Fees, tips, issuance, deposits and alpha movement are reported separately rather than inflated into this total.",
+      render: (row) => {
+        if (row.decode_status === "pending")
+          return <span className="mg-cell-muted">Decoding…</span>;
+        if (row.decode_status !== "complete" || row.economic_activity_tao == null) {
+          return <span className="mg-cell-muted">Unavailable</span>;
+        }
+        return (
+          <span className="mg-economic-cell">
+            <span>{formatTao(row.economic_activity_tao)}</span>
+            {typeof row.economic_activity_usd === "number" ? (
+              <small>{formatUsd(row.economic_activity_usd)}</small>
+            ) : null}
+          </span>
+        );
+      },
+    },
+    {
+      key: "subnets",
+      label: "Subnets",
+      width: 140,
+      demote: true,
+      value: (row) => row.subnet_ids?.join(",") ?? null,
+      render: (row) => {
+        const ids = row.subnet_ids ?? [];
+        if (row.decode_status === "pending")
+          return <span className="mg-cell-muted">Decoding…</span>;
+        if (row.decode_status !== "complete") return <span className="mg-cell-muted">—</span>;
+        if (ids.length === 0) return <span className="mg-cell-muted">None decoded</span>;
+        return (
+          <span className="mg-subnet-links">
+            {ids.slice(0, 3).map((netuid) => (
+              <RouterLink key={netuid} href={`/subnets/${netuid}`}>
+                SN{netuid}
+              </RouterLink>
+            ))}
+            {ids.length > 3 ? <span>+{ids.length - 3}</span> : null}
+          </span>
+        );
+      },
     },
     {
       key: "block_time",

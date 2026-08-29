@@ -7,7 +7,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { LIVE_BLOCK_LIMIT, LiveBlockRail } from "./live-block-rail";
+import { blockEconomicLabel, LIVE_BLOCK_LIMIT, LiveBlockRail } from "./live-block-rail";
 
 async function render() {
   const blocks = Array.from({ length: LIVE_BLOCK_LIMIT }, (_, index) => ({
@@ -31,6 +31,20 @@ async function render() {
 }
 
 describe("LiveBlockRail", () => {
+  it("distinguishes pending, unavailable and measured economic activity", () => {
+    const base = { block_number: 1, block_hash: "hash" };
+    expect(blockEconomicLabel({ ...base, decode_status: "pending" })).toBe("Decoding value…");
+    expect(blockEconomicLabel({ ...base, decode_status: "unavailable" })).toBe("Value unavailable");
+    expect(
+      blockEconomicLabel({
+        ...base,
+        decode_status: "complete",
+        economic_activity_tao: 2.5,
+        economic_activity_usd: 600,
+      }),
+    ).toBe("2.50 τ · $600");
+  });
+
   it("renders the bounded twelve-block window newest-first, with every block inspectable", async () => {
     const html = await render();
 

@@ -19,13 +19,13 @@ import { ErrorState } from "@/components/metagraphed/states";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { formatAmount, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import {
   chainEventsInfiniteQuery,
   extrinsicQuery,
   extrinsicsQuery,
 } from "@/lib/metagraphed/queries";
-import type { ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
+import type { AccountEvent, ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
 import {
   argRows,
   eventLabel,
@@ -113,6 +113,7 @@ export function ExtrinsicDetailPage() {
   });
 
   const args = useMemo(() => argRows(extrinsic?.call_args), [extrinsic]);
+  const economicEvents = extrinsic?.events ?? [];
   const eventRows = useMemo(() => {
     // A misbehaving upstream cursor must not duplicate rows in a forensic
     // record. The page keeps the first instance, then reports the cursor
@@ -166,6 +167,61 @@ export function ExtrinsicDetailPage() {
       label: "Summary",
       kind: "text",
       value: (row) => (typeof row.summary === "string" && row.summary ? row.summary : null),
+    },
+  ];
+
+  const economicEventColumns: DataTableColumn<AccountEvent>[] = [
+    {
+      key: "kind",
+      label: "Decoded effect",
+      width: 180,
+      value: (row) => row.event_kind,
+    },
+    {
+      key: "tao",
+      label: "TAO amount",
+      kind: "number",
+      align: "right",
+      width: 140,
+      value: (row) => row.amount_tao ?? null,
+      format: (value) => (typeof value === "number" ? formatTao(value) : "—"),
+      definition: "Native TAO amount decoded for this effect. It never falls back to alpha.",
+    },
+    {
+      key: "alpha",
+      label: "Alpha amount",
+      kind: "number",
+      align: "right",
+      width: 140,
+      value: (row) => row.alpha_amount ?? null,
+      format: (value) => (typeof value === "number" ? formatAmount(value, "α") : "—"),
+      definition: "Subnet alpha amount decoded for this effect. It remains independent of TAO.",
+    },
+    {
+      key: "subnet",
+      label: "Subnet",
+      width: 100,
+      value: (row) => row.netuid ?? null,
+      render: (row) =>
+        typeof row.netuid === "number" ? (
+          <RouterLink href={`/subnets/${row.netuid}`}>SN{row.netuid}</RouterLink>
+        ) : (
+          "—"
+        ),
+    },
+    {
+      key: "account",
+      label: "Account",
+      kind: "identifier",
+      demote: true,
+      value: (row) => row.hotkey ?? row.coldkey ?? null,
+      render: (row) => (
+        <AddressDisplay
+          ss58={row.hotkey ?? row.coldkey}
+          compact
+          fallback={truncateIdentifier(row.hotkey ?? row.coldkey ?? "") || "—"}
+        />
+      ),
     },
   ];
 
@@ -265,6 +321,17 @@ export function ExtrinsicDetailPage() {
         source="extrinsic-arg"
         paginate={false}
         empty="This call takes no arguments."
+      />
+
+      <DataTable
+        id="economic-effects"
+        rows={economicEvents}
+        columns={economicEventColumns}
+        rowKey={(row) => `${row.event_index ?? "?"}-${row.event_kind ?? "effect"}`}
+        caption="Decoded economic effects"
+        source="extrinsic-economic-effect"
+        paginate={false}
+        empty="No account-attributed economic effects were decoded for this extrinsic."
       />
 
       <DataTable

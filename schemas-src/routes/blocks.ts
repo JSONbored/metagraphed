@@ -9,6 +9,7 @@
 // Block component key becomes fully orphaned.
 import { z } from "zod";
 import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
+import { ALPHA_USD_UNAVAILABLE } from "../../src/alpha-usd.ts";
 
 export const BlockSchema = z
   .object({
@@ -20,6 +21,20 @@ export const BlockSchema = z
     event_count: z.int().min(0).nullable(),
     spec_version: z.int().min(0).nullable(),
     observed_at: z.string().nullable(),
+    decode_status: z.enum(["pending", "complete", "unavailable"]),
+    native_transfer_tao: z.number().min(0).nullable(),
+    stake_flow_tao: z.number().min(0).nullable(),
+    economic_activity_tao: z.number().min(0).nullable(),
+    fee_tao: z.number().min(0).nullable(),
+    tip_tao: z.number().min(0).nullable(),
+    issuance_tao: z.number().min(0).nullable(),
+    subnet_ids: z.array(z.int().min(0)),
+    economic_activity_usd: z.number().min(0).nullable(),
+    usd_per_tao: z.number().positive().nullable(),
+    tao_usd_block: z.int().min(0).nullable(),
+    tao_usd_observed_at: z.string().nullable(),
+    tao_usd_basis: z.string().nullable(),
+    tao_usd_unavailable: z.enum(ALPHA_USD_UNAVAILABLE).optional(),
   })
   .strict();
 

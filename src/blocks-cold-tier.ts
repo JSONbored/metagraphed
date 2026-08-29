@@ -108,7 +108,24 @@ const STORE_SELECT =
   // surface is built from. The poller's copy is what covers the seconds
   // between a block being seen and being decoded -- the window that used to
   // publish null and render "Events 0".
-  "COALESCE(c.chain_event_count, b.event_count) AS event_count";
+  "COALESCE(c.chain_event_count, b.event_count) AS event_count, " +
+  // to_jsonb(c) keeps this rollout safe before migration 0034 is applied: a
+  // missing key reads null instead of making the whole live-block query fail.
+  "CASE " +
+  // The cutoff is bound by each caller. Keeping wall-clock arithmetic out of
+  // SQL preserves this reader across both supported stores and makes the
+  // five-minute pending window deterministic in tests.
+  "WHEN c.block_number IS NULL AND b.observed_at >= ? THEN 'pending' " +
+  "WHEN c.block_number IS NULL THEN 'unavailable' " +
+  "WHEN to_jsonb(c)->>'economics_complete' = 'true' THEN 'complete' " +
+  "ELSE 'unavailable' END AS decode_status, " +
+  "to_jsonb(c)->>'native_transfer_tao' AS native_transfer_tao, " +
+  "to_jsonb(c)->>'stake_flow_tao' AS stake_flow_tao, " +
+  "to_jsonb(c)->>'economic_activity_tao' AS economic_activity_tao, " +
+  "to_jsonb(c)->>'fee_tao' AS fee_tao, " +
+  "to_jsonb(c)->>'tip_tao' AS tip_tao, " +
+  "to_jsonb(c)->>'issuance_tao' AS issuance_tao, " +
+  "to_jsonb(c)->'subnet_ids' AS subnet_ids";
 /**
  * What STORE_SELECT returns: a JOIN projection, not either table.
  *
@@ -131,6 +148,14 @@ interface BlockSeamRow {
   event_count:
     ChainDetailBlocks["chain_event_count"] | BlocksHead["event_count"];
   spec_version: ChainDetailBlocks["spec_version"];
+  decode_status: "pending" | "complete" | "unavailable";
+  native_transfer_tao: string | null;
+  stake_flow_tao: string | null;
+  economic_activity_tao: string | null;
+  fee_tao: string | null;
+  tip_tao: string | null;
+  issuance_tao: string | null;
+  subnet_ids: unknown;
 }
 
 const STORE_FROM =
@@ -294,7 +319,7 @@ async function storeHeadRows(
     return (await db.query(
       `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${where.join(" AND ")}
        ORDER BY b.observed_at DESC, b.block_number DESC LIMIT ?`,
-      [...params, want],
+      [Date.now() - 300_000, ...params, want],
     )) as Record<string, unknown>[];
   } catch {
     // A cold or unbound D1 must not fail the request: the lakehouse leg below
@@ -459,7 +484,7 @@ export async function loadBlockColdTier(
       const value = asNumber !== null ? asNumber : asHash!;
       const rows = await db.query<BlockSeamRow>(
         `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${predicate} LIMIT 1`,
-        [value],
+        [Date.now() - 300_000, value],
       );
       const row = rows[0];
       if (row) return buildBlock(recordOrNull(row), ref);

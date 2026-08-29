@@ -23,6 +23,8 @@
 // accepts null for exactly those fields and rejects it everywhere else, rather
 // than accepting null anywhere and letting the read path guess.
 
+import { summarizeBlockEconomics } from "./block-economics.ts";
+
 type Row = Record<string, unknown>;
 
 /**
@@ -295,10 +297,13 @@ export function parseChainDetailSync(
         status: 400,
       };
 
+    const blockExtrinsicRows: Row[] = [];
+    const blockAccountEventRows: Row[] = [];
     for (const raw of extrinsics) {
       const row = parseExtrinsic(raw, blockNumber);
       if (typeof row === "string")
         return { ok: false, error: row, status: 400 };
+      blockExtrinsicRows.push(row);
       extrinsicRows.push(row);
     }
     for (const raw of chain_events) {
@@ -311,8 +316,14 @@ export function parseChainDetailSync(
       const row = parseAccountEvent(raw, blockNumber);
       if (typeof row === "string")
         return { ok: false, error: row, status: 400 };
+      blockAccountEventRows.push(row);
       accountEventRows.push(row);
     }
+
+    const economics = summarizeBlockEconomics(
+      blockExtrinsicRows,
+      blockAccountEventRows,
+    );
 
     // The counts are the LANE's assertion of what the block held, recorded
     // alongside the rows so a later short read is detectable against them.
@@ -325,6 +336,10 @@ export function parseChainDetailSync(
       account_event_count: account_events.length,
       observed_at: block.observed_at,
       synced_at: syncedAt,
+      ...economics,
+      // node-postgres treats a JS array as a Postgres array literal. Bind JSON
+      // text instead so the jsonb column receives `[1,19]`, not `{1,19}`.
+      subnet_ids: JSON.stringify(economics.subnet_ids),
     });
     if (blockNumber > head) head = blockNumber;
   }

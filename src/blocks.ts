@@ -68,6 +68,42 @@ export interface BlockApi {
   event_count: number | null;
   spec_version: number | null;
   observed_at: string | null;
+  decode_status: "pending" | "complete" | "unavailable";
+  native_transfer_tao: number | null;
+  stake_flow_tao: number | null;
+  economic_activity_tao: number | null;
+  fee_tao: number | null;
+  tip_tao: number | null;
+  issuance_tao: number | null;
+  subnet_ids: number[];
+  economic_activity_usd: number | null;
+  usd_per_tao: number | null;
+  tao_usd_block: number | null;
+  tao_usd_observed_at: string | null;
+  tao_usd_basis: string | null;
+  tao_usd_unavailable?: string;
+}
+
+function decimalOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function subnetIds(value: unknown): number[] {
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value) as unknown;
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value.map(toBlockNumber).filter((item): item is number => item !== null),
+    ),
+  ].sort((left, right) => left - right);
 }
 
 // One D1 blocks row → a clean API block object. Null-safe on junk/sparse rows.
@@ -88,6 +124,26 @@ export function formatBlock(
     event_count: toBlockNumber(row.event_count),
     spec_version: toBlockNumber(row.spec_version),
     observed_at: toIso(row.observed_at),
+    decode_status:
+      row.decode_status === "pending" || row.decode_status === "complete"
+        ? row.decode_status
+        : "unavailable",
+    native_transfer_tao: decimalOrNull(row.native_transfer_tao),
+    stake_flow_tao: decimalOrNull(row.stake_flow_tao),
+    economic_activity_tao: decimalOrNull(row.economic_activity_tao),
+    fee_tao: decimalOrNull(row.fee_tao),
+    tip_tao: decimalOrNull(row.tip_tao),
+    issuance_tao: decimalOrNull(row.issuance_tao),
+    subnet_ids: subnetIds(row.subnet_ids),
+    economic_activity_usd: decimalOrNull(row.economic_activity_usd),
+    usd_per_tao: decimalOrNull(row.usd_per_tao),
+    tao_usd_block: toBlockNumber(row.tao_usd_block),
+    tao_usd_observed_at: toIso(row.tao_usd_observed_at),
+    tao_usd_basis:
+      typeof row.tao_usd_basis === "string" ? row.tao_usd_basis : null,
+    ...(typeof row.tao_usd_unavailable === "string"
+      ? { tao_usd_unavailable: row.tao_usd_unavailable }
+      : {}),
   };
 }
 

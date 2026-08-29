@@ -3,6 +3,7 @@ import { gotoThroughRestart } from "./server-restart.ts";
 
 test.describe("block activity arrival motion", () => {
   test("cues a newer indexed head when it enters the window", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
     const response = await page.request.get(
       "http://127.0.0.1:8081/api/v1/blocks?limit=50&offset=0",
     );

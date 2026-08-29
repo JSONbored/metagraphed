@@ -22,14 +22,15 @@ import { RouterLink } from "@/components/metagraphed/router-link";
 import { BlockDetailCatchupStatus, ErrorState } from "@/components/metagraphed/states";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber, formatTao, formatUsd } from "@/lib/metagraphed/format";
 import {
   blockChainEventsQuery,
+  blockEventsInfiniteQuery,
   blockExtrinsicsInfiniteQuery,
   blockQuery,
   blocksQuery,
 } from "@/lib/metagraphed/queries";
-import type { Block, ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
+import type { AccountEvent, Block, ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
 import { extrinsicColumns } from "@/components/metagraphed/chain-stream/chain-stream-columns";
 import { argRows } from "@/components/metagraphed/chain-detail/chain-detail-logic";
 import {
@@ -55,13 +56,95 @@ const API_PATHS = [
   "/api/v1/blocks",
   "/api/v1/blocks/{ref}",
   "/api/v1/blocks/{ref}/extrinsics",
+  "/api/v1/blocks/{ref}/events",
   "/api/v1/blocks/{ref}/chain-events",
 ];
 const BLOCK_EXTRINSIC_PAGE_SIZE = 100;
+const BLOCK_EFFECT_PAGE_SIZE = 100;
 
 function ApiSources() {
   useRegisterApiSource(API_PATHS);
   return null;
+}
+
+function EconomicFootprint({ block }: { block: Block | null }) {
+  const status = block?.decode_status ?? "unavailable";
+  const ids = block?.subnet_ids ?? [];
+  const metric = (label: string, value: number | null | undefined, note: string) => (
+    <div>
+      <dt>{label}</dt>
+      <dd>{typeof value === "number" ? formatTao(value) : "—"}</dd>
+      <small>{note}</small>
+    </div>
+  );
+
+  return (
+    <section className="mg-block-economics" aria-labelledby="block-economics-title">
+      <div className="mg-block-economics-head">
+        <div>
+          <p className="mg-block-event-stream-kicker">Economic footprint</p>
+          <h2 id="block-economics-title">Value moved in this block.</h2>
+        </div>
+        <p>
+          Native transfers and stake flow form the headline. Fees, issuance and alpha stay separate.
+        </p>
+      </div>
+
+      {status === "pending" ? (
+        <div className="mg-block-economics-state" role="status" aria-live="polite">
+          <strong>Decoding economic activity…</strong>
+          <span>The block header is live; its event-level value breakdown is catching up.</span>
+        </div>
+      ) : status !== "complete" ? (
+        <div className="mg-block-economics-state">
+          <strong>Economic breakdown unavailable.</strong>
+          <span>This block predates the retained derivation; no zero has been inferred.</span>
+        </div>
+      ) : (
+        <>
+          <div className="mg-block-economics-total">
+            <span>Economic activity</span>
+            <strong>{formatTao(block?.economic_activity_tao)}</strong>
+            <small>
+              {typeof block?.economic_activity_usd === "number"
+                ? `${formatUsd(block.economic_activity_usd)} at ${formatUsd(block.usd_per_tao)} / TAO`
+                : "USD conversion unavailable"}
+            </small>
+          </div>
+          <dl className="mg-block-economics-ledger">
+            {metric("Native transfers", block?.native_transfer_tao, "Balances.Transfer only")}
+            {metric("Stake flow", block?.stake_flow_tao, "Added plus removed")}
+            {metric("Fees", block?.fee_tao, "Signed extrinsics")}
+            {metric("Tips", block?.tip_tao, "Explicit transaction tips")}
+            {metric("Issuance", block?.issuance_tao, "Reported separately")}
+          </dl>
+          <div className="mg-block-economics-subnets">
+            <span>Subnets touched</span>
+            {ids.length > 0 ? (
+              <span className="mg-subnet-links">
+                {ids.map((netuid) => (
+                  <RouterLink key={netuid} href={`/subnets/${netuid}`}>
+                    SN{netuid}
+                  </RouterLink>
+                ))}
+              </span>
+            ) : (
+              <strong>None decoded</strong>
+            )}
+          </div>
+          <p className="mg-block-economics-source">
+            USD uses the current source-linked TAO/USD reading
+            {block?.tao_usd_observed_at ? (
+              <>
+                , observed <TimeAgo at={block.tao_usd_observed_at} />
+              </>
+            ) : null}
+            . It is a current conversion, not the historical price at block time.
+          </p>
+        </>
+      )}
+    </section>
+  );
 }
 
 /**
@@ -115,6 +198,12 @@ export function BlockDetailPage() {
     retry: shouldRetryBlockDetail,
     retryDelay: blockDetailRetryDelay,
   });
+  const economicEvents = useInfiniteQuery({
+    ...blockEventsInfiniteQuery(ref, BLOCK_EFFECT_PAGE_SIZE),
+    enabled: shouldFetchEvents,
+    retry: shouldRetryBlockDetail,
+    retryDelay: blockDetailRetryDelay,
+  });
   const [start, end] = number == null ? [0, 0] : cadenceRange(number);
   const window = useQuery({
     ...blocksQuery({ block_start: start, block_end: end, limit: CADENCE_BLOCK_LIMIT }),
@@ -152,6 +241,10 @@ export function BlockDetailPage() {
   const extrinsicTotal =
     block?.extrinsic_count ?? extrinsics.data?.pages[0]?.data.extrinsic_count ?? null;
   const eventRows = useMemo(() => (events.data?.data.events ?? []) as ChainEvent[], [events.data]);
+  const economicEventRows = useMemo(
+    () => (economicEvents.data?.pages ?? []).flatMap((page) => page.data.events as AccountEvent[]),
+    [economicEvents.data],
+  );
   const segments = useMemo(() => eventsByPallet(eventRows), [eventRows]);
   const points = useMemo(() => cadencePoints((window.data?.data ?? []) as Block[]), [window.data]);
   const heroFacts = blockFacts(block, { count: formatNumber });
@@ -185,6 +278,50 @@ export function BlockDetailPage() {
       width: 130,
       demote: true,
       value: (row) => row.extrinsic_index ?? null,
+    },
+  ];
+
+  const economicEventColumns: DataTableColumn<AccountEvent>[] = [
+    {
+      key: "index",
+      label: "Index",
+      kind: "number",
+      align: "right",
+      width: 90,
+      value: (row) => row.event_index,
+    },
+    { key: "effect", label: "Decoded effect", width: 180, value: (row) => row.event_kind },
+    {
+      key: "tao",
+      label: "TAO amount",
+      kind: "number",
+      align: "right",
+      width: 140,
+      value: (row) => row.amount_tao ?? null,
+      format: (value) => (typeof value === "number" ? formatTao(value) : "—"),
+      definition: "Native TAO decoded for this effect; alpha is never substituted here.",
+    },
+    {
+      key: "alpha",
+      label: "Alpha amount",
+      kind: "number",
+      align: "right",
+      width: 140,
+      value: (row) => row.alpha_amount ?? null,
+      format: (value) => (typeof value === "number" ? `${formatNumber(value)} α` : "—"),
+      definition: "Subnet alpha decoded for this effect; it remains independent of TAO.",
+    },
+    {
+      key: "subnet",
+      label: "Subnet",
+      width: 100,
+      value: (row) => row.netuid ?? null,
+      render: (row) =>
+        typeof row.netuid === "number" ? (
+          <RouterLink href={`/subnets/${row.netuid}`}>SN{row.netuid}</RouterLink>
+        ) : (
+          "—"
+        ),
     },
   ];
 
@@ -265,6 +402,7 @@ export function BlockDetailPage() {
           total={BLOCK_DETAIL_RETRY_COUNT}
         />
       ) : null}
+      <EconomicFootprint block={block} />
       <DataTable
         id="contents"
         rows={rows}
@@ -372,6 +510,37 @@ export function BlockDetailPage() {
                 legendCols={4}
                 ariaLabel="Events by pallet"
                 source="block-pallet"
+              />
+            ) : null}
+            <DataTable
+              id="economic-events"
+              rows={economicEventRows}
+              columns={economicEventColumns}
+              rowKey={(row) => `${row.event_index ?? "?"}-${row.event_kind ?? "effect"}`}
+              caption="Account-attributed economic effects"
+              link={RouterLink}
+              source="block-economic-event"
+              loading={shouldFetchEvents && economicEvents.isPending}
+              error={
+                economicEvents.isError && economicEventRows.length === 0 ? (
+                  <ErrorState
+                    error={economicEvents.error}
+                    onRetry={() => void economicEvents.refetch()}
+                    context="economic effects"
+                  />
+                ) : undefined
+              }
+              paginate={false}
+              empty="No account-attributed economic effects were decoded for this block."
+            />
+            {economicEvents.hasNextPage ||
+            (economicEvents.error && economicEventRows.length > 0) ? (
+              <LoadMore
+                hasMore={Boolean(economicEvents.hasNextPage)}
+                isLoading={economicEvents.isFetchingNextPage}
+                onLoadMore={() => void economicEvents.fetchNextPage()}
+                shown={economicEventRows.length}
+                error={economicEvents.error}
               />
             ) : null}
             <DataTable

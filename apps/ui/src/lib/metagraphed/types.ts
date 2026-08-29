@@ -979,6 +979,22 @@ export interface Block {
   observed_at?: string; // iso
   prev_block_number?: number | null;
   next_block_number?: number | null;
+  /** Whether the chain-detail batch has produced a truthful economics row. */
+  decode_status?: "pending" | "complete" | "unavailable";
+  native_transfer_tao?: number | null;
+  stake_flow_tao?: number | null;
+  /** Native transfers plus stake added/removed; fees and issuance are separate. */
+  economic_activity_tao?: number | null;
+  fee_tao?: number | null;
+  tip_tao?: number | null;
+  issuance_tao?: number | null;
+  subnet_ids?: number[];
+  economic_activity_usd?: number | null;
+  usd_per_tao?: number | null;
+  tao_usd_block?: number | null;
+  tao_usd_observed_at?: string | null;
+  tao_usd_basis?: string | null;
+  tao_usd_unavailable?: string;
   [key: string]: unknown;
 }
 

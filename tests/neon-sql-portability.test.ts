@@ -169,6 +169,9 @@ const BOOLEAN_COLUMNS = [
   // for the type, and it would exclude the undecoded rows a caller counting
   // failures probably wants.
   "success",
+  // chain_detail_blocks (#11765). A summary becomes publishable only after
+  // every economic component has been derived from the same decoded block.
+  "economics_complete",
 ] as const;
 
 /** Comparisons and aggregates that only work against ONE of the two schemas. */

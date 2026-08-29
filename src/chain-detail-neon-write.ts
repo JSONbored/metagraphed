@@ -41,6 +41,14 @@ export const CHAIN_DETAIL_BLOCK_COLUMNS = [
   "account_event_count",
   "observed_at",
   "synced_at",
+  "native_transfer_tao",
+  "stake_flow_tao",
+  "economic_activity_tao",
+  "fee_tao",
+  "tip_tao",
+  "issuance_tao",
+  "subnet_ids",
+  "economics_complete",
 ];
 
 export const CHAIN_DETAIL_EXTRINSIC_COLUMNS = [
@@ -142,6 +150,7 @@ export const CHAIN_DETAIL_MIRROR_PLANS: readonly DetailPlan[] = [
     table: "chain_detail_blocks",
     columns: CHAIN_DETAIL_BLOCK_COLUMNS,
     conflict: CHAIN_DETAIL_CONFLICT_KEYS.chain_detail_blocks,
+    booleans: ["economics_complete"],
   },
 ];
 

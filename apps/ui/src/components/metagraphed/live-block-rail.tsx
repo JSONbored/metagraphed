@@ -10,7 +10,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { TimeAgo } from "@jsonbored/ui-kit";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatTao, formatUsd } from "@/lib/metagraphed/format";
 import { blockExtrinsicsInfiniteQuery } from "@/lib/metagraphed/queries";
 import type { Block } from "@/lib/metagraphed/types";
 import { arrivedBlock } from "./chain-stream/block-activity-window-logic";
@@ -55,6 +55,17 @@ export function blockActivityRatio(
 function countLabel(value: number | null | undefined, noun: string): string {
   if (typeof value !== "number") return `${noun} unavailable`;
   return `${formatNumber(value)} ${noun}${value === 1 ? "" : "s"}`;
+}
+
+export function blockEconomicLabel(block: Block): string {
+  if (block.decode_status === "pending") return "Decoding value…";
+  if (block.decode_status !== "complete" || typeof block.economic_activity_tao !== "number") {
+    return "Value unavailable";
+  }
+  const tao = formatTao(block.economic_activity_tao);
+  const usd =
+    typeof block.economic_activity_usd === "number" ? formatUsd(block.economic_activity_usd) : null;
+  return usd ? `${tao} · ${usd}` : tao;
 }
 
 export function LiveBlockRail({
@@ -151,7 +162,9 @@ export function LiveBlockRail({
     setArriving(nextArrival);
     const timeout = window.setTimeout(() => {
       setArriving((current) => (current === nextArrival ? null : current));
-    }, 720);
+      // The tile's visual animation remains 720ms; keep the live announcement
+      // and arrival identity around long enough to be perceived reliably.
+    }, 1_600);
     return () => window.clearTimeout(timeout);
   }, [blockWindowKey, head]);
 
@@ -192,6 +205,7 @@ export function LiveBlockRail({
               const number = formatNumber(block.block_number);
               const extrinsics = countLabel(block.extrinsic_count, "extrinsic");
               const events = countLabel(block.event_count, "event");
+              const economics = blockEconomicLabel(block);
               const key = blockKey(block);
               return (
                 <li key={key}>
@@ -212,7 +226,7 @@ export function LiveBlockRail({
                       if (element) itemElements.current.set(key, element);
                       else itemElements.current.delete(key);
                     }}
-                    aria-label={`Open block #${number}: ${extrinsics}, ${events}`}
+                    aria-label={`Open block #${number}: ${extrinsics}, ${events}, economic activity ${economics}`}
                   >
                     <span className="mg-live-block-label">Block</span>
                     <span className="mg-live-block-open" aria-hidden="true">
@@ -221,7 +235,14 @@ export function LiveBlockRail({
                     <strong>#{number}</strong>
                     <span className="mg-live-block-counts">
                       <span>{extrinsics}</span>
+                      <span aria-hidden="true">·</span>
                       <span>{events}</span>
+                    </span>
+                    <span
+                      className="mg-live-block-value"
+                      title="Native TAO transfers plus stake added or removed in this block. USD uses the current source-linked TAO/USD reading. Fees and issuance are excluded."
+                    >
+                      {economics}
                     </span>
                     <span className="mg-live-block-activity" aria-hidden="true">
                       <span
@@ -245,6 +266,7 @@ export function LiveBlockRail({
           <ol className="mg-live-blocks-list" aria-hidden="true">
             {Array.from({ length: 4 }, (_, index) => (
               <li key={index} className="mg-live-block mg-live-block--loading">
+                <span />
                 <span />
                 <span />
                 <span />

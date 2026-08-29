@@ -235,6 +235,58 @@ if (!byPath.has(VALIDATOR_OPERATORS_PATH)) {
   byPath.set(VALIDATOR_OPERATORS_PATH, recorded);
 }
 
+// The committed HAR predates the block-economics contract. SSR requests never
+// pass through Playwright's page.route interception, so decorate the recorded
+// block responses here until a post-deployment fixture refresh captures these
+// fields directly. Keep the values deterministic and visibly non-zero so the
+// responsive detail test proves the ledger rather than an unavailable state.
+function withBlockEconomicsFixture(recorded: Recorded): Recorded {
+  try {
+    const payload = JSON.parse(recorded.body.toString("utf8")) as {
+      data?: {
+        block?: Record<string, unknown>;
+        blocks?: Array<Record<string, unknown>>;
+      };
+    };
+    const decorate = (block: Record<string, unknown>) => ({
+      ...block,
+      decode_status: "complete",
+      native_transfer_tao: 1.25,
+      stake_flow_tao: 2.5,
+      economic_activity_tao: 3.75,
+      fee_tao: 0.001,
+      tip_tao: 0,
+      issuance_tao: 1,
+      subnet_ids: [7, 19],
+      economic_activity_usd: 900,
+      usd_per_tao: 240,
+      tao_usd_block: 8_948_000,
+      tao_usd_observed_at: "2026-08-29T05:00:00.000Z",
+      tao_usd_basis: "wrapped_onchain_median",
+    });
+    if (payload.data?.block) payload.data.block = decorate(payload.data.block);
+    if (Array.isArray(payload.data?.blocks)) {
+      payload.data.blocks = payload.data.blocks.map(decorate);
+    }
+    return { ...recorded, body: Buffer.from(JSON.stringify(payload)) };
+  } catch {
+    return recorded;
+  }
+}
+
+const BLOCK_DETAIL_PATH = /^\/api\/v1\/blocks\/(?:\d+|0x[0-9a-f]+)$/i;
+for (const [key, recorded] of byUrl) {
+  const pathname = key.split("?")[0]!;
+  if (pathname === "/api/v1/blocks" || BLOCK_DETAIL_PATH.test(pathname)) {
+    byUrl.set(key, withBlockEconomicsFixture(recorded));
+  }
+}
+for (const [key, recorded] of byPath) {
+  if (key === "/api/v1/blocks" || BLOCK_DETAIL_PATH.test(key)) {
+    byPath.set(key, withBlockEconomicsFixture(recorded));
+  }
+}
+
 /**
  * A hit, and whether it answered the exact URL asked for.
  *

@@ -217,7 +217,7 @@ describe("the resolved seam actually routes the request", () => {
       { limit: 1, offset: 0 },
     );
     assert.equal(
-      params[0]![0],
+      params[0]![1],
       SEAM + 4_000,
       "the head leg is bounded by the resolved seam, not DEFAULT_BLOCKS_SEAM",
     );
@@ -254,7 +254,7 @@ describe("loadBlockFeedColdTier", () => {
     // rewrites it on the way to Postgres. #9821 is what happens when it does
     // not -- six routes served zero rows because `?` matched nothing.
     assert.match(sql[0]!, /block_number > \$\d/);
-    assert.equal(params[0]![0], SEAM, "the seam is the D1 floor");
+    assert.equal(params[0]![1], SEAM, "the seam is the D1 floor");
     assert.equal(queries.length, 0, "no lakehouse query needed");
   });
 
@@ -437,7 +437,9 @@ describe("loadBlockFeedColdTier", () => {
     assert.match(sql[0]!, /b\.observed_at >= \$\d/);
     assert.match(sql[0]!, /b\.extrinsic_count >= \$\d/);
     // Bound, never interpolated — order matters as much as presence.
-    assert.deepEqual(params[0], [
+    const [pendingCutoff, ...queryParams] = params[0]!;
+    assert.equal(typeof pendingCutoff, "number");
+    assert.deepEqual(queryParams, [
       SEAM,
       1_700_000_000_000 + SEAM + 9,
       SEAM + 9,
@@ -581,7 +583,11 @@ describe("loadBlockFeedColdTier", () => {
       } as never,
     );
     assert.ok(data, "page 1, not a decline");
-    assert.deepEqual(params[0], [SEAM, 2], "no seek bound for a bad token");
+    assert.deepEqual(
+      params[0]!.slice(1),
+      [SEAM, 2],
+      "no seek bound for a bad token",
+    );
   });
 });
 
@@ -594,7 +600,7 @@ describe("loadBlockColdTier", () => {
       String(SEAM + 5),
     );
     assert.equal(data!.block!.block_number, SEAM + 5);
-    assert.equal(params[0]![0], SEAM + 5);
+    assert.equal(params[0]![1], SEAM + 5);
     assert.equal(queries.length, 0, "never touched the lakehouse");
   });
 

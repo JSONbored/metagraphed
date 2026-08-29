@@ -7,9 +7,14 @@ import {
   forwardToAnalyticsHost,
 } from "./analytics-proxy";
 
-function fakeCtx(): { waitUntil: ReturnType<typeof vi.fn>; calls: Promise<unknown>[] } {
+function fakeCtx() {
   const calls: Promise<unknown>[] = [];
-  return { waitUntil: vi.fn((p: Promise<unknown>) => calls.push(p)), calls };
+  return {
+    waitUntil: vi.fn((p: Promise<unknown>): void => {
+      calls.push(p);
+    }),
+    calls,
+  };
 }
 
 describe("handleAnalyticsProxy", () => {

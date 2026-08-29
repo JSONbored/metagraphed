@@ -2008,6 +2008,16 @@ function normalizeBlock(raw: unknown): Block | null {
 
   const prevBlock = firstFiniteNumber(raw.prev_block_number);
   const nextBlock = firstFiniteNumber(raw.next_block_number);
+  const subnetIds = Array.isArray(blockData.subnet_ids)
+    ? [
+        ...new Set(
+          blockData.subnet_ids.flatMap((value) => {
+            const netuid = firstFiniteNumber(value);
+            return netuid == null || netuid < 0 ? [] : [netuid];
+          }),
+        ),
+      ].sort((left, right) => left - right)
+    : [];
   return {
     ...(blockData as object),
     block_number: blockNumber ?? (raw.block_number as number),
@@ -2019,6 +2029,23 @@ function normalizeBlock(raw: unknown): Block | null {
     observed_at: firstString(blockData.observed_at),
     prev_block_number: typeof prevBlock === "number" ? prevBlock : null,
     next_block_number: typeof nextBlock === "number" ? nextBlock : null,
+    decode_status:
+      blockData.decode_status === "pending" || blockData.decode_status === "complete"
+        ? blockData.decode_status
+        : "unavailable",
+    native_transfer_tao: firstFiniteNumber(blockData.native_transfer_tao),
+    stake_flow_tao: firstFiniteNumber(blockData.stake_flow_tao),
+    economic_activity_tao: firstFiniteNumber(blockData.economic_activity_tao),
+    fee_tao: firstFiniteNumber(blockData.fee_tao),
+    tip_tao: firstFiniteNumber(blockData.tip_tao),
+    issuance_tao: firstFiniteNumber(blockData.issuance_tao),
+    subnet_ids: subnetIds,
+    economic_activity_usd: firstFiniteNumber(blockData.economic_activity_usd),
+    usd_per_tao: firstFiniteNumber(blockData.usd_per_tao),
+    tao_usd_block: firstFiniteNumber(blockData.tao_usd_block),
+    tao_usd_observed_at: firstString(blockData.tao_usd_observed_at),
+    tao_usd_basis: firstString(blockData.tao_usd_basis),
+    tao_usd_unavailable: firstString(blockData.tao_usd_unavailable),
   } as Block;
 }
 
@@ -2045,12 +2072,8 @@ function normalizeBlockExtrinsics(raw: unknown): BlockExtrinsics {
   } satisfies BlockExtrinsics;
 }
 
-function normalizeBlockEvent(raw: unknown): BlockEvent | null {
+export function normalizeBlockEvent(raw: unknown): BlockEvent | null {
   if (!isRecord(raw)) return null;
-  const amount =
-    firstFiniteNumber(raw.amount_tao) ??
-    firstFiniteNumber(raw.amount) ??
-    firstFiniteNumber(raw.alpha_amount);
   return {
     ...(raw as object),
     block_number: firstFiniteNumber(raw.block_number) ?? null,
@@ -2060,10 +2083,10 @@ function normalizeBlockEvent(raw: unknown): BlockEvent | null {
     coldkey: firstString(raw.coldkey),
     netuid: firstFiniteNumber(raw.netuid),
     uid: firstFiniteNumber(raw.uid),
-    amount_tao: amount,
+    amount_tao: firstFiniteNumber(raw.amount_tao) ?? firstFiniteNumber(raw.amount) ?? null,
     observed_at: firstString(raw.observed_at),
     extrinsic_index: firstFiniteNumber(raw.extrinsic_index),
-    alpha_amount: amount,
+    alpha_amount: firstFiniteNumber(raw.alpha_amount) ?? null,
   };
 }
 
@@ -2246,6 +2269,26 @@ export const blockEventsQuery = (ref: string, params?: QueryParams) =>
         signal,
       });
       return { ...res, data: normalizeBlockEvents(res.data) } as ApiResult<BlockEvents>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/** Lossless, offset-paginated account-attributed effects for one block. */
+export const blockEventsInfiniteQuery = (ref: string, pageSize = 100) =>
+  infiniteQueryOptions({
+    queryKey: k("block-events-infinite", ref, pageSize),
+    initialPageParam: 0,
+    queryFn: async ({ pageParam, signal }) => {
+      const offset = pageParam as number;
+      const res = await apiFetch<unknown>(`/api/v1/blocks/${blockRefPathSegment(ref)}/events`, {
+        params: { limit: pageSize, ...(offset > 0 ? { offset } : {}) },
+        signal,
+      });
+      return { ...res, data: normalizeBlockEvents(res.data) } as ApiResult<BlockEvents>;
+    },
+    getNextPageParam: (last, pages) => {
+      if (last.data.events.length < pageSize) return undefined;
+      return pages.reduce((count, page) => count + page.data.events.length, 0);
     },
     staleTime: STALE_SHORT,
   });
@@ -2450,7 +2493,9 @@ export function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic
             coldkey: truncateString(firstString(event.coldkey)),
             netuid: firstFiniteNumber(event.netuid),
             uid: firstFiniteNumber(event.uid),
-            amount_tao: firstFiniteNumber(event.amount_tao),
+            amount_tao: firstFiniteNumber(event.amount_tao) ?? null,
+            alpha_amount: firstFiniteNumber(event.alpha_amount) ?? null,
+            extrinsic_index: firstFiniteNumber(event.extrinsic_index) ?? null,
             observed_at: truncateString(firstString(event.observed_at)),
           } as AccountEvent;
         })
