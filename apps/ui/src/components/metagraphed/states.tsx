@@ -80,6 +80,44 @@ function BlockDetailUnavailableNotice({
   );
 }
 
+export function BlockDetailCatchupStatus({
+  detail,
+  attempt,
+  total,
+}: {
+  detail: string;
+  attempt: number;
+  total: number;
+}) {
+  const shownAttempt = Math.min(Math.max(1, attempt), total);
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Decoded block detail is catching up"
+      className="rounded border border-border bg-surface p-3"
+    >
+      <div className="flex items-start gap-3">
+        <Hourglass
+          aria-hidden
+          className="size-4 shrink-0 text-ink-muted motion-safe:animate-pulse"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-13 font-medium text-ink-strong">
+            Decoding this new block
+          </div>
+          <p className="mt-1 text-13 leading-relaxed text-ink-muted">
+            The block is live. Its decoded {detail} are catching up and will refresh automatically.
+            <span className="ml-1 whitespace-nowrap tabular-nums">
+              Attempt {shownAttempt} of {total}.
+            </span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * #8384: shown instead of a red error card when a request fails because the
  * visitor is genuinely offline (apiFetch's own catch turns a rejected fetch
