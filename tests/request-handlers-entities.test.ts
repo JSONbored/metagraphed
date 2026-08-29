@@ -13,6 +13,10 @@ import {
 import { handleRequest } from "../workers/api.ts";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, test, vi } from "vitest";
+import {
+  METAGRAPH_SETTLED_SHORT_CACHE,
+  type SettledShortCacheResponse,
+} from "../workers/http.ts";
 
 // Every hot-tier read in these handlers goes through readStore -> `new
 // Client({ connectionString })` (#10179), and a handler is entered as
@@ -4247,6 +4251,10 @@ describe("handleBlock", () => {
       assert.equal(body.data.block.economic_activity_usd, 250);
       assert.equal(body.data.block.usd_per_tao, 200);
       assert.equal(response.headers.get("x-metagraph-cache-profile"), "short");
+      assert.equal(
+        (response as SettledShortCacheResponse)[METAGRAPH_SETTLED_SHORT_CACHE],
+        true,
+      );
     } finally {
       cold.restore();
     }
