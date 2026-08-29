@@ -3397,9 +3397,26 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     event_index: 1,
     observed_at: Date.now(),
   };
+  const ACTIVITY_DAY = Math.floor(Date.now() / 86_400_000);
+  const activityDays = (values: Record<string, unknown>) => [
+    { day_index: ACTIVITY_DAY, ...values },
+    { day_index: ACTIVITY_DAY - 1, ...values },
+  ];
   const laneRows = (sql: string) => {
     if (isBlocksLaneQuery(sql)) return [BLOCKS_ROW];
     if (isDeregistrationLaneQuery(sql)) return [REGISTRATION_ROW];
+    if (sql.includes("AS extrinsic_count"))
+      return activityDays({ extrinsic_count: 1, successful_extrinsics: 1 });
+    if (sql.includes("AS unique_signers"))
+      return activityDays({ unique_signers: 1 });
+    if (sql.includes("AS block_count"))
+      return activityDays({ block_count: 1, event_count: 1 });
+    if (
+      sql.includes("AS newest_observed") &&
+      /FROM chain(?:_testnet)?\.blocks/.test(sql)
+    ) {
+      return [{ newest_observed: Date.now() - 1_000 }];
+    }
     // The identity rollup's two ungrouped legs (#11418). Both always return
     // exactly one row from a real engine, so an empty result there is a
     // DECLINE by design -- feeding them is what makes chain-weight-setters

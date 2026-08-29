@@ -1303,7 +1303,6 @@ export async function handleChainActivity(
     env,
     edgeCacheScope("chain-activity", network),
     async (cacheRequest) => {
-      const meta = await readHealthMetaKv(env);
       // #4909 D1 retirement: extrinsics'/blocks' D1 write path is retired
       // (#4772) and the tables are dropped in production, so a D1 query here
       // would always miss. Postgres → schema-stable empty stub, never a live
@@ -1328,7 +1327,11 @@ export async function handleChainActivity(
           unmeasured(
             buildChainActivity({
               window: label,
-              observedAt: meta?.last_run_at || null,
+              // The health sweep's last_run_at is not a chain observation.
+              // Reusing it here made a missing or stale activity projection
+              // look freshly measured. Unknown activity stays explicitly
+              // unmeasured until the projection can prove current coverage.
+              observedAt: null,
             }),
           ),
         windowDays,
