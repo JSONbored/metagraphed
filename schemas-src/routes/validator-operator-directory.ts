@@ -37,7 +37,3 @@ export const ValidatorOperatorDirectoryArtifactSchema = z
     operators: z.array(ValidatorOperatorDirectoryEntrySchema),
   })
   .strict();
-
-export type ValidatorOperatorDirectoryArtifact = z.infer<
-  typeof ValidatorOperatorDirectoryArtifactSchema
->;
