@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { docsSource } from "@/lib/docs-source";
 import { rawMarkdownResponse } from "@/lib/metagraphed/raw-markdown";
 
 // The markdown twin of every /docs/* page.
@@ -21,7 +20,8 @@ import { rawMarkdownResponse } from "@/lib/metagraphed/raw-markdown";
 // raw-markdown.ts so the /news twin cannot drift from this one.
 
 /** Extracted so it is unit-testable without depending on createFileRoute's internal shape. */
-export function resolveRawMarkdown(splat: string | undefined): Promise<Response> {
+export async function resolveRawMarkdown(splat: string | undefined): Promise<Response> {
+  const { docsSource } = await import("@/lib/docs-source");
   return rawMarkdownResponse(docsSource, "docs", splat);
 }
 

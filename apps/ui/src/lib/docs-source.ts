@@ -1,5 +1,5 @@
-import { docs } from "collections/server";
 import { loader } from "fumadocs-core/source";
+import { docs } from "@/lib/docs-collection.server";
 import { openapi } from "@/lib/openapi-source";
 
 export const docsSource = loader({

@@ -1,6 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { newsSource } from "@/lib/news-source";
 import { buildOgImageUrl, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { stringifyJsonLd, techArticleJsonLd } from "@/lib/metagraphed/json-ld";
 import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
@@ -87,6 +86,9 @@ export const Route = createFileRoute("/news/$")({
 const serverLoader = createServerFn({ method: "GET" })
   .validator((slugs: string[]) => slugs)
   .handler(async ({ data: slugs }) => {
+    // The route tree registers this module for every request. Load the 290+
+    // compiled digests only when a /news/* page actually needs them.
+    const { newsSource } = await import("@/lib/news-source");
     const page = newsSource.getPage(slugs);
     if (!page) throw notFound();
     const data = page.data as { description?: string; temporalCoverage?: string };

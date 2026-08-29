@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { docsSource } from "@/lib/docs-source";
 
 export interface DocsNavEntry {
   url: string;
@@ -22,13 +21,15 @@ const API_REFERENCE_PREFIX = "/docs/api-reference/";
 // page, which is exactly how /docs/chain-events went missing from the
 // palette for a while after its route shipped.
 export const getDocsNav = createServerFn({ method: "GET" }).handler(
-  async (): Promise<DocsNavEntry[]> =>
-    docsSource
+  async (): Promise<DocsNavEntry[]> => {
+    const { docsSource } = await import("@/lib/docs-source");
+    return docsSource
       .getPages()
       .filter((page) => !page.url.startsWith(API_REFERENCE_PREFIX))
       .map((page) => ({
         url: page.url,
         title: page.data.title,
         description: page.data.description ?? "",
-      })),
+      }));
+  },
 );

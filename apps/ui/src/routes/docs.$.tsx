@@ -1,13 +1,10 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { docsSource } from "@/lib/docs-source";
 import { buildOgImageUrl, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { stringifyJsonLd, techArticleJsonLd } from "@/lib/metagraphed/json-ld";
 import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
 import { rawMarkdownLink } from "@/lib/metagraphed/raw-markdown";
 import { clampText } from "@/lib/metagraphed/truncate";
-import { openapi } from "@/lib/openapi-source";
-import { sliceOpenAPIDocumentForOperation } from "@/lib/openapi-operation-slice";
 import type { OpenAPIPreloaded } from "@/lib/openapi-preload-context";
 import { DocsSplatPage } from "./-docs-splat-page";
 
@@ -139,6 +136,10 @@ const DOCS_META_DESCRIPTION_MAX = 160;
 const serverLoader = createServerFn({ method: "GET" })
   .validator((slugs: string[]) => slugs)
   .handler(async ({ data: slugs }) => {
+    // Keep the compiled MDX collection outside the shared router graph. Every
+    // route definition is imported to register the route, while these 350+
+    // documents are needed only after a /docs/* request reaches this loader.
+    const { docsSource } = await import("@/lib/docs-source");
     const page = docsSource.getPage(slugs);
     if (!page) throw notFound();
 
@@ -149,6 +150,10 @@ const serverLoader = createServerFn({ method: "GET" })
     // check. The loaded contract and the operation slice are plain JSON.
     let preloaded: OpenAPIPreloaded;
     if (isOpenAPIFrontmatter(openapiMeta)) {
+      const [{ openapi }, { sliceOpenAPIDocumentForOperation }] = await Promise.all([
+        import("@/lib/openapi-source"),
+        import("@/lib/openapi-operation-slice"),
+      ]);
       const loaded = await openapi.getSchema("metagraph");
       const operationSlug = slugs.at(-1) ?? "";
       const sliced = sliceOpenAPIDocumentForOperation(

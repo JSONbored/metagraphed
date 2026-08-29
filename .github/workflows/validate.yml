@@ -1485,6 +1485,9 @@ jobs:
       # output there instead (confirmed against a real local + CI build; the
       # standalone repo's own now-removed ci.yml had this as `.output/...`,
       # which never actually matched this project's real build output).
+      - name: SSR content isolation
+        run: npm run check:ssr-content-isolation --workspace=apps/ui
+
       - name: Bundle size budget (initial client JS, gzipped)
         working-directory: apps/ui
         env:
