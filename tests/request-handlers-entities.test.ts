@@ -47,6 +47,7 @@ import {
   handleNeuron,
   handleSubnetValidators,
   handleGlobalValidators,
+  handleValidatorOperatorDirectory,
   handleValidatorDetail,
   handleValidatorNominators,
   handleAccountWeightSetters,
@@ -1223,6 +1224,68 @@ describe("handleGlobalValidators", () => {
     // ...but the badge-driving flag is still on every row.
     assert.equal(body.data.validators[0].featured, false);
     assert.equal(body.data.validators[1].featured, true);
+  });
+});
+
+describe("handleValidatorOperatorDirectory", () => {
+  test("returns a schema-stable empty directory on a cold store", async () => {
+    const body = await assertColdSchema(
+      handleValidatorOperatorDirectory,
+      req("/api/v1/validators/operators"),
+      emptyEnv(),
+    );
+    assert.equal(body.data.validator_count, 0);
+    assert.equal(body.data.operator_count, 0);
+    assert.deepEqual(body.data.operators, []);
+    await assertValidComponent("ValidatorOperatorDirectoryArtifact", body.data);
+  });
+
+  test("forwards the grouped data-tier response without rebuilding it", async () => {
+    const directory = {
+      schema_version: 1,
+      captured_at: "2026-08-29T00:00:00.000Z",
+      block_number: 8_950_000,
+      validator_count: 1,
+      operator_count: 1,
+      operators: [
+        {
+          identity_name: null,
+          hotkeys: [],
+          hotkey_count: 1,
+          primary_hotkey: "hk-a",
+          coldkey: "ck-a",
+          total_stake_tao: 42,
+          total_emission_tao: 1,
+          nominator_count: null,
+          membership_count: 2,
+          uid_count: 2,
+          take_min: null,
+          take_max: null,
+          apy_estimate: null,
+          stake_dominance: 1,
+        },
+      ],
+    };
+    let forwardedPath = "";
+    const env = {
+      ...emptyEnv(),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        fetch: async (request: Request) => {
+          forwardedPath = new URL(request.url).pathname;
+          return Response.json(directory);
+        },
+      },
+    };
+    const body = await json(
+      await handleValidatorOperatorDirectory(
+        req("/api/v1/validators/operators"),
+        env as unknown as Env,
+      ),
+    );
+    assert.equal(forwardedPath, "/api/v1/validators/operators");
+    assert.deepEqual(body.data, directory);
+    await assertValidComponent("ValidatorOperatorDirectoryArtifact", body.data);
   });
 });
 

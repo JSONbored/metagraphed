@@ -1,8 +1,5 @@
 import type { OperatorValidator } from "./types";
 
-/** Every validator in one request so operator grouping remains complete. */
-export const ALL_VALIDATORS_LIMIT = 2000;
-
 /**
  * The only per-hotkey fields the grouped directory reads after aggregation.
  *

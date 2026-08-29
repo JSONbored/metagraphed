@@ -314,6 +314,7 @@ import {
   accountEdgeCacheEligible,
 } from "./account-edge-cache.ts";
 import { parseRouteQuery, routeQuery, routeText } from "../src/route-query.ts";
+import { readNeuronsSnapshotCacheStamp } from "./data-api-tier.ts";
 import {
   serverTimingHeader,
   withRequestTiming,
@@ -415,6 +416,7 @@ import {
   canonicalChainTurnoverCachePath,
   handleGlobalValidators,
   canonicalGlobalValidatorsCachePath,
+  handleValidatorOperatorDirectory,
   handleAccountsList,
   canonicalAccountsListCachePath,
   handleTopHoldersList,
@@ -6137,8 +6139,8 @@ export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
  *
  * The stamp is the decode watermark rather than the health cron's `last_run_at`
  * that every analytics route uses, which is what `withEdgeCache`'s
- * `resolveCacheStamp` hook was declared for -- until now no call site passed
- * one. These routes read the lakehouse, which changes when decode publishes and
+ * `resolveCacheStamp` hook was declared for. These routes read the lakehouse,
+ * which changes when decode publishes and
  * at no other time, so the health cron's clock would be a stamp for a different
  * producer entirely: it would evict answers that had not changed and, worse,
  * hold answers across a decode publish that had.
@@ -6911,6 +6913,22 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   const domainSummaryMatch = DOMAIN_SUMMARY_PATH_PATTERN.exec(url.pathname);
   if (domainSummaryMatch) {
     return handleDomainSummary(request, env, domainSummaryMatch[1]);
+  }
+
+  // Website-sized validator operator directory. It has its own route so the
+  // rich per-hotkey REST/MCP response remains unchanged for existing callers.
+  // Its cache key follows the newest COMPLETE neuron pass rather than the
+  // health cron, so a probe-only tick never forces this aggregation to rerun.
+  if (url.pathname === "/api/v1/validators/operators") {
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "validator-operator-directory",
+      (cacheRequest) => handleValidatorOperatorDirectory(cacheRequest, env),
+      url.pathname,
+      readNeuronsSnapshotCacheStamp,
+    );
   }
 
   // Global validator/operator leaderboard from the current neurons snapshot. Exact path,
@@ -8504,6 +8522,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/graphql" ||
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/validators" ||
+    pathname === "/api/v1/validators/operators" ||
     pathname === "/api/v1/accounts" ||
     VALIDATOR_DETAIL_PATH_PATTERN.test(pathname) ||
     VALIDATOR_NOMINATORS_PATH_PATTERN.test(pathname) ||

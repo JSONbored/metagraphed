@@ -61,6 +61,13 @@ const KNOWN_UNCOVERED: Record<string, string[]> = {
   // The sweep visits the SUBNET comparison; the validator ledger is the same
   // page under `?validators=`, and its path is declared for that view.
   "/compare?subnets=1,19": ["/api/v1/compare/validators"],
+  // #11763 replaces the directory's browser-recorded rich leaderboard with a
+  // compact SSR projection. The route does not exist in production until this
+  // change deploys, and the browser recorder cannot intercept the Worker's
+  // outbound request. api-stub.ts derives the same projection from the rich
+  // committed fixture so responsive tests stay hermetic; remove this entry
+  // after production can be recorded into the SSR supplement.
+  "/validators": ["/api/v1/validators/operators"],
   // #11615 emptied this: the rebuilt hub reads /api/v1/accounts and
   // /api/v1/chain/signers, and the recorded fixture covers both. The two
   // entries it no longer reads at all -- top-holders and the per-account

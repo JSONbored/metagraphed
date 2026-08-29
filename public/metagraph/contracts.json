@@ -939,6 +939,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Website-sized validator operator directory: the current validator hotkeys grouped by declared identity, with the stake, emission, take, APY, nominator, membership, UID and dominance fields needed to search, compare and expand the directory. Computed live at /api/v1/validators/operators from the same neurons snapshot as /api/v1/validators; the rich per-hotkey REST/MCP response remains unchanged.",
+      "id": "validator-operator-directory",
+      "path": "/metagraph/validators/operators.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ValidatorOperatorDirectoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, computed live from the neurons store at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators.",
       "id": "accounts-list",
       "path": "/metagraph/accounts.json",
@@ -3046,7 +3057,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 171,
+    "mainnet_only_route_count": 172,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

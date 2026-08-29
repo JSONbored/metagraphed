@@ -960,6 +960,9 @@ export const NO_ALPHA_PRICES: Map<number, number | null> = new Map();
 export interface BuildGlobalValidatorsOptions {
   sort?: string;
   limit?: unknown;
+  /** Internal projections may need every validator rather than the bounded
+   * public leaderboard page. Public callers must continue to use `limit`. */
+  includeAll?: boolean;
   /** netuid -> alpha_price_tao. REQUIRED, and deliberately not defaulted
    * (#9051): an implicit empty map would silently price nothing, which for a
    * cross-subnet sum means publishing raw alpha under a _tao name -- exactly
@@ -984,6 +987,7 @@ export function buildGlobalValidators(
   {
     sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    includeAll = false,
     featuredHotkeys = new Set<string>(),
     priceByNetuid,
     identityByColdkey = new Map<string, Row>(),
@@ -1154,11 +1158,11 @@ export function buildGlobalValidators(
   return {
     schema_version: 1,
     sort: normalizedSort,
-    limit: normalizedLimit,
+    limit: includeAll ? validators.length : normalizedLimit,
     captured_at: toIso(latestCapturedAt),
     block_number: latestBlockNumber,
     validator_count: validators.length,
-    validators: validators.slice(0, normalizedLimit),
+    validators: includeAll ? validators : validators.slice(0, normalizedLimit),
   };
 }
 

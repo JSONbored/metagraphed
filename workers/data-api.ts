@@ -399,6 +399,7 @@ import {
   NEURON_COLUMNS,
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
+import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
 import { mirrorChainDetailToNeon } from "../src/chain-detail-neon-write.ts";
 import {
@@ -6985,7 +6986,72 @@ async function resolveBurnHotkey(
   return Number.isFinite(fraction) && fraction > 0 ? hotkey : null;
 }
 
+async function loadGlobalValidatorsFromStore(
+  sql: PgSql,
+  env: DataApiEnv,
+  sort: string,
+  limit: number,
+  includeAll = false,
+) {
+  const [
+    rows,
+    realizedStakeByHotkey,
+    priceByNetuid,
+    nominatorCounts,
+    tempos,
+    identityByColdkey,
+  ] = await Promise.all([
+    sql<{
+      netuid: Neurons["netuid"];
+      uid: Neurons["uid"];
+      hotkey: Neurons["hotkey"];
+      coldkey: Neurons["coldkey"];
+      validator_trust: Neurons["validator_trust"];
+      emission_tao: Neurons["emission_tao"];
+      stake_tao: Neurons["stake_tao"];
+      block_number: Neurons["block_number"];
+      captured_at: Neurons["captured_at"];
+      take: Neurons["take"];
+    }>`
+      SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
+      FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
+      ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+    loadRealizedStakeBaselinesFromStore(sql, {}, env),
+    loadStoreAlphaPricesByNetuid(sql, env),
+    loadNominatorCountsFromStore(sql, env),
+    loadSubnetTemposFromStore(sql, env),
+    loadIdentityByColdkeyMap((statement, parameters) =>
+      sql.unsafe<AccountIdentityStoreRow>(statement, parameters),
+    ),
+  ]);
+  return buildGlobalValidators(rows, {
+    sort,
+    limit,
+    includeAll,
+    priceByNetuid,
+    featuredHotkeys: new Set(),
+    identityByColdkey,
+    nominatorCounts,
+    tempoByNetuid: tempos,
+    realizedStakeByHotkey,
+  });
+}
+
 function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
+  // Internal-only freshness stamp used by the public API Worker's edge cache.
+  // The completed pass is the snapshot boundary: MAX(neurons.captured_at) can
+  // advance after only one chunk and would make a partial capture look whole.
+  if (url.pathname === "/api/v1/internal/neurons-snapshot-stamp") {
+    return async (sql) => {
+      const rows = await sql<{ captured_at: number | null }>`
+        SELECT captured_at FROM neurons_passes
+        WHERE completed_at IS NOT NULL
+        ORDER BY completed_at DESC
+        LIMIT 1`;
+      return json({ captured_at: rows[0]?.captured_at ?? null });
+    };
+  }
+
   // GET /api/v1/subnets/:netuid/metagraph -- twin of the Postgres route of
   // the same name below. immunity_period comes from subnet_hyperparams,
   // which has no D1 home: null is loadSubnetImmunityPeriod's own degraded
@@ -7251,50 +7317,25 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
           ? limitParam
           : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
-      const [
-        rows,
-        realizedStakeByHotkey,
-        priceByNetuid,
-        nominatorCounts,
-        tempos,
-        identityByColdkey,
-      ] = await Promise.all([
-        sql<{
-          netuid: Neurons["netuid"];
-          uid: Neurons["uid"];
-          hotkey: Neurons["hotkey"];
-          coldkey: Neurons["coldkey"];
-          validator_trust: Neurons["validator_trust"];
-          emission_tao: Neurons["emission_tao"];
-          stake_tao: Neurons["stake_tao"];
-          block_number: Neurons["block_number"];
-          captured_at: Neurons["captured_at"];
-          take: Neurons["take"];
-        }>`
-          SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
-          FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
-          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
-        loadRealizedStakeBaselinesFromStore(sql, {}, env),
-        loadStoreAlphaPricesByNetuid(sql, env),
-        loadNominatorCountsFromStore(sql, env),
-        loadSubnetTemposFromStore(sql, env),
-        loadIdentityByColdkeyMap((s, p) =>
-          sql.unsafe<AccountIdentityStoreRow>(s, p),
-        ),
-      ]);
-      return json(
-        buildGlobalValidators(rows, {
-          sort,
-          limit,
-          priceByNetuid,
-          featuredHotkeys: new Set(),
-          identityByColdkey,
-          nominatorCounts,
-          tempoByNetuid: tempos,
-          realizedStakeByHotkey,
-        }),
-      );
+      return json(await loadGlobalValidatorsFromStore(sql, env, sort, limit));
     };
+  }
+
+  // GET /api/v1/validators/operators: the website's grouped directory shape.
+  // The rich per-hotkey route above remains unchanged for REST/MCP consumers.
+  if (url.pathname === "/api/v1/validators/operators") {
+    return async (sql, env) =>
+      json(
+        buildValidatorOperatorDirectory(
+          await loadGlobalValidatorsFromStore(
+            sql,
+            env,
+            "total_stake",
+            GLOBAL_VALIDATOR_LIMIT_MAX,
+            true,
+          ),
+        ),
+      );
   }
 
   // GET /api/v1/validators/:hotkey

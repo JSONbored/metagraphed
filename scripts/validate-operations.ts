@@ -60,6 +60,11 @@ export const DECLARED_UNEXPOSED: Readonly<Record<string, string>> = {
   "search-resolve":
     "a redirect helper: it resolves a search hit to its canonical URL and " +
     "answers 302, which is an HTTP affordance neither GraphQL nor MCP has.",
+  "validator-operator-directory":
+    "an HTTP transport projection for the website's validator directory. " +
+    "Agents already receive the richer validator rows through " +
+    "list_global_validators; mirroring the compact SSR payload would expose a " +
+    "second, less capable answer to the same domain question.",
 
   // ── three feeds REST serves and no surface reaches ────────────────────────
   //

@@ -576,12 +576,10 @@ export async function withEdgeCache(
   let stamp = null;
   if (cache) {
     if (typeof resolveCacheStamp === "function") {
-      // resolveCacheStamp is an override hook for a future bespoke-stamp
-      // need (see its own doc comment above) -- no call site passes one
-      // today, so this branch is genuinely unreachable right now.
-      /* v8 ignore start */
+      // Some projections have a producer-specific watermark. In particular,
+      // neuron-derived directories must not be invalidated by an unrelated
+      // health cron, or held stale across a completed neuron snapshot.
       stamp = await resolveCacheStamp(env);
-      /* v8 ignore stop */
     } else {
       stamp = (await readHealthMetaKv(env))?.last_run_at ?? null;
     }

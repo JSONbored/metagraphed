@@ -52,7 +52,7 @@ const SECTIONS = [
   { id: "cost", name: "Cost to validate" },
 ] as const;
 
-const API_PATHS = ["/api/v1/validators", "/api/v1/validators/economics"];
+const API_PATHS = ["/api/v1/validators/operators", "/api/v1/validators/economics"];
 
 const MIN_STAKE_OPTIONS = [
   { value: 0, label: "Any stake" },

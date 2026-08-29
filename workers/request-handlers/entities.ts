@@ -89,6 +89,7 @@ import {
   overlayFeaturedValidators,
 } from "../../src/metagraph-neurons.ts";
 import { buildAccountsList } from "../../src/accounts-list.ts";
+import { buildValidatorOperatorDirectory } from "../../src/validator-operator-directory.ts";
 import { buildTopHoldersList } from "../../src/top-holders.ts";
 import {
   buildDeregistrationHistory,
@@ -1357,6 +1358,31 @@ export async function handleGlobalValidators(
       meta: await metagraphMeta(
         env,
         "/metagraph/validators.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+export async function handleValidatorOperatorDirectory(
+  request: Request,
+  env: Env,
+) {
+  const data =
+    ((await tryDataApiTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildValidatorOperatorDirectory> | null) ??
+    buildValidatorOperatorDirectory(null);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/validators/operators.json",
         data.captured_at,
       ),
     },

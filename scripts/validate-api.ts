@@ -973,6 +973,15 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/validators/operators",
+    (body) => {
+      assert.equal(typeof body.data.validator_count, "number");
+      assert.equal(typeof body.data.operator_count, "number");
+      assert.equal(Array.isArray(body.data.operators), true);
+      assert.equal(body.data.operator_count, body.data.operators.length);
+    },
+  ],
+  [
     "/api/v1/accounts?sort=uid_count&limit=3",
     (body) => {
       assert.equal(body.data.sort, "uid_count");

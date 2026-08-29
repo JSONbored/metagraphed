@@ -34,6 +34,8 @@ const AGENT_UNREACHABLE: Record<string, string> = {
     "The contract document itself. get_api_schema serves a SUBNET's captured schema; this one is ours, and get_contracts describes it.",
   "/api/v1/search/resolve":
     "Identifier resolution (#9672). search_subnets and semantic_search are the agent-facing discovery paths; resolve is a UI affordance.",
+  "/api/v1/validators/operators":
+    "A compact HTTP/SSR projection for the website directory. Agents already receive the richer validator records through list_global_validators; mirroring this reduced payload would expose a second, less capable answer to the same question.",
   "/api/v1/export/chain-events":
     "The paid export tier (#11600). Deliberately HTTP-only: the x402 gate " +
     "prices a request by its RESOLVED pathname, and every MCP call arrives on " +

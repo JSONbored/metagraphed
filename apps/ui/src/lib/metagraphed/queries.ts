@@ -7,9 +7,9 @@ import { isValidSs58, ss58PathSegment } from "./accounts";
 import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
 import { isUsableTimestamp } from "./format";
 import {
-  ALL_VALIDATORS_LIMIT,
-  operatorRows,
   serializeOperatorRows,
+  shortKey,
+  type OperatorRow,
   type SerializedOperatorRow,
 } from "./validator-operators";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
@@ -8819,31 +8819,78 @@ export interface ValidatorOperatorDirectory {
   hotkey_count: number;
 }
 
+export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOperatorDirectory {
+  const data = isRecord(raw) ? raw : {};
+  const rows: OperatorRow[] = Array.isArray(data.operators)
+    ? data.operators.flatMap((entry) => {
+        if (!isRecord(entry)) return [];
+        const primaryHotkey = firstString(entry.primary_hotkey);
+        if (!primaryHotkey) return [];
+        const identityName = firstString(entry.identity_name) ?? null;
+        const totalStakeTao = coerceFiniteNumber(entry.total_stake_tao) ?? 0;
+        const takeMin = coerceFiniteNumber(entry.take_min) ?? null;
+        const takeMax = coerceFiniteNumber(entry.take_max) ?? null;
+        const children = Array.isArray(entry.hotkeys)
+          ? entry.hotkeys.flatMap((child) => {
+              if (!isRecord(child)) return [];
+              const childHotkey = firstString(child.hotkey);
+              if (!childHotkey) return [];
+              return [
+                {
+                  hotkey: childHotkey,
+                  totalStakeTao: coerceFiniteNumber(child.total_stake_tao) ?? 0,
+                  take: coerceFiniteNumber(child.take) ?? null,
+                },
+              ];
+            })
+          : [];
+        const keys =
+          children.length > 0
+            ? children
+            : [{ hotkey: primaryHotkey, totalStakeTao, take: takeMin }];
+        return [
+          {
+            key: identityName ?? primaryHotkey,
+            name: identityName ?? shortKey(primaryHotkey),
+            named: identityName !== null,
+            keys,
+            keyCount: coerceFiniteNumber(entry.hotkey_count) ?? keys.length,
+            primaryHotkey,
+            coldkey: firstString(entry.coldkey) ?? null,
+            totalStakeTao,
+            totalEmissionTao: coerceFiniteNumber(entry.total_emission_tao) ?? 0,
+            nominators: coerceFiniteNumber(entry.nominator_count) ?? null,
+            memberships: coerceFiniteNumber(entry.membership_count) ?? 0,
+            uidCount: coerceFiniteNumber(entry.uid_count) ?? 0,
+            takeMin,
+            takeMax,
+            apyEstimate: coerceFiniteNumber(entry.apy_estimate) ?? null,
+            dominance: coerceFiniteNumber(entry.stake_dominance) ?? null,
+          },
+        ];
+      })
+    : [];
+  return {
+    operators: serializeOperatorRows(rows),
+    hotkey_count: coerceFiniteNumber(data.validator_count) ?? 0,
+  };
+}
+
 /**
  * The network-wide directory in the shape `/validators` actually renders.
  *
- * Aggregating inside the query function is load-bearing: React Query
- * dehydrates the function's return value during SSR. Doing the same work in a
- * component `useMemo` still embeds the larger per-hotkey intermediate result
- * in the document, which was the remaining cost after projecting away subnet
- * and identity fields.
+ * The data API now aggregates the rich per-hotkey leaderboard before this
+ * request crosses the service boundary. The query still serializes the
+ * readable operator objects into field-name-free tuples before React Query
+ * dehydrates them, keeping both the upstream response and the HTML compact.
  */
 export const validatorOperatorDirectoryQuery = () =>
   queryOptions({
-    queryKey: k("validator-operator-directory", ALL_VALIDATORS_LIMIT),
+    queryKey: k("validator-operator-directory"),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<Partial<GlobalValidators>>("/api/v1/validators", {
-        params: { sort: "total_stake", limit: ALL_VALIDATORS_LIMIT },
-        signal,
-      });
-      const validators = normalizeGlobalValidators(res.data).validators.map(
-        projectOperatorValidator,
-      );
+      const res = await apiFetch<unknown>("/api/v1/validators/operators", { signal });
       return {
-        data: {
-          operators: serializeOperatorRows(operatorRows(validators)),
-          hotkey_count: validators.length,
-        },
+        data: normalizeValidatorOperatorDirectory(res.data),
         meta: res.meta,
         url: res.url,
       } satisfies ApiResult<ValidatorOperatorDirectory>;
