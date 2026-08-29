@@ -98,8 +98,8 @@ export function HeroSection() {
             }
             cells={[
               { label: "Emission", value: "4.3%", delta: { text: "+0.2", tone: "good" } },
-              { label: "Alpha price", value: "0.0722 τ", delta: { text: "−1.4%", tone: "bad" } },
-              { label: "Total stake", value: "3.58M τ" },
+              { label: "Alpha price", value: "0.0722τ", delta: { text: "−1.4%", tone: "bad" } },
+              { label: "Total stake", value: "3.58Mτ" },
               { label: "UIDs", value: "247/256" },
             ]}
           />
@@ -130,8 +130,8 @@ export function FactsSection() {
           <FactStrip
             cells={[
               { label: "Emission", value: "4.3%", delta: { text: "+0.2", tone: "good" } },
-              { label: "Alpha price", value: "0.0722 τ", delta: { text: "−1.4%", tone: "bad" } },
-              { label: "Total stake", value: "3.58M τ" },
+              { label: "Alpha price", value: "0.0722τ", delta: { text: "−1.4%", tone: "bad" } },
+              { label: "Total stake", value: "3.58Mτ" },
               { label: "UIDs", value: "247/256" },
             ]}
           />
@@ -143,7 +143,7 @@ export function FactsSection() {
               { label: "Validators", value: "16" },
               { label: "Immunity", value: "5,000" },
               { label: "Tempo", value: "360" },
-              { label: "Burn", value: "1.42 τ" },
+              { label: "Burn", value: "1.42τ" },
             ]}
           />
         </div>

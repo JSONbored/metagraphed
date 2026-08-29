@@ -57,7 +57,7 @@ export const LEADER_SPECIMEN: LeaderCardItem[] = RAIL_SPECIMEN.map((r, i) => ({
   key: r.key,
   name: r.label,
   sub: i % 2 ? "Macrocosmos" : "Rayon Labs",
-  value: `${(r.value / 1_000_000).toFixed(2)}M τ`,
+  value: `${(r.value / 1_000_000).toFixed(2)}Mτ`,
   delta: i === 3 ? "new" : ((i * 7) % 11) / 10 - 0.3,
   href: `/subnets/${i + 1}`,
 }));

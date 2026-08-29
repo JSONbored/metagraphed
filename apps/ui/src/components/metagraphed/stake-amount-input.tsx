@@ -1,7 +1,7 @@
 import { RangeControl } from "@jsonbored/ui-kit";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/metagraphed/table-controls";
-import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber, joinAmountUnit } from "@/lib/metagraphed/format";
 import { raoToTao, type Rao } from "@/lib/metagraphed/units";
 import type { SubnetStakeQuote } from "@/lib/metagraphed/types";
 import type { StakeFlowAction, StakeFlowUnit } from "@/hooks/use-stake-flow";
@@ -68,7 +68,7 @@ export function formatQuoteHint(quote: SubnetStakeQuote | null): string | null {
   const impact = quote.is_root
     ? "root subnet · 1:1"
     : `${formatDecimal(quote.price_impact_pct, 2)}% price impact`;
-  return `≈ ${formatNumber(quote.expected_out)} ${outUnit} · ${impact}`;
+  return `≈ ${joinAmountUnit(formatNumber(quote.expected_out), outUnit)} · ${impact}`;
 }
 
 export interface StakeAmountInputProps {
@@ -158,7 +158,7 @@ export function StakeAmountInput({
             disabled={maxStakeRao == null}
             className="min-h-8 rounded border border-border bg-card px-3 py-1.5 text-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
           >
-            Max{maxStakeRao != null ? ` (${raoToTao(maxStakeRao)} τ)` : ""}
+            Max{maxStakeRao != null ? ` (${raoToTao(maxStakeRao)}τ)` : ""}
           </button>
         ) : (
           <button

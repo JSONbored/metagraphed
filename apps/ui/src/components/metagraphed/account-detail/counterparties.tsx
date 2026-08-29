@@ -18,8 +18,8 @@ import { counterpartyRail, fmtCompactTao } from "./account-detail-logic";
  * section that answers a real question, and counterparties is the question
  * the transfer data can actually answer.
  *
- * Ranked by GROSS movement, not net: an address that sent 1,000 τ and got
- * 1,000 τ back nets to zero and is this account's most significant partner.
+ * Ranked by GROSS movement, not net: an address that sent 1,000τ and got
+ * 1,000τ back nets to zero and is this account's most significant partner.
  */
 export function CounterpartiesSection({ ss58 }: { ss58: string }) {
   const { ref, nearViewport } = useNearViewport("320px 0px");

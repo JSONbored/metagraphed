@@ -3987,7 +3987,7 @@ var LEADER_SPECIMEN = RAIL_SPECIMEN.map((r, i) => ({
   key: r.key,
   name: r.label,
   sub: i % 2 ? "Macrocosmos" : "Rayon Labs",
-  value: `${(r.value / 1e6).toFixed(2)}M \u03C4`,
+  value: `${(r.value / 1e6).toFixed(2)}M\u03C4`,
   delta: i === 3 ? "new" : i * 7 % 11 / 10 - 0.3,
   href: `/subnets/${i + 1}`
 }));

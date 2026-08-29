@@ -42,6 +42,7 @@ describe("event detail route", () => {
     expect(page).toContain("eventArgRows(event?.args)");
     expect(page).toContain("defaultOpen");
     expect(page).toContain("Open extrinsic");
+    expect(page).toContain("normalizeTaoUnitSpacing(event.summary.trim())");
   });
 
   it("links every raw-event table to the canonical record", () => {

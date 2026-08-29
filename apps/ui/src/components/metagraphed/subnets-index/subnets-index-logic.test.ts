@@ -117,7 +117,7 @@ describe("rankSubnets", () => {
     ];
     const ranked = rankSubnets("price", "7d", [], priced, name, noDomain);
     expect(ranked.map((r) => r.netuid)).toEqual([2, 1]);
-    expect(ranked[0]?.value).toBe("0.0010 τ");
+    expect(ranked[0]?.value).toBe("0.0010τ");
   });
 
   it("reads the 1-month field for the 30d window, as a fraction", () => {

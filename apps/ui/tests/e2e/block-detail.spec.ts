@@ -15,7 +15,7 @@ test.describe("block detail progressive technical record", () => {
       await page.setViewportSize(viewport);
       await gotoThroughRestart(page, ROUTE);
       const ledger = page.getByRole("region", { name: "Value moved in this block." });
-      await expect(ledger).toContainText("3.75 τ");
+      await expect(ledger).toContainText("3.75τ");
       await expect(ledger).toContainText("$900");
       await expect(ledger.getByRole("link", { name: "SN19" })).toHaveAttribute(
         "href",

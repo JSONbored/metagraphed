@@ -140,14 +140,14 @@ describe("CompareLedger markup", () => {
                 key: "r",
                 label: "Stake",
                 values: [1234, null],
-                format: (v: number | string) => `${v} τ`,
+                format: (v: number | string) => `${v}τ`,
               },
             ],
           },
         ],
       }),
     );
-    expect(html).toContain("1234 τ");
+    expect(html).toContain("1234τ");
     expect(html).toContain("—");
   });
 

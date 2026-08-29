@@ -16,5 +16,5 @@ export const LINE_SPECIMEN = lineSpecimen(120);
 export const STACKED_SPECIMEN = stackedSpecimen();
 
 export const formatTokens = (value: number) => `${value}T`;
-export const formatMillions = (value: number) => `${formatDecimal(value / 1_000_000, 2)}M τ`;
-export const formatThousands = (value: number) => `${formatDecimal(value / 1000, 0)}k τ`;
+export const formatMillions = (value: number) => `${formatDecimal(value / 1_000_000, 2)}Mτ`;
+export const formatThousands = (value: number) => `${formatDecimal(value / 1000, 0)}kτ`;

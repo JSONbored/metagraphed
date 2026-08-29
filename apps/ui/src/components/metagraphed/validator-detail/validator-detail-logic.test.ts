@@ -24,7 +24,7 @@ const membership = (over: Partial<ValidatorDetailSubnet>): ValidatorDetailSubnet
 
 describe("formatters", () => {
   it("compacts stake and alpha at each magnitude", () => {
-    expect(fmtStake(1_914_956)).toBe("1.91M τ");
+    expect(fmtStake(1_914_956)).toBe("1.91Mτ");
     expect(fmtAlpha(2_500)).toBe("2.5k α");
     expect(fmtAlpha(2.5)).toBe("2.50 α");
     expect(fmtStake(null)).toBe("—");
@@ -88,7 +88,7 @@ describe("historyPoints / apyPoints / changeOver", () => {
   });
 
   it("annualises the daily reward rate simply, not compounded", () => {
-    // The series is a reward per 1,000 τ per day; compounding it would state a
+    // The series is a reward per 1,000τ per day; compounding it would state a
     // return the validator did not produce.
     // Rounding here is the ASSERTION's, not the app's -- it compares floats
     // without pinning IEEE-754 noise, so it is arithmetic rather than display.
@@ -143,7 +143,7 @@ describe("nominatorRail", () => {
   it("drops a delegator who moved nothing, and keeps the direction in the tooltip", () => {
     const rows = nominatorRail(nominators);
     expect(rows.some((r) => r.key === "5CCCCCCCCCCCCCCC")).toBe(false);
-    expect(rows[0]?.detail.map((d) => d.value)).toEqual(["10.00 τ", "990.00 τ", "-980.00 τ", "9"]);
+    expect(rows[0]?.detail.map((d) => d.value)).toEqual(["10.00τ", "990.00τ", "-980.00τ", "9"]);
   });
 
   it("honours the limit", () => {
