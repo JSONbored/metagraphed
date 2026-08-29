@@ -55,7 +55,10 @@ export function routeLoadingArchetype(pathname: string): RouteLoadingArchetype {
 
   if (path === "/") return "landing";
   if (/^\/blocks\/[^/]+$/.test(path)) return "block";
-  if (/^\/(subnets|validators|accounts|providers|extrinsics)\/[^/]+$/.test(path)) {
+  if (
+    /^\/(subnets|validators|accounts|providers|extrinsics)\/[^/]+$/.test(path) ||
+    /^\/events\/[^/]+\/[^/]+$/.test(path)
+  ) {
     return "entity";
   }
   if (path === "/compare") return "compare";
