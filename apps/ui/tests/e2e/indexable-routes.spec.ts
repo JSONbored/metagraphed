@@ -535,8 +535,10 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
     // chevron on a row that has nothing to expand, and the chevron it does
     // render is drawn in CSS rather than an inline SVG per row. 479 -> 418.
     "/subnets": 430,
-    // Operator projection + one server-rendered page of links: 1,282 -> 466 KiB.
-    "/validators": 520,
+    // #11761 stores the operator directory as field-name-free tuples and
+    // reconstructs its readable row model after hydration. The deterministic
+    // document fell from 466 to 231 KiB while retaining all validator links.
+    "/validators": 245,
     "/apis": 100,
     "/apis/providers": 400,
     // The rebuilt endpoint view requests bounded rows instead of dehydrating
@@ -585,8 +587,14 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
       "stake_alpha",
     );
     expect(inline).not.toContain("emission_alpha");
-    // …while the row fields the table actually renders are still there.
-    expect(inline).toContain("total_stake_tao");
+    // The query cache now stores the grouped operator result itself, not the
+    // larger intermediate validator records the component used to group.
+    expect(inline).not.toContain("coldkey_identity");
+    expect(inline).not.toContain("latest_block_number");
+    expect(inline).toContain("hotkey_count");
+    expect(inline).toContain("validator-operator-directory");
+    expect(inline).not.toContain("totalStakeTao");
+    expect(inline).not.toContain("apyEstimate");
   });
 });
 

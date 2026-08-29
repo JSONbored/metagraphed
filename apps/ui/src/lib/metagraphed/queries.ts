@@ -6,6 +6,12 @@ import { extrinsicHashPathSegment } from "./extrinsics";
 import { isValidSs58, ss58PathSegment } from "./accounts";
 import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
 import { isUsableTimestamp } from "./format";
+import {
+  ALL_VALIDATORS_LIMIT,
+  operatorRows,
+  serializeOperatorRows,
+  type SerializedOperatorRow,
+} from "./validator-operators";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 import type {
   AdapterSnapshot,
@@ -8804,6 +8810,43 @@ export const validatorsQuery = <Projection extends "full" | "operator" = "full">
       } as ApiResult<
         GlobalValidators<Projection extends "operator" ? OperatorValidator : GlobalValidator>
       >;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+export interface ValidatorOperatorDirectory {
+  operators: SerializedOperatorRow[];
+  hotkey_count: number;
+}
+
+/**
+ * The network-wide directory in the shape `/validators` actually renders.
+ *
+ * Aggregating inside the query function is load-bearing: React Query
+ * dehydrates the function's return value during SSR. Doing the same work in a
+ * component `useMemo` still embeds the larger per-hotkey intermediate result
+ * in the document, which was the remaining cost after projecting away subnet
+ * and identity fields.
+ */
+export const validatorOperatorDirectoryQuery = () =>
+  queryOptions({
+    queryKey: k("validator-operator-directory", ALL_VALIDATORS_LIMIT),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<GlobalValidators>>("/api/v1/validators", {
+        params: { sort: "total_stake", limit: ALL_VALIDATORS_LIMIT },
+        signal,
+      });
+      const validators = normalizeGlobalValidators(res.data).validators.map(
+        projectOperatorValidator,
+      );
+      return {
+        data: {
+          operators: serializeOperatorRows(operatorRows(validators)),
+          hotkey_count: validators.length,
+        },
+        meta: res.meta,
+        url: res.url,
+      } satisfies ApiResult<ValidatorOperatorDirectory>;
     },
     staleTime: STALE_SHORT,
   });
