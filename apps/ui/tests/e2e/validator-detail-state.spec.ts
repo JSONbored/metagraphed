@@ -5,7 +5,7 @@ const HOTKEY = "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u";
 const DELAYED_READS = [
   `**/api/v1/validators/${HOTKEY}/history*`,
   `**/api/v1/validators/${HOTKEY}/nominators*`,
-  "**/api/v1/validators?*",
+  "**/api/v1/validators/operators*",
 ];
 
 async function scrollSectionIntoView(page: Page, id: string) {
@@ -32,7 +32,7 @@ test.describe("Validator detail secondary query states", () => {
         const path = new URL(route.request().url()).pathname;
         if (path.endsWith("/nominators")) reads.nominators += 1;
         else if (path.endsWith("/history")) reads.history += 1;
-        else if (path === "/api/v1/validators") reads.peers += 1;
+        else if (path === "/api/v1/validators/operators") reads.peers += 1;
         await continueReads;
         await route.continue();
       });
@@ -87,7 +87,7 @@ test.describe("Validator detail secondary query states", () => {
     const completedReads = [
       `/api/v1/validators/${HOTKEY}/nominators`,
       `/api/v1/validators/${HOTKEY}/history`,
-      "/api/v1/validators",
+      "/api/v1/validators/operators",
     ].map((path) => page.waitForResponse((response) => new URL(response.url()).pathname === path));
     release?.();
     await Promise.all(completedReads);
