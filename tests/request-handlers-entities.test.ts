@@ -4236,17 +4236,56 @@ describe("handleBlock", () => {
       }),
     ]);
     try {
-      const body = await json(
-        await handleBlock(
-          req(`/api/v1/blocks/${BLOCK_NUM}`),
-          env as unknown as Env,
-          String(BLOCK_NUM),
-        ),
+      const response = await handleBlock(
+        req(`/api/v1/blocks/${BLOCK_NUM}`),
+        env as unknown as Env,
+        String(BLOCK_NUM),
       );
+      const body = await json(response);
 
       assert.equal(body.data.block.economic_activity_tao, 1.25);
       assert.equal(body.data.block.economic_activity_usd, 250);
       assert.equal(body.data.block.usd_per_tao, 200);
+      assert.equal(response.headers.get("x-metagraph-cache-profile"), "short");
+    } finally {
+      cold.restore();
+    }
+  });
+
+  test("caches a settled unpriced historical block without live price metadata", async () => {
+    const { env } = dbWith({ blockDetail: blockRow() });
+    Object.assign(env, LAKEHOUSE_ENV);
+    env.METAGRAPH_CONTROL = {
+      get: async () => ({
+        usd_per_tao: 200,
+        observed_at: new Date().toISOString(),
+        block_number: 9_000_000,
+        price_basis: "tao-usd-index",
+      }),
+    };
+
+    const cold = lakehouse([
+      blockRow({
+        decode_status: "unavailable",
+        economic_activity_tao: null,
+        economics_complete: false,
+      }),
+    ]);
+    try {
+      const response = await handleBlock(
+        req(`/api/v1/blocks/${BLOCK_NUM}`),
+        env as unknown as Env,
+        String(BLOCK_NUM),
+      );
+      const body = await json(response);
+
+      assert.equal(body.data.block.decode_status, "unavailable");
+      assert.equal(body.data.block.economic_activity_tao, null);
+      assert.equal(body.data.block.economic_activity_usd, null);
+      assert.equal(body.data.block.usd_per_tao, null);
+      assert.equal(body.data.block.tao_usd_observed_at, null);
+      assert.equal(response.headers.get("x-metagraph-cache-profile"), "static");
+      assert.match(response.headers.get("cache-control") || "", /max-age=600/);
     } finally {
       cold.restore();
     }
