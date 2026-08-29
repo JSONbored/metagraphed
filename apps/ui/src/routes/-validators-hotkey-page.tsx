@@ -27,10 +27,6 @@ import { StakeUnstakeLauncher } from "@/components/metagraphed/stake-unstake-lau
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import {
-  ALL_VALIDATORS_LIMIT,
-  operatorRows,
-} from "@/components/metagraphed/validators-index/validators-index-logic";
-import {
   apyPoints,
   changeOver,
   fmtAlpha,
@@ -50,10 +46,11 @@ import {
   validatorDetailQuery,
   validatorHistoryQuery,
   validatorNominatorsQuery,
-  validatorsQuery,
+  validatorOperatorDirectoryQuery,
 } from "@/lib/metagraphed/queries";
 import { deltaCell, formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { deserializeOperatorRows } from "@/lib/metagraphed/validator-operators";
 import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
 import { Route } from "./validators.$hotkey";
 
@@ -121,13 +118,7 @@ export function ValidatorDetailPage() {
     retry: 0,
   });
   const allValidators = useQuery({
-    ...validatorsQuery({
-      sort: "total_stake",
-      limit: ALL_VALIDATORS_LIMIT,
-      subnets: false,
-      identity: false,
-      projection: "operator",
-    }),
+    ...validatorOperatorDirectoryQuery(),
     enabled: peersNearViewport,
     retry: 0,
   });
@@ -149,12 +140,14 @@ export function ValidatorDetailPage() {
 
   const operator = detail.coldkey_identity?.name?.trim() || shortKey(hotkey);
   const peers = useMemo(() => {
-    const ranked = operatorRows(allValidators.data?.data.validators ?? []).map((row) => ({
+    const operators = deserializeOperatorRows(allValidators.data?.data.operators ?? []);
+    const ranked = operators.map((row) => ({
       hotkey: row.primaryHotkey,
       name: row.name,
       totalStakeTao: row.totalStakeTao,
     }));
-    return peerWindow(ranked, hotkey);
+    const current = operators.find((row) => row.keys.some((key) => key.hotkey === hotkey));
+    return peerWindow(ranked, current?.primaryHotkey ?? hotkey);
   }, [allValidators.data, hotkey]);
 
   const permits = memberships.filter((membership) => membership.validator_permit).length;

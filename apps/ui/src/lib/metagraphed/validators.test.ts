@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeGlobalValidators, projectOperatorValidator, validatorsQuery } from "./queries";
+import {
+  normalizeGlobalValidators,
+  projectOperatorValidator,
+  validatorOperatorDirectoryQuery,
+  validatorsQuery,
+} from "./queries";
 
 describe("normalizeGlobalValidators", () => {
   it("normalizes a representative global validators payload", () => {
@@ -140,6 +145,14 @@ describe("validatorsQuery", () => {
   it("keeps the operator projection in its own cache lane", () => {
     const options = validatorsQuery({ projection: "operator" });
     expect(options.queryKey).toContain("operator");
+  });
+});
+
+describe("validatorOperatorDirectoryQuery", () => {
+  it("uses a dedicated cache lane for the already-grouped SSR result", () => {
+    const options = validatorOperatorDirectoryQuery();
+    expect(options.queryKey).toContain("validator-operator-directory");
+    expect(options.queryKey).toContain(2000);
   });
 });
 

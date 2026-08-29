@@ -28,20 +28,22 @@ import { ValidatorCompareBar } from "@/components/metagraphed/compare-bar";
 import { ValidatorCompareToggle } from "@/components/metagraphed/compare-toggle";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import {
-  ALL_VALIDATORS_LIMIT,
   concentration,
   filterOperators,
   fmtStake,
   median,
-  operatorRows,
   shortKey,
   takeLabel,
   type OperatorRow,
 } from "@/components/metagraphed/validators-index/validators-index-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
-import { validatorEconomicsQuery, validatorsQuery } from "@/lib/metagraphed/queries";
+import {
+  validatorEconomicsQuery,
+  validatorOperatorDirectoryQuery,
+} from "@/lib/metagraphed/queries";
 import { formatDecimal, formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { deserializeOperatorRows } from "@/lib/metagraphed/validator-operators";
 import { Route } from "./validators.index";
 
 const SECTIONS = [
@@ -70,15 +72,7 @@ export function ValidatorsPage() {
   const queryClient = useQueryClient();
   const { ref: costRef, nearViewport: costNearViewport } = useNearViewport("0px 0px");
 
-  const { data: listed } = useSuspenseQuery(
-    validatorsQuery({
-      sort: "total_stake",
-      limit: ALL_VALIDATORS_LIMIT,
-      subnets: false,
-      identity: false,
-      projection: "operator",
-    }),
-  );
+  const { data: listed } = useSuspenseQuery(validatorOperatorDirectoryQuery());
   const economics = useQuery({
     ...validatorEconomicsQuery(130),
     // Permit cost is a distinct third reading after the directory. Preserve
@@ -88,8 +82,10 @@ export function ValidatorsPage() {
     retry: 0,
   });
 
-  const validators = listed.data.validators;
-  const operators = useMemo(() => operatorRows(validators), [validators]);
+  const operators = useMemo(
+    () => deserializeOperatorRows(listed.data.operators),
+    [listed.data.operators],
+  );
   const shown = useMemo(
     () =>
       filterOperators(operators, {
@@ -101,7 +97,7 @@ export function ValidatorsPage() {
   );
   const { segments, listedTotal } = useMemo(() => concentration(operators, 10), [operators]);
 
-  const medianTake = median(validators.map((validator) => validator.take));
+  const medianTake = median(operators.flatMap((operator) => operator.keys.map((key) => key.take)));
   const medianApy = median(operators.map((operator) => operator.apyEstimate));
   const topTen = segments
     .filter((segment) => segment.key !== RESIDUAL_KEY)
@@ -122,7 +118,7 @@ export function ValidatorsPage() {
   // count, the median take and the median APY were chips AND cells, so the
   // hero said each of them twice, a line apart, in two type sizes.
   const sentence: FactNodes = [
-    <Fact key="keys">{`${formatNumber(validators.length)} hotkeys`}</Fact>,
+    <Fact key="keys">{`${formatNumber(listed.data.hotkey_count)} hotkeys`}</Fact>,
     <Fact key="top">
       {topShare === null ? "share unavailable" : `top 10 hold ${formatPct(topShare, 1)}`}
     </Fact>,
@@ -385,7 +381,7 @@ export function ValidatorsPage() {
                     items={row.keys.map((validator) => ({
                       key: validator.hotkey,
                       label: shortKey(validator.hotkey),
-                      value: fmtStake(validator.total_stake_tao),
+                      value: fmtStake(validator.totalStakeTao),
                       share:
                         typeof validator.take === "number"
                           ? `${formatPct(validator.take, 1)} take`
@@ -400,7 +396,9 @@ export function ValidatorsPage() {
               }
             />
           }
-          footnote={`${formatNumber(validators.length)} hotkeys grouped by declared identity · chain-direct`}
+          footnote={`${formatNumber(
+            listed.data.hotkey_count,
+          )} hotkeys grouped by declared identity · chain-direct`}
         >
           <ValidatorCompareBar />
         </AnalyticsSection>

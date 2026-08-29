@@ -9,6 +9,10 @@ import {
   shortKey,
   takeLabel,
 } from "./validators-index-logic";
+import {
+  deserializeOperatorRows,
+  serializeOperatorRows,
+} from "@/lib/metagraphed/validator-operators";
 
 const validator = (over: Partial<GlobalValidator> & { hotkey: string }): GlobalValidator =>
   ({
@@ -64,6 +68,70 @@ describe("operatorRows", () => {
 
   it("anchors an operator on its LARGEST key, which is the one to link", () => {
     expect(operatorRows(rows)[0]?.primaryHotkey).toBe("5B");
+  });
+
+  it("retains only the child-key fields the expanded directory renders", () => {
+    expect(operatorRows(rows)[0]?.keys[0]).toEqual({
+      hotkey: "5B",
+      totalStakeTao: 900,
+      take: 0.09,
+    });
+  });
+
+  it("round-trips the field-name-free SSR tuple without losing directory data", () => {
+    const operators = operatorRows(rows);
+    const serialized = serializeOperatorRows(operators);
+    expect(Array.isArray(serialized[0])).toBe(true);
+    expect(deserializeOperatorRows(serialized)).toEqual(operators);
+  });
+
+  it("compacts display precision and reconstructs take ranges from child keys", () => {
+    const operators = operatorRows([
+      validator({
+        hotkey: "5A",
+        coldkey_identity: named("Yuma"),
+        total_stake_tao: 100.123456789,
+        total_emission_tao: 1.23456789,
+        take: 0.123456789,
+        apy_estimate: 0.987654321,
+      }),
+      validator({
+        hotkey: "5B",
+        coldkey_identity: named("Yuma"),
+        total_stake_tao: 10.987654321,
+        total_emission_tao: 0.123456789,
+        take: 0.012345678,
+        apy_estimate: 0.123456789,
+      }),
+      validator({
+        hotkey: "5C",
+        total_stake_tao: 5.555555555,
+        take: 0.177777777,
+      }),
+    ]);
+    const serialized = serializeOperatorRows(operators);
+
+    expect(serialized.every((row) => row.length === 11)).toBe(true);
+    expect(serialized[0]?.[1]).toEqual([
+      ["5A", 100.12346, 0.123457],
+      ["5B", 10.98765, 0.012346],
+    ]);
+    expect(serialized[0]?.[9]).toBeNull();
+    expect(serialized[1]?.[1]).toEqual([]);
+    expect(serialized[1]?.[9]).toBe(0.177778);
+
+    const restored = deserializeOperatorRows(serialized);
+    expect(restored[0]).toMatchObject({
+      totalStakeTao: 111.11111,
+      totalEmissionTao: 1.35802,
+      takeMin: 0.012346,
+      takeMax: 0.123457,
+    });
+    expect(restored[1]).toMatchObject({
+      keys: [{ hotkey: "5C", totalStakeTao: 5.55556, take: 0.177778 }],
+      takeMin: 0.177778,
+      takeMax: 0.177778,
+    });
   });
 
   it("keeps an anonymous key as its own operator of one", () => {
