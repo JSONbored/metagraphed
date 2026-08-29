@@ -243,11 +243,13 @@ import {
   exposeCustomResponseHeaders,
   ifNoneMatchSatisfied,
   isPathUnder,
+  METAGRAPH_SETTLED_SHORT_CACHE,
   weakEtag,
   withCacheStatus,
   X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
   type CacheProfile,
+  type SettledShortCacheResponse,
   readBoundedRequestText,
 } from "./http.ts";
 import {
@@ -4392,6 +4394,7 @@ function cacheWrite(ctx: Ctx | undefined, write: () => Promise<unknown>): void {
  * different questions and were never the same number.
  */
 const CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS = 3600;
+const CHAIN_DETAIL_SETTLED_SHORT_CACHE_TTL_SECONDS = 60;
 
 /**
  * Cache namespace for the serialized chain-detail response shape.
@@ -4478,10 +4481,18 @@ export async function withChainDetailEdgeCache(
   }
 
   const response = await produce();
-  if (
-    response.status === 200 &&
-    response.headers.get("x-metagraph-cache-profile") === "static"
-  ) {
+  const profile = response.headers.get("x-metagraph-cache-profile");
+  const settledShort =
+    profile === "short" &&
+    (response as SettledShortCacheResponse)[METAGRAPH_SETTLED_SHORT_CACHE] ===
+      true;
+  const cacheTtl =
+    profile === "static"
+      ? CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS
+      : settledShort
+        ? CHAIN_DETAIL_SETTLED_SHORT_CACHE_TTL_SECONDS
+        : null;
+  if (response.status === 200 && cacheTtl !== null) {
     // Stored with OUR ttl, not the client-facing one. Built explicitly rather
     // than by passing the Response as an init so the headers are copied into a
     // fresh Headers and mutating them cannot reach the response we return.
@@ -4490,10 +4501,7 @@ export async function withChainDetailEdgeCache(
       statusText: response.statusText,
       headers: response.headers,
     });
-    stored.headers.set(
-      "cache-control",
-      `public, s-maxage=${CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS}`,
-    );
+    stored.headers.set("cache-control", `public, s-maxage=${cacheTtl}`);
     cacheWrite(ctx, () => cacheable.store.put(cacheable.key, stored));
   }
   // Stamped on the returned response only -- `stored` above is the cache's own

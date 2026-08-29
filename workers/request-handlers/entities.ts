@@ -37,8 +37,10 @@ import { resolveClientIp } from "../config.ts";
 
 import {
   errorResponse,
+  METAGRAPH_SETTLED_SHORT_CACHE,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
   type CacheProfile,
+  type SettledShortCacheResponse,
 } from "../http.ts";
 import {
   contractVersion,
@@ -6923,7 +6925,7 @@ export async function handleBlock(
     data.block.usd_per_tao === null
       ? "static"
       : "short";
-  return envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -6935,6 +6937,15 @@ export async function handleBlock(
     },
     cacheProfile,
   );
+  // The chain-native record is settled, but its current-price conversion is
+  // intentionally short-lived. Let the chain-detail wrapper reuse the whole
+  // composed response for that same 60-second window instead of re-reading the
+  // immutable block on every request. Pending/unknown blocks never set this.
+  if (data.block?.decode_status === "complete") {
+    (response as SettledShortCacheResponse)[METAGRAPH_SETTLED_SHORT_CACHE] =
+      true;
+  }
+  return response;
 }
 
 /**
