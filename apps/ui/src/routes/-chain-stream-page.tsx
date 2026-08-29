@@ -44,6 +44,7 @@ import {
   eventColumns,
   extrinsicColumns,
 } from "@/components/metagraphed/chain-stream/chain-stream-columns";
+import { eventHref } from "@/components/metagraphed/chain-detail/chain-detail-logic";
 import { BlockActivityWindow } from "@/components/metagraphed/chain-stream/block-activity-window";
 import { StreamShell, streamEmpty } from "@/components/metagraphed/chain-stream/stream-shell";
 import { ErrorState } from "@/components/metagraphed/states";
@@ -393,6 +394,7 @@ export function EventsPage() {
         caption={
           hidden > 0 ? `Chain events (${formatNumber(hidden)} plumbing hidden)` : "Chain events"
         }
+        rowHref={(row) => eventHref(row) ?? undefined}
         link={BlockStreamLink}
         source="chain-event"
         storageKey="mg-events-columns"

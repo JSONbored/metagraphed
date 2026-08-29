@@ -39,6 +39,7 @@ import {
   blockFacts,
   cadencePoints,
   cadenceRange,
+  eventHref,
   eventLabel,
   eventsByPallet,
   neighbourHrefs,
@@ -549,6 +550,7 @@ export function BlockDetailPage() {
               columns={eventColumns}
               rowKey={(row) => `${row.event_index ?? "?"}`}
               caption="Events emitted"
+              rowHref={(row) => eventHref(row) ?? undefined}
               link={RouterLink}
               source="block-event"
               loading={shouldFetchEvents && events.isPending}

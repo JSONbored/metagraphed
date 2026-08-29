@@ -28,6 +28,7 @@ import {
 import type { AccountEvent, ChainEvent, Extrinsic } from "@/lib/metagraphed/types";
 import {
   argRows,
+  eventHref,
   eventLabel,
   extrinsicFacts,
   extrinsicTitle,
@@ -340,6 +341,8 @@ export function ExtrinsicDetailPage() {
         columns={eventColumns}
         rowKey={(row) => `${row.event_index ?? "?"}`}
         caption="What it produced"
+        rowHref={(row) => eventHref(row) ?? undefined}
+        link={RouterLink}
         source="extrinsic-event"
         loading={events.isPending}
         paginate={false}

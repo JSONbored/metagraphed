@@ -115,6 +115,56 @@ export function argRows(args: Extrinsic["call_args"]): ArgRow[] {
   });
 }
 
+/**
+ * A raw chain event's decoded arguments as stable, copyable label/value rows.
+ *
+ * Event args are less regular than call args: runtimes may publish an object,
+ * an array, or a scalar. Keep the top-level shape visible without recursively
+ * inventing a schema the runtime did not provide.
+ */
+export function eventArgRows(args: ChainEvent["args"]): ArgRow[] {
+  if (args === null || args === undefined) return [];
+  if (Array.isArray(args)) {
+    return args.map((value, index) => ({
+      key: String(index),
+      name: `arg ${index}`,
+      type: null,
+      value: stringifyArg(value),
+    }));
+  }
+  if (typeof args === "object") {
+    return Object.entries(args as Record<string, unknown>).map(([name, value]) => ({
+      key: name,
+      name,
+      type: null,
+      value: stringifyArg(value),
+    }));
+  }
+  return [{ key: "value", name: "value", type: null, value: stringifyArg(args) }];
+}
+
+/** Canonical deep link for one decoded event, when both coordinates exist. */
+export function eventHref(event: Pick<ChainEvent, "block_number" | "event_index">): string | null {
+  const block = event.block_number;
+  const index = event.event_index;
+  if (!Number.isSafeInteger(block) || !Number.isSafeInteger(index) || block! < 0 || index! < 0) {
+    return null;
+  }
+  return `/events/${block}/${index}`;
+}
+
+/** The route form accepted by the extrinsic detail resolver: block-index. */
+export function eventExtrinsicHref(
+  event: Pick<ChainEvent, "block_number" | "extrinsic_index">,
+): string | null {
+  const block = event.block_number;
+  const index = event.extrinsic_index;
+  if (!Number.isSafeInteger(block) || !Number.isSafeInteger(index) || block! < 0 || index! < 0) {
+    return null;
+  }
+  return `/extrinsics/${block}-${index}`;
+}
+
 function stringifyArg(value: unknown): string {
   if (value === null || value === undefined) return "—";
   if (typeof value === "string") return value;

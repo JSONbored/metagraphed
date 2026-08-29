@@ -8,6 +8,9 @@ import {
   blockFacts,
   cadencePoints,
   cadenceRange,
+  eventArgRows,
+  eventExtrinsicHref,
+  eventHref,
   eventsByPallet,
   extrinsicFacts,
   extrinsicTitle,
@@ -150,6 +153,38 @@ describe("argRows", () => {
   it("is empty when the tier decoded no arguments", () => {
     expect(argRows(undefined)).toEqual([]);
     expect(argRows([] as Extrinsic["call_args"])).toEqual([]);
+  });
+});
+
+describe("eventArgRows", () => {
+  it("keeps object keys and full structured values", () => {
+    expect(eventArgRows({ who: "5Dyir2", amount: { planck: "1000" } })).toEqual([
+      { key: "who", name: "who", type: null, value: "5Dyir2" },
+      { key: "amount", name: "amount", type: null, value: '{"planck":"1000"}' },
+    ]);
+  });
+
+  it("preserves arrays, scalars and genuine zero values", () => {
+    expect(eventArgRows([false, 0]).map((row) => row.value)).toEqual(["false", "0"]);
+    expect(eventArgRows("decoded")).toEqual([
+      { key: "value", name: "value", type: null, value: "decoded" },
+    ]);
+    expect(eventArgRows(null)).toEqual([]);
+  });
+});
+
+describe("event links", () => {
+  it("builds canonical event and originating-extrinsic links", () => {
+    expect(eventHref({ block_number: 8_949_504, event_index: 159 })).toBe("/events/8949504/159");
+    expect(eventExtrinsicHref({ block_number: 8_949_504, extrinsic_index: 13 })).toBe(
+      "/extrinsics/8949504-13",
+    );
+  });
+
+  it("never emits partial or invalid entity routes", () => {
+    expect(eventHref({ block_number: 1, event_index: null })).toBeNull();
+    expect(eventHref({ block_number: -1, event_index: 0 })).toBeNull();
+    expect(eventExtrinsicHref({ block_number: 1, extrinsic_index: null })).toBeNull();
   });
 });
 
