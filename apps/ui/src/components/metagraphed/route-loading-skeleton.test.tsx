@@ -25,6 +25,7 @@ describe("routeLoadingArchetype", () => {
     ["/accounts/5Fabc", "entity"],
     ["/providers/example", "entity"],
     ["/extrinsics/0xabc", "entity"],
+    ["/events/8713384/320?source=block#arguments", "entity"],
     ["/blocks/8942103", "block"],
     ["/chain", "operational"],
     ["/health", "operational"],
