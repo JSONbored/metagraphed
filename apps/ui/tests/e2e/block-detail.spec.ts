@@ -23,8 +23,11 @@ test.describe("block detail progressive technical record", () => {
     const href = await target.getAttribute("href");
     expect(href).toMatch(/^\/blocks\/\d+$/);
     const blockNumber = href!.replace("/blocks/", "");
-    await page.route(`**/api/v1/blocks/${blockNumber}`, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await page.route(new RegExp(`/api/v1/blocks/${blockNumber}(?:\\?.*)?$`), async (route) => {
+      // The router intentionally waits before presenting its pending document.
+      // Leave enough time after that threshold to inspect the pending table on
+      // slower CI runners rather than racing the fulfilled detail response.
+      await new Promise((resolve) => setTimeout(resolve, 4_000));
       await route.fulfill({
         status: fixture.status(),
         contentType: fixture.headers()["content-type"] ?? "application/json",
@@ -40,10 +43,13 @@ test.describe("block detail progressive technical record", () => {
     });
 
     await target.click();
-    await expect(page.getByRole("status", { name: "Loading block detail" })).toBeVisible();
-    await expect(page.getByRole("table", { name: "Extrinsics in this block" })).toBeVisible();
+    const pending = page.getByRole("status", { name: "Loading block detail" });
+    await expect(pending).toBeVisible();
+    // Placeholder geometry is deliberately hidden from the accessibility tree;
+    // the outer live status is the single pending announcement.
+    await expect(pending.locator("table")).toBeVisible();
 
-    const layout = await page
+    const layout = await pending
       .locator(".mg-dt-skeleton")
       .first()
       .evaluate((row) => {
@@ -59,7 +65,7 @@ test.describe("block detail progressive technical record", () => {
     expect(layout.leadDisplay).toBe("flex");
     expect(layout.leadColumn).toBe("1 / -1");
 
-    await expect(page.getByRole("status", { name: "Loading block detail" })).toBeHidden();
+    await expect(pending).toBeHidden();
   });
 
   test("loads the primary ledger first and starts forensic reads only when requested", async ({

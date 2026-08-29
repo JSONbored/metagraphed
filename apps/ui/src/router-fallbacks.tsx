@@ -1,8 +1,11 @@
-import { useRouter } from "@tanstack/react-router";
+import { useRouter, useRouterState } from "@tanstack/react-router";
 import { ErrorState } from "./components/metagraphed/states";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { recoverFromChunkLoadFailure } from "@/lib/chunk-reload-recovery";
-import { RouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
+import {
+  RouteLoadingSkeleton,
+  routeLoadingArchetype,
+} from "@/components/metagraphed/route-loading-skeleton";
 
 // Outlet-scoped default boundary: a loader error in any route that doesn't
 // define its own errorComponent renders here instead of bubbling to __root's
@@ -55,5 +58,11 @@ export function DefaultRouteError({ error, reset }: { error: unknown; reset: () 
 // the error fallback is: a navigation that blanks the header and the nav makes
 // the site look like it went down for as long as the loader runs.
 export function DefaultRoutePending() {
-  return <RouteLoadingSkeleton />;
+  // `location`, not `resolvedLocation`: while a navigation is pending the
+  // latter still names the page being left, which would give the destination
+  // the wrong first-paint geometry.
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  return (
+    <RouteLoadingSkeleton label="Loading destination" archetype={routeLoadingArchetype(pathname)} />
+  );
 }

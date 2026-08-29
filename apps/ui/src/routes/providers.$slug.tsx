@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
-import { RouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
+import { EntityRouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
 import {
   firstPartyLogoPath,
   healthFromStatusCounts,
@@ -119,7 +119,7 @@ export const Route = createFileRoute("/providers/$slug")({
       ],
     };
   },
-  pendingComponent: RouteLoadingSkeleton,
+  pendingComponent: EntityRouteLoadingSkeleton,
   component: ProviderDetail,
   notFoundComponent: () => (
     <AppShell>
