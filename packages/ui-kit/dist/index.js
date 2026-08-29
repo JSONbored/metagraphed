@@ -693,8 +693,8 @@ function buildCandidateChain({
     if (!out.includes(safe)) out.push(safe);
   };
   const primary = pickIconSource(iconUrl, theme);
-  push(providerDisplayLogoUrl(lookup?.providerSlug, primary, size));
   push(firstPartyDisplayLogoUrl(primary, size));
+  push(providerDisplayLogoUrl(lookup?.providerSlug, primary, size));
   push(primary);
   if (lookup) {
     const override = resolveBrandOverride(lookup, theme);

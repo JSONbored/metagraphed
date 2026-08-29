@@ -245,8 +245,13 @@ function buildCandidateChain({
   };
 
   const primary = pickIconSource(iconUrl, theme);
-  push(providerDisplayLogoUrl(lookup?.providerSlug, primary, size));
+  // An exact first-party source path proves its derivative exists because the
+  // thumbnail manifest is generated from that source tree. Prefer it over the
+  // provider-slug inference, which is only needed when a remote registry mark
+  // has a separately committed local thumbnail. This avoids a speculative 404
+  // for providers whose first-party mark lives under /logos/cache/.
   push(firstPartyDisplayLogoUrl(primary, size));
+  push(providerDisplayLogoUrl(lookup?.providerSlug, primary, size));
   push(primary);
   if (lookup) {
     const override = resolveBrandOverride(lookup, theme);

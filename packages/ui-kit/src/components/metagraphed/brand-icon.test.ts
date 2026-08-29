@@ -84,4 +84,19 @@ describe("providerDisplayLogoUrl", () => {
     );
     expect(html).toContain('src="/logos/display/actual-computer.webp"');
   });
+
+  it("prefers an exact cached derivative over a speculative provider-slug path", () => {
+    const hash =
+      "3c51fd4083332f8a4b32b2af7793b7481e9774ec8e26d40857d72a7d46a15704";
+    const html = renderToStaticMarkup(
+      h(BrandIcon, {
+        iconUrl: `https://metagraph.sh/logos/cache/${hash}.jpg`,
+        name: "ByteLeap",
+        providerSlug: "byteleap",
+        size: 20,
+      }),
+    );
+    expect(html).toContain(`src="/logos/display/cache/${hash}.webp"`);
+    expect(html).not.toContain("/logos/display/byteleap.webp");
+  });
 });
