@@ -5,7 +5,7 @@ import {
   type SearchOutput,
 } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
-import { RouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
+import { DirectoryRouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
 import { ProvidersPage } from "./-providers-index-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
@@ -32,6 +32,6 @@ export const Route = createFileRoute("/apis/providers")({
   head: () => ({
     meta: hubMeta("/apis/providers"),
   }),
-  pendingComponent: RouteLoadingSkeleton,
+  pendingComponent: DirectoryRouteLoadingSkeleton,
   component: ProvidersPage,
 });
