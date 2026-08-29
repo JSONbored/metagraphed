@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { TimeAgo } from "@jsonbored/ui-kit";
 import { formatCompactAmount, formatCompactUsd, formatNumber } from "@/lib/metagraphed/format";
+import { BLOCK_EXTRINSIC_PAGE_SIZE } from "@/lib/metagraphed/block-route-loader";
 import { blockExtrinsicsInfiniteQuery } from "@/lib/metagraphed/queries";
 import type { Block } from "@/lib/metagraphed/types";
 import { arrivedBlock } from "./chain-stream/block-activity-window-logic";
@@ -124,7 +125,7 @@ export function LiveBlockRail({
   const warmExtrinsics = useCallback(
     (blockNumber: number) => {
       void queryClient.prefetchInfiniteQuery({
-        ...blockExtrinsicsInfiniteQuery(String(blockNumber), 100),
+        ...blockExtrinsicsInfiniteQuery(String(blockNumber), BLOCK_EXTRINSIC_PAGE_SIZE),
         retry: 0,
       });
     },

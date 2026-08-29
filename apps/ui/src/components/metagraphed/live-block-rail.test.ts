@@ -9,7 +9,9 @@ const source = readFileSync(
 
 describe("live block rail intent prefetch", () => {
   it("aligns the route record preload and primary ledger warm behind sustained reader intent", () => {
-    expect(source).toContain("blockExtrinsicsInfiniteQuery(String(blockNumber), 100)");
+    expect(source).toContain(
+      "blockExtrinsicsInfiniteQuery(String(blockNumber), BLOCK_EXTRINSIC_PAGE_SIZE)",
+    );
     expect(source).toContain("preloadDelay={140}");
     expect(source).toContain("}, 140);");
     expect(source).toContain('event.pointerType === "mouse"');
