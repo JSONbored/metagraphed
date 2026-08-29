@@ -208,13 +208,19 @@ describe("summarizeBlockEconomics", () => {
         .tao_usd_unavailable,
       "index_stale",
     );
-    assert.equal(
+    assert.deepEqual(
       blockEconomicsUsd(
         null,
         { ...reading, observed_at: "2026-08-29T04:59:00.000Z" },
         Date.parse("2026-08-29T05:00:00.000Z"),
-      ).economic_activity_usd,
-      null,
+      ),
+      {
+        economic_activity_usd: null,
+        usd_per_tao: null,
+        tao_usd_block: null,
+        tao_usd_observed_at: null,
+        tao_usd_basis: null,
+      },
     );
   });
 

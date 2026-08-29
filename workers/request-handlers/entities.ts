@@ -6912,10 +6912,17 @@ export async function handleBlock(
         },
       }
     : rawData;
-  // The chain record is immutable, but its explicit current-price conversion
-  // is not. Keep the response on the short profile so USD never freezes at the
-  // first rate a CDN happened to cache for this block.
-  const cacheProfile = "short";
+  // Complete block totals carry a current-price conversion, so keep those on
+  // the short profile rather than freezing one index reading at the edge. A
+  // settled block that could not be decoded has no native total or applicable
+  // conversion; its response is immutable and can use the static edge profile.
+  // Unknown and still-pending records remain short-lived so recovery is visible.
+  const cacheProfile =
+    data.block?.decode_status === "unavailable" &&
+    data.block.economic_activity_tao === null &&
+    data.block.usd_per_tao === null
+      ? "static"
+      : "short";
   return envelopeResponse(
     request,
     {
