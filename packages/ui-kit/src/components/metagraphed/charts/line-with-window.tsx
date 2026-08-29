@@ -60,6 +60,10 @@ export interface LineWithWindowProps {
   className?: string;
   /** Reserve the summary and plot geometry until a time-series source answers. */
   loading?: boolean;
+  /** Anchor non-negative count series to zero instead of exaggerating a narrow extent. */
+  zeroBaseline?: boolean;
+  /** Draw the line on mount; pair with a keyed metric switch to replay the transition. */
+  animate?: boolean;
 }
 
 const defaultFormat = (v: number) => String(v);
@@ -93,8 +97,13 @@ export function LineWithWindow({
   markerLabel,
   className,
   loading = false,
+  zeroBaseline = false,
+  animate = false,
 }: LineWithWindowProps) {
-  const placed = useMemo(() => placePoints(points), [points]);
+  const placed = useMemo(
+    () => placePoints(points, LINE_VIEWBOX, { zeroBaseline }),
+    [points, zeroBaseline],
+  );
   const inside = useMemo(() => windowPoints(placed, window), [placed, window]);
   const delta = useMemo(() => windowDelta(points, window), [points, window]);
   const months = useMemo(() => monthTicks(points), [points]);
@@ -142,6 +151,7 @@ export function LineWithWindow({
       data-mg-line=""
       data-compact={compact ? "true" : undefined}
       data-state={delta.state}
+      data-animate={animate ? "true" : undefined}
     >
       {compact ? null : (
         <div className="mg-line-summary">
@@ -169,8 +179,16 @@ export function LineWithWindow({
           aria-hidden="true"
           focusable="false"
         >
-          <path className="mg-line-muted" d={smoothPath(placed)} />
-          <path className="mg-line-active" d={smoothPath(inside)} />
+          <path
+            className="mg-line-muted"
+            d={smoothPath(placed)}
+            pathLength="1"
+          />
+          <path
+            className="mg-line-active"
+            d={smoothPath(inside)}
+            pathLength="1"
+          />
           {markerPoint ? (
             <line
               className="mg-line-subject"

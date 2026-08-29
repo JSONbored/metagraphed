@@ -2952,9 +2952,10 @@ function stackedSpecimen() {
 
 // src/components/metagraphed/charts/line-geometry.ts
 var LINE_VIEWBOX = { width: 1200, height: 370 };
-var PAD_Y = 8;
+var PAD_TOP = 20;
+var PAD_BOTTOM = 8;
 var PLOT_RIGHT = 0.94;
-function placePoints(points, box = LINE_VIEWBOX) {
+function placePoints(points, box = LINE_VIEWBOX, { zeroBaseline = false } = {}) {
   if (points.length === 0) return [];
   const t0 = points[0].t;
   const t1 = points[points.length - 1].t;
@@ -2965,11 +2966,12 @@ function placePoints(points, box = LINE_VIEWBOX) {
     if (p.v < min) min = p.v;
     if (p.v > max) max = p.v;
   }
+  if (zeroBaseline && min >= 0) min = 0;
   const range = max - min || 1;
   return points.map((p) => ({
     ...p,
     x: points.length === 1 ? box.width * PLOT_RIGHT / 2 : (p.t - t0) / span * box.width * PLOT_RIGHT,
-    y: box.height - PAD_Y - (p.v - min) / range * (box.height - PAD_Y * 2)
+    y: box.height - PAD_BOTTOM - (p.v - min) / range * (box.height - PAD_TOP - PAD_BOTTOM)
   }));
 }
 function smoothPath(points) {
@@ -3066,9 +3068,14 @@ function LineWithWindow({
   marker,
   markerLabel,
   className,
-  loading = false
+  loading = false,
+  zeroBaseline = false,
+  animate = false
 }) {
-  const placed = React2.useMemo(() => placePoints(points), [points]);
+  const placed = React2.useMemo(
+    () => placePoints(points, LINE_VIEWBOX, { zeroBaseline }),
+    [points, zeroBaseline]
+  );
   const inside = React2.useMemo(() => windowPoints(placed, window2), [placed, window2]);
   const delta = React2.useMemo(() => windowDelta(points, window2), [points, window2]);
   const months = React2.useMemo(() => monthTicks(points), [points]);
@@ -3106,6 +3113,7 @@ function LineWithWindow({
       "data-mg-line": "",
       "data-compact": compact ? "true" : void 0,
       "data-state": delta.state,
+      "data-animate": animate ? "true" : void 0,
       children: [
         compact ? null : /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-line-summary", children: [
           /* @__PURE__ */ jsxRuntime.jsxs("p", { className: "mg-line-total", children: [
@@ -3135,8 +3143,22 @@ function LineWithWindow({
                   "aria-hidden": "true",
                   focusable: "false",
                   children: [
-                    /* @__PURE__ */ jsxRuntime.jsx("path", { className: "mg-line-muted", d: smoothPath(placed) }),
-                    /* @__PURE__ */ jsxRuntime.jsx("path", { className: "mg-line-active", d: smoothPath(inside) }),
+                    /* @__PURE__ */ jsxRuntime.jsx(
+                      "path",
+                      {
+                        className: "mg-line-muted",
+                        d: smoothPath(placed),
+                        pathLength: "1"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntime.jsx(
+                      "path",
+                      {
+                        className: "mg-line-active",
+                        d: smoothPath(inside),
+                        pathLength: "1"
+                      }
+                    ),
                     markerPoint ? /* @__PURE__ */ jsxRuntime.jsx(
                       "line",
                       {

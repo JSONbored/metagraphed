@@ -3,7 +3,13 @@
  */
 import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import type { ChainActivityDay, SubnetEconomics, SubnetMover } from "@/lib/metagraphed/types";
-import { formatCompact, formatAmount, formatDecimal, formatPct } from "@/lib/metagraphed/format";
+import {
+  formatAmount,
+  formatCompact,
+  formatCompactDelta,
+  formatDecimal,
+  formatPct,
+} from "@/lib/metagraphed/format";
 
 export type EmissionWindow = "7d" | "30d" | "90d";
 export type ChainMetric = "extrinsics" | "events" | "blocks";
@@ -30,6 +36,11 @@ export const fmtCount = (value: number | null | undefined): string => formatComp
  * column, and the long one wrapped onto a second line.
  */
 export const fmtAlpha = (value: number | null | undefined): string => formatAmount(value, "α");
+
+/** A signed alpha change; the column header carries the unit. */
+export const fmtAlphaDelta = (value: number | null | undefined): string => {
+  return formatCompactDelta(value);
+};
 
 export const fmtShare = (fraction: number | null | undefined, places = 2): string =>
   formatPct(fraction, places);
@@ -84,12 +95,45 @@ export interface EmissionRail {
   detail: { key: string; label: string; value: string }[];
 }
 
+export interface EmissionComparisonWindow {
+  window: string;
+  start_date: string | null;
+  end_date: string | null;
+  covered_days: number | null;
+  requested_days: number | null;
+  window_truncated: boolean;
+}
+
+/** Plain-language provenance for the exact snapshot boundaries behind a rail. */
+export function emissionComparisonNote(
+  comparison: EmissionComparisonWindow | null | undefined,
+  fallbackWindow: EmissionWindow,
+): string {
+  const range =
+    comparison?.start_date && comparison.end_date
+      ? `${comparison.start_date} → ${comparison.end_date}`
+      : `${comparison?.window ?? fallbackWindow} comparison`;
+  const coverage =
+    comparison?.covered_days != null && comparison.requested_days != null
+      ? `${comparison.covered_days}/${comparison.requested_days} days${comparison.window_truncated ? " (partial)" : ""}`
+      : null;
+  return [
+    range,
+    coverage,
+    "bars show start-to-end daily α gains",
+    "open a row for end level and network share",
+    "chain-derived snapshots",
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(" · ");
+}
+
 /**
- * Subnets by emission over a window, with the change as detail.
+ * Subnets by positive emission movement over a window, with end state as detail.
  *
- * The LEVEL comes from the movers' end-of-window reading so the rail and its
- * change describe the same window; the current snapshot would describe a
- * different one and the two would disagree at every boundary.
+ * `/subnets/movers?sort=emission` is already ranked by signed emission delta.
+ * Keep that meaning at the display boundary: a selected window changes the
+ * gains, rather than merely reloading the same end-state allocation.
  */
 export function emissionRails(
   movers: readonly SubnetMover[],
@@ -97,25 +141,35 @@ export function emissionRails(
   limit = 15,
 ): EmissionRail[] {
   return movers
-    .filter((mover) => Number.isFinite(mover.emission_end_alpha) && mover.emission_end_alpha > 0)
-    .sort((a, b) => b.emission_end_alpha - a.emission_end_alpha)
+    .filter(
+      (mover) => Number.isFinite(mover.emission_delta_alpha) && mover.emission_delta_alpha > 0,
+    )
+    .sort((a, b) => b.emission_delta_alpha - a.emission_delta_alpha)
     .slice(0, limit)
     .map((mover) => ({
       key: String(mover.netuid),
       label: nameOf(mover.netuid),
-      value: mover.emission_end_alpha,
+      value: mover.emission_delta_alpha,
       href: `/subnets/${mover.netuid}`,
       detail: [
-        { key: "share", label: "Share", value: fmtShare((mover.emission_share_pct ?? 0) / 100) },
+        {
+          key: "end",
+          label: "End daily α",
+          value: fmtAlpha(mover.emission_end_alpha),
+        },
+        {
+          key: "share",
+          label: "Network share",
+          value: fmtShare((mover.emission_share_pct ?? 0) / 100),
+        },
         {
           key: "change",
-          label: "Change",
+          label: "Relative change",
           value:
             typeof mover.emission_pct_change === "number"
               ? `${mover.emission_pct_change >= 0 ? "+" : ""}${formatDecimal(mover.emission_pct_change, 1)}%`
               : "—",
         },
-        { key: "validators", label: "Validators", value: String(mover.validators_end) },
       ],
     }));
 }
@@ -132,23 +186,50 @@ export function chainPoints(
       : metric === "events"
         ? day.event_count
         : day.block_count;
-  return (
-    days
-      // `/chain/activity` includes the current UTC day while it is still being
-      // accumulated. A partial bar beside complete days reads as a throughput
-      // collapse, so the public chart ends on the day before the response was
-      // generated. Keep the filter tied to API time, not the visitor's clock.
-      .filter((day) => !asOfDay || day.day < asOfDay)
-      .map((day) => {
-        const value = pick(day);
-        const t = Date.parse(`${day.day}T00:00:00Z`);
-        return typeof value === "number" && Number.isFinite(value) && Number.isFinite(t)
-          ? { t, v: value }
-          : null;
-      })
-      .filter((point): point is { t: number; v: number } => point !== null)
-      .sort((a, b) => a.t - b.t)
-  );
+  return completeChainDays(days, asOfDay)
+    .map((day) => {
+      const value = pick(day);
+      const t = Date.parse(`${day.day}T00:00:00Z`);
+      return typeof value === "number" && Number.isFinite(value) && Number.isFinite(t)
+        ? { t, v: value }
+        : null;
+    })
+    .filter((point): point is { t: number; v: number } => point !== null)
+    .sort((a, b) => a.t - b.t);
+}
+
+/**
+ * Daily chain rows that are safe to compare as whole UTC days.
+ *
+ * The source includes the day containing its observation time, so that newest
+ * row is still accumulating. Some windows also begin part-way through their
+ * oldest day; only that boundary row is removed, and only when its block
+ * coverage is materially below the later-day median. Interior lows remain
+ * visible because they may represent real chain behavior rather than a window
+ * boundary.
+ */
+export function completeChainDays(
+  days: readonly ChainActivityDay[],
+  asOfDay?: string,
+): ChainActivityDay[] {
+  const ordered = days
+    .filter((day) => !asOfDay || day.day < asOfDay)
+    .sort((a, b) => a.day.localeCompare(b.day));
+  if (ordered.length < 3) return ordered;
+
+  const oldest = ordered[0]!;
+  const laterBlockCounts = ordered
+    .slice(1)
+    .map((day) => day.block_count)
+    .filter((count) => Number.isFinite(count) && count > 0)
+    .sort((a, b) => a - b);
+  if (laterBlockCounts.length < 2) return ordered;
+  const middle = Math.floor(laterBlockCounts.length / 2);
+  const median =
+    laterBlockCounts.length % 2 === 0
+      ? (laterBlockCounts[middle - 1]! + laterBlockCounts[middle]!) / 2
+      : laterBlockCounts[middle]!;
+  return oldest.block_count < median * 0.9 ? ordered.slice(1) : ordered;
 }
 
 /**
@@ -162,10 +243,8 @@ export function lastCompleteDay(
   days: readonly ChainActivityDay[],
   asOfDay?: string,
 ): ChainActivityDay | null {
-  const sorted = days
-    .filter((day) => !asOfDay || day.day < asOfDay)
-    .sort((a, b) => b.day.localeCompare(a.day));
-  return sorted[0] ?? null;
+  const complete = completeChainDays(days, asOfDay);
+  return complete[complete.length - 1] ?? null;
 }
 
 export interface SurfaceRail {

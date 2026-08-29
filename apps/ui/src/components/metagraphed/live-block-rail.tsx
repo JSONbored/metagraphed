@@ -10,7 +10,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { TimeAgo } from "@jsonbored/ui-kit";
-import { formatNumber, formatTao, formatUsd } from "@/lib/metagraphed/format";
+import { formatCompactAmount, formatCompactUsd, formatNumber } from "@/lib/metagraphed/format";
 import { blockExtrinsicsInfiniteQuery } from "@/lib/metagraphed/queries";
 import type { Block } from "@/lib/metagraphed/types";
 import { arrivedBlock } from "./chain-stream/block-activity-window-logic";
@@ -57,15 +57,29 @@ function countLabel(value: number | null | undefined, noun: string): string {
   return `${formatNumber(value)} ${noun}${value === 1 ? "" : "s"}`;
 }
 
-export function blockEconomicLabel(block: Block): string {
-  if (block.decode_status === "pending") return "Decoding value…";
-  if (block.decode_status !== "complete" || typeof block.economic_activity_tao !== "number") {
-    return "Value unavailable";
+export interface BlockEconomicReading {
+  label: string;
+  tao: string | null;
+  usd: string | null;
+}
+
+export function blockEconomicReading(block: Block): BlockEconomicReading {
+  if (block.decode_status === "pending") {
+    return { label: "Decoding value…", tao: null, usd: null };
   }
-  const tao = formatTao(block.economic_activity_tao);
+  if (block.decode_status !== "complete" || typeof block.economic_activity_tao !== "number") {
+    return { label: "Value unavailable", tao: null, usd: null };
+  }
+  const tao = `${formatCompactAmount(block.economic_activity_tao)}τ`;
   const usd =
-    typeof block.economic_activity_usd === "number" ? formatUsd(block.economic_activity_usd) : null;
-  return usd ? `${tao} · ${usd}` : tao;
+    typeof block.economic_activity_usd === "number"
+      ? formatCompactUsd(block.economic_activity_usd)
+      : null;
+  return { label: usd ? `${tao} · ${usd}` : tao, tao, usd };
+}
+
+export function blockEconomicLabel(block: Block): string {
+  return blockEconomicReading(block).label;
 }
 
 export function LiveBlockRail({
@@ -205,7 +219,7 @@ export function LiveBlockRail({
               const number = formatNumber(block.block_number);
               const extrinsics = countLabel(block.extrinsic_count, "extrinsic");
               const events = countLabel(block.event_count, "event");
-              const economics = blockEconomicLabel(block);
+              const economics = blockEconomicReading(block);
               const key = blockKey(block);
               return (
                 <li key={key}>
@@ -226,7 +240,7 @@ export function LiveBlockRail({
                       if (element) itemElements.current.set(key, element);
                       else itemElements.current.delete(key);
                     }}
-                    aria-label={`Open block #${number}: ${extrinsics}, ${events}, economic activity ${economics}`}
+                    aria-label={`Open block #${number}: ${extrinsics}, ${events}, economic activity ${economics.label}`}
                   >
                     <span className="mg-live-block-label">Block</span>
                     <span className="mg-live-block-open" aria-hidden="true">
@@ -240,9 +254,19 @@ export function LiveBlockRail({
                     </span>
                     <span
                       className="mg-live-block-value"
+                      aria-label={economics.label}
                       title="Native TAO transfers plus stake added or removed in this block. USD uses the current source-linked TAO/USD reading. Fees and issuance are excluded."
                     >
-                      {economics}
+                      {economics.tao ? (
+                        <>
+                          <span>{economics.tao}</span>
+                          {economics.usd ? (
+                            <span className="mg-live-block-value-usd">· {economics.usd}</span>
+                          ) : null}
+                        </>
+                      ) : (
+                        economics.label
+                      )}
                     </span>
                     <span className="mg-live-block-activity" aria-hidden="true">
                       <span

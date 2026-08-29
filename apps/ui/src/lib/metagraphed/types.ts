@@ -2592,6 +2592,11 @@ export interface SubnetMoversNetwork {
 export interface SubnetMovers {
   schema_version: number;
   window: string;
+  start_date: string | null;
+  end_date: string | null;
+  covered_days: number | null;
+  requested_days: number | null;
+  window_truncated: boolean;
   sort: string;
   subnet_count: number;
   network: SubnetMoversNetwork | null;

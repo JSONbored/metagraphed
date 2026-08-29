@@ -39,6 +39,18 @@ describe("placePoints", () => {
     ]);
     expect(flat[0]!.y).toBe(flat[1]!.y);
   });
+  it("can anchor non-negative count series to zero without exaggerating tiny variance", () => {
+    const placed = placePoints(
+      [
+        { t: 0, v: 7192 },
+        { t: 1, v: 7200 },
+      ],
+      LINE_VIEWBOX,
+      { zeroBaseline: true },
+    );
+    expect(Math.abs(placed[0]!.y - placed[1]!.y)).toBeLessThan(1);
+    expect(placed[1]!.y).toBe(20);
+  });
 });
 
 describe("smoothPath", () => {

@@ -33,6 +33,11 @@ describe("normalizeSubnetMovers", () => {
     const card = normalizeSubnetMovers({
       schema_version: 1,
       window: "30d",
+      start_date: "2026-07-30",
+      end_date: "2026-08-29",
+      covered_days: 30,
+      requested_days: 30,
+      window_truncated: false,
       sort: "stake",
       subnet_count: 1,
       network: { gainers: 5, losers: 3, unchanged: 2 },
@@ -51,6 +56,13 @@ describe("normalizeSubnetMovers", () => {
       ],
     });
     expect(card.network).toEqual({ gainers: 5, losers: 3, unchanged: 2 });
+    expect(card).toMatchObject({
+      start_date: "2026-07-30",
+      end_date: "2026-08-29",
+      covered_days: 30,
+      requested_days: 30,
+      window_truncated: false,
+    });
     expect(card.movers).toHaveLength(1);
     expect(card.movers[0]?.netuid).toBe(64);
     expect(card.movers[0]?.stake_delta_alpha).toBe(150);
@@ -64,6 +76,11 @@ describe("normalizeSubnetMovers", () => {
       expect(card.network).toBeNull();
       expect(card.window).toBe("30d");
       expect(card.sort).toBe("stake");
+      expect(card.start_date).toBeNull();
+      expect(card.end_date).toBeNull();
+      expect(card.covered_days).toBeNull();
+      expect(card.requested_days).toBeNull();
+      expect(card.window_truncated).toBe(false);
     }
   });
 
