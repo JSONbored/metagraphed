@@ -18,6 +18,7 @@ import {
   ANALYTICS_WINDOW_DAYS,
   DEFAULT_ANALYTICS_WINDOW,
 } from "../workers/config.ts";
+import { DECODE_STALE_MS } from "./decode-freshness.ts";
 
 export const CHAIN_ACTIVITY_PROJECTION_KEY =
   "metagraph/projections/chain-activity.json";
@@ -37,6 +38,46 @@ const ChainActivityCellSchema = z.object({
 });
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+type ChainActivityCoverage = {
+  newest_observed?: unknown;
+  extrinsic_rows: Array<Record<string, unknown>>;
+  block_rows: Array<Record<string, unknown>>;
+};
+
+/**
+ * Whether a freshly generated activity card is backed by current decoded data.
+ *
+ * The projection cron can run successfully while the decoder feeding the
+ * lakehouse is stopped. In that state `generated_at` advances every 30 minutes
+ * even though `newest_observed` and the daily buckets do not. Compare the two
+ * clocks, and require the last fully closed UTC day on both source tables, so a
+ * publication timestamp can never make an old or partial rollup look current.
+ */
+export function chainActivityCoverageIsCurrent(
+  coverage: ChainActivityCoverage,
+  generatedAt: string,
+  options: { requireCompleteDay?: boolean } = {},
+): boolean {
+  const generatedMs = Date.parse(generatedAt);
+  const observedMs = Number(coverage.newest_observed);
+  if (!Number.isFinite(generatedMs) || !Number.isFinite(observedMs))
+    return false;
+  if (observedMs <= 0 || generatedMs - observedMs > DECODE_STALE_MS)
+    return false;
+
+  // A source stamp from the previous UTC day cannot prove that previous day is
+  // complete, even when it is only a few minutes old just after midnight.
+  const generatedDay = new Date(generatedMs).toISOString().slice(0, 10);
+  const observedDay = new Date(observedMs).toISOString().slice(0, 10);
+  if (generatedDay !== observedDay) return false;
+
+  if (options.requireCompleteDay !== true) return true;
+  const completeDay = new Date(generatedMs - DAY_MS).toISOString().slice(0, 10);
+  const hasDay = (rows: Array<Record<string, unknown>>) =>
+    rows.some((row) => row.day === completeDay);
+  return hasDay(coverage.extrinsic_rows) && hasDay(coverage.block_rows);
+}
 
 /** Render one integer UTC epoch-day (the day key the lane GROUPs BY, since
  * R2 SQL has no proven date-render function) as the 'YYYY-MM-DD' label
@@ -86,6 +127,16 @@ export async function loadChainActivityFromArtifact(
     cell: ChainActivityCellSchema,
   });
   if (!read) return null;
+  // Legacy cards written before generated_at was required are allowed through
+  // until their next scheduled rewrite. Every current producer writes the
+  // stamp; once present, stale decoded rows must decline instead of being
+  // served under a fresh publication time.
+  if (
+    read.generatedAt !== null &&
+    !chainActivityCoverageIsCurrent(read.cell, read.generatedAt)
+  ) {
+    return null;
+  }
   return buildChainActivity({
     window: read.label,
     observedAt: newestObservedIso(read.cell.newest_observed),

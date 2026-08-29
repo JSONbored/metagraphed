@@ -2272,6 +2272,42 @@ describe("projection artifact answers when Postgres misses (windowed aggregates)
     assert.equal(body.data.observed_at, new Date(NEWEST).toISOString());
   });
 
+  test("handleChainActivity does not publish stale decoded rows as current", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      generated_at: "2026-08-06T12:00:00.000Z",
+      row_count: 2,
+      windows: {
+        "7d": {
+          days: 7,
+          extrinsic_rows: [
+            {
+              day: "2026-08-02",
+              extrinsic_count: 100,
+              successful_extrinsics: 97,
+              unique_signers: 9,
+            },
+          ],
+          block_rows: [
+            { day: "2026-08-02", block_count: 7200, event_count: 40000 },
+          ],
+          newest_observed: NEWEST,
+        },
+      },
+    });
+    const p = "/api/v1/chain/activity";
+    const response = await handleChainActivity(req(p), env, url(p));
+    const body = await json(response);
+    assert.equal(
+      response.headers.get("x-metagraph-degraded"),
+      "tier_unavailable",
+    );
+    assert.equal(body.data.day_count, 0);
+    assert.deepEqual(body.data.days, []);
+    assert.equal(body.data.observed_at, null);
+    assert.equal(body.meta.generated_at, null);
+  });
+
   test("handleChainCalls serves the projected call mix, sliced to ?limit=, unmarked as degraded", async () => {
     const env = archiveEnv({
       schema_version: 1,

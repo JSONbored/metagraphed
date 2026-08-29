@@ -58,6 +58,7 @@ import {
 } from "./chain-transfer-pairs.ts";
 import {
   CHAIN_ACTIVITY_PROJECTION_KEY,
+  chainActivityCoverageIsCurrent,
   epochDayIso,
 } from "./chain-activity-artifact.ts";
 import {
@@ -451,12 +452,27 @@ async function computeChainActivity(
     if (extrinsicRows === null) return null;
     const blockRows = withDayLabels(blocks);
     if (blockRows === null) return null;
-    windows[label] = {
+    const window = {
       days,
       extrinsic_rows: extrinsicRows,
       block_rows: blockRows,
       newest_observed: fresh[0]?.newest_observed ?? null,
     };
+    // A successful query is not necessarily current: when the decoder stops,
+    // R2 SQL keeps returning the last rows and the cron would otherwise stamp
+    // them with a new generated_at forever. Decline the whole write so the
+    // previous artifact ages into the projection watchdog, and only recover
+    // once both source tables cover the last complete UTC day again.
+    if (
+      !chainActivityCoverageIsCurrent(
+        window,
+        new Date(generatedAt).toISOString(),
+        { requireCompleteDay: true },
+      )
+    ) {
+      return null;
+    }
+    windows[label] = window;
     rowCount += extrinsicRows.length + blockRows.length;
   }
   return {

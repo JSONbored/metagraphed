@@ -50,6 +50,8 @@ import {
 import { watermarkRead } from "./raw-capture-sync.ts";
 import { readStore } from "./read-store.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
+export { DECODE_STALE_MS } from "./decode-freshness.ts";
+import { DECODE_STALE_MS } from "./decode-freshness.ts";
 
 /**
  * How long the decode lane may go without publishing before that is a fault.
@@ -62,8 +64,6 @@ import { laneHealthStore } from "./lane-health-store.ts";
  * long run plus cron jitter, and anything past three is time spent serving
  * detail-less blocks while the lane sits idle at its failure cap.
  */
-export const DECODE_STALE_MS = 3 * 60 * 60 * 1000;
-
 /**
  * How far the seam may trail the raw capture before that is a fault.
  *
