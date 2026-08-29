@@ -1,9 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { llms } from "fumadocs-core/source/llms";
-import { newsSource } from "@/lib/news-source";
 import { llmsIndexBody, llmsIndexHeaders } from "@/lib/metagraphed/llms-index";
-
-const newsLlms = llms(newsSource);
 
 // #11294: the digests' own index, the mirror of /docs/llms.txt.
 //
@@ -15,11 +11,15 @@ const newsLlms = llms(newsSource);
 export const Route = createFileRoute("/news/llms.txt")({
   server: {
     handlers: {
-      GET: ({ request }) => {
+      GET: async ({ request }) => {
+        const [{ llms }, { newsSource }] = await Promise.all([
+          import("fumadocs-core/source/llms"),
+          import("@/lib/news-source"),
+        ]);
         const { origin } = new URL(request.url);
         return new Response(
           llmsIndexBody({
-            index: newsLlms.index(),
+            index: llms(newsSource).index(),
             section: "news",
             origin,
             // NOT the loader's own H1: `llms()` hardcodes "# Docs" whatever

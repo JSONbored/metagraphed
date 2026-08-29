@@ -122,6 +122,32 @@ const posthogApiKey = process.env.POSTHOG_API_KEY;
 const posthogProjectId = process.env.POSTHOG_PROJECT_ID;
 const posthogSourcemapsEnabled = Boolean(posthogApiKey && posthogProjectId);
 
+/**
+ * Route-owned content boundaries for both Vite's SSR environment and Nitro's
+ * final Worker rollup (#11756).
+ *
+ * The first boundary is the load-bearing one: once Vite folds the MDX modules
+ * into a generic shared SSR asset, Nitro sees only that already-combined file
+ * and cannot split it back apart. Applying the same naming rule again during
+ * Nitro's rollup keeps the boundary explicit if its input shape changes.
+ */
+function contentServerChunk(id: string): string | undefined {
+  const normalizedId = id.replaceAll("\\", "/");
+  if (
+    normalizedId.includes("/apps/ui/content/docs/") ||
+    normalizedId.includes("/assets/_content/docs-")
+  ) {
+    return "_content/docs";
+  }
+  if (
+    normalizedId.includes("/apps/ui/content/news/") ||
+    normalizedId.includes("/assets/_content/news-")
+  ) {
+    return "_content/news";
+  }
+  return undefined;
+}
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
@@ -187,6 +213,21 @@ export default defineConfig({
   // needed) as posthogRollupPlugin's own `releaseName`.
   vite: {
     build: { sourcemap: true },
+    // The preset names TanStack Start's server-rendering environment `ssr`.
+    // Split content HERE, before Nitro consumes that environment's output;
+    // doing it only in `rollup:before` is too late because the 652 MDX modules
+    // have already been coalesced by then.
+    environments: {
+      ssr: {
+        build: {
+          rollupOptions: {
+            output: {
+              manualChunks: contentServerChunk,
+            },
+          },
+        },
+      },
+    },
   },
   // Force-enable the nitro deploy plugin. By default it only runs inside
   // Lovable's CI ("No Lovable context detected — skipping nitro deploy
@@ -270,6 +311,20 @@ export default defineConfig({
           typeof prevManualChunks === "function"
         ) {
           outputConfig.manualChunks = (id: string, meta) => {
+            // Keep the compiled MDX bodies out of Nitro's sitewide shared
+            // server chunk (#11756). The default chunker groups app-owned
+            // modules together; because fumadocs also contributes tiny path
+            // helpers to that group, every explorer route ended up importing
+            // the same 4.27 MB module as all 652 docs/news pages. These two
+            // boundaries leave the route-owned import.meta.glob() loaders
+            // lazy on the server just as they already are in the client build.
+            //
+            // Normalize for Windows builders even though production builds on
+            // Linux and local verification is commonly macOS. Query suffixes
+            // on virtualized MDX ids are intentionally harmless: the stable
+            // directory segment still matches before the suffix.
+            const contentChunk = contentServerChunk(id);
+            if (contentChunk) return contentChunk;
             if (id.includes("/fumadocs-openapi/") || id.includes("/@fumadocs/api-docs/")) {
               return "_libs/fumadocs-openapi-vendor";
             }

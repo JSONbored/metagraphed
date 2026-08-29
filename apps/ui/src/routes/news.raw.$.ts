@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { newsSource } from "@/lib/news-source";
 import { rawMarkdownResponse } from "@/lib/metagraphed/raw-markdown";
 
 // #11294: the markdown twin of every /news/* digest -- the half of the pair
@@ -17,7 +16,8 @@ import { rawMarkdownResponse } from "@/lib/metagraphed/raw-markdown";
 // reaches this handler and /news/sn38/2026-w25 still reaches the page.
 
 /** Extracted so it is unit-testable without depending on createFileRoute's internal shape. */
-export function resolveRawMarkdown(splat: string | undefined): Promise<Response> {
+export async function resolveRawMarkdown(splat: string | undefined): Promise<Response> {
+  const { newsSource } = await import("@/lib/news-source");
   return rawMarkdownResponse(newsSource, "news", splat);
 }
 
