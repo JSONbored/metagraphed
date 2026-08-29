@@ -28,6 +28,7 @@ import { createServer } from "node:http";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildValidatorOperatorDirectory } from "../../../../src/validator-operator-directory.ts";
 import { HAR_DIR, DATED_ENDPOINT_PATTERNS } from "./har-path.ts";
 
 const port = Number(process.argv[2] ?? 8081);
@@ -198,6 +199,40 @@ for (const [key, value] of Object.entries(supplement)) {
   // test time, which left /validators with no table at all.
   const pathname = key.split("?")[0]!;
   if (!byPath.has(pathname)) byPath.set(pathname, recorded);
+}
+
+// The compact operator route is a projection of the same complete validator
+// snapshot already committed below. It cannot be recorded from production
+// until the API change deploys, but replaying a 404 makes every responsive
+// /validators check test an error screen instead of the page. Derive the
+// fixture with the production builder so the test does not carry a second,
+// hand-maintained grouping rule or another 1.2 MB validator snapshot.
+const VALIDATOR_OPERATORS_PATH = "/api/v1/validators/operators";
+const RICH_VALIDATORS_FIXTURE = "/api/v1/validators?sort=total_stake&limit=2000";
+if (!byPath.has(VALIDATOR_OPERATORS_PATH)) {
+  const rich = byUrl.get(RICH_VALIDATORS_FIXTURE);
+  if (!rich) {
+    throw new Error(
+      `[api-stub] ${VALIDATOR_OPERATORS_PATH} needs the committed ${RICH_VALIDATORS_FIXTURE} fixture`,
+    );
+  }
+  const payload = JSON.parse(rich.body.toString("utf8")) as {
+    data?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+  const recorded: Recorded = {
+    status: 200,
+    contentType: "application/json",
+    body: Buffer.from(
+      JSON.stringify({
+        ...payload,
+        data: buildValidatorOperatorDirectory(payload.data),
+      }),
+    ),
+  };
+  entryCount += 1;
+  byUrl.set(VALIDATOR_OPERATORS_PATH, recorded);
+  byPath.set(VALIDATOR_OPERATORS_PATH, recorded);
 }
 
 /**

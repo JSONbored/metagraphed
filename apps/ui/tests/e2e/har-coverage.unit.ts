@@ -64,8 +64,9 @@ const KNOWN_UNCOVERED: Record<string, string[]> = {
   // #11763 replaces the directory's browser-recorded rich leaderboard with a
   // compact SSR projection. The route does not exist in production until this
   // change deploys, and the browser recorder cannot intercept the Worker's
-  // outbound request; remove this entry once the deployed route can be added
-  // to the SSR supplement.
+  // outbound request. api-stub.ts derives the same projection from the rich
+  // committed fixture so responsive tests stay hermetic; remove this entry
+  // after production can be recorded into the SSR supplement.
   "/validators": ["/api/v1/validators/operators"],
   // #11615 emptied this: the rebuilt hub reads /api/v1/accounts and
   // /api/v1/chain/signers, and the recorded fixture covers both. The two
