@@ -143,25 +143,23 @@ describe("registry lifecycle truth (TS4)", () => {
   });
 
   test("chain-deprecated/parked/pending subnets are not reported as live", () => {
-    // netuids 3/39/81 are chain-deprecated, 73 Parked, 94 "pending..." — they
-    // must NOT carry lifecycle "active" (the bug: shown as active).
+    // Netuid 39 remains chain-deprecated, 73 is Parked, and 94 is
+    // "pending..." — they must NOT carry lifecycle "active".
     //
-    // 58 used to be the `pending` case and is not any more: its owner renamed
-    // it to "greevils" on chain, which is exactly the drift a 54-day-old
-    // capture hid. 94 carries "pending..." — with the ELLIPSIS, which the
-    // exact-match derivation missed and reported as a live subnet until
-    // subnetLifecycle learned to strip trailing punctuation.
-    for (const netuid of [3, 39, 81]) {
-      assert.equal(byNetuid.get(netuid)?.lifecycle, "deprecated");
-    }
+    // 3 and 81 used to be deprecated too, but their owners have since renamed
+    // them on chain to Teutonic and Reliquary. A fresh capture must let those
+    // records return to active instead of pinning lifecycle to old test data.
+    assert.equal(byNetuid.get(39)?.lifecycle, "deprecated");
     assert.equal(byNetuid.get(73)?.lifecycle, "parked");
     assert.equal(byNetuid.get(94)?.lifecycle, "pending");
+    assert.equal(byNetuid.get(3)?.lifecycle, "active");
+    assert.equal(byNetuid.get(81)?.lifecycle, "active");
   });
 
   test("lifecycle is distinct from chain-registration status", () => {
     // status stays the chain-registration truth ("active"); lifecycle carries
     // the team's declared state.
-    const deprecated = byNetuid.get(3) as Row;
+    const deprecated = byNetuid.get(39) as Row;
     assert.equal(deprecated.lifecycle, "deprecated");
     assert.equal(deprecated.status, "active");
   });
