@@ -27,7 +27,7 @@ describe("formatters", () => {
   it("compacts counts, formats TAO and shares, and refuses a non-number", () => {
     expect(fmtCount(1_020_430)).toBe("1.02M");
     expect(fmtCount(7_200)).toBe("7.2k");
-    expect(fmtTao(7.231114583, 4)).toBe("7.2311 τ");
+    expect(fmtTao(7.231114583, 4)).toBe("7.2311τ");
     expect(fmtShare(0.3464)).toBe("34.6%");
     expect(fmtCount(null)).toBe("—");
     expect(fmtTao(undefined)).toBe("—");

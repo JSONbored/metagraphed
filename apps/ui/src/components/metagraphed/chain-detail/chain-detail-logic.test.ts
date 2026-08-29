@@ -188,7 +188,7 @@ describe("event links", () => {
   });
 });
 
-const fmt = { count: (n: number) => String(n), tao: (n: number) => `${n} τ` };
+const fmt = { count: (n: number) => String(n), tao: (n: number) => `${n}τ` };
 
 describe("blockFacts", () => {
   it("states the counts and the spec version", () => {
@@ -273,7 +273,7 @@ describe("extrinsicFacts", () => {
     ).toEqual([
       ["block", `#${8_713_384}`],
       ["result", "failed"],
-      ["fee", "0.0021 τ"],
+      ["fee", "0.0021τ"],
     ]);
   });
 
@@ -285,7 +285,7 @@ describe("extrinsicFacts", () => {
   it("shows a tip only when there is one", () => {
     expect(
       extrinsicFacts({ tip_tao: 0.5 } as Extrinsic, fmt).find((f) => f.key === "tip")?.value,
-    ).toBe("0.5 τ");
+    ).toBe("0.5τ");
     expect(extrinsicFacts({ tip_tao: 0 } as Extrinsic, fmt).some((f) => f.key === "tip")).toBe(
       false,
     );

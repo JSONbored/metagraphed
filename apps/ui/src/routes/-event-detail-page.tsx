@@ -18,7 +18,7 @@ import {
 } from "@/components/metagraphed/chain-detail/chain-detail-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, normalizeTaoUnitSpacing } from "@/lib/metagraphed/format";
 import { blockChainEventsQuery } from "@/lib/metagraphed/queries";
 import type { ChainEvent } from "@/lib/metagraphed/types";
 import { Route } from "./events.$block.$index";
@@ -46,7 +46,9 @@ export function EventDetailPage() {
   const extrinsicHref = event ? eventExtrinsicHref(event) : null;
   const label = event ? eventLabel(event) : `Event #${formatNumber(Number(index))}`;
   const summary =
-    typeof event?.summary === "string" && event.summary.trim() ? event.summary.trim() : null;
+    typeof event?.summary === "string" && event.summary.trim()
+      ? normalizeTaoUnitSpacing(event.summary.trim())
+      : null;
   const cells: FactCells = [
     {
       label: "Block",

@@ -65,7 +65,7 @@ export function PreSignConfirmation({
       <div>
         <div className="text-10 text-ink-muted mb-1">{copy.verb}</div>
         <div className="font-display text-16 font-medium text-ink-strong">
-          {amountTao} τ
+          {amountTao}τ
           {amountAlpha ? (
             <span className="ml-1.5 text-13 font-normal text-ink-muted">
               ({amountAlpha} α on subnet {netuid})
@@ -85,7 +85,7 @@ export function PreSignConfirmation({
       />
       <SummaryRow
         label="Network fee"
-        value={feeTao === null ? "Estimating…" : `${feeTao} τ`}
+        value={feeTao === null ? "Estimating…" : `${feeTao}τ`}
         loading={feeTao === null}
       />
       {expectedOut ? (

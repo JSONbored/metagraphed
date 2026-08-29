@@ -232,7 +232,7 @@ export function normalizeTitle(value: string | null): string {
 
 /**
  * The card's second line. Entity pages pass their own (#8257) -- "SN64 ·
- * 0.083 τ · healthy" says far more in a link unfurl than the same generic
+ * 0.083τ · healthy" says far more in a link unfurl than the same generic
  * tagline on every page did. Falls back to the tagline when absent, and is
  * bounded like the title so a long one can't overflow the card.
  */

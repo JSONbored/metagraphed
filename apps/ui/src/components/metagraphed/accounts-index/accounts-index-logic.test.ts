@@ -40,9 +40,9 @@ describe("shortAddress / fmtTaoCompact", () => {
   });
 
   it("compacts at each magnitude and refuses a non-number", () => {
-    expect(fmtTaoCompact(1_914_956)).toBe("1.91M τ");
-    expect(fmtTaoCompact(1_500)).toBe("1.5k τ");
-    expect(fmtTaoCompact(1.5)).toBe("1.50 τ");
+    expect(fmtTaoCompact(1_914_956)).toBe("1.91Mτ");
+    expect(fmtTaoCompact(1_500)).toBe("1.5kτ");
+    expect(fmtTaoCompact(1.5)).toBe("1.50τ");
     expect(fmtTaoCompact(null)).toBe("—");
   });
 });
@@ -64,8 +64,8 @@ describe("holderCards", () => {
   ];
 
   it("shows the reading it was ranked by, not always stake", () => {
-    expect(holderCards(accounts, "stake")[0]?.value).toBe("100.00 τ");
-    expect(holderCards(accounts, "emission")[0]?.value).toBe("3.00 τ");
+    expect(holderCards(accounts, "stake")[0]?.value).toBe("100.00τ");
+    expect(holderCards(accounts, "emission")[0]?.value).toBe("3.00τ");
     expect(holderCards(accounts, "reach")[0]?.value).toBe("7 subnets");
     expect(holderCards(accounts, "reach")[1]?.value).toBe("2 subnets");
   });

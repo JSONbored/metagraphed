@@ -104,7 +104,7 @@ export function DirectorySection({
         kind: "number",
         sortable: true,
         value: (row) => row.alpha_price_tao ?? null,
-        format: (value) => (typeof value === "number" ? `${formatDecimal(value, 4)} τ` : "—"),
+        format: (value) => (typeof value === "number" ? `${formatDecimal(value, 4)}τ` : "—"),
       },
       {
         key: "priceChange",
@@ -131,7 +131,7 @@ export function DirectorySection({
         demote: true,
         sortable: true,
         value: (row) => row.subnet_volume_tao ?? null,
-        format: (value) => (typeof value === "number" ? `${fmtAlpha(value)} τ` : "—"),
+        format: (value) => (typeof value === "number" ? `${fmtAlpha(value)}τ` : "—"),
       },
       {
         key: "surfaces",

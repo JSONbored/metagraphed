@@ -95,7 +95,7 @@ export const MOVERS_LIMIT = 100;
  * delta, which is the honest rendering of "we did not measure its change".
  *
  * Price is the exception and ranks by its change: an alpha price is a price
- * per subnet token, so one subnet's 0.5 τ is not comparable to another's, and
+ * per subnet token, so one subnet's 0.5τ is not comparable to another's, and
  * the level carries no ranking information at all.
  */
 export function rankSubnets(
@@ -136,7 +136,7 @@ export function rankSubnets(
       rows.push({
         netuid: row.netuid,
         sort: moved,
-        value: `${formatDecimal(price, 4)} τ`,
+        value: `${formatDecimal(price, 4)}τ`,
         delta: moved,
       });
       continue;

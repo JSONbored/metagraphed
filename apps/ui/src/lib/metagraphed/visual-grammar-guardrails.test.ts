@@ -31,6 +31,19 @@ const read = (p: string) => readFileSync(p, "utf8");
 const rel = (p: string) => p.slice(p.indexOf("/metagraphed/") + 13);
 
 describe("visual grammar guardrails (#8255)", () => {
+  it("keeps TAO's currency glyph attached to numeric values (#11794)", () => {
+    const spacedTao = /(?:\d|[kKM]|\})\s+τ/g;
+    const offenders: string[] = [];
+    for (const p of sources) {
+      const lines = read(p).split("\n");
+      lines.forEach((line, i) => {
+        if (spacedTao.test(line)) offenders.push(`${rel(p)}:${i + 1}`);
+        spacedTao.lastIndex = 0;
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it("keeps viewport scheduling details out of reader-facing copy (#11750)", () => {
     const implementationCopy =
       /(?:deferred below the fold|loads? as this section approaches|starts? only as this section approaches|loads? when this raw record is opened)/i;

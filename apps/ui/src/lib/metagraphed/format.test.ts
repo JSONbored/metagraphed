@@ -20,6 +20,7 @@ import {
   humaniseSeconds,
   isStaleFreshness,
   isUsableTimestamp,
+  normalizeTaoUnitSpacing,
   relativeFromDiff,
   subnetAgeDays,
 } from "./format";
@@ -181,35 +182,35 @@ describe("formatTao", () => {
   });
 
   it("keeps 4 decimals for zero and sub-unit amounts (< 1)", () => {
-    expect(formatTao(0)).toBe("0.0000 τ");
-    expect(formatTao(0.5)).toBe("0.5000 τ");
-    expect(formatTao(0.48213)).toBe("0.4821 τ");
+    expect(formatTao(0)).toBe("0.0000τ");
+    expect(formatTao(0.5)).toBe("0.5000τ");
+    expect(formatTao(0.48213)).toBe("0.4821τ");
   });
 
   it("uses 2 decimals for whole-unit amounts in [1, 1e3)", () => {
-    expect(formatTao(1)).toBe("1.00 τ"); // lower boundary — 2dp, not k-tier
-    expect(formatTao(256.5)).toBe("256.50 τ");
-    expect(formatTao(999.994)).toBe("999.99 τ");
+    expect(formatTao(1)).toBe("1.00τ"); // lower boundary — 2dp, not k-tier
+    expect(formatTao(256.5)).toBe("256.50τ");
+    expect(formatTao(999.994)).toBe("999.99τ");
   });
 
   it("switches to the k-tier at 1e3 and the M-tier at 1e6 (inclusive)", () => {
-    expect(formatTao(1_000)).toBe("1.0k τ"); // lower boundary of k-tier
-    expect(formatTao(12_345)).toBe("12.3k τ");
-    expect(formatTao(999_999)).toBe("1000.0k τ"); // still < 1e6 → k-tier
-    expect(formatTao(1_000_000)).toBe("1.00M τ"); // lower boundary of M-tier
-    expect(formatTao(2_500_000)).toBe("2.50M τ");
+    expect(formatTao(1_000)).toBe("1.0kτ"); // lower boundary of k-tier
+    expect(formatTao(12_345)).toBe("12.3kτ");
+    expect(formatTao(999_999)).toBe("1000.0kτ"); // still < 1e6 → k-tier
+    expect(formatTao(1_000_000)).toBe("1.00Mτ"); // lower boundary of M-tier
+    expect(formatTao(2_500_000)).toBe("2.50Mτ");
   });
 
   // #6019: tiering is by magnitude (|v|), not v itself, so a negative amount
   // gets the same tier a positive one of equal size would.
   it("tiers negative amounts by magnitude, preserving the sign", () => {
-    expect(formatTao(-0.48213)).toBe("-0.4821 τ"); // sub-unit
-    expect(formatTao(-256.5)).toBe("-256.50 τ"); // whole-unit, 2dp
-    expect(formatTao(-1_000)).toBe("-1.0k τ"); // lower boundary of k-tier
-    expect(formatTao(-12_345)).toBe("-12.3k τ");
-    expect(formatTao(-999_999)).toBe("-1000.0k τ"); // still < 1e6 → k-tier
-    expect(formatTao(-1_000_000)).toBe("-1.00M τ"); // lower boundary of M-tier
-    expect(formatTao(-2_500_000)).toBe("-2.50M τ");
+    expect(formatTao(-0.48213)).toBe("-0.4821τ"); // sub-unit
+    expect(formatTao(-256.5)).toBe("-256.50τ"); // whole-unit, 2dp
+    expect(formatTao(-1_000)).toBe("-1.0kτ"); // lower boundary of k-tier
+    expect(formatTao(-12_345)).toBe("-12.3kτ");
+    expect(formatTao(-999_999)).toBe("-1000.0kτ"); // still < 1e6 → k-tier
+    expect(formatTao(-1_000_000)).toBe("-1.00Mτ"); // lower boundary of M-tier
+    expect(formatTao(-2_500_000)).toBe("-2.50Mτ");
   });
 });
 
@@ -447,26 +448,35 @@ describe("formatAmount / formatAmountFixed / formatSignedAmount", () => {
   });
 
   it("formatAmountFixed keeps the caller's precision and unit", () => {
-    expect(formatAmountFixed(12.5, 2)).toBe("12.50 τ");
+    expect(formatAmountFixed(12.5, 2)).toBe("12.50τ");
     expect(formatAmountFixed(12.5, 0, "α")).toBe("13 α");
     expect(formatAmountFixed(null)).toBe("—");
   });
 
   it("formatSignedAmount marks direction with a typographic minus", () => {
-    expect(formatSignedAmount(1_000)).toBe("+1.0k τ");
-    expect(formatSignedAmount(-1_000)).toBe("−1.0k τ");
+    expect(formatSignedAmount(1_000)).toBe("+1.0kτ");
+    expect(formatSignedAmount(-1_000)).toBe("−1.0kτ");
     // U+2212, not the ASCII hyphen.
     expect(formatSignedAmount(-1_000)).toContain("−");
   });
 
   it("formatSignedAmount leaves an exact zero unsigned", () => {
-    expect(formatSignedAmount(0)).toBe("0.0000 τ");
-    expect(formatSignedAmount(-0)).toBe("0.0000 τ");
+    expect(formatSignedAmount(0)).toBe("0.0000τ");
+    expect(formatSignedAmount(-0)).toBe("0.0000τ");
   });
 
   it("falls back on nullish or non-finite input", () => {
     expect(formatAmount(null, "τ")).toBe("—");
     expect(formatSignedAmount(Number.NaN)).toBe("—");
+  });
+});
+
+describe("normalizeTaoUnitSpacing", () => {
+  it("attaches TAO in decoded prose without changing nonnumeric prose", () => {
+    expect(normalizeTaoUnitSpacing("Transferred 1.27 τ from Alice.")).toBe(
+      "Transferred 1.27τ from Alice.",
+    );
+    expect(normalizeTaoUnitSpacing("Enter a τ amount.")).toBe("Enter a τ amount.");
   });
 });
 

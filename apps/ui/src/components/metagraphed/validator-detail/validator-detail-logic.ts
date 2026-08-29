@@ -93,7 +93,7 @@ export function historyPoints(
  * Annualised yield from the daily rewards-per-1000-TAO the history publishes.
  *
  * Simple annualisation, not compounded: the series is a daily reward rate
- * measured per 1,000 τ staked, and compounding it would state a return the
+ * measured per 1,000τ staked, and compounding it would state a return the
  * validator did not produce.
  */
 export function apyPoints(points: readonly ValidatorHistoryPoint[]): { t: number; v: number }[] {

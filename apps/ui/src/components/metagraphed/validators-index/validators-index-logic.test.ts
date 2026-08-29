@@ -259,7 +259,7 @@ describe("filterOperators", () => {
 
 describe("presentation helpers", () => {
   it("compacts stake and truncates only long keys", () => {
-    expect(fmtStake(1_914_956)).toBe("1.91M τ");
+    expect(fmtStake(1_914_956)).toBe("1.91Mτ");
     expect(fmtStake(null)).toBe("—");
     expect(shortKey("5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9")).toBe("5GsbTg…pZX9");
     expect(shortKey("5Gsb")).toBe("5Gsb");

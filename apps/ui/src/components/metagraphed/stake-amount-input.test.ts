@@ -109,6 +109,6 @@ describe("formatQuoteHint", () => {
   it("formats a 1:1 root-subnet note instead of a price-impact percentage", () => {
     expect(
       formatQuoteHint({ ...baseQuote, is_root: true, expected_out_unit: "tao", expected_out: 10 }),
-    ).toBe("≈ 10 τ · root subnet · 1:1");
+    ).toBe("≈ 10τ · root subnet · 1:1");
   });
 });

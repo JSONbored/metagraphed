@@ -13,7 +13,7 @@ test.describe("addressable event detail", () => {
       "href",
       "/extrinsics/8713384-11",
     );
-    await expect(page.getByText("Transferred 1.27 τ", { exact: false })).toBeVisible();
+    await expect(page.getByText("Transferred 1.27τ", { exact: false })).toBeVisible();
 
     const record = page.locator("[data-mg-raw][open]");
     await expect(record).toContainText("arg.from");
