@@ -222,10 +222,18 @@ export interface ChainDetailBlocks {
   block_hash: string;
   block_number: number;
   chain_event_count: number;
+  economic_activity_tao: string | null;
+  economics_complete: boolean;
   extrinsic_count: number;
+  fee_tao: string | null;
+  issuance_tao: string | null;
+  native_transfer_tao: string | null;
   observed_at: number | string;
   spec_version: number | null;
+  stake_flow_tao: string | null;
+  subnet_ids: unknown;
   synced_at: number | string;
+  tip_tao: string | null;
 }
 
 /** `public.chain_detail_chain_events` */

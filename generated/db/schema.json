@@ -859,9 +859,39 @@
   },
   {
     "table": "chain_detail_blocks",
+    "column": "economic_activity_tao",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "economics_complete",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_blocks",
     "column": "extrinsic_count",
     "udt": "int4",
     "nullable": false
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "fee_tao",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "issuance_tao",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "native_transfer_tao",
+    "udt": "text",
+    "nullable": true
   },
   {
     "table": "chain_detail_blocks",
@@ -877,9 +907,27 @@
   },
   {
     "table": "chain_detail_blocks",
+    "column": "stake_flow_tao",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "subnet_ids",
+    "udt": "jsonb",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_blocks",
     "column": "synced_at",
     "udt": "int8",
     "nullable": false
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "tip_tao",
+    "udt": "text",
+    "nullable": true
   },
   {
     "table": "chain_detail_chain_events",
