@@ -296,9 +296,7 @@ export function ProviderDetail() {
         question="Everything this provider publishes, and how it answered."
         visualRef={surfacesRef}
         visual={
-          !surfacesNearViewport ? (
-            <p className="mg-section-empty">Surface evidence loads as this section approaches.</p>
-          ) : surfaces.isError ? (
+          surfacesNearViewport && surfaces.isError ? (
             <ErrorState
               error={surfaces.error}
               onRetry={() => void surfaces.refetch()}
@@ -322,7 +320,7 @@ export function ProviderDetail() {
                 link={RouterLink}
                 source="provider-surface"
                 expand={surfaceDetail}
-                loading={surfaces.isPending || endpoints.isPending}
+                loading={!surfacesNearViewport || surfaces.isPending || endpoints.isPending}
                 paginate={false}
                 empty="No surfaces are registered for this provider."
               />
@@ -331,7 +329,7 @@ export function ProviderDetail() {
         }
         footnote={
           !surfacesNearViewport
-            ? "deferred below the fold · provider surfaces load as this section approaches"
+            ? "published surfaces and most recent endpoint probes · registry"
             : surfaces.isPending || endpoints.isPending
               ? "Loading provider surfaces and probe records · registry"
               : surfaces.isError

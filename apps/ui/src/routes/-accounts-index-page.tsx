@@ -210,42 +210,38 @@ export function AccountsPage() {
           question="The accounts signing the most transactions."
           visualRef={activeRef}
           visual={
-            !activeNearViewport ? (
-              <p className="mg-section-empty">Signing activity loads as this section approaches.</p>
-            ) : (
-              <DataTable
-                rows={shownActive}
-                columns={activeColumns}
-                rowKey={(row) => row.signer}
-                caption="Signing accounts"
-                rowHref={(row) => `/accounts/${row.signer}`}
-                link={RouterLink}
-                source="account-signer"
-                paginate={false}
-                mobile="cards"
-                loading={signers.isPending}
-                error={
-                  signers.isError ? (
-                    <ErrorState
-                      error={signers.error}
-                      onRetry={() => void signers.refetch()}
-                      context="recent signing activity"
-                    />
-                  ) : undefined
-                }
-                empty="No signing activity was indexed in this window."
-                search={{
-                  value: signerQuery,
-                  onChange: setSignerQuery,
-                  placeholder: "Find a signer",
-                }}
-                storageKey="accounts-signers-columns"
-              />
-            )
+            <DataTable
+              rows={shownActive}
+              columns={activeColumns}
+              rowKey={(row) => row.signer}
+              caption="Signing accounts"
+              rowHref={(row) => `/accounts/${row.signer}`}
+              link={RouterLink}
+              source="account-signer"
+              paginate={false}
+              mobile="cards"
+              loading={!activeNearViewport || signers.isPending}
+              error={
+                signers.isError ? (
+                  <ErrorState
+                    error={signers.error}
+                    onRetry={() => void signers.refetch()}
+                    context="recent signing activity"
+                  />
+                ) : undefined
+              }
+              empty="No signing activity was indexed in this window."
+              search={{
+                value: signerQuery,
+                onChange: setSignerQuery,
+                placeholder: "Find a signer",
+              }}
+              storageKey="accounts-signers-columns"
+            />
           }
           footnote={
             !activeNearViewport
-              ? "deferred below the fold · signing activity loads as this section approaches"
+              ? "7d signing activity · chain-direct"
               : signers.isPending
                 ? "loading 7d signing activity"
                 : signers.isError

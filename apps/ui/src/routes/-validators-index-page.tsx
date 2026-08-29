@@ -410,9 +410,7 @@ export function ValidatorsPage() {
           question="What a permit costs, per subnet."
           visualRef={costRef}
           visual={
-            !costNearViewport ? (
-              <p className="mg-section-empty">Permit costs load as this section approaches.</p>
-            ) : economics.isPending ? (
+            !costNearViewport || economics.isPending ? (
               <RankedRails
                 items={[]}
                 formatValue={(value) => fmtStake(value)}
@@ -470,7 +468,7 @@ export function ValidatorsPage() {
           }
           footnote={
             !costNearViewport
-              ? "deferred below the fold · permit costs load as this section approaches"
+              ? "permit and earning floors by subnet · chain-direct"
               : economics.isPending
                 ? "loading validator permit-cost readings"
                 : economics.isError

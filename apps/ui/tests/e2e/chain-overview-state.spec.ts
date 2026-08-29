@@ -32,6 +32,7 @@ test.describe("Chain overview secondary query states", () => {
     }
 
     await gotoThroughRestart(page, "/chain");
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
 
     const throughput = page.locator("#throughput .mg-composition");
     const fees = page.locator("#chain-fees .mg-line-plot");
@@ -45,20 +46,13 @@ test.describe("Chain overview secondary query states", () => {
     });
 
     await expect(throughput).toHaveAttribute("data-loading", "true");
-    await expect(page.getByText("Fee history loads as this section approaches.")).toBeVisible();
-    await expect(
-      page.getByText("Stake-flow evidence loads as this section approaches."),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Stake concentration loads as this section approaches."),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Emission evidence loads as this section approaches."),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Governance changes load as this section approaches."),
-    ).toBeVisible();
-    expect(requested).toContain("/api/v1/chain/calls");
+    await expect(fees).toHaveAttribute("aria-busy", "true");
+    await expect(flow).toHaveAttribute("aria-busy", "true");
+    await expect(concentration).toHaveAttribute("aria-busy", "true");
+    await expect(emission).toHaveAttribute("aria-busy", "true");
+    await expect(governance.locator(".mg-dt-skeleton")).toHaveCount(8);
+    await expect(page.getByText("7d · signed extrinsic fees · chain-direct")).toBeVisible();
+    await expect.poll(() => requested).toContain("/api/v1/chain/calls");
     for (const path of [
       "/api/v1/chain/fees",
       "/api/v1/chain/stake-flow",
@@ -71,9 +65,23 @@ test.describe("Chain overview secondary query states", () => {
       expect(requested).not.toContain(path);
     }
 
-    for (const section of ["fees", "stake-flow", "concentration", "emission", "governance"]) {
-      await page.locator(`section#${section}`).scrollIntoViewIfNeeded();
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+    });
+    for (const [section, path] of [
+      ["fees", "/api/v1/chain/fees"],
+      ["stake-flow", "/api/v1/chain/stake-flow"],
+      ["concentration", "/api/v1/chain/concentration"],
+      ["emission", "/api/v1/chain/emission-pipeline"],
+      ["governance", "/api/v1/runtime"],
+    ] as const) {
+      await page
+        .locator(`section#${section}`)
+        .evaluate((element) => element.scrollIntoView({ block: "center" }));
+      await expect.poll(() => requested.includes(path)).toBe(true);
     }
+    await expect.poll(() => requested.includes("/api/v1/sudo")).toBe(true);
+    await expect.poll(() => requested.includes("/api/v1/governance/config-changes")).toBe(true);
     await expect(fees).toHaveAttribute("aria-busy", "true");
     await expect(flow).toHaveAttribute("aria-busy", "true");
     await expect(concentration).toHaveAttribute("aria-busy", "true");
@@ -91,7 +99,11 @@ test.describe("Chain overview secondary query states", () => {
     }));
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
 
+    const completedReads = [...new Set(requested)].map((path) =>
+      page.waitForResponse((response) => new URL(response.url()).pathname === path),
+    );
     release?.();
+    await Promise.all(completedReads);
     await expect(throughput).not.toHaveAttribute("data-loading", "true");
     await expect(fees).not.toHaveAttribute("aria-busy", "true");
     await expect(flow).not.toHaveAttribute("aria-busy", "true");

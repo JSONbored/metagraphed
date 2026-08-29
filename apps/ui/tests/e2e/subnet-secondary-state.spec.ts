@@ -35,15 +35,10 @@ test.describe("Subnet detail secondary query states", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoThroughRestart(page, "/subnets/19");
 
-    await expect(
-      page.getByText("Surface evidence loads as this section approaches.", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Activity evidence loads as this section approaches.", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Participation evidence loads as this section approaches.", { exact: true }),
-    ).toBeVisible();
+    await expect(page.locator("#surfaces .mg-rails-row--skeleton")).toHaveCount(8);
+    await expect(page.locator("#activity .mg-rails-row--skeleton")).toHaveCount(10);
+    await expect(page.locator("#participation .mg-rails-row--skeleton")).toHaveCount(3);
+    await expect(page.getByText("published surfaces · 90d probe uptime · registry")).toBeVisible();
     expect(prematureReads).toEqual([]);
   });
 
@@ -56,8 +51,10 @@ test.describe("Subnet detail secondary query states", () => {
     const continueReads = new Promise<void>((resolve) => {
       release = resolve;
     });
+    const requested: string[] = [];
     for (const pattern of DELAYED_READS) {
       await page.route(pattern, async (route) => {
+        requested.push(new URL(route.request().url()).pathname);
         await continueReads;
         await route.continue();
       });
@@ -65,23 +62,28 @@ test.describe("Subnet detail secondary query states", () => {
 
     await gotoThroughRestart(page, "/subnets/19");
 
+    await expect(page.locator("#surfaces .mg-rails-row--skeleton")).toHaveCount(8);
+    await expect(page.locator("#activity .mg-rails-row--skeleton")).toHaveCount(10);
+    await expect(page.locator("#participation .mg-rails-row--skeleton")).toHaveCount(3);
+    await expect(page.locator("#peers .mg-rank-grid-row--skeleton")).toHaveCount(5);
     await expect(
-      page.getByText("Surface evidence loads as this section approaches.", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Activity evidence loads as this section approaches.", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Participation evidence loads as this section approaches.", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page
-        .locator("#peers .mg-section-visual")
-        .getByText("Peer context loads as this section approaches.", { exact: true }),
+      page.getByText("registry domain when available · otherwise neighboring emission rank"),
     ).toBeVisible();
 
-    for (const section of ["#surfaces", "#activity", "#participation", "#peers"]) {
-      await page.locator(section).scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+    });
+    for (const [section, path] of [
+      ["#surfaces", "/api/v1/subnets/19/surfaces"],
+      ["#activity", "/api/v1/subnets/19/event-summary"],
+      ["#participation", "/api/v1/subnets/19/registrations"],
+      ["#peers", "/api/v1/domains"],
+    ] as const) {
+      await page
+        .locator(section)
+        .evaluate((element) => element.scrollIntoView({ block: "center" }));
+      await expect.poll(() => requested.includes(path)).toBe(true);
     }
 
     const activity = page.getByRole("group", { name: "Subnet 19 events by kind, 30 days" });
@@ -134,7 +136,11 @@ test.describe("Subnet detail secondary query states", () => {
     }));
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
 
+    const completedReads = [...new Set(requested)].map((path) =>
+      page.waitForResponse((response) => new URL(response.url()).pathname === path),
+    );
     release?.();
+    await Promise.all(completedReads);
     await expect(activity).not.toHaveAttribute("aria-busy", "true");
     await expect(activityCategories).not.toHaveAttribute("aria-busy", "true");
     await expect(momentum).not.toHaveAttribute("aria-busy", "true");
@@ -187,7 +193,11 @@ test.describe("Subnet detail secondary query states", () => {
     await gotoThroughRestart(page, "/subnets/19");
 
     const peerSection = page.locator("#peers");
-    await peerSection.scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+    });
+    await peerSection.evaluate((element) => element.scrollIntoView({ block: "center" }));
     const peerError = peerSection.getByRole("alert");
     await page.getByRole("button", { name: "refresh", exact: true }).click();
     await expect(peerError).toContainText("Couldn't load the subnet peer comparison");
@@ -235,7 +245,13 @@ test.describe("Subnet detail secondary query states", () => {
 
     await gotoThroughRestart(page, "/subnets/19");
 
-    await page.locator("#activity").scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+    });
+    await page
+      .locator("#activity")
+      .evaluate((element) => element.scrollIntoView({ block: "center" }));
 
     const activityError = page.locator("#activity").getByRole("alert");
     const validatorsError = page.locator("#validators").getByRole("alert");
@@ -295,8 +311,17 @@ test.describe("Subnet detail secondary query states", () => {
 
     await gotoThroughRestart(page, "/subnets/19");
 
-    await page.locator("#surfaces").scrollIntoViewIfNeeded();
-    await page.locator("#participation").scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+    });
+    await page
+      .locator("#surfaces")
+      .evaluate((element) => element.scrollIntoView({ block: "center" }));
+    await expect(page.locator("#surfaces").getByRole("alert")).toBeVisible();
+    await page
+      .locator("#participation")
+      .evaluate((element) => element.scrollIntoView({ block: "center" }));
 
     const surfaceError = page.locator("#surfaces").getByRole("alert");
     const participationErrors = page.locator("#participation").getByRole("alert");

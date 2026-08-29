@@ -152,9 +152,7 @@ export function RevenueCoverageSection({ nameOf }: { nameOf: (netuid: number) =>
       }
       visual={
         <div ref={ref}>
-          {!nearViewport ? (
-            <p className="mg-section-empty">Revenue coverage loads as this section approaches.</p>
-          ) : query.isPending ? (
+          {!nearViewport || query.isPending ? (
             <CoverageFacts loading />
           ) : query.isError || !coverage ? (
             <ErrorState
@@ -172,7 +170,7 @@ export function RevenueCoverageSection({ nameOf }: { nameOf: (netuid: number) =>
       }
       footnote={
         !nearViewport
-          ? "deferred below the fold · avoids a large initial evidence payload"
+          ? `${window} · source-linked external revenue coverage`
           : query.isPending
             ? "loading network revenue evidence"
             : query.isError || !coverage

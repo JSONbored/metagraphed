@@ -145,7 +145,7 @@ function RevenueLedger({
 
 /**
  * External-revenue evidence stays below the primary price and emission read.
- * It starts only as the section approaches the viewport, because the result is
+ * The query is enabled near the section's viewport boundary, because the result is
  * useful context rather than a dependency of the hero or the main price chart.
  */
 export function RevenueSection({ netuid }: { netuid: number }) {
@@ -178,9 +178,7 @@ export function RevenueSection({ netuid }: { netuid: number }) {
         }
       />
       <div className="mg-section-visual" ref={ref}>
-        {!nearViewport ? (
-          <p className="mg-section-empty">Revenue evidence loads as this section approaches.</p>
-        ) : query.isPending ? (
+        {!nearViewport || query.isPending ? (
           <RevenueLedger loading />
         ) : query.isError || !revenue ? (
           <ErrorState
@@ -208,7 +206,7 @@ export function RevenueSection({ netuid }: { netuid: number }) {
       ) : null}
       <p className="mg-section-note">
         {!nearViewport
-          ? "deferred below the fold · avoids an extra initial page request"
+          ? `${window} · source-linked external revenue evidence`
           : query.isPending
             ? "loading revenue evidence"
             : query.isError || !revenue

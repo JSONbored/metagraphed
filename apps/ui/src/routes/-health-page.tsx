@@ -335,9 +335,7 @@ export function HealthPage() {
           />
         }
         visual={
-          !trendsNearViewport ? (
-            <p className="mg-section-empty">Uptime evidence loads as this section approaches.</p>
-          ) : trends.isPending ? (
+          !trendsNearViewport || trends.isPending ? (
             <MarkerRail
               loading
               loadingRows={8}
@@ -373,7 +371,7 @@ export function HealthPage() {
           ) : null
         }
         legend={
-          trendsNearViewport && !trends.isError ? (
+          !trends.isError ? (
             <DataTable
               id="subnet-health"
               rows={subnets}
@@ -384,6 +382,7 @@ export function HealthPage() {
               link={RouterLink}
               source="subnet-health"
               storageKey="mg-health-subnets-columns"
+              loading={!trendsNearViewport || trends.isPending}
               empty="No subnet has been probed in this window."
             />
           ) : null
@@ -394,7 +393,7 @@ export function HealthPage() {
         // is broken.
         footnote={
           !trendsNearViewport
-            ? "deferred below the fold · uptime evidence loads as this section approaches"
+            ? `${window} subnet uptime · probe-derived`
             : trends.isPending
               ? `Loading ${window} uptime · probe-derived`
               : trends.isError
@@ -408,9 +407,7 @@ export function HealthPage() {
         name="Trend"
         question="What share of probes answered, day by day."
         visual={
-          !trendsNearViewport ? (
-            <p className="mg-section-empty">Network trend loads with the uptime evidence above.</p>
-          ) : trends.isPending ? (
+          !trendsNearViewport || trends.isPending ? (
             <LineWithWindow
               points={[]}
               window={{ from: 0, to: 0 }}
@@ -437,7 +434,7 @@ export function HealthPage() {
         }
         footnote={
           !trendsNearViewport
-            ? "deferred below the fold · begins with the subnet uptime reading"
+            ? `${window} · sample-weighted across subnets · probe-derived`
             : trends.isPending
               ? `Loading ${window} trend · probe-derived`
               : trends.isError

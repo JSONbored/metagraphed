@@ -31,6 +31,13 @@ const read = (p: string) => readFileSync(p, "utf8");
 const rel = (p: string) => p.slice(p.indexOf("/metagraphed/") + 13);
 
 describe("visual grammar guardrails (#8255)", () => {
+  it("keeps viewport scheduling details out of reader-facing copy (#11750)", () => {
+    const implementationCopy =
+      /(?:deferred below the fold|loads? as this section approaches|starts? only as this section approaches|loads? when this raw record is opened)/i;
+    const offenders = sources.filter((p) => p.endsWith(".tsx") && implementationCopy.test(read(p)));
+    expect(offenders.map(rel)).toEqual([]);
+  });
+
   it("has no marquee or auto-scrolling strip anywhere in either package", () => {
     // Auto-scrolling text is unreadable, unpausable, and takes attention from
     // whatever the reader actually came for. The last one was the footer's

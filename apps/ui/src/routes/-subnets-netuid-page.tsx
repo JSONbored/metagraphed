@@ -123,10 +123,17 @@ function OwnershipHistory({ netuid }: { netuid: number }) {
 
   return (
     <div ref={ref}>
-      {!nearViewport ? (
-        <p className="mg-section-empty">Ownership history loads when this raw record is opened.</p>
-      ) : ownership.isPending ? (
-        <p className="mg-section-empty">Loading ownership history.</p>
+      {!nearViewport || ownership.isPending ? (
+        <DataTable
+          rows={[]}
+          columns={OWNERSHIP_COLUMNS}
+          rowKey={() => "ownership-pending"}
+          caption={`SN${netuid} ownership history`}
+          source={`sn-${netuid}-ownership`}
+          loading
+          dense
+          mobile="cards"
+        />
       ) : ownership.isError ? (
         <p className="mg-section-empty">Ownership history is unavailable.</p>
       ) : changes.length > 0 ? (

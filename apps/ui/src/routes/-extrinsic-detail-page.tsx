@@ -302,51 +302,41 @@ export function ExtrinsicDetailPage() {
       ) : null}
 
       <div ref={peersRef} data-mg-extrinsic-peer="">
-        {!peersNearViewport ? (
-          <p className="mg-section-empty">Related extrinsics load as this section approaches.</p>
-        ) : (
-          <DataTable
-            id={callHash ? "multisig-chain" : "signer"}
-            rows={peerRows}
-            columns={peerColumns}
-            rowKey={(row) => row.extrinsic_hash || `${row.block_number}-${row.extrinsic_index}`}
-            caption={
-              callHash
-                ? "Other calls referencing this call hash"
-                : "This signer's other recent calls"
-            }
-            rowHref={(row) =>
-              row.extrinsic_hash ? `/extrinsics/${row.extrinsic_hash}` : undefined
-            }
-            link={RouterLink}
-            source="extrinsic-peer"
-            loading={peers.isPending}
-            paginate={false}
-            // #6426: a failed lookup and a genuine zero are different answers.
-            // The retired section rendered the same "no siblings" copy for both,
-            // so a reader could not tell "there are none" from "we could not find
-            // out"; `DataTable` keeps them apart because `error` and `empty` are
-            // separate slots.
-            error={
-              peers.isError ? (
-                <ErrorState
-                  error={peers.error}
-                  onRetry={() => void peers.refetch()}
-                  context={
-                    callHash
-                      ? "calls referencing this call hash"
-                      : "this signer's other recent calls"
-                  }
-                />
-              ) : undefined
-            }
-            empty={
-              callHash
-                ? "No other extrinsics reference this call hash yet."
-                : "No other recent calls from this signer."
-            }
-          />
-        )}
+        <DataTable
+          id={callHash ? "multisig-chain" : "signer"}
+          rows={peerRows}
+          columns={peerColumns}
+          rowKey={(row) => row.extrinsic_hash || `${row.block_number}-${row.extrinsic_index}`}
+          caption={
+            callHash ? "Other calls referencing this call hash" : "This signer's other recent calls"
+          }
+          rowHref={(row) => (row.extrinsic_hash ? `/extrinsics/${row.extrinsic_hash}` : undefined)}
+          link={RouterLink}
+          source="extrinsic-peer"
+          loading={!peersNearViewport || peers.isPending}
+          paginate={false}
+          // #6426: a failed lookup and a genuine zero are different answers.
+          // The retired section rendered the same "no siblings" copy for both,
+          // so a reader could not tell "there are none" from "we could not find
+          // out"; `DataTable` keeps them apart because `error` and `empty` are
+          // separate slots.
+          error={
+            peers.isError ? (
+              <ErrorState
+                error={peers.error}
+                onRetry={() => void peers.refetch()}
+                context={
+                  callHash ? "calls referencing this call hash" : "this signer's other recent calls"
+                }
+              />
+            ) : undefined
+          }
+          empty={
+            callHash
+              ? "No other extrinsics reference this call hash yet."
+              : "No other recent calls from this signer."
+          }
+        />
       </div>
 
       <Raw rows={rawRows} />

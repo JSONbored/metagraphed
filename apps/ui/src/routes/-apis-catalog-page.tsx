@@ -287,76 +287,70 @@ export function ApisCatalogPage() {
         question="Every surface this registry has verified."
         visualRef={catalogRef}
         visual={
-          !catalogNearViewport ? (
-            <p className="mg-section-empty">
-              Verified interface rows load as this section approaches.
-            </p>
-          ) : (
-            <DataTable
-              id="catalog"
-              rows={rows}
-              columns={columns}
-              rowKey={(row) => row.id}
-              caption="Every verified surface"
-              link={RouterLink}
-              source="surface"
-              storageKey="mg-apis-columns"
-              expand={surfaceDetail}
-              loading={feed.isPending}
-              error={
-                feed.isError ? (
-                  <ErrorState
-                    error={feed.error}
-                    onRetry={() => void feed.refetch()}
-                    context="verified interfaces"
+          <DataTable
+            id="catalog"
+            rows={rows}
+            columns={columns}
+            rowKey={(row) => row.id}
+            caption="Every verified surface"
+            link={RouterLink}
+            source="surface"
+            storageKey="mg-apis-columns"
+            expand={surfaceDetail}
+            loading={!catalogNearViewport || feed.isPending}
+            error={
+              feed.isError ? (
+                <ErrorState
+                  error={feed.error}
+                  onRetry={() => void feed.refetch()}
+                  context="verified interfaces"
+                />
+              ) : undefined
+            }
+            search={{
+              value: search.q,
+              onChange: (q) => setSearch({ q }),
+              placeholder: "Name, provider or subnet",
+            }}
+            filters={
+              <>
+                <FilterField label="Kind">
+                  <FilterInput
+                    value={search.kind}
+                    onChange={(event) => setSearch({ kind: event.target.value })}
+                    placeholder="e.g. subnet-api"
+                    leadingIcon={false}
+                    aria-label="Surface kind"
                   />
-                ) : undefined
-              }
-              search={{
-                value: search.q,
-                onChange: (q) => setSearch({ q }),
-                placeholder: "Name, provider or subnet",
-              }}
-              filters={
-                <>
-                  <FilterField label="Kind">
-                    <FilterInput
-                      value={search.kind}
-                      onChange={(event) => setSearch({ kind: event.target.value })}
-                      placeholder="e.g. subnet-api"
-                      leadingIcon={false}
-                      aria-label="Surface kind"
-                    />
-                  </FilterField>
-                  <FilterField label="Provider">
-                    <FilterInput
-                      value={search.provider}
-                      onChange={(event) => setSearch({ provider: event.target.value })}
-                      placeholder="provider slug"
-                      leadingIcon={false}
-                      aria-label="Surface provider"
-                    />
-                  </FilterField>
-                  <FilterField label="Subnet">
-                    <FilterInput
-                      value={search.netuid}
-                      onChange={(event) => setSearch({ netuid: event.target.value })}
-                      placeholder="netuid"
-                      inputMode="numeric"
-                      leadingIcon={false}
-                      aria-label="Subnet netuid"
-                    />
-                  </FilterField>
-                </>
-              }
-              empty="No surfaces match these filters."
-            />
-          )
+                </FilterField>
+                <FilterField label="Provider">
+                  <FilterInput
+                    value={search.provider}
+                    onChange={(event) => setSearch({ provider: event.target.value })}
+                    placeholder="provider slug"
+                    leadingIcon={false}
+                    aria-label="Surface provider"
+                  />
+                </FilterField>
+                <FilterField label="Subnet">
+                  <FilterInput
+                    value={search.netuid}
+                    onChange={(event) => setSearch({ netuid: event.target.value })}
+                    placeholder="netuid"
+                    inputMode="numeric"
+                    leadingIcon={false}
+                    aria-label="Subnet netuid"
+                  />
+                </FilterField>
+              </>
+            }
+            empty="No surfaces match these filters."
+          />
         }
         footnote={
           <>
             {!catalogNearViewport
-              ? "deferred below the fold · verified interface rows start only as this section approaches "
+              ? "verified interface catalog · registry "
               : feed.isPending
                 ? "Loading verified interfaces · registry "
                 : feed.isError

@@ -106,9 +106,7 @@ export function RankingsSection({
         </>
       }
       visual={
-        !nearViewport ? (
-          <p className="mg-section-empty">Subnet rankings load as this section approaches.</p>
-        ) : loading ? (
+        !nearViewport || loading ? (
           <LeaderCards
             items={[]}
             featured={FEATURED}
@@ -146,7 +144,7 @@ export function RankingsSection({
       }
       footnote={
         !nearViewport ? (
-          "deferred below the fold · subnet rankings load as this section approaches"
+          `${resolved} · ${FOOTNOTE[metric]} · chain-direct`
         ) : loading ? (
           `loading ${resolved} subnet rankings by ${metric}`
         ) : error ? (

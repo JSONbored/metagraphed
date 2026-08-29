@@ -40,11 +40,7 @@ export function CounterpartiesSection({ ss58 }: { ss58: string }) {
       question="Who this account transacts with."
       visualRef={ref}
       visual={
-        !nearViewport ? (
-          <p className="mg-section-empty">
-            Counterparty evidence loads as this section approaches.
-          </p>
-        ) : isPending ? (
+        !nearViewport || isPending ? (
           <RankedRails
             items={[]}
             formatValue={fmtCompactTao}
@@ -79,7 +75,7 @@ export function CounterpartiesSection({ ss58 }: { ss58: string }) {
       }
       footnote={
         !nearViewport
-          ? "deferred below the fold · counterparty data starts only as this section approaches"
+          ? "gross transfer volume by counterparty · chain-direct"
           : isPending
             ? "Loading transfer counterparties"
             : unavailable
