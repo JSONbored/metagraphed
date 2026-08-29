@@ -16,6 +16,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
+import { BLOCK_EXTRINSIC_PAGE_SIZE } from "@/lib/metagraphed/block-route-loader";
 import {
   blocksQuery,
   blocksSummaryQuery,
@@ -102,7 +103,7 @@ const BlockStreamLink: SectionNavLink = ({ href, children, ...rest }) => {
     intentTimer.current = window.setTimeout(() => {
       intentTimer.current = null;
       void queryClient.prefetchInfiniteQuery({
-        ...blockExtrinsicsInfiniteQuery(blockNumber, 100),
+        ...blockExtrinsicsInfiniteQuery(blockNumber, BLOCK_EXTRINSIC_PAGE_SIZE),
         retry: 0,
       });
     }, 140);
