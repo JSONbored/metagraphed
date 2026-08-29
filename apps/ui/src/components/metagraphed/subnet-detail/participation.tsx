@@ -132,11 +132,7 @@ export function ParticipationSection({
       question="What it costs to register and what a slot earns."
       visualRef={ref}
       visual={
-        !nearViewport ? (
-          <p className="mg-section-empty">
-            Participation evidence loads as this section approaches.
-          </p>
-        ) : cost.isError ? (
+        cost.isError ? (
           <ErrorState
             error={cost.error}
             onRetry={() => void cost.refetch()}
@@ -147,7 +143,7 @@ export function ParticipationSection({
         )
       }
       legend={
-        showChurnLoading ? (
+        !nearViewport || showChurnLoading ? (
           <RankedRails
             items={[]}
             formatValue={(v) => formatNumber(v)}
@@ -175,7 +171,7 @@ export function ParticipationSection({
       }
       footnote={
         !nearViewport
-          ? "deferred below the fold · avoids participation and churn requests before they are useful"
+          ? "30d registration activity · declared floors are not earning guarantees"
           : cost.isError
             ? "chain-direct · retry the affected record above"
             : churnLoading

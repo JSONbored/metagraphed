@@ -394,11 +394,7 @@ export function ValidatorDetailPage() {
           question="Who delegates here."
           visualRef={nominatorsRef}
           visual={
-            !nominatorsNearViewport ? (
-              <p className="mg-section-empty">
-                Nominator movement loads as this section approaches.
-              </p>
-            ) : showNominatorsLoading ? (
+            !nominatorsNearViewport || showNominatorsLoading ? (
               <RankedRails
                 items={[]}
                 formatValue={(value) => fmtStake(value)}
@@ -428,7 +424,7 @@ export function ValidatorDetailPage() {
           }
           footnote={
             !nominatorsNearViewport ? (
-              "deferred below the fold · nominator movement loads as this section approaches"
+              "30d gross delegation movement · chain-direct"
             ) : nominatorsLoading ? (
               "Loading nominator movement · chain-direct"
             ) : nominators.isError ? (
@@ -465,11 +461,7 @@ export function ValidatorDetailPage() {
             />
           }
           visual={
-            !momentumNearViewport ? (
-              <p className="mg-section-empty">
-                Stake and yield history loads as this section approaches.
-              </p>
-            ) : showHistoryLoading ? (
+            !momentumNearViewport || showHistoryLoading ? (
               <LineWithWindow
                 id={`validator-${hotkey}-stake`}
                 points={[]}
@@ -498,10 +490,10 @@ export function ValidatorDetailPage() {
               />
             ) : null
           }
-          legend={momentumNearViewport ? <FactStrip cells={momentumCells} /> : null}
+          legend={<FactStrip cells={momentumCells} />}
           footnote={
             !momentumNearViewport
-              ? "deferred below the fold · stake and yield history loads as this section approaches"
+              ? `${window} · daily stake and annualised simple yield · chain-direct`
               : historyLoading
                 ? `Loading ${window} stake and yield history · chain-direct`
                 : history.isError
@@ -515,11 +507,7 @@ export function ValidatorDetailPage() {
           question="The operators ranked either side of this one."
           visualRef={peersRef}
           visual={
-            !peersNearViewport ? (
-              <p className="mg-section-empty">
-                Nearby operator ranking loads as this section approaches.
-              </p>
-            ) : showPeersLoading ? (
+            !peersNearViewport || showPeersLoading ? (
               <RankGrid
                 items={[]}
                 cols={4}
@@ -545,7 +533,7 @@ export function ValidatorDetailPage() {
           }
           footnote={
             !peersNearViewport
-              ? "deferred below the fold · nearby operators load as this section approaches"
+              ? "neighboring operators by total stake · chain-direct"
               : peersLoading
                 ? "Loading nearby operators · chain-direct"
                 : allValidators.isError

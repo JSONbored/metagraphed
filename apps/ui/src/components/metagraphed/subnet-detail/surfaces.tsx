@@ -84,9 +84,7 @@ export function SurfacesSection({ netuid, name }: { netuid: number; name?: strin
       question="What this subnet publishes and whether it is up."
       visualRef={ref}
       visual={
-        !nearViewport ? (
-          <p className="mg-section-empty">Surface evidence loads as this section approaches.</p>
-        ) : showLoading ? (
+        !nearViewport || showLoading ? (
           <MarkerRail
             max={100}
             formatValue={(v) => `${formatDecimal(v, 1)}%`}
@@ -133,7 +131,7 @@ export function SurfacesSection({ netuid, name }: { netuid: number; name?: strin
       }
       footnote={
         !nearViewport ? (
-          "deferred below the fold · avoids surface and uptime requests before they are useful"
+          "published surfaces · 90d probe uptime · registry"
         ) : loading ? (
           "Loading surfaces and 90d uptime · registry"
         ) : surfaces.isError ? (

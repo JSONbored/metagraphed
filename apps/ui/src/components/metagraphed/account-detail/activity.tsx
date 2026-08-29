@@ -108,50 +108,46 @@ export function ActivitySection({
         </FilterField>
       }
       visual={
-        !nearViewport ? (
-          <p className="mg-section-empty">Activity evidence loads as this section approaches.</p>
-        ) : (
-          <>
-            <DataTable
-              rows={events}
-              columns={columns}
-              rowKey={(row) => `${row.block_number}-${row.event_index}`}
-              caption="Account events"
-              link={RouterLink}
-              source="account-event"
-              paginate={false}
-              loading={query.isPending}
-              error={
-                initialError ? (
-                  <ErrorState
-                    error={query.error}
-                    onRetry={() => void query.refetch()}
-                    context="account events"
-                  />
-                ) : undefined
-              }
-              empty="No events match this filter."
-              mobile="cards"
-              dense
-              storageKey="account-events-columns"
+        <>
+          <DataTable
+            rows={events}
+            columns={columns}
+            rowKey={(row) => `${row.block_number}-${row.event_index}`}
+            caption="Account events"
+            link={RouterLink}
+            source="account-event"
+            paginate={false}
+            loading={!nearViewport || query.isPending}
+            error={
+              initialError ? (
+                <ErrorState
+                  error={query.error}
+                  onRetry={() => void query.refetch()}
+                  context="account events"
+                />
+              ) : undefined
+            }
+            empty="No events match this filter."
+            mobile="cards"
+            dense
+            storageKey="account-events-columns"
+          />
+          {/* A cursor feed has no terminal range to repeat beneath the table. */}
+          {query.hasNextPage || (query.error && events.length > 0) ? (
+            <LoadMore
+              hasMore={Boolean(query.hasNextPage)}
+              isLoading={query.isFetchingNextPage}
+              onLoadMore={() => void query.fetchNextPage()}
+              shown={events.length}
+              total={kind ? undefined : (eventCount ?? undefined)}
+              error={query.error as Error | null}
             />
-            {/* A cursor feed has no terminal range to repeat beneath the table. */}
-            {query.hasNextPage || (query.error && events.length > 0) ? (
-              <LoadMore
-                hasMore={Boolean(query.hasNextPage)}
-                isLoading={query.isFetchingNextPage}
-                onLoadMore={() => void query.fetchNextPage()}
-                shown={events.length}
-                total={kind ? undefined : (eventCount ?? undefined)}
-                error={query.error as Error | null}
-              />
-            ) : null}
-          </>
-        )
+          ) : null}
+        </>
       }
       footnote={
         !nearViewport
-          ? "deferred below the fold · account events start only as this section approaches"
+          ? "newest-first account event ledger · chain-direct"
           : query.isPending
             ? "Loading account events · chain-direct"
             : initialError

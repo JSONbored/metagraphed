@@ -15,16 +15,13 @@ test.describe("extrinsic detail raw-event continuation", () => {
     });
 
     await gotoThroughRestart(page, ROUTE);
-    await expect(
-      page.getByText("Related extrinsics load as this section approaches."),
-    ).toBeVisible();
+    const peers = page.getByRole("table", { name: /This signer's other recent calls/ });
+    await expect(peers.locator(".mg-dt-skeleton")).toHaveCount(8);
     expect(peerRequests).toBe(0);
 
     await page.locator("[data-mg-extrinsic-peer]").scrollIntoViewIfNeeded();
     await expect.poll(() => peerRequests).toBe(1);
-    await expect(
-      page.getByRole("table", { name: /This signer's other recent calls/ }),
-    ).toBeVisible();
+    await expect(peers).toBeVisible();
   });
 
   test("offers and completes the deferred event-record continuation without mobile overflow", async ({

@@ -91,9 +91,9 @@ test.describe("API directory query states", () => {
 
     await gotoThroughRestart(page, "/apis");
 
-    await expect(
-      page.getByText("Verified interface rows load as this section approaches."),
-    ).toBeVisible();
+    const catalog = page.getByRole("table", { name: "Every verified surface" });
+    await expect(catalog.locator(".mg-dt-skeleton")).toHaveCount(8);
+    await expect(page.getByText("verified interface catalog · registry")).toBeVisible();
     expect(surfaceRequests).toBe(0);
 
     await page.locator("section#catalog").scrollIntoViewIfNeeded();
@@ -102,9 +102,9 @@ test.describe("API directory query states", () => {
 
     release?.();
     await expect(page.getByText("Loading verified interfaces · registry")).toHaveCount(0);
-    const catalog = page.locator("section#catalog");
-    await expect(catalog.locator("table")).toBeVisible();
-    await expect(catalog).toContainText("Every verified surface (");
+    const catalogSection = page.locator("section#catalog");
+    await expect(catalog).toBeVisible();
+    await expect(catalogSection).toContainText("Every verified surface (");
   });
 
   test("keeps endpoint instruments structured during a delayed mobile read", async ({ page }) => {

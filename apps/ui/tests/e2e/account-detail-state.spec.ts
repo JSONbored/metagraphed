@@ -28,23 +28,19 @@ test.describe("account detail query states", () => {
     const counterparties = page.getByRole("group", {
       name: "Transfer counterparties by volume moved",
     });
+    const activity = page.getByRole("table", { name: "Account events" });
     const keys = page.getByRole("group", { name: "Related keys" });
 
     await expect(positions).toHaveAttribute("aria-busy", "true");
     await expect(flow).toHaveAttribute("aria-busy", "true");
-    await expect(counterparties).toHaveCount(0);
-    await expect(keys).toHaveCount(0);
+    await expect(counterparties).toHaveAttribute("aria-busy", "true");
+    await expect(activity.locator(".mg-dt-skeleton")).toHaveCount(8);
+    await expect(keys).toHaveAttribute("aria-busy", "true");
+    await expect(counterparties.locator(".mg-rails-row--skeleton")).toHaveCount(6);
+    await expect(keys.locator(".mg-rank-grid-row--skeleton")).toHaveCount(4);
     await expect(
-      page.getByText("Counterparty evidence loads as this section approaches."),
+      page.getByText("gross transfer volume by counterparty · chain-direct"),
     ).toBeVisible();
-    await expect(
-      page.getByText("Activity evidence loads as this section approaches."),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Key relationships load as this section approaches."),
-    ).toBeVisible();
-    await expect(page.locator(".mg-rails-row--skeleton")).toHaveCount(12);
-    await expect(page.locator(".mg-rank-grid-row--skeleton")).toHaveCount(0);
     await expect(page.getByText("No positions recorded for this account.")).toHaveCount(0);
     await expect(page.getByText("No transfers recorded for this account.")).toHaveCount(0);
     expect(requested).not.toContain(`/api/v1/accounts/${SS58}/counterparties`);
@@ -58,11 +54,21 @@ test.describe("account detail query states", () => {
     }));
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
 
-    await page.locator("#counterparties").scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+    });
+    await page
+      .locator("#counterparties")
+      .evaluate((element) => element.scrollIntoView({ block: "center" }));
     await expect(counterparties).toHaveAttribute("aria-busy", "true");
     await expect.poll(() => requested).toContain(`/api/v1/accounts/${SS58}/counterparties`);
 
+    const completedReads = [...new Set(requested)].map((path) =>
+      page.waitForResponse((response) => new URL(response.url()).pathname === path),
+    );
     release?.();
+    await Promise.all(completedReads);
     await expect(positions).not.toHaveAttribute("aria-busy", "true");
     await expect(counterparties).not.toHaveAttribute("aria-busy", "true");
     await expect(page.getByRole("link", { name: /Trishool/i })).toBeVisible();

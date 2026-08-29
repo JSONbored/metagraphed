@@ -19,13 +19,15 @@ test.describe("directory secondary analytics", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoThroughRestart(page, "/accounts");
 
+    const active = page.locator("section#active");
+    await expect(active.getByRole("table", { name: "Signing accounts" })).toBeVisible();
+    await expect(active.locator(".mg-dt-skeleton")).toHaveCount(8);
     await expect(
-      page.getByText("Signing activity loads as this section approaches."),
+      active.getByText("7d signing activity · chain-direct", { exact: true }),
     ).toBeVisible();
     await expect(page.locator('[href="#concentration"]')).toHaveCount(0);
     expect(signerRequests).toBe(0);
 
-    const active = page.locator("section#active");
     await active.scrollIntoViewIfNeeded();
     await expect.poll(() => signerRequests).toBe(1);
     await expect(active.getByText("loading 7d signing activity", { exact: true })).toBeVisible();
@@ -55,21 +57,24 @@ test.describe("directory secondary analytics", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoThroughRestart(page, "/validators");
 
-    await expect(page.getByText("Permit costs load as this section approaches.")).toBeVisible();
-    await expect(
-      page.getByRole("group", {
-        name: "Cheapest subnets to hold a validator permit on",
-        exact: true,
-      }),
-    ).toHaveCount(0);
-
-    await page.locator("section#cost").scrollIntoViewIfNeeded();
     const rails = page.getByRole("group", {
       name: "Cheapest subnets to hold a validator permit on",
       exact: true,
     });
     await expect(rails).toBeVisible();
     await expect(rails).toHaveAttribute("aria-busy", "true");
+    await expect(rails.locator(".mg-rails-row--skeleton")).toHaveCount(10);
+    await expect(
+      page.getByText("permit and earning floors by subnet · chain-direct"),
+    ).toBeVisible();
+
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+    });
+    await page
+      .locator("section#cost")
+      .evaluate((element) => element.scrollIntoView({ block: "center" }));
     await expect(
       page.getByText("loading validator permit-cost readings", { exact: true }),
     ).toBeVisible();
@@ -112,13 +117,6 @@ test.describe("directory secondary analytics", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoThroughRestart(page, "/subnets");
 
-    await expect(page.getByText("Subnet rankings load as this section approaches.")).toBeVisible();
-    await expect(
-      page.getByText("Lifecycle history loads as this section approaches."),
-    ).toBeVisible();
-    expect(moversRequests).toBe(0);
-    expect(lifecycleRequests).toBe(0);
-
     const rankings = page.getByRole("group", {
       name: "Subnets ranked by emission over 30d",
       exact: true,
@@ -137,21 +135,37 @@ test.describe("directory secondary analytics", () => {
     });
     await expect(domains).toBeVisible();
     await expect(domains).toHaveAttribute("aria-busy", "true");
-    await expect(rankings).toHaveCount(0);
-    await expect(churn).toHaveCount(0);
-    await expect(transitions).toHaveCount(0);
+    await expect(rankings).toHaveAttribute("aria-busy", "true");
+    await expect(churn).toHaveAttribute("aria-busy", "true");
+    await expect(transitions).toHaveAttribute("aria-busy", "true");
+    await expect(rankings.locator("li[aria-hidden='true']")).toHaveCount(3);
+    await expect(churn.locator(".mg-stack-col--skeleton")).toHaveCount(14);
+    await expect(transitions.locator(".mg-rank-grid-row--skeleton")).toHaveCount(5);
+    await expect(
+      page.getByText("registration and deregistration history · chain-direct"),
+    ).toBeVisible();
     await expect(
       page.getByText("loading capability-domain coverage", { exact: true }),
     ).toBeVisible();
+    expect(moversRequests).toBe(0);
+    expect(lifecycleRequests).toBe(0);
 
-    await page.locator("section#rankings").scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+    });
+    await page
+      .locator("section#rankings")
+      .evaluate((element) => element.scrollIntoView({ block: "center" }));
     await expect.poll(() => moversRequests).toBe(1);
     await expect(rankings).toHaveAttribute("aria-busy", "true");
     await expect(
       page.getByText("loading 30d subnet rankings by emission", { exact: true }),
     ).toBeVisible();
 
-    await page.locator("section#churn").scrollIntoViewIfNeeded();
+    await page
+      .locator("section#churn")
+      .evaluate((element) => element.scrollIntoView({ block: "center" }));
     await expect.poll(() => lifecycleRequests).toBe(1);
     await expect(churn).toHaveAttribute("aria-busy", "true");
     await expect(transitions).toHaveAttribute("aria-busy", "true");

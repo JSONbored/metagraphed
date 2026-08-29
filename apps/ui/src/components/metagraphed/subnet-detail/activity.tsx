@@ -45,9 +45,7 @@ export function ActivitySection({ netuid }: { netuid: number }) {
       question="On-chain events by kind, last 30 days."
       visualRef={ref}
       visual={
-        !nearViewport ? (
-          <p className="mg-section-empty">Activity evidence loads as this section approaches.</p>
-        ) : showLoading ? (
+        !nearViewport || showLoading ? (
           <RankedRails
             items={[]}
             formatValue={(v) => formatNumber(v)}
@@ -76,7 +74,7 @@ export function ActivitySection({ netuid }: { netuid: number }) {
         ) : null
       }
       legend={
-        showLoading ? (
+        !nearViewport || showLoading ? (
           <RankGrid
             items={[]}
             cols={4}
@@ -96,7 +94,7 @@ export function ActivitySection({ netuid }: { netuid: number }) {
       }
       footnote={
         !nearViewport
-          ? "deferred below the fold · avoids an event-summary request before it is useful"
+          ? "30d event mix by kind · chain-direct"
           : loading
             ? "Loading 30d event activity · chain-direct"
             : isError

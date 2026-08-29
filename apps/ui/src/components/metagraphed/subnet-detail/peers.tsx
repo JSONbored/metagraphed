@@ -77,7 +77,7 @@ export function PeersSection({
       name="Peers"
       question={
         !nearViewport
-          ? "Peer context loads as this section approaches."
+          ? "Comparable subnets by domain or neighboring emission rank."
           : loading
             ? "Finding the right peer group for comparison."
             : domain
@@ -88,9 +88,7 @@ export function PeersSection({
       }
       visualRef={ref}
       visual={
-        !nearViewport ? (
-          <p className="mg-section-empty">Peer context loads as this section approaches.</p>
-        ) : loading ? (
+        !nearViewport || loading ? (
           <RankGrid
             items={[]}
             cols={5}
@@ -115,7 +113,7 @@ export function PeersSection({
         ) : null
       }
       legend={
-        loading ? (
+        !nearViewport || loading ? (
           <LeaderCards
             items={[]}
             featured={0}
@@ -135,7 +133,7 @@ export function PeersSection({
       }
       footnote={
         !nearViewport
-          ? "deferred below the fold · avoids a peer-context request before it is useful"
+          ? "registry domain when available · otherwise neighboring emission rank"
           : loading
             ? "loading subnet peer context"
             : economicsFailed

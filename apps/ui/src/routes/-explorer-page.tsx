@@ -330,9 +330,7 @@ export function ExplorerPage() {
             />
           }
           visual={
-            !throughputNearViewport ? (
-              <p className="mg-section-empty">Call activity loads as this section approaches.</p>
-            ) : calls.isPending ? (
+            !throughputNearViewport || calls.isPending ? (
               <CompositionBreakdown
                 formatValue={(value) => fmtCount(value)}
                 legendCols={3}
@@ -367,7 +365,7 @@ export function ExplorerPage() {
           footnote={
             <>
               {!throughputNearViewport
-                ? "Call activity loads as this section approaches · row by row: "
+                ? `${window} call-module mix · chain-direct · row by row: `
                 : calls.isPending
                   ? `Loading ${window} call mix · chain-direct · row by row: `
                   : calls.isError
@@ -397,9 +395,7 @@ export function ExplorerPage() {
           question="What the chain charged."
           visualRef={feesRef}
           visual={
-            !feesNearViewport ? (
-              <p className="mg-section-empty">Fee history loads as this section approaches.</p>
-            ) : fees.isPending ? (
+            !feesNearViewport || fees.isPending ? (
               <LineWithWindow
                 id="chain-fees"
                 points={[]}
@@ -422,10 +418,10 @@ export function ExplorerPage() {
               />
             ) : null
           }
-          legend={feesNearViewport ? <FactStrip cells={feeCells} /> : null}
+          legend={<FactStrip cells={feeCells} />}
           footnote={
             !feesNearViewport
-              ? "deferred below the fold · fee history loads as this section approaches"
+              ? `${window} · signed extrinsic fees · chain-direct`
               : fees.isPending
                 ? `Loading ${window} fees · chain-direct`
                 : fees.isError
@@ -439,11 +435,7 @@ export function ExplorerPage() {
           question="Where stake moved."
           visualRef={flowRef}
           visual={
-            !flowNearViewport ? (
-              <p className="mg-section-empty">
-                Stake-flow evidence loads as this section approaches.
-              </p>
-            ) : flow.isPending ? (
+            !flowNearViewport || flow.isPending ? (
               <RankedRails
                 items={[]}
                 formatValue={(value) => fmtTao(value, 0)}
@@ -482,7 +474,7 @@ export function ExplorerPage() {
           }
           footnote={
             !flowNearViewport
-              ? "deferred below the fold · stake-flow evidence loads as this section approaches"
+              ? `${window} stake inflow and outflow by subnet · chain-direct`
               : flow.isPending
                 ? `Loading ${window} stake flow · chain-direct`
                 : flow.isError
@@ -499,11 +491,7 @@ export function ExplorerPage() {
           question="How concentrated the stake is."
           visualRef={concentrationRef}
           visual={
-            !concentrationNearViewport ? (
-              <p className="mg-section-empty">
-                Stake concentration loads as this section approaches.
-              </p>
-            ) : concentration.isPending ? (
+            !concentrationNearViewport || concentration.isPending ? (
               <MarkerRail
                 loading
                 loadingRows={4}
@@ -531,7 +519,7 @@ export function ExplorerPage() {
           }
           footnote={
             !concentrationNearViewport
-              ? "deferred below the fold · stake concentration loads as this section approaches"
+              ? "holder shares and Nakamoto coefficient · chain-direct"
               : concentration.isPending
                 ? "Loading stake concentration · chain-direct"
                 : concentration.isError
@@ -549,11 +537,7 @@ export function ExplorerPage() {
           question="How a subnet's published share becomes the share it is paid."
           visualRef={emissionRef}
           visual={
-            !emissionNearViewport ? (
-              <p className="mg-section-empty">
-                Emission evidence loads as this section approaches.
-              </p>
-            ) : pipeline.isPending ? (
+            !emissionNearViewport || pipeline.isPending ? (
               <RankedRails
                 items={[]}
                 formatValue={(value: number) => fmtShare(value, 3)}
@@ -576,39 +560,37 @@ export function ExplorerPage() {
             ) : null
           }
           legend={
-            emissionNearViewport ? (
-              <FactStrip
-                cells={[
-                  {
-                    label: "Paid",
-                    value: `${formatNumber(tally.paid)} / ${formatNumber(tally.total)}`,
-                    loading: pipeline.isPending,
-                  },
-                  {
-                    label: "Block emission",
-                    value: fmtTao(pipeline.data?.data.block_emission_tao, 4),
-                    loading: pipeline.isPending,
-                  },
-                  {
-                    label: "Pool liquidity",
-                    value: fmtTao(aggregate?.tao_in_emission, 4),
-                    loading: pipeline.isPending,
-                  },
-                  {
-                    label: "Chain buys",
-                    value: fmtTao(aggregate?.excess_tao, 4),
-                    loading: pipeline.isPending,
-                  },
-                ]}
-              />
-            ) : null
+            <FactStrip
+              cells={[
+                {
+                  label: "Paid",
+                  value: `${formatNumber(tally.paid)} / ${formatNumber(tally.total)}`,
+                  loading: !emissionNearViewport || pipeline.isPending,
+                },
+                {
+                  label: "Block emission",
+                  value: fmtTao(pipeline.data?.data.block_emission_tao, 4),
+                  loading: !emissionNearViewport || pipeline.isPending,
+                },
+                {
+                  label: "Pool liquidity",
+                  value: fmtTao(aggregate?.tao_in_emission, 4),
+                  loading: !emissionNearViewport || pipeline.isPending,
+                },
+                {
+                  label: "Chain buys",
+                  value: fmtTao(aggregate?.excess_tao, 4),
+                  loading: !emissionNearViewport || pipeline.isPending,
+                },
+              ]}
+            />
           }
           // Ranked by what a subnet is PAID, not by what it would be paid
           // before the gate -- ranking by the pre-gate figure puts a disabled
           // subnet above a paid one, which is the gate stated backwards.
           footnote={
             !emissionNearViewport
-              ? "deferred below the fold · emission evidence loads as this section approaches"
+              ? "paid emission share and eligibility state · chain-direct"
               : pipeline.isPending
                 ? "Loading live emission state · chain-direct"
                 : pipeline.isError
@@ -638,45 +620,39 @@ export function ExplorerPage() {
             </FilterField>
           }
           visual={
-            !governanceNearViewport ? (
-              <p className="mg-section-empty">
-                Governance changes load as this section approaches.
-              </p>
-            ) : (
-              <DataTable
-                rows={shownGov}
-                columns={govColumns}
-                rowKey={(row) => row.key}
-                caption="Runtime upgrades, sudo calls and config changes"
-                link={RouterLink}
-                source="chain-governance"
-                pageSize={25}
-                mobile="cards"
-                dense
-                storageKey="chain-governance-columns"
-                loading={governanceLoading}
-                error={
-                  governanceUnavailable && governanceError ? (
-                    <ErrorState
-                      error={governanceError}
-                      context="governance changes"
-                      onRetry={() => {
-                        void runtime.refetch();
-                        void sudo.refetch();
-                        void config.refetch();
-                      }}
-                    />
-                  ) : undefined
-                }
-                empty="No governance changes were indexed for this history."
-              />
-            )
+            <DataTable
+              rows={shownGov}
+              columns={govColumns}
+              rowKey={(row) => row.key}
+              caption="Runtime upgrades, sudo calls and config changes"
+              link={RouterLink}
+              source="chain-governance"
+              pageSize={25}
+              mobile="cards"
+              dense
+              storageKey="chain-governance-columns"
+              loading={!governanceNearViewport || governanceLoading}
+              error={
+                governanceUnavailable && governanceError ? (
+                  <ErrorState
+                    error={governanceError}
+                    context="governance changes"
+                    onRetry={() => {
+                      void runtime.refetch();
+                      void sudo.refetch();
+                      void config.refetch();
+                    }}
+                  />
+                ) : undefined
+              }
+              empty="No governance changes were indexed for this history."
+            />
           }
           // Three routes and three tables answered one question, and a reader
           // had to know which of the three a change would have landed in.
           footnote={
             !governanceNearViewport
-              ? "deferred below the fold · governance changes load as this section approaches"
+              ? "runtime upgrades, sudo calls and AdminUtils changes · chain-direct"
               : governanceLoading
                 ? "Loading governance changes · chain-direct"
                 : governanceUnavailable

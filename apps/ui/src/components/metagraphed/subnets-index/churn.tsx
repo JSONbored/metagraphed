@@ -44,9 +44,7 @@ export function ChurnSection() {
       question="Subnets registering and deregistering, by day."
       visualRef={ref}
       visual={
-        !nearViewport ? (
-          <p className="mg-section-empty">Lifecycle history loads as this section approaches.</p>
-        ) : query.isPending ? (
+        !nearViewport || query.isPending ? (
           <StackedColumns
             columns={[]}
             seriesOrder={["registered", "deregistered"]}
@@ -73,7 +71,7 @@ export function ChurnSection() {
         ) : null
       }
       legend={
-        !nearViewport ? null : query.isPending ? (
+        !nearViewport || query.isPending ? (
           <RankGrid
             items={[]}
             cols={5}
@@ -93,7 +91,7 @@ export function ChurnSection() {
       }
       footnote={
         !nearViewport
-          ? "deferred below the fold · lifecycle history loads as this section approaches"
+          ? "registration and deregistration history · chain-direct"
           : query.isPending
             ? "loading captured subnet lifecycle history"
             : query.isError

@@ -27,7 +27,10 @@ test.describe("Health secondary query states", () => {
     await expect(selfHealth).toHaveAttribute("aria-busy", "true");
     await expect(selfHealth.locator(".mg-rails-row--skeleton")).toHaveCount(4);
     await expect(page.getByText("Loading self-health · self-probed")).toBeVisible();
-    await expect(page.getByText("Uptime evidence loads as this section approaches.")).toBeVisible();
+    await expect(subnetUptime).toHaveAttribute("aria-busy", "true");
+    await expect(subnetUptime.locator(".mg-rails-row--skeleton")).toHaveCount(8);
+    await expect(page.locator("#trend .mg-line-plot")).toHaveAttribute("aria-busy", "true");
+    await expect(page.getByText("7d subnet uptime · probe-derived")).toBeVisible();
     expect(trendRequests).toBe(0);
 
     const dimensions = await page.evaluate(() => ({
@@ -36,7 +39,13 @@ test.describe("Health secondary query states", () => {
     }));
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
 
-    await page.locator("section#by-subnet").scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+    });
+    await page
+      .locator("section#by-subnet")
+      .evaluate((element) => element.scrollIntoView({ block: "center" }));
     await expect.poll(() => trendRequests).toBe(1);
     // A resolved LineWithWindow names its interactive plot with the measured
     // value and delta, while the skeleton names the pending series. The plot
@@ -48,7 +57,11 @@ test.describe("Health secondary query states", () => {
     await expect(page.getByText("Loading 7d uptime · probe-derived")).toBeVisible();
     await expect(page.getByText("Loading 7d trend · probe-derived")).toBeVisible();
 
+    const completedReads = ["/api/v1/health/trends", "/api/v1/self-health"].map((path) =>
+      page.waitForResponse((response) => new URL(response.url()).pathname === path),
+    );
     release?.();
+    await Promise.all(completedReads);
     await expect(subnetUptime).not.toHaveAttribute("aria-busy", "true");
     await expect(trend).not.toHaveAttribute("aria-busy", "true");
     await expect(selfHealth).not.toHaveAttribute("aria-busy", "true");
@@ -81,7 +94,13 @@ test.describe("Health secondary query states", () => {
 
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoThroughRestart(page, "/health");
-    await page.locator("section#by-subnet").scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+    });
+    await page
+      .locator("section#by-subnet")
+      .evaluate((element) => element.scrollIntoView({ block: "center" }));
 
     await expect(page.getByRole("alert")).toHaveCount(3);
     await expect(page.getByText("Couldn't load recorded incidents")).toBeVisible();

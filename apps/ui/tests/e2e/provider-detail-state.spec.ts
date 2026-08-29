@@ -30,8 +30,9 @@ test.describe("Provider detail secondary query state", () => {
     await expect(latency).toHaveAttribute("aria-busy", "true");
     await expect(latency.locator(".mg-rails-row--skeleton")).toHaveCount(10);
     await expect(page.getByText("Loading endpoint probe readings · probe-derived")).toBeVisible();
+    await expect(surfaces.locator(".mg-dt-skeleton")).toHaveCount(8);
     await expect(
-      page.getByText("Surface evidence loads as this section approaches."),
+      page.getByText("published surfaces and most recent endpoint probes · registry"),
     ).toBeVisible();
     expect(surfaceRequests).toBe(0);
 

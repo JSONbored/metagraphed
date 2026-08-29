@@ -50,9 +50,7 @@ export function KeysSection({ ss58 }: { ss58: string }) {
       question="Hotkeys, children and parents linked to this account."
       visualRef={ref}
       visual={
-        !nearViewport ? (
-          <p className="mg-section-empty">Key relationships load as this section approaches.</p>
-        ) : loading ? (
+        !nearViewport || loading ? (
           <RankGrid
             items={[]}
             cols={4}
@@ -82,7 +80,7 @@ export function KeysSection({ ss58 }: { ss58: string }) {
       }
       footnote={
         !nearViewport
-          ? "deferred below the fold · key relationships start only as this section approaches"
+          ? "hotkey, child and parent relationships · live chain"
           : loading
             ? "Loading live key relationships"
             : unavailable
