@@ -142,6 +142,7 @@ import {
   DEFAULT_ACCOUNTS_LIST_SORT,
   ACCOUNTS_LIST_LIMIT_DEFAULT,
 } from "../src/accounts-list.ts";
+import { buildAccountHolderDirectory } from "../src/account-holder-directory.ts";
 import { resolveClientIp } from "./config.ts";
 import {
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
@@ -8148,6 +8149,32 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     };
   }
 
+  // GET /api/v1/accounts/directory: one canonical website projection carrying
+  // the stake, emission and reach rankings derived from a single aggregation.
+  // The rich sortable route above remains unchanged for REST/MCP consumers.
+  if (url.pathname === "/api/v1/accounts/directory") {
+    return async (sql, env) => {
+      const [rows, priceByNetuid] = await Promise.all([
+        sql<{
+          netuid: Neurons["netuid"];
+          uid: Neurons["uid"];
+          hotkey: Neurons["hotkey"];
+          coldkey: Neurons["coldkey"];
+          validator_permit: Neurons["validator_permit"];
+          emission_tao: Neurons["emission_tao"];
+          stake_tao: Neurons["stake_tao"];
+          block_number: Neurons["block_number"];
+          captured_at: Neurons["captured_at"];
+        }>`
+          SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
+          FROM neurons WHERE hotkey IS NOT NULL
+          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+        loadStoreAlphaPricesByNetuid(sql, env),
+      ]);
+      return json(buildAccountHolderDirectory(rows, { priceByNetuid }));
+    };
+  }
+
   // GET /api/v1/subnets/:netuid/history
   const subnetHistoryMatch = url.pathname.match(
     /^\/api\/v1\/subnets\/(\d+)\/history$/,
@@ -9026,7 +9053,8 @@ export function decodeBlockHeader(
   payload: unknown,
 ): { blockTag: string; blockNumber: number; timestampSeconds: number } | null {
   const result = (payload as { result?: unknown })?.result as
-    { number?: unknown; timestamp?: unknown } | undefined;
+    | { number?: unknown; timestamp?: unknown }
+    | undefined;
   if (!result) return null;
   const { number: rawNumber, timestamp: rawTimestamp } = result;
   if (typeof rawNumber !== "string" || typeof rawTimestamp !== "string")

@@ -2902,6 +2902,33 @@ export interface AccountsList {
   accounts: AccountListEntry[];
 }
 
+/** Compact account row carried by the website's single-snapshot directory. */
+export type AccountHolderDirectoryEntry = Pick<
+  AccountListEntry,
+  | "hotkey"
+  | "coldkey"
+  | "subnet_count"
+  | "uid_count"
+  | "total_stake_tao"
+  | "total_emission_tao"
+  | "stake_dominance"
+>;
+
+/** All fixed account rankings needed by /accounts, derived together. */
+export interface AccountHolderDirectory {
+  schema_version?: number;
+  captured_at?: string;
+  block_number?: number;
+  account_count: number;
+  limit: number;
+  priced_registered_stake_tao: number;
+  rankings: {
+    stake: AccountHolderDirectoryEntry[];
+    emission: AccountHolderDirectoryEntry[];
+    reach: AccountHolderDirectoryEntry[];
+  };
+}
+
 /**
  * One validator projected to the stake-decision fields by
  * /api/v1/compare/validators (#6325/#6998) — take rate, estimated APY,

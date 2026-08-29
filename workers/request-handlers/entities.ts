@@ -89,6 +89,7 @@ import {
   overlayFeaturedValidators,
 } from "../../src/metagraph-neurons.ts";
 import { buildAccountsList } from "../../src/accounts-list.ts";
+import { buildAccountHolderDirectory } from "../../src/account-holder-directory.ts";
 import { buildValidatorOperatorDirectory } from "../../src/validator-operator-directory.ts";
 import { buildTopHoldersList } from "../../src/top-holders.ts";
 import {
@@ -1474,6 +1475,28 @@ export async function handleAccountsList(request: Request, env: Env, url: URL) {
       meta: await metagraphMeta(
         env,
         "/metagraph/accounts.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+export async function handleAccountHolderDirectory(request: Request, env: Env) {
+  const data =
+    ((await tryDataApiTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildAccountHolderDirectory> | null) ??
+    buildAccountHolderDirectory([], { priceByNetuid: NO_ALPHA_PRICES });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/accounts/directory.json",
         data.captured_at,
       ),
     },
@@ -3841,7 +3864,8 @@ export async function buildSubnetValidatorEconomicsPayload(
   const readBurn = deps.loadBurn ?? loadSubnetBurn;
   const readEconomicsRow = deps.loadEconomicsRow ?? resolveSubnetEconomicsRow;
   const db = readStore(env, VALIDATOR_ECONOMICS_TABLES) as
-    ReadStoreDb | undefined;
+    | ReadStoreDb
+    | undefined;
   const rows = db
     ? await db.query(
         `SELECT ${VALIDATOR_ECONOMICS_NEURON_COLUMNS} FROM neurons WHERE netuid = ? ORDER BY uid`,
@@ -4064,7 +4088,8 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   // it a decline. readStore awaits its own teardown, so there is no ctx to
   // thread and no caller left that can forget one.
   const db = readStore(env, VALIDATOR_ECONOMICS_HISTORY_TABLES) as
-    ReadStoreDb | undefined;
+    | ReadStoreDb
+    | undefined;
 
   const neuronRows = db
     ? await db.query<HistoryRow>(
@@ -4204,7 +4229,8 @@ export async function buildValidatorEconomicsRankingPayload(
     });
 
   const db = readStore(env, VALIDATOR_ECONOMICS_RANKING_TABLES) as
-    ReadStoreDb | undefined;
+    | ReadStoreDb
+    | undefined;
   const neuronRows = db
     ? await db.query(
         `SELECT netuid, ${VALIDATOR_ECONOMICS_NEURON_COLUMNS} FROM neurons WHERE netuid != 0 ORDER BY netuid, uid`,
@@ -7638,7 +7664,8 @@ export async function handleSubnetWallets(
   const artifact = await readArtifact(env, ENTITY_LABELS_ARTIFACT);
   const entities = artifact.ok
     ? ((artifact.data as Record<string, unknown> | undefined)?.entities as
-        Array<Record<string, unknown>> | undefined)
+        | Array<Record<string, unknown>>
+        | undefined)
     : undefined;
   const wallets = subnetWalletRows(netuid, row, entities ?? null, null);
   // #10489-#10509: whether anyone has looked, and when. An empty wallet list on
@@ -7862,7 +7889,8 @@ export async function handleChainRevenueCoverage(
     const allSurfaces = await readArtifact(env, ALL_SURFACES_ARTIFACT);
     return allSurfaces.ok
       ? ((allSurfaces.data as Record<string, unknown> | undefined)?.surfaces as
-          Array<Record<string, unknown>> | undefined)
+          | Array<Record<string, unknown>>
+          | undefined)
       : null;
   });
 

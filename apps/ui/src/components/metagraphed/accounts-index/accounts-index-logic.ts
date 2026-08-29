@@ -2,7 +2,7 @@
  * The derivations behind /accounts (#11615).
  */
 import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
-import type { AccountListEntry, ChainSignerEntry } from "@/lib/metagraphed/types";
+import type { AccountHolderDirectoryEntry, ChainSignerEntry } from "@/lib/metagraphed/types";
 import { formatAmount, formatPct } from "@/lib/metagraphed/format";
 
 export type HolderMetric = "stake" | "emission" | "reach";
@@ -48,21 +48,26 @@ export interface HolderCard {
  * `25.9% of listed · 119 subnets` -- the share first, because that is the
  * reading the retired Concentration section existed to give.
  */
-function shareSub(account: AccountListEntry, listedTotal: number): string {
+function shareSub(
+  account: AccountHolderDirectoryEntry,
+  pricedRegisteredStakeTotal: number,
+): string {
   const subnets = plural(account.subnet_count ?? 0, "subnet");
   const stake = account.total_stake_tao;
-  if (!listedTotal || typeof stake !== "number" || !Number.isFinite(stake)) {
+  if (!pricedRegisteredStakeTotal || typeof stake !== "number" || !Number.isFinite(stake)) {
     return `${subnets} · ${plural(account.uid_count ?? 0, "UID")}`;
   }
-  return `${formatPct(stake / listedTotal, 1)} of listed · ${subnets}`;
+  return `${formatPct(stake / pricedRegisteredStakeTotal, 1)} of priced stake · ${subnets}`;
 }
 
 export function holderCards(
-  accounts: readonly AccountListEntry[],
+  accounts: readonly AccountHolderDirectoryEntry[],
   metric: HolderMetric,
   limit = 18,
   /**
-   * The listed total, so each card can carry its own share.
+   * Complete priced registered-stake total, so each card can carry a genuine
+   * network-wide share even though the rendered ranking is deliberately
+   * bounded.
    *
    * #11691 folded the Concentration section into this one: it drew a bar and
    * then re-listed the same eleven accounts that were already on the cards
@@ -71,7 +76,7 @@ export function holderCards(
    * share -- was already a fact cell in the hero. What it uniquely carried was
    * the per-account share, so that moved here.
    */
-  listedTotal = 0,
+  pricedRegisteredStakeTotal = 0,
 ): HolderCard[] {
   return accounts.slice(0, limit).flatMap((account) => {
     const address = account.coldkey ?? account.hotkey;
@@ -86,7 +91,7 @@ export function holderCards(
       {
         key: address,
         name: shortAddress(address),
-        sub: shareSub(account, listedTotal),
+        sub: shareSub(account, pricedRegisteredStakeTotal),
         value,
         href: `/accounts/${address}`,
       },
@@ -110,7 +115,7 @@ export interface ConcentrationSegment {
  * segment by the whole tail.
  */
 export function concentrationSegments(
-  accounts: readonly AccountListEntry[],
+  accounts: readonly AccountHolderDirectoryEntry[],
   top = 10,
 ): { segments: ConcentrationSegment[]; listedTotal: number } {
   const rows = accounts

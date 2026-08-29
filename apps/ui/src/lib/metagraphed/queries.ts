@@ -71,6 +71,8 @@ import type {
   AccountRegistration,
   AccountSubnets,
   AccountSummary,
+  AccountHolderDirectory,
+  AccountHolderDirectoryEntry,
   AccountListEntry,
   AccountsList,
   PortfolioConcentration,
@@ -8971,6 +8973,59 @@ function normalizeAccountListEntry(raw: unknown): AccountListEntry | null {
     latest_block_number: coerceFiniteNumber(raw.latest_block_number) ?? null,
   };
 }
+
+function normalizeAccountHolderDirectoryEntry(raw: unknown): AccountHolderDirectoryEntry | null {
+  const account = normalizeAccountListEntry(raw);
+  if (!account) return null;
+  return {
+    hotkey: account.hotkey,
+    coldkey: account.coldkey,
+    subnet_count: account.subnet_count,
+    uid_count: account.uid_count,
+    total_stake_tao: account.total_stake_tao,
+    total_emission_tao: account.total_emission_tao,
+    stake_dominance: account.stake_dominance,
+  };
+}
+
+export function normalizeAccountHolderDirectory(raw: unknown): AccountHolderDirectory {
+  const data = isRecord(raw) ? raw : {};
+  const rankings = isRecord(data.rankings) ? data.rankings : {};
+  const normalizeRanking = (value: unknown): AccountHolderDirectoryEntry[] =>
+    Array.isArray(value)
+      ? value.flatMap((entry) => {
+          const normalized = normalizeAccountHolderDirectoryEntry(entry);
+          return normalized ? [normalized] : [];
+        })
+      : [];
+  return {
+    schema_version: coerceFiniteNumber(data.schema_version),
+    captured_at: coerceString(data.captured_at),
+    block_number: coerceFiniteNumber(data.block_number),
+    account_count: coerceFiniteNumber(data.account_count) ?? 0,
+    limit: coerceFiniteNumber(data.limit) ?? 0,
+    priced_registered_stake_tao: coerceFiniteNumber(data.priced_registered_stake_tao) ?? 0,
+    rankings: {
+      stake: normalizeRanking(rankings.stake),
+      emission: normalizeRanking(rankings.emission),
+      reach: normalizeRanking(rankings.reach),
+    },
+  };
+}
+
+export const accountHolderDirectoryQuery = () =>
+  queryOptions({
+    queryKey: k("account-holder-directory"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/accounts/directory", { signal });
+      return {
+        data: normalizeAccountHolderDirectory(res.data),
+        meta: res.meta,
+        url: res.url,
+      } satisfies ApiResult<AccountHolderDirectory>;
+    },
+    staleTime: STALE_SHORT,
+  });
 
 export function normalizeAccountsList(raw: unknown): AccountsList {
   const d = isRecord(raw) ? raw : {};

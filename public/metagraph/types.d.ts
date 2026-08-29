@@ -1280,6 +1280,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Fetch the compact account holder directory used by the website: top stake, emission and subnet-reach rankings derived from one complete neuron-snapshot aggregation. Each bounded row carries the account identifiers, totals, footprint and share of priced registered stake required by the directory. The rich independently sortable /api/v1/accounts response remains unchanged. */
+        get: operations["accountHolderDirectory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/top-holders": {
         parameters: {
             query?: never;
@@ -5498,6 +5515,45 @@ export interface components {
             offset: number | null;
             schema_version: number;
             ss58: string;
+        };
+        AccountHolderDirectoryArtifact: {
+            account_count: number;
+            block_number: number | null;
+            captured_at: string | null;
+            /** @constant */
+            limit: 20;
+            priced_registered_stake_tao: number;
+            rankings: {
+                emission: {
+                    coldkey: string | null;
+                    hotkey: string;
+                    stake_dominance: number | null;
+                    subnet_count: number;
+                    total_emission_tao: number;
+                    total_stake_tao: number;
+                    uid_count: number;
+                }[];
+                reach: {
+                    coldkey: string | null;
+                    hotkey: string;
+                    stake_dominance: number | null;
+                    subnet_count: number;
+                    total_emission_tao: number;
+                    total_stake_tao: number;
+                    uid_count: number;
+                }[];
+                stake: {
+                    coldkey: string | null;
+                    hotkey: string;
+                    stake_dominance: number | null;
+                    subnet_count: number;
+                    total_emission_tao: number;
+                    total_stake_tao: number;
+                    uid_count: number;
+                }[];
+            };
+            /** @constant */
+            schema_version: 1;
         };
         AccountIdentityArtifact: {
             account: string;
@@ -24527,6 +24583,146 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountWeightSettersArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountHolderDirectory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "account_count": 1,
+                     *         "block_number": 5000000,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "limit": 20,
+                     *         "priced_registered_stake_tao": 0.5,
+                     *         "rankings": {
+                     *           "emission": [
+                     *             {
+                     *               "coldkey": "example",
+                     *               "hotkey": "example",
+                     *               "stake_dominance": 0.5,
+                     *               "subnet_count": 1,
+                     *               "total_emission_tao": 0.5,
+                     *               "total_stake_tao": 0.5,
+                     *               "uid_count": 1
+                     *             }
+                     *           ],
+                     *           "reach": [
+                     *             {
+                     *               "coldkey": "example",
+                     *               "hotkey": "example",
+                     *               "stake_dominance": 0.5,
+                     *               "subnet_count": 1,
+                     *               "total_emission_tao": 0.5,
+                     *               "total_stake_tao": 0.5,
+                     *               "uid_count": 1
+                     *             }
+                     *           ],
+                     *           "stake": [
+                     *             {
+                     *               "coldkey": "example",
+                     *               "hotkey": "example",
+                     *               "stake_dominance": 0.5,
+                     *               "subnet_count": 1,
+                     *               "total_emission_tao": 0.5,
+                     *               "total_stake_tao": 0.5,
+                     *               "uid_count": 1
+                     *             }
+                     *           ]
+                     *         },
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountHolderDirectoryArtifact"];
                     };
                 };
             };

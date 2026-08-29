@@ -1526,6 +1526,58 @@ describe("analytics edge cache", () => {
     assert.equal(cache.matchCalls, 2);
   });
 
+  test("/api/v1/accounts/directory caches on the completed neuron pass", async () => {
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    const paths: string[] = [];
+    const stamp = 1_780_000_000_000;
+    const directory = {
+      schema_version: 1,
+      captured_at: "2026-08-29T00:00:00.000Z",
+      block_number: 8_950_000,
+      account_count: 0,
+      limit: 20,
+      priced_registered_stake_tao: 0,
+      rankings: { stake: [], emission: [], reach: [] },
+    };
+    const env = {
+      ...analyticsEnv([]),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        async fetch(request: Request) {
+          const pathname = new URL(request.url).pathname;
+          paths.push(pathname);
+          return pathname === "/api/v1/internal/neurons-snapshot-stamp"
+            ? Response.json({ captured_at: stamp })
+            : Response.json(directory);
+        },
+      },
+    };
+    const request = new Request(
+      "https://api.metagraph.sh/api/v1/accounts/directory",
+    );
+
+    const first = await handleRequest(request, env as unknown as Env, ctx);
+    await Promise.resolve();
+    const second = await handleRequest(request, env as unknown as Env, ctx);
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    assert.deepEqual((await first.json()).data, directory);
+    assert.deepEqual((await second.json()).data, directory);
+    assert.deepEqual(paths, [
+      "/api/v1/internal/neurons-snapshot-stamp",
+      "/api/v1/accounts/directory",
+      "/api/v1/internal/neurons-snapshot-stamp",
+    ]);
+    assert.deepEqual(cache.putKeys, [
+      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+        CONTRACT_VERSION,
+      )}/${stamp}/account-holder-directory/api/v1/accounts/directory`,
+    ]);
+    assert.equal(cache.matchCalls, 2);
+  });
+
   test("NO-CACHE-ON-ERROR: a store failure with a snapshot stamp is served but not cached", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();

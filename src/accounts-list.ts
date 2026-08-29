@@ -220,35 +220,24 @@ export interface AccountsListResult {
   accounts: AccountsListEntry[];
 }
 
-// Shape every currently-registered hotkey's cross-subnet footprint into a
-// paginated, sortable leaderboard. `rows` is one row per (netuid, uid) —
-// every neurons row, not just validator_permit=1 ones (that's
-// buildGlobalValidators' job). Null-safe: no rows (cold store) yields a
-// schema-stable empty leaderboard.
-export function buildAccountsList(
-  rows: Array<Record<string, unknown>> | null | undefined,
-  {
-    sort = DEFAULT_ACCOUNTS_LIST_SORT,
-    limit = ACCOUNTS_LIST_LIMIT_DEFAULT,
-    priceByNetuid,
-  }: {
-    sort?: string;
-    limit?: number | string;
-    /** REQUIRED, never defaulted -- see BuildGlobalValidatorsOptions (#9051). */
-    priceByNetuid: Map<number, number | null>;
-  },
-): AccountsListResult {
-  const normalizedSort = ACCOUNTS_LIST_SORTS.includes(sort)
-    ? sort
-    : DEFAULT_ACCOUNTS_LIST_SORT;
-  // Floor at 0, not 1: an explicit limit=0 returns an empty leaderboard
-  // rather than one row nobody asked for. clampRowLimit is that rule.
-  const normalizedLimit = clampRowLimit(
-    limit,
-    ACCOUNTS_LIST_LIMIT_DEFAULT,
-    ACCOUNTS_LIST_LIMIT_MAX,
-  );
+export interface AccountsSnapshot {
+  captured_at: string | null;
+  block_number: number | null;
+  accounts: AccountsListEntry[];
+}
 
+/**
+ * Aggregate the complete neuron snapshot once, before any transport-specific
+ * sort or limit is applied.
+ *
+ * Both the public sortable leaderboard and the website directory derive from
+ * this canonical shape. Keeping the expensive cross-subnet fold here means a
+ * directory containing several rankings does not repeat it once per ranking.
+ */
+export function buildAccountsSnapshot(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  { priceByNetuid }: { priceByNetuid: Map<number, number | null> },
+): AccountsSnapshot {
   const accountsByHotkey = new Map<string, AccountAccumulator>();
   let latestCapturedAt: number | null = null;
   let latestBlockNumber: number | null = null;
@@ -294,9 +283,6 @@ export function buildAccountsList(
     entry.netuids.add(netuid);
     entry.uidCount += 1;
     if (isValidator) entry.validatorCount += 1;
-    // TAO-priced accumulation (#9051): root passes through at 1:1, every
-    // other netuid converts via its own subnet's alpha price, and an
-    // unpriceable row lands in the residuals instead of the totals.
     const price =
       netuid === 0 ? 1 : nullablePositivePrice(priceByNetuid.get(netuid));
     if (price != null) {
@@ -334,9 +320,45 @@ export function buildAccountsList(
     });
   }
 
-  const accounts = applyStakeDominance(
-    [...accountsByHotkey.values()].map(buildAccountEntry),
-  ).sort(
+  return {
+    captured_at: toIso(latestCapturedAt),
+    block_number: latestBlockNumber,
+    accounts: applyStakeDominance(
+      [...accountsByHotkey.values()].map(buildAccountEntry),
+    ),
+  };
+}
+
+// Shape every currently-registered hotkey's cross-subnet footprint into a
+// paginated, sortable leaderboard. `rows` is one row per (netuid, uid) —
+// every neurons row, not just validator_permit=1 ones (that's
+// buildGlobalValidators' job). Null-safe: no rows (cold store) yields a
+// schema-stable empty leaderboard.
+export function buildAccountsList(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  {
+    sort = DEFAULT_ACCOUNTS_LIST_SORT,
+    limit = ACCOUNTS_LIST_LIMIT_DEFAULT,
+    priceByNetuid,
+  }: {
+    sort?: string;
+    limit?: number | string;
+    /** REQUIRED, never defaulted -- see BuildGlobalValidatorsOptions (#9051). */
+    priceByNetuid: Map<number, number | null>;
+  },
+): AccountsListResult {
+  const normalizedSort = ACCOUNTS_LIST_SORTS.includes(sort)
+    ? sort
+    : DEFAULT_ACCOUNTS_LIST_SORT;
+  // Floor at 0, not 1: an explicit limit=0 returns an empty leaderboard
+  // rather than one row nobody asked for. clampRowLimit is that rule.
+  const normalizedLimit = clampRowLimit(
+    limit,
+    ACCOUNTS_LIST_LIMIT_DEFAULT,
+    ACCOUNTS_LIST_LIMIT_MAX,
+  );
+  const snapshot = buildAccountsSnapshot(rows, { priceByNetuid });
+  const accounts = [...snapshot.accounts].sort(
     (a, b) =>
       accountSortValue(b, normalizedSort) -
         accountSortValue(a, normalizedSort) || a.hotkey.localeCompare(b.hotkey),
@@ -346,8 +368,8 @@ export function buildAccountsList(
     schema_version: 1,
     sort: normalizedSort,
     limit: normalizedLimit,
-    captured_at: toIso(latestCapturedAt),
-    block_number: latestBlockNumber,
+    captured_at: snapshot.captured_at,
+    block_number: snapshot.block_number,
     account_count: accounts.length,
     accounts: accounts.slice(0, normalizedLimit),
   };

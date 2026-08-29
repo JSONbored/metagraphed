@@ -1283,6 +1283,30 @@ test("GET /api/v1/accounts falls back to the default limit for an absent param",
   assert.equal((((await res.json()) as Row).accounts as Row[]).length, 1);
 });
 
+test("GET /api/v1/accounts/directory derives every website ranking from one snapshot", async () => {
+  insertNeuron({ netuid: 0, uid: 0, hotkey: "5Stake", stake_tao: 100 });
+  insertNeuron({
+    netuid: 0,
+    uid: 1,
+    hotkey: "5Emission",
+    stake_tao: 10,
+    emission_tao: 20,
+  });
+  insertNeuron({ netuid: 0, uid: 2, hotkey: "5Reach", stake_tao: 5 });
+  insertNeuron({ netuid: 7, uid: 0, hotkey: "5Reach", stake_tao: 5 });
+  insertPrice(7, dayAgo(0), 2);
+
+  const res = await call(req("/api/v1/accounts/directory"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.account_count, 3);
+  assert.equal(body.priced_registered_stake_tao, 125);
+  const rankings = body.rankings as Row;
+  assert.equal((rankings.stake as Row[])[0]!.hotkey, "5Stake");
+  assert.equal((rankings.emission as Row[])[0]!.hotkey, "5Emission");
+  assert.equal((rankings.reach as Row[])[0]!.hotkey, "5Reach");
+});
+
 // --- neuron_daily history routes ---------------------------------------------
 
 test("GET /api/v1/subnets/:netuid/neurons/:uid/history windows on snapshot_date and ?window=all lifts the bound", async () => {

@@ -982,6 +982,16 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/accounts/directory",
+    (body) => {
+      assert.equal(typeof body.data.account_count, "number");
+      assert.equal(typeof body.data.priced_registered_stake_tao, "number");
+      assert.equal(Array.isArray(body.data.rankings?.stake), true);
+      assert.equal(Array.isArray(body.data.rankings?.emission), true);
+      assert.equal(Array.isArray(body.data.rankings?.reach), true);
+    },
+  ],
+  [
     "/api/v1/accounts?sort=uid_count&limit=3",
     (body) => {
       assert.equal(body.data.sort, "uid_count");

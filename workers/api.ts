@@ -418,6 +418,7 @@ import {
   canonicalGlobalValidatorsCachePath,
   handleValidatorOperatorDirectory,
   handleAccountsList,
+  handleAccountHolderDirectory,
   canonicalAccountsListCachePath,
   handleTopHoldersList,
   canonicalTopHoldersCachePath,
@@ -6977,6 +6978,21 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
     );
   }
 
+  // Canonical website-sized holder directory. One response contains the
+  // three bounded rankings the page switches between, and invalidates only
+  // when a complete neuron pass advances.
+  if (url.pathname === "/api/v1/accounts/directory") {
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "account-holder-directory",
+      (cacheRequest) => handleAccountHolderDirectory(cacheRequest, env),
+      url.pathname,
+      readNeuronsSnapshotCacheStamp,
+    );
+  }
+
   // Balance-based top-holder leaderboard (#6741/#6743): the coldkey/balance-
   // centric counterpart to /api/v1/accounts above -- checked here (before the
   // generic /api/v1/accounts/{ss58} pattern further below) so "top-holders"
@@ -8535,6 +8551,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/validators" ||
     pathname === "/api/v1/validators/operators" ||
     pathname === "/api/v1/accounts" ||
+    pathname === "/api/v1/accounts/directory" ||
     VALIDATOR_DETAIL_PATH_PATTERN.test(pathname) ||
     VALIDATOR_NOMINATORS_PATH_PATTERN.test(pathname) ||
     VALIDATOR_HISTORY_PATH_PATTERN.test(pathname) ||
