@@ -68,6 +68,70 @@ test.describe("block detail progressive technical record", () => {
     await expect(pending).toBeHidden();
   });
 
+  test("recovers a newly visible block when decoded extrinsics catch up", async ({ page }) => {
+    const extrinsicsFixture = await page.request.get(
+      "http://127.0.0.1:8081/api/v1/blocks/8713384/extrinsics?limit=100",
+    );
+    expect(extrinsicsFixture.ok()).toBe(true);
+    const extrinsicsBody = await extrinsicsFixture.body();
+    let reads = 0;
+    let releaseRetry: (() => void) | undefined;
+    const retryReleased = new Promise<void>((resolve) => {
+      releaseRetry = resolve;
+    });
+
+    await page.route("**/api/v1/blocks/8713384/extrinsics*", async (route) => {
+      reads += 1;
+      if (reads === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({
+            ok: false,
+            schema_version: 1,
+            data: null,
+            error: {
+              code: "block_detail_unavailable",
+              message: "Decoded detail is catching up",
+            },
+          }),
+        });
+        return;
+      }
+      await retryReleased;
+      await route.fulfill({
+        status: extrinsicsFixture.status(),
+        contentType: extrinsicsFixture.headers()["content-type"] ?? "application/json",
+        body: extrinsicsBody,
+      });
+    });
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await gotoThroughRestart(page, ROUTE);
+
+    const catchup = page.getByRole("status", {
+      name: "Decoded block detail is catching up",
+    });
+    const ledger = page.getByRole("table", { name: /Extrinsics in this block/ });
+    await expect(catchup).toBeVisible();
+    await expect(catchup).toContainText("decoded extrinsics are catching up");
+    await expect(catchup).toContainText("Attempt 1 of 6");
+    await expect(ledger).toHaveAttribute("aria-busy", "true");
+    expect(reads).toBeGreaterThanOrEqual(1);
+
+    const dimensions = await catchup.evaluate(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+
+    releaseRetry?.();
+    await expect(catchup).toHaveCount(0);
+    await expect(ledger).not.toHaveAttribute("aria-busy", "true");
+    await expect(ledger.locator("tbody tr").first()).not.toHaveClass(/mg-dt-skeleton/);
+    expect(reads).toBeGreaterThanOrEqual(2);
+  });
+
   test("loads the primary ledger first and starts forensic reads only when requested", async ({
     page,
   }) => {

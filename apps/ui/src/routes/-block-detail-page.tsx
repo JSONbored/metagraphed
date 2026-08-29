@@ -19,7 +19,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { RouterLink } from "@/components/metagraphed/router-link";
-import { ErrorState } from "@/components/metagraphed/states";
+import { BlockDetailCatchupStatus, ErrorState } from "@/components/metagraphed/states";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
@@ -43,6 +43,12 @@ import {
   neighbourHrefs,
   shouldFetchCountedBlockDetail,
 } from "@/components/metagraphed/chain-detail/chain-detail-logic";
+import {
+  BLOCK_DETAIL_RETRY_COUNT,
+  blockDetailRetryDelay,
+  isBlockDetailUnavailable,
+  shouldRetryBlockDetail,
+} from "@/components/metagraphed/chain-detail/block-detail-retry";
 import { Route } from "./blocks.$ref";
 
 const API_PATHS = [
@@ -97,7 +103,8 @@ export function BlockDetailPage() {
   const extrinsics = useInfiniteQuery({
     ...blockExtrinsicsInfiniteQuery(ref, BLOCK_EXTRINSIC_PAGE_SIZE, block?.extrinsic_count),
     enabled: shouldFetchExtrinsics,
-    retry: 0,
+    retry: shouldRetryBlockDetail,
+    retryDelay: blockDetailRetryDelay,
   });
   // Decoded events can be a substantial all-events payload. The block header
   // already gives the exact count, so keep the primary extrinsic ledger fast
@@ -105,7 +112,8 @@ export function BlockDetailPage() {
   const events = useQuery({
     ...blockChainEventsQuery(ref),
     enabled: shouldFetchEvents,
-    retry: 0,
+    retry: shouldRetryBlockDetail,
+    retryDelay: blockDetailRetryDelay,
   });
   const [start, end] = number == null ? [0, 0] : cadenceRange(number);
   const window = useQuery({
@@ -149,6 +157,9 @@ export function BlockDetailPage() {
   const heroFacts = blockFacts(block, { count: formatNumber });
   const heroCells = blockFactCells(block, { count: formatNumber });
   const eventCount = block?.event_count;
+  const extrinsicsCatchingUp =
+    extrinsics.isFetching && isBlockDetailUnavailable(extrinsics.failureReason);
+  const eventsCatchingUp = events.isFetching && isBlockDetailUnavailable(events.failureReason);
 
   const eventColumns: DataTableColumn<ChainEvent>[] = [
     {
@@ -247,6 +258,13 @@ export function BlockDetailPage() {
         live={{ updatedAt: block?.observed_at ?? null, source: "chain-direct" }}
       />
 
+      {extrinsicsCatchingUp ? (
+        <BlockDetailCatchupStatus
+          detail="extrinsics"
+          attempt={extrinsics.failureCount}
+          total={BLOCK_DETAIL_RETRY_COUNT}
+        />
+      ) : null}
       <DataTable
         id="contents"
         rows={rows}
@@ -331,6 +349,13 @@ export function BlockDetailPage() {
 
         {technicalDetailsOpen ? (
           <div id="block-technical-record" className="mg-block-event-stream-body">
+            {eventsCatchingUp ? (
+              <BlockDetailCatchupStatus
+                detail="events"
+                attempt={events.failureCount}
+                total={BLOCK_DETAIL_RETRY_COUNT}
+              />
+            ) : null}
             {shouldFetchEvents && events.isPending ? (
               <CompositionBreakdown
                 formatValue={(value) => formatNumber(value)}

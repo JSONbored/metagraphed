@@ -60,4 +60,13 @@ describe("block detail loading contract", () => {
     expect(page).toContain('empty="No decoded events for this block."');
     expect(extrinsicPage).toContain('empty="No events are decoded for this extrinsic."');
   });
+
+  it("self-heals only the explicit newest-block detail handoff", () => {
+    expect(page).toContain("retry: shouldRetryBlockDetail");
+    expect(page).toContain("retryDelay: blockDetailRetryDelay");
+    expect(page).toContain("isBlockDetailUnavailable(extrinsics.failureReason)");
+    expect(page).toContain("isBlockDetailUnavailable(events.failureReason)");
+    expect(page).toContain("<BlockDetailCatchupStatus");
+    expect(page).toContain("total={BLOCK_DETAIL_RETRY_COUNT}");
+  });
 });
