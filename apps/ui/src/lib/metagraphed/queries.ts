@@ -74,7 +74,6 @@ import type {
   AccountHolderDirectory,
   AccountHolderDirectoryEntry,
   AccountListEntry,
-  AccountsList,
   PortfolioConcentration,
   PortfolioPosition,
   Block,
@@ -9023,45 +9022,6 @@ export const accountHolderDirectoryQuery = () =>
         meta: res.meta,
         url: res.url,
       } satisfies ApiResult<AccountHolderDirectory>;
-    },
-    staleTime: STALE_SHORT,
-  });
-
-export function normalizeAccountsList(raw: unknown): AccountsList {
-  const d = isRecord(raw) ? raw : {};
-  const accounts = Array.isArray(d.accounts)
-    ? d.accounts.flatMap((account) => {
-        const normalized = normalizeAccountListEntry(account);
-        return normalized ? [normalized] : [];
-      })
-    : [];
-  return {
-    schema_version: coerceFiniteNumber(d.schema_version),
-    sort: coerceString(d.sort) ?? "total_stake",
-    limit: coerceFiniteNumber(d.limit) ?? accounts.length,
-    account_count: coerceFiniteNumber(d.account_count) ?? accounts.length,
-    captured_at: coerceString(d.captured_at),
-    block_number: coerceFiniteNumber(d.block_number),
-    accounts,
-  };
-}
-
-export const accountsListQuery = ({
-  sort = "total_stake",
-  limit = 10,
-}: { sort?: string; limit?: number } = {}) =>
-  queryOptions({
-    queryKey: k("accounts-list", sort, limit),
-    queryFn: async ({ signal }) => {
-      const res = await apiFetch<unknown>("/api/v1/accounts", {
-        params: { sort, limit },
-        signal,
-      });
-      return {
-        data: normalizeAccountsList(res.data),
-        meta: res.meta,
-        url: res.url,
-      } as ApiResult<AccountsList>;
     },
     staleTime: STALE_SHORT,
   });

@@ -2891,17 +2891,6 @@ export interface AccountListEntry {
   latest_block_number: number | null;
 }
 
-/** Site-wide accounts leaderboard from GET /api/v1/accounts. */
-export interface AccountsList {
-  schema_version?: number;
-  sort: string;
-  limit: number;
-  account_count: number;
-  captured_at?: string;
-  block_number?: number;
-  accounts: AccountListEntry[];
-}
-
 /** Compact account row carried by the website's single-snapshot directory. */
 export type AccountHolderDirectoryEntry = Pick<
   AccountListEntry,
