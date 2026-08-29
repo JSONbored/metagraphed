@@ -26,7 +26,7 @@ export const Route = createFileRoute("/blocks/$ref")({
   // page's own useSuspenseQuery still drives the not-found/empty path.
   loader: async ({ context, params }) => {
     let result;
-    const pending = startBlockRouteQueries(context.queryClient, params.ref);
+    const pending = await startBlockRouteQueries(context.queryClient, params.ref);
     try {
       result = await pending.block;
     } catch (error) {
@@ -51,11 +51,11 @@ export const Route = createFileRoute("/blocks/$ref")({
     // under the confident title "Block 999999999999". `normalizeBlock` folds
     // that envelope to a null `data`, which is the unambiguous absence signal.
     if (!result.data) throw notFound();
-    // The ledger started alongside the header. Await it only after the header
-    // has established that this is a valid block, so missing/rate-limited
-    // routes retain their fast canonical boundary while valid navigations
-    // arrive with the first table page already in the shared query cache.
-    await pending.extrinsics;
+    // On client navigation the ledger keeps resolving in the shared query
+    // cache while the route renders as soon as its authoritative header is
+    // known. Direct server renders deliberately stay progressive: dehydrating
+    // a secondary table bloats HTML and hides its truthful catch-up state.
+    void pending.extrinsics;
     return { blockNumber: result.data.block_number ?? null };
   },
   head: ({ params, loaderData, match }) => {

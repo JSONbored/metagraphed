@@ -13,9 +13,10 @@ describe("startBlockRouteQueries", () => {
       prefetched = options;
     });
 
-    const started = startBlockRouteQueries(
+    const started = await startBlockRouteQueries(
       { ensureQueryData, prefetchInfiniteQuery } as never,
       "8713384",
+      true,
     );
 
     expect(ensureQueryData).toHaveBeenCalledTimes(1);
@@ -34,7 +35,7 @@ describe("startBlockRouteQueries", () => {
   });
 
   it("keeps a secondary extrinsics failure out of the route-level error path", async () => {
-    const started = startBlockRouteQueries(
+    const started = await startBlockRouteQueries(
       {
         ensureQueryData: vi.fn(async () => ({ data: { block_number: 8713384 } })),
         prefetchInfiniteQuery: vi.fn(async () => {
@@ -42,9 +43,25 @@ describe("startBlockRouteQueries", () => {
         }),
       } as never,
       "8713384",
+      true,
     );
 
     await expect(started.block).resolves.toEqual({ data: { block_number: 8713384 } });
+    await expect(started.extrinsics).resolves.toBeUndefined();
+  });
+
+  it("leaves direct server renders progressive instead of dehydrating the ledger", async () => {
+    const prefetchInfiniteQuery = vi.fn();
+    const started = await startBlockRouteQueries(
+      {
+        ensureQueryData: vi.fn(async () => ({ data: { block_number: 8713384 } })),
+        prefetchInfiniteQuery,
+      } as never,
+      "8713384",
+      false,
+    );
+
+    expect(prefetchInfiniteQuery).not.toHaveBeenCalled();
     await expect(started.extrinsics).resolves.toBeUndefined();
   });
 });
