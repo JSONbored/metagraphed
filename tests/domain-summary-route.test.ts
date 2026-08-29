@@ -105,6 +105,19 @@ describe("GET /api/v1/domains", () => {
   // fallback the tests above all exercise) -- a fresh, on-contract, integrity-
   // passing blob (emission_share summing to ~1) served from METAGRAPH_CONTROL.
   test("prefers a fresh live-KV economics blob over the R2 fallback", async () => {
+    // Domain membership comes from the current built registry and may change
+    // when an owner updates their on-chain identity. Pick a member from that
+    // source of truth instead of pinning this precedence test to one subnet's
+    // mutable description.
+    const { body: registryOverview } = await get("/api/v1/domains");
+    const domainNetuid = registryOverview.data.domains
+      .flatMap((domain: { netuids: number[] }) => domain.netuids)
+      .find((netuid: unknown) => Number.isInteger(netuid));
+    assert.ok(
+      Number.isInteger(domainNetuid),
+      "expected a domain-tagged subnet",
+    );
+
     const liveEnv = createLocalArtifactEnv({
       METAGRAPH_CONTROL: {
         async get(key: string) {
@@ -115,7 +128,7 @@ describe("GET /api/v1/domains", () => {
             summary: { with_economics_count: 1 },
             subnets: [
               {
-                netuid: 1,
+                netuid: domainNetuid,
                 total_stake_alpha: 999,
                 alpha_price_tao: 1,
                 emission_share: 1,
@@ -132,14 +145,14 @@ describe("GET /api/v1/domains", () => {
     );
     const body = await res.json();
     assert.equal(res.status, 200);
-    const domainWithSubnet1 = body.data.domains.find(
-      (d: { netuids: number[] }) => d.netuids.includes(1),
+    const domainWithSubnet = body.data.domains.find(
+      (d: { netuids: number[] }) => d.netuids.includes(domainNetuid),
     );
     assert.ok(
-      domainWithSubnet1,
-      "netuid 1 should appear in at least one domain",
+      domainWithSubnet,
+      `netuid ${domainNetuid} should appear in at least one domain`,
     );
-    assert.equal(domainWithSubnet1.total_stake_tao, 999);
+    assert.equal(domainWithSubnet.total_stake_tao, 999);
   });
 });
 
