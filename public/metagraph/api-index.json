@@ -788,6 +788,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-holder-directory",
+      "path": "/metagraph/accounts/directory.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountHolderDirectoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "top-holders",
       "path": "/metagraph/top-holders.json",
       "retirement": null,
@@ -2588,7 +2597,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 172,
+    "mainnet_only_route_count": 173,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8195,6 +8204,22 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/directory.json",
+      "cache": "short",
+      "description": "Fetch the compact account holder directory used by the website: top stake, emission and subnet-reach rankings derived from one complete neuron-snapshot aggregation. Each bounded row carries the account identifiers, totals, footprint and share of priced registered stake required by the directory. The rich independently sortable /api/v1/accounts response remains unchanged.",
+      "id": "account-holder-directory",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/accounts/directory",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/top-holders.json",

@@ -475,6 +475,78 @@
       "AccountHistoryCsv": {
         "value": "day,netuid,event_count,event_kinds,first_block,last_block\r\n2026-08-07,0,4,StakeRemoved;StakeAdded,8788696,8791411"
       },
+      "AccountHolderDirectoryArtifactResponse": {
+        "value": {
+          "data": {
+            "account_count": 1,
+            "block_number": 5000000,
+            "captured_at": "2026-06-01T00:00:00.000Z",
+            "limit": 20,
+            "priced_registered_stake_tao": 0.5,
+            "rankings": {
+              "emission": [
+                {
+                  "coldkey": "example",
+                  "hotkey": "example",
+                  "stake_dominance": 0.5,
+                  "subnet_count": 1,
+                  "total_emission_tao": 0.5,
+                  "total_stake_tao": 0.5,
+                  "uid_count": 1
+                }
+              ],
+              "reach": [
+                {
+                  "coldkey": "example",
+                  "hotkey": "example",
+                  "stake_dominance": 0.5,
+                  "subnet_count": 1,
+                  "total_emission_tao": 0.5,
+                  "total_stake_tao": 0.5,
+                  "uid_count": 1
+                }
+              ],
+              "stake": [
+                {
+                  "coldkey": "example",
+                  "hotkey": "example",
+                  "stake_dominance": 0.5,
+                  "subnet_count": 1,
+                  "total_emission_tao": 0.5,
+                  "total_stake_tao": 0.5,
+                  "uid_count": 1
+                }
+              ]
+            },
+            "schema_version": 1
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "AccountIdentityArtifactResponse": {
         "value": {
           "data": {
@@ -15729,6 +15801,257 @@
           "limit",
           "offset",
           "days"
+        ],
+        "type": "object"
+      },
+      "AccountHolderDirectoryArtifact": {
+        "additionalProperties": false,
+        "properties": {
+          "account_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "block_number": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limit": {
+            "const": 20,
+            "type": "number"
+          },
+          "priced_registered_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "rankings": {
+            "additionalProperties": false,
+            "properties": {
+              "emission": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "coldkey": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "hotkey": {
+                      "type": "string"
+                    },
+                    "stake_dominance": {
+                      "anyOf": [
+                        {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "subnet_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "total_emission_tao": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "total_stake_tao": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "uid_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "hotkey",
+                    "coldkey",
+                    "subnet_count",
+                    "uid_count",
+                    "total_stake_tao",
+                    "total_emission_tao",
+                    "stake_dominance"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              "reach": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "coldkey": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "hotkey": {
+                      "type": "string"
+                    },
+                    "stake_dominance": {
+                      "anyOf": [
+                        {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "subnet_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "total_emission_tao": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "total_stake_tao": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "uid_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "hotkey",
+                    "coldkey",
+                    "subnet_count",
+                    "uid_count",
+                    "total_stake_tao",
+                    "total_emission_tao",
+                    "stake_dominance"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              "stake": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "coldkey": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "hotkey": {
+                      "type": "string"
+                    },
+                    "stake_dominance": {
+                      "anyOf": [
+                        {
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "subnet_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "total_emission_tao": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "total_stake_tao": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "uid_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "hotkey",
+                    "coldkey",
+                    "subnet_count",
+                    "uid_count",
+                    "total_stake_tao",
+                    "total_emission_tao",
+                    "stake_dominance"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 20,
+                "type": "array"
+              }
+            },
+            "required": [
+              "stake",
+              "emission",
+              "reach"
+            ],
+            "type": "object"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "captured_at",
+          "block_number",
+          "account_count",
+          "limit",
+          "priced_registered_stake_tao",
+          "rankings"
         ],
         "type": "object"
       },
@@ -76700,6 +77023,104 @@
                       "properties": {
                         "data": {
                           "$ref": "#/components/schemas/AccountWeightSettersArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "accounts",
+          "analytics"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/accounts/directory": {
+      "get": {
+        "description": "Fetch the compact account holder directory used by the website: top stake, emission and subnet-reach rankings derived from one complete neuron-snapshot aggregation. Each bounded row carries the account identifiers, totals, footprint and share of priced registered stake required by the directory. The rich independently sortable /api/v1/accounts response remains unchanged.",
+        "operationId": "accountHolderDirectory",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AccountHolderDirectoryArtifactResponse": {
+                    "$ref": "#/components/examples/AccountHolderDirectoryArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AccountHolderDirectoryArtifact"
                         }
                       },
                       "type": "object"

@@ -65,6 +65,11 @@ export const DECLARED_UNEXPOSED: Readonly<Record<string, string>> = {
     "Agents already receive the richer validator rows through " +
     "list_global_validators; mirroring the compact SSR payload would expose a " +
     "second, less capable answer to the same domain question.",
+  "account-holder-directory":
+    "an HTTP transport projection for the website's account directory. " +
+    "Agents already receive the richer independently sortable rows through " +
+    "list_accounts; mirroring the compact SSR payload would expose a second, " +
+    "less capable answer to the same domain question.",
 
   // ── three feeds REST serves and no surface reaches ────────────────────────
   //

@@ -89,6 +89,7 @@ import {
   overlayFeaturedValidators,
 } from "../../src/metagraph-neurons.ts";
 import { buildAccountsList } from "../../src/accounts-list.ts";
+import { buildAccountHolderDirectory } from "../../src/account-holder-directory.ts";
 import { buildValidatorOperatorDirectory } from "../../src/validator-operator-directory.ts";
 import { buildTopHoldersList } from "../../src/top-holders.ts";
 import {
@@ -1474,6 +1475,28 @@ export async function handleAccountsList(request: Request, env: Env, url: URL) {
       meta: await metagraphMeta(
         env,
         "/metagraph/accounts.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+export async function handleAccountHolderDirectory(request: Request, env: Env) {
+  const data =
+    ((await tryDataApiTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildAccountHolderDirectory> | null) ??
+    buildAccountHolderDirectory([], { priceByNetuid: NO_ALPHA_PRICES });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/accounts/directory.json",
         data.captured_at,
       ),
     },

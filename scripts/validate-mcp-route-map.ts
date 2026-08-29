@@ -36,6 +36,8 @@ const AGENT_UNREACHABLE: Record<string, string> = {
     "Identifier resolution (#9672). search_subnets and semantic_search are the agent-facing discovery paths; resolve is a UI affordance.",
   "/api/v1/validators/operators":
     "A compact HTTP/SSR projection for the website directory. Agents already receive the richer validator records through list_global_validators; mirroring this reduced payload would expose a second, less capable answer to the same question.",
+  "/api/v1/accounts/directory":
+    "A compact HTTP/SSR projection for the website directory. Agents already receive independently sortable account rows through list_accounts; mirroring this bounded payload would expose a second, less capable answer to the same question.",
   "/api/v1/export/chain-events":
     "The paid export tier (#11600). Deliberately HTTP-only: the x402 gate " +
     "prices a request by its RESOLVED pathname, and every MCP call arrives on " +

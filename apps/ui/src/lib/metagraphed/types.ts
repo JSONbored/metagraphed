@@ -2891,15 +2891,31 @@ export interface AccountListEntry {
   latest_block_number: number | null;
 }
 
-/** Site-wide accounts leaderboard from GET /api/v1/accounts. */
-export interface AccountsList {
+/** Compact account row carried by the website's single-snapshot directory. */
+export type AccountHolderDirectoryEntry = Pick<
+  AccountListEntry,
+  | "hotkey"
+  | "coldkey"
+  | "subnet_count"
+  | "uid_count"
+  | "total_stake_tao"
+  | "total_emission_tao"
+  | "stake_dominance"
+>;
+
+/** All fixed account rankings needed by /accounts, derived together. */
+export interface AccountHolderDirectory {
   schema_version?: number;
-  sort: string;
-  limit: number;
-  account_count: number;
   captured_at?: string;
   block_number?: number;
-  accounts: AccountListEntry[];
+  account_count: number;
+  limit: number;
+  priced_registered_stake_tao: number;
+  rankings: {
+    stake: AccountHolderDirectoryEntry[];
+    emission: AccountHolderDirectoryEntry[];
+    reach: AccountHolderDirectoryEntry[];
+  };
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   normalizeH160,
   ss58PathSegment,
 } from "./accounts";
+import { accountHolderDirectoryQuery, normalizeAccountHolderDirectory } from "./queries";
 
 const VALID_SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
@@ -111,5 +112,49 @@ describe("isChecksumValidSs58 (metagraphed-infra#376)", () => {
     // format an address that already came from the chain, or build an extrinsic
     // from one the wallet supplied. Neither can be a typo.
     expect(isValidSs58(`${ALICE.slice(0, -1)}X`)).toBe(true);
+  });
+});
+
+describe("account holder directory", () => {
+  it("normalizes the three fixed rankings and complete stake denominator", () => {
+    const data = normalizeAccountHolderDirectory({
+      schema_version: 1,
+      captured_at: "2026-08-29T00:00:00.000Z",
+      block_number: 8_950_000,
+      account_count: 42,
+      limit: 20,
+      priced_registered_stake_tao: 1_000,
+      rankings: {
+        stake: [
+          {
+            hotkey: "5Hot",
+            coldkey: "5Cold",
+            subnet_count: 7,
+            uid_count: 8,
+            total_stake_tao: 100,
+            total_emission_tao: 2,
+            stake_dominance: 0.1,
+          },
+          { not_an_account: true },
+        ],
+        emission: [],
+        reach: [],
+      },
+    });
+
+    expect(data.account_count).toBe(42);
+    expect(data.priced_registered_stake_tao).toBe(1_000);
+    expect(data.rankings.stake).toEqual([
+      expect.objectContaining({ hotkey: "5Hot", stake_dominance: 0.1 }),
+    ]);
+  });
+
+  it("is schema-stable for malformed input and uses one cache lane", () => {
+    expect(normalizeAccountHolderDirectory(null)).toMatchObject({
+      account_count: 0,
+      priced_registered_stake_tao: 0,
+      rankings: { stake: [], emission: [], reach: [] },
+    });
+    expect(accountHolderDirectoryQuery().queryKey).toContain("account-holder-directory");
   });
 });

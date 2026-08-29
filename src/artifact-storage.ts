@@ -32,6 +32,8 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Site-wide accounts leaderboard (#4324/5.3), computed live from the neurons
   // store tier — the collection-level counterpart to validators.json above.
   /^accounts\.json$/,
+  // Website-sized holder rankings derived live from that same neuron snapshot.
+  /^accounts\/directory\.json$/,
   // Balance-based top-holder leaderboard (#6741/#6743): computed live from
   // the account_balances/nominator_positions Postgres tier, the coldkey/
   // balance-centric counterpart to accounts.json above.

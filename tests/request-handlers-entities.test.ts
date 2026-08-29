@@ -73,6 +73,7 @@ import {
   handleAccountPortfolio,
   handleAccountPositions,
   handleAccountsList,
+  handleAccountHolderDirectory,
   handleSubnetConcentrationHistory,
   handleSubnetPerformanceHistory,
   handleSubnetYieldHistory,
@@ -1286,6 +1287,56 @@ describe("handleValidatorOperatorDirectory", () => {
     assert.equal(forwardedPath, "/api/v1/validators/operators");
     assert.deepEqual(body.data, directory);
     await assertValidComponent("ValidatorOperatorDirectoryArtifact", body.data);
+  });
+});
+
+describe("handleAccountHolderDirectory", () => {
+  test("returns a schema-stable empty directory on a cold store", async () => {
+    const body = await assertColdSchema(
+      handleAccountHolderDirectory,
+      req("/api/v1/accounts/directory"),
+      emptyEnv(),
+    );
+    assert.equal(body.data.account_count, 0);
+    assert.equal(body.data.priced_registered_stake_tao, 0);
+    assert.deepEqual(body.data.rankings, {
+      stake: [],
+      emission: [],
+      reach: [],
+    });
+    await assertValidComponent("AccountHolderDirectoryArtifact", body.data);
+  });
+
+  test("forwards the one-pass data-tier projection without rebuilding it", async () => {
+    const directory = {
+      schema_version: 1,
+      captured_at: "2026-08-29T00:00:00.000Z",
+      block_number: 8_950_000,
+      account_count: 1,
+      limit: 20,
+      priced_registered_stake_tao: 42,
+      rankings: { stake: [], emission: [], reach: [] },
+    };
+    let forwardedPath = "";
+    const env = {
+      ...emptyEnv(),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        fetch: async (request: Request) => {
+          forwardedPath = new URL(request.url).pathname;
+          return Response.json(directory);
+        },
+      },
+    };
+    const body = await json(
+      await handleAccountHolderDirectory(
+        req("/api/v1/accounts/directory"),
+        env as unknown as Env,
+      ),
+    );
+    assert.equal(forwardedPath, "/api/v1/accounts/directory");
+    assert.deepEqual(body.data, directory);
+    await assertValidComponent("AccountHolderDirectoryArtifact", body.data);
   });
 });
 

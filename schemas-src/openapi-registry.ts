@@ -319,6 +319,7 @@ import {
   AccountSubnetsArtifactSchema,
 } from "./routes/account-summary.ts";
 import { AccountsListArtifactSchema } from "./routes/accounts-list.ts";
+import { AccountHolderDirectoryArtifactSchema } from "./routes/account-holder-directory.ts";
 import { TopHoldersArtifactSchema } from "./routes/top-holders.ts";
 import { AccountBalanceArtifactSchema } from "./routes/account-balance.ts";
 import { AccountPortfolioArtifactSchema } from "./routes/account-portfolio.ts";
@@ -761,6 +762,10 @@ register(SubnetConvictionArtifactSchema, "SubnetConvictionArtifact");
 register(AccountSummaryArtifactSchema, "AccountSummaryArtifact");
 register(AccountSubnetsArtifactSchema, "AccountSubnetsArtifact");
 register(AccountsListArtifactSchema, "AccountsListArtifact");
+register(
+  AccountHolderDirectoryArtifactSchema,
+  "AccountHolderDirectoryArtifact",
+);
 register(TopHoldersArtifactSchema, "TopHoldersArtifact");
 register(AccountBalanceArtifactSchema, "AccountBalanceArtifact");
 register(AccountPortfolioArtifactSchema, "AccountPortfolioArtifact");
