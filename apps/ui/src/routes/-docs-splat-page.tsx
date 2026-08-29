@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { useLoaderData, useParams } from "@tanstack/react-router";
 import { useFumadocsLoader } from "fumadocs-core/source/client";
+import { browser } from "fumadocs-mdx/runtime/browser";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import {
   DocsBody,
@@ -11,13 +12,29 @@ import {
 } from "fumadocs-ui/layouts/docs/page";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import { TimeAgo } from "@jsonbored/ui-kit";
-import browserCollections from "collections/browser";
+import type * as SourceConfig from "../../source.config";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { getMDXComponents } from "@/components/metagraphed/mdx";
 import { baseOptions } from "@/lib/docs-layout-shared";
 import { OpenAPIPreloadProvider } from "@/lib/openapi-preload-context";
 
-const clientLoader = browserCollections.docs.createClientLoader<{ markdownUrl: string }>({
+// Deliberately build only the docs import map here. The generated
+// `collections/browser` default export contains docs AND news; importing that
+// shared object made either route ship all 652 content-module pointers.
+const docsCollection = browser<
+  typeof SourceConfig,
+  import("fumadocs-mdx/runtime/types").InternalTypeConfig & {
+    DocData: { docs: { lastModified?: Date } };
+  }
+>().doc(
+  "docs",
+  import.meta.glob(["./**/*.{mdx,md}"], {
+    base: "../../content/docs",
+    query: { collection: "docs" },
+  }),
+);
+
+const clientLoader = docsCollection.createClientLoader<{ markdownUrl: string }>({
   component({ toc, frontmatter, default: MDX, lastModified }, { markdownUrl }) {
     return (
       <DocsPage toc={toc}>
