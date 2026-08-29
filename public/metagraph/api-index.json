@@ -770,6 +770,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "validator-operator-directory",
+      "path": "/metagraph/validators/operators.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ValidatorOperatorDirectoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "accounts-list",
       "path": "/metagraph/accounts.json",
       "retirement": null,
@@ -2579,7 +2588,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 171,
+    "mainnet_only_route_count": 172,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8114,6 +8123,22 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/validators/operators.json",
+      "cache": "short",
+      "description": "Fetch the compact validator operator directory used by the website: validator hotkeys grouped by declared identity, with the primary key, optional multi-key expansion, cross-key stake/emission totals, take range, estimated APY, nominators, memberships, UIDs and stake dominance. Anonymous hotkeys remain separate operators. Computed from the same complete neuron snapshot as /api/v1/validators without changing that full response.",
+      "id": "validator-operator-directory",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/validators/operators",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/accounts.json",

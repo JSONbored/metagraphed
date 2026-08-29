@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   normalizeGlobalValidators,
+  normalizeValidatorOperatorDirectory,
   projectOperatorValidator,
   validatorOperatorDirectoryQuery,
   validatorsQuery,
 } from "./queries";
+import { deserializeOperatorRows } from "./validator-operators";
 
 describe("normalizeGlobalValidators", () => {
   it("normalizes a representative global validators payload", () => {
@@ -152,7 +154,80 @@ describe("validatorOperatorDirectoryQuery", () => {
   it("uses a dedicated cache lane for the already-grouped SSR result", () => {
     const options = validatorOperatorDirectoryQuery();
     expect(options.queryKey).toContain("validator-operator-directory");
-    expect(options.queryKey).toContain(2000);
+    expect(options.queryKey).not.toContain(2000);
+  });
+
+  it("normalizes the compact API shape into the existing directory model", () => {
+    const compact = normalizeValidatorOperatorDirectory({
+      validator_count: 3,
+      operators: [
+        {
+          identity_name: "Tensor Team",
+          primary_hotkey: "hk-large",
+          hotkeys: [
+            { hotkey: "hk-large", total_stake_tao: 75, take: 0.1 },
+            { hotkey: "hk-small", total_stake_tao: 25, take: 0.2 },
+          ],
+          hotkey_count: 2,
+          coldkey: "ck-team",
+          total_stake_tao: 100,
+          total_emission_tao: 8,
+          nominator_count: 10,
+          membership_count: 6,
+          uid_count: 8,
+          take_min: 0.1,
+          take_max: 0.2,
+          apy_estimate: 0.25,
+          stake_dominance: 0.8,
+        },
+        {
+          identity_name: null,
+          primary_hotkey: "anonymous-hotkey",
+          hotkeys: [],
+          hotkey_count: 1,
+          coldkey: null,
+          total_stake_tao: 25,
+          total_emission_tao: 1,
+          nominator_count: null,
+          membership_count: 1,
+          uid_count: 1,
+          take_min: null,
+          take_max: null,
+          apy_estimate: null,
+          stake_dominance: 0.2,
+        },
+      ],
+    });
+    const rows = deserializeOperatorRows(compact.operators);
+
+    expect(compact.hotkey_count).toBe(3);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      key: "Tensor Team",
+      name: "Tensor Team",
+      named: true,
+      keyCount: 2,
+      primaryHotkey: "hk-large",
+      totalStakeTao: 100,
+      totalEmissionTao: 8,
+      nominators: 10,
+      memberships: 6,
+      uidCount: 8,
+      takeMin: 0.1,
+      takeMax: 0.2,
+      apyEstimate: 0.25,
+      dominance: 0.8,
+    });
+    expect(rows[0]!.keys.map((key) => key.hotkey)).toEqual(["hk-large", "hk-small"]);
+    expect(rows[1]).toMatchObject({
+      key: "anonymous-hotkey",
+      named: false,
+      keyCount: 1,
+      takeMin: null,
+      takeMax: null,
+      apyEstimate: null,
+      dominance: 0.2,
+    });
   });
 });
 

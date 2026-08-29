@@ -840,6 +840,56 @@ test("GET /api/v1/validators honors an explicit sort and clamps a bogus limit", 
   );
 });
 
+test("GET /api/v1/validators/operators serves the grouped website projection", async () => {
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5TeamLarge",
+    coldkey: "5TeamColdLarge",
+    stake_tao: 75,
+    emission_tao: 6,
+    take: 0.1,
+  });
+  insertNeuron({
+    netuid: 0,
+    uid: 1,
+    hotkey: "5TeamSmall",
+    coldkey: "5TeamColdSmall",
+    stake_tao: 25,
+    emission_tao: 2,
+    take: 0.2,
+  });
+  insertNeuron({
+    netuid: 0,
+    uid: 2,
+    hotkey: "5Anonymous",
+    coldkey: "5AnonymousCold",
+    stake_tao: 50,
+    emission_tao: 1,
+    take: null,
+  });
+  await insertIdentity("5TeamColdLarge", "Tensor Team");
+  await insertIdentity("5TeamColdSmall", "Tensor Team");
+
+  const res = await call(req("/api/v1/validators/operators"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.validator_count, 3);
+  assert.equal(body.operator_count, 2);
+  const operators = body.operators as Row[];
+  assert.equal(operators[0]!.identity_name, "Tensor Team");
+  assert.equal(operators[0]!.hotkey_count, 2);
+  assert.equal(operators[0]!.primary_hotkey, "5TeamLarge");
+  assert.equal(operators[0]!.total_stake_tao, 100);
+  assert.deepEqual(
+    (operators[0]!.hotkeys as Row[]).map((entry) => entry.hotkey),
+    ["5TeamLarge", "5TeamSmall"],
+  );
+  assert.equal(operators[1]!.identity_name, null);
+  assert.equal(operators[1]!.primary_hotkey, "5Anonymous");
+  assert.deepEqual(operators[1]!.hotkeys, []);
+});
+
 test("GET /api/v1/validators/:hotkey aggregates one hotkey across subnets with priced totals", async () => {
   insertNeuron({
     netuid: 0,
@@ -2619,6 +2669,39 @@ test("a declared pass_total rides the message and tallies to COMPLETE", async ()
     pass[0]!.completed_at,
     "the pass is complete once both chunks land",
   );
+});
+
+test("the neuron snapshot stamp exposes only the newest completed pass", async () => {
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?), (?, ?, ?, ?)",
+    [
+      1_780_000_000_000,
+      2,
+      2,
+      10,
+      1_780_000_000_100,
+      2,
+      2,
+      20,
+      1_780_000_000_200,
+      2,
+      1,
+      null,
+    ],
+  );
+  const res = await call(req("/api/v1/internal/neurons-snapshot-stamp"));
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { captured_at: 1_780_000_000_100 });
+});
+
+test("the neuron snapshot stamp stays null until a pass completes", async () => {
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [1_780_000_000_200, 2, 1, null],
+  );
+  const res = await call(req("/api/v1/internal/neurons-snapshot-stamp"));
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { captured_at: null });
 });
 
 test("a pass_total smaller than the rows sent is refused", async () => {

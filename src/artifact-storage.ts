@@ -26,6 +26,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^incidents\.json$/,
   // Global validator/operator leaderboard, computed live from the neurons store.
   /^validators\.json$/,
+  // Browser-sized operator projection of the same live validator scan. This is
+  // computed on request for SSR and is never a publishable static artifact.
+  /^validators\/operators\.json$/,
   // Site-wide accounts leaderboard (#4324/5.3), computed live from the neurons
   // store tier — the collection-level counterpart to validators.json above.
   /^accounts\.json$/,

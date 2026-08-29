@@ -686,6 +686,42 @@ describe("markDataApiTierFallbackResponse", () => {
 // ---- C) withEdgeCache -------------------------------------------------------
 
 describe("withEdgeCache", () => {
+  test("uses a caller-supplied producer watermark instead of health metadata", async () => {
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([], {
+      healthMeta: { last_run_at: "unrelated-health-tick" },
+    });
+    const stamp = "1780000000000";
+    let resolved = 0;
+    const res = await withEdgeCache(
+      req("/api/v1/validators/operators"),
+      ctx,
+      env,
+      "validator-operator-directory",
+      async () =>
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { etag: '"operators"' },
+        }),
+      "/api/v1/validators/operators",
+      async () => {
+        resolved += 1;
+        return stamp;
+      },
+    );
+    await Promise.resolve();
+
+    assert.equal(res.status, 200);
+    assert.equal(resolved, 1);
+    assert.deepEqual(cache.putKeys, [
+      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+        CONTRACT_VERSION,
+      )}/${stamp}/validator-operator-directory/api/v1/validators/operators`,
+    ]);
+  });
+
   test("MISS: runs buildResponse and caches 200 when snapshot stamp is warm", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();

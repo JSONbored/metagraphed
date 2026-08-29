@@ -376,6 +376,7 @@ import { BlockExtrinsicsArtifactSchema } from "./routes/block-extrinsics.ts";
 import { BlockEventsArtifactSchema } from "./routes/block-events.ts";
 import { BlockChainEventsArtifactSchema } from "./routes/block-chain-events.ts";
 import { GlobalValidatorsArtifactSchema } from "./routes/global-validators.ts";
+import { ValidatorOperatorDirectoryArtifactSchema } from "./routes/validator-operator-directory.ts";
 import { ValidatorDetailArtifactSchema } from "./routes/validator-detail.ts";
 import { CompareValidatorsArtifactSchema } from "./routes/compare-validators.ts";
 import { ValidatorHistoryArtifactSchema } from "./routes/validator-history.ts";
@@ -866,6 +867,10 @@ register(BlockExtrinsicsArtifactSchema, "BlockExtrinsicsArtifact");
 register(BlockEventsArtifactSchema, "BlockEventsArtifact");
 register(BlockChainEventsArtifactSchema, "BlockChainEventsArtifact");
 register(GlobalValidatorsArtifactSchema, "GlobalValidatorsArtifact");
+register(
+  ValidatorOperatorDirectoryArtifactSchema,
+  "ValidatorOperatorDirectoryArtifact",
+);
 register(ValidatorDetailArtifactSchema, "ValidatorDetailArtifact");
 register(CompareValidatorsArtifactSchema, "CompareValidatorsArtifact");
 register(ValidatorHistoryArtifactSchema, "ValidatorHistoryArtifact");

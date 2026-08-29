@@ -141,9 +141,9 @@ export const GlobalValidatorsArtifactSchema = z
   .object({
     schema_version: z.int(),
     sort: z.enum(GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES),
-    // #8251: 2000 cap (was 100) so the directory page can fetch the full
-    // validator set in one request -- mirrors GLOBAL_VALIDATOR_LIMIT_MAX in
-    // src/metagraph-neurons.ts.
+    // #8251: 2000 cap (was 100) permits a full public validator scan in one
+    // request -- mirrors GLOBAL_VALIDATOR_LIMIT_MAX in src/metagraph-neurons.ts.
+    // The website directory now uses its own server-side projection instead.
     limit: z.int().min(1).max(2000),
     block_number: z.int().min(0).nullable(),
     captured_at: z.string().nullable(),

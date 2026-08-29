@@ -9,6 +9,7 @@ import { test } from "vitest";
 import {
   DATA_API_TIER_RETRY_ATTEMPTS,
   currentDataApiTierFallbackGeneration,
+  readNeuronsSnapshotCacheStamp,
   tryDataApiTier,
 } from "../workers/data-api-tier.ts";
 import { mockEnv, type AnyFn } from "./row-type.ts";
@@ -26,6 +27,77 @@ function dataApi(handler: AnyFn) {
 function req() {
   return new Request("https://api.metagraph.sh/api/v1/health");
 }
+
+test("readNeuronsSnapshotCacheStamp: returns the completed-pass watermark", async () => {
+  let requested: Request | null = null;
+  const result = await readNeuronsSnapshotCacheStamp(
+    mockEnv({
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: dataApi(async (request: Request) => {
+        requested = request;
+        return Response.json({ captured_at: 1_780_000_000_000 });
+      }),
+    }),
+  );
+  assert.equal(result, "1780000000000");
+  assert.equal(
+    new URL(requested!.url).pathname,
+    "/api/v1/internal/neurons-snapshot-stamp",
+  );
+});
+
+test("readNeuronsSnapshotCacheStamp: declines without the active lane or binding", async () => {
+  assert.equal(
+    await readNeuronsSnapshotCacheStamp(
+      mockEnv({ METAGRAPH_NEURONS_SOURCE: "retired" }),
+    ),
+    null,
+  );
+  assert.equal(
+    await readNeuronsSnapshotCacheStamp(
+      mockEnv({ METAGRAPH_NEURONS_SOURCE: "data-api" }),
+    ),
+    null,
+  );
+});
+
+test("readNeuronsSnapshotCacheStamp: unproven responses disable caching", async () => {
+  for (const response of [
+    new Response("no", { status: 503 }),
+    Response.json({ captured_at: null }),
+    Response.json({ captured_at: -1 }),
+    Response.json({ captured_at: 1.5 }),
+  ]) {
+    assert.equal(
+      await readNeuronsSnapshotCacheStamp(
+        mockEnv({
+          METAGRAPH_NEURONS_SOURCE: "data-api",
+          DATA_API: dataApi(async () => response.clone()),
+        }),
+      ),
+      null,
+    );
+  }
+});
+
+test("readNeuronsSnapshotCacheStamp: transport and malformed JSON failures disable caching", async () => {
+  for (const fetch of [
+    async () => {
+      throw new Error("offline");
+    },
+    async () => new Response("not-json", { status: 200 }),
+  ]) {
+    assert.equal(
+      await readNeuronsSnapshotCacheStamp(
+        mockEnv({
+          METAGRAPH_NEURONS_SOURCE: "data-api",
+          DATA_API: dataApi(fetch),
+        }),
+      ),
+      null,
+    );
+  }
+});
 
 test("an unforwardable flag no longer COMPILES -- membership moved into the type (#10190)", () => {
   // The 222 dead call sites this parameter's width allowed were swept blind

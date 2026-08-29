@@ -77,7 +77,7 @@ const apiPaths = (hotkey: string) => [
   `/api/v1/validators/${hotkey}`,
   `/api/v1/validators/${hotkey}/history`,
   `/api/v1/validators/${hotkey}/nominators`,
-  `/api/v1/validators`,
+  `/api/v1/validators/operators`,
 ];
 
 function ApiSources({ paths }: { paths: string[] }) {

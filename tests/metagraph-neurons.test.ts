@@ -1185,6 +1185,22 @@ describe("metagraph-neurons builders", () => {
     assert.equal(clamped.validators.length, 0);
   });
 
+  test("buildGlobalValidators can expose every row to an internal projection", () => {
+    const data = buildGlobalValidators(
+      [
+        { ...ROW, netuid: 7, uid: 0, hotkey: "hk-a", stake_tao: 20 },
+        { ...ROW, netuid: 7, uid: 1, hotkey: "hk-b", stake_tao: 10 },
+      ],
+      { limit: 1, includeAll: true, sort: "total_stake" },
+    );
+    assert.equal(data.validator_count, 2);
+    assert.equal(data.limit, 2);
+    assert.deepEqual(
+      data.validators.map((validator: Row) => validator.hotkey),
+      ["hk-a", "hk-b"],
+    );
+  });
+
   test("buildGlobalValidators handles sparse identity rows and trust sorting", () => {
     const data = buildGlobalValidators(
       [
