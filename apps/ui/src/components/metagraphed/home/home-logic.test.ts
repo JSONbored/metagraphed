@@ -3,7 +3,10 @@ import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import type { ChainActivityDay, SubnetEconomics, SubnetMover } from "@/lib/metagraphed/types";
 import {
   chainPoints,
+  completeChainDays,
+  emissionComparisonNote,
   emissionRails,
+  fmtAlphaDelta,
   fmtCount,
   fmtShare,
   healthRail,
@@ -46,6 +49,13 @@ describe("formatters", () => {
     expect(fmtShare(0.00821, 3)).toBe("0.821%");
     expect(fmtShare(undefined)).toBe("—");
   });
+
+  it("keeps tiny alpha movement visible and signs its direction", () => {
+    expect(fmtAlphaDelta(5_608.831)).toBe("+5.6k");
+    expect(fmtAlphaDelta(0.000001034)).toBe("+1.03e−6");
+    expect(fmtAlphaDelta(-0.25)).toBe("−0.25");
+    expect(fmtAlphaDelta(0)).toBe("0");
+  });
 });
 
 describe("valueSegments", () => {
@@ -77,27 +87,74 @@ describe("valueSegments", () => {
 
 describe("emissionRails", () => {
   const movers = [
-    mover({ netuid: 1, emission_end_alpha: 10, emission_share_pct: 1, emission_pct_change: 5 }),
-    mover({ netuid: 2, emission_end_alpha: 50 }),
+    mover({
+      netuid: 1,
+      emission_end_alpha: 10,
+      emission_delta_alpha: 5,
+      emission_share_pct: 1,
+      emission_pct_change: 5,
+    }),
+    mover({ netuid: 2, emission_end_alpha: 50, emission_delta_alpha: 20 }),
     mover({ netuid: 3, emission_end_alpha: 0 }),
   ];
 
-  it("ranks by the window's END reading, so the rail and its change agree", () => {
+  it("ranks by start-to-end gain, so the selected window changes the primary reading", () => {
     expect(emissionRails(movers, nameOf).map((r) => r.key)).toEqual(["2", "1"]);
   });
 
-  it("drops a subnet that emitted nothing", () => {
+  it("drops a subnet with no positive movement", () => {
     expect(emissionRails(movers, nameOf).some((r) => r.key === "3")).toBe(false);
   });
 
-  it("converts the API's percentage share into a fraction for display", () => {
+  it("keeps the end level, network share, and relative change inspectable", () => {
     const [, first] = emissionRails(movers, nameOf);
-    expect(first?.detail[0]).toEqual({ key: "share", label: "Share", value: "1.00%" });
-    expect(first?.detail[1]?.value).toBe("+5.0%");
+    expect(first?.detail[0]).toEqual({ key: "end", label: "End daily α", value: "10.00 α" });
+    expect(first?.detail[1]).toEqual({
+      key: "share",
+      label: "Network share",
+      value: "1.00%",
+    });
+    expect(first?.detail[2]?.value).toBe("+5.0%");
   });
 
   it("honours the limit", () => {
     expect(emissionRails(movers, nameOf, 1)).toHaveLength(1);
+  });
+});
+
+describe("emissionComparisonNote", () => {
+  it("states exact boundaries, coverage, measure, and provenance", () => {
+    expect(
+      emissionComparisonNote(
+        {
+          window: "30d",
+          start_date: "2026-07-30",
+          end_date: "2026-08-29",
+          covered_days: 30,
+          requested_days: 30,
+          window_truncated: false,
+        },
+        "30d",
+      ),
+    ).toBe(
+      "2026-07-30 → 2026-08-29 · 30/30 days · bars show start-to-end daily α gains · open a row for end level and network share · chain-derived snapshots",
+    );
+  });
+
+  it("does not hide a truncated comparison", () => {
+    expect(
+      emissionComparisonNote(
+        {
+          window: "90d",
+          start_date: null,
+          end_date: null,
+          covered_days: 42,
+          requested_days: 90,
+          window_truncated: true,
+        },
+        "90d",
+      ),
+    ).toContain("42/90 days (partial)");
   });
 });
 
@@ -117,6 +174,21 @@ describe("chainPoints / lastCompleteDay", () => {
     // The newest row is today so far -- 1,588 blocks against a full day's
     // 7,200 -- and quoting it reads as a collapse in throughput, not a clock.
     expect(lastCompleteDay(days, "2026-08-23")?.day).toBe("2026-08-22");
+  });
+
+  it("removes only an incomplete oldest boundary day from every metric", () => {
+    const boundaryDays = [
+      { day: "2026-07-30", block_count: 4881, extrinsic_count: 149452, event_count: 2091499 },
+      { day: "2026-07-31", block_count: 7194, extrinsic_count: 194310, event_count: 2884427 },
+      { day: "2026-08-01", block_count: 7197, extrinsic_count: 185950, event_count: 2925250 },
+      { day: "2026-08-02", block_count: 7200, extrinsic_count: 169769, event_count: 2823934 },
+    ] as ChainActivityDay[];
+    expect(completeChainDays(boundaryDays).map((day) => day.day)).toEqual([
+      "2026-07-31",
+      "2026-08-01",
+      "2026-08-02",
+    ]);
+    expect(chainPoints(boundaryDays, "blocks").map((point) => point.v)).toEqual([7194, 7197, 7200]);
   });
 
   it("keeps the newest row when it is already complete", () => {

@@ -1024,6 +1024,11 @@ export function normalizeSubnetMovers(raw: unknown): SubnetMovers {
   return {
     schema_version: firstFiniteNumber(d.schema_version) ?? 1,
     window: firstString(d.window) ?? "30d",
+    start_date: firstString(d.start_date) ?? null,
+    end_date: firstString(d.end_date) ?? null,
+    covered_days: coerceFiniteNumber(d.covered_days) ?? null,
+    requested_days: coerceFiniteNumber(d.requested_days) ?? null,
+    window_truncated: d.window_truncated === true,
     sort: firstString(d.sort) ?? "stake",
     subnet_count: firstFiniteNumber(d.subnet_count) ?? movers.length,
     network: net

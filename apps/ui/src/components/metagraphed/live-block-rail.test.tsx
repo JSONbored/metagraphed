@@ -42,7 +42,15 @@ describe("LiveBlockRail", () => {
         economic_activity_tao: 2.5,
         economic_activity_usd: 600,
       }),
-    ).toBe("2.50 τ · $600");
+    ).toBe("2.50τ · $600");
+    expect(
+      blockEconomicLabel({
+        ...base,
+        decode_status: "complete",
+        economic_activity_tao: 62.85,
+        economic_activity_usd: 14_734.55,
+      }),
+    ).toBe("62.85τ · $14.7k");
   });
 
   it("renders the bounded twelve-block window newest-first, with every block inspectable", async () => {

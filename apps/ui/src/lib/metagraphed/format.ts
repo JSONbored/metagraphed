@@ -77,6 +77,27 @@ export function formatCompactAmount(v: number | null | undefined): string {
   return v.toFixed(4);
 }
 
+/**
+ * A signed, unitless delta for narrow ranked columns. Values below 0.01 use
+ * three-significant-digit scientific notation so a real microscopic movement
+ * never becomes either `0.0000` or an ellipsis.
+ */
+export function formatCompactDelta(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  if (v === 0) return "0";
+  const sign = v > 0 ? "+" : "−";
+  const magnitude = Math.abs(v);
+  if (magnitude >= 1) return `${sign}${formatCompactAmount(magnitude)}`;
+  if (magnitude >= 0.01) return `${sign}${formatNumber(magnitude)}`;
+  const scientific = magnitude
+    .toExponential(2)
+    .replace(/\.0+(?=e)/, "")
+    .replace(/(\.\d*?)0+(?=e)/, "$1")
+    .replace("e-", "e−")
+    .replace("e+", "e+");
+  return `${sign}${scientific}`;
+}
+
 /** An amount at a fixed precision with its unit: `12.50 τ`. */
 export function formatAmountFixed(v: number | null | undefined, places = 2, unit = "τ"): string {
   if (v == null || !Number.isFinite(v)) return "—";
@@ -138,6 +159,21 @@ export function formatUsd(value: number | null | undefined, fallback = "—"): s
   if (amount >= 1_000_000) return `${sign}$${(amount / 1_000_000).toFixed(2)}M`;
   if (amount >= 1) return `${sign}$${formatNumber(Number(amount.toFixed(2)))}`;
   return `${sign}$${formatNumber(amount)}`;
+}
+
+/**
+ * A compact USD reading for narrow analytical marks. Unlike {@link formatUsd},
+ * this abbreviates at the thousand boundary so a live block tile can retain
+ * both its TAO and dollar readings without clipping either one.
+ */
+export function formatCompactUsd(value: number | null | undefined, fallback = "—"): string {
+  if (value == null || !Number.isFinite(value)) return fallback;
+  const sign = value < 0 ? "−" : "";
+  const amount = Math.abs(value);
+  if (amount >= 1_000_000_000) return `${sign}$${(amount / 1_000_000_000).toFixed(1)}B`;
+  if (amount >= 1_000_000) return `${sign}$${(amount / 1_000_000).toFixed(1)}M`;
+  if (amount >= 1_000) return `${sign}$${(amount / 1_000).toFixed(1)}k`;
+  return formatUsd(value, fallback);
 }
 
 /**

@@ -48,7 +48,7 @@ test.describe("homepage secondary analytics", () => {
     await gotoThroughRestart(page, "/");
 
     const emission = page.getByRole("group", {
-      name: "Daily subnet emission at the end of the 30d comparison",
+      name: "Subnet daily alpha gains over the 30d comparison",
       exact: true,
     });
     const activity = page.locator("#home-chain .mg-line-plot");
@@ -59,9 +59,11 @@ test.describe("homepage secondary analytics", () => {
     for (const instrument of [emission, activity, health]) {
       await expect(instrument).toHaveAttribute("aria-busy", "true");
     }
-    await expect(page.getByText("Loading 30d emission comparison · chain-direct")).toBeVisible();
     await expect(
-      page.getByText("Loading 30d complete-day chain activity · chain-direct"),
+      page.getByText("Loading 30d emission comparison · chain-derived snapshots"),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Loading complete-day chain activity · indexed chain data"),
     ).toBeVisible();
     await expect(page.getByText("Loading 7d surface health · live prober")).toBeVisible();
 
@@ -75,5 +77,45 @@ test.describe("homepage secondary analytics", () => {
     for (const instrument of [emission, activity, health]) {
       await expect(instrument).not.toHaveAttribute("aria-busy", "true");
     }
+  });
+
+  test("keeps live readings legible and redraws the selected chain metric", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await gotoThroughRestart(page, "/");
+
+    const economicReading = page.locator(".mg-live-block-value").first();
+    await expect(economicReading).toBeVisible();
+    const valueLayout = await economicReading.evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return {
+        overflow: styles.overflow,
+        textOverflow: styles.textOverflow,
+        whiteSpace: styles.whiteSpace,
+      };
+    });
+    expect(valueLayout).toEqual({
+      overflow: "visible",
+      textOverflow: "clip",
+      whiteSpace: "normal",
+    });
+
+    await expect(page.getByText("Emission gains", { exact: true })).toBeVisible();
+    await expect(page.getByText("Gain α", { exact: true })).toBeVisible();
+
+    await page.getByRole("radio", { name: "Blocks", exact: true }).click();
+    const chart = page.locator("#home-chain");
+    await expect(chart).toHaveAttribute("data-animate", "true");
+    const activePath = chart.locator(".mg-line-active");
+    await expect(activePath).toHaveAttribute("pathLength", "1");
+    expect(
+      await activePath.evaluate((element) => getComputedStyle(element).animationName),
+    ).toContain("mg-line-draw");
+
+    const separation = await chart.evaluate((element) => {
+      const range = element.querySelector(".mg-line-range")?.getBoundingClientRect();
+      const plot = element.querySelector(".mg-line-plot")?.getBoundingClientRect();
+      return range && plot ? plot.top - range.bottom : -1;
+    });
+    expect(separation).toBeGreaterThanOrEqual(20);
   });
 });

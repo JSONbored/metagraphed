@@ -6,6 +6,8 @@ import {
   formatAmountFixed,
   formatCompact,
   formatCompactAmount,
+  formatCompactDelta,
+  formatCompactUsd,
   formatDecimal,
   formatNumber,
   formatPct,
@@ -241,6 +243,17 @@ describe("formatUsd", () => {
     expect(formatUsd(0.0125)).toBe("$0.0125");
     expect(formatUsd(-15.5)).toBe("−$15.5");
     expect(formatUsd(undefined, "unavailable")).toBe("unavailable");
+  });
+});
+
+describe("formatCompactUsd", () => {
+  it("keeps narrow analytical readings complete instead of clipping them", () => {
+    expect(formatCompactUsd(null)).toBe("—");
+    expect(formatCompactUsd(999.45)).toBe("$999.45");
+    expect(formatCompactUsd(14_734.55)).toBe("$14.7k");
+    expect(formatCompactUsd(1_250_000)).toBe("$1.3M");
+    expect(formatCompactUsd(3_450_000_000)).toBe("$3.5B");
+    expect(formatCompactUsd(-14_734.55)).toBe("−$14.7k");
   });
 });
 
@@ -501,6 +514,17 @@ describe("formatCompact never leaks precision below a thousand (#11681)", () => 
       const decimals = (formatCompact(v).split(".")[1] ?? "").length;
       expect(decimals, `formatCompact(${v}) = ${formatCompact(v)}`).toBeLessThanOrEqual(2);
     }
+  });
+});
+
+describe("formatCompactDelta", () => {
+  it("signs movement and keeps microscopic values complete in narrow columns", () => {
+    expect(formatCompactDelta(null)).toBe("—");
+    expect(formatCompactDelta(0)).toBe("0");
+    expect(formatCompactDelta(5_608.831)).toBe("+5.6k");
+    expect(formatCompactDelta(0.003252)).toBe("+3.25e−3");
+    expect(formatCompactDelta(0.000000482)).toBe("+4.82e−7");
+    expect(formatCompactDelta(-0.00004)).toBe("−4e−5");
   });
 });
 
