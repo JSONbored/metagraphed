@@ -137,6 +137,47 @@ test("formatBlock is null-safe on junk + sparse rows", () => {
   assert.equal(out.block_hash, null);
   assert.equal(out.author, null);
   assert.equal(out.observed_at, null);
+  assert.equal(out.decode_status, "unavailable");
+  assert.deepEqual(out.subnet_ids, []);
+});
+
+test("formatBlock preserves complete, pending and unavailable economics honestly", () => {
+  const complete = formatBlock({
+    block_number: 1000,
+    decode_status: "complete",
+    native_transfer_tao: "1.25",
+    stake_flow_tao: "2.5",
+    economic_activity_tao: "3.75",
+    fee_tao: "0.001",
+    tip_tao: "0",
+    issuance_tao: "1",
+    subnet_ids: "[19, 7, 19]",
+    tao_usd_basis: "tao-usd-index",
+    tao_usd_unavailable: "index_stale",
+  })!;
+  assert.equal(complete.decode_status, "complete");
+  assert.equal(complete.economic_activity_tao, 3.75);
+  assert.equal(complete.tip_tao, 0);
+  assert.deepEqual(complete.subnet_ids, [7, 19]);
+  assert.equal(complete.tao_usd_basis, "tao-usd-index");
+  assert.equal(complete.tao_usd_unavailable, "index_stale");
+
+  const pending = formatBlock({
+    block_number: 1001,
+    decode_status: "pending",
+  })!;
+  assert.equal(pending.decode_status, "pending");
+  assert.equal(pending.economic_activity_tao, null);
+
+  const unavailable = formatBlock({
+    block_number: 999,
+    decode_status: "unavailable",
+    economic_activity_tao: "bad",
+    subnet_ids: "{not-json",
+  })!;
+  assert.equal(unavailable.decode_status, "unavailable");
+  assert.equal(unavailable.economic_activity_tao, null);
+  assert.deepEqual(unavailable.subnet_ids, []);
 });
 
 test("formatBlock defaults a missing block_number to null (every field nullable)", () => {

@@ -28,8 +28,42 @@ const keysOf = (schema: z.ZodType): string[] =>
   ).sort();
 
 describe("the warehouse/wire seam is real, not a duplicate (#11008)", () => {
-  test("blocks: the same columns, and observed_at is where the layers part", () => {
-    assert.deepEqual(keysOf(BlocksRowSchema), keysOf(BlockSchema));
+  test("blocks: stored columns stay aligned and response-only economics remain explicit", () => {
+    const storedKeys = keysOf(BlocksRowSchema);
+    const wireKeys = keysOf(BlockSchema);
+    assert.deepEqual(
+      storedKeys,
+      [
+        "block_number",
+        "block_hash",
+        "parent_hash",
+        "author",
+        "extrinsic_count",
+        "event_count",
+        "spec_version",
+        "observed_at",
+      ].sort(),
+    );
+    assert.deepEqual(
+      wireKeys.filter((key) => !storedKeys.includes(key)),
+      [
+        "decode_status",
+        "economic_activity_tao",
+        "economic_activity_usd",
+        "fee_tao",
+        "issuance_tao",
+        "native_transfer_tao",
+        "stake_flow_tao",
+        "subnet_ids",
+        "tao_usd_basis",
+        "tao_usd_block",
+        "tao_usd_observed_at",
+        "tao_usd_unavailable",
+        "tip_tao",
+        "usd_per_tao",
+      ],
+      "derived hot-tier and response-overlay fields must not masquerade as lakehouse columns",
+    );
     // Stored: epoch millis. Served: an ISO 8601 string. A single declaration
     // cannot be both, which is why there are two.
     assert.equal(
@@ -83,5 +117,18 @@ function blockWire() {
     extrinsic_count: 1,
     event_count: 1,
     spec_version: 1,
+    decode_status: "unavailable",
+    native_transfer_tao: null,
+    stake_flow_tao: null,
+    economic_activity_tao: null,
+    fee_tao: null,
+    tip_tao: null,
+    issuance_tao: null,
+    subnet_ids: [],
+    economic_activity_usd: null,
+    usd_per_tao: null,
+    tao_usd_block: null,
+    tao_usd_observed_at: null,
+    tao_usd_basis: null,
   };
 }

@@ -455,6 +455,7 @@ import {
 import { withAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
 import { withUsdAtTx } from "../../src/price-at-tx.ts";
 import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
+import { blockEconomicsUsd } from "../../src/block-economics.ts";
 import { buildAccountStakeFlow } from "../../src/account-stake-flow.ts";
 import { loadSubnetStakeFlowFromArtifact } from "../../src/subnet-stake-flow-artifact.ts";
 import {
@@ -680,6 +681,20 @@ const BLOCK_CSV_COLUMNS = [
   "extrinsic_count",
   "event_count",
   "spec_version",
+  "decode_status",
+  "native_transfer_tao",
+  "stake_flow_tao",
+  "economic_activity_tao",
+  "fee_tao",
+  "tip_tao",
+  "issuance_tao",
+  "subnet_ids",
+  "economic_activity_usd",
+  "usd_per_tao",
+  "tao_usd_block",
+  "tao_usd_observed_at",
+  "tao_usd_basis",
+  "tao_usd_unavailable",
   "observed_at",
 ];
 const SUBNET_YIELD_HISTORY_CSV_COLUMNS = [
@@ -6705,6 +6720,16 @@ export async function handleCrowdloan(
 // `blocks` store tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
 // absent store → schema-stable zero (never throws). Reuses the chain-events meta
 // (source:"chain-events") since the same first-party poller fills this tier.
+function readBlockTaoUsdCurrentKv(
+  env: Env,
+  network: ChainNetworkId | undefined,
+  now: number,
+) {
+  return (network ?? DEFAULT_CHAIN_NETWORK) === DEFAULT_CHAIN_NETWORK
+    ? readTaoUsdCurrentKv(env, now)
+    : Promise.resolve(null);
+}
+
 export async function handleBlocks(
   request: Request,
   env: Env,
@@ -6722,11 +6747,12 @@ export async function handleBlocks(
   // seen since. They meet at a fixed seam, so every block comes from exactly
   // one of them -- see src/blocks-cold-tier.ts. All tiers feed the SAME
   // buildBlockFeed formatter, so the payload is identical whichever answered.
-  const data =
+  const now = Date.now();
+  const [loaded, taoUsd] = await Promise.all([
     // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
     // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
     // on every request.
-    (await loadBlockFeedColdTier(
+    loadBlockFeedColdTier(
       env,
       {
         limit,
@@ -6754,7 +6780,18 @@ export async function handleBlocks(
         minEvents: routeInt(url, "min_events"),
       },
       network,
-    )) ?? buildBlockFeed([], { limit, offset, nextCursor: null });
+    ),
+    readBlockTaoUsdCurrentKv(env, network, now),
+  ]);
+  const rawData =
+    loaded ?? buildBlockFeed([], { limit, offset, nextCursor: null });
+  const data = {
+    ...rawData,
+    blocks: rawData.blocks.map((block) => ({
+      ...block,
+      ...blockEconomicsUsd(block.economic_activity_tao, taoUsd, now),
+    })),
+  };
   if (csvRequested(url, request)) {
     return csvResponse(
       data.blocks as unknown[],
@@ -6830,14 +6867,32 @@ export async function handleBlock(
   // table is dropped in production, so a store query here would always miss.
   // #9115: same lakehouse fallback as the feed above; buildBlock is shared, so
   // a block served from R2 is byte-identical to one served from Postgres.
-  const data =
+  const now = Date.now();
+  const [loaded, taoUsd] = await Promise.all([
     // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
     // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
     // on every request.
-    (await loadBlockColdTier(env, ref, network)) ?? buildBlock(undefined, ref);
-  // Finalized block detail is immutable once resolved; a cold/unknown ref stays
-  // on the short profile so clients re-check when the block lands.
-  const cacheProfile = data.block ? "static" : "short";
+    loadBlockColdTier(env, ref, network),
+    readBlockTaoUsdCurrentKv(env, network, now),
+  ]);
+  const rawData = loaded ?? buildBlock(undefined, ref);
+  const data = rawData.block
+    ? {
+        ...rawData,
+        block: {
+          ...rawData.block,
+          ...blockEconomicsUsd(
+            rawData.block.economic_activity_tao,
+            taoUsd,
+            now,
+          ),
+        },
+      }
+    : rawData;
+  // The chain record is immutable, but its explicit current-price conversion
+  // is not. Keep the response on the short profile so USD never freezes at the
+  // first rate a CDN happened to cache for this block.
+  const cacheProfile = "short";
   return envelopeResponse(
     request,
     {

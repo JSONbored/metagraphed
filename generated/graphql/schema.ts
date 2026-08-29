@@ -5654,6 +5654,20 @@ type Block {
   event_count: Int
   spec_version: Int
   observed_at: String
+  decode_status: String!
+  native_transfer_tao: Float
+  stake_flow_tao: Float
+  economic_activity_tao: Float
+  fee_tao: Float
+  tip_tao: Float
+  issuance_tao: Float
+  subnet_ids: [Int!]!
+  economic_activity_usd: Float
+  usd_per_tao: Float
+  tao_usd_block: Int
+  tao_usd_observed_at: String
+  tao_usd_basis: String
+  tao_usd_unavailable: String
 }
 
 type BlockDetail {

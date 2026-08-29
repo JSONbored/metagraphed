@@ -149,6 +149,21 @@ for (const route of targets) {
       // check itself carries for this one route).
       await page.waitForTimeout(5000);
     }
+    // The block detail keeps its substantial decoded-event reads behind an
+    // explicit disclosure so the primary ledger stays fast. A navigation-only
+    // recording would therefore omit the very endpoints the deterministic
+    // fixture must replay when a reader opens that record.
+    if (route === "/blocks/8713384") {
+      const trigger = page.getByRole("button", { name: "Inspect decoded events" });
+      if (await trigger.isVisible()) {
+        await trigger.click();
+        try {
+          await page.waitForLoadState("networkidle", { timeout: 10_000 });
+        } catch {
+          await page.waitForTimeout(5000);
+        }
+      }
+    }
     await page.close();
   }
   await context.close(); // flushes the HAR to disk

@@ -3978,6 +3978,92 @@ describe("handleBlocks", () => {
     assert.equal(res.headers.get("vary"), "Accept, Accept-Encoding");
   });
 
+  test("adds one fresh response-level TAO/USD conversion to complete mainnet blocks", async () => {
+    const { env } = dbWith({
+      blocksFeed: [
+        blockRow({
+          decode_status: "complete",
+          economic_activity_tao: "2.5",
+          economics_complete: true,
+        }),
+      ],
+    });
+    const observedAt = new Date().toISOString();
+    env.METAGRAPH_CONTROL = {
+      get: async () => ({
+        usd_per_tao: 240,
+        observed_at: observedAt,
+        block_number: 9_000_000,
+        price_basis: "tao-usd-index",
+      }),
+    };
+
+    const body = await json(
+      await handleBlocks(
+        req("/api/v1/blocks"),
+        env as unknown as Env,
+        url("/api/v1/blocks"),
+      ),
+    );
+
+    assert.equal(body.data.blocks[0].economic_activity_tao, 2.5);
+    assert.equal(body.data.blocks[0].economic_activity_usd, 600);
+    assert.equal(body.data.blocks[0].usd_per_tao, 240);
+    assert.equal(body.data.blocks[0].tao_usd_observed_at, observedAt);
+    assert.equal(body.data.blocks[0].tao_usd_unavailable, undefined);
+  });
+
+  test("never applies the mainnet TAO/USD index to testnet blocks", async () => {
+    const { env } = dbWith({
+      blocksFeed: [
+        blockRow({
+          decode_status: "complete",
+          economic_activity_tao: "2.5",
+          economics_complete: true,
+        }),
+      ],
+    });
+    Object.assign(env, LAKEHOUSE_ENV);
+    const kvKeys: string[] = [];
+    env.METAGRAPH_CONTROL = {
+      get: async (key: string) => {
+        kvKeys.push(key);
+        return {
+          usd_per_tao: 240,
+          observed_at: new Date().toISOString(),
+          block_number: 9_000_000,
+          price_basis: "tao-usd-index",
+        };
+      },
+    };
+
+    const cold = lakehouse([
+      blockRow({
+        decode_status: "complete",
+        economic_activity_tao: "2.5",
+        economics_complete: true,
+      }),
+    ]);
+    try {
+      const body = await json(
+        await handleBlocks(
+          req("/api/v1/testnet/blocks"),
+          env as unknown as Env,
+          url("/api/v1/testnet/blocks"),
+          "testnet",
+        ),
+      );
+
+      assert.equal(kvKeys.includes("tao-usd:current"), false);
+      assert.equal(body.data.blocks[0].economic_activity_tao, 2.5);
+      assert.equal(body.data.blocks[0].economic_activity_usd, null);
+      assert.equal(body.data.blocks[0].usd_per_tao, null);
+      assert.equal(body.data.blocks[0].tao_usd_unavailable, "no_index_reading");
+    } finally {
+      cold.restore();
+    }
+  });
+
   test("empty CSV export still emits the header row", async () => {
     const { env } = dbWith({ blocksFeed: [] });
     const res = await handleBlocks(
@@ -3989,7 +4075,7 @@ describe("handleBlocks", () => {
     assert.match(res.headers.get("content-type") || "", /^text\/csv/);
     assert.equal(
       await res.text(),
-      "block_number,block_hash,parent_hash,author,extrinsic_count,event_count,spec_version,observed_at",
+      "block_number,block_hash,parent_hash,author,extrinsic_count,event_count,spec_version,decode_status,native_transfer_tao,stake_flow_tao,economic_activity_tao,fee_tao,tip_tao,issuance_tao,subnet_ids,economic_activity_usd,usd_per_tao,tao_usd_block,tao_usd_observed_at,tao_usd_basis,tao_usd_unavailable,observed_at",
     );
   });
 
@@ -4075,6 +4161,44 @@ describe("handleBlock", () => {
     assert.equal(res.status, 200);
     assert.match(res.headers.get("cache-control") || "", /max-age=60/);
     assert.equal(res.headers.get("x-metagraph-cache-profile"), "short");
+  });
+
+  test("prices a complete mainnet block without changing its chain-native total", async () => {
+    const { env } = dbWith({
+      blockDetail: blockRow(),
+    });
+    Object.assign(env, LAKEHOUSE_ENV);
+    env.METAGRAPH_CONTROL = {
+      get: async () => ({
+        usd_per_tao: 200,
+        observed_at: new Date().toISOString(),
+        block_number: 9_000_000,
+        price_basis: "tao-usd-index",
+      }),
+    };
+
+    const cold = lakehouse([
+      blockRow({
+        decode_status: "complete",
+        economic_activity_tao: "1.25",
+        economics_complete: true,
+      }),
+    ]);
+    try {
+      const body = await json(
+        await handleBlock(
+          req(`/api/v1/blocks/${BLOCK_NUM}`),
+          env as unknown as Env,
+          String(BLOCK_NUM),
+        ),
+      );
+
+      assert.equal(body.data.block.economic_activity_tao, 1.25);
+      assert.equal(body.data.block.economic_activity_usd, 250);
+      assert.equal(body.data.block.usd_per_tao, 200);
+    } finally {
+      cold.restore();
+    }
   });
 });
 

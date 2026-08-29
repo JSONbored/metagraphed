@@ -1965,11 +1965,27 @@
               "author": "example",
               "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
               "block_number": 5000000,
+              "decode_status": "pending",
+              "economic_activity_tao": 0.5,
+              "economic_activity_usd": 0.5,
               "event_count": 1,
               "extrinsic_count": 1,
+              "fee_tao": 0.5,
+              "issuance_tao": 0.5,
+              "native_transfer_tao": 0.5,
               "observed_at": "2026-06-01T00:00:00.000Z",
               "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-              "spec_version": 1
+              "spec_version": 1,
+              "stake_flow_tao": 0.5,
+              "subnet_ids": [
+                1
+              ],
+              "tao_usd_basis": "example",
+              "tao_usd_block": 5000000,
+              "tao_usd_observed_at": "2026-06-01T00:00:00.000Z",
+              "tao_usd_unavailable": "no_index_reading",
+              "tip_tao": 0.5,
+              "usd_per_tao": 0.5
             },
             "degraded": {
               "detail": "example",
@@ -2115,11 +2131,26 @@
                 "author": "example",
                 "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                 "block_number": 5000000,
+                "decode_status": "pending",
+                "economic_activity_tao": 0.5,
+                "economic_activity_usd": 0.5,
                 "event_count": 1,
                 "extrinsic_count": 1,
+                "fee_tao": 0.5,
+                "issuance_tao": 0.5,
+                "native_transfer_tao": 0.5,
                 "observed_at": "2026-06-01T00:00:00.000Z",
                 "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                "spec_version": 1
+                "spec_version": 1,
+                "stake_flow_tao": 0.5,
+                "subnet_ids": [
+                  1
+                ],
+                "tao_usd_basis": "example",
+                "tao_usd_block": 5000000,
+                "tao_usd_observed_at": "2026-06-01T00:00:00.000Z",
+                "tip_tao": 0.5,
+                "usd_per_tao": 0.5
               }
             ],
             "limit": 1,
@@ -20774,6 +20805,36 @@
                       }
                     ]
                   },
+                  "decode_status": {
+                    "enum": [
+                      "pending",
+                      "complete",
+                      "unavailable"
+                    ],
+                    "type": "string"
+                  },
+                  "economic_activity_tao": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "economic_activity_usd": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "event_count": {
                     "anyOf": [
                       {
@@ -20792,6 +20853,39 @@
                         "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fee_tao": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "issuance_tao": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "native_transfer_tao": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
                       },
                       {
                         "type": "null"
@@ -20829,6 +20923,88 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "stake_flow_tao": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "subnet_ids": {
+                    "items": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "array"
+                  },
+                  "tao_usd_basis": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "tao_usd_block": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "tao_usd_observed_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "tao_usd_unavailable": {
+                    "enum": [
+                      "no_index_reading",
+                      "index_unpriced",
+                      "index_stale",
+                      "no_alpha_price"
+                    ],
+                    "type": "string"
+                  },
+                  "tip_tao": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "usd_per_tao": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -20839,7 +21015,20 @@
                   "extrinsic_count",
                   "event_count",
                   "spec_version",
-                  "observed_at"
+                  "observed_at",
+                  "decode_status",
+                  "native_transfer_tao",
+                  "stake_flow_tao",
+                  "economic_activity_tao",
+                  "fee_tao",
+                  "tip_tao",
+                  "issuance_tao",
+                  "subnet_ids",
+                  "economic_activity_usd",
+                  "usd_per_tao",
+                  "tao_usd_block",
+                  "tao_usd_observed_at",
+                  "tao_usd_basis"
                 ],
                 "type": "object"
               },
@@ -21263,6 +21452,36 @@
                     }
                   ]
                 },
+                "decode_status": {
+                  "enum": [
+                    "pending",
+                    "complete",
+                    "unavailable"
+                  ],
+                  "type": "string"
+                },
+                "economic_activity_tao": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "economic_activity_usd": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "event_count": {
                   "anyOf": [
                     {
@@ -21281,6 +21500,39 @@
                       "maximum": 9007199254740991,
                       "minimum": 0,
                       "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "fee_tao": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "issuance_tao": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "native_transfer_tao": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
                     },
                     {
                       "type": "null"
@@ -21318,6 +21570,88 @@
                       "type": "null"
                     }
                   ]
+                },
+                "stake_flow_tao": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "subnet_ids": {
+                  "items": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "tao_usd_basis": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tao_usd_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tao_usd_observed_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tao_usd_unavailable": {
+                  "enum": [
+                    "no_index_reading",
+                    "index_unpriced",
+                    "index_stale",
+                    "no_alpha_price"
+                  ],
+                  "type": "string"
+                },
+                "tip_tao": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "usd_per_tao": {
+                  "anyOf": [
+                    {
+                      "exclusiveMinimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -21328,7 +21662,20 @@
                 "extrinsic_count",
                 "event_count",
                 "spec_version",
-                "observed_at"
+                "observed_at",
+                "decode_status",
+                "native_transfer_tao",
+                "stake_flow_tao",
+                "economic_activity_tao",
+                "fee_tao",
+                "tip_tao",
+                "issuance_tao",
+                "subnet_ids",
+                "economic_activity_usd",
+                "usd_per_tao",
+                "tao_usd_block",
+                "tao_usd_observed_at",
+                "tao_usd_basis"
               ],
               "type": "object"
             },

@@ -70,7 +70,10 @@ export function BlockActivityWindow({
     setArriving(nextArrival);
     const timeout = window.setTimeout(() => {
       setArriving((current) => (current === nextArrival ? null : current));
-    }, 720);
+      // Keep the semantic arrival state long enough for assistive technology and
+      // a reader's eye to register it; the visible animation itself remains a
+      // brief 720ms cue in CSS.
+    }, 1_600);
     return () => window.clearTimeout(timeout);
   }, [blockWindowKey, filtered, head]);
 

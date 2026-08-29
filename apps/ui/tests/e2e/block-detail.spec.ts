@@ -4,6 +4,31 @@ import { gotoThroughRestart } from "./server-restart.ts";
 const ROUTE = "/blocks/8713384";
 
 test.describe("block detail progressive technical record", () => {
+  test("renders a truthful economic ledger and subnet links without viewport overflow", async ({
+    page,
+  }) => {
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 768, height: 900 },
+      { width: 1280, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await gotoThroughRestart(page, ROUTE);
+      const ledger = page.getByRole("region", { name: "Value moved in this block." });
+      await expect(ledger).toContainText("3.75 τ");
+      await expect(ledger).toContainText("$900");
+      await expect(ledger.getByRole("link", { name: "SN19" })).toHaveAttribute(
+        "href",
+        "/subnets/19",
+      );
+      const dimensions = await page.evaluate(() => ({
+        viewport: window.innerWidth,
+        document: document.documentElement.scrollWidth,
+      }));
+      expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+    }
+  });
+
   test("keeps the entity and table geometry during a delayed mobile transition", async ({
     page,
   }) => {

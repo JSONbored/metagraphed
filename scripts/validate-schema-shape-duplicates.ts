@@ -234,8 +234,6 @@ const COINCIDENT_BY_DESIGN: Record<string, string[]> = {
   //
   // Declared as PAIRS rather than by excluding the generated file, so a third
   // declaration of the same vocabulary still fails.
-  "author,block_hash,block_number,event_count,extrinsic_count,observed_at,parent_hash,spec_version":
-    ["schemas-src/lakehouse.ts", "schemas-src/routes/blocks.ts"],
   "alpha_amount,amount_tao,block_number,coldkey,event_index,event_kind,extrinsic_index,hotkey,netuid,observed_at,uid":
     ["schemas-src/lakehouse.ts", "schemas-src/mcp-tools/shared.ts"],
   // Same storage/wire pair, arriving because the snapshot was widened to cover

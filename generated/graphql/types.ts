@@ -770,11 +770,25 @@ export type Block = {
   author?: Maybe<Scalars['String']['output']>;
   block_hash?: Maybe<Scalars['String']['output']>;
   block_number?: Maybe<Scalars['Int']['output']>;
+  decode_status: Scalars['String']['output'];
+  economic_activity_tao?: Maybe<Scalars['Float']['output']>;
+  economic_activity_usd?: Maybe<Scalars['Float']['output']>;
   event_count?: Maybe<Scalars['Int']['output']>;
   extrinsic_count?: Maybe<Scalars['Int']['output']>;
+  fee_tao?: Maybe<Scalars['Float']['output']>;
+  issuance_tao?: Maybe<Scalars['Float']['output']>;
+  native_transfer_tao?: Maybe<Scalars['Float']['output']>;
   observed_at?: Maybe<Scalars['String']['output']>;
   parent_hash?: Maybe<Scalars['String']['output']>;
   spec_version?: Maybe<Scalars['Int']['output']>;
+  stake_flow_tao?: Maybe<Scalars['Float']['output']>;
+  subnet_ids: Array<Scalars['Int']['output']>;
+  tao_usd_basis?: Maybe<Scalars['String']['output']>;
+  tao_usd_block?: Maybe<Scalars['Int']['output']>;
+  tao_usd_observed_at?: Maybe<Scalars['String']['output']>;
+  tao_usd_unavailable?: Maybe<Scalars['String']['output']>;
+  tip_tao?: Maybe<Scalars['Float']['output']>;
+  usd_per_tao?: Maybe<Scalars['Float']['output']>;
 };
 
 export type BlockChainEvents = {
@@ -10010,11 +10024,25 @@ export type BlockResolvers<ContextType = GqlContext, ParentType extends Resolver
   author?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   block_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  decode_status?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  economic_activity_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  economic_activity_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   event_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   extrinsic_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  fee_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  issuance_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  native_transfer_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   parent_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   spec_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  stake_flow_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  subnet_ids?: Resolver<Array<ResolversTypes['Int']>, ParentType, ContextType>;
+  tao_usd_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  tao_usd_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  tao_usd_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  tao_usd_unavailable?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  tip_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type BlockChainEventsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BlockChainEvents'] = ResolversParentTypes['BlockChainEvents']> = ResolversObject<{

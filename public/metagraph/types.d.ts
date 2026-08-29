@@ -6389,11 +6389,27 @@ export interface components {
                 author: string | null;
                 block_hash: string | null;
                 block_number: number | null;
+                /** @enum {string} */
+                decode_status: "pending" | "complete" | "unavailable";
+                economic_activity_tao: number | null;
+                economic_activity_usd: number | null;
                 event_count: number | null;
                 extrinsic_count: number | null;
+                fee_tao: number | null;
+                issuance_tao: number | null;
+                native_transfer_tao: number | null;
                 observed_at: string | null;
                 parent_hash: string | null;
                 spec_version: number | null;
+                stake_flow_tao: number | null;
+                subnet_ids: number[];
+                tao_usd_basis: string | null;
+                tao_usd_block: number | null;
+                tao_usd_observed_at: string | null;
+                /** @enum {string} */
+                tao_usd_unavailable?: "no_index_reading" | "index_unpriced" | "index_stale" | "no_alpha_price";
+                tip_tao: number | null;
+                usd_per_tao: number | null;
             } | null;
             /** @description Present ONLY on a decline. A null `block` WITHOUT this is a CONFIRMED ABSENCE -- the store was read and holds no such block, which is a measurement. With it, the read failed and nothing is known about whether the block exists. */
             degraded?: components["schemas"]["DegradedInfo"] | null;
@@ -6445,11 +6461,27 @@ export interface components {
                 author: string | null;
                 block_hash: string | null;
                 block_number: number | null;
+                /** @enum {string} */
+                decode_status: "pending" | "complete" | "unavailable";
+                economic_activity_tao: number | null;
+                economic_activity_usd: number | null;
                 event_count: number | null;
                 extrinsic_count: number | null;
+                fee_tao: number | null;
+                issuance_tao: number | null;
+                native_transfer_tao: number | null;
                 observed_at: string | null;
                 parent_hash: string | null;
                 spec_version: number | null;
+                stake_flow_tao: number | null;
+                subnet_ids: number[];
+                tao_usd_basis: string | null;
+                tao_usd_block: number | null;
+                tao_usd_observed_at: string | null;
+                /** @enum {string} */
+                tao_usd_unavailable?: "no_index_reading" | "index_unpriced" | "index_stale" | "no_alpha_price";
+                tip_tao: number | null;
+                usd_per_tao: number | null;
             }[];
             limit: number | null;
             next_cursor: string | null;
@@ -14892,11 +14924,26 @@ export interface operations {
                      *             "author": "example",
                      *             "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *             "block_number": 5000000,
+                     *             "decode_status": "pending",
+                     *             "economic_activity_tao": 0.5,
+                     *             "economic_activity_usd": 0.5,
                      *             "event_count": 1,
                      *             "extrinsic_count": 1,
+                     *             "fee_tao": 0.5,
+                     *             "issuance_tao": 0.5,
+                     *             "native_transfer_tao": 0.5,
                      *             "observed_at": "2026-06-01T00:00:00.000Z",
                      *             "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *             "spec_version": 1
+                     *             "spec_version": 1,
+                     *             "stake_flow_tao": 0.5,
+                     *             "subnet_ids": [
+                     *               1
+                     *             ],
+                     *             "tao_usd_basis": "example",
+                     *             "tao_usd_block": 5000000,
+                     *             "tao_usd_observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "tip_tao": 0.5,
+                     *             "usd_per_tao": 0.5
                      *           }
                      *         ],
                      *         "limit": 1,
@@ -15025,11 +15072,27 @@ export interface operations {
                      *           "author": "example",
                      *           "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "block_number": 5000000,
+                     *           "decode_status": "pending",
+                     *           "economic_activity_tao": 0.5,
+                     *           "economic_activity_usd": 0.5,
                      *           "event_count": 1,
                      *           "extrinsic_count": 1,
+                     *           "fee_tao": 0.5,
+                     *           "issuance_tao": 0.5,
+                     *           "native_transfer_tao": 0.5,
                      *           "observed_at": "2026-06-01T00:00:00.000Z",
                      *           "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *           "spec_version": 1
+                     *           "spec_version": 1,
+                     *           "stake_flow_tao": 0.5,
+                     *           "subnet_ids": [
+                     *             1
+                     *           ],
+                     *           "tao_usd_basis": "example",
+                     *           "tao_usd_block": 5000000,
+                     *           "tao_usd_observed_at": "2026-06-01T00:00:00.000Z",
+                     *           "tao_usd_unavailable": "no_index_reading",
+                     *           "tip_tao": 0.5,
+                     *           "usd_per_tao": 0.5
                      *         },
                      *         "degraded": {
                      *           "detail": "example",
@@ -25512,11 +25575,26 @@ export interface operations {
                      *             "author": "example",
                      *             "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *             "block_number": 5000000,
+                     *             "decode_status": "pending",
+                     *             "economic_activity_tao": 0.5,
+                     *             "economic_activity_usd": 0.5,
                      *             "event_count": 1,
                      *             "extrinsic_count": 1,
+                     *             "fee_tao": 0.5,
+                     *             "issuance_tao": 0.5,
+                     *             "native_transfer_tao": 0.5,
                      *             "observed_at": "2026-06-01T00:00:00.000Z",
                      *             "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *             "spec_version": 1
+                     *             "spec_version": 1,
+                     *             "stake_flow_tao": 0.5,
+                     *             "subnet_ids": [
+                     *               1
+                     *             ],
+                     *             "tao_usd_basis": "example",
+                     *             "tao_usd_block": 5000000,
+                     *             "tao_usd_observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "tip_tao": 0.5,
+                     *             "usd_per_tao": 0.5
                      *           }
                      *         ],
                      *         "limit": 1,
@@ -25643,11 +25721,27 @@ export interface operations {
                      *           "author": "example",
                      *           "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "block_number": 5000000,
+                     *           "decode_status": "pending",
+                     *           "economic_activity_tao": 0.5,
+                     *           "economic_activity_usd": 0.5,
                      *           "event_count": 1,
                      *           "extrinsic_count": 1,
+                     *           "fee_tao": 0.5,
+                     *           "issuance_tao": 0.5,
+                     *           "native_transfer_tao": 0.5,
                      *           "observed_at": "2026-06-01T00:00:00.000Z",
                      *           "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *           "spec_version": 1
+                     *           "spec_version": 1,
+                     *           "stake_flow_tao": 0.5,
+                     *           "subnet_ids": [
+                     *             1
+                     *           ],
+                     *           "tao_usd_basis": "example",
+                     *           "tao_usd_block": 5000000,
+                     *           "tao_usd_observed_at": "2026-06-01T00:00:00.000Z",
+                     *           "tao_usd_unavailable": "no_index_reading",
+                     *           "tip_tao": 0.5,
+                     *           "usd_per_tao": 0.5
                      *         },
                      *         "degraded": {
                      *           "detail": "example",
