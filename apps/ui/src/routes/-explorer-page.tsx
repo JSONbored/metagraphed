@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
 import {
   AnalyticsPage,
@@ -30,6 +30,7 @@ import {
   CHAIN_WINDOWS,
   callSegments,
   feePoints,
+  summarizeFeeWindow,
   flowRails,
   fmtCount,
   fmtShare,
@@ -100,7 +101,12 @@ export function ExplorerPage() {
   const { ref: emissionRef, nearViewport: emissionNearViewport } = useNearViewport("0px 0px");
   const { ref: governanceRef, nearViewport: governanceNearViewport } = useNearViewport("0px 0px");
 
-  const { data: activity } = useSuspenseQuery(chainActivityQuery(window));
+  // Daily activity is one independently fallible rollup, not the route's
+  // availability gate. If its projection declines, the blocks, calls, fees,
+  // stake, emission, and governance sources below can still answer. Keeping
+  // this as a normal query also avoids blocking the whole SSR stream on the
+  // slowest overview source.
+  const activity = useQuery({ ...chainActivityQuery(window), retry: 0 });
   const blocks = useQuery({ ...blocksSummaryQuery(), retry: 0 });
   const calls = useQuery({
     ...chainCallsQuery(window),
@@ -148,7 +154,7 @@ export function ExplorerPage() {
     return (netuid: number) => map.get(netuid) ?? `SN${netuid}`;
   }, [economics.data]);
 
-  const days = activity.data.days ?? [];
+  const days = activity.data?.data.days ?? [];
   const latest = lastCompleteDay(days);
   const segments = callSegments(calls.data?.data.calls ?? []);
   const points = feePoints(fees.data?.data.daily ?? []);
@@ -211,40 +217,37 @@ export function ExplorerPage() {
       loading: blocks.isPending,
     },
     // The last COMPLETE day, not the one in progress -- see lastCompleteDay.
-    { label: `Extrinsics ${latest?.day ?? ""}`.trim(), value: fmtCount(latest?.extrinsic_count) },
-    { label: "Events", value: fmtCount(latest?.event_count) },
-    { label: "Signers", value: fmtCount(latest?.unique_signers) },
+    {
+      label: `Extrinsics ${latest?.day ?? ""}`.trim(),
+      value: fmtCount(latest?.extrinsic_count),
+      loading: activity.isPending,
+    },
+    { label: "Events", value: fmtCount(latest?.event_count), loading: activity.isPending },
+    { label: "Signers", value: fmtCount(latest?.unique_signers), loading: activity.isPending },
   ];
+
+  const feeDays = fees.data?.data.daily ?? [];
+  const feeWindow = summarizeFeeWindow(feeDays);
 
   const feeCells: FactCells = [
     {
       label: `Fees ${window}`,
-      value: fmtTao(
-        (fees.data?.data.daily ?? []).reduce((acc, day) => acc + (day.total_fee_tao ?? 0), 0),
-        4,
-      ),
+      value: feeWindow ? fmtTao(feeWindow.totalFeeTao, 4) : "—",
       loading: fees.isPending,
     },
     {
       label: "Per extrinsic",
-      value: fmtTao(
-        (fees.data?.data.daily ?? []).reduce((acc, day) => acc + (day.avg_fee_tao ?? 0), 0) /
-          Math.max(1, (fees.data?.data.daily ?? []).length),
-        6,
-      ),
+      value: fmtTao(feeWindow?.averageFeeTao, 6),
       loading: fees.isPending,
     },
     {
       label: `Tips ${window}`,
-      value: fmtTao(
-        (fees.data?.data.daily ?? []).reduce((acc, day) => acc + (day.total_tip_tao ?? 0), 0),
-        4,
-      ),
+      value: feeWindow ? fmtTao(feeWindow.totalTipTao, 4) : "—",
       loading: fees.isPending,
     },
     {
       label: "Days measured",
-      value: formatNumber(fees.data?.data.day_count ?? 0),
+      value: feeWindow ? formatNumber(fees.data?.data.day_count ?? feeWindow.dayCount) : "—",
       loading: fees.isPending,
     },
   ];
@@ -307,7 +310,7 @@ export function ExplorerPage() {
             }
             cells={cells}
             live={{
-              updatedAt: activity.data.observed_at ?? null,
+              updatedAt: activity.data?.data.observed_at ?? null,
               source: "chain-direct",
               onRefresh: () =>
                 void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
@@ -330,26 +333,35 @@ export function ExplorerPage() {
             />
           }
           visual={
-            !throughputNearViewport || calls.isPending ? (
-              <CompositionBreakdown
-                formatValue={(value) => fmtCount(value)}
-                legendCols={3}
-                ariaLabel="Extrinsics by call module"
-                source="chain-call"
-                loading
-              />
-            ) : segments.length > 0 ? (
-              <CompositionBreakdown
-                segments={segments}
-                formatValue={(value) => fmtCount(value)}
-                // Throughput sits beside its reading lens on wide screens.
-                // Three columns retain the whole module name and measured
-                // value instead of turning the ranked legend into ellipses.
-                legendCols={3}
-                ariaLabel="Extrinsics by call module"
-                source="chain-call"
-              />
-            ) : null
+            <div className="grid gap-6">
+              {activity.isError ? (
+                <ErrorState
+                  error={activity.error}
+                  context="daily chain activity"
+                  onRetry={() => void activity.refetch()}
+                />
+              ) : null}
+              {!throughputNearViewport || calls.isPending ? (
+                <CompositionBreakdown
+                  formatValue={(value) => fmtCount(value)}
+                  legendCols={3}
+                  ariaLabel="Extrinsics by call module"
+                  source="chain-call"
+                  loading
+                />
+              ) : segments.length > 0 ? (
+                <CompositionBreakdown
+                  segments={segments}
+                  formatValue={(value) => fmtCount(value)}
+                  // Throughput sits beside its reading lens on wide screens.
+                  // Three columns retain the whole module name and measured
+                  // value instead of turning the ranked legend into ellipses.
+                  legendCols={3}
+                  ariaLabel="Extrinsics by call module"
+                  source="chain-call"
+                />
+              ) : null}
+            </div>
           }
           // Per-module totals for the window, not an hourly series:
           // /chain/calls publishes the former and nothing else.

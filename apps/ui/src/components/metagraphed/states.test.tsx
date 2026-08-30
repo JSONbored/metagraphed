@@ -16,12 +16,14 @@ describe("ErrorState", () => {
             url: "https://api.example.test/api/v1/chain/activity",
           })
         }
+        onRetry={vi.fn()}
       />,
     );
 
     expect(html).toContain("Data source temporarily unavailable");
     expect(html).toContain("cannot verify its current source");
     expect(html).toContain("no zero or empty result is shown");
+    expect(html).toContain("Retry");
     expect(html).not.toContain("Deep-history tier not enabled");
     expect(html).not.toContain("Couldn't load complete-day chain activity");
   });

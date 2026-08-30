@@ -3742,6 +3742,7 @@ export interface ChainTransfers {
 export interface ChainFeeDay {
   day: string;
   extrinsic_count: number;
+  signed_extrinsic_count: number | null;
   total_fee_tao: number;
   avg_fee_tao: number | null;
   total_tip_tao: number;

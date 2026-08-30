@@ -4085,6 +4085,7 @@ function normalizeChainFeeDay(raw: unknown): ChainFeeDay | null {
   return {
     day,
     extrinsic_count: extrinsicCount,
+    signed_extrinsic_count: coerceFiniteNumber(raw.signed_extrinsic_count) ?? null,
     total_fee_tao: totalFeeTao,
     avg_fee_tao: coerceFiniteNumber(raw.avg_fee_tao) ?? null,
     total_tip_tao: totalTipTao,

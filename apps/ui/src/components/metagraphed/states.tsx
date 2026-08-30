@@ -14,7 +14,13 @@ import { isUsableTimestamp } from "@/lib/metagraphed/format";
 import { NativeOnlyNotice } from "./native-only-notice";
 
 /** A truthful replacement for a response the API marked as unverified. */
-function DataTierUnavailableNotice({ context }: { context?: string }) {
+function DataTierUnavailableNotice({
+  context,
+  onRetry,
+}: {
+  context?: string;
+  onRetry?: () => void;
+}) {
   return (
     <div role="status" className="rounded border border-border bg-surface p-4">
       <div className="flex items-start gap-3">
@@ -27,6 +33,15 @@ function DataTierUnavailableNotice({ context }: { context?: string }) {
             {context ? `The ${context} view` : "This view"} cannot verify its current source, so no
             zero or empty result is shown. The rest of the page can continue updating.
           </p>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
+            >
+              <RefreshCw className="size-3" /> Retry
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -205,7 +220,7 @@ export function ErrorState({
   // code. Neither is a measured empty answer, so keep the state informational
   // and explicit rather than rendering a zero or a generic red error card.
   if (isApi && error.code === "data_tier_unavailable") {
-    return <DataTierUnavailableNotice context={context} />;
+    return <DataTierUnavailableNotice context={context} onRetry={onRetry} />;
   }
   // A present block can sit momentarily between the live-follow and decoded
   // history windows. Keep its technical-detail state distinct from both a
