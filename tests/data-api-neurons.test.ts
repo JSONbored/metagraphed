@@ -442,6 +442,50 @@ test("neurons-sync writes neurons, neuron_daily, and account_position_daily from
   assert.equal(position.stake_tao, 100);
 });
 
+test("the direct neurons path publishes explorer directories when its declared pass completes", async () => {
+  const kv = memoryKv();
+  const collected = collectingCtx();
+  const response = await worker.fetch(
+    req("/api/v1/internal/neurons-sync", {
+      method: "POST",
+      headers: { "x-neurons-sync-token": SYNC_SECRET },
+      body: { rows: [syncRow()], pass_total: 1 },
+    }),
+    env({ METAGRAPH_CONTROL: kv }),
+    collected.ctx,
+  );
+
+  assert.equal(response.status, 200);
+  await Promise.all(collected.pending);
+  const pointer = JSON.parse(
+    kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!,
+  ) as Row;
+  assert.equal(pointer.captured_at, CAPTURED_AT);
+  const stored = JSON.parse(
+    kv.values.get(explorerDirectoriesSnapshotKey(CAPTURED_AT))!,
+  ) as Row;
+  assert.equal((stored.accounts as Row).account_count, 1);
+  assert.equal((stored.validators as Row).validator_count, 1);
+});
+
+test("the direct neurons path does not publish an incomplete declared pass", async () => {
+  const kv = memoryKv();
+  const collected = collectingCtx();
+  const response = await worker.fetch(
+    req("/api/v1/internal/neurons-sync", {
+      method: "POST",
+      headers: { "x-neurons-sync-token": SYNC_SECRET },
+      body: { rows: [syncRow()], pass_total: 2 },
+    }),
+    env({ METAGRAPH_CONTROL: kv }),
+    collected.ctx,
+  );
+
+  assert.equal(response.status, 200);
+  await Promise.all(collected.pending);
+  assert.equal(kv.putCount(), 0);
+});
+
 test("neurons-sync upsert: a newer capture replaces the row, an older one is discarded by the captured_at guard", async () => {
   insertNeuron({ stake_tao: 100, captured_at: CAPTURED_AT });
   // Older capture for the same (netuid, uid): the ON CONFLICT ... WHERE
@@ -3452,7 +3496,7 @@ test("a queue publication failure cannot retry a neuron snapshot that already la
   assert.deepEqual(acked, ["ack"]);
   assert.ok(
     error.mock.calls.some((call) =>
-      String(call[0]).includes("explorer directory queue publication failed"),
+      String(call[0]).includes("explorer directory publication failed"),
     ),
   );
   error.mockRestore();
