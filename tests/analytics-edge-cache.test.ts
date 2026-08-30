@@ -28,6 +28,10 @@ import {
 } from "../workers/request-handlers/entities.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
+import {
+  KV_EXPLORER_DIRECTORIES_CURRENT,
+  explorerDirectoriesSnapshotKey,
+} from "../src/kv-keys.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import { resetObservedThroughCache } from "../src/lakehouse-observed-through.ts";
 import { resetSurfacesMemo } from "../src/revenue-load.ts";
@@ -1480,7 +1484,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const paths: string[] = [];
-    const stamp = 1_780_000_000_000;
+    const stamp = Date.parse("2026-08-29T00:00:00.000Z");
     const directory = {
       schema_version: 1,
       captured_at: "2026-08-29T00:00:00.000Z",
@@ -1489,9 +1493,34 @@ describe("analytics edge cache", () => {
       operator_count: 0,
       operators: [],
     };
+    const materialization = {
+      schema_version: 1,
+      captured_at: stamp,
+      validators: directory,
+      accounts: {
+        schema_version: 1,
+        captured_at: directory.captured_at,
+        block_number: directory.block_number,
+        account_count: 0,
+        limit: 20,
+        priced_registered_stake_tao: 0,
+        rankings: { stake: [], emission: [], reach: [] },
+      },
+    };
     const env = {
       ...analyticsEnv([]),
       METAGRAPH_NEURONS_SOURCE: "data-api",
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          if (key === KV_EXPLORER_DIRECTORIES_CURRENT) {
+            return { schema_version: 1, captured_at: stamp };
+          }
+          if (key === explorerDirectoriesSnapshotKey(stamp)) {
+            return materialization;
+          }
+          return null;
+        },
+      },
       DATA_API: {
         async fetch(request: Request) {
           const pathname = new URL(request.url).pathname;
@@ -1513,11 +1542,7 @@ describe("analytics edge cache", () => {
     assert.equal(second.status, 200);
     assert.deepEqual((await first.json()).data, directory);
     assert.deepEqual((await second.json()).data, directory);
-    assert.deepEqual(paths, [
-      "/api/v1/internal/neurons-snapshot-stamp",
-      "/api/v1/validators/operators",
-      "/api/v1/internal/neurons-snapshot-stamp",
-    ]);
+    assert.deepEqual(paths, []);
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
         CONTRACT_VERSION,
@@ -1531,7 +1556,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const paths: string[] = [];
-    const stamp = 1_780_000_000_000;
+    const stamp = Date.parse("2026-08-29T00:00:00.000Z");
     const directory = {
       schema_version: 1,
       captured_at: "2026-08-29T00:00:00.000Z",
@@ -1541,9 +1566,33 @@ describe("analytics edge cache", () => {
       priced_registered_stake_tao: 0,
       rankings: { stake: [], emission: [], reach: [] },
     };
+    const materialization = {
+      schema_version: 1,
+      captured_at: stamp,
+      accounts: directory,
+      validators: {
+        schema_version: 1,
+        captured_at: directory.captured_at,
+        block_number: directory.block_number,
+        validator_count: 0,
+        operator_count: 0,
+        operators: [],
+      },
+    };
     const env = {
       ...analyticsEnv([]),
       METAGRAPH_NEURONS_SOURCE: "data-api",
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          if (key === KV_EXPLORER_DIRECTORIES_CURRENT) {
+            return { schema_version: 1, captured_at: stamp };
+          }
+          if (key === explorerDirectoriesSnapshotKey(stamp)) {
+            return materialization;
+          }
+          return null;
+        },
+      },
       DATA_API: {
         async fetch(request: Request) {
           const pathname = new URL(request.url).pathname;
@@ -1565,11 +1614,7 @@ describe("analytics edge cache", () => {
     assert.equal(second.status, 200);
     assert.deepEqual((await first.json()).data, directory);
     assert.deepEqual((await second.json()).data, directory);
-    assert.deepEqual(paths, [
-      "/api/v1/internal/neurons-snapshot-stamp",
-      "/api/v1/accounts/directory",
-      "/api/v1/internal/neurons-snapshot-stamp",
-    ]);
+    assert.deepEqual(paths, []);
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
         CONTRACT_VERSION,

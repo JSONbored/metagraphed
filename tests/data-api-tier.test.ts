@@ -24,29 +24,33 @@ function dataApi(handler: AnyFn) {
   return { fetch: handler };
 }
 
+function directoryKv(value: unknown, error: Error | null = null) {
+  return {
+    async get() {
+      if (error) throw error;
+      return value;
+    },
+  };
+}
+
 function req() {
   return new Request("https://api.metagraph.sh/api/v1/health");
 }
 
 test("readNeuronsSnapshotCacheStamp: returns the completed-pass watermark", async () => {
-  let requested: Request | null = null;
   const result = await readNeuronsSnapshotCacheStamp(
     mockEnv({
       METAGRAPH_NEURONS_SOURCE: "data-api",
-      DATA_API: dataApi(async (request: Request) => {
-        requested = request;
-        return Response.json({ captured_at: 1_780_000_000_000 });
+      METAGRAPH_CONTROL: directoryKv({
+        schema_version: 1,
+        captured_at: 1_780_000_000_000,
       }),
     }),
   );
   assert.equal(result, "1780000000000");
-  assert.equal(
-    new URL(requested!.url).pathname,
-    "/api/v1/internal/neurons-snapshot-stamp",
-  );
 });
 
-test("readNeuronsSnapshotCacheStamp: declines without the active lane or binding", async () => {
+test("readNeuronsSnapshotCacheStamp: declines without the active lane or pointer", async () => {
   assert.equal(
     await readNeuronsSnapshotCacheStamp(
       mockEnv({ METAGRAPH_NEURONS_SOURCE: "retired" }),
@@ -61,18 +65,19 @@ test("readNeuronsSnapshotCacheStamp: declines without the active lane or binding
   );
 });
 
-test("readNeuronsSnapshotCacheStamp: unproven responses disable caching", async () => {
-  for (const response of [
-    new Response("no", { status: 503 }),
-    Response.json({ captured_at: null }),
-    Response.json({ captured_at: -1 }),
-    Response.json({ captured_at: 1.5 }),
+test("readNeuronsSnapshotCacheStamp: unproven pointers disable caching", async () => {
+  for (const pointer of [
+    null,
+    { schema_version: 1, captured_at: null },
+    { schema_version: 1, captured_at: -1 },
+    { schema_version: 1, captured_at: 1.5 },
+    { schema_version: 2, captured_at: 1_780_000_000_000 },
   ]) {
     assert.equal(
       await readNeuronsSnapshotCacheStamp(
         mockEnv({
           METAGRAPH_NEURONS_SOURCE: "data-api",
-          DATA_API: dataApi(async () => response.clone()),
+          METAGRAPH_CONTROL: directoryKv(pointer),
         }),
       ),
       null,
@@ -80,23 +85,16 @@ test("readNeuronsSnapshotCacheStamp: unproven responses disable caching", async 
   }
 });
 
-test("readNeuronsSnapshotCacheStamp: transport and malformed JSON failures disable caching", async () => {
-  for (const fetch of [
-    async () => {
-      throw new Error("offline");
-    },
-    async () => new Response("not-json", { status: 200 }),
-  ]) {
-    assert.equal(
-      await readNeuronsSnapshotCacheStamp(
-        mockEnv({
-          METAGRAPH_NEURONS_SOURCE: "data-api",
-          DATA_API: dataApi(fetch),
-        }),
-      ),
-      null,
-    );
-  }
+test("readNeuronsSnapshotCacheStamp: KV failures disable caching", async () => {
+  assert.equal(
+    await readNeuronsSnapshotCacheStamp(
+      mockEnv({
+        METAGRAPH_NEURONS_SOURCE: "data-api",
+        METAGRAPH_CONTROL: directoryKv(null, new Error("offline")),
+      }),
+    ),
+    null,
+  );
 });
 
 test("an unforwardable flag no longer COMPILES -- membership moved into the type (#10190)", () => {

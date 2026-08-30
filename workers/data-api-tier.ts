@@ -1,6 +1,7 @@
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
+import { readExplorerDirectoryPointer } from "../src/explorer-directory-materialization.ts";
 
 // DATA_API-forwarding serving gate, one env flag per data source (originally
 // ADR 0013 Sequencing step 3's gated D1 -> Postgres cutover; D1 fully
@@ -159,31 +160,19 @@ export type ForwardableTierFlag = (typeof FORWARDABLE_TIER_FLAGS)[number];
 /**
  * The newest fully-landed neuron snapshot, for cache invalidation.
  *
- * This asks the data Worker for one indexed row from `neurons_passes`. It does
- * not use health metadata: a health probe can run without neuron data moving,
- * and a partial multi-request neuron pass can move MAX(captured_at) before the
- * network-wide directory is complete. Returning null disables the edge cache
- * for that request rather than reusing a stamp we could not prove.
+ * The pointer is published only after both directory projections have been
+ * built from one complete neuron pass. The main Worker shares the exact KV
+ * namespace with data-api, so reading that tiny pointer locally avoids a
+ * second Worker invocation before every cache lookup. It does not use health
+ * metadata: a health probe can run without neuron data moving, and a partial
+ * multi-request neuron pass must never advance this cache boundary.
  */
 export async function readNeuronsSnapshotCacheStamp(
   env: Env,
 ): Promise<string | null> {
-  if (env.METAGRAPH_NEURONS_SOURCE !== "data-api" || !env.DATA_API) return null;
-  try {
-    const response = await env.DATA_API.fetch(
-      new Request(
-        "https://data-api.internal/api/v1/internal/neurons-snapshot-stamp",
-      ),
-    );
-    if (!response.ok) return null;
-    const body = (await response.json()) as { captured_at?: unknown };
-    const capturedAt = Number(body?.captured_at);
-    return Number.isSafeInteger(capturedAt) && capturedAt > 0
-      ? String(capturedAt)
-      : null;
-  } catch {
-    return null;
-  }
+  if (env.METAGRAPH_NEURONS_SOURCE !== "data-api") return null;
+  const pointer = await readExplorerDirectoryPointer(env.METAGRAPH_CONTROL);
+  return pointer ? String(pointer.captured_at) : null;
 }
 
 export async function tryDataApiTier(

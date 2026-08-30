@@ -143,9 +143,12 @@ import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
 } from "../src/accounts-list.ts";
 import { buildAccountHolderDirectory } from "../src/account-holder-directory.ts";
-import { AccountHolderDirectoryArtifactSchema } from "../schemas-src/routes/account-holder-directory.ts";
-import { ValidatorOperatorDirectoryArtifactSchema } from "../schemas-src/routes/validator-operator-directory.ts";
-import { z } from "zod";
+import {
+  materializationFromUnknown,
+  readExplorerDirectoryMaterialization,
+  readExplorerDirectoryPointer,
+  type ExplorerDirectoryMaterialization,
+} from "../src/explorer-directory-materialization.ts";
 import { resolveClientIp } from "./config.ts";
 import {
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
@@ -7063,98 +7066,7 @@ async function loadGlobalValidatorsFromStore(
 // on every new edge-cache location, so a correct cold request took seconds.
 // Keep one atomic KV value per completed snapshot: readers see either the old
 // complete pair or the new complete pair, never one directory from each.
-type ExplorerDirectoryMaterialization = {
-  schema_version: 1;
-  captured_at: number;
-  accounts: ReturnType<typeof buildAccountHolderDirectory>;
-  validators: ReturnType<typeof buildValidatorOperatorDirectory>;
-};
-
-type ExplorerDirectoryPointer = {
-  schema_version: 1;
-  captured_at: number;
-};
-
-const ExplorerDirectoryPointerSchema = z
-  .object({
-    schema_version: z.literal(1),
-    captured_at: z.number().int().positive().max(8_640_000_000_000_000),
-  })
-  .strict();
-
-const ExplorerDirectoryMaterializationSchema = z
-  .object({
-    schema_version: z.literal(1),
-    captured_at: z.number().int().positive().max(8_640_000_000_000_000),
-    accounts: AccountHolderDirectoryArtifactSchema,
-    validators: ValidatorOperatorDirectoryArtifactSchema,
-  })
-  .strict()
-  .superRefine((value, refinement) => {
-    const capturedAt = new Date(value.captured_at).toISOString();
-    if (
-      value.accounts.captured_at !== capturedAt ||
-      value.validators.captured_at !== capturedAt
-    ) {
-      refinement.addIssue({
-        code: "custom",
-        message: "directory snapshots do not match the materialization stamp",
-      });
-    }
-  });
-
-export function materializationFromUnknown(
-  value: unknown,
-): ExplorerDirectoryMaterialization | null {
-  const parsed = ExplorerDirectoryMaterializationSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
-}
-
-function pointerFromUnknown(value: unknown): ExplorerDirectoryPointer | null {
-  const parsed = ExplorerDirectoryPointerSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
-}
-
-async function readExplorerDirectoryPointer(
-  env: DataApiEnv,
-): Promise<ExplorerDirectoryPointer | null> {
-  if (!env.METAGRAPH_CONTROL) return null;
-  try {
-    return pointerFromUnknown(
-      await env.METAGRAPH_CONTROL.get(KV_EXPLORER_DIRECTORIES_CURRENT, "json"),
-    );
-  } catch (error) {
-    console.error(
-      "explorer directory materialization pointer read failed:",
-      error,
-    );
-    return null;
-  }
-}
-
-async function readExplorerDirectoryMaterialization(
-  env: DataApiEnv,
-): Promise<ExplorerDirectoryMaterialization | null> {
-  if (!env.METAGRAPH_CONTROL) return null;
-  try {
-    const pointer = await readExplorerDirectoryPointer(env);
-    if (!pointer) return null;
-    const raw = await env.METAGRAPH_CONTROL.get(
-      explorerDirectoriesSnapshotKey(pointer.captured_at),
-      "json",
-    );
-    const materialization = materializationFromUnknown(raw);
-    return materialization?.captured_at === pointer.captured_at
-      ? materialization
-      : null;
-  } catch (error) {
-    // KV is an optimization tier. A read failure must fall through to the
-    // existing store-backed answer rather than turn a valid directory into a
-    // 5xx or a measured zero.
-    console.error("explorer directory materialization read failed:", error);
-    return null;
-  }
-}
+export { materializationFromUnknown };
 
 async function latestCompletedNeuronSnapshot(
   sql: PgSql,
@@ -7190,7 +7102,9 @@ export async function refreshExplorerDirectoryMaterialization(
   const promise = (async () => {
     const sql = routeRunner(env, ctx);
     if (!sql) return false;
-    const previousPointer = await readExplorerDirectoryPointer(env);
+    const previousPointer = await readExplorerDirectoryPointer(
+      env.METAGRAPH_CONTROL,
+    );
     if (previousPointer?.captured_at === capturedAt) return true;
     const latest = await latestCompletedNeuronSnapshot(sql);
     const newestRows = await sql<{ captured_at: number | string | null }>`
@@ -7311,7 +7225,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       // This hot path intentionally reads only the tiny pointer. Fetching and
       // validating the ~300 KiB directory payload before every edge-cache hit
       // would move the whole cold-miss cost into the freshness check.
-      const pointer = await readExplorerDirectoryPointer(env);
+      const pointer = await readExplorerDirectoryPointer(env.METAGRAPH_CONTROL);
       if (pointer?.captured_at === capturedAt) {
         return json({ captured_at: capturedAt });
       }
@@ -7612,7 +7526,9 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // The rich per-hotkey route above remains unchanged for REST/MCP consumers.
   if (url.pathname === "/api/v1/validators/operators") {
     return async (sql, env) => {
-      const materialized = await readExplorerDirectoryMaterialization(env);
+      const materialized = await readExplorerDirectoryMaterialization(
+        env.METAGRAPH_CONTROL,
+      );
       if (materialized) return json(materialized.validators);
       return json(
         buildValidatorOperatorDirectory(
@@ -8443,7 +8359,9 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // The rich sortable route above remains unchanged for REST/MCP consumers.
   if (url.pathname === "/api/v1/accounts/directory") {
     return async (sql, env) => {
-      const materialized = await readExplorerDirectoryMaterialization(env);
+      const materialized = await readExplorerDirectoryMaterialization(
+        env.METAGRAPH_CONTROL,
+      );
       if (materialized) return json(materialized.accounts);
       const [rows, priceByNetuid] = await Promise.all([
         sql<{
