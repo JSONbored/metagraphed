@@ -729,7 +729,7 @@ function stripClientSnapshotDate(row: Row) {
 async function handleNeuronsSync(
   request: Request,
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx: ExecutionContext,
 ) {
   if (!env.NEURONS_SYNC_SECRET) {
     return writeJson(
@@ -920,6 +920,10 @@ async function handleNeuronsSync(
       env,
     );
     return writeJson({ error: "neon write failed" }, 502);
+  }
+
+  if (pass) {
+    scheduleExplorerDirectoryRefresh(env, ctx, pass.capturedAt);
   }
 
   // `stores` stays REPORTED rather than inferred, so a reader can see which
@@ -7281,6 +7285,20 @@ export async function refreshExplorerDirectoryMaterialization(
   return promise;
 }
 
+function scheduleExplorerDirectoryRefresh(
+  env: DataApiEnv,
+  ctx: ExecutionContext,
+  capturedAt: number,
+) {
+  ctx.waitUntil(
+    refreshExplorerDirectoryMaterialization(env, ctx, capturedAt).catch(
+      (error) => {
+        console.error("explorer directory publication failed:", error);
+      },
+    ),
+  );
+}
+
 function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // Internal-only freshness stamp used by the public API Worker's edge cache.
   // The completed pass is the snapshot boundary: MAX(neurons.captured_at) can
@@ -9908,29 +9926,8 @@ export default {
       }
       try {
         await writeSyncBatch(body, writers, Date.now(), familyWriters);
-        // Build the website-sized account/validator pair at the only point
-        // that reliably observes a neuron pass becoming complete: directly
-        // after a queue chunk and its pass tally have landed. A request-side
-        // refresh remains as repair, but it can repeatedly arrive while the
-        // next pass is partial and correctly decline the mixed snapshot.
-        //
-        // This is best-effort and must not change queue acknowledgement. The
-        // neuron rows are the durable fact; a failed derived publication is
-        // retried by the next completed chunk or directory freshness read.
         if (body.lane === "neurons" && body.pass_total !== undefined) {
-          ctx.waitUntil(
-            refreshExplorerDirectoryMaterialization(
-              env,
-              ctx,
-              body.captured_at,
-            ).catch((error) => {
-              console.error(
-                "explorer directory queue publication failed:",
-                error,
-              );
-              return false;
-            }),
-          );
+          scheduleExplorerDirectoryRefresh(env, ctx, body.captured_at);
         }
         message.ack();
       } catch (err) {
