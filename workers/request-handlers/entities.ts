@@ -93,6 +93,7 @@ import {
 import { buildAccountsList } from "../../src/accounts-list.ts";
 import { buildAccountHolderDirectory } from "../../src/account-holder-directory.ts";
 import { buildValidatorOperatorDirectory } from "../../src/validator-operator-directory.ts";
+import { readExplorerDirectoryMaterialization } from "../../src/explorer-directory-materialization.ts";
 import { buildTopHoldersList } from "../../src/top-holders.ts";
 import {
   buildDeregistrationHistory,
@@ -938,13 +939,14 @@ async function metagraphMeta(
   env: Env,
   artifactPath: string,
   generatedAt: unknown,
+  publishedAtPromise: Promise<string | null> | null = null,
 ) {
   return {
     artifact_path: artifactPath,
     cache: "short",
     contract_version: contractVersion(env),
     generated_at: generatedAt,
-    published_at: await publishedAt(env),
+    published_at: await (publishedAtPromise ?? publishedAt(env)),
     source: "metagraph-snapshot",
   };
 }
@@ -1387,7 +1389,13 @@ export async function handleValidatorOperatorDirectory(
   request: Request,
   env: Env,
 ) {
+  const publishedAtPromise = publishedAt(env);
+  const materialized =
+    env.METAGRAPH_NEURONS_SOURCE === "data-api"
+      ? await readExplorerDirectoryMaterialization(env.METAGRAPH_CONTROL)
+      : null;
   const data =
+    materialized?.validators ??
     ((await tryDataApiTier(
       env,
       request,
@@ -1402,6 +1410,7 @@ export async function handleValidatorOperatorDirectory(
         env,
         "/metagraph/validators/operators.json",
         data.captured_at,
+        publishedAtPromise,
       ),
     },
     "short",
@@ -1485,7 +1494,13 @@ export async function handleAccountsList(request: Request, env: Env, url: URL) {
 }
 
 export async function handleAccountHolderDirectory(request: Request, env: Env) {
+  const publishedAtPromise = publishedAt(env);
+  const materialized =
+    env.METAGRAPH_NEURONS_SOURCE === "data-api"
+      ? await readExplorerDirectoryMaterialization(env.METAGRAPH_CONTROL)
+      : null;
   const data =
+    materialized?.accounts ??
     ((await tryDataApiTier(
       env,
       request,
@@ -1500,6 +1515,7 @@ export async function handleAccountHolderDirectory(request: Request, env: Env) {
         env,
         "/metagraph/accounts/directory.json",
         data.captured_at,
+        publishedAtPromise,
       ),
     },
     "short",
