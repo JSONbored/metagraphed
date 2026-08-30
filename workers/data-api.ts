@@ -446,7 +446,9 @@ import {
 import { PASS_TABLES } from "../src/pass-completeness.ts";
 import {
   explorerDirectoriesSnapshotKey,
+  KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
   KV_EXPLORER_DIRECTORIES_CURRENT,
+  KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
   KV_TAO_USD_CURRENT,
 } from "../src/kv-keys.ts";
 import { NEON_PRUNE_CRON, runNeonPrune } from "../src/neon-prune.ts";
@@ -7061,11 +7063,8 @@ async function loadGlobalValidatorsFromStore(
   });
 }
 
-// The two network-wide pages are read far more often than the neuron snapshot
-// changes. Their compact response shapes still required a complete store scan
-// on every new edge-cache location, so a correct cold request took seconds.
-// Keep one atomic KV value per completed snapshot: readers see either the old
-// complete pair or the new complete pair, never one directory from each.
+// Precompute account and validator directories for single-read
+// cold paths; advance the versioned fallback pointer only after both are stored.
 export { materializationFromUnknown };
 
 async function latestCompletedNeuronSnapshot(
@@ -7165,10 +7164,20 @@ export async function refreshExplorerDirectoryMaterialization(
       accounts,
       validators,
     };
-    await env.METAGRAPH_CONTROL.put(
-      explorerDirectoriesSnapshotKey(capturedAt),
-      JSON.stringify(value),
-    );
+    await Promise.all([
+      env.METAGRAPH_CONTROL.put(
+        explorerDirectoriesSnapshotKey(capturedAt),
+        JSON.stringify(value),
+      ),
+      env.METAGRAPH_CONTROL.put(
+        KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
+        JSON.stringify(accounts),
+      ),
+      env.METAGRAPH_CONTROL.put(
+        KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
+        JSON.stringify(validators),
+      ),
+    ]);
     await env.METAGRAPH_CONTROL.put(
       KV_EXPLORER_DIRECTORIES_CURRENT,
       JSON.stringify({ schema_version: 1, captured_at: capturedAt }),

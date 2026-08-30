@@ -1,7 +1,6 @@
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
-import { readExplorerDirectoryPointer } from "../src/explorer-directory-materialization.ts";
 
 // DATA_API-forwarding serving gate, one env flag per data source (originally
 // ADR 0013 Sequencing step 3's gated D1 -> Postgres cutover; D1 fully
@@ -158,21 +157,20 @@ export const FORWARDABLE_TIER_FLAGS = [
 export type ForwardableTierFlag = (typeof FORWARDABLE_TIER_FLAGS)[number];
 
 /**
- * The newest fully-landed neuron snapshot, for cache invalidation.
+ * A bounded cache epoch for the precomputed explorer directories.
  *
- * The pointer is published only after both directory projections have been
- * built from one complete neuron pass. The main Worker shares the exact KV
- * namespace with data-api, so reading that tiny pointer locally avoids a
- * second Worker invocation before every cache lookup. It does not use health
- * metadata: a health probe can run without neuron data moving, and a partial
- * multi-request neuron pass must never advance this cache boundary.
+ * The route responses are already bounded by a 60-second public
+ * cache profile, while their source snapshot advances roughly every 15
+ * minutes. A wall-clock epoch keeps the edge key fresh within that same
+ * contract without adding a KV read before every cache lookup. The handler's
+ * first miss can therefore spend its one storage read on the route-specific
+ * materialization rather than reading a pointer first.
  */
-export async function readNeuronsSnapshotCacheStamp(
+export async function readExplorerDirectoryCacheStamp(
   env: Env,
 ): Promise<string | null> {
   if (env.METAGRAPH_NEURONS_SOURCE !== "data-api") return null;
-  const pointer = await readExplorerDirectoryPointer(env.METAGRAPH_CONTROL);
-  return pointer ? String(pointer.captured_at) : null;
+  return `minute:${Math.floor(Date.now() / 60_000)}`;
 }
 
 export async function tryDataApiTier(

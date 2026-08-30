@@ -22,7 +22,9 @@ import type { Row } from "./row-type.ts";
 import { persistComputeDeclaration } from "../src/compute-declarations-lane.ts";
 import {
   explorerDirectoriesSnapshotKey,
+  KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
   KV_EXPLORER_DIRECTORIES_CURRENT,
+  KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
 } from "../src/kv-keys.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import type { DataApiWorkerEnv } from "../workers/types.ts";
@@ -466,6 +468,16 @@ test("the direct neurons path publishes explorer directories when its declared p
   ) as Row;
   assert.equal((stored.accounts as Row).account_count, 1);
   assert.equal((stored.validators as Row).validator_count, 1);
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+      .account_count,
+    1,
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT)!)
+      .validator_count,
+    1,
+  );
 });
 
 test("the direct neurons path does not publish an incomplete declared pass", async () => {
@@ -2842,6 +2854,16 @@ test("the snapshot stamp prepares one atomic directory materialization and both 
   assert.equal(stored.captured_at, CAPTURED_AT);
   assert.equal((stored.accounts as Row).account_count, 3);
   assert.equal((stored.validators as Row).validator_count, 3);
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+      .account_count,
+    3,
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT)!)
+      .validator_count,
+    3,
+  );
 
   // Prove these are KV reads rather than another whole-network aggregation:
   // once the materialization exists, even an unavailable source table cannot
@@ -2881,9 +2903,9 @@ test("concurrent requests share one directory refresh for a completed snapshot",
     ),
   ]);
   assert.deepEqual([first, second], [true, true]);
-  // One versioned payload plus one tiny current pointer, still from one shared
-  // build rather than one pair of writes per caller.
-  assert.equal(kv.putCount(), 2);
+  // One versioned payload, two route-specific hot values and one tiny current
+  // pointer, still from one shared build rather than one write set per caller.
+  assert.equal(kv.putCount(), 4);
 });
 
 test("the cache-stamp hot path reads only the small directory pointer", async () => {
@@ -3427,6 +3449,16 @@ test("the queue consumer publishes explorer directories when a neuron pass compl
   );
   assert.equal(
     materialized.validators.captured_at,
+    new Date(CAPTURED_AT).toISOString(),
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+      .captured_at,
+    new Date(CAPTURED_AT).toISOString(),
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT)!)
+      .captured_at,
     new Date(CAPTURED_AT).toISOString(),
   );
 });

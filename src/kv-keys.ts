@@ -17,6 +17,10 @@ export const KV_EXPLORER_DIRECTORIES_CURRENT =
   "explorer-directories:v1:current" as const;
 export const KV_EXPLORER_DIRECTORIES_SNAPSHOT_PREFIX =
   "explorer-directories:v1:snapshot" as const;
+export const KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT =
+  "explorer-directories:v1:accounts:current" as const;
+export const KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT =
+  "explorer-directories:v1:validators:current" as const;
 
 export function explorerDirectoriesSnapshotKey(capturedAt: number): string {
   return `${KV_EXPLORER_DIRECTORIES_SNAPSHOT_PREFIX}:${capturedAt}`;
