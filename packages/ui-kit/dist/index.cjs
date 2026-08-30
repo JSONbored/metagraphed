@@ -4687,7 +4687,14 @@ function Cell({
     const to = column.href?.(row);
     const LinkCmp = link ?? DefaultLink2;
     bodyIsLink = Boolean(to);
-    body = to ? /* @__PURE__ */ jsxRuntime.jsx(LinkCmp, { href: to, className: "mg-dt-link", children: text }) : text;
+    body = to ? /* @__PURE__ */ jsxRuntime.jsx(
+      LinkCmp,
+      {
+        href: to,
+        className: classNames("mg-dt-link", href && "mg-dt-rowlink"),
+        children: text
+      }
+    ) : text;
   } else body = text;
   const RowLink = link ?? DefaultLink2;
   const toggle = disclosure === void 0 ? null : /* @__PURE__ */ jsxRuntime.jsx(

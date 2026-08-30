@@ -196,7 +196,28 @@ describe("DataTable markup", () => {
     });
 
     expect((html.match(/<a\b/g) ?? []).length).toBe(3);
-    expect((html.match(/class="mg-dt-link"/g) ?? []).length).toBe(3);
+    expect((html.match(/class="mg-dt-link mg-dt-rowlink"/g) ?? []).length).toBe(
+      3,
+    );
+    expect(html).not.toMatch(/<a\b[^>]*>\s*<a\b/);
+  });
+
+  it("keeps the nominated column discoverable as the row link", () => {
+    const html = render({
+      rowHref: (r: Row) => `/blocks/${r.id}`,
+      columns: [
+        {
+          key: "name",
+          label: "Block",
+          kind: "link",
+          lead: true,
+          value: (r: Row) => r.name,
+          href: (r: Row) => `/blocks/${r.id}`,
+        },
+      ],
+    });
+
+    expect((html.match(/mg-dt-rowlink/g) ?? []).length).toBe(3);
     expect(html).not.toMatch(/<a\b[^>]*>\s*<a\b/);
   });
 
