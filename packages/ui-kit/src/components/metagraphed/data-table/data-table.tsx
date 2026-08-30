@@ -860,7 +860,10 @@ function Cell<Row_>({
     const LinkCmp = link ?? DefaultLink;
     bodyIsLink = Boolean(to);
     body = to ? (
-      <LinkCmp href={to} className="mg-dt-link">
+      <LinkCmp
+        href={to}
+        className={classNames("mg-dt-link", href && "mg-dt-rowlink")}
+      >
         {text}
       </LinkCmp>
     ) : (
