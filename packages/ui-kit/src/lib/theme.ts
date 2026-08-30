@@ -53,21 +53,33 @@ function apply(choice: ThemeChoice): ResolvedTheme {
 }
 
 export function useTheme() {
-  const [choice, setChoiceState] = useState<ThemeChoice>(() => readChoice());
+  // SSR cannot read localStorage. Keep the first client render identical to
+  // the server, then adopt the already bootstrapped document choice after
+  // hydration so theme-aware icons and visible controls stay deterministic.
+  const [choice, setChoiceState] = useState<ThemeChoice>("system");
   // Initialize to a fixed "light" so the server render and the first client
   // render agree -- the effect below syncs `resolved` to the real theme right
   // after mount, and the app's THEME_BOOTSTRAP_SCRIPT has already set the
   // document class for a flash-free first paint.
   const [resolved, setResolved] = useState<ResolvedTheme>("light");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    const initial = readChoice();
+    setChoiceState(initial);
+    setResolved(apply(initial));
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     setResolved(apply(choice));
     if (choice !== "system" || typeof window === "undefined") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setResolved(apply("system"));
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [choice]);
+  }, [choice, mounted]);
 
   const setChoice = useCallback((next: ThemeChoice) => {
     if (typeof document !== "undefined") {
