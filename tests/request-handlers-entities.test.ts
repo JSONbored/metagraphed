@@ -4246,13 +4246,14 @@ describe("handleBlock", () => {
       }),
     };
 
-    const cold = lakehouse([
-      blockRow({
-        decode_status: "complete",
-        economic_activity_tao: "1.25",
-        economics_complete: true,
-      }),
-    ]);
+    const cold = lakehouse((sql) => {
+      if (/FROM chain\.blocks\b/.test(sql)) return [blockRow()];
+      if (/FROM chain\.extrinsics\b/.test(sql))
+        return [extrinsicRow({ success: true, tip_tao: 0 })];
+      if (/FROM chain\.account_events\b/.test(sql))
+        return [transferEventRow({ amount_tao: 1.25 })];
+      return [];
+    });
     try {
       const response = await handleBlock(
         req(`/api/v1/blocks/${BLOCK_NUM}`),
@@ -4286,13 +4287,12 @@ describe("handleBlock", () => {
       }),
     };
 
-    const cold = lakehouse([
-      blockRow({
-        decode_status: "unavailable",
-        economic_activity_tao: null,
-        economics_complete: false,
-      }),
-    ]);
+    const cold = lakehouse((sql) => {
+      if (/FROM chain\.blocks\b/.test(sql)) return [blockRow()];
+      if (/FROM chain\.account_events\b/.test(sql))
+        throw new Error("companion table unavailable");
+      return [];
+    });
     try {
       const response = await handleBlock(
         req(`/api/v1/blocks/${BLOCK_NUM}`),

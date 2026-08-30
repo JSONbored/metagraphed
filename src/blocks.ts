@@ -13,6 +13,7 @@ import {
   clampOffset,
 } from "../workers/request-params.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
+import type { BlockEconomicsSummary } from "./block-economics.ts";
 
 type SqlRunner = (
   sql: string,
@@ -144,6 +145,31 @@ export function formatBlock(
     ...(typeof row.tao_usd_unavailable === "string"
       ? { tao_usd_unavailable: row.tao_usd_unavailable }
       : {}),
+  };
+}
+
+/**
+ * Attach a measured economics summary to one already-formatted block.
+ *
+ * The lakehouse stores block headers separately from the extrinsic/account-event
+ * rows that make the summary derivable. Re-running `formatBlock` on a formatted
+ * block would destroy its ISO `observed_at` value, so the cold reader applies
+ * only the economics fields through the same coercers the formatter owns.
+ */
+export function withBlockEconomics(
+  block: BlockApi,
+  summary: BlockEconomicsSummary,
+): BlockApi {
+  return {
+    ...block,
+    decode_status: "complete",
+    native_transfer_tao: decimalOrNull(summary.native_transfer_tao),
+    stake_flow_tao: decimalOrNull(summary.stake_flow_tao),
+    economic_activity_tao: decimalOrNull(summary.economic_activity_tao),
+    fee_tao: decimalOrNull(summary.fee_tao),
+    tip_tao: decimalOrNull(summary.tip_tao),
+    issuance_tao: decimalOrNull(summary.issuance_tao),
+    subnet_ids: subnetIds(summary.subnet_ids),
   };
 }
 

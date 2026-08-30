@@ -89,11 +89,19 @@ function lakeRow(n: number) {
 function lakeFetch(rows: unknown[]) {
   const queries: string[] = [];
   globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    queries.push(JSON.parse(String(init.body)).query);
+    const query = JSON.parse(String(init.body)).query as string;
+    queries.push(query);
     return {
       ok: true,
       status: 200,
-      json: async () => ({ success: true, result: { rows } }),
+      json: async () => ({
+        success: true,
+        result: {
+          rows: /FROM (?:chain|chain_testnet)\.blocks\b/.test(query)
+            ? rows
+            : [],
+        },
+      }),
     } as unknown as Response;
   }) as unknown as typeof fetch;
   return queries;
@@ -633,7 +641,11 @@ describe("loadBlockColdTier", () => {
     assert.equal(data!.block!.block_number, SEAM);
     assert.equal(watermarks.length, 0, "the stable floor needs no seam read");
     assert.equal(sql.length, 0, "the store still does not own this height");
-    assert.equal(queries.length, 1, "the lakehouse remains the sole source");
+    assert.equal(
+      queries.length,
+      3,
+      "one header read plus the two atomically committed economics companions",
+    );
   });
 
   test("a height above the seam that D1 lacks is a real absence, not a scan", async () => {
