@@ -8,6 +8,20 @@ export const KV_HEALTH_RPC_POOL = "health:rpc-pool" as const;
 export const KV_HEALTH_META = "health:meta" as const;
 export const KV_ECONOMICS_CURRENT = "economics:current" as const;
 /**
+ * The small pointer to the account-holder and validator-operator directories
+ * derived from the newest materialized neuron snapshot. The payload itself is
+ * versioned by captured_at so an eventually-consistent pointer can never make
+ * a reader mistake the previous snapshot for the new one.
+ */
+export const KV_EXPLORER_DIRECTORIES_CURRENT =
+  "explorer-directories:v1:current" as const;
+export const KV_EXPLORER_DIRECTORIES_SNAPSHOT_PREFIX =
+  "explorer-directories:v1:snapshot" as const;
+
+export function explorerDirectoriesSnapshotKey(capturedAt: number): string {
+  return `${KV_EXPLORER_DIRECTORIES_SNAPSHOT_PREFIX}:${capturedAt}`;
+}
+/**
  * The newest TAO/USD reading, so a consumer can price alpha without a DB read.
  *
  * WHY KV AND NOT A NEON READ (#10381). `tao_usd_index` is the durable series

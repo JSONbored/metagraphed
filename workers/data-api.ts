@@ -143,6 +143,9 @@ import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
 } from "../src/accounts-list.ts";
 import { buildAccountHolderDirectory } from "../src/account-holder-directory.ts";
+import { AccountHolderDirectoryArtifactSchema } from "../schemas-src/routes/account-holder-directory.ts";
+import { ValidatorOperatorDirectoryArtifactSchema } from "../schemas-src/routes/validator-operator-directory.ts";
+import { z } from "zod";
 import { resolveClientIp } from "./config.ts";
 import {
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
@@ -209,6 +212,13 @@ const SCHEMA_DRIFT_SQLSTATES = new Set(["42P01", "42703"]);
 // route, is a different key and captures again).
 const capturedSchemaDrift = new Set<string>();
 
+// One projection build per completed neuron snapshot, shared by every request
+// that reaches this isolate while the KV value is being replaced. KV is the
+// cross-isolate authority; these promises only prevent a burst of identical
+// service-binding requests from doing the same expensive fold concurrently
+// before that write becomes visible.
+const explorerDirectoryRefreshes = new Map<number, Promise<boolean>>();
+
 // Required by src/module-state-registry.ts's contract: under `isolate: false`
 // every test file in a worker shares one module registry, so a Set that
 // remembers "already captured" across files would make one file's drift
@@ -222,6 +232,7 @@ const capturedSchemaDrift = new Set<string>();
 // demanded it.
 registerModuleStateReset("workers/data-api.ts", () => {
   capturedSchemaDrift.clear();
+  explorerDirectoryRefreshes.clear();
 });
 
 /** The stable SQLSTATE of a postgres.js error, when it has one. */
@@ -430,7 +441,11 @@ import {
   neuronSnapshotWrite,
 } from "../src/neurons-neon-write.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
-import { KV_TAO_USD_CURRENT } from "../src/kv-keys.ts";
+import {
+  explorerDirectoriesSnapshotKey,
+  KV_EXPLORER_DIRECTORIES_CURRENT,
+  KV_TAO_USD_CURRENT,
+} from "../src/kv-keys.ts";
 import { NEON_PRUNE_CRON, runNeonPrune } from "../src/neon-prune.ts";
 import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
 import { runTaoUsdIndexWatchdog } from "../src/tao-usd-index-watchdog.ts";
@@ -6521,6 +6536,7 @@ async function handleAccountKeysRoute(
 type NeuronsStoreRouteHandler = (
   sql: PgSql,
   env: DataApiEnv,
+  ctx: ExecutionContext,
 ) => Promise<Response>;
 
 // The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
@@ -7038,18 +7054,270 @@ async function loadGlobalValidatorsFromStore(
   });
 }
 
+// The two network-wide pages are read far more often than the neuron snapshot
+// changes. Their compact response shapes still required a complete store scan
+// on every new edge-cache location, so a correct cold request took seconds.
+// Keep one atomic KV value per completed snapshot: readers see either the old
+// complete pair or the new complete pair, never one directory from each.
+type ExplorerDirectoryMaterialization = {
+  schema_version: 1;
+  captured_at: number;
+  accounts: ReturnType<typeof buildAccountHolderDirectory>;
+  validators: ReturnType<typeof buildValidatorOperatorDirectory>;
+};
+
+type ExplorerDirectoryPointer = {
+  schema_version: 1;
+  captured_at: number;
+};
+
+const ExplorerDirectoryPointerSchema = z
+  .object({
+    schema_version: z.literal(1),
+    captured_at: z.number().int().positive().max(8_640_000_000_000_000),
+  })
+  .strict();
+
+const ExplorerDirectoryMaterializationSchema = z
+  .object({
+    schema_version: z.literal(1),
+    captured_at: z.number().int().positive().max(8_640_000_000_000_000),
+    accounts: AccountHolderDirectoryArtifactSchema,
+    validators: ValidatorOperatorDirectoryArtifactSchema,
+  })
+  .strict()
+  .superRefine((value, refinement) => {
+    const capturedAt = new Date(value.captured_at).toISOString();
+    if (
+      value.accounts.captured_at !== capturedAt ||
+      value.validators.captured_at !== capturedAt
+    ) {
+      refinement.addIssue({
+        code: "custom",
+        message: "directory snapshots do not match the materialization stamp",
+      });
+    }
+  });
+
+export function materializationFromUnknown(
+  value: unknown,
+): ExplorerDirectoryMaterialization | null {
+  const parsed = ExplorerDirectoryMaterializationSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+function pointerFromUnknown(value: unknown): ExplorerDirectoryPointer | null {
+  const parsed = ExplorerDirectoryPointerSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+async function readExplorerDirectoryPointer(
+  env: DataApiEnv,
+): Promise<ExplorerDirectoryPointer | null> {
+  if (!env.METAGRAPH_CONTROL) return null;
+  try {
+    return pointerFromUnknown(
+      await env.METAGRAPH_CONTROL.get(KV_EXPLORER_DIRECTORIES_CURRENT, "json"),
+    );
+  } catch (error) {
+    console.error(
+      "explorer directory materialization pointer read failed:",
+      error,
+    );
+    return null;
+  }
+}
+
+async function readExplorerDirectoryMaterialization(
+  env: DataApiEnv,
+): Promise<ExplorerDirectoryMaterialization | null> {
+  if (!env.METAGRAPH_CONTROL) return null;
+  try {
+    const pointer = await readExplorerDirectoryPointer(env);
+    if (!pointer) return null;
+    const raw = await env.METAGRAPH_CONTROL.get(
+      explorerDirectoriesSnapshotKey(pointer.captured_at),
+      "json",
+    );
+    const materialization = materializationFromUnknown(raw);
+    return materialization?.captured_at === pointer.captured_at
+      ? materialization
+      : null;
+  } catch (error) {
+    // KV is an optimization tier. A read failure must fall through to the
+    // existing store-backed answer rather than turn a valid directory into a
+    // 5xx or a measured zero.
+    console.error("explorer directory materialization read failed:", error);
+    return null;
+  }
+}
+
+async function latestCompletedNeuronSnapshot(
+  sql: PgSql,
+): Promise<number | null> {
+  const rows = await sql<{ captured_at: number | string | null }>`
+    SELECT captured_at FROM neurons_passes
+    WHERE completed_at IS NOT NULL
+    ORDER BY completed_at DESC
+    LIMIT 1`;
+  const capturedAt = Number(rows[0]?.captured_at);
+  return Number.isSafeInteger(capturedAt) && capturedAt > 0 ? capturedAt : null;
+}
+
+/**
+ * Build the browser-sized account and validator directories once for one
+ * completed neuron snapshot.
+ *
+ * The completeness recheck is deliberate. `neurons` is updated in chunks; if
+ * a newer partial pass has started, filtering it out would drop rows because
+ * the table keeps only the newest value per key. In that state we retain the
+ * previous complete materialization and let the next request retry after the
+ * pass completes.
+ */
+export async function refreshExplorerDirectoryMaterialization(
+  env: DataApiEnv,
+  ctx: ExecutionContext,
+  capturedAt: number,
+): Promise<boolean> {
+  if (!env.METAGRAPH_CONTROL) return false;
+  const existing = explorerDirectoryRefreshes.get(capturedAt);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    const sql = routeRunner(env, ctx);
+    if (!sql) return false;
+    const previousPointer = await readExplorerDirectoryPointer(env);
+    if (previousPointer?.captured_at === capturedAt) return true;
+    const latest = await latestCompletedNeuronSnapshot(sql);
+    const newestRows = await sql<{ captured_at: number | string | null }>`
+      SELECT MAX(captured_at) AS captured_at FROM neurons`;
+    const newestCapturedAt = Number(newestRows[0]?.captured_at);
+    if (
+      latest !== capturedAt ||
+      !Number.isSafeInteger(newestCapturedAt) ||
+      newestCapturedAt !== capturedAt
+    ) {
+      return false;
+    }
+
+    const [accountRows, priceByNetuid, globalValidators] = await Promise.all([
+      sql<{
+        netuid: Neurons["netuid"];
+        uid: Neurons["uid"];
+        hotkey: Neurons["hotkey"];
+        coldkey: Neurons["coldkey"];
+        validator_permit: Neurons["validator_permit"];
+        emission_tao: Neurons["emission_tao"];
+        stake_tao: Neurons["stake_tao"];
+        block_number: Neurons["block_number"];
+        captured_at: Neurons["captured_at"];
+      }>`
+        SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
+        FROM neurons WHERE hotkey IS NOT NULL
+        ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+      loadStoreAlphaPricesByNetuid(sql, env),
+      loadGlobalValidatorsFromStore(
+        sql,
+        env,
+        "total_stake",
+        GLOBAL_VALIDATOR_LIMIT_MAX,
+        true,
+      ),
+    ]);
+    const accounts = buildAccountHolderDirectory(accountRows, {
+      priceByNetuid,
+    });
+    const validators = buildValidatorOperatorDirectory(globalValidators);
+
+    // The table is updated in-place and the fold above is intentionally not a
+    // long-running transaction. Recheck both boundaries after the scans so a
+    // newer pass that started while they ran cannot be published under the
+    // previous snapshot's stamp.
+    const finalLatest = await latestCompletedNeuronSnapshot(sql);
+    const finalRows = await sql<{ captured_at: number | string | null }>`
+      SELECT MAX(captured_at) AS captured_at FROM neurons`;
+    const finalCapturedAt = Number(finalRows[0]?.captured_at);
+    if (finalLatest !== capturedAt || finalCapturedAt !== capturedAt) {
+      return false;
+    }
+
+    const value: ExplorerDirectoryMaterialization = {
+      schema_version: 1,
+      captured_at: capturedAt,
+      accounts,
+      validators,
+    };
+    await env.METAGRAPH_CONTROL.put(
+      explorerDirectoriesSnapshotKey(capturedAt),
+      JSON.stringify(value),
+    );
+    await env.METAGRAPH_CONTROL.put(
+      KV_EXPLORER_DIRECTORIES_CURRENT,
+      JSON.stringify({ schema_version: 1, captured_at: capturedAt }),
+    );
+    if (
+      previousPointer &&
+      previousPointer.captured_at !== capturedAt &&
+      typeof env.METAGRAPH_CONTROL.delete === "function"
+    ) {
+      try {
+        await env.METAGRAPH_CONTROL.delete(
+          explorerDirectoriesSnapshotKey(previousPointer.captured_at),
+        );
+      } catch (error) {
+        // Cleanup is bounded-storage hygiene, not part of publication. The new
+        // pointer and payload are already complete and must stay readable.
+        console.error(
+          "explorer directory materialization cleanup failed:",
+          error,
+        );
+      }
+    }
+    return true;
+  })().finally(() => {
+    explorerDirectoryRefreshes.delete(capturedAt);
+  });
+  explorerDirectoryRefreshes.set(capturedAt, promise);
+  return promise;
+}
+
 function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // Internal-only freshness stamp used by the public API Worker's edge cache.
   // The completed pass is the snapshot boundary: MAX(neurons.captured_at) can
   // advance after only one chunk and would make a partial capture look whole.
   if (url.pathname === "/api/v1/internal/neurons-snapshot-stamp") {
-    return async (sql) => {
-      const rows = await sql<{ captured_at: number | null }>`
-        SELECT captured_at FROM neurons_passes
-        WHERE completed_at IS NOT NULL
-        ORDER BY completed_at DESC
-        LIMIT 1`;
-      return json({ captured_at: rows[0]?.captured_at ?? null });
+    return async (sql, env, ctx) => {
+      const capturedAt = await latestCompletedNeuronSnapshot(sql);
+      if (capturedAt === null) return json({ captured_at: null });
+
+      // This hot path intentionally reads only the tiny pointer. Fetching and
+      // validating the ~300 KiB directory payload before every edge-cache hit
+      // would move the whole cold-miss cost into the freshness check.
+      const pointer = await readExplorerDirectoryPointer(env);
+      if (pointer?.captured_at === capturedAt) {
+        return json({ captured_at: capturedAt });
+      }
+
+      // Do not make a reader wait for a whole-network fold. While the new
+      // snapshot is prepared, keep advertising the previous complete stamp so
+      // the main Worker's snapshot-keyed cache continues serving its matching
+      // complete response. With no prior materialization (the one-time rollout
+      // bootstrap), the existing live handler remains the safe fallback.
+      ctx.waitUntil(
+        refreshExplorerDirectoryMaterialization(env, ctx, capturedAt).catch(
+          (error) => {
+            console.error("explorer directory materialization failed:", error);
+            return false;
+          },
+        ),
+      );
+      const servedStamp = pointer?.captured_at;
+      return json({
+        captured_at:
+          typeof servedStamp === "number" && servedStamp < capturedAt
+            ? servedStamp
+            : capturedAt,
+      });
     };
   }
 
@@ -7325,8 +7593,10 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // GET /api/v1/validators/operators: the website's grouped directory shape.
   // The rich per-hotkey route above remains unchanged for REST/MCP consumers.
   if (url.pathname === "/api/v1/validators/operators") {
-    return async (sql, env) =>
-      json(
+    return async (sql, env) => {
+      const materialized = await readExplorerDirectoryMaterialization(env);
+      if (materialized) return json(materialized.validators);
+      return json(
         buildValidatorOperatorDirectory(
           await loadGlobalValidatorsFromStore(
             sql,
@@ -7337,6 +7607,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
           ),
         ),
       );
+    };
   }
 
   // GET /api/v1/validators/:hotkey
@@ -8154,6 +8425,8 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // The rich sortable route above remains unchanged for REST/MCP consumers.
   if (url.pathname === "/api/v1/accounts/directory") {
     return async (sql, env) => {
+      const materialized = await readExplorerDirectoryMaterialization(env);
+      if (materialized) return json(materialized.accounts);
       const [rows, priceByNetuid] = await Promise.all([
         sql<{
           netuid: Neurons["netuid"];
@@ -8927,7 +9200,7 @@ async function dispatchDataApiRequest(
         return json({ error: "no store bound for this route" }, 503);
       }
       try {
-        return await neuronsStoreHandler(store, env);
+        return await neuronsStoreHandler(store, env, ctx);
       } catch (err) {
         console.error("data-api neurons query failed:", err);
         await captureDataApiError(err, maskRouteParams(url.pathname), env);
@@ -8946,7 +9219,7 @@ async function dispatchDataApiRequest(
           return json({ error: "no store bound for this route" }, 503);
         }
         try {
-          return await healthStatusStoreHandler(store, env);
+          return await healthStatusStoreHandler(store, env, ctx);
         } catch (err) {
           console.error("data-api health-status store query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
@@ -8969,7 +9242,7 @@ async function dispatchDataApiRequest(
           return json({ error: "no store bound for this route" }, 503);
         }
         try {
-          return await hyperparamsIdentityStoreHandler(store, env);
+          return await hyperparamsIdentityStoreHandler(store, env, ctx);
         } catch (err) {
           console.error(
             "data-api hyperparams/identity store query failed:",
