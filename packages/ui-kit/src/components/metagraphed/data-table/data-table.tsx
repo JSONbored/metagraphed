@@ -828,6 +828,7 @@ function Cell<Row_>({
   const tint = column.kind === "tint" ? (column.tint?.(row) ?? null) : null;
 
   let body: ReactNode;
+  let bodyIsLink = false;
   if (column.render) body = column.render(row);
   else if (column.kind === "identifier" && typeof raw === "string" && raw)
     body = (
@@ -857,6 +858,7 @@ function Cell<Row_>({
   else if (column.kind === "link") {
     const to = column.href?.(row);
     const LinkCmp = link ?? DefaultLink;
+    bodyIsLink = Boolean(to);
     body = to ? (
       <LinkCmp href={to} className="mg-dt-link">
         {text}
@@ -891,8 +893,14 @@ function Cell<Row_>({
       ></button>
     );
 
+  // A nominated row-link cell can itself be a `kind: "link"` column. Wrapping
+  // that cell's anchor in the generic row anchor creates invalid `<a><a>`
+  // markup; browsers repair the server HTML before React sees it, which turns
+  // every affected table into a hydration mismatch. The column link already
+  // carries the same crawlable, keyboard-accessible identity, so keep exactly
+  // that one anchor in this case.
   const linked =
-    href !== undefined ? (
+    href !== undefined && !bodyIsLink ? (
       <RowLink href={href} className="mg-dt-rowlink">
         {body}
       </RowLink>
@@ -902,25 +910,30 @@ function Cell<Row_>({
     disclosure !== undefined ? (
       <span className="mg-dt-rowlead">
         {toggle}
-        {linked ?? (
-          <button
-            type="button"
-            className="mg-dt-rowbutton"
-            aria-expanded={disclosure.expanded}
-            aria-controls={
-              disclosure.expanded ? disclosure.controls : undefined
-            }
-            onClick={(event) => {
-              event.stopPropagation();
-              disclosure.onToggle();
-            }}
-          >
-            {body}
-          </button>
-        )}
+        {linked ??
+          (bodyIsLink ? (
+            body
+          ) : (
+            <button
+              type="button"
+              className="mg-dt-rowbutton"
+              aria-expanded={disclosure.expanded}
+              aria-controls={
+                disclosure.expanded ? disclosure.controls : undefined
+              }
+              onClick={(event) => {
+                event.stopPropagation();
+                disclosure.onToggle();
+              }}
+            >
+              {body}
+            </button>
+          ))}
       </span>
     ) : linked !== null ? (
       linked
+    ) : bodyIsLink ? (
+      body
     ) : onActivate ? (
       <button type="button" className="mg-dt-rowbutton" onClick={onActivate}>
         {body}

@@ -466,16 +466,24 @@ function apply(choice) {
   return resolved;
 }
 function useTheme() {
-  const [choice, setChoiceState] = React2.useState(() => readChoice());
+  const [choice, setChoiceState] = React2.useState("system");
   const [resolved, setResolved] = React2.useState("light");
+  const [mounted2, setMounted] = React2.useState(false);
   React2.useEffect(() => {
+    const initial = readChoice();
+    setChoiceState(initial);
+    setResolved(apply(initial));
+    setMounted(true);
+  }, []);
+  React2.useEffect(() => {
+    if (!mounted2) return;
     setResolved(apply(choice));
     if (choice !== "system" || typeof window === "undefined") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setResolved(apply("system"));
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [choice]);
+  }, [choice, mounted2]);
   const setChoice = React2.useCallback((next) => {
     if (typeof document !== "undefined") {
       document.documentElement.classList.add("theme-transition");
@@ -4652,6 +4660,7 @@ function Cell({
   const align = column.align ?? (column.kind === "number" || column.kind === "delta" || column.kind === "tint" ? "right" : void 0);
   const tint = column.kind === "tint" ? column.tint?.(row) ?? null : null;
   let body;
+  let bodyIsLink = false;
   if (column.render) body = column.render(row);
   else if (column.kind === "identifier" && typeof raw === "string" && raw)
     body = /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-dt-id", title: raw, children: [
@@ -4677,6 +4686,7 @@ function Cell({
   else if (column.kind === "link") {
     const to = column.href?.(row);
     const LinkCmp = link ?? DefaultLink2;
+    bodyIsLink = Boolean(to);
     body = to ? /* @__PURE__ */ jsxRuntime.jsx(LinkCmp, { href: to, className: "mg-dt-link", children: text }) : text;
   } else body = text;
   const RowLink = link ?? DefaultLink2;
@@ -4694,10 +4704,10 @@ function Cell({
       }
     }
   );
-  const linked = href !== void 0 ? /* @__PURE__ */ jsxRuntime.jsx(RowLink, { href, className: "mg-dt-rowlink", children: body }) : null;
+  const linked = href !== void 0 && !bodyIsLink ? /* @__PURE__ */ jsxRuntime.jsx(RowLink, { href, className: "mg-dt-rowlink", children: body }) : null;
   const content = disclosure !== void 0 ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-dt-rowlead", children: [
     toggle,
-    linked ?? /* @__PURE__ */ jsxRuntime.jsx(
+    linked ?? (bodyIsLink ? body : /* @__PURE__ */ jsxRuntime.jsx(
       "button",
       {
         type: "button",
@@ -4710,8 +4720,8 @@ function Cell({
         },
         children: body
       }
-    )
-  ] }) : linked !== null ? linked : onActivate ? /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", className: "mg-dt-rowbutton", onClick: onActivate, children: body }) : body;
+    ))
+  ] }) : linked !== null ? linked : bodyIsLink ? body : onActivate ? /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", className: "mg-dt-rowbutton", onClick: onActivate, children: body }) : body;
   return /* @__PURE__ */ jsxRuntime.jsx(
     "td",
     {
