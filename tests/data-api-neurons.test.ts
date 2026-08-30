@@ -3343,6 +3343,121 @@ test("the queue consumer writes a neurons message and acks it", async () => {
   assert.equal((await count("neuron_daily")) > 0, true);
 });
 
+test("the queue consumer publishes explorer directories when a neuron pass completes", async () => {
+  const kv = memoryKv();
+  const pending = collectingCtx();
+  const acked: string[] = [];
+
+  await worker.queue(
+    {
+      messages: [
+        {
+          body: {
+            lane: "neurons",
+            captured_at: CAPTURED_AT,
+            pass_total: 1,
+            key_complete: true,
+            rows: [syncRow()],
+          },
+          ack: () => acked.push("ack"),
+          retry: () => acked.push("retry"),
+        },
+      ],
+    } as never,
+    env({ METAGRAPH_CONTROL: kv }),
+    pending.ctx,
+  );
+  await Promise.all(pending.pending);
+
+  assert.deepEqual(acked, ["ack"]);
+  assert.deepEqual(
+    JSON.parse(kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!),
+    { schema_version: 1, captured_at: CAPTURED_AT },
+  );
+  const materialized = JSON.parse(
+    kv.values.get(explorerDirectoriesSnapshotKey(CAPTURED_AT))!,
+  );
+  assert.equal(
+    materialized.accounts.captured_at,
+    new Date(CAPTURED_AT).toISOString(),
+  );
+  assert.equal(
+    materialized.validators.captured_at,
+    new Date(CAPTURED_AT).toISOString(),
+  );
+});
+
+test("an incomplete neuron queue pass is acknowledged without publishing a mixed directory", async () => {
+  const kv = memoryKv();
+  const pending = collectingCtx();
+  const acked: string[] = [];
+
+  await worker.queue(
+    {
+      messages: [
+        {
+          body: {
+            lane: "neurons",
+            captured_at: CAPTURED_AT,
+            pass_total: 2,
+            key_complete: true,
+            rows: [syncRow()],
+          },
+          ack: () => acked.push("ack"),
+          retry: () => acked.push("retry"),
+        },
+      ],
+    } as never,
+    env({ METAGRAPH_CONTROL: kv }),
+    pending.ctx,
+  );
+  await Promise.all(pending.pending);
+
+  assert.deepEqual(acked, ["ack"]);
+  assert.equal(kv.putCount(), 0);
+  assert.equal(kv.values.has(KV_EXPLORER_DIRECTORIES_CURRENT), false);
+});
+
+test("a queue publication failure cannot retry a neuron snapshot that already landed", async () => {
+  const pending = collectingCtx();
+  const acked: string[] = [];
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  await worker.queue(
+    {
+      messages: [
+        {
+          body: {
+            lane: "neurons",
+            captured_at: CAPTURED_AT,
+            pass_total: 1,
+            key_complete: true,
+            rows: [syncRow()],
+          },
+          ack: () => acked.push("ack"),
+          retry: () => acked.push("retry"),
+        },
+      ],
+    } as never,
+    env({
+      METAGRAPH_CONTROL: {
+        get: async () => null,
+        put: async () => Promise.reject(new Error("KV unavailable")),
+      },
+    }),
+    pending.ctx,
+  );
+  await Promise.all(pending.pending);
+
+  assert.deepEqual(acked, ["ack"]);
+  assert.ok(
+    error.mock.calls.some((call) =>
+      String(call[0]).includes("explorer directory queue publication failed"),
+    ),
+  );
+  error.mockRestore();
+});
+
 test("the consumer refuses a neurons message that does not claim key-completeness", async () => {
   // Refused, not written. The claim was introduced because the D1 write PRUNED
   // -- applying a partial message would have deleted rows it never carried --

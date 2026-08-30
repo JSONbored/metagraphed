@@ -9908,6 +9908,30 @@ export default {
       }
       try {
         await writeSyncBatch(body, writers, Date.now(), familyWriters);
+        // Build the website-sized account/validator pair at the only point
+        // that reliably observes a neuron pass becoming complete: directly
+        // after a queue chunk and its pass tally have landed. A request-side
+        // refresh remains as repair, but it can repeatedly arrive while the
+        // next pass is partial and correctly decline the mixed snapshot.
+        //
+        // This is best-effort and must not change queue acknowledgement. The
+        // neuron rows are the durable fact; a failed derived publication is
+        // retried by the next completed chunk or directory freshness read.
+        if (body.lane === "neurons" && body.pass_total !== undefined) {
+          ctx.waitUntil(
+            refreshExplorerDirectoryMaterialization(
+              env,
+              ctx,
+              body.captured_at,
+            ).catch((error) => {
+              console.error(
+                "explorer directory queue publication failed:",
+                error,
+              );
+              return false;
+            }),
+          );
+        }
         message.ack();
       } catch (err) {
         console.error("sync-batches: write failed:", err);
