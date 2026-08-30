@@ -5,11 +5,11 @@
 // withEdgeCache write, #5090) are tested directly here rather than only
 // incidentally through individual handler tests.
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import {
   DATA_API_TIER_RETRY_ATTEMPTS,
   currentDataApiTierFallbackGeneration,
-  readNeuronsSnapshotCacheStamp,
+  readExplorerDirectoryCacheStamp,
   tryDataApiTier,
 } from "../workers/data-api-tier.ts";
 import { mockEnv, type AnyFn } from "./row-type.ts";
@@ -28,75 +28,23 @@ function req() {
   return new Request("https://api.metagraph.sh/api/v1/health");
 }
 
-test("readNeuronsSnapshotCacheStamp: returns the completed-pass watermark", async () => {
-  let requested: Request | null = null;
-  const result = await readNeuronsSnapshotCacheStamp(
-    mockEnv({
-      METAGRAPH_NEURONS_SOURCE: "data-api",
-      DATA_API: dataApi(async (request: Request) => {
-        requested = request;
-        return Response.json({ captured_at: 1_780_000_000_000 });
-      }),
-    }),
+test("readExplorerDirectoryCacheStamp: returns the current minute epoch", async () => {
+  const now = 1_780_000_000_000;
+  const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+  const result = await readExplorerDirectoryCacheStamp(
+    mockEnv({ METAGRAPH_NEURONS_SOURCE: "data-api" }),
   );
-  assert.equal(result, "1780000000000");
-  assert.equal(
-    new URL(requested!.url).pathname,
-    "/api/v1/internal/neurons-snapshot-stamp",
-  );
+  nowSpy.mockRestore();
+  assert.equal(result, `minute:${Math.floor(now / 60_000)}`);
 });
 
-test("readNeuronsSnapshotCacheStamp: declines without the active lane or binding", async () => {
+test("readExplorerDirectoryCacheStamp: declines without the active lane", async () => {
   assert.equal(
-    await readNeuronsSnapshotCacheStamp(
+    await readExplorerDirectoryCacheStamp(
       mockEnv({ METAGRAPH_NEURONS_SOURCE: "retired" }),
     ),
     null,
   );
-  assert.equal(
-    await readNeuronsSnapshotCacheStamp(
-      mockEnv({ METAGRAPH_NEURONS_SOURCE: "data-api" }),
-    ),
-    null,
-  );
-});
-
-test("readNeuronsSnapshotCacheStamp: unproven responses disable caching", async () => {
-  for (const response of [
-    new Response("no", { status: 503 }),
-    Response.json({ captured_at: null }),
-    Response.json({ captured_at: -1 }),
-    Response.json({ captured_at: 1.5 }),
-  ]) {
-    assert.equal(
-      await readNeuronsSnapshotCacheStamp(
-        mockEnv({
-          METAGRAPH_NEURONS_SOURCE: "data-api",
-          DATA_API: dataApi(async () => response.clone()),
-        }),
-      ),
-      null,
-    );
-  }
-});
-
-test("readNeuronsSnapshotCacheStamp: transport and malformed JSON failures disable caching", async () => {
-  for (const fetch of [
-    async () => {
-      throw new Error("offline");
-    },
-    async () => new Response("not-json", { status: 200 }),
-  ]) {
-    assert.equal(
-      await readNeuronsSnapshotCacheStamp(
-        mockEnv({
-          METAGRAPH_NEURONS_SOURCE: "data-api",
-          DATA_API: dataApi(fetch),
-        }),
-      ),
-      null,
-    );
-  }
 });
 
 test("an unforwardable flag no longer COMPILES -- membership moved into the type (#10190)", () => {

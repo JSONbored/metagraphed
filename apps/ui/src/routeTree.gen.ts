@@ -71,6 +71,7 @@ import { Route as ToolsSs58RouteImport } from './routes/tools.ss58'
 import { Route as ValidatorsIndexRouteImport } from './routes/validators.index'
 import { Route as ValidatorsHotkeyRouteImport } from './routes/validators.$hotkey'
 import { Route as DocsRawSplatRouteImport } from './routes/docs.raw.$'
+import { Route as EventsBlockIndexRouteImport } from './routes/events.$block.$index'
 import { Route as NewsRawSplatRouteImport } from './routes/news.raw.$'
 import { Route as SubnetsCategoryIndexRouteImport } from './routes/subnets.category.index'
 import { Route as SubnetsCategorySlugRouteImport } from './routes/subnets.category.$slug'
@@ -385,6 +386,11 @@ const DocsRawSplatRoute = DocsRawSplatRouteImport.update({
   path: '/docs/raw/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EventsBlockIndexRoute = EventsBlockIndexRouteImport.update({
+  id: '/events/$block/$index',
+  path: '/events/$block/$index',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NewsRawSplatRoute = NewsRawSplatRouteImport.update({
   id: '/news/raw/$',
   path: '/news/raw/$',
@@ -464,6 +470,7 @@ export interface FileRoutesByFullPath {
   '/tools/': typeof ToolsIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
+  '/events/$block/$index': typeof EventsBlockIndexRoute
   '/news/raw/$': typeof NewsRawSplatRoute
   '/subnets/category/$slug': typeof SubnetsCategorySlugRoute
   '/subnets/category/': typeof SubnetsCategoryIndexRoute
@@ -529,6 +536,7 @@ export interface FileRoutesByTo {
   '/tools': typeof ToolsIndexRoute
   '/validators': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
+  '/events/$block/$index': typeof EventsBlockIndexRoute
   '/news/raw/$': typeof NewsRawSplatRoute
   '/subnets/category/$slug': typeof SubnetsCategorySlugRoute
   '/subnets/category': typeof SubnetsCategoryIndexRoute
@@ -597,6 +605,7 @@ export interface FileRoutesById {
   '/tools/': typeof ToolsIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
+  '/events/$block/$index': typeof EventsBlockIndexRoute
   '/news/raw/$': typeof NewsRawSplatRoute
   '/subnets/category/$slug': typeof SubnetsCategorySlugRoute
   '/subnets/category/': typeof SubnetsCategoryIndexRoute
@@ -666,6 +675,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/validators/'
     | '/docs/raw/$'
+    | '/events/$block/$index'
     | '/news/raw/$'
     | '/subnets/category/$slug'
     | '/subnets/category/'
@@ -731,6 +741,7 @@ export interface FileRouteTypes {
     | '/tools'
     | '/validators'
     | '/docs/raw/$'
+    | '/events/$block/$index'
     | '/news/raw/$'
     | '/subnets/category/$slug'
     | '/subnets/category'
@@ -798,6 +809,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/validators/'
     | '/docs/raw/$'
+    | '/events/$block/$index'
     | '/news/raw/$'
     | '/subnets/category/$slug'
     | '/subnets/category/'
@@ -854,6 +866,7 @@ export interface RootRouteChildren {
   ToolsIndexRoute: typeof ToolsIndexRoute
   ValidatorsIndexRoute: typeof ValidatorsIndexRoute
   DocsRawSplatRoute: typeof DocsRawSplatRoute
+  EventsBlockIndexRoute: typeof EventsBlockIndexRoute
   NewsRawSplatRoute: typeof NewsRawSplatRoute
   SubnetsCategorySlugRoute: typeof SubnetsCategorySlugRoute
   SubnetsCategoryIndexRoute: typeof SubnetsCategoryIndexRoute
@@ -1295,6 +1308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsRawSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/events/$block/$index': {
+      id: '/events/$block/$index'
+      path: '/events/$block/$index'
+      fullPath: '/events/$block/$index'
+      preLoaderRoute: typeof EventsBlockIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/news/raw/$': {
       id: '/news/raw/$'
       path: '/news/raw/$'
@@ -1410,6 +1430,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolsIndexRoute: ToolsIndexRoute,
   ValidatorsIndexRoute: ValidatorsIndexRoute,
   DocsRawSplatRoute: DocsRawSplatRoute,
+  EventsBlockIndexRoute: EventsBlockIndexRoute,
   NewsRawSplatRoute: NewsRawSplatRoute,
   SubnetsCategorySlugRoute: SubnetsCategorySlugRoute,
   SubnetsCategoryIndexRoute: SubnetsCategoryIndexRoute,

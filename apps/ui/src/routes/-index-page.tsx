@@ -22,8 +22,10 @@ import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import {
   CHAIN_METRICS,
   chainPoints,
+  completeChainDays,
+  emissionComparisonNote,
   emissionRails,
-  fmtAlpha,
+  fmtAlphaDelta,
   fmtCount,
   fmtShare,
   healthRail,
@@ -41,10 +43,10 @@ import {
   economicsQuery,
   subnetMoversQuery,
 } from "@/lib/metagraphed/queries";
-import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber, formatRelative } from "@/lib/metagraphed/format";
 
 const SECTIONS = [
-  { id: "emission", name: "Emission movement" },
+  { id: "emission", name: "Emission gains" },
   { id: "chain", name: "Chain activity" },
   { id: "health", name: "Surface health" },
 ] as const;
@@ -65,6 +67,7 @@ const EMISSION_WINDOWS = [
 ] as const;
 
 const HERO_BLOCK_RAIL_MEDIA_QUERY = "(min-width: 640px)";
+const HERO_BLOCK_REFETCH_INTERVAL_MS = 12_000;
 const MCP_INSTALL_COMMAND =
   "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core";
 
@@ -121,14 +124,21 @@ export function OverviewPage() {
 
   const { data: economics } = useSuspenseQuery(economicsQuery({ fields: "identity" }));
   const movers = useQuery({
-    ...subnetMoversQuery({ window: emissionWindow, sort: "emission", limit: 100 }),
+    ...subnetMoversQuery({ window: emissionWindow, sort: "emission", limit: 15 }),
     retry: 0,
   });
   const activity = useQuery({ ...chainActivityQuery("30d"), retry: 0 });
   const blocks = useQuery({ ...blocksSummaryQuery(), retry: 0 });
   // The block rail polls only while this tab is visible. It advances the
   // explorer reading without holding a permanent stream connection open.
-  const blockRefetchInterval = useRefetchInterval(15_000, heroBlockRailEnabled);
+  // Bittensor targets a roughly 12-second block cadence. The feed response's
+  // ten-second browser lifetime expires first, so each visible-tab tick can
+  // observe a newly indexed head rather than replaying a nominal refresh from
+  // the HTTP cache.
+  const blockRefetchInterval = useRefetchInterval(
+    HERO_BLOCK_REFETCH_INTERVAL_MS,
+    heroBlockRailEnabled,
+  );
   const blockFeed = useQuery({
     ...blocksQuery({ limit: LIVE_BLOCK_LIMIT }),
     enabled: heroBlockRailEnabled,
@@ -157,8 +167,12 @@ export function OverviewPage() {
   );
   const days = activity.data?.data.days ?? [];
   const activityAsOfDay = activity.data?.meta.generated_at?.slice(0, 10);
-  const points = chainPoints(days, chainMetric, activityAsOfDay);
-  const complete = lastCompleteDay(days, activityAsOfDay);
+  const completeDays = completeChainDays(days, activityAsOfDay);
+  const points = chainPoints(completeDays, chainMetric);
+  const complete = lastCompleteDay(completeDays);
+  const firstComplete = completeDays[0] ?? null;
+  const activityObservedAt =
+    activity.data?.data.observed_at ?? activity.data?.meta.generated_at ?? null;
   const healthSubnets = health.data?.data.windows?.["7d"]?.subnets ?? [];
   const worst = healthRail(healthSubnets, nameOf);
   const healthy = healthSubnets.filter((subnet) => (subnet.uptime_ratio ?? 0) >= 0.99).length;
@@ -296,8 +310,8 @@ export function OverviewPage() {
       >
         <AnalyticsSection
           id="emission"
-          name="Emission movement"
-          question="Where daily alpha moved after the comparison opened."
+          name="Emission gains"
+          question="Which subnets gained daily alpha during the selected window."
           className="mg-home-story mg-home-story--emission"
           controls={
             <RangeControl
@@ -310,17 +324,18 @@ export function OverviewPage() {
           visual={
             movers.isPending ? (
               <RankedRails
+                className="mg-home-emission-rails"
                 items={[]}
                 loading
                 loadingRows={10}
-                formatValue={(value) => fmtAlpha(value)}
+                formatValue={(value) => fmtAlphaDelta(value)}
                 scale="sqrt"
                 columns={{
-                  value: "Daily emission",
+                  value: "Gain α",
                   name: "Subnet",
-                  track: "Relative to the top 15",
+                  track: "Relative gain",
                 }}
-                ariaLabel={`Daily subnet emission at the end of the ${emissionWindow} comparison`}
+                ariaLabel={`Subnet daily alpha gains over the ${emissionWindow} comparison`}
                 source="home-subnet"
               />
             ) : movers.isError ? (
@@ -331,15 +346,16 @@ export function OverviewPage() {
               />
             ) : rails.length > 0 ? (
               <RankedRails
+                className="mg-home-emission-rails"
                 items={rails}
-                formatValue={(value) => fmtAlpha(value)}
+                formatValue={(value) => fmtAlphaDelta(value)}
                 scale="sqrt"
                 columns={{
-                  value: "Daily emission",
+                  value: "Gain α",
                   name: "Subnet",
-                  track: "Relative to the top 15",
+                  track: "Relative gain",
                 }}
-                ariaLabel={`Daily subnet emission at the end of the ${emissionWindow} comparison`}
+                ariaLabel={`Subnet daily alpha gains over the ${emissionWindow} comparison`}
                 source="home-subnet"
               />
             ) : (
@@ -348,16 +364,16 @@ export function OverviewPage() {
           }
           footnote={
             movers.isPending
-              ? `Loading ${emissionWindow} emission comparison · chain-direct`
+              ? `Loading ${emissionWindow} emission comparison · chain-derived snapshots`
               : movers.isError
-                ? "Emission comparison unavailable · chain-direct"
-                : `${emissionWindow} comparison · bars show end-date daily alpha; tooltips show change from the start · chain-direct`
+                ? "Emission comparison unavailable · chain-derived snapshots"
+                : emissionComparisonNote(movers.data?.data, emissionWindow)
           }
         />
         <AnalyticsSection
           id="chain"
-          name="Chain"
-          question="What moved after the final UTC day closed."
+          name="Chain activity"
+          question="Daily totals across complete UTC days."
           className="mg-home-story mg-home-story--chain"
           controls={
             <RangeControl
@@ -370,6 +386,7 @@ export function OverviewPage() {
           visual={
             activity.isPending ? (
               <LineWithWindow
+                key={chainMetric}
                 id="home-chain"
                 points={[]}
                 window={{ from: 0, to: 0 }}
@@ -377,6 +394,8 @@ export function OverviewPage() {
                 formatValue={(value) => fmtCount(value)}
                 ariaLabel={`Complete-day ${chainMetric}, trailing 30 days`}
                 source="home-chain"
+                zeroBaseline
+                animate
                 loading
               />
             ) : activity.isError ? (
@@ -387,6 +406,7 @@ export function OverviewPage() {
               />
             ) : points.length > 1 ? (
               <LineWithWindow
+                key={chainMetric}
                 id="home-chain"
                 points={points}
                 window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
@@ -394,6 +414,8 @@ export function OverviewPage() {
                 formatValue={(value) => fmtCount(value)}
                 ariaLabel={`Complete-day ${chainMetric}, trailing 30 days`}
                 source="home-chain"
+                zeroBaseline
+                animate
               />
             ) : (
               <p className="text-13 text-ink-muted">No complete-day chain activity is available.</p>
@@ -405,10 +427,10 @@ export function OverviewPage() {
           // excludes it makes the two summaries contradict one another.
           footnote={
             activity.isPending
-              ? "Loading 30d complete-day chain activity · chain-direct"
+              ? "Loading complete-day chain activity · indexed chain data"
               : activity.isError
-                ? "Complete-day chain activity unavailable · chain-direct"
-                : `30d · chart and strip end ${complete?.day ?? "—"}, the last complete UTC day · chain-direct`
+                ? "Complete-day chain activity unavailable · indexed chain data"
+                : `${completeDays.length} complete UTC days · ${firstComplete?.day ?? "—"} → ${complete?.day ?? "—"} · indexed activity observed ${formatRelative(activityObservedAt)}`
           }
         />
         <AnalyticsSection

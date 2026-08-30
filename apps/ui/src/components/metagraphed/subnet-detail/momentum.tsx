@@ -89,7 +89,7 @@ export function MomentumSection({
     },
     {
       label: `Volume ${window}`,
-      value: volume != null ? `${taoCompact(volume)} τ` : "—",
+      value: volume != null ? `${taoCompact(volume)}τ` : "—",
       loading: ohlc.isPending,
     },
   ];

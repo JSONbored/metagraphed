@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AccountListEntry, ChainSignerEntry } from "@/lib/metagraphed/types";
+import type { AccountHolderDirectoryEntry, ChainSignerEntry } from "@/lib/metagraphed/types";
 import {
   HOLDER_SORT,
   activeRows,
@@ -11,14 +11,14 @@ import {
   shortAddress,
 } from "./accounts-index-logic";
 
-const account = (over: Partial<AccountListEntry>): AccountListEntry =>
+const account = (over: Partial<AccountHolderDirectoryEntry>): AccountHolderDirectoryEntry =>
   ({
     hotkey: "5H",
     coldkey: "5CCCCCCCCCCCCCCC",
     subnet_count: 1,
     uid_count: 1,
     ...over,
-  }) as AccountListEntry;
+  }) as AccountHolderDirectoryEntry;
 
 const isSs58 = (v: string) => v.startsWith("5") && v.length > 40;
 const isH160 = (v: string) => /^0x[0-9a-fA-F]{40}$/.test(v);
@@ -40,9 +40,9 @@ describe("shortAddress / fmtTaoCompact", () => {
   });
 
   it("compacts at each magnitude and refuses a non-number", () => {
-    expect(fmtTaoCompact(1_914_956)).toBe("1.91M τ");
-    expect(fmtTaoCompact(1_500)).toBe("1.5k τ");
-    expect(fmtTaoCompact(1.5)).toBe("1.50 τ");
+    expect(fmtTaoCompact(1_914_956)).toBe("1.91Mτ");
+    expect(fmtTaoCompact(1_500)).toBe("1.5kτ");
+    expect(fmtTaoCompact(1.5)).toBe("1.50τ");
     expect(fmtTaoCompact(null)).toBe("—");
   });
 });
@@ -64,8 +64,8 @@ describe("holderCards", () => {
   ];
 
   it("shows the reading it was ranked by, not always stake", () => {
-    expect(holderCards(accounts, "stake")[0]?.value).toBe("100.00 τ");
-    expect(holderCards(accounts, "emission")[0]?.value).toBe("3.00 τ");
+    expect(holderCards(accounts, "stake")[0]?.value).toBe("100.00τ");
+    expect(holderCards(accounts, "emission")[0]?.value).toBe("3.00τ");
     expect(holderCards(accounts, "reach")[0]?.value).toBe("7 subnets");
     expect(holderCards(accounts, "reach")[1]?.value).toBe("2 subnets");
   });
@@ -74,10 +74,16 @@ describe("holderCards", () => {
     expect(holderCards(accounts, "stake")[0]?.href).toBe("/accounts/5AAAAAAAAAAAAAAAAAAA");
   });
 
-  it("drops a row with no address rather than linking nowhere", () => {
-    expect(holderCards([{ subnet_count: 1, uid_count: 1 } as AccountListEntry], "stake")).toEqual(
-      [],
+  it("shows a share of complete priced registered stake", () => {
+    expect(holderCards(accounts, "stake", 18, 1_000)[0]?.sub).toBe(
+      "10.0% of priced stake · 7 subnets",
     );
+  });
+
+  it("drops a row with no address rather than linking nowhere", () => {
+    expect(
+      holderCards([{ subnet_count: 1, uid_count: 1 } as AccountHolderDirectoryEntry], "stake"),
+    ).toEqual([]);
   });
 
   it("honours the limit", () => {
@@ -165,16 +171,16 @@ describe("lookupVerdict", () => {
   });
 });
 
-describe("holderCards carries the share the retired Concentration section showed (#11691)", () => {
+describe("holderCards carries each account's share of priced registered stake", () => {
   const accounts = [
     { coldkey: "5A", total_stake_tao: 250, subnet_count: 3, uid_count: 3 },
     { coldkey: "5B", total_stake_tao: 750, subnet_count: 1, uid_count: 1 },
   ] as never;
 
-  it("states each account's share of the listed total, share first", () => {
+  it("states each account's network-wide share, share first", () => {
     const [a, b] = holderCards(accounts, "stake", 18, 1000);
-    expect(a!.sub).toBe("25.0% of listed · 3 subnets");
-    expect(b!.sub).toBe("75.0% of listed · 1 subnet");
+    expect(a!.sub).toBe("25.0% of priced stake · 3 subnets");
+    expect(b!.sub).toBe("75.0% of priced stake · 1 subnet");
   });
 
   it("falls back to reach when there is no total to divide by", () => {
@@ -203,6 +209,6 @@ describe("holderCards carries the share the retired Concentration section showed
       18,
       1000,
     );
-    expect(a!.sub.startsWith("9.0% of listed")).toBe(true);
+    expect(a!.sub.startsWith("9.0% of priced stake")).toBe(true);
   });
 });

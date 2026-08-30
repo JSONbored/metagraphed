@@ -41,7 +41,7 @@
 import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import {
   fetchBlockRowsFromR2Sql,
-  loadBlockFromR2Sql,
+  loadBlockWithEconomicsFromR2Sql,
   type BlockFeedQuery,
 } from "./r2-sql-blocks.ts";
 import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
@@ -453,7 +453,7 @@ export async function loadBlockColdTier(
   const needsResolvedSeam =
     network === DEFAULT_CHAIN_NETWORK && asNumber !== null && asNumber > floor;
   if (asNumber !== null && !needsResolvedSeam) {
-    return loadBlockFromR2Sql(env, ref, network);
+    return loadBlockWithEconomicsFromR2Sql(env, ref, network);
   }
   const seam = needsResolvedSeam
     ? await resolveBlocksSeam(env, {}, network)
@@ -496,5 +496,5 @@ export async function loadBlockColdTier(
   // A height above the seam that D1 did not have is a genuine miss, not a
   // reason to scan the lakehouse for a block it cannot contain.
   if (aboveSeam) return buildBlock(undefined, ref);
-  return loadBlockFromR2Sql(env, ref, network);
+  return loadBlockWithEconomicsFromR2Sql(env, ref, network);
 }

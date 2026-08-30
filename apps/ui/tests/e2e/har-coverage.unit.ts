@@ -68,11 +68,10 @@ const KNOWN_UNCOVERED: Record<string, string[]> = {
   // committed fixture so responsive tests stay hermetic; remove this entry
   // after production can be recorded into the SSR supplement.
   "/validators": ["/api/v1/validators/operators"],
-  // #11615 emptied this: the rebuilt hub reads /api/v1/accounts and
-  // /api/v1/chain/signers, and the recorded fixture covers both. The two
-  // entries it no longer reads at all -- top-holders and the per-account
-  // detail, which the wallet module and the holders panel fetched -- went
-  // with those components.
+  // The account directory follows the same compact SSR-projection rollout as
+  // validators above. api-stub.ts derives it from committed account fixtures
+  // until production can be recorded into the supplement.
+  "/accounts": ["/api/v1/accounts/directory"],
 };
 describe("every swept route resolves to a page", () => {
   // Guards the guard: coverageForRoute reports "nothing declared" both for a

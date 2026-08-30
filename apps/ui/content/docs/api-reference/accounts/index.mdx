@@ -3,7 +3,7 @@ title: Accounts
 description: Every Accounts endpoint in the metagraphed API, with its method and path.
 ---
 
-40 endpoints.
+41 endpoints.
 
 - [Account Axon Removals](/docs/api-reference/accounts/account-axon-removals) — `GET /api/v1/accounts/{ss58}/axon-removals`  
   Fetch one account's axon-removal footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonInfoRemoved count with the first and last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet — read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty footprint is marked `degraded` rather than published as a measured zero.
@@ -27,6 +27,8 @@ description: Every Accounts endpoint in the metagraphed API, with its method and
   Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics tier.
 - [Account History](/docs/api-reference/accounts/account-history) — `GET /api/v1/accounts/{ss58}/history`  
   Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854).
+- [Account Holder Directory](/docs/api-reference/accounts/account-holder-directory) — `GET /api/v1/accounts/directory`  
+  Fetch the compact account holder directory used by the website: top stake, emission and subnet-reach rankings derived from one complete neuron-snapshot aggregation.
 - [Account Identity](/docs/api-reference/accounts/account-identity) — `GET /api/v1/accounts/{ss58}/identity`  
   Fetch the latest-only personal chain identity for one account (epic #4301/5.4), computed live from the account_identity tier.
 - [Account Identity History](/docs/api-reference/accounts/account-identity-history) — `GET /api/v1/accounts/{ss58}/identity-history`  

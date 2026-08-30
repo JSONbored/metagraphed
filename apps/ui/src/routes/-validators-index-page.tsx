@@ -56,9 +56,9 @@ const API_PATHS = ["/api/v1/validators/operators", "/api/v1/validators/economics
 
 const MIN_STAKE_OPTIONS = [
   { value: 0, label: "Any stake" },
-  { value: 1_000, label: "1k τ and up" },
-  { value: 10_000, label: "10k τ and up" },
-  { value: 100_000, label: "100k τ and up" },
+  { value: 1_000, label: "1kτ and up" },
+  { value: 10_000, label: "10kτ and up" },
+  { value: 100_000, label: "100kτ and up" },
 ];
 
 function ApiSources() {

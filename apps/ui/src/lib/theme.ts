@@ -66,7 +66,11 @@ export const THEME_BOOTSTRAP_SCRIPT = `(() => {
 })();`;
 
 export function useTheme() {
-  const [choice, setChoiceState] = useState<ThemeChoice>(() => readChoice());
+  // The server cannot read localStorage, so both SSR and the first client
+  // render must use the same choice. The bootstrap script has already applied
+  // the stored choice to <html> before paint; the first effect adopts that
+  // choice for visible labels and controls after hydration.
+  const [choice, setChoiceState] = useState<ThemeChoice>("system");
   // Initialize to a fixed "light" so the server render and the first client
   // render agree — the effect below syncs `resolved` to the real theme right
   // after mount, and the pre-hydration THEME_BOOTSTRAP_SCRIPT has already set
@@ -75,16 +79,25 @@ export function useTheme() {
   // "light" and trips a hydration mismatch on every theme-param'd value — e.g.
   // BrandIcon's `?theme=light|dark` icon-proxy URL.
   const [resolved, setResolved] = useState<ResolvedTheme>("light");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const initial = readChoice();
+    setChoiceState(initial);
+    setResolved(apply(initial));
+    setMounted(true);
+  }, []);
 
   // Apply choice + listen to system changes while in `system` mode.
   useEffect(() => {
+    if (!mounted) return;
     setResolved(apply(choice));
     if (choice !== "system" || typeof window === "undefined") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setResolved(apply("system"));
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [choice]);
+  }, [choice, mounted]);
 
   const setChoice = useCallback((next: ThemeChoice) => {
     if (typeof document !== "undefined") {

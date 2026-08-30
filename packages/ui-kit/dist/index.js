@@ -440,16 +440,24 @@ function apply(choice) {
   return resolved;
 }
 function useTheme() {
-  const [choice, setChoiceState] = useState(() => readChoice());
+  const [choice, setChoiceState] = useState("system");
   const [resolved, setResolved] = useState("light");
+  const [mounted2, setMounted] = useState(false);
   useEffect(() => {
+    const initial = readChoice();
+    setChoiceState(initial);
+    setResolved(apply(initial));
+    setMounted(true);
+  }, []);
+  useEffect(() => {
+    if (!mounted2) return;
     setResolved(apply(choice));
     if (choice !== "system" || typeof window === "undefined") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setResolved(apply("system"));
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [choice]);
+  }, [choice, mounted2]);
   const setChoice = useCallback((next) => {
     if (typeof document !== "undefined") {
       document.documentElement.classList.add("theme-transition");
@@ -2926,9 +2934,10 @@ function stackedSpecimen() {
 
 // src/components/metagraphed/charts/line-geometry.ts
 var LINE_VIEWBOX = { width: 1200, height: 370 };
-var PAD_Y = 8;
+var PAD_TOP = 20;
+var PAD_BOTTOM = 8;
 var PLOT_RIGHT = 0.94;
-function placePoints(points, box = LINE_VIEWBOX) {
+function placePoints(points, box = LINE_VIEWBOX, { zeroBaseline = false } = {}) {
   if (points.length === 0) return [];
   const t0 = points[0].t;
   const t1 = points[points.length - 1].t;
@@ -2939,11 +2948,12 @@ function placePoints(points, box = LINE_VIEWBOX) {
     if (p.v < min) min = p.v;
     if (p.v > max) max = p.v;
   }
+  if (zeroBaseline && min >= 0) min = 0;
   const range = max - min || 1;
   return points.map((p) => ({
     ...p,
     x: points.length === 1 ? box.width * PLOT_RIGHT / 2 : (p.t - t0) / span * box.width * PLOT_RIGHT,
-    y: box.height - PAD_Y - (p.v - min) / range * (box.height - PAD_Y * 2)
+    y: box.height - PAD_BOTTOM - (p.v - min) / range * (box.height - PAD_TOP - PAD_BOTTOM)
   }));
 }
 function smoothPath(points) {
@@ -3040,9 +3050,14 @@ function LineWithWindow({
   marker,
   markerLabel,
   className,
-  loading = false
+  loading = false,
+  zeroBaseline = false,
+  animate = false
 }) {
-  const placed = useMemo(() => placePoints(points), [points]);
+  const placed = useMemo(
+    () => placePoints(points, LINE_VIEWBOX, { zeroBaseline }),
+    [points, zeroBaseline]
+  );
   const inside = useMemo(() => windowPoints(placed, window2), [placed, window2]);
   const delta = useMemo(() => windowDelta(points, window2), [points, window2]);
   const months = useMemo(() => monthTicks(points), [points]);
@@ -3080,6 +3095,7 @@ function LineWithWindow({
       "data-mg-line": "",
       "data-compact": compact ? "true" : void 0,
       "data-state": delta.state,
+      "data-animate": animate ? "true" : void 0,
       children: [
         compact ? null : /* @__PURE__ */ jsxs("div", { className: "mg-line-summary", children: [
           /* @__PURE__ */ jsxs("p", { className: "mg-line-total", children: [
@@ -3109,8 +3125,22 @@ function LineWithWindow({
                   "aria-hidden": "true",
                   focusable: "false",
                   children: [
-                    /* @__PURE__ */ jsx("path", { className: "mg-line-muted", d: smoothPath(placed) }),
-                    /* @__PURE__ */ jsx("path", { className: "mg-line-active", d: smoothPath(inside) }),
+                    /* @__PURE__ */ jsx(
+                      "path",
+                      {
+                        className: "mg-line-muted",
+                        d: smoothPath(placed),
+                        pathLength: "1"
+                      }
+                    ),
+                    /* @__PURE__ */ jsx(
+                      "path",
+                      {
+                        className: "mg-line-active",
+                        d: smoothPath(inside),
+                        pathLength: "1"
+                      }
+                    ),
                     markerPoint ? /* @__PURE__ */ jsx(
                       "line",
                       {
@@ -3965,7 +3995,7 @@ var LEADER_SPECIMEN = RAIL_SPECIMEN.map((r, i) => ({
   key: r.key,
   name: r.label,
   sub: i % 2 ? "Macrocosmos" : "Rayon Labs",
-  value: `${(r.value / 1e6).toFixed(2)}M \u03C4`,
+  value: `${(r.value / 1e6).toFixed(2)}M\u03C4`,
   delta: i === 3 ? "new" : i * 7 % 11 / 10 - 0.3,
   href: `/subnets/${i + 1}`
 }));
@@ -4604,6 +4634,7 @@ function Cell({
   const align = column.align ?? (column.kind === "number" || column.kind === "delta" || column.kind === "tint" ? "right" : void 0);
   const tint = column.kind === "tint" ? column.tint?.(row) ?? null : null;
   let body;
+  let bodyIsLink = false;
   if (column.render) body = column.render(row);
   else if (column.kind === "identifier" && typeof raw === "string" && raw)
     body = /* @__PURE__ */ jsxs("span", { className: "mg-dt-id", title: raw, children: [
@@ -4629,7 +4660,15 @@ function Cell({
   else if (column.kind === "link") {
     const to = column.href?.(row);
     const LinkCmp = link ?? DefaultLink2;
-    body = to ? /* @__PURE__ */ jsx(LinkCmp, { href: to, className: "mg-dt-link", children: text }) : text;
+    bodyIsLink = Boolean(to);
+    body = to ? /* @__PURE__ */ jsx(
+      LinkCmp,
+      {
+        href: to,
+        className: classNames("mg-dt-link", href && "mg-dt-rowlink"),
+        children: text
+      }
+    ) : text;
   } else body = text;
   const RowLink = link ?? DefaultLink2;
   const toggle = disclosure === void 0 ? null : /* @__PURE__ */ jsx(
@@ -4646,10 +4685,10 @@ function Cell({
       }
     }
   );
-  const linked = href !== void 0 ? /* @__PURE__ */ jsx(RowLink, { href, className: "mg-dt-rowlink", children: body }) : null;
+  const linked = href !== void 0 && !bodyIsLink ? /* @__PURE__ */ jsx(RowLink, { href, className: "mg-dt-rowlink", children: body }) : null;
   const content = disclosure !== void 0 ? /* @__PURE__ */ jsxs("span", { className: "mg-dt-rowlead", children: [
     toggle,
-    linked ?? /* @__PURE__ */ jsx(
+    linked ?? (bodyIsLink ? body : /* @__PURE__ */ jsx(
       "button",
       {
         type: "button",
@@ -4662,8 +4701,8 @@ function Cell({
         },
         children: body
       }
-    )
-  ] }) : linked !== null ? linked : onActivate ? /* @__PURE__ */ jsx("button", { type: "button", className: "mg-dt-rowbutton", onClick: onActivate, children: body }) : body;
+    ))
+  ] }) : linked !== null ? linked : bodyIsLink ? body : onActivate ? /* @__PURE__ */ jsx("button", { type: "button", className: "mg-dt-rowbutton", onClick: onActivate, children: body }) : body;
   return /* @__PURE__ */ jsx(
     "td",
     {

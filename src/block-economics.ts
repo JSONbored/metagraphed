@@ -124,6 +124,26 @@ export function blockEconomicsUsd(
   reading: TaoUsdReading | null | undefined,
   nowMs: number,
 ): BlockEconomicsUsd {
+  const tao =
+    typeof economicActivityTao === "string" && DECIMAL.test(economicActivityTao)
+      ? Number(economicActivityTao)
+      : typeof economicActivityTao === "number" &&
+          Number.isFinite(economicActivityTao)
+        ? economicActivityTao
+        : null;
+  // A price reading is not applicable until the block has a measured native
+  // total. Omitting it here also keeps settled, undecodable block records
+  // independent from a live index that changes after the block was produced.
+  if (tao === null) {
+    return {
+      economic_activity_usd: null,
+      usd_per_tao: null,
+      tao_usd_block: null,
+      tao_usd_observed_at: null,
+      tao_usd_basis: null,
+    };
+  }
+
   const usable = taoUsdUsable(reading, nowMs);
   if (!usable.ok) {
     return {
@@ -137,14 +157,7 @@ export function blockEconomicsUsd(
   }
 
   const rate = reading!.usd_per_tao as number;
-  const tao =
-    typeof economicActivityTao === "string" && DECIMAL.test(economicActivityTao)
-      ? Number(economicActivityTao)
-      : typeof economicActivityTao === "number" &&
-          Number.isFinite(economicActivityTao)
-        ? economicActivityTao
-        : null;
-  const usd = tao === null ? null : tao * rate;
+  const usd = tao * rate;
   return {
     economic_activity_usd:
       usd !== null && Number.isFinite(usd) ? Number(usd.toFixed(6)) : null,

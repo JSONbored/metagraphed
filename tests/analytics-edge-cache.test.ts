@@ -28,6 +28,10 @@ import {
 } from "../workers/request-handlers/entities.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
+import {
+  KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
+  KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
+} from "../src/kv-keys.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import { resetObservedThroughCache } from "../src/lakehouse-observed-through.ts";
 import { resetSurfacesMemo } from "../src/revenue-load.ts";
@@ -1475,12 +1479,12 @@ describe("analytics edge cache", () => {
     assert.equal(cache.matchCalls, 2);
   });
 
-  test("/api/v1/validators/operators caches on the completed neuron pass", async () => {
+  test("/api/v1/validators/operators caches within the bounded minute epoch", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const paths: string[] = [];
-    const stamp = 1_780_000_000_000;
+    const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
     const directory = {
       schema_version: 1,
       captured_at: "2026-08-29T00:00:00.000Z",
@@ -1492,13 +1496,17 @@ describe("analytics edge cache", () => {
     const env = {
       ...analyticsEnv([]),
       METAGRAPH_NEURONS_SOURCE: "data-api",
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          if (key === KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT) return directory;
+          return null;
+        },
+      },
       DATA_API: {
         async fetch(request: Request) {
           const pathname = new URL(request.url).pathname;
           paths.push(pathname);
-          return pathname === "/api/v1/internal/neurons-snapshot-stamp"
-            ? Response.json({ captured_at: stamp })
-            : Response.json(directory);
+          return Response.json(directory);
         },
       },
     };
@@ -1513,15 +1521,63 @@ describe("analytics edge cache", () => {
     assert.equal(second.status, 200);
     assert.deepEqual((await first.json()).data, directory);
     assert.deepEqual((await second.json()).data, directory);
-    assert.deepEqual(paths, [
-      "/api/v1/internal/neurons-snapshot-stamp",
-      "/api/v1/validators/operators",
-      "/api/v1/internal/neurons-snapshot-stamp",
-    ]);
+    assert.deepEqual(paths, []);
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
         CONTRACT_VERSION,
-      )}/${stamp}/validator-operator-directory/api/v1/validators/operators`,
+      )}/${encodeURIComponent(cacheStamp)}/validator-operator-directory/api/v1/validators/operators`,
+    ]);
+    assert.equal(cache.matchCalls, 2);
+  });
+
+  test("/api/v1/accounts/directory caches within the bounded minute epoch", async () => {
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    const paths: string[] = [];
+    const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
+    const directory = {
+      schema_version: 1,
+      captured_at: "2026-08-29T00:00:00.000Z",
+      block_number: 8_950_000,
+      account_count: 0,
+      limit: 20,
+      priced_registered_stake_tao: 0,
+      rankings: { stake: [], emission: [], reach: [] },
+    };
+    const env = {
+      ...analyticsEnv([]),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          if (key === KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT) return directory;
+          return null;
+        },
+      },
+      DATA_API: {
+        async fetch(request: Request) {
+          const pathname = new URL(request.url).pathname;
+          paths.push(pathname);
+          return Response.json(directory);
+        },
+      },
+    };
+    const request = new Request(
+      "https://api.metagraph.sh/api/v1/accounts/directory",
+    );
+
+    const first = await handleRequest(request, env as unknown as Env, ctx);
+    await Promise.resolve();
+    const second = await handleRequest(request, env as unknown as Env, ctx);
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    assert.deepEqual((await first.json()).data, directory);
+    assert.deepEqual((await second.json()).data, directory);
+    assert.deepEqual(paths, []);
+    assert.deepEqual(cache.putKeys, [
+      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+        CONTRACT_VERSION,
+      )}/${encodeURIComponent(cacheStamp)}/account-holder-directory/api/v1/accounts/directory`,
     ]);
     assert.equal(cache.matchCalls, 2);
   });

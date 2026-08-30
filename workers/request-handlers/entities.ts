@@ -37,8 +37,10 @@ import { resolveClientIp } from "../config.ts";
 
 import {
   errorResponse,
+  METAGRAPH_SETTLED_SHORT_CACHE,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
   type CacheProfile,
+  type SettledShortCacheResponse,
 } from "../http.ts";
 import {
   contractVersion,
@@ -89,7 +91,12 @@ import {
   overlayFeaturedValidators,
 } from "../../src/metagraph-neurons.ts";
 import { buildAccountsList } from "../../src/accounts-list.ts";
+import { buildAccountHolderDirectory } from "../../src/account-holder-directory.ts";
 import { buildValidatorOperatorDirectory } from "../../src/validator-operator-directory.ts";
+import {
+  readCurrentAccountDirectory,
+  readCurrentValidatorDirectory,
+} from "../../src/explorer-directory-current.ts";
 import { buildTopHoldersList } from "../../src/top-holders.ts";
 import {
   buildDeregistrationHistory,
@@ -935,13 +942,14 @@ async function metagraphMeta(
   env: Env,
   artifactPath: string,
   generatedAt: unknown,
+  publishedAtPromise: Promise<string | null> | null = null,
 ) {
   return {
     artifact_path: artifactPath,
     cache: "short",
     contract_version: contractVersion(env),
     generated_at: generatedAt,
-    published_at: await publishedAt(env),
+    published_at: await (publishedAtPromise ?? publishedAt(env)),
     source: "metagraph-snapshot",
   };
 }
@@ -1384,7 +1392,13 @@ export async function handleValidatorOperatorDirectory(
   request: Request,
   env: Env,
 ) {
+  const publishedAtPromise = publishedAt(env);
+  const materialized =
+    env.METAGRAPH_NEURONS_SOURCE === "data-api"
+      ? await readCurrentValidatorDirectory(env.METAGRAPH_CONTROL)
+      : null;
   const data =
+    materialized ??
     ((await tryDataApiTier(
       env,
       request,
@@ -1399,6 +1413,7 @@ export async function handleValidatorOperatorDirectory(
         env,
         "/metagraph/validators/operators.json",
         data.captured_at,
+        publishedAtPromise,
       ),
     },
     "short",
@@ -1475,6 +1490,35 @@ export async function handleAccountsList(request: Request, env: Env, url: URL) {
         env,
         "/metagraph/accounts.json",
         data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+export async function handleAccountHolderDirectory(request: Request, env: Env) {
+  const publishedAtPromise = publishedAt(env);
+  const materialized =
+    env.METAGRAPH_NEURONS_SOURCE === "data-api"
+      ? await readCurrentAccountDirectory(env.METAGRAPH_CONTROL)
+      : null;
+  const data =
+    materialized ??
+    ((await tryDataApiTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildAccountHolderDirectory> | null) ??
+    buildAccountHolderDirectory([], { priceByNetuid: NO_ALPHA_PRICES });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/accounts/directory.json",
+        data.captured_at,
+        publishedAtPromise,
       ),
     },
     "short",
@@ -6730,6 +6774,8 @@ function readBlockTaoUsdCurrentKv(
     : Promise.resolve(null);
 }
 
+const LIVE_BLOCK_FEED_CACHE_CONTROL = "public, max-age=10, must-revalidate";
+
 export async function handleBlocks(
   request: Request,
   env: Env,
@@ -6801,7 +6847,7 @@ export async function handleBlocks(
       BLOCK_CSV_COLUMNS,
     );
   }
-  return envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -6814,6 +6860,13 @@ export async function handleBlocks(
     "short",
     { vary: "Accept, Accept-Encoding" },
   );
+  // The generic short profile is one minute, longer than both Bittensor's
+  // approximate block cadence and the website's visible-tab poll. A browser
+  // would otherwise answer several "refreshes" from its own cache. Ten seconds
+  // is still long enough for the homepage's document-head preload to bridge
+  // hydration, then expires before the next twelve-second live tick.
+  response.headers.set("cache-control", LIVE_BLOCK_FEED_CACHE_CONTROL);
+  return response;
 }
 
 // GET /api/v1/blocks/summary: block-production analytics over the most recent
@@ -6889,11 +6942,18 @@ export async function handleBlock(
         },
       }
     : rawData;
-  // The chain record is immutable, but its explicit current-price conversion
-  // is not. Keep the response on the short profile so USD never freezes at the
-  // first rate a CDN happened to cache for this block.
-  const cacheProfile = "short";
-  return envelopeResponse(
+  // Complete block totals carry a current-price conversion, so keep those on
+  // the short profile rather than freezing one index reading at the edge. A
+  // settled block that could not be decoded has no native total or applicable
+  // conversion; its response is immutable and can use the static edge profile.
+  // Unknown and still-pending records remain short-lived so recovery is visible.
+  const cacheProfile =
+    data.block?.decode_status === "unavailable" &&
+    data.block.economic_activity_tao === null &&
+    data.block.usd_per_tao === null
+      ? "static"
+      : "short";
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -6905,6 +6965,15 @@ export async function handleBlock(
     },
     cacheProfile,
   );
+  // The chain-native record is settled, but its current-price conversion is
+  // intentionally short-lived. Let the chain-detail wrapper reuse the whole
+  // composed response for that same 60-second window instead of re-reading the
+  // immutable block on every request. Pending/unknown blocks never set this.
+  if (data.block?.decode_status === "complete") {
+    (response as SettledShortCacheResponse)[METAGRAPH_SETTLED_SHORT_CACHE] =
+      true;
+  }
+  return response;
 }
 
 /**

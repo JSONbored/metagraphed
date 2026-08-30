@@ -102,6 +102,40 @@ function lakeFetchWithBlocks(onFail?: (sql: string) => boolean) {
           observed_at: NOW - 12_000,
         },
       ];
+    } else if (
+      /FROM chain(?:_testnet)?\.extrinsics/.test(sql) &&
+      sql.includes("AS extrinsic_count")
+    ) {
+      rows = [
+        {
+          day_index: NOW_DAY,
+          extrinsic_count: 2,
+          successful_extrinsics: 2,
+        },
+        {
+          day_index: NOW_DAY - 1,
+          extrinsic_count: 2,
+          successful_extrinsics: 2,
+        },
+      ];
+    } else if (sql.includes("COUNT(DISTINCT signer) AS unique_signers")) {
+      rows = [
+        { day_index: NOW_DAY, unique_signers: 1 },
+        { day_index: NOW_DAY - 1, unique_signers: 1 },
+      ];
+    } else if (
+      /FROM chain(?:_testnet)?\.blocks/.test(sql) &&
+      sql.includes("AS block_count")
+    ) {
+      rows = [
+        { day_index: NOW_DAY, block_count: 2, event_count: 4 },
+        { day_index: NOW_DAY - 1, block_count: 2, event_count: 4 },
+      ];
+    } else if (
+      /FROM chain(?:_testnet)?\.blocks/.test(sql) &&
+      sql.includes("AS newest_observed")
+    ) {
+      rows = [{ newest_observed: NOW - 1000 }];
     } else if (sql.includes("ORDER BY weight_sets DESC")) {
       // The identity rollup's GROUPED leg, matched on its ORDER BY rather than
       // its GROUP BY: the DISTINCT leg wraps the same `GROUP BY netuid, uid`
@@ -813,13 +847,30 @@ describe("chain-activity lane compute", () => {
       // The older day is missing here on purpose: data-api's merge defaults
       // an unmatched day's unique_signers to 0, and so must this one.
       [{ day_index: NOW_DAY, unique_signers: 9 }],
-      [{ day_index: NOW_DAY, block_count: 7200, event_count: 40000 }],
+      [
+        { day_index: NOW_DAY, block_count: 7200, event_count: 40000 },
+        { day_index: NOW_DAY - 1, block_count: 7200, event_count: 39000 },
+      ],
       [{ newest_observed: NOW - 1000 }],
-      // 30d: an empty window is a legitimate answer, not a decline.
-      [],
-      [],
-      [],
-      [],
+      // 30d: the same current source must cover the last complete UTC day.
+      [
+        {
+          day_index: NOW_DAY,
+          extrinsic_count: 100,
+          successful_extrinsics: 97,
+        },
+        {
+          day_index: NOW_DAY - 1,
+          extrinsic_count: 50,
+          successful_extrinsics: 50,
+        },
+      ],
+      [{ day_index: NOW_DAY, unique_signers: 9 }],
+      [
+        { day_index: NOW_DAY, block_count: 7200, event_count: 40000 },
+        { day_index: NOW_DAY - 1, block_count: 7200, event_count: 39000 },
+      ],
+      [{ newest_observed: NOW - 1000 }],
     );
     const body = (await laneNamed("chain-activity").compute(
       LAKE_ENV as unknown as Env,
@@ -852,7 +903,7 @@ describe("chain-activity lane compute", () => {
 
     assert.equal(body.schema_version, 1);
     assert.equal(body.generated_at, new Date(NOW).toISOString());
-    assert.equal(body.row_count, 3);
+    assert.equal(body.row_count, 8);
     const w7 = (body.windows as Row)["7d"] as Row;
     assert.equal(w7.days, 7);
     // Day indexes rendered as data-api's 'YYYY-MM-DD' labels, DISTINCT
@@ -873,15 +924,32 @@ describe("chain-activity lane compute", () => {
     ]);
     assert.deepEqual(w7.block_rows, [
       { day: "2026-08-02", block_count: 7200, event_count: 40000 },
+      { day: "2026-08-01", block_count: 7200, event_count: 39000 },
     ]);
     assert.equal(w7.newest_observed, NOW - 1000);
     const w30 = (body.windows as Row)["30d"] as Row;
-    assert.deepEqual(w30, {
-      days: 30,
-      extrinsic_rows: [],
-      block_rows: [],
-      newest_observed: null,
-    });
+    assert.equal(w30.days, 30);
+    assert.equal((w30.extrinsic_rows as Row[]).length, 2);
+    assert.equal((w30.block_rows as Row[]).length, 2);
+    assert.equal(w30.newest_observed, NOW - 1000);
+  });
+
+  test("declines when a successful query only sees stale decoded rows", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    const previous = NOW_DAY - 1;
+    lakeFetch(
+      [{ day_index: previous, extrinsic_count: 1, successful_extrinsics: 1 }],
+      [{ day_index: previous, unique_signers: 1 }],
+      [{ day_index: previous, block_count: 7200, event_count: 1 }],
+      [{ newest_observed: NOW - 4 * DAY_MS }],
+    );
+    assert.equal(
+      await laneNamed("chain-activity").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
+      null,
+    );
   });
 
   test("one failed statement declines the WHOLE compute — no partial artifact", async () => {
@@ -1572,6 +1640,7 @@ describe("runProjectionLanes", () => {
   });
 
   test("runs every registered lane and writes every artifact", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     lakeFetchWithBlocks();
     const { puts, bucket } = archiveBucket();
     const result = await runProjectionLanes({
@@ -1641,6 +1710,7 @@ describe("runProjectionLanes", () => {
   });
 
   test("one failed lane never skips the next — failures are isolated", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     // The transfers and transfer-pairs lanes' statements all filter on the
     // Transfer kind; fail exactly those so every other lane still sees a
     // healthy engine.
@@ -1702,6 +1772,7 @@ describe("runProjectionLanes", () => {
   // letting it set `ok: false` would drain the meaning out of the one signal
   // that says mainnet is broken.
   test("only mainnet decides the tick verdict", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     // EVERY testnet query fails; every mainnet one succeeds.
     lakeFetchWithBlocks((sql) => sql.includes("chain_testnet."));
     const { puts, bucket } = archiveBucket();

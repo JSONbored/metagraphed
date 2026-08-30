@@ -13,6 +13,10 @@ import {
 import { handleRequest } from "../workers/api.ts";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, test, vi } from "vitest";
+import {
+  METAGRAPH_SETTLED_SHORT_CACHE,
+  type SettledShortCacheResponse,
+} from "../workers/http.ts";
 
 // Every hot-tier read in these handlers goes through readStore -> `new
 // Client({ connectionString })` (#10179), and a handler is entered as
@@ -73,6 +77,7 @@ import {
   handleAccountPortfolio,
   handleAccountPositions,
   handleAccountsList,
+  handleAccountHolderDirectory,
   handleSubnetConcentrationHistory,
   handleSubnetPerformanceHistory,
   handleSubnetYieldHistory,
@@ -1286,6 +1291,56 @@ describe("handleValidatorOperatorDirectory", () => {
     assert.equal(forwardedPath, "/api/v1/validators/operators");
     assert.deepEqual(body.data, directory);
     await assertValidComponent("ValidatorOperatorDirectoryArtifact", body.data);
+  });
+});
+
+describe("handleAccountHolderDirectory", () => {
+  test("returns a schema-stable empty directory on a cold store", async () => {
+    const body = await assertColdSchema(
+      handleAccountHolderDirectory,
+      req("/api/v1/accounts/directory"),
+      emptyEnv(),
+    );
+    assert.equal(body.data.account_count, 0);
+    assert.equal(body.data.priced_registered_stake_tao, 0);
+    assert.deepEqual(body.data.rankings, {
+      stake: [],
+      emission: [],
+      reach: [],
+    });
+    await assertValidComponent("AccountHolderDirectoryArtifact", body.data);
+  });
+
+  test("forwards the one-pass data-tier projection without rebuilding it", async () => {
+    const directory = {
+      schema_version: 1,
+      captured_at: "2026-08-29T00:00:00.000Z",
+      block_number: 8_950_000,
+      account_count: 1,
+      limit: 20,
+      priced_registered_stake_tao: 42,
+      rankings: { stake: [], emission: [], reach: [] },
+    };
+    let forwardedPath = "";
+    const env = {
+      ...emptyEnv(),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        fetch: async (request: Request) => {
+          forwardedPath = new URL(request.url).pathname;
+          return Response.json(directory);
+        },
+      },
+    };
+    const body = await json(
+      await handleAccountHolderDirectory(
+        req("/api/v1/accounts/directory"),
+        env as unknown as Env,
+      ),
+    );
+    assert.equal(forwardedPath, "/api/v1/accounts/directory");
+    assert.deepEqual(body.data, directory);
+    await assertValidComponent("AccountHolderDirectoryArtifact", body.data);
   });
 });
 
@@ -3978,6 +4033,20 @@ describe("handleBlocks", () => {
     assert.equal(res.headers.get("vary"), "Accept, Accept-Encoding");
   });
 
+  test("expires the live JSON feed before the website's next head poll", async () => {
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
+    const res = await handleBlocks(
+      req("/api/v1/blocks?limit=12"),
+      env as unknown as Env,
+      url("/api/v1/blocks?limit=12"),
+    );
+
+    assert.equal(
+      res.headers.get("cache-control"),
+      "public, max-age=10, must-revalidate",
+    );
+  });
+
   test("adds one fresh response-level TAO/USD conversion to complete mainnet blocks", async () => {
     const { env } = dbWith({
       blocksFeed: [
@@ -4177,25 +4246,68 @@ describe("handleBlock", () => {
       }),
     };
 
-    const cold = lakehouse([
-      blockRow({
-        decode_status: "complete",
-        economic_activity_tao: "1.25",
-        economics_complete: true,
-      }),
-    ]);
+    const cold = lakehouse((sql) => {
+      if (/FROM chain\.blocks\b/.test(sql)) return [blockRow()];
+      if (/FROM chain\.extrinsics\b/.test(sql))
+        return [extrinsicRow({ success: true, tip_tao: 0 })];
+      if (/FROM chain\.account_events\b/.test(sql))
+        return [transferEventRow({ amount_tao: 1.25 })];
+      return [];
+    });
     try {
-      const body = await json(
-        await handleBlock(
-          req(`/api/v1/blocks/${BLOCK_NUM}`),
-          env as unknown as Env,
-          String(BLOCK_NUM),
-        ),
+      const response = await handleBlock(
+        req(`/api/v1/blocks/${BLOCK_NUM}`),
+        env as unknown as Env,
+        String(BLOCK_NUM),
       );
+      const body = await json(response);
 
       assert.equal(body.data.block.economic_activity_tao, 1.25);
       assert.equal(body.data.block.economic_activity_usd, 250);
       assert.equal(body.data.block.usd_per_tao, 200);
+      assert.equal(response.headers.get("x-metagraph-cache-profile"), "short");
+      assert.equal(
+        (response as SettledShortCacheResponse)[METAGRAPH_SETTLED_SHORT_CACHE],
+        true,
+      );
+    } finally {
+      cold.restore();
+    }
+  });
+
+  test("caches a settled unpriced historical block without live price metadata", async () => {
+    const { env } = dbWith({ blockDetail: blockRow() });
+    Object.assign(env, LAKEHOUSE_ENV);
+    env.METAGRAPH_CONTROL = {
+      get: async () => ({
+        usd_per_tao: 200,
+        observed_at: new Date().toISOString(),
+        block_number: 9_000_000,
+        price_basis: "tao-usd-index",
+      }),
+    };
+
+    const cold = lakehouse((sql) => {
+      if (/FROM chain\.blocks\b/.test(sql)) return [blockRow()];
+      if (/FROM chain\.account_events\b/.test(sql))
+        throw new Error("companion table unavailable");
+      return [];
+    });
+    try {
+      const response = await handleBlock(
+        req(`/api/v1/blocks/${BLOCK_NUM}`),
+        env as unknown as Env,
+        String(BLOCK_NUM),
+      );
+      const body = await json(response);
+
+      assert.equal(body.data.block.decode_status, "unavailable");
+      assert.equal(body.data.block.economic_activity_tao, null);
+      assert.equal(body.data.block.economic_activity_usd, null);
+      assert.equal(body.data.block.usd_per_tao, null);
+      assert.equal(body.data.block.tao_usd_observed_at, null);
+      assert.equal(response.headers.get("x-metagraph-cache-profile"), "static");
+      assert.match(response.headers.get("cache-control") || "", /max-age=600/);
     } finally {
       cold.restore();
     }

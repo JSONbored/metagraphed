@@ -16,8 +16,9 @@ export interface LineWindow {
 }
 
 export const LINE_VIEWBOX = { width: 1200, height: 370 } as const;
-/** Room for the end marker and the line's stroke at the edges. */
-const PAD_Y = 8;
+/** Room for the line and labels; the larger top inset keeps peaks out of the summary band. */
+const PAD_TOP = 20;
+const PAD_BOTTOM = 8;
 /**
  * The last point lands at 94% of the width (the reference's
  * `--momentum-end-x: 94%`): the right 6% is the gutter the delta chip hangs
@@ -34,6 +35,7 @@ export interface PlacedPoint extends LinePoint {
 export function placePoints(
   points: readonly LinePoint[],
   box = LINE_VIEWBOX,
+  { zeroBaseline = false }: { zeroBaseline?: boolean } = {},
 ): PlacedPoint[] {
   if (points.length === 0) return [];
   const t0 = points[0]!.t;
@@ -45,6 +47,7 @@ export function placePoints(
     if (p.v < min) min = p.v;
     if (p.v > max) max = p.v;
   }
+  if (zeroBaseline && min >= 0) min = 0;
   const range = max - min || 1;
   return points.map((p) => ({
     ...p,
@@ -52,7 +55,10 @@ export function placePoints(
       points.length === 1
         ? (box.width * PLOT_RIGHT) / 2
         : ((p.t - t0) / span) * box.width * PLOT_RIGHT,
-    y: box.height - PAD_Y - ((p.v - min) / range) * (box.height - PAD_Y * 2),
+    y:
+      box.height -
+      PAD_BOTTOM -
+      ((p.v - min) / range) * (box.height - PAD_TOP - PAD_BOTTOM),
   }));
 }
 

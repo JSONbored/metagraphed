@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
   AnalyticsPage,
   AnalyticsSection,
@@ -10,7 +9,6 @@ import {
   FactSentence,
   LeaderCards,
   RangeControl,
-  RESIDUAL_KEY,
   Raw,
   type DataTableColumn,
   type FactCells,
@@ -24,9 +22,7 @@ import { AccountLookup } from "@/components/metagraphed/accounts-index/lookup";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import {
   HOLDER_METRICS,
-  HOLDER_SORT,
   activeRows,
-  concentrationSegments,
   fmtTaoCompact,
   holderCards,
   shortAddress,
@@ -34,7 +30,7 @@ import {
   type HolderMetric,
 } from "@/components/metagraphed/accounts-index/accounts-index-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
-import { accountsListQuery, chainSignersQuery } from "@/lib/metagraphed/queries";
+import { accountHolderDirectoryQuery, chainSignersQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { Route } from "./accounts.index";
@@ -44,7 +40,7 @@ const SECTIONS = [
   { id: "active", name: "Active" },
 ] as const;
 
-const API_PATHS = ["/api/v1/accounts", "/api/v1/chain/signers"];
+const API_PATHS = ["/api/v1/accounts/directory", "/api/v1/chain/signers"];
 
 const LISTED = 20;
 
@@ -55,18 +51,11 @@ function ApiSources() {
 
 export function AccountsPage() {
   const { h160 } = Route.useSearch();
-  const queryClient = useQueryClient();
   const [metric, setMetric] = useState<HolderMetric>("stake");
   const [signerQuery, setSignerQuery] = useState("");
   const { ref: activeRef, nearViewport: activeNearViewport } = useNearViewport("0px 0px");
 
-  const { data: byStake } = useSuspenseQuery(
-    accountsListQuery({ sort: HOLDER_SORT.stake, limit: LISTED }),
-  );
-  const ranked = useQuery({
-    ...accountsListQuery({ sort: HOLDER_SORT[metric], limit: LISTED }),
-    retry: 0,
-  });
+  const directory = useSuspenseQuery(accountHolderDirectoryQuery());
   const signers = useQuery({
     ...chainSignersQuery("7d"),
     // The holders directory is this route's immediate answer. Keep the
@@ -76,19 +65,19 @@ export function AccountsPage() {
     retry: 0,
   });
 
-  const accounts = byStake.data.accounts;
-  const { segments, listedTotal } = useMemo(() => concentrationSegments(accounts, 10), [accounts]);
-  const cards = holderCards(ranked.data?.data.accounts ?? [], metric, 18, listedTotal);
+  const accounts = directory.data.data.rankings.stake;
+  const accountCount = directory.data.data.account_count;
+  const ranked = directory.data.data.rankings[metric];
+  const pricedStakeTotal = directory.data.data.priced_registered_stake_tao;
+  const cards = holderCards(ranked, metric, 18, pricedStakeTotal);
   const active = useMemo(() => activeRows(signers.data?.data.signers ?? []), [signers.data]);
   const shownActive = useMemo(() => {
     const query = signerQuery.trim().toLowerCase();
     return query ? active.filter((row) => row.signer.toLowerCase().includes(query)) : active;
   }, [active, signerQuery]);
 
-  const topTen = segments
-    .filter((segment) => segment.key !== RESIDUAL_KEY)
-    .reduce((acc, segment) => acc + segment.value, 0);
-  const topShare = listedTotal > 0 ? topTen / listedTotal : null;
+  const topTen = accounts.slice(0, 10).reduce((acc, account) => acc + account.total_stake_tao, 0);
+  const topShare = pricedStakeTotal > 0 ? topTen / pricedStakeTotal : null;
 
   // A fixed tuple, not a spread: FactNodes caps a sentence at six facts by
   // TYPE, and a conditional spread erases the length the cap is checked on.
@@ -97,13 +86,13 @@ export function AccountsPage() {
   // "Signers 7d", so two of three chips were the cell beneath them reworded.
   const sentence: FactNodes = h160
     ? [
-        <Fact key="listed">{`${formatNumber(accounts.length)} accounts listed by stake`}</Fact>,
+        <Fact key="listed">{`${formatNumber(accountCount)} registered accounts indexed`}</Fact>,
         <Fact key="h160">{`looking up ${shortAddress(h160)}`}</Fact>,
       ]
-    : [<Fact key="listed">{`${formatNumber(accounts.length)} accounts listed by stake`}</Fact>];
+    : [<Fact key="listed">{`${formatNumber(accountCount)} registered accounts indexed`}</Fact>];
 
   const cells: FactCells = [
-    { label: "Stake listed", value: fmtTaoCompact(listedTotal) },
+    { label: "Priced stake", value: fmtTaoCompact(pricedStakeTotal) },
     { label: "Top 10 share", value: topShare === null ? "—" : `${formatPct(topShare, 1)}` },
   ];
 
@@ -149,10 +138,9 @@ export function AccountsPage() {
             }
             cells={cells}
             live={{
-              updatedAt: byStake.meta?.generated_at ?? null,
+              updatedAt: directory.data.meta?.generated_at ?? null,
               source: "chain-direct index",
-              onRefresh: () =>
-                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
+              onRefresh: () => void directory.refetch(),
             }}
           />
         }
@@ -170,22 +158,7 @@ export function AccountsPage() {
             />
           }
           visual={
-            ranked.isPending ? (
-              <LeaderCards
-                items={[]}
-                featured={3}
-                loading
-                loadingItems={LISTED}
-                ariaLabel={`Accounts ranked by ${metric}`}
-                source="account-holder"
-              />
-            ) : ranked.isError ? (
-              <ErrorState
-                error={ranked.error}
-                onRetry={() => void ranked.refetch()}
-                context="account holder ranking"
-              />
-            ) : cards.length > 0 ? (
+            cards.length > 0 ? (
               <LeaderCards
                 items={cards.map((card) => ({ ...card, initials: card.name.slice(0, 2) }))}
                 featured={3}
@@ -194,15 +167,9 @@ export function AccountsPage() {
               />
             ) : null
           }
-          footnote={
-            ranked.isPending
-              ? `loading accounts ranked by ${metric}`
-              : ranked.isError
-                ? `the ${metric} account ranking could not be loaded`
-                : `top ${formatNumber(LISTED)} by ${metric} · shares are of the ${fmtTaoCompact(
-                    listedTotal,
-                  )} these ${formatNumber(accounts.length)} hold, not of all stake · chain-direct index`
-          }
+          footnote={`top ${formatNumber(LISTED)} by ${metric} · stake shares use ${fmtTaoCompact(
+            pricedStakeTotal,
+          )} of priced registered stake · chain-direct index`}
         />
         <AnalyticsSection
           id="active"

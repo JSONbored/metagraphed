@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   THEME_BOOTSTRAP_SCRIPT,
@@ -6,7 +8,12 @@ import {
   bootstrapTheme,
   normalizeThemeChoice,
   resolveTheme,
+  useTheme,
 } from "./theme";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("normalizeThemeChoice", () => {
   it.each([
@@ -72,5 +79,17 @@ describe("THEME_BOOTSTRAP_SCRIPT", () => {
     expect(THEME_BOOTSTRAP_SCRIPT).toContain('r.classList.remove("dark")');
     expect(THEME_BOOTSTRAP_SCRIPT).toContain('r.dataset.theme = dark ? "dark" : "light"');
     expect(THEME_BOOTSTRAP_SCRIPT).toContain('matchMedia("(prefers-color-scheme: dark)")');
+  });
+});
+
+describe("useTheme hydration contract", () => {
+  it("keeps the first client choice equal to SSR when storage contains an explicit theme", () => {
+    const Probe = () => createElement("span", null, useTheme().choice);
+
+    expect(renderToStaticMarkup(createElement(Probe))).toBe("<span>system</span>");
+    vi.stubGlobal("window", {
+      localStorage: { getItem: () => "dark" },
+    });
+    expect(renderToStaticMarkup(createElement(Probe))).toBe("<span>system</span>");
   });
 });

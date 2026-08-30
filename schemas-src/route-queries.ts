@@ -721,6 +721,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/validators/operators": z.object({}),
+  "/api/v1/accounts/directory": z.object({}),
   "/api/v1/accounts": z.object({
     sort: sortSchema(
       [

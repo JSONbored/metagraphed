@@ -9,6 +9,7 @@ import { describe, test } from "vitest";
 import {
   CHAIN_ACTIVITY_PROJECTION_KEY,
   epochDayIso,
+  chainActivityCoverageIsCurrent,
   loadChainActivityFromArtifact,
 } from "../src/chain-activity-artifact.ts";
 
@@ -92,6 +93,80 @@ describe("epochDayIso", () => {
   });
 });
 
+describe("chainActivityCoverageIsCurrent", () => {
+  const current = {
+    newest_observed: Date.parse("2026-08-02T14:00:00.000Z"),
+    extrinsic_rows: [{ day: "2026-08-01" }, { day: "2026-08-02" }],
+    block_rows: [{ day: "2026-08-01" }, { day: "2026-08-02" }],
+  };
+
+  test("accepts current source data with the last complete UTC day on both tables", () => {
+    assert.equal(
+      chainActivityCoverageIsCurrent(current, "2026-08-02T15:00:00.000Z", {
+        requireCompleteDay: true,
+      }),
+      true,
+    );
+  });
+
+  test("rejects a fresh publication over stale decoded rows", () => {
+    assert.equal(
+      chainActivityCoverageIsCurrent(
+        { ...current, newest_observed: Date.parse("2026-07-29T12:00:00Z") },
+        "2026-08-02T15:00:00.000Z",
+      ),
+      false,
+    );
+  });
+
+  test("rejects unreadable publication and source clocks", () => {
+    assert.equal(chainActivityCoverageIsCurrent(current, "not-a-date"), false);
+    assert.equal(
+      chainActivityCoverageIsCurrent(
+        { ...current, newest_observed: "not-a-number" },
+        "2026-08-02T15:00:00.000Z",
+      ),
+      false,
+    );
+    assert.equal(
+      chainActivityCoverageIsCurrent(
+        { ...current, newest_observed: null },
+        "2026-08-02T15:00:00.000Z",
+      ),
+      false,
+    );
+  });
+
+  test("rejects a source that has not crossed today's UTC boundary", () => {
+    assert.equal(
+      chainActivityCoverageIsCurrent(
+        { ...current, newest_observed: Date.parse("2026-08-01T23:59:00Z") },
+        "2026-08-02T00:10:00.000Z",
+      ),
+      false,
+    );
+  });
+
+  test("requires the last complete day from both source tables for a new write", () => {
+    assert.equal(
+      chainActivityCoverageIsCurrent(
+        { ...current, block_rows: [{ day: "2026-08-02" }] },
+        "2026-08-02T15:00:00.000Z",
+        { requireCompleteDay: true },
+      ),
+      false,
+    );
+    assert.equal(
+      chainActivityCoverageIsCurrent(
+        { ...current, extrinsic_rows: [{ day: "2026-08-02" }] },
+        "2026-08-02T15:00:00.000Z",
+        { requireCompleteDay: true },
+      ),
+      false,
+    );
+  });
+});
+
 describe("loadChainActivityFromArtifact", () => {
   test("serves the default window through the shared formatter", async () => {
     const { env, gets } = bucketWith(artifact());
@@ -115,12 +190,24 @@ describe("loadChainActivityFromArtifact", () => {
     assert.equal(data!.observed_at, new Date(NEWEST).toISOString());
   });
 
-  test("every precomputed window is servable, and a null freshness stays null", async () => {
+  test("a precomputed window with no source freshness declines", async () => {
     const { env } = bucketWith(artifact());
     const data = await loadChainActivityFromArtifact(env, { window: "30d" });
-    assert.equal(data!.window, "30d");
-    assert.equal(data!.day_count, 1);
-    assert.equal(data!.observed_at, null);
+    assert.equal(data, null);
+  });
+
+  test("a newly published card over stale decoded rows declines", async () => {
+    const body = artifact();
+    body.generated_at = "2026-08-06T12:00:00.000Z";
+    const { env } = bucketWith(body);
+    assert.equal(await loadChainActivityFromArtifact(env, {}), null);
+  });
+
+  test("a legacy card without generated_at remains readable until its next rewrite", async () => {
+    const { generated_at: _generatedAt, ...legacy } = artifact();
+    const { env } = bucketWith(legacy);
+    const data = await loadChainActivityFromArtifact(env, {});
+    assert.equal(data!.observed_at, new Date(NEWEST).toISOString());
   });
 
   test("a window outside the route's set declines — never a different window's numbers", async () => {

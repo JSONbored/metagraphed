@@ -139,7 +139,7 @@ function SubnetLedger({ netuids }: { netuids: number[] }) {
           key: "price",
           label: "Alpha price",
           values: at((s) => s?.economics?.alpha_price_tao ?? null),
-          format: (v) => (typeof v === "number" ? `${formatDecimal(v, 4)} τ` : String(v)),
+          format: (v) => (typeof v === "number" ? `${formatDecimal(v, 4)}τ` : String(v)),
         },
         {
           key: "stake",

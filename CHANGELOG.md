@@ -19,6 +19,58 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [2.5.0](https://github.com/JSONbored/metagraphed/compare/platform-v2.4.0...platform-v2.5.0) (2026-08-29)
+
+
+### Features
+
+* **explorer:** add truthful block economics ([#11766](https://github.com/JSONbored/metagraphed/issues/11766)) ([f487aa7](https://github.com/JSONbored/metagraphed/commit/f487aa75ab7622c5882322142f6933615f32f4f1))
+* **ui:** add addressable event records ([11c0d67](https://github.com/JSONbored/metagraphed/commit/11c0d67192e2ea59f7662ab2895a07b3f9f64bb4))
+* **ui:** add addressable event records ([09d579f](https://github.com/JSONbored/metagraphed/commit/09d579f720de59c5d23603805037fccaf29e71b8))
+* **ui:** complete explorer-first redesign ([#11733](https://github.com/JSONbored/metagraphed/issues/11733)) ([5964b20](https://github.com/JSONbored/metagraphed/commit/5964b2020e35df8792b4907ffce5b025a8ae71f7))
+
+
+### Bug Fixes
+
+* **api:** version chain-detail cache responses ([#11772](https://github.com/JSONbored/metagraphed/issues/11772)) ([63ff808](https://github.com/JSONbored/metagraphed/commit/63ff808c58202e1bae24621e3791c29750ff2aba))
+* **publish:** validate x402 payment challenges ([#11737](https://github.com/JSONbored/metagraphed/issues/11737)) ([dd69293](https://github.com/JSONbored/metagraphed/commit/dd692934590457850be55f7da720fdaf16a859cc))
+* **ui:** clarify homepage live data ([#11777](https://github.com/JSONbored/metagraphed/issues/11777)) ([ea00a73](https://github.com/JSONbored/metagraphed/commit/ea00a73fd157e8f2c16d7b0d9b6d12632aa5f47a))
+* **ui:** deduplicate block ledger prefetch ([5ddc8a6](https://github.com/JSONbored/metagraphed/commit/5ddc8a618250e7eb9e7e410d3c25c88227f21e82))
+* **ui:** deduplicate block ledger prefetch ([0ae7b4e](https://github.com/JSONbored/metagraphed/commit/0ae7b4e2575fe01a1002a8c423372fa069fbded0))
+* **ui:** match event detail loading skeleton ([761ef46](https://github.com/JSONbored/metagraphed/commit/761ef460b57e2a8bee6a2ceea8377ede768fd59f))
+* **ui:** match event detail loading skeleton ([79233b3](https://github.com/JSONbored/metagraphed/commit/79233b3ecd550a6df0ee55b6db3fe6610cd4097b))
+* **ui:** match pending states to route archetypes ([#11749](https://github.com/JSONbored/metagraphed/issues/11749)) ([cbcf2a7](https://github.com/JSONbored/metagraphed/commit/cbcf2a75a4a237bc8208a4fc5597f251592463a3))
+* **ui:** prefer exact provider thumbnails ([e67637f](https://github.com/JSONbored/metagraphed/commit/e67637f3998081e0c403dc96383b455df45a18bf))
+* **ui:** prefer exact provider thumbnails ([818e3ea](https://github.com/JSONbored/metagraphed/commit/818e3eabaf9eef7db691513ef6e837518e466991))
+* **ui:** preserve progressive block detail loading ([7f177f0](https://github.com/JSONbored/metagraphed/commit/7f177f0e2298af615603f4844d381f79f5b382c8))
+* **ui:** prioritize provider directory ([#11743](https://github.com/JSONbored/metagraphed/issues/11743)) ([6ac889f](https://github.com/JSONbored/metagraphed/commit/6ac889f6955b763d6b536ba276ebee1e8f898c0a))
+* **ui:** recover newest block details ([#11759](https://github.com/JSONbored/metagraphed/issues/11759)) ([da6399d](https://github.com/JSONbored/metagraphed/commit/da6399d8598ddf8be761a659a455bc6e553bb3b2))
+* **ui:** replace deferred copy with evidence skeletons ([#11751](https://github.com/JSONbored/metagraphed/issues/11751)) ([651833f](https://github.com/JSONbored/metagraphed/commit/651833f571d871135418fec52df793b68a193020))
+* **ui:** restore hub explanation hierarchy ([#11747](https://github.com/JSONbored/metagraphed/issues/11747)) ([35f123f](https://github.com/JSONbored/metagraphed/commit/35f123fc70e9d0f7212e475f79b6075757361cc9))
+* **ui:** stabilize analytics loading geometry ([#11739](https://github.com/JSONbored/metagraphed/issues/11739)) ([6951896](https://github.com/JSONbored/metagraphed/commit/695189612642433e46b267a0e8dff0a3a7fe2bfa))
+* **ui:** stabilize block economics validation ([#11770](https://github.com/JSONbored/metagraphed/issues/11770)) ([4c48020](https://github.com/JSONbored/metagraphed/commit/4c48020b80eb3c3b34f6211b02ea5f663890d360))
+
+
+### Performance
+
+* **api:** serve compact validator operator directory ([#11764](https://github.com/JSONbored/metagraphed/issues/11764)) ([c827d18](https://github.com/JSONbored/metagraphed/commit/c827d1888944d94190dbf0dc1f3eaa55e40137ef))
+* **ui:** collapse account directory reads ([6f5717f](https://github.com/JSONbored/metagraphed/commit/6f5717f0f9b40cc0fc995209bab01185ddf23cc1))
+* **ui:** collapse account directory reads ([14005c1](https://github.com/JSONbored/metagraphed/commit/14005c15c67a089a4925088d543865d241fe721a))
+* **ui:** compact validator directory hydration ([#11762](https://github.com/JSONbored/metagraphed/issues/11762)) ([03fb836](https://github.com/JSONbored/metagraphed/commit/03fb8365f57f9a4e87fdee82b6ebcc3855b85e3a))
+* **ui:** isolate documentation runtimes ([c8a24ab](https://github.com/JSONbored/metagraphed/commit/c8a24ab7f6c3e8cb785c91a31c1d495623d80cd5))
+* **ui:** isolate documentation runtimes ([fe234db](https://github.com/JSONbored/metagraphed/commit/fe234dbf5d8c60cd8a36607ad190b85481655ed0))
+* **ui:** isolate server content by route ([7d28204](https://github.com/JSONbored/metagraphed/commit/7d282040f52d5ce085f6b25b44b072695fa6aaea))
+* **ui:** isolate server content by route ([820a270](https://github.com/JSONbored/metagraphed/commit/820a27013d1c8349a6a59a1482245b57cb969c38))
+* **ui:** prefetch block extrinsics with detail ([db8eedc](https://github.com/JSONbored/metagraphed/commit/db8eedc01e284b5b88290cef0cf7dd9b541e1ef8))
+* **ui:** prefetch block extrinsics with detail ([7f5f84d](https://github.com/JSONbored/metagraphed/commit/7f5f84d90c003972e981a16ae8eabcac0576b2e5))
+* **ui:** serve display-sized brand marks ([#11741](https://github.com/JSONbored/metagraphed/issues/11741)) ([f968898](https://github.com/JSONbored/metagraphed/commit/f9688989d37dba9763f0935a2dcab8ee5faf9c19))
+* **ui:** skip unused analytics extensions ([#11745](https://github.com/JSONbored/metagraphed/issues/11745)) ([fd9be73](https://github.com/JSONbored/metagraphed/commit/fd9be73119aed052affed0dee8259595402c7eb1))
+
+
+### Documentation
+
+* **contributing:** clarify maintainer visual override ([#11735](https://github.com/JSONbored/metagraphed/issues/11735)) ([fb4c1de](https://github.com/JSONbored/metagraphed/commit/fb4c1de1649a17f56c8a431cdba4fa34b93f2e72))
+
 ## [2.4.0](https://github.com/JSONbored/metagraphed/compare/platform-v2.3.0...platform-v2.4.0) (2026-08-25)
 
 

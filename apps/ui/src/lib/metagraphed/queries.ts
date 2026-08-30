@@ -71,8 +71,9 @@ import type {
   AccountRegistration,
   AccountSubnets,
   AccountSummary,
+  AccountHolderDirectory,
+  AccountHolderDirectoryEntry,
   AccountListEntry,
-  AccountsList,
   PortfolioConcentration,
   PortfolioPosition,
   Block,
@@ -1024,6 +1025,11 @@ export function normalizeSubnetMovers(raw: unknown): SubnetMovers {
   return {
     schema_version: firstFiniteNumber(d.schema_version) ?? 1,
     window: firstString(d.window) ?? "30d",
+    start_date: firstString(d.start_date) ?? null,
+    end_date: firstString(d.end_date) ?? null,
+    covered_days: coerceFiniteNumber(d.covered_days) ?? null,
+    requested_days: coerceFiniteNumber(d.requested_days) ?? null,
+    window_truncated: d.window_truncated === true,
     sort: firstString(d.sort) ?? "stake",
     subnet_count: firstFiniteNumber(d.subnet_count) ?? movers.length,
     network: net
@@ -4079,6 +4085,7 @@ function normalizeChainFeeDay(raw: unknown): ChainFeeDay | null {
   return {
     day,
     extrinsic_count: extrinsicCount,
+    signed_extrinsic_count: coerceFiniteNumber(raw.signed_extrinsic_count) ?? null,
     total_fee_tao: totalFeeTao,
     avg_fee_tao: coerceFiniteNumber(raw.avg_fee_tao) ?? null,
     total_tip_tao: totalTipTao,
@@ -8967,41 +8974,55 @@ function normalizeAccountListEntry(raw: unknown): AccountListEntry | null {
   };
 }
 
-export function normalizeAccountsList(raw: unknown): AccountsList {
-  const d = isRecord(raw) ? raw : {};
-  const accounts = Array.isArray(d.accounts)
-    ? d.accounts.flatMap((account) => {
-        const normalized = normalizeAccountListEntry(account);
-        return normalized ? [normalized] : [];
-      })
-    : [];
+function normalizeAccountHolderDirectoryEntry(raw: unknown): AccountHolderDirectoryEntry | null {
+  const account = normalizeAccountListEntry(raw);
+  if (!account) return null;
   return {
-    schema_version: coerceFiniteNumber(d.schema_version),
-    sort: coerceString(d.sort) ?? "total_stake",
-    limit: coerceFiniteNumber(d.limit) ?? accounts.length,
-    account_count: coerceFiniteNumber(d.account_count) ?? accounts.length,
-    captured_at: coerceString(d.captured_at),
-    block_number: coerceFiniteNumber(d.block_number),
-    accounts,
+    hotkey: account.hotkey,
+    coldkey: account.coldkey,
+    subnet_count: account.subnet_count,
+    uid_count: account.uid_count,
+    total_stake_tao: account.total_stake_tao,
+    total_emission_tao: account.total_emission_tao,
+    stake_dominance: account.stake_dominance,
   };
 }
 
-export const accountsListQuery = ({
-  sort = "total_stake",
-  limit = 10,
-}: { sort?: string; limit?: number } = {}) =>
+export function normalizeAccountHolderDirectory(raw: unknown): AccountHolderDirectory {
+  const data = isRecord(raw) ? raw : {};
+  const rankings = isRecord(data.rankings) ? data.rankings : {};
+  const normalizeRanking = (value: unknown): AccountHolderDirectoryEntry[] =>
+    Array.isArray(value)
+      ? value.flatMap((entry) => {
+          const normalized = normalizeAccountHolderDirectoryEntry(entry);
+          return normalized ? [normalized] : [];
+        })
+      : [];
+  return {
+    schema_version: coerceFiniteNumber(data.schema_version),
+    captured_at: coerceString(data.captured_at),
+    block_number: coerceFiniteNumber(data.block_number),
+    account_count: coerceFiniteNumber(data.account_count) ?? 0,
+    limit: coerceFiniteNumber(data.limit) ?? 0,
+    priced_registered_stake_tao: coerceFiniteNumber(data.priced_registered_stake_tao) ?? 0,
+    rankings: {
+      stake: normalizeRanking(rankings.stake),
+      emission: normalizeRanking(rankings.emission),
+      reach: normalizeRanking(rankings.reach),
+    },
+  };
+}
+
+export const accountHolderDirectoryQuery = () =>
   queryOptions({
-    queryKey: k("accounts-list", sort, limit),
+    queryKey: k("account-holder-directory"),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<unknown>("/api/v1/accounts", {
-        params: { sort, limit },
-        signal,
-      });
+      const res = await apiFetch<unknown>("/api/v1/accounts/directory", { signal });
       return {
-        data: normalizeAccountsList(res.data),
+        data: normalizeAccountHolderDirectory(res.data),
         meta: res.meta,
         url: res.url,
-      } as ApiResult<AccountsList>;
+      } satisfies ApiResult<AccountHolderDirectory>;
     },
     staleTime: STALE_SHORT,
   });

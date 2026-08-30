@@ -10,6 +10,7 @@ import type {
 import {
   callSegments,
   feePoints,
+  summarizeFeeWindow,
   pipelineRails,
   pipelineTally,
   flowRails,
@@ -27,7 +28,7 @@ describe("formatters", () => {
   it("compacts counts, formats TAO and shares, and refuses a non-number", () => {
     expect(fmtCount(1_020_430)).toBe("1.02M");
     expect(fmtCount(7_200)).toBe("7.2k");
-    expect(fmtTao(7.231114583, 4)).toBe("7.2311 τ");
+    expect(fmtTao(7.231114583, 4)).toBe("7.2311τ");
     expect(fmtShare(0.3464)).toBe("34.6%");
     expect(fmtCount(null)).toBe("—");
     expect(fmtTao(undefined)).toBe("—");
@@ -70,6 +71,45 @@ describe("feePoints", () => {
 
   it("sorts into time order and drops a day with no reading", () => {
     expect(feePoints(days).map((p) => p.v)).toEqual([5, 7]);
+  });
+});
+
+describe("summarizeFeeWindow", () => {
+  it("weights the window average by signed extrinsics", () => {
+    const days = [
+      {
+        total_fee_tao: 100,
+        total_tip_tao: 2,
+        signed_extrinsic_count: 100,
+        avg_fee_tao: 1,
+      },
+      {
+        total_fee_tao: 9,
+        total_tip_tao: 1,
+        signed_extrinsic_count: 1,
+        avg_fee_tao: 9,
+      },
+    ] as unknown as ChainFeeDay[];
+
+    expect(summarizeFeeWindow(days)).toEqual({
+      totalFeeTao: 109,
+      totalTipTao: 3,
+      averageFeeTao: 109 / 101,
+      dayCount: 2,
+    });
+  });
+
+  it("does not turn an unavailable window or absent denominator into a zero average", () => {
+    expect(summarizeFeeWindow([])).toBeNull();
+    expect(
+      summarizeFeeWindow([
+        {
+          total_fee_tao: 0,
+          total_tip_tao: 0,
+          signed_extrinsic_count: 0,
+        } as unknown as ChainFeeDay,
+      ])?.averageFeeTao,
+    ).toBeNull();
   });
 });
 

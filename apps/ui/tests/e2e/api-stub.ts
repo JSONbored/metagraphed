@@ -235,6 +235,68 @@ if (!byPath.has(VALIDATOR_OPERATORS_PATH)) {
   byPath.set(VALIDATOR_OPERATORS_PATH, recorded);
 }
 
+// The compact account directory is derived from the same committed account
+// fixtures until the new endpoint is deployed and can be recorded directly.
+// This keeps the responsive sweep on the real page instead of replaying a 404.
+const ACCOUNT_DIRECTORY_PATH = "/api/v1/accounts/directory";
+const STAKE_ACCOUNTS_FIXTURE = "/api/v1/accounts?sort=total_stake&limit=20";
+const EMISSION_ACCOUNTS_FIXTURE = "/api/v1/accounts?sort=total_emission&limit=10";
+if (!byPath.has(ACCOUNT_DIRECTORY_PATH)) {
+  const stake = byUrl.get(STAKE_ACCOUNTS_FIXTURE);
+  const emission = byUrl.get(EMISSION_ACCOUNTS_FIXTURE) ?? stake;
+  if (!stake || !emission) {
+    throw new Error(`[api-stub] ${ACCOUNT_DIRECTORY_PATH} needs the committed account fixtures`);
+  }
+  const stakePayload = JSON.parse(stake.body.toString("utf8")) as {
+    data?: { accounts?: Array<Record<string, unknown>>; [key: string]: unknown };
+    [key: string]: unknown;
+  };
+  const emissionPayload = JSON.parse(emission.body.toString("utf8")) as {
+    data?: { accounts?: Array<Record<string, unknown>> };
+  };
+  const stakeAccounts = stakePayload.data?.accounts ?? [];
+  const emissionAccounts = emissionPayload.data?.accounts ?? [];
+  const compact = (account: Record<string, unknown>) => ({
+    hotkey: account.hotkey,
+    coldkey: account.coldkey ?? null,
+    subnet_count: account.subnet_count ?? 0,
+    uid_count: account.uid_count ?? 0,
+    total_stake_tao: account.total_stake_tao ?? 0,
+    total_emission_tao: account.total_emission_tao ?? 0,
+    stake_dominance: account.stake_dominance ?? null,
+  });
+  const recorded: Recorded = {
+    status: 200,
+    contentType: "application/json",
+    body: Buffer.from(
+      JSON.stringify({
+        ...stakePayload,
+        data: {
+          schema_version: 1,
+          captured_at: stakePayload.data?.captured_at ?? null,
+          block_number: stakePayload.data?.block_number ?? null,
+          account_count: stakePayload.data?.account_count ?? stakeAccounts.length,
+          limit: 20,
+          priced_registered_stake_tao: stakeAccounts.reduce(
+            (sum, account) => sum + Number(account.total_stake_tao ?? 0),
+            0,
+          ),
+          rankings: {
+            stake: stakeAccounts.map(compact),
+            emission: emissionAccounts.map(compact),
+            reach: [...stakeAccounts]
+              .sort((a, b) => Number(b.subnet_count ?? 0) - Number(a.subnet_count ?? 0))
+              .map(compact),
+          },
+        },
+      }),
+    ),
+  };
+  entryCount += 1;
+  byUrl.set(ACCOUNT_DIRECTORY_PATH, recorded);
+  byPath.set(ACCOUNT_DIRECTORY_PATH, recorded);
+}
+
 // The committed HAR predates the block-economics contract. SSR requests never
 // pass through Playwright's page.route interception, so decorate the recorded
 // block responses here until a post-deployment fixture refresh captures these

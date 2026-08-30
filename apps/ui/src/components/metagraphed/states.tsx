@@ -13,26 +13,35 @@ import { getNetworkPrefix } from "@/lib/metagraphed/config";
 import { isUsableTimestamp } from "@/lib/metagraphed/format";
 import { NativeOnlyNotice } from "./native-only-notice";
 
-/**
- * Shown when a `/chain-events*` request 503s with `data_tier_unavailable` —
- * the deep-history lakehouse tier can't answer in this deployment (its R2 SQL
- * credentials aren't bound). Expected on a preview/fork/from-scratch
- * environment, not a fault in the feed itself, so an informational notice
- * reads better than a red error card (mirrors `NativeOnlyNotice`'s reasoning).
- */
-function DataTierUnavailableNotice({ context }: { context?: string }) {
+/** A truthful replacement for a response the API marked as unverified. */
+function DataTierUnavailableNotice({
+  context,
+  onRetry,
+}: {
+  context?: string;
+  onRetry?: () => void;
+}) {
   return (
     <div role="status" className="rounded border border-border bg-surface p-4">
       <div className="flex items-start gap-3">
         <Database className="size-4 shrink-0 text-ink-muted" />
         <div className="min-w-0 flex-1">
           <div className="mb-1 font-display text-13 font-medium text-ink-strong">
-            Deep-history tier not enabled
+            Data source temporarily unavailable
           </div>
           <p className="text-13 leading-relaxed text-ink-muted">
-            {context ? `The ${context} view` : "This view"} reads the deep-history all-events tier,
-            which isn't available in this deployment. It's unrelated to the rest of this page.
+            {context ? `The ${context} view` : "This view"} cannot verify its current source, so no
+            zero or empty result is shown. The rest of the page can continue updating.
           </p>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
+            >
+              <RefreshCw className="size-3" /> Retry
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -207,13 +216,11 @@ export function ErrorState({
   ) {
     return <NativeOnlyNotice context={context} />;
   }
-  // #2564: the chain-events deep-history tier (workers/api.ts's handleChainEventsFamily)
-  // 503s with this exact code when nothing can answer the route in a deployment (e.g. a
-  // preview/fork environment without lakehouse credentials). That's an expected,
-  // documented condition, not a fault in this feed — an informational notice reads better
-  // than a red error card for every call site that reads /chain-events*.
+  // Both explicit 503s and header-marked schema-stable 200 fallbacks use this
+  // code. Neither is a measured empty answer, so keep the state informational
+  // and explicit rather than rendering a zero or a generic red error card.
   if (isApi && error.code === "data_tier_unavailable") {
-    return <DataTierUnavailableNotice context={context} />;
+    return <DataTierUnavailableNotice context={context} onRetry={onRetry} />;
   }
   // A present block can sit momentarily between the live-follow and decoded
   // history windows. Keep its technical-detail state distinct from both a

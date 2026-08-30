@@ -14,6 +14,10 @@ import {
   handleRequest,
   withChainDetailEdgeCache,
 } from "../workers/api.ts";
+import {
+  METAGRAPH_SETTLED_SHORT_CACHE,
+  type SettledShortCacheResponse,
+} from "../workers/http.ts";
 import type { Row } from "./row-type.ts";
 
 const globalWithCaches = globalThis as unknown as { caches?: unknown };
@@ -56,8 +60,12 @@ const get = (headers: Record<string, string> = {}) =>
   new Request(url.toString(), { headers });
 
 /** A handler response carrying `profile`, shaped like envelopeResponse's. */
-function answer(profile: "static" | "short", body = '{"ok":true}') {
-  return new Response(body, {
+function answer(
+  profile: "static" | "short",
+  body = '{"ok":true}',
+  settledShort = false,
+) {
+  const response = new Response(body, {
     status: 200,
     headers: {
       "content-type": "application/json",
@@ -65,6 +73,11 @@ function answer(profile: "static" | "short", body = '{"ok":true}') {
       etag: 'W/"abc"',
     },
   });
+  if (settledShort) {
+    (response as SettledShortCacheResponse)[METAGRAPH_SETTLED_SHORT_CACHE] =
+      true;
+  }
+  return response;
 }
 
 /** Counts how many times the underlying handler actually ran. */
@@ -205,6 +218,39 @@ describe("chain-detail edge cache (#11001)", () => {
     assert.equal(cache.putKeys.length, 0);
   });
 
+  test("stores an explicitly settled short answer for only its short freshness window", async () => {
+    const cache = mockCaches();
+    cache.install();
+    const waits: Promise<unknown>[] = [];
+    const ctx = { waitUntil: (p: Promise<unknown>) => waits.push(p) };
+    const handler = producer(() => answer("short", '{"ok":true}', true));
+
+    const miss = await withChainDetailEdgeCache(
+      get(),
+      env,
+      url,
+      "mainnet",
+      ctx,
+      handler.produce,
+    );
+    assert.equal(miss.headers.get("x-metagraph-cache"), "miss");
+    await Promise.all(waits);
+
+    const stored = [...cache.store.values()][0];
+    assert.equal(stored.headers.get("cache-control"), "public, s-maxage=60");
+
+    const hit = await withChainDetailEdgeCache(
+      get(),
+      env,
+      url,
+      "mainnet",
+      ctx,
+      handler.produce,
+    );
+    assert.equal(hit.headers.get("x-metagraph-cache"), "hit");
+    assert.equal(handler.calls, 1);
+  });
+
   test("does NOT store a gap (503) — it is transient by definition", async () => {
     const cache = mockCaches();
     cache.install();
@@ -325,10 +371,10 @@ describe("chain-detail cache key (#11001)", () => {
     );
   });
 
-  test("namespaces by contract version, so a contract change invalidates", () => {
+  test("namespaces by contract version and response shape generation", () => {
     assert.match(
       chainDetailCacheKey(env, url, "mainnet").url,
-      /\/chain-detail\//,
+      /\/chain-detail\/[^/]+\/2\/mainnet\/api\/v1\/blocks\/8803541$/,
     );
   });
 });

@@ -31,10 +31,10 @@ export function formatNumber(n: number | undefined | null, fallback = "—"): st
 /**
  * Format a TAO (τ) amount for compact display, tiering the precision by
  * magnitude so both dust and whole-subnet aggregates stay readable in a
- * single cell: ≥1e6 → "1.23M τ", ≥1e3 → "1.2k τ", ≥1 → "1.23 τ", and
- * sub-unit values keep 4 decimals ("0.5000 τ"). Tiering is by magnitude
+ * single cell: ≥1e6 → "1.23Mτ", ≥1e3 → "1.2kτ", ≥1 → "1.23τ", and
+ * sub-unit values keep 4 decimals ("0.5000τ"). Tiering is by magnitude
  * (|v|), not v itself, so a negative amount gets the same tier a positive
- * one of equal size would ("-2.00M τ", not "-2000000.0000 τ") -- the sign
+ * one of equal size would ("-2.00Mτ", not "-2000000.0000τ") -- the sign
  * is preserved by dividing the signed value, not the magnitude. Nullish /
  * non-finite input renders the em-dash fallback. Shared by the per-subnet
  * EconomicsPanel tiles and the /subnets table Registration column so the
@@ -56,10 +56,31 @@ export function formatTao(v?: number | null): string {
 export function formatAmount(v: number | null | undefined, unit: string): string {
   if (v == null || !Number.isFinite(v)) return "—";
   const magnitude = Math.abs(v);
-  if (magnitude >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M ${unit}`;
-  if (magnitude >= 1_000) return `${(v / 1_000).toFixed(1)}k ${unit}`;
-  if (magnitude >= 1) return `${v.toFixed(2)} ${unit}`;
-  return `${v.toFixed(4)} ${unit}`;
+  if (magnitude >= 1_000_000) return joinAmountUnit(`${(v / 1_000_000).toFixed(2)}M`, unit);
+  if (magnitude >= 1_000) return joinAmountUnit(`${(v / 1_000).toFixed(1)}k`, unit);
+  if (magnitude >= 1) return joinAmountUnit(v.toFixed(2), unit);
+  return joinAmountUnit(v.toFixed(4), unit);
+}
+
+/**
+ * Join an already-formatted numeric amount to its unit. TAO's currency glyph
+ * is a suffix and stays attached to the number; alpha and word units retain a
+ * separating space. Keeping that distinction here prevents narrow tables,
+ * charts and forms from inventing competing typography.
+ */
+export function joinAmountUnit(value: string, unit: string): string {
+  return unit === "τ" ? `${value}${unit}` : `${value} ${unit}`;
+}
+
+/**
+ * Normalize TAO amounts embedded in source-provided prose. Some decoded event
+ * summaries arrive as complete sentences rather than numeric fields, so they
+ * cannot pass through {@link formatAmount}. Limit the rewrite to a numeric
+ * token immediately followed by whitespace and the TAO glyph; ordinary prose
+ * such as "a τ amount" is intentionally unchanged.
+ */
+export function normalizeTaoUnitSpacing(value: string): string {
+  return value.replace(/(\d)\s+τ/g, "$1τ");
 }
 
 /**
@@ -77,23 +98,44 @@ export function formatCompactAmount(v: number | null | undefined): string {
   return v.toFixed(4);
 }
 
-/** An amount at a fixed precision with its unit: `12.50 τ`. */
+/**
+ * A signed, unitless delta for narrow ranked columns. Values below 0.01 use
+ * three-significant-digit scientific notation so a real microscopic movement
+ * never becomes either `0.0000` or an ellipsis.
+ */
+export function formatCompactDelta(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  if (v === 0) return "0";
+  const sign = v > 0 ? "+" : "−";
+  const magnitude = Math.abs(v);
+  if (magnitude >= 1) return `${sign}${formatCompactAmount(magnitude)}`;
+  if (magnitude >= 0.01) return `${sign}${formatNumber(magnitude)}`;
+  const scientific = magnitude
+    .toExponential(2)
+    .replace(/\.0+(?=e)/, "")
+    .replace(/(\.\d*?)0+(?=e)/, "$1")
+    .replace("e-", "e−")
+    .replace("e+", "e+");
+  return `${sign}${scientific}`;
+}
+
+/** An amount at a fixed precision with its unit: `12.50τ`. */
 export function formatAmountFixed(v: number | null | undefined, places = 2, unit = "τ"): string {
   if (v == null || !Number.isFinite(v)) return "—";
-  return `${v.toFixed(places)} ${unit}`;
+  return joinAmountUnit(v.toFixed(places), unit);
 }
 
 /**
  * A signed amount, with an explicit `+` on the positive side.
  *
- * A stake delta of `12 τ` and one of `-12 τ` are opposite events, and a column
+ * A stake delta of `12τ` and one of `-12τ` are opposite events, and a column
  * that renders the first without a sign makes the reader infer direction from
  * the absence of a character.
  */
 export function formatSignedAmount(v: number | null | undefined, unit = "τ"): string {
   if (v == null || !Number.isFinite(v)) return "—";
   const body = formatAmount(Math.abs(v), unit);
-  // A signed zero says nothing: "+0 τ" and "−0 τ" are the same event, and a
+  // A signed zero says nothing: "+0τ" and "−0τ" are the same event, and a
   // reader scanning a column for direction reads the sign, not the digits.
   if (v === 0) return body;
   // U+2212 MINUS, not the hyphen: it is the width of the plus it alternates
@@ -138,6 +180,21 @@ export function formatUsd(value: number | null | undefined, fallback = "—"): s
   if (amount >= 1_000_000) return `${sign}$${(amount / 1_000_000).toFixed(2)}M`;
   if (amount >= 1) return `${sign}$${formatNumber(Number(amount.toFixed(2)))}`;
   return `${sign}$${formatNumber(amount)}`;
+}
+
+/**
+ * A compact USD reading for narrow analytical marks. Unlike {@link formatUsd},
+ * this abbreviates at the thousand boundary so a live block tile can retain
+ * both its TAO and dollar readings without clipping either one.
+ */
+export function formatCompactUsd(value: number | null | undefined, fallback = "—"): string {
+  if (value == null || !Number.isFinite(value)) return fallback;
+  const sign = value < 0 ? "−" : "";
+  const amount = Math.abs(value);
+  if (amount >= 1_000_000_000) return `${sign}$${(amount / 1_000_000_000).toFixed(1)}B`;
+  if (amount >= 1_000_000) return `${sign}$${(amount / 1_000_000).toFixed(1)}M`;
+  if (amount >= 1_000) return `${sign}$${(amount / 1_000).toFixed(1)}k`;
+  return formatUsd(value, fallback);
 }
 
 /**

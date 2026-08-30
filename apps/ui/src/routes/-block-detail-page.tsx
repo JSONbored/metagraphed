@@ -39,6 +39,7 @@ import {
   blockFacts,
   cadencePoints,
   cadenceRange,
+  eventHref,
   eventLabel,
   eventsByPallet,
   neighbourHrefs,
@@ -50,6 +51,7 @@ import {
   isBlockDetailUnavailable,
   shouldRetryBlockDetail,
 } from "@/components/metagraphed/chain-detail/block-detail-retry";
+import { BLOCK_EXTRINSIC_PAGE_SIZE } from "@/lib/metagraphed/block-route-loader";
 import { Route } from "./blocks.$ref";
 
 const API_PATHS = [
@@ -59,7 +61,6 @@ const API_PATHS = [
   "/api/v1/blocks/{ref}/events",
   "/api/v1/blocks/{ref}/chain-events",
 ];
-const BLOCK_EXTRINSIC_PAGE_SIZE = 100;
 const BLOCK_EFFECT_PAGE_SIZE = 100;
 
 function ApiSources() {
@@ -74,7 +75,7 @@ function EconomicFootprint({ block }: { block: Block | null }) {
     <div>
       <dt>{label}</dt>
       <dd>{typeof value === "number" ? formatTao(value) : "—"}</dd>
-      <small>{note}</small>
+      <span className="mg-block-economics-ledger-note">{note}</span>
     </div>
   );
 
@@ -105,11 +106,11 @@ function EconomicFootprint({ block }: { block: Block | null }) {
           <div className="mg-block-economics-total">
             <span>Economic activity</span>
             <strong>{formatTao(block?.economic_activity_tao)}</strong>
-            <small>
+            <span className="mg-block-economics-total-note">
               {typeof block?.economic_activity_usd === "number"
                 ? `${formatUsd(block.economic_activity_usd)} at ${formatUsd(block.usd_per_tao)} / TAO`
                 : "USD conversion unavailable"}
-            </small>
+            </span>
           </div>
           <dl className="mg-block-economics-ledger">
             {metric("Native transfers", block?.native_transfer_tao, "Balances.Transfer only")}
@@ -549,6 +550,7 @@ export function BlockDetailPage() {
               columns={eventColumns}
               rowKey={(row) => `${row.event_index ?? "?"}`}
               caption="Events emitted"
+              rowHref={(row) => eventHref(row) ?? undefined}
               link={RouterLink}
               source="block-event"
               loading={shouldFetchEvents && events.isPending}

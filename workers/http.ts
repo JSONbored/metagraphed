@@ -43,6 +43,22 @@ export const X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER =
  */
 export const X_METAGRAPH_CACHE_HEADER = "x-metagraph-cache";
 
+/**
+ * In-memory hand-off from a chain-detail handler to its edge-cache wrapper.
+ *
+ * A `short` response is normally deliberately unsettled and must not be
+ * stored. One exception is a settled chain record with a live market overlay:
+ * the record is immutable, but the composed response may be reused only for
+ * its short public freshness window. A symbol property carries that exception
+ * without adding internal coordination metadata to the HTTP response.
+ */
+export const METAGRAPH_SETTLED_SHORT_CACHE = Symbol(
+  "metagraph.settledShortCache",
+);
+export type SettledShortCacheResponse = Response & {
+  [METAGRAPH_SETTLED_SHORT_CACHE]?: true;
+};
+
 /** Statuses the Response constructor forbids a body on (null body only). */
 const NULL_BODY_STATUSES = new Set([204, 205, 304]);
 

@@ -2592,6 +2592,11 @@ export interface SubnetMoversNetwork {
 export interface SubnetMovers {
   schema_version: number;
   window: string;
+  start_date: string | null;
+  end_date: string | null;
+  covered_days: number | null;
+  requested_days: number | null;
+  window_truncated: boolean;
   sort: string;
   subnet_count: number;
   network: SubnetMoversNetwork | null;
@@ -2886,15 +2891,31 @@ export interface AccountListEntry {
   latest_block_number: number | null;
 }
 
-/** Site-wide accounts leaderboard from GET /api/v1/accounts. */
-export interface AccountsList {
+/** Compact account row carried by the website's single-snapshot directory. */
+export type AccountHolderDirectoryEntry = Pick<
+  AccountListEntry,
+  | "hotkey"
+  | "coldkey"
+  | "subnet_count"
+  | "uid_count"
+  | "total_stake_tao"
+  | "total_emission_tao"
+  | "stake_dominance"
+>;
+
+/** All fixed account rankings needed by /accounts, derived together. */
+export interface AccountHolderDirectory {
   schema_version?: number;
-  sort: string;
-  limit: number;
-  account_count: number;
   captured_at?: string;
   block_number?: number;
-  accounts: AccountListEntry[];
+  account_count: number;
+  limit: number;
+  priced_registered_stake_tao: number;
+  rankings: {
+    stake: AccountHolderDirectoryEntry[];
+    emission: AccountHolderDirectoryEntry[];
+    reach: AccountHolderDirectoryEntry[];
+  };
 }
 
 /**
@@ -3721,6 +3742,7 @@ export interface ChainTransfers {
 export interface ChainFeeDay {
   day: string;
   extrinsic_count: number;
+  signed_extrinsic_count: number | null;
   total_fee_tao: number;
   avg_fee_tao: number | null;
   total_tip_tao: number;

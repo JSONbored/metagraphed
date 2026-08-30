@@ -10,6 +10,10 @@ const extrinsicPage = readFileSync(
   fileURLToPath(new URL("./-extrinsic-detail-page.tsx", import.meta.url)),
   "utf8",
 );
+const blockRoute = readFileSync(
+  fileURLToPath(new URL("./blocks.$ref.tsx", import.meta.url)),
+  "utf8",
+);
 
 describe("block detail loading contract", () => {
   it("uses the endpoint-safe cadence limit instead of requesting 101 blocks", () => {
@@ -37,6 +41,12 @@ describe("block detail loading contract", () => {
     expect(page).toContain("extrinsics.fetchNextPage()");
     expect(page).toContain("total={extrinsicTotal ?? undefined}");
     expect(page).toContain("paginate={false}");
+  });
+
+  it("primes the first extrinsics page with the header and reuses the shared query entry", () => {
+    expect(blockRoute).toContain("await startBlockRouteQueries(context.queryClient, params.ref)");
+    expect(blockRoute).toContain("result = await pending.block");
+    expect(blockRoute).toContain("void pending.extrinsics");
   });
 
   it("uses a compact first decoded-event page without losing cursor continuation", () => {

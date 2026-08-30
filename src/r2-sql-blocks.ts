@@ -22,12 +22,26 @@
 //   - ~1-2s per query, so every caller must sit behind the existing edge
 //     cache. See src/r2-sql.ts's header for the measurements.
 
-import { buildBlock, buildBlockFeed, declineBlock } from "./blocks.ts";
+import {
+  buildBlock,
+  buildBlockFeed,
+  declineBlock,
+  withBlockEconomics,
+} from "./blocks.ts";
+import { summarizeBlockEconomics } from "./block-economics.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { type ChainNetworkId, chainTable } from "./chain-network.ts";
-import { BLOCKS_COLUMNS } from "../generated/lakehouse/types.ts";
-import type { BlocksRow } from "../generated/lakehouse/types.ts";
+import {
+  ACCOUNT_EVENTS_COLUMNS,
+  BLOCKS_COLUMNS,
+  EXTRINSICS_COLUMNS,
+} from "../generated/lakehouse/types.ts";
+import type {
+  AccountEventsRow,
+  BlocksRow,
+  ExtrinsicsRow,
+} from "../generated/lakehouse/types.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -47,6 +61,52 @@ import { recordOrNull } from "./read-store.ts";
 // this is a no-op today and a tripwire tomorrow, which is the whole point of
 // generating the tuple at all.
 const BLOCK_COLUMNS = BLOCKS_COLUMNS.join(", ");
+const ECONOMICS_EXTRINSIC_COLUMNS = EXTRINSICS_COLUMNS.join(", ");
+const ECONOMICS_EVENT_COLUMNS = ACCOUNT_EVENTS_COLUMNS.join(", ");
+
+/**
+ * Convert a lakehouse DOUBLE back into the decimal wire shape consumed by the
+ * canonical economics reducer. The table itself is already the precision
+ * boundary; fixed-point text prevents a small value rendered in exponent form
+ * from being mistaken for an undecodable amount.
+ */
+function lakehouseDecimal(value: unknown): unknown {
+  return typeof value === "number"
+    ? value.toFixed(18).replace(/\.?0+$/, "")
+    : value;
+}
+
+async function loadBlockEconomicsFromR2Sql(
+  env: R2SqlEnv | null | undefined,
+  height: number,
+  network?: ChainNetworkId,
+) {
+  const [extrinsics, accountEvents] = await Promise.all([
+    r2SqlQuery<ExtrinsicsRow>(
+      env,
+      `SELECT ${ECONOMICS_EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)} ` +
+        `WHERE block_number = ${height} ORDER BY extrinsic_index ASC`,
+    ),
+    r2SqlQuery<AccountEventsRow>(
+      env,
+      `SELECT ${ECONOMICS_EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
+        `WHERE block_number = ${height} ORDER BY event_index ASC`,
+    ),
+  ]);
+  if (extrinsics === null || accountEvents === null) return null;
+
+  return summarizeBlockEconomics(
+    extrinsics.map((row) => ({
+      ...row,
+      fee_tao: lakehouseDecimal(row.fee_tao),
+      tip_tao: lakehouseDecimal(row.tip_tao),
+    })),
+    accountEvents.map((row) => ({
+      ...row,
+      amount_tao: lakehouseDecimal(row.amount_tao),
+    })),
+  );
+}
 
 /**
  * How deep an emulated OFFSET may go. Past this the over-fetch stops being a
@@ -375,6 +435,40 @@ export async function loadBlockFromR2Sql(
     ref,
     neighbours === null ? undefined : neighboursOf(neighbours, height),
   );
+}
+
+/**
+ * One lakehouse block with its canonical economic summary.
+ *
+ * The Iceberg block row intentionally stores only header/count columns. Its
+ * companion extrinsic and account-event tables are committed atomically to the
+ * same decoded ceiling, so a present block makes an empty companion result a
+ * real zero and a failed companion query an honest unavailable summary.
+ * Numeric refs run all three reads concurrently; hash refs resolve their height
+ * first, because the companion tables carry no block hash.
+ */
+export async function loadBlockWithEconomicsFromR2Sql(
+  env: R2SqlEnv | null | undefined,
+  ref: string,
+  network?: ChainNetworkId,
+): Promise<ReturnType<typeof buildBlock> | null> {
+  const height = safeBlockNumber(ref);
+  if (height !== null) {
+    const [detail, economics] = await Promise.all([
+      loadBlockFromR2Sql(env, ref, network),
+      loadBlockEconomicsFromR2Sql(env, height, network),
+    ]);
+    if (!detail?.block || economics === null) return detail;
+    return { ...detail, block: withBlockEconomics(detail.block, economics) };
+  }
+
+  const detail = await loadBlockFromR2Sql(env, ref, network);
+  const resolved = safeBlockNumber(detail?.block?.block_number);
+  if (!detail?.block || resolved === null) return detail;
+  const economics = await loadBlockEconomicsFromR2Sql(env, resolved, network);
+  return economics === null
+    ? detail
+    : { ...detail, block: withBlockEconomics(detail.block, economics) };
 }
 
 /**

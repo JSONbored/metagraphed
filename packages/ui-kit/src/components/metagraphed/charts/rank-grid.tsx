@@ -12,7 +12,7 @@ import { markAriaLabel } from "./chart-aria";
 export interface RankGridItem {
   key: string;
   label: string;
-  /** Formatted value, e.g. "1.2M τ". */
+  /** Formatted value, e.g. "1.2Mτ". */
   value?: string;
   /** Formatted share, e.g. "42%". */
   share?: string;

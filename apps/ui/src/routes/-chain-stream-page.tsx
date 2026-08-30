@@ -16,6 +16,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
+import { BLOCK_EXTRINSIC_PAGE_SIZE } from "@/lib/metagraphed/block-route-loader";
 import {
   blocksQuery,
   blocksSummaryQuery,
@@ -44,6 +45,7 @@ import {
   eventColumns,
   extrinsicColumns,
 } from "@/components/metagraphed/chain-stream/chain-stream-columns";
+import { eventHref } from "@/components/metagraphed/chain-detail/chain-detail-logic";
 import { BlockActivityWindow } from "@/components/metagraphed/chain-stream/block-activity-window";
 import { StreamShell, streamEmpty } from "@/components/metagraphed/chain-stream/stream-shell";
 import { ErrorState } from "@/components/metagraphed/states";
@@ -101,7 +103,7 @@ const BlockStreamLink: SectionNavLink = ({ href, children, ...rest }) => {
     intentTimer.current = window.setTimeout(() => {
       intentTimer.current = null;
       void queryClient.prefetchInfiniteQuery({
-        ...blockExtrinsicsInfiniteQuery(blockNumber, 100),
+        ...blockExtrinsicsInfiniteQuery(blockNumber, BLOCK_EXTRINSIC_PAGE_SIZE),
         retry: 0,
       });
     }, 140);
@@ -161,7 +163,7 @@ export function BlocksPage() {
   return (
     <StreamShell
       name="Blocks"
-      lede="Every block the indexer has seen, newest first."
+      lede="Inspect decoded economic activity, subnet involvement, authorship, timing, extrinsics, and events for every indexed block—newest first. Trace where value moved, then open any height for its complete record."
       facts={facts}
       updatedAt={rows[0]?.observed_at ?? null}
       refreshing={summary.isFetching}
@@ -393,6 +395,7 @@ export function EventsPage() {
         caption={
           hidden > 0 ? `Chain events (${formatNumber(hidden)} plumbing hidden)` : "Chain events"
         }
+        rowHref={(row) => eventHref(row) ?? undefined}
         link={BlockStreamLink}
         source="chain-event"
         storageKey="mg-events-columns"

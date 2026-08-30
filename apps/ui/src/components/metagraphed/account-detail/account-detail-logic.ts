@@ -154,7 +154,7 @@ export interface CounterpartyRow {
 /**
  * Transfer partners ranked by how much moved, in either direction.
  *
- * By GROSS, not net: an address that sent 1,000 τ and received 1,000 τ back
+ * By GROSS, not net: an address that sent 1,000τ and received 1,000τ back
  * has a net of zero and is the account's most significant counterparty, and
  * ranking by net would put it last.
  */

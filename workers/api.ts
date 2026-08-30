@@ -243,11 +243,13 @@ import {
   exposeCustomResponseHeaders,
   ifNoneMatchSatisfied,
   isPathUnder,
+  METAGRAPH_SETTLED_SHORT_CACHE,
   weakEtag,
   withCacheStatus,
   X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
   type CacheProfile,
+  type SettledShortCacheResponse,
   readBoundedRequestText,
 } from "./http.ts";
 import {
@@ -314,7 +316,7 @@ import {
   accountEdgeCacheEligible,
 } from "./account-edge-cache.ts";
 import { parseRouteQuery, routeQuery, routeText } from "../src/route-query.ts";
-import { readNeuronsSnapshotCacheStamp } from "./data-api-tier.ts";
+import { readExplorerDirectoryCacheStamp } from "./data-api-tier.ts";
 import {
   serverTimingHeader,
   withRequestTiming,
@@ -418,6 +420,7 @@ import {
   canonicalGlobalValidatorsCachePath,
   handleValidatorOperatorDirectory,
   handleAccountsList,
+  handleAccountHolderDirectory,
   canonicalAccountsListCachePath,
   handleTopHoldersList,
   canonicalTopHoldersCachePath,
@@ -4382,7 +4385,8 @@ function cacheWrite(ctx: Ctx | undefined, write: () => Promise<unknown>): void {
  * than a guess: chainDetailGapResponse states the lane "closes [a gap] within
  * the hour", so an hour is the longest a re-decode can leave a stored answer
  * disagreeing with the store behind it. The key is already namespaced by
- * contract version, so a contract change invalidates independently of this.
+ * contract version and response-shape generation, so either kind of change
+ * invalidates independently of this.
  *
  * Deliberately longer than the 600 s `static` profile the response advertises to
  * clients: that number is a browser's revalidation interval, this one is how
@@ -4390,6 +4394,17 @@ function cacheWrite(ctx: Ctx | undefined, write: () => Promise<unknown>): void {
  * different questions and were never the same number.
  */
 const CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS = 3600;
+const CHAIN_DETAIL_SETTLED_SHORT_CACHE_TTL_SECONDS = 60;
+
+/**
+ * Cache namespace for the serialized chain-detail response shape.
+ *
+ * The public contract version is intentionally long-lived across compatible
+ * field additions. Those additions can still make a previously cached body
+ * fail the current response audit, so advance this generation whenever a
+ * chain-detail response gains required fields or changes serialization.
+ */
+const CHAIN_DETAIL_CACHE_SCHEMA_GENERATION = "2";
 
 /**
  * Edge-cache key for one chain-detail answer (block / extrinsic detail).
@@ -4408,7 +4423,7 @@ export function chainDetailCacheKey(
   return new Request(
     `https://edge-cache.metagraph.sh/chain-detail/${encodeURIComponent(
       contractVersion(env),
-    )}/${network}${url.pathname}${url.search}`,
+    )}/${CHAIN_DETAIL_CACHE_SCHEMA_GENERATION}/${network}${url.pathname}${url.search}`,
   );
 }
 
@@ -4466,10 +4481,18 @@ export async function withChainDetailEdgeCache(
   }
 
   const response = await produce();
-  if (
-    response.status === 200 &&
-    response.headers.get("x-metagraph-cache-profile") === "static"
-  ) {
+  const profile = response.headers.get("x-metagraph-cache-profile");
+  const settledShort =
+    profile === "short" &&
+    (response as SettledShortCacheResponse)[METAGRAPH_SETTLED_SHORT_CACHE] ===
+      true;
+  const cacheTtl =
+    profile === "static"
+      ? CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS
+      : settledShort
+        ? CHAIN_DETAIL_SETTLED_SHORT_CACHE_TTL_SECONDS
+        : null;
+  if (response.status === 200 && cacheTtl !== null) {
     // Stored with OUR ttl, not the client-facing one. Built explicitly rather
     // than by passing the Response as an init so the headers are copied into a
     // fresh Headers and mutating them cannot reach the response we return.
@@ -4478,10 +4501,7 @@ export async function withChainDetailEdgeCache(
       statusText: response.statusText,
       headers: response.headers,
     });
-    stored.headers.set(
-      "cache-control",
-      `public, s-maxage=${CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS}`,
-    );
+    stored.headers.set("cache-control", `public, s-maxage=${cacheTtl}`);
     cacheWrite(ctx, () => cacheable.store.put(cacheable.key, stored));
   }
   // Stamped on the returned response only -- `stored` above is the cache's own
@@ -6927,7 +6947,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       "validator-operator-directory",
       (cacheRequest) => handleValidatorOperatorDirectory(cacheRequest, env),
       url.pathname,
-      readNeuronsSnapshotCacheStamp,
+      readExplorerDirectoryCacheStamp,
     );
   }
 
@@ -6963,6 +6983,21 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       "accounts-list",
       () => handleAccountsList(request, env, url),
       accountsCache.cachePathAndSearch,
+    );
+  }
+
+  // Canonical website-sized holder directory. One response contains the
+  // three bounded rankings the page switches between, and invalidates only
+  // when a complete neuron pass advances.
+  if (url.pathname === "/api/v1/accounts/directory") {
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "account-holder-directory",
+      (cacheRequest) => handleAccountHolderDirectory(cacheRequest, env),
+      url.pathname,
+      readExplorerDirectoryCacheStamp,
     );
   }
 
@@ -8524,6 +8559,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/validators" ||
     pathname === "/api/v1/validators/operators" ||
     pathname === "/api/v1/accounts" ||
+    pathname === "/api/v1/accounts/directory" ||
     VALIDATOR_DETAIL_PATH_PATTERN.test(pathname) ||
     VALIDATOR_NOMINATORS_PATH_PATTERN.test(pathname) ||
     VALIDATOR_HISTORY_PATH_PATTERN.test(pathname) ||

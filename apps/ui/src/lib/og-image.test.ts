@@ -96,7 +96,7 @@ describe("readCardParams (#8489)", () => {
       stat1: "Netuid",
       stat1v: "SN64",
       stat2: "Price",
-      stat2v: "0.0832 τ",
+      stat2v: "0.0832τ",
       stat3: "Emission",
       stat3v: "3.41%",
       stat4: "Ignored",
@@ -110,7 +110,7 @@ describe("readCardParams (#8489)", () => {
       status: null,
       stats: [
         { label: "Netuid", value: "SN64" },
-        { label: "Price", value: "0.0832 τ" },
+        { label: "Price", value: "0.0832τ" },
         { label: "Emission", value: "3.41%" },
       ],
     });
@@ -271,7 +271,7 @@ describe("card font stack (#8489)", () => {
       title: "Chutes",
       subtitle: "x",
       eyebrow: null,
-      stats: [{ label: "Alpha price", value: "0.0832 τ" }],
+      stats: [{ label: "Alpha price", value: "0.0832τ" }],
     });
     expect(markup).toContain("font-family:'Space Grotesk','Inter'");
   });
@@ -328,7 +328,7 @@ describe("glyph subsetting (#8489) — every painted character must be subset", 
       title: "x",
       subtitle: "y",
       eyebrow: null,
-      stats: [{ label: "Alpha price", value: "0.0832 τ" }],
+      stats: [{ label: "Alpha price", value: "0.0832τ" }],
     });
     const painted = paintedChars(markup);
     for (const ch of "ALPHA PRICE".replace(/\s/g, "")) {
@@ -558,7 +558,7 @@ describe("three-stat rail (#8489)", () => {
       entity: true,
       stats: [
         { label: "Netuid", value: "SN64" },
-        { label: "Price", value: "0.0832 τ" },
+        { label: "Price", value: "0.0832τ" },
         { label: "Emission", value: "3.41%" },
       ],
     });
@@ -572,7 +572,7 @@ describe("three-stat rail (#8489)", () => {
       entity: true,
       stats: [
         { label: "Netuid", value: "SN64" },
-        { label: "Price", value: "0.0832 τ" },
+        { label: "Price", value: "0.0832τ" },
       ],
     });
     expect(two).toContain("font-size:42px");
@@ -624,7 +624,7 @@ describe("font subset request (#11204) — the bug that painted three tofu boxes
     entity: true,
     stats: [
       { label: "Netuid", value: "SN1" },
-      { label: "Price", value: "0.0080 τ" },
+      { label: "Price", value: "0.0080τ" },
       { label: "Emission", value: "0.61%" },
     ],
   };

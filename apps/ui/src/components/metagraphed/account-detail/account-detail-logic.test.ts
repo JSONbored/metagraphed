@@ -25,20 +25,20 @@ const position = (): AccountPosition =>
 
 describe("formatters", () => {
   it("renders TAO at the requested precision and a dash for nothing", () => {
-    expect(fmtTao(1.23456, 4)).toBe("1.2346 τ");
+    expect(fmtTao(1.23456, 4)).toBe("1.2346τ");
     expect(fmtTao(null)).toBe("—");
     expect(fmtTao(Number.NaN)).toBe("—");
   });
 
   it("compacts at each magnitude", () => {
-    expect(fmtCompactTao(2_691_628)).toBe("2.69M τ");
-    expect(fmtCompactTao(2_500)).toBe("2.5k τ");
-    expect(fmtCompactTao(2.5)).toBe("2.50 τ");
+    expect(fmtCompactTao(2_691_628)).toBe("2.69Mτ");
+    expect(fmtCompactTao(2_500)).toBe("2.5kτ");
+    expect(fmtCompactTao(2.5)).toBe("2.50τ");
   });
 
   it("keeps the sign on a net figure, where the sign is the point", () => {
-    expect(fmtSignedTao(5)).toBe("+5.00 τ");
-    expect(fmtSignedTao(-5)).toBe("−5.00 τ");
+    expect(fmtSignedTao(5)).toBe("+5.00τ");
+    expect(fmtSignedTao(-5)).toBe("−5.00τ");
     expect(fmtSignedTao(null)).toBe("—");
   });
 });
@@ -134,9 +134,9 @@ describe("counterpartyRail", () => {
 
   it("carries both directions and the net into the tooltip", () => {
     expect(counterpartyRail(parties)[0]?.detail).toEqual([
-      { key: "sent", label: "Sent", value: "1.0k τ" },
-      { key: "received", label: "Received", value: "1.0k τ" },
-      { key: "net", label: "Net", value: "0.0000 τ" },
+      { key: "sent", label: "Sent", value: "1.0kτ" },
+      { key: "received", label: "Received", value: "1.0kτ" },
+      { key: "net", label: "Net", value: "0.0000τ" },
       { key: "transfers", label: "Transfers", value: "8" },
     ]);
   });

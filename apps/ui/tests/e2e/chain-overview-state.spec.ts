@@ -13,6 +13,69 @@ const DELAYED_READS = [
 ];
 
 test.describe("Chain overview secondary query states", () => {
+  // Browser routing must see the activity request; an installed service
+  // worker can otherwise satisfy it before Playwright can inject the degraded
+  // contract used by the first regression.
+  test.use({ serviceWorkers: "block" });
+
+  test("keeps independent chain sections available when daily activity is unverified", async ({
+    page,
+  }) => {
+    let activityUnavailable = true;
+    let activityRouteHits = 0;
+    await page.route("**/api/v1/chain/activity*", async (route) => {
+      activityRouteHits += 1;
+      if (!activityUnavailable) {
+        await route.continue();
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: {
+          "access-control-allow-origin": "*",
+          "access-control-expose-headers": "x-metagraph-degraded",
+          "x-metagraph-degraded": "tier_unavailable",
+        },
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            schema_version: 1,
+            window: "7d",
+            observed_at: null,
+            day_count: 0,
+            days: [],
+          },
+        }),
+      });
+    });
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await gotoThroughRestart(page, "/chain");
+
+    await expect(page.getByRole("heading", { level: 1, name: "Chain" })).toBeVisible();
+    // The production Worker can stream a fresh dehydrated activity result
+    // before browser routing is installed. The hero refresh invalidates that
+    // cache and exercises the client-side degraded response deterministically.
+    await page.getByRole("button", { name: "refresh" }).click();
+    await expect.poll(() => activityRouteHits).toBeGreaterThan(0);
+    await expect(page.getByRole("status")).toContainText("Data source temporarily unavailable");
+    await expect(page.getByRole("status")).toContainText("no zero or empty result is shown");
+    await expect(page.locator("section#throughput")).toBeVisible();
+    await expect(page.getByRole("link", { name: "blocks", exact: true })).toBeVisible();
+    await expect(page.getByText(/0 extrinsics across 0 modules/)).toHaveCount(0);
+
+    activityUnavailable = false;
+    await page.getByRole("status").getByRole("button", { name: "Retry" }).click();
+    await expect(page.getByRole("status")).toHaveCount(0);
+
+    const dimensions = await page.evaluate(() => ({
+      document: document.documentElement.scrollWidth,
+      viewport: window.innerWidth,
+    }));
+    expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+  });
+
   test("starts only the opening throughput reading and keeps later analytics structured", async ({
     page,
   }) => {

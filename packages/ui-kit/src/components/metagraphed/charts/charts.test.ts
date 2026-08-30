@@ -135,6 +135,20 @@ describe("LineWithWindow", () => {
     expect(html).not.toContain("fill=");
   });
 
+  it("opts into a replayable path draw while preserving a stable SVG length", () => {
+    const animated = render(
+      h(LineWithWindow, {
+        ...spec,
+        unit: "blocks",
+        ariaLabel: "Daily blocks",
+        animate: true,
+        zeroBaseline: true,
+      }),
+    );
+    expect(animated).toContain('data-animate="true"');
+    expect(animated.match(/pathLength="1"/g)).toHaveLength(2);
+  });
+
   it("is one mark per point, named by date and value, plus a months row", () => {
     const hits = html.match(/class="mg-line-hit"/g) ?? [];
     expect(hits.length).toBe(spec.points.length);

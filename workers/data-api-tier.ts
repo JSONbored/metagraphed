@@ -157,33 +157,20 @@ export const FORWARDABLE_TIER_FLAGS = [
 export type ForwardableTierFlag = (typeof FORWARDABLE_TIER_FLAGS)[number];
 
 /**
- * The newest fully-landed neuron snapshot, for cache invalidation.
+ * A bounded cache epoch for the precomputed explorer directories.
  *
- * This asks the data Worker for one indexed row from `neurons_passes`. It does
- * not use health metadata: a health probe can run without neuron data moving,
- * and a partial multi-request neuron pass can move MAX(captured_at) before the
- * network-wide directory is complete. Returning null disables the edge cache
- * for that request rather than reusing a stamp we could not prove.
+ * The route responses are already bounded by a 60-second public
+ * cache profile, while their source snapshot advances roughly every 15
+ * minutes. A wall-clock epoch keeps the edge key fresh within that same
+ * contract without adding a KV read before every cache lookup. The handler's
+ * first miss can therefore spend its one storage read on the route-specific
+ * materialization rather than reading a pointer first.
  */
-export async function readNeuronsSnapshotCacheStamp(
+export async function readExplorerDirectoryCacheStamp(
   env: Env,
 ): Promise<string | null> {
-  if (env.METAGRAPH_NEURONS_SOURCE !== "data-api" || !env.DATA_API) return null;
-  try {
-    const response = await env.DATA_API.fetch(
-      new Request(
-        "https://data-api.internal/api/v1/internal/neurons-snapshot-stamp",
-      ),
-    );
-    if (!response.ok) return null;
-    const body = (await response.json()) as { captured_at?: unknown };
-    const capturedAt = Number(body?.captured_at);
-    return Number.isSafeInteger(capturedAt) && capturedAt > 0
-      ? String(capturedAt)
-      : null;
-  } catch {
-    return null;
-  }
+  if (env.METAGRAPH_NEURONS_SOURCE !== "data-api") return null;
+  return `minute:${Math.floor(Date.now() / 60_000)}`;
 }
 
 export async function tryDataApiTier(

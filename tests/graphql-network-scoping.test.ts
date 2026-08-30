@@ -147,8 +147,13 @@ describe("the resolvers ask the twin path", () => {
   test("a per-block read forwards it", async () => {
     const queries = recordingLakehouse();
     await query('{ block(ref: "9", network: test) { ref } }', LAKEHOUSE_ENV);
-    assert.equal(queries.length, 1);
-    assert.match(queries[0], new RegExp(chainTable("blocks", "testnet")));
+    assert.equal(queries.length, 3);
+    for (const table of ["blocks", "extrinsics", "account_events"] as const) {
+      assert.ok(
+        queries.some((sql) => sql.includes(chainTable(table, "testnet"))),
+        `${table}: the point read must stay inside the testnet namespace`,
+      );
+    }
   });
 
   test("a block-detail cascade forwards it to the hot/cold decision", async () => {

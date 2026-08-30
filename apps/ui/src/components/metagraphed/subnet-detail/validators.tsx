@@ -26,7 +26,7 @@ const COLUMNS: DataTableColumn<MetagraphNeuron>[] = [
     label: "Stake",
     kind: "number",
     value: (row) => row.stake_tao ?? null,
-    format: (v) => (typeof v === "number" ? `${taoCompact(v)} τ` : "—"),
+    format: (v) => (typeof v === "number" ? `${taoCompact(v)}τ` : "—"),
   },
   {
     key: "take",
@@ -111,7 +111,7 @@ export function ValidatorsSection({ netuid }: { netuid: number }) {
         showLoading ? (
           <RankedRails
             items={[]}
-            formatValue={(v) => `${taoCompact(v)} τ`}
+            formatValue={(v) => `${taoCompact(v)}τ`}
             scale="sqrt"
             columns={{ value: "Stake", name: "Validator", track: "Share of validator stake" }}
             ariaLabel={`Subnet ${netuid} validators by stake`}
@@ -128,7 +128,7 @@ export function ValidatorsSection({ netuid }: { netuid: number }) {
         ) : items.length > 0 ? (
           <RankedRails
             items={items}
-            formatValue={(v) => `${taoCompact(v)} τ`}
+            formatValue={(v) => `${taoCompact(v)}τ`}
             scale="sqrt"
             columns={{ value: "Stake", name: "Validator", track: "Share of validator stake" }}
             ariaLabel={`Subnet ${netuid} validators by stake`}

@@ -20,6 +20,12 @@ import { beforeAll, beforeEach, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import type { Row } from "./row-type.ts";
 import { persistComputeDeclaration } from "../src/compute-declarations-lane.ts";
+import {
+  explorerDirectoriesSnapshotKey,
+  KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
+  KV_EXPLORER_DIRECTORIES_CURRENT,
+  KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
+} from "../src/kv-keys.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import type { DataApiWorkerEnv } from "../workers/types.ts";
 
@@ -34,7 +40,11 @@ const { pg } = await vi.hoisted(async () => ({
 }));
 vi.mock("pg", () => pg.module);
 
-const { default: worker } = await import("../workers/data-api.ts");
+const {
+  default: worker,
+  materializationFromUnknown,
+  refreshExplorerDirectoryMaterialization,
+} = await import("../workers/data-api.ts");
 
 /**
  * The REAL Neon DDL for every table this route family touches (#10328).
@@ -146,6 +156,38 @@ function env(overrides: Record<string, unknown> = {}): DataApiWorkerEnv {
     NEURON_DAILY_BACKFILL_SECRET: BACKFILL_SECRET,
     ...overrides,
   });
+}
+
+function memoryKv() {
+  const values = new Map<string, string>();
+  let puts = 0;
+  return {
+    values,
+    putCount: () => puts,
+    get: async (key: string, type?: string) => {
+      const value = values.get(key) ?? null;
+      return type === "json" && value !== null ? JSON.parse(value) : value;
+    },
+    put: async (key: string, value: string) => {
+      puts += 1;
+      values.set(key, value);
+    },
+    delete: async (key: string) => {
+      values.delete(key);
+    },
+  };
+}
+
+function collectingCtx() {
+  const pending: Promise<unknown>[] = [];
+  return {
+    pending,
+    ctx: {
+      waitUntil(value: Promise<unknown>) {
+        pending.push(Promise.resolve(value));
+      },
+    } as unknown as ExecutionContext,
+  };
 }
 
 /** A ctx with a real `waitUntil`. createPgSql hands the client back through it
@@ -400,6 +442,60 @@ test("neurons-sync writes neurons, neuron_daily, and account_position_daily from
   );
   assert.equal(position.netuid, 7);
   assert.equal(position.stake_tao, 100);
+});
+
+test("the direct neurons path publishes explorer directories when its declared pass completes", async () => {
+  const kv = memoryKv();
+  const collected = collectingCtx();
+  const response = await worker.fetch(
+    req("/api/v1/internal/neurons-sync", {
+      method: "POST",
+      headers: { "x-neurons-sync-token": SYNC_SECRET },
+      body: { rows: [syncRow()], pass_total: 1 },
+    }),
+    env({ METAGRAPH_CONTROL: kv }),
+    collected.ctx,
+  );
+
+  assert.equal(response.status, 200);
+  await Promise.all(collected.pending);
+  const pointer = JSON.parse(
+    kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!,
+  ) as Row;
+  assert.equal(pointer.captured_at, CAPTURED_AT);
+  const stored = JSON.parse(
+    kv.values.get(explorerDirectoriesSnapshotKey(CAPTURED_AT))!,
+  ) as Row;
+  assert.equal((stored.accounts as Row).account_count, 1);
+  assert.equal((stored.validators as Row).validator_count, 1);
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+      .account_count,
+    1,
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT)!)
+      .validator_count,
+    1,
+  );
+});
+
+test("the direct neurons path does not publish an incomplete declared pass", async () => {
+  const kv = memoryKv();
+  const collected = collectingCtx();
+  const response = await worker.fetch(
+    req("/api/v1/internal/neurons-sync", {
+      method: "POST",
+      headers: { "x-neurons-sync-token": SYNC_SECRET },
+      body: { rows: [syncRow()], pass_total: 2 },
+    }),
+    env({ METAGRAPH_CONTROL: kv }),
+    collected.ctx,
+  );
+
+  assert.equal(response.status, 200);
+  await Promise.all(collected.pending);
+  assert.equal(kv.putCount(), 0);
 });
 
 test("neurons-sync upsert: a newer capture replaces the row, an older one is discarded by the captured_at guard", async () => {
@@ -1281,6 +1377,30 @@ test("GET /api/v1/accounts falls back to the default limit for an absent param",
   const res = await call(req("/api/v1/accounts"));
   assert.equal(res.status, 200);
   assert.equal((((await res.json()) as Row).accounts as Row[]).length, 1);
+});
+
+test("GET /api/v1/accounts/directory derives every website ranking from one snapshot", async () => {
+  insertNeuron({ netuid: 0, uid: 0, hotkey: "5Stake", stake_tao: 100 });
+  insertNeuron({
+    netuid: 0,
+    uid: 1,
+    hotkey: "5Emission",
+    stake_tao: 10,
+    emission_tao: 20,
+  });
+  insertNeuron({ netuid: 0, uid: 2, hotkey: "5Reach", stake_tao: 5 });
+  insertNeuron({ netuid: 7, uid: 0, hotkey: "5Reach", stake_tao: 5 });
+  insertPrice(7, dayAgo(0), 2);
+
+  const res = await call(req("/api/v1/accounts/directory"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.account_count, 3);
+  assert.equal(body.priced_registered_stake_tao, 125);
+  const rankings = body.rankings as Row;
+  assert.equal((rankings.stake as Row[])[0]!.hotkey, "5Stake");
+  assert.equal((rankings.emission as Row[])[0]!.hotkey, "5Emission");
+  assert.equal((rankings.reach as Row[])[0]!.hotkey, "5Reach");
 });
 
 // --- neuron_daily history routes ---------------------------------------------
@@ -2704,6 +2824,615 @@ test("the neuron snapshot stamp stays null until a pass completes", async () => 
   assert.deepEqual(await res.json(), { captured_at: null });
 });
 
+test("the snapshot stamp prepares one atomic directory materialization and both routes reuse it", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Stake", stake_tao: 100 });
+  await insertNeuron({ uid: 1, hotkey: "5Emission", emission_tao: 20 });
+  await insertNeuron({ uid: 2, hotkey: "5Reach", stake_tao: 5 });
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 3, 3, CAPTURED_AT + 1],
+  );
+  const kv = memoryKv();
+  const materializedEnv = env({ METAGRAPH_CONTROL: kv });
+  const collected = collectingCtx();
+
+  const stamp = await worker.fetch(
+    req("/api/v1/internal/neurons-snapshot-stamp"),
+    materializedEnv,
+    collected.ctx,
+  );
+  assert.deepEqual(await stamp.json(), { captured_at: CAPTURED_AT });
+  await Promise.all(collected.pending);
+
+  const pointer = JSON.parse(
+    kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!,
+  ) as Row;
+  assert.equal(pointer.captured_at, CAPTURED_AT);
+  const stored = JSON.parse(
+    kv.values.get(explorerDirectoriesSnapshotKey(CAPTURED_AT))!,
+  ) as Row;
+  assert.equal(stored.captured_at, CAPTURED_AT);
+  assert.equal((stored.accounts as Row).account_count, 3);
+  assert.equal((stored.validators as Row).validator_count, 3);
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+      .account_count,
+    3,
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT)!)
+      .validator_count,
+    3,
+  );
+
+  // Prove these are KV reads rather than another whole-network aggregation:
+  // once the materialization exists, even an unavailable source table cannot
+  // turn the two compact website routes into an error or an empty directory.
+  await db.exec("TRUNCATE neurons");
+  const accounts = await call(
+    req("/api/v1/accounts/directory"),
+    materializedEnv,
+  );
+  const validators = await call(
+    req("/api/v1/validators/operators"),
+    materializedEnv,
+  );
+  assert.equal(((await accounts.json()) as Row).account_count, 3);
+  assert.equal(((await validators.json()) as Row).validator_count, 3);
+});
+
+test("concurrent requests share one directory refresh for a completed snapshot", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Only", stake_tao: 100 });
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+  );
+  const kv = memoryKv();
+  const materializedEnv = env({ METAGRAPH_CONTROL: kv });
+  const collected = collectingCtx();
+  const [first, second] = await Promise.all([
+    refreshExplorerDirectoryMaterialization(
+      materializedEnv as DataApiEnv,
+      collected.ctx,
+      CAPTURED_AT,
+    ),
+    refreshExplorerDirectoryMaterialization(
+      materializedEnv as DataApiEnv,
+      collected.ctx,
+      CAPTURED_AT,
+    ),
+  ]);
+  assert.deepEqual([first, second], [true, true]);
+  // One versioned payload, two route-specific hot values and one tiny current
+  // pointer, still from one shared build rather than one write set per caller.
+  assert.equal(kv.putCount(), 4);
+});
+
+test("the cache-stamp hot path reads only the small directory pointer", async () => {
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+  );
+  const reads: string[] = [];
+  const pointerKv = {
+    get: async (key: string, type?: string) => {
+      reads.push(key);
+      const value =
+        key === KV_EXPLORER_DIRECTORIES_CURRENT
+          ? JSON.stringify({
+              schema_version: 1,
+              captured_at: CAPTURED_AT,
+              route_values_ready: true,
+            })
+          : null;
+      return type === "json" && value !== null ? JSON.parse(value) : value;
+    },
+  };
+  const stamp = await call(
+    req("/api/v1/internal/neurons-snapshot-stamp"),
+    env({ METAGRAPH_CONTROL: pointerKv }),
+  );
+  assert.deepEqual(await stamp.json(), { captured_at: CAPTURED_AT });
+  assert.deepEqual(reads, [KV_EXPLORER_DIRECTORIES_CURRENT]);
+});
+
+test("a refresh already represented by the current pointer does no database work", async () => {
+  const kv = memoryKv();
+  kv.values.set(
+    KV_EXPLORER_DIRECTORIES_CURRENT,
+    JSON.stringify({
+      schema_version: 1,
+      captured_at: CAPTURED_AT,
+      route_values_ready: true,
+    }),
+  );
+  assert.equal(
+    await refreshExplorerDirectoryMaterialization(
+      env({ METAGRAPH_CONTROL: kv }) as DataApiEnv,
+      ctx,
+      CAPTURED_AT,
+    ),
+    true,
+  );
+  assert.equal(kv.putCount(), 0);
+  assert.equal(pg.control.queries.length, 0);
+});
+
+test("a matching legacy pointer backfills route-specific directory values once", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Legacy", stake_tao: 100 });
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+  );
+  const kv = memoryKv();
+  kv.values.set(
+    KV_EXPLORER_DIRECTORIES_CURRENT,
+    JSON.stringify({ schema_version: 1, captured_at: CAPTURED_AT }),
+  );
+  const collected = collectingCtx();
+  const stamp = await worker.fetch(
+    req("/api/v1/internal/neurons-snapshot-stamp"),
+    env({ METAGRAPH_CONTROL: kv }),
+    collected.ctx,
+  );
+
+  assert.deepEqual(await stamp.json(), { captured_at: CAPTURED_AT });
+  await Promise.all(collected.pending);
+  assert.deepEqual(
+    JSON.parse(kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!),
+    {
+      schema_version: 1,
+      captured_at: CAPTURED_AT,
+      route_values_ready: true,
+    },
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+      .account_count,
+    1,
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT)!)
+      .validator_count,
+    1,
+  );
+});
+
+test("a legacy combined directory restores both hot values without folding partial rows", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Verified", stake_tao: 100 });
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+  );
+  const kv = memoryKv();
+  const materializedEnv = env({ METAGRAPH_CONTROL: kv });
+  assert.equal(
+    await refreshExplorerDirectoryMaterialization(
+      materializedEnv as DataApiEnv,
+      ctx,
+      CAPTURED_AT,
+    ),
+    true,
+  );
+  kv.values.set(
+    KV_EXPLORER_DIRECTORIES_CURRENT,
+    JSON.stringify({ schema_version: 1, captured_at: CAPTURED_AT }),
+  );
+  kv.values.delete(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT);
+  kv.values.delete(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT);
+  await seed("UPDATE neurons SET captured_at = ?", [CAPTURED_AT + 60_000]);
+  const queriesBeforeFallback = pg.control.queries.length;
+  const collected = collectingCtx();
+
+  const response = await worker.fetch(
+    req("/api/v1/accounts/directory"),
+    materializedEnv,
+    collected.ctx,
+  );
+  assert.equal(((await response.json()) as Row).account_count, 1);
+  await Promise.all(collected.pending);
+
+  assert.equal(pg.control.queries.length, queriesBeforeFallback);
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+      .account_count,
+    1,
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT)!)
+      .validator_count,
+    1,
+  );
+  assert.deepEqual(
+    JSON.parse(kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!),
+    {
+      schema_version: 1,
+      captured_at: CAPTURED_AT,
+      route_values_ready: true,
+    },
+  );
+});
+
+test("a directory refresh declines cleanly when its store runner is unavailable", async () => {
+  const kv = memoryKv();
+  assert.equal(
+    await refreshExplorerDirectoryMaterialization(
+      dataApiEnv({ METAGRAPH_CONTROL: kv }) as DataApiEnv,
+      ctx,
+      CAPTURED_AT,
+    ),
+    false,
+  );
+});
+
+test("a failed background materialization leaves the current stamp readable", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Only", stake_tao: 100 });
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+  );
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const brokenKv = {
+    get: async () => null,
+    put: async () => {
+      throw new Error("KV write unavailable");
+    },
+  };
+  const collected = collectingCtx();
+  const stamp = await worker.fetch(
+    req("/api/v1/internal/neurons-snapshot-stamp"),
+    env({ METAGRAPH_CONTROL: brokenKv }),
+    collected.ctx,
+  );
+  assert.deepEqual(await stamp.json(), { captured_at: CAPTURED_AT });
+  await Promise.all(collected.pending);
+  assert.ok(
+    error.mock.calls.some((call) =>
+      String(call[0]).includes("explorer directory materialization failed"),
+    ),
+  );
+  error.mockRestore();
+});
+
+test("directory materializations reject malformed and mixed-snapshot values", () => {
+  const capturedAt = CAPTURED_AT;
+  const capturedAtIso = new Date(capturedAt).toISOString();
+  const valid = {
+    schema_version: 1,
+    captured_at: capturedAt,
+    accounts: {
+      schema_version: 1,
+      captured_at: capturedAtIso,
+      block_number: 8_600_000,
+      account_count: 0,
+      limit: 20,
+      priced_registered_stake_tao: 0,
+      rankings: { stake: [], emission: [], reach: [] },
+    },
+    validators: {
+      schema_version: 1,
+      captured_at: capturedAtIso,
+      block_number: 8_600_000,
+      validator_count: 0,
+      operator_count: 0,
+      operators: [],
+    },
+  };
+  assert.deepEqual(materializationFromUnknown(valid), valid);
+  assert.equal(materializationFromUnknown(null), null);
+  assert.equal(
+    materializationFromUnknown({
+      ...valid,
+      validators: {
+        ...valid.validators,
+        captured_at: new Date(capturedAt + 1).toISOString(),
+      },
+    }),
+    null,
+  );
+});
+
+test("a directory KV read failure falls back to the truthful live projection", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Live", stake_tao: 100 });
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const failingKv = {
+    get: async () => {
+      throw new Error("KV unavailable");
+    },
+  };
+  const accounts = await call(
+    req("/api/v1/accounts/directory"),
+    env({ METAGRAPH_CONTROL: failingKv }),
+  );
+  assert.equal(accounts.status, 200);
+  const body = (await accounts.json()) as Row;
+  assert.equal(body.account_count, 1);
+  assert.equal(((body.rankings as Row).stake as Row[])[0]!.hotkey, "5Live");
+  assert.equal(error.mock.calls.length, 1);
+  error.mockRestore();
+});
+
+test("a versioned directory payload read failure also falls back to live data", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Live", stake_tao: 100 });
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const failingPayloadKv = {
+    get: async (key: string, type?: string) => {
+      if (key !== KV_EXPLORER_DIRECTORIES_CURRENT) {
+        throw new Error("KV payload unavailable");
+      }
+      const pointer = { schema_version: 1, captured_at: CAPTURED_AT };
+      return type === "json" ? pointer : JSON.stringify(pointer);
+    },
+  };
+  const accounts = await call(
+    req("/api/v1/accounts/directory"),
+    env({ METAGRAPH_CONTROL: failingPayloadKv }),
+  );
+  assert.equal(
+    ((((await accounts.json()) as Row).rankings as Row).stake as Row[])[0]!
+      .hotkey,
+    "5Live",
+  );
+  assert.ok(
+    error.mock.calls.some((call) =>
+      String(call[0]).includes("materialization read failed"),
+    ),
+  );
+  error.mockRestore();
+});
+
+test("a pointer whose versioned payload has another stamp falls back to live data", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Live", stake_tao: 100 });
+  const kv = memoryKv();
+  const otherCapturedAt = CAPTURED_AT + 60_000;
+  kv.values.set(
+    KV_EXPLORER_DIRECTORIES_CURRENT,
+    JSON.stringify({ schema_version: 1, captured_at: CAPTURED_AT }),
+  );
+  kv.values.set(
+    explorerDirectoriesSnapshotKey(CAPTURED_AT),
+    JSON.stringify({
+      schema_version: 1,
+      captured_at: otherCapturedAt,
+      accounts: {
+        schema_version: 1,
+        captured_at: new Date(otherCapturedAt).toISOString(),
+        block_number: 8_600_000,
+        account_count: 0,
+        limit: 20,
+        priced_registered_stake_tao: 0,
+        rankings: { stake: [], emission: [], reach: [] },
+      },
+      validators: {
+        schema_version: 1,
+        captured_at: new Date(otherCapturedAt).toISOString(),
+        block_number: 8_600_000,
+        validator_count: 0,
+        operator_count: 0,
+        operators: [],
+      },
+    }),
+  );
+  const accounts = await call(
+    req("/api/v1/accounts/directory"),
+    env({ METAGRAPH_CONTROL: kv }),
+  );
+  assert.equal(
+    ((((await accounts.json()) as Row).rankings as Row).stake as Row[])[0]!
+      .hotkey,
+    "5Live",
+  );
+});
+
+test("a newer complete snapshot keeps the previous directory live while its replacement builds", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Old", stake_tao: 100 });
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+  );
+  const kv = memoryKv();
+  const materializedEnv = env({ METAGRAPH_CONTROL: kv });
+  const first = collectingCtx();
+  await worker.fetch(
+    req("/api/v1/internal/neurons-snapshot-stamp"),
+    materializedEnv,
+    first.ctx,
+  );
+  await Promise.all(first.pending);
+
+  const nextCapturedAt = CAPTURED_AT + 60_000;
+  await seed("UPDATE neurons SET captured_at = ?, hotkey = ? WHERE uid = ?", [
+    nextCapturedAt,
+    "5New",
+    0,
+  ]);
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [nextCapturedAt, 1, 1, nextCapturedAt + 1],
+  );
+  const next = collectingCtx();
+  const duringRefresh = await worker.fetch(
+    req("/api/v1/internal/neurons-snapshot-stamp"),
+    materializedEnv,
+    next.ctx,
+  );
+  assert.deepEqual(await duringRefresh.json(), { captured_at: CAPTURED_AT });
+  await Promise.all(next.pending);
+
+  const ready = await call(
+    req("/api/v1/internal/neurons-snapshot-stamp"),
+    materializedEnv,
+  );
+  assert.deepEqual(await ready.json(), { captured_at: nextCapturedAt });
+  assert.equal(
+    kv.values.has(explorerDirectoriesSnapshotKey(CAPTURED_AT)),
+    false,
+  );
+  assert.equal(
+    kv.values.has(explorerDirectoriesSnapshotKey(nextCapturedAt)),
+    true,
+  );
+  const accounts = await call(
+    req("/api/v1/accounts/directory"),
+    materializedEnv,
+  );
+  assert.equal(
+    ((((await accounts.json()) as Row).rankings as Row).stake as Row[])[0]!
+      .hotkey,
+    "5New",
+  );
+});
+
+test("an obsolete-payload cleanup failure cannot undo a published directory", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Old", stake_tao: 100 });
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+  );
+  const kv = memoryKv();
+  const materializedEnv = env({ METAGRAPH_CONTROL: kv });
+  assert.equal(
+    await refreshExplorerDirectoryMaterialization(
+      materializedEnv as DataApiEnv,
+      ctx,
+      CAPTURED_AT,
+    ),
+    true,
+  );
+
+  const nextCapturedAt = CAPTURED_AT + 60_000;
+  await seed("UPDATE neurons SET captured_at = ?, hotkey = ? WHERE uid = ?", [
+    nextCapturedAt,
+    "5New",
+    0,
+  ]);
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [nextCapturedAt, 1, 1, nextCapturedAt + 1],
+  );
+  kv.delete = async () => {
+    throw new Error("KV cleanup unavailable");
+  };
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  assert.equal(
+    await refreshExplorerDirectoryMaterialization(
+      materializedEnv as DataApiEnv,
+      ctx,
+      nextCapturedAt,
+    ),
+    true,
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!).captured_at,
+    nextCapturedAt,
+  );
+  assert.ok(
+    error.mock.calls.some((call) =>
+      String(call[0]).includes("materialization cleanup failed"),
+    ),
+  );
+  error.mockRestore();
+});
+
+test("a partial newer neuron write cannot replace the last complete directory", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Stable", stake_tao: 100 });
+  const nextCapturedAt = CAPTURED_AT + 60_000;
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)",
+    [
+      CAPTURED_AT,
+      1,
+      1,
+      CAPTURED_AT + 1,
+      nextCapturedAt,
+      1,
+      1,
+      nextCapturedAt + 1,
+    ],
+  );
+  const kv = memoryKv();
+  const previous = {
+    schema_version: 1,
+    captured_at: CAPTURED_AT,
+    accounts: {
+      schema_version: 1,
+      captured_at: new Date(CAPTURED_AT).toISOString(),
+      block_number: 8_600_000,
+      account_count: 1,
+      limit: 20,
+      priced_registered_stake_tao: 100,
+      rankings: { stake: [], emission: [], reach: [] },
+    },
+    validators: {
+      schema_version: 1,
+      captured_at: new Date(CAPTURED_AT).toISOString(),
+      block_number: 8_600_000,
+      validator_count: 1,
+      operator_count: 1,
+      operators: [],
+    },
+  };
+  kv.values.set(
+    KV_EXPLORER_DIRECTORIES_CURRENT,
+    JSON.stringify({ schema_version: 1, captured_at: CAPTURED_AT }),
+  );
+  kv.values.set(
+    explorerDirectoriesSnapshotKey(CAPTURED_AT),
+    JSON.stringify(previous),
+  );
+  // A third pass has started mutating the in-place table but is not complete.
+  await seed("UPDATE neurons SET captured_at = ? WHERE uid = ?", [
+    nextCapturedAt + 60_000,
+    0,
+  ]);
+  const materializedEnv = env({ METAGRAPH_CONTROL: kv });
+  const collected = collectingCtx();
+  const stamp = await worker.fetch(
+    req("/api/v1/internal/neurons-snapshot-stamp"),
+    materializedEnv,
+    collected.ctx,
+  );
+  assert.deepEqual(await stamp.json(), { captured_at: CAPTURED_AT });
+  await Promise.all(collected.pending);
+  const stored = JSON.parse(
+    kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!,
+  ) as Row;
+  assert.equal(stored.captured_at, CAPTURED_AT);
+});
+
+test("a neuron pass that starts during a directory fold is rejected by the final boundary check", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Stable", stake_tao: 100 });
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+  );
+  const kv = memoryKv();
+  const runQuery = pg.control.postgres!;
+  let mutated = false;
+  pg.control.postgres = async (text, values) => {
+    const rows = await runQuery(text, values);
+    if (!mutated && text.includes("ORDER BY hotkey ASC, stake_tao DESC")) {
+      mutated = true;
+      await db.query("UPDATE neurons SET captured_at = $1 WHERE uid = $2", [
+        CAPTURED_AT + 60_000,
+        0,
+      ]);
+    }
+    return rows;
+  };
+
+  assert.equal(
+    await refreshExplorerDirectoryMaterialization(
+      env({ METAGRAPH_CONTROL: kv }) as DataApiEnv,
+      ctx,
+      CAPTURED_AT,
+    ),
+    false,
+  );
+  assert.equal(mutated, true);
+  assert.equal(kv.putCount(), 0);
+});
+
 test("a pass_total smaller than the rows sent is refused", async () => {
   // The producer buffers before chunking, so a total under this request's own
   // row count is a producer bug -- accepting it would complete a pass that
@@ -2781,6 +3510,135 @@ test("the queue consumer writes a neurons message and acks it", async () => {
   );
   // The derived tables are redone by the consumer from the message's rows.
   assert.equal((await count("neuron_daily")) > 0, true);
+});
+
+test("the queue consumer publishes explorer directories when a neuron pass completes", async () => {
+  const kv = memoryKv();
+  const pending = collectingCtx();
+  const acked: string[] = [];
+
+  await worker.queue(
+    {
+      messages: [
+        {
+          body: {
+            lane: "neurons",
+            captured_at: CAPTURED_AT,
+            pass_total: 1,
+            key_complete: true,
+            rows: [syncRow()],
+          },
+          ack: () => acked.push("ack"),
+          retry: () => acked.push("retry"),
+        },
+      ],
+    } as never,
+    env({ METAGRAPH_CONTROL: kv }),
+    pending.ctx,
+  );
+  await Promise.all(pending.pending);
+
+  assert.deepEqual(acked, ["ack"]);
+  assert.deepEqual(
+    JSON.parse(kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!),
+    {
+      schema_version: 1,
+      captured_at: CAPTURED_AT,
+      route_values_ready: true,
+    },
+  );
+  const materialized = JSON.parse(
+    kv.values.get(explorerDirectoriesSnapshotKey(CAPTURED_AT))!,
+  );
+  assert.equal(
+    materialized.accounts.captured_at,
+    new Date(CAPTURED_AT).toISOString(),
+  );
+  assert.equal(
+    materialized.validators.captured_at,
+    new Date(CAPTURED_AT).toISOString(),
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+      .captured_at,
+    new Date(CAPTURED_AT).toISOString(),
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT)!)
+      .captured_at,
+    new Date(CAPTURED_AT).toISOString(),
+  );
+});
+
+test("an incomplete neuron queue pass is acknowledged without publishing a mixed directory", async () => {
+  const kv = memoryKv();
+  const pending = collectingCtx();
+  const acked: string[] = [];
+
+  await worker.queue(
+    {
+      messages: [
+        {
+          body: {
+            lane: "neurons",
+            captured_at: CAPTURED_AT,
+            pass_total: 2,
+            key_complete: true,
+            rows: [syncRow()],
+          },
+          ack: () => acked.push("ack"),
+          retry: () => acked.push("retry"),
+        },
+      ],
+    } as never,
+    env({ METAGRAPH_CONTROL: kv }),
+    pending.ctx,
+  );
+  await Promise.all(pending.pending);
+
+  assert.deepEqual(acked, ["ack"]);
+  assert.equal(kv.putCount(), 0);
+  assert.equal(kv.values.has(KV_EXPLORER_DIRECTORIES_CURRENT), false);
+});
+
+test("a queue publication failure cannot retry a neuron snapshot that already landed", async () => {
+  const pending = collectingCtx();
+  const acked: string[] = [];
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  await worker.queue(
+    {
+      messages: [
+        {
+          body: {
+            lane: "neurons",
+            captured_at: CAPTURED_AT,
+            pass_total: 1,
+            key_complete: true,
+            rows: [syncRow()],
+          },
+          ack: () => acked.push("ack"),
+          retry: () => acked.push("retry"),
+        },
+      ],
+    } as never,
+    env({
+      METAGRAPH_CONTROL: {
+        get: async () => null,
+        put: async () => Promise.reject(new Error("KV unavailable")),
+      },
+    }),
+    pending.ctx,
+  );
+  await Promise.all(pending.pending);
+
+  assert.deepEqual(acked, ["ack"]);
+  assert.ok(
+    error.mock.calls.some((call) =>
+      String(call[0]).includes("explorer directory publication failed"),
+    ),
+  );
+  error.mockRestore();
 });
 
 test("the consumer refuses a neurons message that does not claim key-completeness", async () => {

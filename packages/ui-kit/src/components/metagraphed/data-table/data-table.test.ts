@@ -180,6 +180,47 @@ describe("DataTable markup", () => {
     );
   });
 
+  it("does not nest a row link around a nominated link column", () => {
+    const html = render({
+      rowHref: (r: Row) => `/subnets/${r.id}`,
+      columns: [
+        {
+          key: "name",
+          label: "Subnet",
+          kind: "link",
+          lead: true,
+          value: (r: Row) => r.name,
+          href: (r: Row) => `/subnets/${r.id}`,
+        },
+      ],
+    });
+
+    expect((html.match(/<a\b/g) ?? []).length).toBe(3);
+    expect((html.match(/class="mg-dt-link mg-dt-rowlink"/g) ?? []).length).toBe(
+      3,
+    );
+    expect(html).not.toMatch(/<a\b[^>]*>\s*<a\b/);
+  });
+
+  it("keeps the nominated column discoverable as the row link", () => {
+    const html = render({
+      rowHref: (r: Row) => `/blocks/${r.id}`,
+      columns: [
+        {
+          key: "name",
+          label: "Block",
+          kind: "link",
+          lead: true,
+          value: (r: Row) => r.name,
+          href: (r: Row) => `/blocks/${r.id}`,
+        },
+      ],
+    });
+
+    expect((html.match(/mg-dt-rowlink/g) ?? []).length).toBe(3);
+    expect(html).not.toMatch(/<a\b[^>]*>\s*<a\b/);
+  });
+
   it("routes every link through the caller's Link, not a bare anchor", () => {
     // The row link and a `kind: "link"` cell both have to reach the router;
     // a bare <a> would navigate with a full page load and drop the router's

@@ -36,6 +36,10 @@ export const ROUTES = [
   // fixtures describe the same moment of the chain and the block page's
   // contents table lists a call the extrinsic page also renders.
   "/blocks/8713384",
+  // One raw runtime event from that same fixed block. The route exercises the
+  // block → extrinsic → event forensic drill-down and structured argument
+  // wrapping without introducing another volatile fixture coordinate.
+  "/events/8713384/320",
   "/apis/schemas",
   "/validators",
   // #11617: the validator detail page, the last entity template in the sweep.

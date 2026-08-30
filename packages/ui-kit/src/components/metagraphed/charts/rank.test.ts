@@ -230,7 +230,7 @@ describe("LeaderCards", () => {
     expect(html).toContain(
       '<span class="mg-leader-delta" data-state="new">New</span>',
     );
-    expect(html).toContain('aria-label="#1 Targon · 1.89M τ total"');
+    expect(html).toContain('aria-label="#1 Targon · 1.89Mτ total"');
   });
 
   it("preserves featured and compact reading geometry while a leaderboard loads", () => {

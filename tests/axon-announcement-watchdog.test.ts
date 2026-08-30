@@ -1151,12 +1151,65 @@ describe("the tick reports the mechanism it measured", () => {
     answer(rowsFor(103, then(flat(8, 252, 256), [0, 2])), [
       { netuid: 103, via_reuse: 250, same_hotkey: 0 },
     ]);
+    let captured: Record<string, unknown> | null = null;
     const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
       now: () => Date.parse("2026-08-16T00:00:00Z"),
-      recordException: (async () => true) as never,
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured = ev;
+        return true;
+      }) as never,
     })) as { findings: AxonFinding[] };
     assert.equal(result.findings[0].kind, "subnet-turned-over");
     assert.match(verdict(), /the subnet turned over/);
+    assert.equal(
+      captured,
+      null,
+      "membership turnover is recorded but is not an axon reachability fault",
+    );
+    assert.equal(verdictValue(), "ok");
+  });
+
+  test("turnover mixed with churn records both without opening an alarm", async () => {
+    // The live #11732 shape: one subnet turned over while another lost axons
+    // entirely through deregistration churn. Both are membership changes, not
+    // registered miners becoming unreachable.
+    answer(
+      [
+        ...rowsFor(59, then(flat(8, 245, 256), [0, 9])),
+        ...rowsFor(101, then(flat(8, 223, 256), [129, 256])),
+      ],
+      [
+        { netuid: 59, via_reuse: 245, same_hotkey: 0 },
+        { netuid: 101, via_reuse: 177, same_hotkey: 99 },
+      ],
+    );
+    let captured: Record<string, unknown> | null = null;
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured = ev;
+        return true;
+      }) as never,
+    })) as {
+      alerted: boolean;
+      flagged: boolean;
+      churn_only: boolean;
+      explained_membership_only: boolean;
+      findings: AxonFinding[];
+    };
+
+    assert.deepEqual(result.findings.map((f) => f.kind).sort(), [
+      "churn-replaced",
+      "subnet-turned-over",
+    ]);
+    assert.equal(result.flagged, true);
+    assert.equal(result.churn_only, false);
+    assert.equal(result.explained_membership_only, true);
+    assert.equal(result.alerted, false);
+    assert.equal(captured, null);
+    assert.equal(verdictValue(), "ok");
+    assert.match(verdict(), /SN59 0\/245 axons/);
+    assert.match(verdict(), /SN101 129\/223 axons/);
   });
 });
 
