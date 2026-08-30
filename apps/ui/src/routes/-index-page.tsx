@@ -67,6 +67,7 @@ const EMISSION_WINDOWS = [
 ] as const;
 
 const HERO_BLOCK_RAIL_MEDIA_QUERY = "(min-width: 640px)";
+const HERO_BLOCK_REFETCH_INTERVAL_MS = 12_000;
 const MCP_INSTALL_COMMAND =
   "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core";
 
@@ -130,7 +131,14 @@ export function OverviewPage() {
   const blocks = useQuery({ ...blocksSummaryQuery(), retry: 0 });
   // The block rail polls only while this tab is visible. It advances the
   // explorer reading without holding a permanent stream connection open.
-  const blockRefetchInterval = useRefetchInterval(15_000, heroBlockRailEnabled);
+  // Bittensor targets a roughly 12-second block cadence. The feed response's
+  // ten-second browser lifetime expires first, so each visible-tab tick can
+  // observe a newly indexed head rather than replaying a nominal refresh from
+  // the HTTP cache.
+  const blockRefetchInterval = useRefetchInterval(
+    HERO_BLOCK_REFETCH_INTERVAL_MS,
+    heroBlockRailEnabled,
+  );
   const blockFeed = useQuery({
     ...blocksQuery({ limit: LIVE_BLOCK_LIMIT }),
     enabled: heroBlockRailEnabled,

@@ -4033,6 +4033,20 @@ describe("handleBlocks", () => {
     assert.equal(res.headers.get("vary"), "Accept, Accept-Encoding");
   });
 
+  test("expires the live JSON feed before the website's next head poll", async () => {
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
+    const res = await handleBlocks(
+      req("/api/v1/blocks?limit=12"),
+      env as unknown as Env,
+      url("/api/v1/blocks?limit=12"),
+    );
+
+    assert.equal(
+      res.headers.get("cache-control"),
+      "public, max-age=10, must-revalidate",
+    );
+  });
+
   test("adds one fresh response-level TAO/USD conversion to complete mainnet blocks", async () => {
     const { env } = dbWith({
       blocksFeed: [

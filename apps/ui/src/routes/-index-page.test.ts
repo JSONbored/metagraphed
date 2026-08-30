@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const homepage = readFileSync(fileURLToPath(new URL("./-index-page.tsx", import.meta.url)), "utf8");
+const homepageRoute = readFileSync(fileURLToPath(new URL("./index.tsx", import.meta.url)), "utf8");
 const styles = readFileSync(
   fileURLToPath(new URL("../../../../packages/ui-kit/src/styles.css", import.meta.url)),
   "utf8",
@@ -54,7 +55,12 @@ describe("homepage masthead", () => {
     );
     expect(homepage).toContain("blocksQuery({ limit: LIVE_BLOCK_LIMIT })");
     expect(homepage).toContain("enabled: heroBlockRailEnabled");
-    expect(homepage).toContain("useRefetchInterval(15_000, heroBlockRailEnabled)");
+    expect(homepage).toContain("const HERO_BLOCK_REFETCH_INTERVAL_MS = 12_000");
+    expect(homepageRoute).toContain('rel: "preload"');
+    expect(homepageRoute).toContain('as: "fetch"');
+    expect(homepageRoute).toContain('type: "application/json"');
+    expect(homepageRoute).toContain('media: "(min-width: 640px)"');
+    expect(homepageRoute).toContain("/api/v1/blocks?limit=12");
     expect(homepage).toContain(
       'value: typeof headBlock === "number" ? formatNumber(headBlock) : "—"',
     );

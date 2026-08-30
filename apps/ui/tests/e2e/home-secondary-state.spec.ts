@@ -6,9 +6,22 @@ test.describe("homepage secondary analytics", () => {
     context,
     page,
   }) => {
+    let blockFeedRequests = 0;
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/v1/blocks" && url.searchParams.get("limit") === "12") {
+        blockFeedRequests += 1;
+      }
+    });
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.setViewportSize({ width: 1280, height: 800 });
     await gotoThroughRestart(page, "/");
+
+    const preload = page.locator('link[rel="preload"][as="fetch"]');
+    await expect(preload).toHaveAttribute("media", "(min-width: 640px)");
+    await expect(preload).toHaveAttribute("type", "application/json");
+    await expect(page.locator("a.mg-live-block").first()).toBeVisible();
+    await expect.poll(() => blockFeedRequests).toBe(1);
 
     await expect(page.getByRole("combobox", { name: "Search the registry" })).toBeVisible();
     await expect(page.getByText("Bittensor in a box.", { exact: true })).toBeVisible();
@@ -29,6 +42,13 @@ test.describe("homepage secondary analytics", () => {
   test("keeps the three lower instruments structured during delayed mobile reads", async ({
     page,
   }) => {
+    let blockFeedRequests = 0;
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/v1/blocks" && url.searchParams.get("limit") === "12") {
+        blockFeedRequests += 1;
+      }
+    });
     let releaseReads: (() => void) | undefined;
     const readsReleased = new Promise<void>((resolve) => {
       releaseReads = resolve;
@@ -46,6 +66,7 @@ test.describe("homepage secondary analytics", () => {
 
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoThroughRestart(page, "/");
+    expect(blockFeedRequests).toBe(0);
 
     const emission = page.getByRole("group", {
       name: "Subnet daily alpha gains over the 30d comparison",

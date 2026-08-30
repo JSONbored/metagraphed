@@ -6755,6 +6755,8 @@ function readBlockTaoUsdCurrentKv(
     : Promise.resolve(null);
 }
 
+const LIVE_BLOCK_FEED_CACHE_CONTROL = "public, max-age=10, must-revalidate";
+
 export async function handleBlocks(
   request: Request,
   env: Env,
@@ -6826,7 +6828,7 @@ export async function handleBlocks(
       BLOCK_CSV_COLUMNS,
     );
   }
-  return envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -6839,6 +6841,13 @@ export async function handleBlocks(
     "short",
     { vary: "Accept, Accept-Encoding" },
   );
+  // The generic short profile is one minute, longer than both Bittensor's
+  // approximate block cadence and the website's visible-tab poll. A browser
+  // would otherwise answer several "refreshes" from its own cache. Ten seconds
+  // is still long enough for the homepage's document-head preload to bridge
+  // hydration, then expires before the next twelve-second live tick.
+  response.headers.set("cache-control", LIVE_BLOCK_FEED_CACHE_CONTROL);
+  return response;
 }
 
 // GET /api/v1/blocks/summary: block-production analytics over the most recent
