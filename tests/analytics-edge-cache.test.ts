@@ -29,8 +29,8 @@ import {
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import {
-  KV_EXPLORER_DIRECTORIES_CURRENT,
-  explorerDirectoriesSnapshotKey,
+  KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
+  KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
 } from "../src/kv-keys.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import { resetObservedThroughCache } from "../src/lakehouse-observed-through.ts";
@@ -1479,12 +1479,12 @@ describe("analytics edge cache", () => {
     assert.equal(cache.matchCalls, 2);
   });
 
-  test("/api/v1/validators/operators caches on the completed neuron pass", async () => {
+  test("/api/v1/validators/operators caches within the bounded minute epoch", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const paths: string[] = [];
-    const stamp = Date.parse("2026-08-29T00:00:00.000Z");
+    const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
     const directory = {
       schema_version: 1,
       captured_at: "2026-08-29T00:00:00.000Z",
@@ -1493,31 +1493,12 @@ describe("analytics edge cache", () => {
       operator_count: 0,
       operators: [],
     };
-    const materialization = {
-      schema_version: 1,
-      captured_at: stamp,
-      validators: directory,
-      accounts: {
-        schema_version: 1,
-        captured_at: directory.captured_at,
-        block_number: directory.block_number,
-        account_count: 0,
-        limit: 20,
-        priced_registered_stake_tao: 0,
-        rankings: { stake: [], emission: [], reach: [] },
-      },
-    };
     const env = {
       ...analyticsEnv([]),
       METAGRAPH_NEURONS_SOURCE: "data-api",
       METAGRAPH_CONTROL: {
         async get(key: string) {
-          if (key === KV_EXPLORER_DIRECTORIES_CURRENT) {
-            return { schema_version: 1, captured_at: stamp };
-          }
-          if (key === explorerDirectoriesSnapshotKey(stamp)) {
-            return materialization;
-          }
+          if (key === KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT) return directory;
           return null;
         },
       },
@@ -1525,9 +1506,7 @@ describe("analytics edge cache", () => {
         async fetch(request: Request) {
           const pathname = new URL(request.url).pathname;
           paths.push(pathname);
-          return pathname === "/api/v1/internal/neurons-snapshot-stamp"
-            ? Response.json({ captured_at: stamp })
-            : Response.json(directory);
+          return Response.json(directory);
         },
       },
     };
@@ -1546,17 +1525,17 @@ describe("analytics edge cache", () => {
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
         CONTRACT_VERSION,
-      )}/${stamp}/validator-operator-directory/api/v1/validators/operators`,
+      )}/${encodeURIComponent(cacheStamp)}/validator-operator-directory/api/v1/validators/operators`,
     ]);
     assert.equal(cache.matchCalls, 2);
   });
 
-  test("/api/v1/accounts/directory caches on the completed neuron pass", async () => {
+  test("/api/v1/accounts/directory caches within the bounded minute epoch", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const paths: string[] = [];
-    const stamp = Date.parse("2026-08-29T00:00:00.000Z");
+    const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
     const directory = {
       schema_version: 1,
       captured_at: "2026-08-29T00:00:00.000Z",
@@ -1566,30 +1545,12 @@ describe("analytics edge cache", () => {
       priced_registered_stake_tao: 0,
       rankings: { stake: [], emission: [], reach: [] },
     };
-    const materialization = {
-      schema_version: 1,
-      captured_at: stamp,
-      accounts: directory,
-      validators: {
-        schema_version: 1,
-        captured_at: directory.captured_at,
-        block_number: directory.block_number,
-        validator_count: 0,
-        operator_count: 0,
-        operators: [],
-      },
-    };
     const env = {
       ...analyticsEnv([]),
       METAGRAPH_NEURONS_SOURCE: "data-api",
       METAGRAPH_CONTROL: {
         async get(key: string) {
-          if (key === KV_EXPLORER_DIRECTORIES_CURRENT) {
-            return { schema_version: 1, captured_at: stamp };
-          }
-          if (key === explorerDirectoriesSnapshotKey(stamp)) {
-            return materialization;
-          }
+          if (key === KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT) return directory;
           return null;
         },
       },
@@ -1597,9 +1558,7 @@ describe("analytics edge cache", () => {
         async fetch(request: Request) {
           const pathname = new URL(request.url).pathname;
           paths.push(pathname);
-          return pathname === "/api/v1/internal/neurons-snapshot-stamp"
-            ? Response.json({ captured_at: stamp })
-            : Response.json(directory);
+          return Response.json(directory);
         },
       },
     };
@@ -1618,7 +1577,7 @@ describe("analytics edge cache", () => {
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
         CONTRACT_VERSION,
-      )}/${stamp}/account-holder-directory/api/v1/accounts/directory`,
+      )}/${encodeURIComponent(cacheStamp)}/account-holder-directory/api/v1/accounts/directory`,
     ]);
     assert.equal(cache.matchCalls, 2);
   });

@@ -316,7 +316,7 @@ import {
   accountEdgeCacheEligible,
 } from "./account-edge-cache.ts";
 import { parseRouteQuery, routeQuery, routeText } from "../src/route-query.ts";
-import { readNeuronsSnapshotCacheStamp } from "./data-api-tier.ts";
+import { readExplorerDirectoryCacheStamp } from "./data-api-tier.ts";
 import {
   serverTimingHeader,
   withRequestTiming,
@@ -6947,7 +6947,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       "validator-operator-directory",
       (cacheRequest) => handleValidatorOperatorDirectory(cacheRequest, env),
       url.pathname,
-      readNeuronsSnapshotCacheStamp,
+      readExplorerDirectoryCacheStamp,
     );
   }
 
@@ -6997,7 +6997,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       "account-holder-directory",
       (cacheRequest) => handleAccountHolderDirectory(cacheRequest, env),
       url.pathname,
-      readNeuronsSnapshotCacheStamp,
+      readExplorerDirectoryCacheStamp,
     );
   }
 

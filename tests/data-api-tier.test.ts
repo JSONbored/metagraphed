@@ -5,11 +5,11 @@
 // withEdgeCache write, #5090) are tested directly here rather than only
 // incidentally through individual handler tests.
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import {
   DATA_API_TIER_RETRY_ATTEMPTS,
   currentDataApiTierFallbackGeneration,
-  readNeuronsSnapshotCacheStamp,
+  readExplorerDirectoryCacheStamp,
   tryDataApiTier,
 } from "../workers/data-api-tier.ts";
 import { mockEnv, type AnyFn } from "./row-type.ts";
@@ -24,74 +24,24 @@ function dataApi(handler: AnyFn) {
   return { fetch: handler };
 }
 
-function directoryKv(value: unknown, error: Error | null = null) {
-  return {
-    async get() {
-      if (error) throw error;
-      return value;
-    },
-  };
-}
-
 function req() {
   return new Request("https://api.metagraph.sh/api/v1/health");
 }
 
-test("readNeuronsSnapshotCacheStamp: returns the completed-pass watermark", async () => {
-  const result = await readNeuronsSnapshotCacheStamp(
-    mockEnv({
-      METAGRAPH_NEURONS_SOURCE: "data-api",
-      METAGRAPH_CONTROL: directoryKv({
-        schema_version: 1,
-        captured_at: 1_780_000_000_000,
-      }),
-    }),
+test("readExplorerDirectoryCacheStamp: returns the current minute epoch", async () => {
+  const now = 1_780_000_000_000;
+  const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+  const result = await readExplorerDirectoryCacheStamp(
+    mockEnv({ METAGRAPH_NEURONS_SOURCE: "data-api" }),
   );
-  assert.equal(result, "1780000000000");
+  nowSpy.mockRestore();
+  assert.equal(result, `minute:${Math.floor(now / 60_000)}`);
 });
 
-test("readNeuronsSnapshotCacheStamp: declines without the active lane or pointer", async () => {
+test("readExplorerDirectoryCacheStamp: declines without the active lane", async () => {
   assert.equal(
-    await readNeuronsSnapshotCacheStamp(
+    await readExplorerDirectoryCacheStamp(
       mockEnv({ METAGRAPH_NEURONS_SOURCE: "retired" }),
-    ),
-    null,
-  );
-  assert.equal(
-    await readNeuronsSnapshotCacheStamp(
-      mockEnv({ METAGRAPH_NEURONS_SOURCE: "data-api" }),
-    ),
-    null,
-  );
-});
-
-test("readNeuronsSnapshotCacheStamp: unproven pointers disable caching", async () => {
-  for (const pointer of [
-    null,
-    { schema_version: 1, captured_at: null },
-    { schema_version: 1, captured_at: -1 },
-    { schema_version: 1, captured_at: 1.5 },
-    { schema_version: 2, captured_at: 1_780_000_000_000 },
-  ]) {
-    assert.equal(
-      await readNeuronsSnapshotCacheStamp(
-        mockEnv({
-          METAGRAPH_NEURONS_SOURCE: "data-api",
-          METAGRAPH_CONTROL: directoryKv(pointer),
-        }),
-      ),
-      null,
-    );
-  }
-});
-
-test("readNeuronsSnapshotCacheStamp: KV failures disable caching", async () => {
-  assert.equal(
-    await readNeuronsSnapshotCacheStamp(
-      mockEnv({
-        METAGRAPH_NEURONS_SOURCE: "data-api",
-        METAGRAPH_CONTROL: directoryKv(null, new Error("offline")),
-      }),
     ),
     null,
   );
