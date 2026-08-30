@@ -144,7 +144,27 @@ export async function apiFetch<T>(
         network: env.meta?.network,
       });
     }
+    // Some collection routes deliberately return a schema-stable empty 200
+    // when their backing tier cannot answer. The response header is the contract
+    // that separates that fallback from a measured empty result. Promote it to
+    // the same typed error the UI already uses for unavailable data tiers so a
+    // zero-row fallback can never be presented as real network activity.
+    if (res.headers.get("x-metagraph-degraded") === "tier_unavailable") {
+      throw new ApiError("The data tier could not verify this response", {
+        status: res.status,
+        code: "data_tier_unavailable",
+        url: redactUrlForError(url),
+      });
+    }
     return { data: env.data, meta: env.meta ?? {}, url };
+  }
+
+  if (res.headers.get("x-metagraph-degraded") === "tier_unavailable") {
+    throw new ApiError("The data tier could not verify this response", {
+      status: res.status,
+      code: "data_tier_unavailable",
+      url: redactUrlForError(url),
+    });
   }
   return { data: body as T, meta: {}, url };
 }

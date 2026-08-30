@@ -5,6 +5,43 @@ import { ApiError } from "@/lib/metagraphed/client";
 import { BlockDetailCatchupStatus, ErrorState } from "./states";
 
 describe("ErrorState", () => {
+  it("does not present an unavailable data tier as a measured empty result", () => {
+    const html = renderToStaticMarkup(
+      <ErrorState
+        context="complete-day chain activity"
+        error={
+          new ApiError("unverified fallback", {
+            status: 200,
+            code: "data_tier_unavailable",
+            url: "https://api.example.test/api/v1/chain/activity",
+          })
+        }
+      />,
+    );
+
+    expect(html).toContain("Data source temporarily unavailable");
+    expect(html).toContain("cannot verify its current source");
+    expect(html).toContain("no zero or empty result is shown");
+    expect(html).not.toContain("Deep-history tier not enabled");
+    expect(html).not.toContain("Couldn't load complete-day chain activity");
+  });
+
+  it("uses neutral copy when the unavailable response has no route context", () => {
+    const html = renderToStaticMarkup(
+      <ErrorState
+        error={
+          new ApiError("unverified fallback", {
+            status: 200,
+            code: "data_tier_unavailable",
+            url: "https://api.example.test/api/v1/data",
+          })
+        }
+      />,
+    );
+
+    expect(html).toContain("This view cannot verify its current source");
+  });
+
   it("keeps a block-detail coverage gap distinct from an empty or generic error", () => {
     const html = renderToStaticMarkup(
       <ErrorState
