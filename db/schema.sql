@@ -372,7 +372,15 @@ CREATE TABLE public.chain_detail_blocks (
     chain_event_count integer NOT NULL,
     account_event_count integer NOT NULL,
     observed_at bigint NOT NULL,
-    synced_at bigint NOT NULL
+    synced_at bigint NOT NULL,
+    native_transfer_tao text,
+    stake_flow_tao text,
+    economic_activity_tao text,
+    fee_tao text,
+    tip_tao text,
+    issuance_tao text,
+    subnet_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    economics_complete boolean DEFAULT false NOT NULL
 );
 
 --
