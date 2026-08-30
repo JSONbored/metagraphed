@@ -9,6 +9,7 @@ import { describe, test } from "vitest";
 import {
   loadBlockFeedFromR2Sql,
   loadBlockFromR2Sql,
+  loadBlockWithEconomicsFromR2Sql,
   OFFSET_EMULATION_CAP,
   currentOffsetCapDeclineGeneration,
   offsetBeyondEmulationCap,
@@ -31,6 +32,40 @@ function row(n: number) {
     event_count: 7,
     spec_version: 240,
     observed_at: 1_700_000_000_000 + n,
+  };
+}
+
+function economicsExtrinsic(overrides: Record<string, unknown> = {}) {
+  return {
+    block_number: 42,
+    extrinsic_index: 0,
+    extrinsic_hash: "0xext",
+    signer: AUTHOR,
+    call_module: "SubtensorModule",
+    call_function: "add_stake",
+    success: true,
+    fee_tao: 0.125,
+    tip_tao: 0.005,
+    call_args: JSON.stringify([{ name: "netuid", value: 7 }]),
+    observed_at: 1_700_000_000_042,
+    ...overrides,
+  };
+}
+
+function economicsEvent(overrides: Record<string, unknown> = {}) {
+  return {
+    block_number: 42,
+    event_index: 0,
+    extrinsic_index: 0,
+    event_kind: "Transfer",
+    hotkey: AUTHOR,
+    coldkey: null,
+    netuid: 19,
+    uid: null,
+    amount_tao: 2.5,
+    alpha_amount: null,
+    observed_at: 1_700_000_000_042,
+    ...overrides,
   };
 }
 
@@ -67,6 +102,24 @@ function sqlFetchSeq(responses: readonly (unknown[] | null)[]) {
     if (rows === null || rows === undefined) {
       return new Response("upstream said no", { status: 500 });
     }
+    return new Response(JSON.stringify({ success: true, result: { rows } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as unknown as typeof fetch;
+  return { impl, queries };
+}
+
+function sqlFetchByQuery(answer: (query: string) => unknown[] | null): {
+  impl: typeof fetch;
+  queries: string[];
+} {
+  const queries: string[] = [];
+  const impl = (async (_u: string, init: RequestInit) => {
+    const query = JSON.parse(String(init.body)).query as string;
+    queries.push(query);
+    const rows = answer(query);
+    if (rows === null) return new Response("upstream said no", { status: 500 });
     return new Response(JSON.stringify({ success: true, result: { rows } }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -476,5 +529,152 @@ describe("loadBlockFromR2Sql", () => {
       { reason: "unavailable" },
       "must not be mistaken for 'no such block'",
     );
+  });
+});
+
+describe("loadBlockWithEconomicsFromR2Sql", () => {
+  test("derives complete block economics and subnet involvement from companion tables", async () => {
+    const { impl, queries } = sqlFetchByQuery((query) => {
+      if (/FROM chain\.blocks/.test(query)) return [row(41), row(42), row(43)];
+      if (/FROM chain\.extrinsics/.test(query))
+        return [
+          economicsExtrinsic(),
+          economicsExtrinsic({
+            extrinsic_index: 1,
+            signer: null,
+            fee_tao: null,
+            tip_tao: null,
+          }),
+        ];
+      if (/FROM chain\.account_events/.test(query))
+        return [
+          economicsEvent(),
+          economicsEvent({
+            event_index: 1,
+            event_kind: "StakeAdded",
+            amount_tao: 1.25,
+          }),
+          economicsEvent({
+            event_index: 2,
+            event_kind: "Issued",
+            amount_tao: 0.5,
+            netuid: null,
+          }),
+          economicsEvent({
+            event_index: 3,
+            amount_tao: 0.000000113,
+            netuid: null,
+          }),
+        ];
+      return null;
+    });
+    globalThis.fetch = impl;
+
+    const data = await loadBlockWithEconomicsFromR2Sql(mockEnv(TOKEN), "42");
+    assert.ok(data?.block);
+    assert.equal(data.block.decode_status, "complete");
+    assert.equal(data.block.native_transfer_tao, 2.500000113);
+    assert.equal(data.block.stake_flow_tao, 1.25);
+    assert.equal(data.block.economic_activity_tao, 3.750000113);
+    assert.equal(data.block.fee_tao, 0.125);
+    assert.equal(data.block.tip_tao, 0.005);
+    assert.equal(data.block.issuance_tao, 0.5);
+    assert.deepEqual(data.block.subnet_ids, [7, 19]);
+    assert.equal(data.prev_block_number, 41);
+    assert.equal(data.next_block_number, 43);
+    assert.equal(queries.length, 3, "one header and two concurrent companions");
+    assert.match(
+      queries.find((q) => /chain\.extrinsics/.test(q))!,
+      /block_number = 42/,
+    );
+    assert.match(
+      queries.find((q) => /chain\.account_events/.test(q))!,
+      /block_number = 42/,
+    );
+  });
+
+  for (const failedTable of ["extrinsics", "account_events"] as const) {
+    test(`keeps economics unavailable when ${failedTable} fails`, async () => {
+      const { impl } = sqlFetchByQuery((query) => {
+        if (/FROM chain\.blocks/.test(query)) return [row(42)];
+        if (query.includes(`chain.${failedTable}`)) return null;
+        return [];
+      });
+      globalThis.fetch = impl;
+
+      const data = await loadBlockWithEconomicsFromR2Sql(mockEnv(TOKEN), "42");
+      assert.ok(data?.block, "the header is still an answer");
+      assert.equal(data.block.decode_status, "unavailable");
+      assert.equal(data.block.economic_activity_tao, null);
+      assert.deepEqual(data.block.subnet_ids, []);
+    });
+  }
+
+  test("resolves a hash before querying its companion rows", async () => {
+    const { impl, queries } = sqlFetchByQuery((query) => {
+      if (/block_hash = '0xabcdef'/.test(query)) return [row(42)];
+      if (/SELECT block_number FROM chain\.blocks/.test(query))
+        return [
+          { block_number: 41 },
+          { block_number: 42 },
+          { block_number: 43 },
+        ];
+      if (/FROM chain\.extrinsics/.test(query)) return [];
+      if (/FROM chain\.account_events/.test(query)) return [];
+      return null;
+    });
+    globalThis.fetch = impl;
+
+    const data = await loadBlockWithEconomicsFromR2Sql(
+      mockEnv(TOKEN),
+      "0xABCDEF",
+    );
+    assert.ok(data?.block);
+    assert.equal(data.block.block_number, 42);
+    assert.equal(data.block.decode_status, "complete");
+    assert.equal(data.block.economic_activity_tao, 0);
+    assert.equal(queries.length, 4, "hash, neighbours, and two companions");
+    for (const query of queries.filter((q) =>
+      /extrinsics|account_events/.test(q),
+    )) {
+      assert.match(query, /block_number = 42/);
+    }
+  });
+
+  test("keeps a hash-resolved block when its economics read declines", async () => {
+    const { impl } = sqlFetchByQuery((query) => {
+      if (/block_hash = '0xabcdef'/.test(query)) return [row(42)];
+      if (/SELECT block_number FROM chain\.blocks/.test(query)) return [];
+      if (/FROM chain\.extrinsics/.test(query)) return null;
+      return [];
+    });
+    globalThis.fetch = impl;
+
+    const data = await loadBlockWithEconomicsFromR2Sql(
+      mockEnv(TOKEN),
+      "0xABCDEF",
+    );
+    assert.ok(data?.block);
+    assert.equal(data.block.decode_status, "unavailable");
+  });
+
+  test("does not manufacture a block when the header is absent", async () => {
+    const { impl } = sqlFetchByQuery((query) =>
+      /FROM chain\.blocks/.test(query) ? [] : [],
+    );
+    globalThis.fetch = impl;
+    const data = await loadBlockWithEconomicsFromR2Sql(mockEnv(TOKEN), "42");
+    assert.ok(data);
+    assert.equal(data.block, null);
+  });
+
+  test("rejects an invalid ref before issuing a query", async () => {
+    const { impl, queries } = sqlFetchByQuery(() => []);
+    globalThis.fetch = impl;
+    assert.equal(
+      await loadBlockWithEconomicsFromR2Sql(mockEnv(TOKEN), "not-a-block-ref"),
+      null,
+    );
+    assert.equal(queries.length, 0);
   });
 });

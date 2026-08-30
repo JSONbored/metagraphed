@@ -113,14 +113,15 @@ describe("data-api's bundle boundary", () => {
     //   before the fix   8328 KiB of first-party source
     //   after            3280 KiB
     //
-    // 4,600,000 bytes (~4492 KiB) leaves ~37% headroom for ordinary growth
-    // while still failing on a re-import of anything approaching what was
-    // removed.
+    // The graph measured 4,496 KiB in 2026-08 after ordinary feature growth;
+    // 4,700,000 bytes leaves a narrow backstop for another large edge while
+    // the named checks above continue to reject every module from the original
+    // regression directly.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_600_000,
+      firstParty < 4_700_000,
       `first-party source in data-api's bundle is ${(firstParty / 1024).toFixed(0)} KiB; ` +
         `something large was re-imported. See the named checks above.`,
     );
