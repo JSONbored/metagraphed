@@ -516,7 +516,7 @@ export async function runAxonAnnouncementWatchdog(
   const fleetWide = isFleetWide(findings);
   const detail = axonDetail(findings);
 
-  // CHURN RECORDS, IT DOES NOT PAGE (#11386).
+  // EXPLAINED MEMBERSHIP CHANGE RECORDS, IT DOES NOT PAGE (#11386).
   //
   // `churn-replaced` means the announcing miners were deregistered and their
   // UIDs reused by miners that never served. Nobody went dark, and there is
@@ -534,14 +534,27 @@ export async function runAxonAnnouncementWatchdog(
   // suppressing the finding -- lane_health is the durable record by design
   // (#9330/#9340), and PostHog was never it.
   //
-  // A withdrawal, a fleet-wide flag, an unread mechanism or any MIXED set all
-  // still page: `every` is the bar, so one non-churn finding restores it.
+  // A subnet turnover is the same operational conclusion for THIS watchdog:
+  // the missing axons belong to neurons that are no longer registered. The
+  // membership change remains in the durable detail, but it is not evidence
+  // that a registered miner became unreachable. Treating turnover as a fault
+  // opened an alarm that could only wait for the trailing baseline to decay.
+  //
+  // A withdrawal, an unroutable move, a fleet-wide flag, or an unread
+  // mechanism still pages. `every` is the bar, so one actionable or unknown
+  // finding restores it even beside ordinary churn or turnover.
   const churnOnly =
     findings.length > 0 &&
     !fleetWide &&
     findings.every((f) => f.kind === "churn-replaced");
+  const explainedMembershipOnly =
+    findings.length > 0 &&
+    !fleetWide &&
+    findings.every(
+      (f) => f.kind === "churn-replaced" || f.kind === "subnet-turned-over",
+    );
 
-  if (findings.length > 0 && !churnOnly) {
+  if (findings.length > 0 && !explainedMembershipOnly) {
     // A fleet-wide flag is reported as OUR failure and given its own error
     // code, because it sends a reader somewhere completely different: to the
     // poller, not to a subnet's operators. Collapsing the two would make an
@@ -584,13 +597,14 @@ export async function runAxonAnnouncementWatchdog(
     // there is no `finding` verdict, and inventing one would drift from the
     // published enum every other reader shares.
     //
-    // PURE CHURN IS NOT ONE OF THEM (#11367). The paging decision above already
-    // concluded that churn-only means "nobody went dark, and there is nobody to
-    // go looking for" -- and `stale` is not a neutral word for that, it is this
-    // enum's assertion of a FAULT. Writing it for a measured non-event made two
-    // components disagree: the watchdog decided not to page, and `src/lane-alarm.ts`
-    // raised anyway, because its finding set is `Exclude<LaneVerdict, "ok">` and
-    // it never sees the paging decision.
+    // PURE CHURN AND SUBNET TURNOVER ARE NOT ONE OF THEM (#11367). The paging
+    // decision above already concluded that these membership changes mean no
+    // registered miner was measured to have gone dark -- and `stale` is not a
+    // neutral word for that, it is this enum's assertion of a FAULT. Writing it
+    // for a measured non-event made two components disagree: the watchdog
+    // decided not to page, and `src/lane-alarm.ts` raised anyway, because its
+    // finding set is `Exclude<LaneVerdict, "ok">` and it never sees the paging
+    // decision.
     //
     // The cost of that disagreement is an issue that cannot close. lane-alarm
     // closes on the first `ok`, so a lane held at `stale` by ordinary
@@ -603,10 +617,10 @@ export async function runAxonAnnouncementWatchdog(
     // and this keeps: `detail` still carries the subnet, the ratio, the
     // mechanism and the counts, on /self-health and in history, exactly as
     // before. What changes is only whether that record asserts a fault. A
-    // withdrawal, a fleet-wide flag, an unread mechanism or any MIXED set are
-    // all still `stale` -- `churnOnly` is the same `every` bar the page uses,
-    // so one non-churn finding restores it.
-    verdict: findings.length > 0 && !churnOnly ? "stale" : "ok",
+    // withdrawal, an unroutable move, a fleet-wide flag, or an unread mechanism
+    // is still `stale` -- `explainedMembershipOnly` is the same `every` bar the
+    // page uses, so one actionable or unknown finding restores it.
+    verdict: findings.length > 0 && !explainedMembershipOnly ? "stale" : "ok",
     age_ms: null,
     detail,
     checked_at: now(),
@@ -616,9 +630,10 @@ export async function runAxonAnnouncementWatchdog(
     ok: true,
     // WHETHER IT PAGED, which is no longer the same as whether it found
     // something -- pure churn is recorded without an exception.
-    alerted: findings.length > 0 && !churnOnly,
+    alerted: findings.length > 0 && !explainedMembershipOnly,
     flagged: findings.length > 0,
     churn_only: churnOnly,
+    explained_membership_only: explainedMembershipOnly,
     fleet_wide: fleetWide,
     subnets_measured: bySubnet.size,
     findings,
