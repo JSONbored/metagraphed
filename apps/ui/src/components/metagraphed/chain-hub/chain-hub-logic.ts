@@ -76,6 +76,37 @@ export function feePoints(days: readonly ChainFeeDay[]): { t: number; v: number 
     .sort((a, b) => a.t - b.t);
 }
 
+export interface FeeWindowSummary {
+  totalFeeTao: number;
+  totalTipTao: number;
+  averageFeeTao: number | null;
+  dayCount: number;
+}
+
+/**
+ * Summarize a fee window without averaging daily averages.
+ *
+ * Daily averages have different denominators. The truthful window average is
+ * the total fee divided by every signed extrinsic measured in the window.
+ */
+export function summarizeFeeWindow(days: readonly ChainFeeDay[]): FeeWindowSummary | null {
+  if (days.length === 0) return null;
+  const totals = days.reduce(
+    (current, day) => ({
+      fee: current.fee + (day.total_fee_tao ?? 0),
+      tip: current.tip + (day.total_tip_tao ?? 0),
+      signedExtrinsics: current.signedExtrinsics + (day.signed_extrinsic_count ?? 0),
+    }),
+    { fee: 0, tip: 0, signedExtrinsics: 0 },
+  );
+  return {
+    totalFeeTao: totals.fee,
+    totalTipTao: totals.tip,
+    averageFeeTao: totals.signedExtrinsics > 0 ? totals.fee / totals.signedExtrinsics : null,
+    dayCount: days.length,
+  };
+}
+
 export interface FlowRail {
   key: string;
   label: string;
