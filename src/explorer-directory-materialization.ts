@@ -19,6 +19,7 @@ export type ExplorerDirectoryMaterialization = {
 export type ExplorerDirectoryPointer = {
   schema_version: 1;
   captured_at: number;
+  route_values_ready?: true;
 };
 
 type ExplorerDirectoryKv = Pick<KVNamespace, "get">;
@@ -27,6 +28,7 @@ const ExplorerDirectoryPointerSchema = z
   .object({
     schema_version: z.literal(1),
     captured_at: z.number().int().positive().max(8_640_000_000_000_000),
+    route_values_ready: z.literal(true).optional(),
   })
   .strict();
 
