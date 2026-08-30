@@ -2919,7 +2919,11 @@ test("the cache-stamp hot path reads only the small directory pointer", async ()
       reads.push(key);
       const value =
         key === KV_EXPLORER_DIRECTORIES_CURRENT
-          ? JSON.stringify({ schema_version: 1, captured_at: CAPTURED_AT })
+          ? JSON.stringify({
+              schema_version: 1,
+              captured_at: CAPTURED_AT,
+              route_values_ready: true,
+            })
           : null;
       return type === "json" && value !== null ? JSON.parse(value) : value;
     },
@@ -2936,7 +2940,11 @@ test("a refresh already represented by the current pointer does no database work
   const kv = memoryKv();
   kv.values.set(
     KV_EXPLORER_DIRECTORIES_CURRENT,
-    JSON.stringify({ schema_version: 1, captured_at: CAPTURED_AT }),
+    JSON.stringify({
+      schema_version: 1,
+      captured_at: CAPTURED_AT,
+      route_values_ready: true,
+    }),
   );
   assert.equal(
     await refreshExplorerDirectoryMaterialization(
@@ -2948,6 +2956,46 @@ test("a refresh already represented by the current pointer does no database work
   );
   assert.equal(kv.putCount(), 0);
   assert.equal(pg.control.queries.length, 0);
+});
+
+test("a matching legacy pointer backfills route-specific directory values once", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Legacy", stake_tao: 100 });
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+  );
+  const kv = memoryKv();
+  kv.values.set(
+    KV_EXPLORER_DIRECTORIES_CURRENT,
+    JSON.stringify({ schema_version: 1, captured_at: CAPTURED_AT }),
+  );
+  const collected = collectingCtx();
+  const stamp = await worker.fetch(
+    req("/api/v1/internal/neurons-snapshot-stamp"),
+    env({ METAGRAPH_CONTROL: kv }),
+    collected.ctx,
+  );
+
+  assert.deepEqual(await stamp.json(), { captured_at: CAPTURED_AT });
+  await Promise.all(collected.pending);
+  assert.deepEqual(
+    JSON.parse(kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!),
+    {
+      schema_version: 1,
+      captured_at: CAPTURED_AT,
+      route_values_ready: true,
+    },
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+      .account_count,
+    1,
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT)!)
+      .validator_count,
+    1,
+  );
 });
 
 test("a directory refresh declines cleanly when its store runner is unavailable", async () => {
@@ -3438,7 +3486,11 @@ test("the queue consumer publishes explorer directories when a neuron pass compl
   assert.deepEqual(acked, ["ack"]);
   assert.deepEqual(
     JSON.parse(kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!),
-    { schema_version: 1, captured_at: CAPTURED_AT },
+    {
+      schema_version: 1,
+      captured_at: CAPTURED_AT,
+      route_values_ready: true,
+    },
   );
   const materialized = JSON.parse(
     kv.values.get(explorerDirectoriesSnapshotKey(CAPTURED_AT))!,

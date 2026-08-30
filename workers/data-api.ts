@@ -7104,7 +7104,12 @@ export async function refreshExplorerDirectoryMaterialization(
     const previousPointer = await readExplorerDirectoryPointer(
       env.METAGRAPH_CONTROL,
     );
-    if (previousPointer?.captured_at === capturedAt) return true;
+    if (
+      previousPointer?.captured_at === capturedAt &&
+      previousPointer.route_values_ready
+    ) {
+      return true;
+    }
     const latest = await latestCompletedNeuronSnapshot(sql);
     const newestRows = await sql<{ captured_at: number | string | null }>`
       SELECT MAX(captured_at) AS captured_at FROM neurons`;
@@ -7180,7 +7185,11 @@ export async function refreshExplorerDirectoryMaterialization(
     ]);
     await env.METAGRAPH_CONTROL.put(
       KV_EXPLORER_DIRECTORIES_CURRENT,
-      JSON.stringify({ schema_version: 1, captured_at: capturedAt }),
+      JSON.stringify({
+        schema_version: 1,
+        captured_at: capturedAt,
+        route_values_ready: true,
+      }),
     );
     if (
       previousPointer &&
@@ -7235,15 +7244,12 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       // validating the ~300 KiB directory payload before every edge-cache hit
       // would move the whole cold-miss cost into the freshness check.
       const pointer = await readExplorerDirectoryPointer(env.METAGRAPH_CONTROL);
-      if (pointer?.captured_at === capturedAt) {
+      if (pointer?.captured_at === capturedAt && pointer.route_values_ready) {
         return json({ captured_at: capturedAt });
       }
 
-      // Do not make a reader wait for a whole-network fold. While the new
-      // snapshot is prepared, keep advertising the previous complete stamp so
-      // the main Worker's snapshot-keyed cache continues serving its matching
-      // complete response. With no prior materialization (the one-time rollout
-      // bootstrap), the existing live handler remains the safe fallback.
+      // Keep serving the last complete stamp while this background fold runs.
+      // Legacy pointers reach this once to backfill the route-specific values.
       ctx.waitUntil(
         refreshExplorerDirectoryMaterialization(env, ctx, capturedAt).catch(
           (error) => {
