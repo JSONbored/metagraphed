@@ -2998,6 +2998,61 @@ test("a matching legacy pointer backfills route-specific directory values once",
   );
 });
 
+test("a legacy combined directory restores both hot values without folding partial rows", async () => {
+  await insertNeuron({ uid: 0, hotkey: "5Verified", stake_tao: 100 });
+  await seed(
+    "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+    [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+  );
+  const kv = memoryKv();
+  const materializedEnv = env({ METAGRAPH_CONTROL: kv });
+  assert.equal(
+    await refreshExplorerDirectoryMaterialization(
+      materializedEnv as DataApiEnv,
+      ctx,
+      CAPTURED_AT,
+    ),
+    true,
+  );
+  kv.values.set(
+    KV_EXPLORER_DIRECTORIES_CURRENT,
+    JSON.stringify({ schema_version: 1, captured_at: CAPTURED_AT }),
+  );
+  kv.values.delete(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT);
+  kv.values.delete(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT);
+  await seed("UPDATE neurons SET captured_at = ?", [CAPTURED_AT + 60_000]);
+  const queriesBeforeFallback = pg.control.queries.length;
+  const collected = collectingCtx();
+
+  const response = await worker.fetch(
+    req("/api/v1/accounts/directory"),
+    materializedEnv,
+    collected.ctx,
+  );
+  assert.equal(((await response.json()) as Row).account_count, 1);
+  await Promise.all(collected.pending);
+
+  assert.equal(pg.control.queries.length, queriesBeforeFallback);
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+      .account_count,
+    1,
+  );
+  assert.equal(
+    JSON.parse(kv.values.get(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT)!)
+      .validator_count,
+    1,
+  );
+  assert.deepEqual(
+    JSON.parse(kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!),
+    {
+      schema_version: 1,
+      captured_at: CAPTURED_AT,
+      route_values_ready: true,
+    },
+  );
+});
+
 test("a directory refresh declines cleanly when its store runner is unavailable", async () => {
   const kv = memoryKv();
   assert.equal(

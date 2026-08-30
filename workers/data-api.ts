@@ -7079,16 +7079,8 @@ async function latestCompletedNeuronSnapshot(
   return Number.isSafeInteger(capturedAt) && capturedAt > 0 ? capturedAt : null;
 }
 
-/**
- * Build the browser-sized account and validator directories once for one
- * completed neuron snapshot.
- *
- * The completeness recheck is deliberate. `neurons` is updated in chunks; if
- * a newer partial pass has started, filtering it out would drop rows because
- * the table keeps only the newest value per key. In that state we retain the
- * previous complete materialization and let the next request retry after the
- * pass completes.
- */
+// Build both browser directories once per complete neuron snapshot. The final
+// boundary check prevents an in-place partial pass from publishing mixed data.
 export async function refreshExplorerDirectoryMaterialization(
   env: DataApiEnv,
   ctx: ExecutionContext,
@@ -7099,17 +7091,38 @@ export async function refreshExplorerDirectoryMaterialization(
   if (existing) return existing;
 
   const promise = (async () => {
-    const sql = routeRunner(env, ctx);
-    if (!sql) return false;
     const previousPointer = await readExplorerDirectoryPointer(
       env.METAGRAPH_CONTROL,
     );
-    if (
-      previousPointer?.captured_at === capturedAt &&
-      previousPointer.route_values_ready
-    ) {
-      return true;
+    if (previousPointer?.captured_at === capturedAt) {
+      if (previousPointer.route_values_ready) return true;
+      const previous = await readExplorerDirectoryMaterialization(
+        env.METAGRAPH_CONTROL,
+      );
+      if (previous?.captured_at === capturedAt) {
+        await Promise.all([
+          env.METAGRAPH_CONTROL.put(
+            KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
+            JSON.stringify(previous.accounts),
+          ),
+          env.METAGRAPH_CONTROL.put(
+            KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
+            JSON.stringify(previous.validators),
+          ),
+        ]);
+        await env.METAGRAPH_CONTROL.put(
+          KV_EXPLORER_DIRECTORIES_CURRENT,
+          JSON.stringify({
+            schema_version: 1,
+            captured_at: capturedAt,
+            route_values_ready: true,
+          }),
+        );
+        return true;
+      }
     }
+    const sql = routeRunner(env, ctx);
+    if (!sql) return false;
     const latest = await latestCompletedNeuronSnapshot(sql);
     const newestRows = await sql<{ captured_at: number | string | null }>`
       SELECT MAX(captured_at) AS captured_at FROM neurons`;
@@ -7151,10 +7164,7 @@ export async function refreshExplorerDirectoryMaterialization(
     });
     const validators = buildValidatorOperatorDirectory(globalValidators);
 
-    // The table is updated in-place and the fold above is intentionally not a
-    // long-running transaction. Recheck both boundaries after the scans so a
-    // newer pass that started while they ran cannot be published under the
-    // previous snapshot's stamp.
+    // Refuse publication if a newer in-place pass began during the fold.
     const finalLatest = await latestCompletedNeuronSnapshot(sql);
     const finalRows = await sql<{ captured_at: number | string | null }>`
       SELECT MAX(captured_at) AS captured_at FROM neurons`;
@@ -7201,8 +7211,7 @@ export async function refreshExplorerDirectoryMaterialization(
           explorerDirectoriesSnapshotKey(previousPointer.captured_at),
         );
       } catch (error) {
-        // Cleanup is bounded-storage hygiene, not part of publication. The new
-        // pointer and payload are already complete and must stay readable.
+        // Cleanup is not part of publication.
         console.error(
           "explorer directory materialization cleanup failed:",
           error,
@@ -7232,17 +7241,13 @@ function scheduleExplorerDirectoryRefresh(
 }
 
 function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
-  // Internal-only freshness stamp used by the public API Worker's edge cache.
-  // The completed pass is the snapshot boundary: MAX(neurons.captured_at) can
-  // advance after only one chunk and would make a partial capture look whole.
+  // Internal freshness stamp, bounded by the latest complete pass.
   if (url.pathname === "/api/v1/internal/neurons-snapshot-stamp") {
     return async (sql, env, ctx) => {
       const capturedAt = await latestCompletedNeuronSnapshot(sql);
       if (capturedAt === null) return json({ captured_at: null });
 
-      // This hot path intentionally reads only the tiny pointer. Fetching and
-      // validating the ~300 KiB directory payload before every edge-cache hit
-      // would move the whole cold-miss cost into the freshness check.
+      // Keep the ready hot path to one tiny pointer read.
       const pointer = await readExplorerDirectoryPointer(env.METAGRAPH_CONTROL);
       if (pointer?.captured_at === capturedAt && pointer.route_values_ready) {
         return json({ captured_at: capturedAt });
@@ -7537,14 +7542,16 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     };
   }
 
-  // GET /api/v1/validators/operators: the website's grouped directory shape.
-  // The rich per-hotkey route above remains unchanged for REST/MCP consumers.
+  // Website-sized grouped validator directory.
   if (url.pathname === "/api/v1/validators/operators") {
-    return async (sql, env) => {
+    return async (sql, env, ctx) => {
       const materialized = await readExplorerDirectoryMaterialization(
         env.METAGRAPH_CONTROL,
       );
-      if (materialized) return json(materialized.validators);
+      if (materialized) {
+        scheduleExplorerDirectoryRefresh(env, ctx, materialized.captured_at);
+        return json(materialized.validators);
+      }
       return json(
         buildValidatorOperatorDirectory(
           await loadGlobalValidatorsFromStore(
@@ -8369,15 +8376,16 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     };
   }
 
-  // GET /api/v1/accounts/directory: one canonical website projection carrying
-  // the stake, emission and reach rankings derived from a single aggregation.
-  // The rich sortable route above remains unchanged for REST/MCP consumers.
+  // Website-sized stake, emission and reach rankings.
   if (url.pathname === "/api/v1/accounts/directory") {
-    return async (sql, env) => {
+    return async (sql, env, ctx) => {
       const materialized = await readExplorerDirectoryMaterialization(
         env.METAGRAPH_CONTROL,
       );
-      if (materialized) return json(materialized.accounts);
+      if (materialized) {
+        scheduleExplorerDirectoryRefresh(env, ctx, materialized.captured_at);
+        return json(materialized.accounts);
+      }
       const [rows, priceByNetuid] = await Promise.all([
         sql<{
           netuid: Neurons["netuid"];
