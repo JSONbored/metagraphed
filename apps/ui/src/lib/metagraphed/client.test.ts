@@ -158,6 +158,71 @@ describe("apiFetch", () => {
     });
   });
 
+  it("rejects a header-marked empty fallback instead of treating it as measured data", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          { ok: true, data: { day_count: 0, days: [] }, meta: {} },
+          { headers: { "x-metagraph-degraded": "tier_unavailable" } },
+        ),
+      ),
+    );
+
+    await expect(apiFetch("/api/v1/chain/activity")).rejects.toMatchObject({
+      name: "ApiError",
+      status: 200,
+      code: "data_tier_unavailable",
+      url: "https://api.metagraph.sh/api/v1/chain/activity",
+    } satisfies Partial<ApiError>);
+  });
+
+  it("keeps an explicit error envelope more specific than the degraded header", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          { ok: false, error: { message: "bad window", code: "bad_window" } },
+          { headers: { "x-metagraph-degraded": "tier_unavailable" } },
+        ),
+      ),
+    );
+
+    await expect(apiFetch("/api/v1/chain/activity")).rejects.toMatchObject({
+      message: "bad window",
+      status: 200,
+      code: "bad_window",
+    } satisfies Partial<ApiError>);
+  });
+
+  it("rejects an unverified plain JSON fallback too", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          { day_count: 0, days: [] },
+          { headers: { "x-metagraph-degraded": "tier_unavailable" } },
+        ),
+      ),
+    );
+
+    await expect(apiFetch("/api/v1/chain/activity")).rejects.toMatchObject({
+      code: "data_tier_unavailable",
+      status: 200,
+    } satisfies Partial<ApiError>);
+  });
+
+  it("keeps an ordinary measured empty response usable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ ok: true, data: { day_count: 0, days: [] }, meta: {} })),
+    );
+
+    await expect(apiFetch("/api/v1/chain/activity")).resolves.toMatchObject({
+      data: { day_count: 0, days: [] },
+    });
+  });
+
   it("wraps network failures as ApiError with status 0", async () => {
     vi.stubGlobal(
       "fetch",
