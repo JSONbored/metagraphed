@@ -100,7 +100,7 @@ import {
 import {
   AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
   DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
-  PROMETHEUS_DEGRADED_NOT_CURATED,
+  DEGRADED_UNAVAILABLE,
 } from "../src/uncurated-event-streams.ts";
 import type { Row } from "./row-type.ts";
 import { assertValid } from "./helpers/assert-valid.ts";
@@ -25620,13 +25620,9 @@ describe("MCP event-stream honesty (#9307)", () => {
       { ss58: HONEST_SS58 },
       DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
     ],
-    ["get_chain_prometheus", {}, PROMETHEUS_DEGRADED_NOT_CURATED],
-    ["get_subnet_prometheus", { netuid: 3 }, PROMETHEUS_DEGRADED_NOT_CURATED],
-    [
-      "get_account_prometheus",
-      { ss58: HONEST_SS58 },
-      PROMETHEUS_DEGRADED_NOT_CURATED,
-    ],
+    ["get_chain_prometheus", {}, DEGRADED_UNAVAILABLE],
+    ["get_subnet_prometheus", { netuid: 3 }, DEGRADED_UNAVAILABLE],
+    ["get_account_prometheus", { ss58: HONEST_SS58 }, DEGRADED_UNAVAILABLE],
     ["get_chain_axon_removals", {}, AXON_REMOVALS_DEGRADED_NEVER_EMITTED],
     [
       "get_subnet_axon_removals",

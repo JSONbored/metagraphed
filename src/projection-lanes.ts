@@ -172,15 +172,12 @@ export interface ProjectionLane {
    * PROJECTION_LANES_CRON tick, so none sets this yet. */
   intervalCron?: string;
   /**
-   * A lane whose EMPTY answer is correct and permanent, so zero rows is not a
-   * fault for it.
+   * A lane whose empty answer can be a valid measurement.
    *
    * `projection-staleness` treats zero rows as broken because on mainnet a
    * block every 12s means an empty window cannot be real. That claim is right
-   * for every lane but this kind: `chain-prometheus` reads `PrometheusServed`
-   * from `account_events`, and our curation drops that variant, so the card is
-   * empty whatever tier answers -- which the route already states permanently
-   * via PROMETHEUS_DEGRADED_NOT_CURATED.
+   * for continuously active streams. Prometheus announcements can be absent
+   * throughout a 7d/30d window even when the complete event source is current.
    *
    * Set only with the reason written down. The watchdog's own comment asks for
    * exactly this -- exemption by NAME rather than weakening the rule into one
@@ -1051,10 +1048,8 @@ async function computeChainServing(
  * GET /api/v1/chain/prometheus, every supported window (#11419).
  *
  * AxonServed's twin -- the pallet emits both as (netuid, hotkey) from the same
- * serving.rs -- so it projects identically. Its card stays empty for the
- * separate reason `PROMETHEUS_DEGRADED_NOT_CURATED` records (the curation drops
- * `PrometheusServed`), and the lane does not change that: it stops the empty
- * costing a 15-second timeout to produce.
+ * serving.rs -- so it projects identically. A quiet window is a valid empty
+ * measurement, and the scheduled projection keeps that answer off request-time SQL.
  */
 async function computeChainPrometheus(
   env: Env,
@@ -1593,11 +1588,8 @@ export const PROJECTION_LANES: ProjectionLane[] = [
     name: "chain-prometheus",
     artifactKey: CHAIN_PROMETHEUS_PROJECTION_KEY,
     compute: computeChainPrometheus,
-    // The chain emits PrometheusServed and `account_events` curation drops it,
-    // so this card is empty whatever tier answers -- stated permanently on the
-    // route as PROMETHEUS_DEGRADED_NOT_CURATED. Alarming on it every tick made
-    // the projection-staleness lane permanent noise (#11484) without ever
-    // describing a condition anyone could act on.
+    // Prometheus announcements are sporadic; a current, successfully queried
+    // 7d/30d window can contain none. Freshness and query-failure checks still apply.
     emptyIsExpected: true,
   },
   {

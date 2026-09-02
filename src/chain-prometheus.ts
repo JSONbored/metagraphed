@@ -10,7 +10,7 @@
 import { roundDp, median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import {
-  PROMETHEUS_DEGRADED_NOT_CURATED,
+  DEGRADED_UNAVAILABLE,
   type EventStreamDegraded,
 } from "./uncurated-event-streams.ts";
 
@@ -152,9 +152,12 @@ export function buildChainPrometheus(
     limit = CHAIN_PROMETHEUS_LIMIT_DEFAULT,
     networkDistinct,
     subnetCount,
+    sourceAvailable = false,
   }: {
     window?: string | null;
     limit?: number;
+    /** True only after a successful source read, including a measured empty window. */
+    sourceAvailable?: boolean;
     /**
      * How many subnets the WINDOW covers, from the loader's own count.
      *
@@ -186,12 +189,7 @@ export function buildChainPrometheus(
     network: { ...EMPTY_NETWORK },
     intensity_distribution: null,
     subnets: [],
-    // The empty answer is the ONLY answer this route can produce today, and
-    // it is not a measurement: the chain emitted 18,041 PrometheusServed
-    // events and our account_events curation carries 0 of them. Marking it
-    // here rather than at each caller means REST, MCP and the GraphQL
-    // resolver all inherit it from the one builder they share.
-    degraded: { reason: PROMETHEUS_DEGRADED_NOT_CURATED },
+    ...(!sourceAvailable && { degraded: { reason: DEGRADED_UNAVAILABLE } }),
   };
   if (list.length === 0) return empty;
 

@@ -586,7 +586,10 @@ export async function loadAccountPrometheusColdTier(
   );
   if (rows === null) return null;
   return {
-    data: buildAccountPrometheus(rows, ss58, { window: label }),
+    data: buildAccountPrometheus(rows, ss58, {
+      window: label,
+      sourceAvailable: true,
+    }),
     generatedAt: latestObservedIso(rows),
   };
 }

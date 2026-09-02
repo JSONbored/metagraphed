@@ -8,7 +8,7 @@
 // shaping (buildSubnetPrometheus) + a thin store loader (loadSubnetPrometheus); the Worker adds the
 // envelope. Null-safe: a cold store or a subnet with no PrometheusServed events yields the zeroed card.
 
-import { PROMETHEUS_DEGRADED_NOT_CURATED } from "./uncurated-event-streams.ts";
+import { DEGRADED_UNAVAILABLE } from "./uncurated-event-streams.ts";
 import { roundDp } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
@@ -64,7 +64,10 @@ function announcementsPerExporter(
 export function buildSubnetPrometheus(
   row: Row | null | undefined,
   netuid: unknown,
-  { window }: { window?: unknown } = {},
+  {
+    window,
+    sourceAvailable = false,
+  }: { window?: unknown; sourceAvailable?: boolean } = {},
 ): Row {
   const distinctExporters = toCount(row?.distinct_exporters);
   const announcements = toCount(row?.announcements);
@@ -80,13 +83,9 @@ export function buildSubnetPrometheus(
       distinctExporters,
     ),
   };
-  // The zeroed card is the only card this route can produce: the chain emitted
-  // 18,041 PrometheusServed events and the account_events projection this
-  // reads carries 0 of them, so its zero is "we could not look", not "this
-  // subnet announced nothing". Conditional rather than unconditional so the
-  // marker disappears on its own the day the curation gap is closed upstream.
-  if (announcements === 0) {
-    card.degraded = { reason: PROMETHEUS_DEGRADED_NOT_CURATED };
+  // Successful empty reads are quiet windows, not missing event curation.
+  if (announcements === 0 && !sourceAvailable) {
+    card.degraded = { reason: DEGRADED_UNAVAILABLE };
   }
   return card;
 }
@@ -111,5 +110,6 @@ export async function loadSubnetPrometheus(
   );
   return buildSubnetPrometheus(rows?.[0] ?? null, netuid, {
     window: windowLabel,
+    sourceAvailable: true,
   });
 }

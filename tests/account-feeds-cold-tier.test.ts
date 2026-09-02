@@ -1030,6 +1030,7 @@ describe("loadAccountPrometheusColdTier", () => {
     const res = await loadAccountPrometheusColdTier(TOKEN as never, ADDR);
     assert.equal(res!.data.total_announcements, 0);
     assert.equal(res!.generatedAt, null);
+    assert.equal(res!.data.degraded, undefined);
   });
 
   test("declines an unusable address rather than scanning every account", async () => {

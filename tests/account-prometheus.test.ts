@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { PROMETHEUS_DEGRADED_NOT_CURATED } from "../src/uncurated-event-streams.ts";
+import { DEGRADED_UNAVAILABLE } from "../src/uncurated-event-streams.ts";
 import { describe, test } from "vitest";
 import {
   buildAccountPrometheus,
@@ -157,7 +157,7 @@ describe("buildAccountPrometheus", () => {
 describe("buildAccountPrometheus honesty marker (#9307)", () => {
   test("an empty footprint says its zero is not a measurement", () => {
     const d = buildAccountPrometheus([], "5A", { window: "30d" });
-    assert.deepEqual(d.degraded, { reason: PROMETHEUS_DEGRADED_NOT_CURATED });
+    assert.deepEqual(d.degraded, { reason: DEGRADED_UNAVAILABLE });
   });
 
   test("a footprint with announcements carries NO marker", () => {

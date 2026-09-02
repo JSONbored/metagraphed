@@ -227,8 +227,7 @@ export const ChainPrometheusArtifactSchema = z
           "One subnet's Prometheus telemetry-serving activity in the window, ranked by announcements.",
         ),
     ),
-    // #9307: the chain emits PrometheusServed and our account_events curation
-    // drops it, so the empty answer is not a measurement.
+    // Distinguishes an unavailable source from a measured quiet window.
     degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();

@@ -23,11 +23,8 @@
 // under a request at all. A cron pays the variance once per interval; a caller
 // then pays one R2 GET.
 //
-// This route ALSO carries `PROMETHEUS_DEGRADED_NOT_CURATED` permanently: the
-// chain emits `PrometheusServed` and our `account_events` curation drops it, so
-// the card is empty whatever tier answers. Serving an empty from a cron instead
-// of from a 15-second timeout does not make it less empty -- it makes it
-// honest about WHY, which is the marker's job and not this lane's.
+// A validated projection can prove a quiet window. Missing, invalid, or stale
+// artifacts decline so callers retain the unavailable-source behavior.
 //
 // The RESPONSE SHAPE is unchanged: the lane stores the same network DISTINCT
 // row and per-subnet aggregate the cold tier computes, and this reader hands
@@ -79,5 +76,6 @@ export async function loadChainPrometheusFromArtifact(
     window: read.label,
     limit: query.limit ?? CHAIN_PROMETHEUS_LIMIT_DEFAULT,
     networkDistinct: read.cell.network ?? undefined,
+    sourceAvailable: true,
   });
 }
