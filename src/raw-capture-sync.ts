@@ -624,7 +624,9 @@ async function runLane(
       // `ok` means the tick RAN and landed what it could. A short tick is not a
       // fault -- the next one resumes at the same height -- so the verdict
       // tracks whether the lane is keeping pace, not whether it stopped early.
-      verdict: result.captured > 0 ? "ok" : "stale",
+      // A watermark already at the measured head needs no new writes. Only
+      // zero progress with a remaining backlog is a stalled capture tick.
+      verdict: result.captured > 0 || result.behind === 0 ? "ok" : "stale",
       age_ms: null,
       detail:
         `${result.captured} captured, ${result.behind} behind, ` +

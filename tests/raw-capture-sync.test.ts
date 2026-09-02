@@ -43,7 +43,7 @@ import {
 
 /**
  * The raw-capture migrations, IN ORDER — 0006 creates the table, 0013 rebuilds
- * it with a network dimension (#8700).
+ * it with a network dimension (#8700), and 0014 persists lane verdicts.
  *
  * Applied as a chain rather than as a single final schema on purpose. D1
  * migrations in this repo are applied BY HAND to production, so the thing worth
@@ -53,12 +53,15 @@ import {
  * floor, which would re-capture ~3,000 blocks and briefly report a gap that
  * does not exist.
  */
-const MIGRATIONS = ["0006_raw_capture.sql", "0013_raw_capture_network.sql"].map(
-  (name) =>
-    fs.readFileSync(
-      path.join(process.cwd(), "tests/fixtures/sqlite-schema", name),
-      "utf8",
-    ),
+const MIGRATIONS = [
+  "0006_raw_capture.sql",
+  "0013_raw_capture_network.sql",
+  "0014_lane_health.sql",
+].map((name) =>
+  fs.readFileSync(
+    path.join(process.cwd(), "tests/fixtures/sqlite-schema", name),
+    "utf8",
+  ),
 );
 
 function applyMigrations(target: InstanceType<typeof DatabaseSync>) {
@@ -355,6 +358,13 @@ describe("runRawCaptureSync — capture", () => {
     assert.equal(again.captured, 0);
     assert.equal(again.behind, 0);
     assert.equal(puts.size, 1);
+    const health = db
+      .prepare(
+        "SELECT verdict, detail FROM lane_health WHERE lane = 'raw-capture:mainnet' AND checked_at = 2",
+      )
+      .get();
+    assert.equal(health?.verdict, "ok");
+    assert.equal(health?.detail, "0 captured, 0 behind, 1 endpoint(s)");
   });
 
   test("reports lag so a backlog is observable rather than inferred", async () => {
@@ -379,62 +389,78 @@ describe("runRawCaptureSync — capture", () => {
     );
   });
 
-  test("a partial tick warns with its stop reason but still reports ok", async () => {
-    const { env, puts } = envWith();
-    const warnings: string[] = [];
-    const realWarn = console.warn;
-    console.warn = (...a: unknown[]) => void warnings.push(a.join(" "));
-    // Head is reachable, but block floor+1 fails -- so the tick captures the
-    // floor block and stops, which is the safe partial-run path.
-    const failAt = RAW_CAPTURE_GENESIS_FLOOR + 1;
-    const flaky = jsonRpcNode((method, params, url) => {
-      const isTestnet = url.includes("test.finney");
-      // Endpoint-aware for the same reason rpcFetch is: the testnet lane must
-      // be a no-op here so `puts.size` still counts only the mainnet batch.
-      if (method === "chain_getHeader")
-        return {
-          result: {
-            number: isTestnet
-              ? `0x${(TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`
-              : `0x${(RAW_CAPTURE_GENESIS_FLOOR + 5).toString(16)}`,
-          },
-        };
-      if (method === "chain_getBlockHash") return hashList(params);
-      if (method === "chain_getBlock") {
-        // A per-CALL refusal, which is how a node declines a height it cannot
-        // serve. The chunk keeps its prefix and stops there -- the safe
-        // partial-run path this test is about.
-        if (params[0] === `0xh${failAt}`) {
-          return { error: { message: `state already discarded at ${failAt}` } };
+  test.each([0, 1])(
+    "a stopped tick records health from its %i committed blocks",
+    async (captured) => {
+      const { env, puts } = envWith();
+      const warnings: string[] = [];
+      const realWarn = console.warn;
+      console.warn = (...a: unknown[]) => void warnings.push(a.join(" "));
+      // The head is reachable, but the first or second pending block fails.
+      // No progress with work remaining must stay stale; partial progress is ok.
+      const failAt = RAW_CAPTURE_GENESIS_FLOOR + captured;
+      const flaky = jsonRpcNode((method, params, url) => {
+        const isTestnet = url.includes("test.finney");
+        // Endpoint-aware for the same reason rpcFetch is: the testnet lane must
+        // be a no-op here so `puts.size` still counts only the mainnet batch.
+        if (method === "chain_getHeader")
+          return {
+            result: {
+              number: isTestnet
+                ? `0x${(TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`
+                : `0x${(RAW_CAPTURE_GENESIS_FLOOR + 5).toString(16)}`,
+            },
+          };
+        if (method === "chain_getBlockHash") return hashList(params);
+        if (method === "chain_getBlock") {
+          // A per-CALL refusal, which is how a node declines a height it cannot
+          // serve. The chunk keeps its prefix and stops there -- the safe
+          // partial-run path this test is about.
+          if (params[0] === `0xh${failAt}`) {
+            return {
+              error: { message: `state already discarded at ${failAt}` },
+            };
+          }
+          return {
+            result: {
+              block: { header: { parentHash: "0xp" }, extrinsics: ["0xaa"] },
+            },
+          };
         }
-        return {
-          result: {
-            block: { header: { parentHash: "0xp" }, extrinsics: ["0xaa"] },
-          },
-        };
-      }
-      return { result: "0xevents" };
-    });
-    try {
-      const result = await runRawCaptureSync(env as never, {
-        sleepFn: noSleep,
-        ctx: CTX,
-        fetchImpl: flaky,
-        now: () => 9,
+        return { result: "0xevents" };
       });
-      assert.equal(result.ok, true, "a partial tick is not a failed tick");
-      assert.equal(result.captured, 1);
-      assert.equal(result.stoppedAt, failAt);
-      assert.equal(result.watermark, RAW_CAPTURE_GENESIS_FLOOR);
-      assert.equal(puts.size, 1);
-      assert.ok(
-        warnings.some((w) => w.includes(`stopped at ${failAt}`)),
-        "the stop is visible, so a stuck lane looks different from a slow one",
-      );
-    } finally {
-      console.warn = realWarn;
-    }
-  });
+      try {
+        const result = await runRawCaptureSync(env as never, {
+          sleepFn: noSleep,
+          ctx: CTX,
+          fetchImpl: flaky,
+          now: () => 9,
+        });
+        assert.equal(result.ok, true, "a partial tick is not a failed tick");
+        assert.equal(result.captured, captured);
+        assert.equal(result.stoppedAt, failAt);
+        assert.equal(
+          result.watermark,
+          RAW_CAPTURE_GENESIS_FLOOR + captured - 1,
+        );
+        assert.equal(result.behind, 6 - captured);
+        assert.equal(puts.size, captured);
+        const health = db
+          .prepare(
+            "SELECT verdict, detail FROM lane_health WHERE lane = 'raw-capture:mainnet' AND checked_at = 9",
+          )
+          .get();
+        assert.equal(health?.verdict, captured > 0 ? "ok" : "stale");
+        assert.match(String(health?.detail), /state already discarded/);
+        assert.ok(
+          warnings.some((w) => w.includes(`stopped at ${failAt}`)),
+          "the stop is visible, so a stuck lane looks different from a slow one",
+        );
+      } finally {
+        console.warn = realWarn;
+      }
+    },
+  );
 
   test("a thrown non-Error still yields a reason instead of 'undefined'", async () => {
     const { env } = envWith();
