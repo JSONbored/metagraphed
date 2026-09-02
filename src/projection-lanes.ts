@@ -81,13 +81,15 @@ import { CHAIN_SERVING_PROJECTION_KEY } from "./chain-serving-artifact.ts";
 import { CHAIN_PROMETHEUS_PROJECTION_KEY } from "./chain-prometheus-artifact.ts";
 import { CHAIN_WEIGHTS_PROJECTION_KEY } from "./chain-weights-artifact.ts";
 import {
+  CHAIN_PROMETHEUS_ROLLUP,
+  CHAIN_SERVING_ROLLUP,
   CHAIN_WEIGHTS_ROLLUP,
+  loadChainEventRollup,
   loadChainEventIdentityRollup,
   ROLLUP_POPULATION_CAP,
+  type ChainEventRollupSpec,
 } from "./chain-event-rollup-cold-tier.ts";
 import { CHAIN_WEIGHT_SETTERS_PROJECTION_KEY } from "./chain-weight-setters-artifact.ts";
-import { SERVING_EVENT_KIND } from "./subnet-serving.ts";
-import { PROMETHEUS_EVENT_KIND } from "./subnet-prometheus.ts";
 import {
   BLOCKS_SUMMARY_READ_COLUMNS,
   BLOCKS_SUMMARY_SCAN_CAP,
@@ -934,13 +936,7 @@ async function computeChainWeights(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  return computeAnalyticsDistinctLanes(
-    env,
-    network,
-    CHAIN_WEIGHTS_ROLLUP.eventKind,
-    CHAIN_WEIGHTS_ROLLUP.countField,
-    CHAIN_WEIGHTS_ROLLUP.distinctField,
-  );
+  return computeAnalyticsDistinctLanes(env, network, CHAIN_WEIGHTS_ROLLUP);
 }
 
 /**
@@ -1048,13 +1044,7 @@ async function computeChainServing(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  return computeAnalyticsDistinctLanes(
-    env,
-    network,
-    SERVING_EVENT_KIND,
-    "announcements",
-    "distinct_servers",
-  );
+  return computeAnalyticsDistinctLanes(env, network, CHAIN_SERVING_ROLLUP);
 }
 
 /**
@@ -1070,50 +1060,50 @@ async function computeChainPrometheus(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  return computeAnalyticsDistinctLanes(
-    env,
-    network,
-    PROMETHEUS_EVENT_KIND,
-    "announcements",
-    "distinct_exporters",
-  );
+  return computeAnalyticsDistinctLanes(env, network, CHAIN_PROMETHEUS_ROLLUP);
 }
 
 /**
  * Every ANALYTICS_WINDOW_DAYS window of one event kind, in the artifact shape
  * the readers expect.
  *
- * Shared because the two lanes above differ only in the event kind and the two
- * column aliases -- writing the window loop twice is how a lane gains a window
- * its twin does not have.
+ * Use the same identity contract as the live rollup reader: hotkeys for
+ * serving events, and (netuid, uid) pairs for weights. These events have no
+ * coldkey, so the stake-transfer helper would count every participant as zero.
  */
 async function computeAnalyticsDistinctLanes(
   env: Env,
   network: ChainNetworkId,
-  eventKind: string,
-  countAlias: string,
-  distinctAlias: string,
+  spec: ChainEventRollupSpec,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
-    const window = await computeSubnetDistinctWindow(
-      env,
-      subnetDistinctWindowSql(
-        generatedAt - days * DAY_MS,
-        eventKind,
-        countAlias,
-        distinctAlias,
-        network,
-      ),
-    );
+    const outcome = await loadChainEventRollup(env, spec, {
+      windowDays: days,
+      now: generatedAt,
+      network,
+      query: (_env, sql) => laneQuery(env, sql),
+    });
+    if (outcome.kind === "empty") {
+      windows[label] = {
+        days,
+        network: { [spec.distinctField]: 0, newest_observed: null },
+        rows: [],
+      };
+      continue;
+    }
     // One failed window fails the LANE: a partial artifact would serve a real
     // 7d beside a stale 30d under one `generated_at`, and the runner's
     // write-only-on-non-null rule keeps the previous tick instead.
-    if (window === null) return null;
-    windows[label] = { days, network: window.network, rows: window.rows };
-    rowCount += window.rows.length;
+    if (outcome.kind !== "answer") return null;
+    const { rows, networkDistinct, subnetCount } = outcome.rollup;
+    // A stored directory must contain the full subnet population. The live
+    // reader's bounded page or inferred population is not a complete artifact.
+    if (subnetCount !== rows.length) return null;
+    windows[label] = { days, network: networkDistinct, rows };
+    rowCount += rows.length;
   }
   return {
     schema_version: 1,
