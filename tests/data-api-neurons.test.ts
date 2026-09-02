@@ -2962,6 +2962,42 @@ test.each(["/api/v1/accounts/directory", "/api/v1/validators/operators"])(
   },
 );
 
+test.each(["/api/v1/accounts/directory", "/api/v1/validators/operators"])(
+  "%s still serves the verified directory when the freshness lookup fails",
+  async (route) => {
+    await insertNeuron({ uid: 0, hotkey: "5Verified", stake_tao: 100 });
+    await seed(
+      "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+      [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+    );
+    const kv = memoryKv();
+    const materializedEnv = env({ METAGRAPH_CONTROL: kv });
+    await refreshExplorerDirectoryMaterialization(
+      materializedEnv as DataApiEnv,
+      ctx,
+      CAPTURED_AT,
+    );
+    const previousPointer = kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT);
+    pg.control.failNext = new Error("Neon temporarily unavailable");
+    const collected = collectingCtx();
+    const response = await worker.fetch(
+      req(route),
+      materializedEnv,
+      collected.ctx,
+    );
+    assert.equal(response.status, 200);
+    await Promise.all(collected.pending);
+    assert.equal(
+      kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT),
+      previousPointer,
+    );
+    assert.equal(
+      ((await response.json()) as Row).captured_at,
+      new Date(CAPTURED_AT).toISOString(),
+    );
+  },
+);
+
 test("concurrent requests share one directory refresh for a completed snapshot", async () => {
   await insertNeuron({ uid: 0, hotkey: "5Only", stake_tao: 100 });
   await seed(
