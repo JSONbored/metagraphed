@@ -1,3 +1,4 @@
+import { lazySchemaMap } from "./lazy-schema-map.ts";
 // What every route accepts as a query parameter, in ONE place (#10062).
 //
 // Part of the epic that collapses MCP, REST and GraphQL onto one schema layer
@@ -406,7 +407,7 @@ export const FEED_QUERY_SCHEMAS = {
   netuid: netuidSchema().optional(),
 } as const;
 
-export const ROUTE_QUERY_SCHEMAS = {
+export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
   // #10600: the two composite subnet routes. They took NO parameters until
   // now -- not for want of size (272,825 B and 202,948 B) but because the
   // ordinary lever does not fit: a query collection pages ONE data_key, and
@@ -417,1201 +418,1325 @@ export const ROUTE_QUERY_SCHEMAS = {
   // columns out of the rows of a list" on all five routes that carry it, and
   // its published description says so. One name with two units of selection
   // would give a caller a different KIND of answer with nothing telling them.
-  "/api/v1/subnets/{netuid}": z.object({
-    sections: sectionsSchema(SUBNET_DETAIL_SECTIONS, [
-      "subnet",
-      "economics",
-    ]).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/profile": z.object({
-    sections: sectionsSchema(SUBNET_PROFILE_SECTIONS, [
-      "subnet",
-      "profile",
-    ]).optional(),
-  }),
+  "/api/v1/subnets/{netuid}": () =>
+    z.object({
+      sections: sectionsSchema(SUBNET_DETAIL_SECTIONS, [
+        "subnet",
+        "economics",
+      ]).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/profile": () =>
+    z.object({
+      sections: sectionsSchema(SUBNET_PROFILE_SECTIONS, [
+        "subnet",
+        "profile",
+      ]).optional(),
+    }),
   // #11100: the third composite subnet route. The overview is the payload the
   // field report measured as very large with heavy duplication, and get_subnet
   // -- the tool most likely to be an agent's first call -- serves it; an agent
   // pays the unprojected bytes in context window.
-  "/api/v1/subnets/{netuid}/overview": z.object({
-    sections: sectionsSchema(SUBNET_OVERVIEW_SECTIONS, [
-      "profile",
-      "health",
-    ]).optional(),
-  }),
+  "/api/v1/subnets/{netuid}/overview": () =>
+    z.object({
+      sections: sectionsSchema(SUBNET_OVERVIEW_SECTIONS, [
+        "profile",
+        "health",
+      ]).optional(),
+    }),
   // The export tier (#11600). Same feed as /api/v1/chain-events, same filters,
   // a far higher ceiling -- and no cursor, because an export that needs paging
   // is the paginated route with extra steps. `before` stays: it is how a
   // caller walks a large range in deliberate, priced chunks.
-  "/api/v1/export/chain-events": z.object({
-    pallet: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
-    method: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
-    before: blockBoundSchema("first").optional(),
-    limit: limitSchema(
-      EXPORT_CHAIN_EVENTS_LIMIT_MAX,
-      EXPORT_CHAIN_EVENTS_LIMIT_DEFAULT,
-    ).optional(),
-  }),
-  "/api/v1/search/semantic": z.object({
-    // Both were wrong before #10075: `q` published no ceiling though the
-    // handler rejects one over SEMANTIC_QUERY_MAX_LENGTH, and `limit`
-    // published `{"type":"string"}` for a value the handler reads as an
-    // integer and clamps -- so a client generated from this spec sent a
-    // string where an integer was wanted, with no way to learn either bound.
-    // The bounds come FROM src/route-limits.ts rather than being restated
-    // here -- that module is the owner, and schemas-src/mcp-tools/ has read it
-    // directly since #9127.
-    // REQUIRED, and published that way (#11599). The handler has always
-    // rejected a call without it -- `GET /api/v1/search/semantic` returns 400
-    // `invalid_query`, "Query parameter `q` is required.", verified against
-    // production -- while this schema said `.optional()`, so the spec told a
-    // client the one mandatory input was optional. That is the third time this
-    // route published something it does not do (see #10075 and #10065 above);
-    // the derivation in isRequiredQueryParameter reads THIS, so the fix
-    // belongs here rather than in a hand-written `required: true`.
-    //
-    // /api/v1/search is genuinely different and stays optional: it returns 200
-    // with no `q`. The two routes are not the same contract.
-    q: querySchema(SEMANTIC_QUERY_MAX_LENGTH),
-    limit: limitSchema(SEMANTIC_LIMIT_MAX, SEMANTIC_LIMIT_DEFAULT).optional(),
-    // #10065: the handler has scoped on this since semantic search shipped --
-    // it filters the results and rejects an unknown value by name ("Unknown
-    // type `bogus`. Valid types: subnet, surface, provider", verified live) --
-    // and the contract never mentioned it. The vocabulary comes FROM
-    // src/ai-search.ts rather than being restated, so the two cannot drift.
-    type: z.enum(SEMANTIC_TYPES).optional(),
-  }),
-  "/api/v1/chain/emission-pipeline": z.object({
-    netuid: netuidSchema().optional(),
-    sort: sortSchema([
-      "final_share",
-      "emission_share",
-      "weighted_share",
-      "gated_share",
-      "gate_delta",
-      "distance_to_bar",
-      "tao_in_emission",
-      "excess_tao",
-      "tao_total",
-      "liquidity_fraction",
-      "miner_burned",
-      "netuid",
-    ] as const).optional(),
-    order: orderSchema().optional(),
-    limit: limitSchema(EMISSION_PIPELINE_LIMIT_MAX).optional(),
-    fields: fieldsSchema().optional(),
-  }),
-  "/api/v1/economics/trends": z.object({
-    window: windowSchema(
-      HISTORY_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/health/trends": z.object({
-    // Integers, not strings (#10089). handleBulkHealthTrends runs
-    // parseLimitParam / parseNonNegativeIntParam, so `?limit=abc` has always
-    // been a 400 -- the published `{"type":"string"}` said otherwise. `offset`
-    // carries no ceiling because the handler enforces none.
-    // The one windowed route with NO default, and deliberately (#10060): this
-    // route answers EVERY window at once and `?window=` narrows to one.
-    // Verified live -- bare, `windows` carries `7d` and `30d`; `?window=7d`
-    // carries only `7d`. Publishing a default here would describe a narrowing
-    // the server does not perform.
-    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(BULK_HEALTH_TRENDS_LIMIT_MAX).optional(),
-    offset: unboundedOffsetSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/health/percentiles": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/health/incidents": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/performance/history": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/concentration/history": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/turnover": z.object({
-    window: windowSchema(
-      HISTORY_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    // The same boolean-as-string filter `validator_permit` is on
-    // /subnets/{netuid}/metagraph, and published the same way: both values,
-    // because the handler reads `=== "true"` and `changes=false` therefore
-    // MEANS something -- "no change filter". Publishing only `true` said the
-    // other half of a boolean was an error, which nothing enforced until
-    // #10218 started parsing with this object and turned the claim into a 400.
-    changes: z.enum(["true", "false"] as const).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/weights": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/weights/setters": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/serving": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/prometheus": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/stake-transfers": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/stake-moves": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/registrations": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/axon-removals": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/deregistrations": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/stake-flow": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    direction: directionSchema(["all", "in", "out"] as const).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/ohlc": z.object({
-    interval: z
-      .enum(["1h", "1d"] as const)
-      .meta({ default: OHLC_INTERVAL_DEFAULT })
-      .optional(),
-    days: z
-      .int()
-      .min(1)
-      .max(MAX_OHLC_WINDOW_DAYS)
-      .meta({ default: DEFAULT_OHLC_WINDOW_DAYS })
-      .optional(),
-    // The candle ceiling, published (#9981/#10318). MAX_CANDLES has capped
-    // this response at 2,000 since it shipped, and a caller had no way to ask
-    // for fewer and no way to learn the cap existed -- 1h over the default 90
-    // days is 486 KB and 13.5 s, the largest and slowest thing this API
-    // serves. The DEFAULT is the cap, so today's answer is unchanged for
-    // every existing consumer; what is new is the lever.
-    limit: limitSchema(MAX_CANDLES, MAX_CANDLES).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/stake-quote": z.object({
-    // THE ONLY REQUIRED QUERY PARAMETER ON THE API (#10401).
-    //
-    // It was `.optional()` while the handler rejected every request without it,
-    // so the contract published a possibility that could not be exercised --
-    // the divergence #10214's generator found by comparing this against
-    // GraphQL's honest `amount: Float!`.
-    //
-    // Being the first required one is not incidental: src/route-query.ts's
-    // violation reporting was written when every field was optional, and its
-    // "the failing key is always one the caller supplied" invariant does not
-    // survive a required field being ABSENT. That path is fixed and tested
-    // alongside this change rather than left to be discovered.
-    amount: z.number().gt(0),
-    direction: stakeActionSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/validator-economics/history": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/validators/economics": z.object({
-    // Was the only `sort` on the surface published without an enum, while the
-    // handler has a closed set and says so in its own 400 ("Supported:
-    // earning_floor_cost_tao, ..."). A caller had to guess a column name, and
-    // every wrong guess was a rejected request the contract gave no way to
-    // avoid (#10096). Read from VALIDATOR_ECONOMICS_SORTS, the module that
-    // owns it, not a fourth copy.
-    sort: sortSchema(
-      VALIDATOR_ECONOMICS_SORTS,
-      "earning_floor_cost_tao",
-    ).optional(),
-    limit: limitSchema(
-      VALIDATOR_ECONOMICS_LIMIT_MAX,
-      VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
-    ).optional(),
-    // Bounded by the ranking's own ceiling, not the generic deep-paging one:
-    // one row per subnet, so seeking past the limit seeks nothing.
-    offset: z
-      .int()
-      .min(0)
-      .max(VALIDATOR_ECONOMICS_LIMIT_MAX)
-      .meta({ [SERVING_BOUND]: true })
-      .optional(),
-    emission_gate_open: z.boolean().optional(),
-    cap_binding: z.boolean().optional(),
-  }),
-  "/api/v1/subnets/movers": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    sort: sortSchema(
-      ["stake", "emission", "validators", "neurons"] as const,
-      "stake",
-    ).optional(),
-    limit: limitSchema(MOVERS_LIMIT_MAX, MOVERS_LIMIT_DEFAULT).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/validators": z.object({
-    sort: sortSchema(
-      [
-        "avg_validator_trust",
-        "max_validator_trust",
-        "stake_dominance",
+  "/api/v1/export/chain-events": () =>
+    z.object({
+      pallet: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
+      method: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
+      before: blockBoundSchema("first").optional(),
+      limit: limitSchema(
+        EXPORT_CHAIN_EVENTS_LIMIT_MAX,
+        EXPORT_CHAIN_EVENTS_LIMIT_DEFAULT,
+      ).optional(),
+    }),
+  "/api/v1/search/semantic": () =>
+    z.object({
+      // Both were wrong before #10075: `q` published no ceiling though the
+      // handler rejects one over SEMANTIC_QUERY_MAX_LENGTH, and `limit`
+      // published `{"type":"string"}` for a value the handler reads as an
+      // integer and clamps -- so a client generated from this spec sent a
+      // string where an integer was wanted, with no way to learn either bound.
+      // The bounds come FROM src/route-limits.ts rather than being restated
+      // here -- that module is the owner, and schemas-src/mcp-tools/ has read it
+      // directly since #9127.
+      // REQUIRED, and published that way (#11599). The handler has always
+      // rejected a call without it -- `GET /api/v1/search/semantic` returns 400
+      // `invalid_query`, "Query parameter `q` is required.", verified against
+      // production -- while this schema said `.optional()`, so the spec told a
+      // client the one mandatory input was optional. That is the third time this
+      // route published something it does not do (see #10075 and #10065 above);
+      // the derivation in isRequiredQueryParameter reads THIS, so the fix
+      // belongs here rather than in a hand-written `required: true`.
+      //
+      // /api/v1/search is genuinely different and stays optional: it returns 200
+      // with no `q`. The two routes are not the same contract.
+      q: querySchema(SEMANTIC_QUERY_MAX_LENGTH),
+      limit: limitSchema(SEMANTIC_LIMIT_MAX, SEMANTIC_LIMIT_DEFAULT).optional(),
+      // #10065: the handler has scoped on this since semantic search shipped --
+      // it filters the results and rejects an unknown value by name ("Unknown
+      // type `bogus`. Valid types: subnet, surface, provider", verified live) --
+      // and the contract never mentioned it. The vocabulary comes FROM
+      // src/ai-search.ts rather than being restated, so the two cannot drift.
+      type: z.enum(SEMANTIC_TYPES).optional(),
+    }),
+  "/api/v1/chain/emission-pipeline": () =>
+    z.object({
+      netuid: netuidSchema().optional(),
+      sort: sortSchema([
+        "final_share",
+        "emission_share",
+        "weighted_share",
+        "gated_share",
+        "gate_delta",
+        "distance_to_bar",
+        "tao_in_emission",
+        "excess_tao",
+        "tao_total",
+        "liquidity_fraction",
+        "miner_burned",
+        "netuid",
+      ] as const).optional(),
+      order: orderSchema().optional(),
+      limit: limitSchema(EMISSION_PIPELINE_LIMIT_MAX).optional(),
+      fields: fieldsSchema().optional(),
+    }),
+  "/api/v1/economics/trends": () =>
+    z.object({
+      window: windowSchema(
+        HISTORY_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/health/trends": () =>
+    z.object({
+      // Integers, not strings (#10089). handleBulkHealthTrends runs
+      // parseLimitParam / parseNonNegativeIntParam, so `?limit=abc` has always
+      // been a 400 -- the published `{"type":"string"}` said otherwise. `offset`
+      // carries no ceiling because the handler enforces none.
+      // The one windowed route with NO default, and deliberately (#10060): this
+      // route answers EVERY window at once and `?window=` narrows to one.
+      // Verified live -- bare, `windows` carries `7d` and `30d`; `?window=7d`
+      // carries only `7d`. Publishing a default here would describe a narrowing
+      // the server does not perform.
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+      ).optional(),
+      limit: limitSchema(BULK_HEALTH_TRENDS_LIMIT_MAX).optional(),
+      offset: unboundedOffsetSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/health/percentiles": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/health/incidents": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/performance/history": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/concentration/history": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/turnover": () =>
+    z.object({
+      window: windowSchema(
+        HISTORY_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      // The same boolean-as-string filter `validator_permit` is on
+      // /subnets/{netuid}/metagraph, and published the same way: both values,
+      // because the handler reads `=== "true"` and `changes=false` therefore
+      // MEANS something -- "no change filter". Publishing only `true` said the
+      // other half of a boolean was an error, which nothing enforced until
+      // #10218 started parsing with this object and turned the claim into a 400.
+      changes: z.enum(["true", "false"] as const).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/weights": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/weights/setters": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/serving": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/prometheus": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/stake-transfers": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/stake-moves": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/registrations": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/axon-removals": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/deregistrations": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/stake-flow": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      direction: directionSchema(["all", "in", "out"] as const).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/ohlc": () =>
+    z.object({
+      interval: z
+        .enum(["1h", "1d"] as const)
+        .meta({ default: OHLC_INTERVAL_DEFAULT })
+        .optional(),
+      days: z
+        .int()
+        .min(1)
+        .max(MAX_OHLC_WINDOW_DAYS)
+        .meta({ default: DEFAULT_OHLC_WINDOW_DAYS })
+        .optional(),
+      // The candle ceiling, published (#9981/#10318). MAX_CANDLES has capped
+      // this response at 2,000 since it shipped, and a caller had no way to ask
+      // for fewer and no way to learn the cap existed -- 1h over the default 90
+      // days is 486 KB and 13.5 s, the largest and slowest thing this API
+      // serves. The DEFAULT is the cap, so today's answer is unchanged for
+      // every existing consumer; what is new is the lever.
+      limit: limitSchema(MAX_CANDLES, MAX_CANDLES).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/stake-quote": () =>
+    z.object({
+      // THE ONLY REQUIRED QUERY PARAMETER ON THE API (#10401).
+      //
+      // It was `.optional()` while the handler rejected every request without it,
+      // so the contract published a possibility that could not be exercised --
+      // the divergence #10214's generator found by comparing this against
+      // GraphQL's honest `amount: Float!`.
+      //
+      // Being the first required one is not incidental: src/route-query.ts's
+      // violation reporting was written when every field was optional, and its
+      // "the failing key is always one the caller supplied" invariant does not
+      // survive a required field being ABSENT. That path is fixed and tested
+      // alongside this change rather than left to be discovered.
+      amount: z.number().gt(0),
+      direction: stakeActionSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/validator-economics/history": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/validators/economics": () =>
+    z.object({
+      // Was the only `sort` on the surface published without an enum, while the
+      // handler has a closed set and says so in its own 400 ("Supported:
+      // earning_floor_cost_tao, ..."). A caller had to guess a column name, and
+      // every wrong guess was a rejected request the contract gave no way to
+      // avoid (#10096). Read from VALIDATOR_ECONOMICS_SORTS, the module that
+      // owns it, not a fourth copy.
+      sort: sortSchema(
+        VALIDATOR_ECONOMICS_SORTS,
+        "earning_floor_cost_tao",
+      ).optional(),
+      limit: limitSchema(
+        VALIDATOR_ECONOMICS_LIMIT_MAX,
+        VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
+      ).optional(),
+      // Bounded by the ranking's own ceiling, not the generic deep-paging one:
+      // one row per subnet, so seeking past the limit seeks nothing.
+      offset: z
+        .int()
+        .min(0)
+        .max(VALIDATOR_ECONOMICS_LIMIT_MAX)
+        .meta({ [SERVING_BOUND]: true })
+        .optional(),
+      emission_gate_open: z.boolean().optional(),
+      cap_binding: z.boolean().optional(),
+    }),
+  "/api/v1/subnets/movers": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      sort: sortSchema(
+        ["stake", "emission", "validators", "neurons"] as const,
+        "stake",
+      ).optional(),
+      limit: limitSchema(MOVERS_LIMIT_MAX, MOVERS_LIMIT_DEFAULT).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/validators": () =>
+    z.object({
+      sort: sortSchema(
+        [
+          "avg_validator_trust",
+          "max_validator_trust",
+          "stake_dominance",
+          "subnet_count",
+          "total_emission",
+          "total_stake",
+          "uid_count",
+        ] as const,
         "subnet_count",
-        "total_emission",
+      ).optional(),
+      limit: limitSchema(
+        GLOBAL_VALIDATOR_LIMIT_MAX,
+        GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/validators/operators": () => z.object({}),
+  "/api/v1/accounts/directory": () => z.object({}),
+  "/api/v1/accounts": () =>
+    z.object({
+      sort: sortSchema(
+        [
+          "total_stake",
+          "total_emission",
+          "subnet_count",
+          "uid_count",
+          "validator_count",
+          "stake_dominance",
+          "last_active",
+        ] as const,
         "total_stake",
-        "uid_count",
-      ] as const,
-      "subnet_count",
-    ).optional(),
-    limit: limitSchema(
-      GLOBAL_VALIDATOR_LIMIT_MAX,
-      GLOBAL_VALIDATOR_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/validators/operators": z.object({}),
-  "/api/v1/accounts/directory": z.object({}),
-  "/api/v1/accounts": z.object({
-    sort: sortSchema(
-      [
-        "total_stake",
-        "total_emission",
-        "subnet_count",
-        "uid_count",
-        "validator_count",
-        "stake_dominance",
-        "last_active",
-      ] as const,
-      "total_stake",
-    ).optional(),
-    limit: limitSchema(
-      ACCOUNTS_LIST_LIMIT_MAX,
-      ACCOUNTS_LIST_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/accounts/top-holders": z.object({
-    // `sort` is TOP_HOLDERS_SORTS, not a copy of it. The copy that used to sit
-    // in contracts.ts listed the three HOLDINGS sorts and omitted
-    // net_flow_7d/30d/90d (#10089) -- so the published enum offered exactly
-    // the three that DECLINE to a fixed 2026-08-02 materialization when their
-    // producer's last pass is unproven, and withheld the three that are
-    // recomputed daily. The route's own 400 has always named all six.
-    // The enum IS TOP_HOLDERS_SORTS, read from the module that owns it.
-    sort: sortSchema(
-      // Spread, not cast: the owner's tuple is readonly now that it derives
-      // from the route's declaration, and a copy for the schema builder is
-      // exactly what a mutable-cast would have pretended not to make.
-      [...TOP_HOLDERS_SORTS] as [string, ...string[]],
-      "total_tao",
-    ).optional(),
-    limit: limitSchema(
-      TOP_HOLDERS_LIMIT_MAX,
-      TOP_HOLDERS_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/validators/{hotkey}/nominators": z.object({
-    // Described here rather than on the MCP tool, so BOTH surfaces carry the
-    // sentence -- REST published this parameter with no prose at all, and the
-    // one thing a caller cannot guess about it is that the two values answer
-    // different questions rather than the same one better or worse (#10793).
-    basis: z
-      .enum(NOMINATOR_BASES)
-      .describe(
-        "Which question to answer. `flow` (the default) sums TAO MOVED inside " +
-          "`window`, so a delegator who staked earlier and has not touched it " +
-          "since is absent. `positions` reads the standing ledger instead: " +
-          // "coldkey (an ss58 address)" rather than a bare one, matching this
-          // route's existing description and scan-public-safety's explanatory-
-          // parenthetical exemption: an ss58 coldkey is public on-chain data,
-          // and the scan's job is to catch prose that treats it as a secret.
-          "every coldkey (an ss58 address) delegating right now and how much " +
-          "alpha each holds " +
-          "per subnet, whenever they staked. Different units over different " +
-          "time semantics, so the two are not comparable. On `positions`, " +
-          "`window` and `sort` are REJECTED rather than ignored.",
-      )
-      .meta({ default: DEFAULT_NOMINATOR_BASIS, examples: ["positions"] })
-      .optional(),
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    sort: sortSchema(
-      ["net_staked", "gross_staked", "last_activity"] as const,
-      "net_staked",
-    ).optional(),
-    // PUBLISHED 100 while the route enforced 2000 (#10064 sweep). Three
-    // statements disagreed: this contract and the cold-tier builder said
-    // NOMINATOR_LIMIT_MAX (100), handleValidatorNominators validated against
-    // GLOBAL_VALIDATOR_LIMIT_MAX (2000), and production serves 2000 --
-    // verified live, `?limit=2000` returns 2000 rows and `?limit=2001` is the
-    // 400. A caller reading the contract made 20 requests where one would do.
-    //
-    // Declared as what the route ENFORCES rather than narrowing the route,
-    // because narrowing would 400 callers who are being served today. The
-    // cold-tier builder still clamps at NOMINATOR_LIMIT_MAX, so a fallback
-    // page is shorter than this ceiling; that is a tier difference, not a
-    // second contract.
-    limit: limitSchema(
-      GLOBAL_VALIDATOR_LIMIT_MAX,
-      NOMINATOR_LIMIT_DEFAULT,
-    ).optional(),
-    offset: unboundedOffsetSchema().optional(),
-    // The handler DOES validate this -- `?coldkey=notanaddress` is a 400,
-    // verified live -- and the contract simply did not say so, while
-    // ss58Schema() carries the same 47-48 base58 pattern on 26 other
-    // parameters (#10096). Publishing it costs no behaviour change and lets a
-    // generated client catch a typo before the request.
-    //
-    // NOT done for `author` on /blocks or `signer` on /extrinsics: both answer
-    // 200 to a malformed address and filter to nothing, so publishing the
-    // pattern there would claim validation the server does not perform --
-    // the #10073 mistake inverted. Making THEM reject is a behaviour change
-    // and needs its own decision.
-    coldkey: ss58Schema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/validators/{hotkey}/history": z.object({
-    window: windowSchema(
-      HISTORY_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    // #9383 added this to the handler's allowlist, the MCP tool and the
-    // GraphQL field, and the response echoes it back as `data.netuid` -- but
-    // it was never declared, so openapi.json told every generated client that
-    // passing it was an error. Verified live before declaring: the scoped and
-    // unscoped series differ (#10065).
-    netuid: netuidSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/metagraph": z.object({
-    // A PRESENCE flag, one value. #10096 and #10218 landed in the same window
-    // and disagreed: #10096 made the handler 400 anything but `true`, and
-    // #10218 published both values on the belief that `false` still meant "the
-    // unfiltered metagraph". The server settles it -- verified live 2026-08-09,
-    // `?validator_permit=false` is a 400 and `=true` a 200 -- so the published
-    // enum was the half that was wrong, and a generated client was being told
-    // to send a value the route refuses.
-    //
-    // Declared as what the route ENFORCES, and #10096's reasoning is why that
-    // is the right half to keep: `=false` reads as "the ones WITHOUT a permit",
-    // and answering it with all 256 rows is the silent wrong answer. A caller
-    // who wants the complement omits the parameter and filters the rows.
-    validator_permit: z.enum(["true"] as const).optional(),
-    fields: fieldsSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/neurons/{uid}": z.object({
-    fields: fieldsSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/hyperparameters/history": z.object({
-    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
-    format: formatSchema().optional(),
-  }),
+      ).optional(),
+      limit: limitSchema(
+        ACCOUNTS_LIST_LIMIT_MAX,
+        ACCOUNTS_LIST_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/accounts/top-holders": () =>
+    z.object({
+      // `sort` is TOP_HOLDERS_SORTS, not a copy of it. The copy that used to sit
+      // in contracts.ts listed the three HOLDINGS sorts and omitted
+      // net_flow_7d/30d/90d (#10089) -- so the published enum offered exactly
+      // the three that DECLINE to a fixed 2026-08-02 materialization when their
+      // producer's last pass is unproven, and withheld the three that are
+      // recomputed daily. The route's own 400 has always named all six.
+      // The enum IS TOP_HOLDERS_SORTS, read from the module that owns it.
+      sort: sortSchema(
+        // Spread, not cast: the owner's tuple is readonly now that it derives
+        // from the route's declaration, and a copy for the schema builder is
+        // exactly what a mutable-cast would have pretended not to make.
+        [...TOP_HOLDERS_SORTS] as [string, ...string[]],
+        "total_tao",
+      ).optional(),
+      limit: limitSchema(
+        TOP_HOLDERS_LIMIT_MAX,
+        TOP_HOLDERS_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/validators/{hotkey}/nominators": () =>
+    z.object({
+      // Described here rather than on the MCP tool, so BOTH surfaces carry the
+      // sentence -- REST published this parameter with no prose at all, and the
+      // one thing a caller cannot guess about it is that the two values answer
+      // different questions rather than the same one better or worse (#10793).
+      basis: z
+        .enum(NOMINATOR_BASES)
+        .describe(
+          "Which question to answer. `flow` (the default) sums TAO MOVED inside " +
+            "`window`, so a delegator who staked earlier and has not touched it " +
+            "since is absent. `positions` reads the standing ledger instead: " +
+            // "coldkey (an ss58 address)" rather than a bare one, matching this
+            // route's existing description and scan-public-safety's explanatory-
+            // parenthetical exemption: an ss58 coldkey is public on-chain data,
+            // and the scan's job is to catch prose that treats it as a secret.
+            "every coldkey (an ss58 address) delegating right now and how much " +
+            "alpha each holds " +
+            "per subnet, whenever they staked. Different units over different " +
+            "time semantics, so the two are not comparable. On `positions`, " +
+            "`window` and `sort` are REJECTED rather than ignored.",
+        )
+        .meta({ default: DEFAULT_NOMINATOR_BASIS, examples: ["positions"] })
+        .optional(),
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      sort: sortSchema(
+        ["net_staked", "gross_staked", "last_activity"] as const,
+        "net_staked",
+      ).optional(),
+      // PUBLISHED 100 while the route enforced 2000 (#10064 sweep). Three
+      // statements disagreed: this contract and the cold-tier builder said
+      // NOMINATOR_LIMIT_MAX (100), handleValidatorNominators validated against
+      // GLOBAL_VALIDATOR_LIMIT_MAX (2000), and production serves 2000 --
+      // verified live, `?limit=2000` returns 2000 rows and `?limit=2001` is the
+      // 400. A caller reading the contract made 20 requests where one would do.
+      //
+      // Declared as what the route ENFORCES rather than narrowing the route,
+      // because narrowing would 400 callers who are being served today. The
+      // cold-tier builder still clamps at NOMINATOR_LIMIT_MAX, so a fallback
+      // page is shorter than this ceiling; that is a tier difference, not a
+      // second contract.
+      limit: limitSchema(
+        GLOBAL_VALIDATOR_LIMIT_MAX,
+        NOMINATOR_LIMIT_DEFAULT,
+      ).optional(),
+      offset: unboundedOffsetSchema().optional(),
+      // The handler DOES validate this -- `?coldkey=notanaddress` is a 400,
+      // verified live -- and the contract simply did not say so, while
+      // ss58Schema() carries the same 47-48 base58 pattern on 26 other
+      // parameters (#10096). Publishing it costs no behaviour change and lets a
+      // generated client catch a typo before the request.
+      //
+      // NOT done for `author` on /blocks or `signer` on /extrinsics: both answer
+      // 200 to a malformed address and filter to nothing, so publishing the
+      // pattern there would claim validation the server does not perform --
+      // the #10073 mistake inverted. Making THEM reject is a behaviour change
+      // and needs its own decision.
+      coldkey: ss58Schema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/validators/{hotkey}/history": () =>
+    z.object({
+      window: windowSchema(
+        HISTORY_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      // #9383 added this to the handler's allowlist, the MCP tool and the
+      // GraphQL field, and the response echoes it back as `data.netuid` -- but
+      // it was never declared, so openapi.json told every generated client that
+      // passing it was an error. Verified live before declaring: the scoped and
+      // unscoped series differ (#10065).
+      netuid: netuidSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/metagraph": () =>
+    z.object({
+      // A PRESENCE flag, one value. #10096 and #10218 landed in the same window
+      // and disagreed: #10096 made the handler 400 anything but `true`, and
+      // #10218 published both values on the belief that `false` still meant "the
+      // unfiltered metagraph". The server settles it -- verified live 2026-08-09,
+      // `?validator_permit=false` is a 400 and `=true` a 200 -- so the published
+      // enum was the half that was wrong, and a generated client was being told
+      // to send a value the route refuses.
+      //
+      // Declared as what the route ENFORCES, and #10096's reasoning is why that
+      // is the right half to keep: `=false` reads as "the ones WITHOUT a permit",
+      // and answering it with all 256 rows is the silent wrong answer. A caller
+      // who wants the complement omits the parameter and filters the rows.
+      validator_permit: z.enum(["true"] as const).optional(),
+      fields: fieldsSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/neurons/{uid}": () =>
+    z.object({
+      fields: fieldsSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/hyperparameters/history": () =>
+    z.object({
+      limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
+      offset: offsetSchema().optional(),
+      cursor: keysetCursorSchema().optional(),
+      format: formatSchema().optional(),
+    }),
   // No `cursor`: the sibling above pages a table that grows per subnet per
   // change, this one a table that grows per subnet per LIFETIME. Publishing a
   // keyset token here would advertise resumability the loader does not provide.
-  "/api/v1/subnets/{netuid}/lifecycle": z.object({
-    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
-    offset: offsetSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/validators": z.object({
-    fields: fieldsSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/yield": z.object({
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/yield/history": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
+  "/api/v1/subnets/{netuid}/lifecycle": () =>
+    z.object({
+      limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
+      offset: offsetSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/validators": () =>
+    z.object({
+      fields: fieldsSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/yield": () =>
+    z.object({
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/yield/history": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
   // #10925: the window a revenue figure is compared against. It was hardcoded
   // to one day at nine sites, which capped `observed_count` by ARITHMETIC
   // rather than by coverage -- SN51 publishes a real monthly figure that no
   // served window could express, because 1 % 30 != 0.
-  "/api/v1/subnets/{netuid}/revenue": z.object({
-    window: windowSchema(
-      SUBNET_REVENUE_WINDOWS as [string, ...string[]],
-      DEFAULT_SUBNET_REVENUE_WINDOW,
-    ).optional(),
-  }),
-  "/api/v1/chain/revenue-coverage": z.object({
-    window: windowSchema(
-      SUBNET_REVENUE_WINDOWS as [string, ...string[]],
-      DEFAULT_SUBNET_REVENUE_WINDOW,
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/emission-split/history": z.object({
-    window: windowSchema(
-      SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS as [string, ...string[]],
-      DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
+  "/api/v1/subnets/{netuid}/revenue": () =>
+    z.object({
+      window: windowSchema(
+        SUBNET_REVENUE_WINDOWS as [string, ...string[]],
+        DEFAULT_SUBNET_REVENUE_WINDOW,
+      ).optional(),
+    }),
+  "/api/v1/chain/revenue-coverage": () =>
+    z.object({
+      window: windowSchema(
+        SUBNET_REVENUE_WINDOWS as [string, ...string[]],
+        DEFAULT_SUBNET_REVENUE_WINDOW,
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/emission-split/history": () =>
+    z.object({
+      window: windowSchema(
+        SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS as [string, ...string[]],
+        DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
   // #10929: same window vocabulary as its emission-split sibling, on purpose —
   // both series are read off neuron_daily over the same days, and two spellings
   // for one window is how two surfaces start disagreeing about one subnet.
   // #10931: same window vocabulary again -- same table, same days, and two
   // spellings for one window is how two surfaces start disagreeing about the
   // same subnet.
-  "/api/v1/subnets/{netuid}/miner-fairness": z.object({
-    window: windowSchema(
-      SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS as [string, ...string[]],
-      DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/owner-capture": z.object({
-    window: windowSchema(
-      SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS as [string, ...string[]],
-      DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/events": z.object({
-    kind: kindStringSchema().optional(),
-    block_start: blockBoundSchema("first").optional(),
-    block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
-    offset: offsetSchema().optional(),
-    // The handler has always accepted and forwarded this, and the sibling
-    // /accounts/{ss58}/events feed publishes it -- but this route did not, so
-    // the contract said passing it was an error while the route paged on it.
-    // Found by sweeping all 202 GET routes through the real router (#10065).
-    cursor: keysetCursorSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/event-summary": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    limit: limitSchema(
-      SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
-      SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/neurons/{uid}/history": z.object({
-    window: windowSchema(
-      HISTORY_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/history": z.object({
-    window: windowSchema(
-      HISTORY_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/identity-history": z.object({
-    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/accounts/{ss58}/events": z.object({
-    kind: kindStringSchema().optional(),
-    netuid: netuidSchema().optional(),
-    block_start: blockBoundSchema("first").optional(),
-    block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/accounts/{ss58}/history": z.object({
-    netuid: netuidSchema().optional(),
-    from: daySchema("first").optional(),
-    to: daySchema("last").optional(),
-    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
-    offset: offsetSchema().optional(),
-    // handleAccountHistory forwards this to loadAccountHistoryColdTier and has
-    // since #9315; only the contract left it out (#10065).
-    cursor: keysetCursorSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/accounts/{ss58}/extrinsics": z.object({
-    block_start: blockBoundSchema("first").optional(),
-    block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/accounts/{ss58}/transfers": z.object({
-    direction: directionSchema(["all", "sent", "received"] as const).optional(),
-    block_start: blockBoundSchema("first").optional(),
-    block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/accounts/{ss58}/counterparties": z.object({
-    counterparty: z
-      .string()
-      .regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/)
-      .optional(),
-    limit: limitSchema(
-      COUNTERPARTIES_LIMIT_MAX,
-      COUNTERPARTIES_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/accounts/{ss58}/stake-flow": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    direction: directionSchema(["all", "in", "out"] as const).optional(),
-  }),
-  "/api/v1/accounts/{ss58}/stake-moves": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/accounts/{ss58}/deregistrations": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/accounts/{ss58}/prometheus": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/accounts/{ss58}/axon-removals": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/accounts/{ss58}/serving": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/accounts/{ss58}/weight-setters": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-  "/api/v1/accounts/{ss58}/registrations": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/accounts/{ss58}/subnets/{netuid}/history": z.object({
-    window: windowSchema(
-      HISTORY_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/accounts/{ss58}/identity-history": z.object({
-    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/network/tao-usd": z.object({
-    window: windowSchema(["1h", "24h", "7d", "30d"] as const, "24h").optional(),
-    include_points: z.boolean().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/burn/history": z.object({
-    window: windowSchema(["24h", "7d", "30d", "90d"] as const, "7d").optional(),
-  }),
-  "/api/v1/subnets/{netuid}/holders": z.object({
-    limit: limitSchema(
-      SUBNET_HOLDERS_LIMIT_MAX,
-      SUBNET_HOLDERS_LIMIT_DEFAULT,
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/surface-history": z.object({
-    limit: limitSchema(
-      SURFACE_HISTORY_LIMIT_MAX,
-      SURFACE_HISTORY_LIMIT_DEFAULT,
-    ).optional(),
-  }),
-  "/api/v1/chain/governance/emission-changes": z.object({
-    kind: kindSchema(["param", "subnet", "flow"] as const).optional(),
-    limit: limitSchema(
-      EMISSION_CHANGES_LIMIT_MAX,
-      EMISSION_CHANGES_LIMIT_DEFAULT,
-    ).optional(),
-  }),
-  "/api/v1/chain/holders": z.object({
-    sort: sortSchema(
-      [
+  "/api/v1/subnets/{netuid}/miner-fairness": () =>
+    z.object({
+      window: windowSchema(
+        SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS as [string, ...string[]],
+        DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/owner-capture": () =>
+    z.object({
+      window: windowSchema(
+        SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS as [string, ...string[]],
+        DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/events": () =>
+    z.object({
+      kind: kindStringSchema().optional(),
+      block_start: blockBoundSchema("first").optional(),
+      block_end: blockBoundSchema("last").optional(),
+      limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
+      offset: offsetSchema().optional(),
+      // The handler has always accepted and forwarded this, and the sibling
+      // /accounts/{ss58}/events feed publishes it -- but this route did not, so
+      // the contract said passing it was an error while the route paged on it.
+      // Found by sweeping all 202 GET routes through the real router (#10065).
+      cursor: keysetCursorSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/event-summary": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      limit: limitSchema(
+        SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+        SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/neurons/{uid}/history": () =>
+    z.object({
+      window: windowSchema(
+        HISTORY_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/history": () =>
+    z.object({
+      window: windowSchema(
+        HISTORY_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/identity-history": () =>
+    z.object({
+      limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
+      offset: offsetSchema().optional(),
+      cursor: keysetCursorSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/accounts/{ss58}/events": () =>
+    z.object({
+      kind: kindStringSchema().optional(),
+      netuid: netuidSchema().optional(),
+      block_start: blockBoundSchema("first").optional(),
+      block_end: blockBoundSchema("last").optional(),
+      limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
+      offset: offsetSchema().optional(),
+      cursor: keysetCursorSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/accounts/{ss58}/history": () =>
+    z.object({
+      netuid: netuidSchema().optional(),
+      from: daySchema("first").optional(),
+      to: daySchema("last").optional(),
+      limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
+      offset: offsetSchema().optional(),
+      // handleAccountHistory forwards this to loadAccountHistoryColdTier and has
+      // since #9315; only the contract left it out (#10065).
+      cursor: keysetCursorSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/accounts/{ss58}/extrinsics": () =>
+    z.object({
+      block_start: blockBoundSchema("first").optional(),
+      block_end: blockBoundSchema("last").optional(),
+      limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
+      offset: offsetSchema().optional(),
+      cursor: keysetCursorSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/accounts/{ss58}/transfers": () =>
+    z.object({
+      direction: directionSchema([
+        "all",
+        "sent",
+        "received",
+      ] as const).optional(),
+      block_start: blockBoundSchema("first").optional(),
+      block_end: blockBoundSchema("last").optional(),
+      limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
+      offset: offsetSchema().optional(),
+      cursor: keysetCursorSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/accounts/{ss58}/counterparties": () =>
+    z.object({
+      counterparty: z
+        .string()
+        .regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/)
+        .optional(),
+      limit: limitSchema(
+        COUNTERPARTIES_LIMIT_MAX,
+        COUNTERPARTIES_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/accounts/{ss58}/stake-flow": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      direction: directionSchema(["all", "in", "out"] as const).optional(),
+    }),
+  "/api/v1/accounts/{ss58}/stake-moves": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/accounts/{ss58}/deregistrations": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/accounts/{ss58}/prometheus": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/accounts/{ss58}/axon-removals": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/accounts/{ss58}/serving": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/accounts/{ss58}/weight-setters": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/accounts/{ss58}/registrations": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/accounts/{ss58}/subnets/{netuid}/history": () =>
+    z.object({
+      window: windowSchema(
+        HISTORY_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/accounts/{ss58}/identity-history": () =>
+    z.object({
+      limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
+      offset: offsetSchema().optional(),
+      cursor: keysetCursorSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/network/tao-usd": () =>
+    z.object({
+      window: windowSchema(
+        ["1h", "24h", "7d", "30d"] as const,
+        "24h",
+      ).optional(),
+      include_points: z.boolean().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/burn/history": () =>
+    z.object({
+      window: windowSchema(
+        ["24h", "7d", "30d", "90d"] as const,
+        "7d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/holders": () =>
+    z.object({
+      limit: limitSchema(
+        SUBNET_HOLDERS_LIMIT_MAX,
+        SUBNET_HOLDERS_LIMIT_DEFAULT,
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/surface-history": () =>
+    z.object({
+      limit: limitSchema(
+        SURFACE_HISTORY_LIMIT_MAX,
+        SURFACE_HISTORY_LIMIT_DEFAULT,
+      ).optional(),
+    }),
+  "/api/v1/chain/governance/emission-changes": () =>
+    z.object({
+      kind: kindSchema(["param", "subnet", "flow"] as const).optional(),
+      limit: limitSchema(
+        EMISSION_CHANGES_LIMIT_MAX,
+        EMISSION_CHANGES_LIMIT_DEFAULT,
+      ).optional(),
+    }),
+  "/api/v1/chain/holders": () =>
+    z.object({
+      sort: sortSchema(
+        [
+          "top1_share",
+          "top5_share",
+          "top10_share",
+          "top20_share",
+          "holder_count",
+          "total_alpha",
+        ] as const,
         "top1_share",
-        "top5_share",
-        "top10_share",
-        "top20_share",
-        "holder_count",
-        "total_alpha",
-      ] as const,
-      "top1_share",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_HOLDERS_LIMIT_MAX,
-      CHAIN_HOLDERS_LIMIT_DEFAULT,
-    ).optional(),
-  }),
-  "/api/v1/health/failure-reasons": z.object({
-    window: windowSchema(
-      FAILURE_REASONS_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    netuid: netuidSchema().optional(),
-    kind: kindStringSchema().optional(),
-  }),
-  "/api/v1/search/resolve": z.object({
-    // NOT a divergence, recorded so the next sweep does not file one. `q` is
-    // unbounded on purpose: this route recognises an identifier by SHAPE and
-    // returns an empty `matches` for anything else, so a long string is
-    // answered rather than rejected. Verified live -- 512 characters is a 200
-    // with `matches: []`.
-    q: z.string().optional(),
-  }),
-  "/api/v1/chain/concentration/history": z.object({
-    window: windowSchema(
-      CHAIN_CONCENTRATION_HISTORY_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/emission-pipeline/history": z.object({
-    window: windowSchema(
-      PIPELINE_HISTORY_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/review/attribution-candidates": z.object({
-    // The subnet filter. Optional, because the queue is normally read whole --
-    // 162 rows across 49 subnets -- and per-subnet is the drill-down.
-    netuid: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .max(65535)
-      .describe(
-        "Narrow the queue to one subnet. Omit to read every subnet's candidates, which is the normal way to work the queue.",
-      )
-      // NO default: the absence of this parameter means "no filter", which is a
-      // different answer from any netuid -- so there is nothing to publish one
-      // as. The examples still ride, because a generated client needs a value
-      // it can fill the field with.
-      .meta({ examples: [64, 74] })
-      .optional(),
-    limit: limitSchema(
-      ATTRIBUTION_CANDIDATES_LIMIT_MAX,
-      ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT,
-    ).optional(),
-    offset: offsetSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/deregistration-ranking/history": z.object({
-    window: windowSchema(
-      DEREGISTRATION_HISTORY_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-  }),
-  "/api/v1/blocks": z.object({
-    limit: limitSchema(
-      BLOCK_PAGINATION.maxLimit,
-      BLOCK_PAGINATION.defaultLimit,
-    ).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
-    // DIVERGENCE: the block author is an SS58 and publishes no pattern.
-    author: z.string().optional(),
-    spec_version: z.int().min(0).optional(),
-    from: observedAtBoundSchema("first").optional(),
-    to: observedAtBoundSchema("last").optional(),
-    block_start: blockBoundSchema("first").optional(),
-    block_end: blockBoundSchema("last").optional(),
-    min_extrinsics: z.int().min(0).optional(),
-    min_events: z.int().min(0).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/blocks/{ref}/extrinsics": z.object({
-    limit: limitSchema(
-      BLOCK_PAGINATION.maxLimit,
-      BLOCK_PAGINATION.defaultLimit,
-    ).optional(),
-    offset: offsetSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/blocks/{ref}/events": z.object({
-    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
-    offset: offsetSchema().optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain-events": z.object({
-    pallet: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
-    method: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
-    block: blockBoundSchema("first").optional(),
-    extrinsic: z.int().min(0).optional(),
-    // OPAQUE, like the twelve sibling feeds -- and this is a live bug fix, not
-    // a tidy-up (#10316). The hand-written `^\d+\.\d+$` here published a
-    // TWO-part cursor while `chain-events-cold-tier.ts` decodes THREE
-    // (`CURSOR_ARITY = 3`, observed_at.block_number.event_index), so the route
-    // rejected the only cursor that works and accepted one it ignores.
-    // Verified against production 2026-08-09:
-    //
-    //   GET /api/v1/chain-events?limit=1
-    //     -> next_cursor "1786310148001.8809458.214"
-    //   GET /api/v1/chain-events?limit=1&cursor=1786310148001.8809458.214
-    //     -> 400 invalid_query, "cursor must match ^\d+\.\d+$."
-    //
-    // Following the route's own `next_cursor` -- the documented way to page --
-    // was a 400. The cold tier already treats an unusable cursor as inert
-    // rather than an error (see its own comment), so an opaque token is what
-    // this route has always actually accepted.
-    cursor: keysetCursorSchema().optional(),
-    before: blockBoundSchema("first").optional(),
-    // Resolved (#10109): this published 200 while the serving path clamped at
-    // 100, because TWO constants carried the name CHAIN_EVENTS_LIMIT_MAX with
-    // different values and the contract was written from the one the request
-    // path does not use. One constant now, in src/route-limits.ts, and it is
-    // the number the route enforces.
-    limit: limitSchema(
-      CHAIN_EVENTS_LIMIT_MAX,
-      CHAIN_EVENTS_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain-events/stats": z.object({
-    // A WINDOW SIZE, so its ceiling is a serving policy like `limit`'s and
-    // bends the same way -- `blocks: 99999` answers over the newest 5000
-    // rather than refusing (#10316).
-    blocks: z
-      .int()
-      .min(1)
-      .max(CHAIN_EVENTS_STATS_BLOCKS_MAX)
-      .meta({ [SERVING_BOUND]: true })
-      .optional(),
-  }),
-  "/api/v1/extrinsics": z.object({
-    limit: limitSchema(
-      BLOCK_PAGINATION.maxLimit,
-      BLOCK_PAGINATION.defaultLimit,
-    ).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
-    block: blockBoundSchema("first").optional(),
-    // DIVERGENCE: see `coldkey` on /validators/{hotkey}/nominators -- an SS58
-    // published without the shared pattern.
-    signer: z.string().optional(),
-    // The same cap its three sibling feeds enforce (#10096). This took the
-    // identical filter with no bound at all, so a 150-character value was a
-    // 400 on /chain/calls and a 200 here -- handleExtrinsics now applies
-    // validateMaxLength, so the number is published because it is enforced.
-    call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
-    call_function: z.string().optional(),
-    call_hash: z
-      .string()
-      .regex(/^0x[0-9a-fA-F]{64}$/)
-      .optional(),
-    success: z.enum(["true", "false"] as const).optional(),
-    block_start: blockBoundSchema("first").optional(),
-    block_end: blockBoundSchema("last").optional(),
-    from: observedAtBoundSchema("first").optional(),
-    to: observedAtBoundSchema("last").optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/sudo": z.object({
-    limit: limitSchema(
-      BLOCK_PAGINATION.maxLimit,
-      BLOCK_PAGINATION.defaultLimit,
-    ).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
-    block: blockBoundSchema("first").optional(),
-    call_function: z.string().optional(),
-    success: z.enum(["true", "false"] as const).optional(),
-    block_start: blockBoundSchema("first").optional(),
-    block_end: blockBoundSchema("last").optional(),
-    from: observedAtBoundSchema("first").optional(),
-    to: observedAtBoundSchema("last").optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/governance/config-changes": z.object({
-    limit: limitSchema(
-      BLOCK_PAGINATION.maxLimit,
-      BLOCK_PAGINATION.defaultLimit,
-    ).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
-    block: blockBoundSchema("first").optional(),
-    call_function: z.string().optional(),
-    success: z.enum(["true", "false"] as const).optional(),
-    block_start: blockBoundSchema("first").optional(),
-    block_end: blockBoundSchema("last").optional(),
-    from: observedAtBoundSchema("first").optional(),
-    to: observedAtBoundSchema("last").optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/runtime": z.object({
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/activity": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/calls": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    group_by: z.enum(["module", "module_function"] as const).optional(),
-    limit: limitSchema(
-      CHAIN_CALLS_LIMIT_MAX,
-      CHAIN_CALLS_LIMIT_DEFAULT,
-    ).optional(),
-    call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/signers": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    sort: sortSchema(
-      ["tx_count", "total_fee_tao"] as const,
-      "tx_count",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_SIGNERS_LIMIT_MAX,
-      CHAIN_SIGNERS_LIMIT_DEFAULT,
-    ).optional(),
-    call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/transfers": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_TRANSFER_LIMIT_MAX,
-      CHAIN_TRANSFER_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/transfer-pairs": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_TRANSFER_PAIR_LIMIT_MAX,
-      CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
-    ).optional(),
-    sort: sortSchema(["volume", "count"] as const, "volume").optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/stake-flow": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_STAKE_FLOW_LIMIT_MAX,
-      CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/alpha-volume": z.object({
-    limit: limitSchema(
-      CHAIN_ALPHA_VOLUME_LIMIT_MAX,
-      CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/weights": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_WEIGHTS_LIMIT_MAX,
-      CHAIN_WEIGHTS_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/weights/setters": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
-      CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/serving": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_SERVING_LIMIT_MAX,
-      CHAIN_SERVING_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/axon-removals": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_AXON_REMOVALS_LIMIT_MAX,
-      CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/prometheus": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_PROMETHEUS_LIMIT_MAX,
-      CHAIN_PROMETHEUS_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/registrations": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_REGISTRATIONS_LIMIT_MAX,
-      CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/deregistrations": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_DEREGISTRATIONS_LIMIT_MAX,
-      CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_HOLDERS_LIMIT_MAX,
+        CHAIN_HOLDERS_LIMIT_DEFAULT,
+      ).optional(),
+    }),
+  "/api/v1/health/failure-reasons": () =>
+    z.object({
+      window: windowSchema(
+        FAILURE_REASONS_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      netuid: netuidSchema().optional(),
+      kind: kindStringSchema().optional(),
+    }),
+  "/api/v1/search/resolve": () =>
+    z.object({
+      // NOT a divergence, recorded so the next sweep does not file one. `q` is
+      // unbounded on purpose: this route recognises an identifier by SHAPE and
+      // returns an empty `matches` for anything else, so a long string is
+      // answered rather than rejected. Verified live -- 512 characters is a 200
+      // with `matches: []`.
+      q: z.string().optional(),
+    }),
+  "/api/v1/chain/concentration/history": () =>
+    z.object({
+      window: windowSchema(
+        CHAIN_CONCENTRATION_HISTORY_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/subnets/{netuid}/emission-pipeline/history": () =>
+    z.object({
+      window: windowSchema(
+        PIPELINE_HISTORY_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/review/attribution-candidates": () =>
+    z.object({
+      // The subnet filter. Optional, because the queue is normally read whole --
+      // 162 rows across 49 subnets -- and per-subnet is the drill-down.
+      netuid: z.coerce
+        .number()
+        .int()
+        .min(0)
+        .max(65535)
+        .describe(
+          "Narrow the queue to one subnet. Omit to read every subnet's candidates, which is the normal way to work the queue.",
+        )
+        // NO default: the absence of this parameter means "no filter", which is a
+        // different answer from any netuid -- so there is nothing to publish one
+        // as. The examples still ride, because a generated client needs a value
+        // it can fill the field with.
+        .meta({ examples: [64, 74] })
+        .optional(),
+      limit: limitSchema(
+        ATTRIBUTION_CANDIDATES_LIMIT_MAX,
+        ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT,
+      ).optional(),
+      offset: offsetSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/deregistration-ranking/history": () =>
+    z.object({
+      window: windowSchema(
+        DEREGISTRATION_HISTORY_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+    }),
+  "/api/v1/blocks": () =>
+    z.object({
+      limit: limitSchema(
+        BLOCK_PAGINATION.maxLimit,
+        BLOCK_PAGINATION.defaultLimit,
+      ).optional(),
+      offset: offsetSchema().optional(),
+      cursor: keysetCursorSchema().optional(),
+      // DIVERGENCE: the block author is an SS58 and publishes no pattern.
+      author: z.string().optional(),
+      spec_version: z.int().min(0).optional(),
+      from: observedAtBoundSchema("first").optional(),
+      to: observedAtBoundSchema("last").optional(),
+      block_start: blockBoundSchema("first").optional(),
+      block_end: blockBoundSchema("last").optional(),
+      min_extrinsics: z.int().min(0).optional(),
+      min_events: z.int().min(0).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/blocks/{ref}/extrinsics": () =>
+    z.object({
+      limit: limitSchema(
+        BLOCK_PAGINATION.maxLimit,
+        BLOCK_PAGINATION.defaultLimit,
+      ).optional(),
+      offset: offsetSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/blocks/{ref}/events": () =>
+    z.object({
+      limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
+      offset: offsetSchema().optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain-events": () =>
+    z.object({
+      pallet: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
+      method: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
+      block: blockBoundSchema("first").optional(),
+      extrinsic: z.int().min(0).optional(),
+      // OPAQUE, like the twelve sibling feeds -- and this is a live bug fix, not
+      // a tidy-up (#10316). The hand-written `^\d+\.\d+$` here published a
+      // TWO-part cursor while `chain-events-cold-tier.ts` decodes THREE
+      // (`CURSOR_ARITY = 3`, observed_at.block_number.event_index), so the route
+      // rejected the only cursor that works and accepted one it ignores.
+      // Verified against production 2026-08-09:
+      //
+      //   GET /api/v1/chain-events?limit=1
+      //     -> next_cursor "1786310148001.8809458.214"
+      //   GET /api/v1/chain-events?limit=1&cursor=1786310148001.8809458.214
+      //     -> 400 invalid_query, "cursor must match ^\d+\.\d+$."
+      //
+      // Following the route's own `next_cursor` -- the documented way to page --
+      // was a 400. The cold tier already treats an unusable cursor as inert
+      // rather than an error (see its own comment), so an opaque token is what
+      // this route has always actually accepted.
+      cursor: keysetCursorSchema().optional(),
+      before: blockBoundSchema("first").optional(),
+      // Resolved (#10109): this published 200 while the serving path clamped at
+      // 100, because TWO constants carried the name CHAIN_EVENTS_LIMIT_MAX with
+      // different values and the contract was written from the one the request
+      // path does not use. One constant now, in src/route-limits.ts, and it is
+      // the number the route enforces.
+      limit: limitSchema(
+        CHAIN_EVENTS_LIMIT_MAX,
+        CHAIN_EVENTS_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain-events/stats": () =>
+    z.object({
+      // A WINDOW SIZE, so its ceiling is a serving policy like `limit`'s and
+      // bends the same way -- `blocks: 99999` answers over the newest 5000
+      // rather than refusing (#10316).
+      blocks: z
+        .int()
+        .min(1)
+        .max(CHAIN_EVENTS_STATS_BLOCKS_MAX)
+        .meta({ [SERVING_BOUND]: true })
+        .optional(),
+    }),
+  "/api/v1/extrinsics": () =>
+    z.object({
+      limit: limitSchema(
+        BLOCK_PAGINATION.maxLimit,
+        BLOCK_PAGINATION.defaultLimit,
+      ).optional(),
+      offset: offsetSchema().optional(),
+      cursor: keysetCursorSchema().optional(),
+      block: blockBoundSchema("first").optional(),
+      // DIVERGENCE: see `coldkey` on /validators/{hotkey}/nominators -- an SS58
+      // published without the shared pattern.
+      signer: z.string().optional(),
+      // The same cap its three sibling feeds enforce (#10096). This took the
+      // identical filter with no bound at all, so a 150-character value was a
+      // 400 on /chain/calls and a 200 here -- handleExtrinsics now applies
+      // validateMaxLength, so the number is published because it is enforced.
+      call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
+      call_function: z.string().optional(),
+      call_hash: z
+        .string()
+        .regex(/^0x[0-9a-fA-F]{64}$/)
+        .optional(),
+      success: z.enum(["true", "false"] as const).optional(),
+      block_start: blockBoundSchema("first").optional(),
+      block_end: blockBoundSchema("last").optional(),
+      from: observedAtBoundSchema("first").optional(),
+      to: observedAtBoundSchema("last").optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/sudo": () =>
+    z.object({
+      limit: limitSchema(
+        BLOCK_PAGINATION.maxLimit,
+        BLOCK_PAGINATION.defaultLimit,
+      ).optional(),
+      offset: offsetSchema().optional(),
+      cursor: keysetCursorSchema().optional(),
+      block: blockBoundSchema("first").optional(),
+      call_function: z.string().optional(),
+      success: z.enum(["true", "false"] as const).optional(),
+      block_start: blockBoundSchema("first").optional(),
+      block_end: blockBoundSchema("last").optional(),
+      from: observedAtBoundSchema("first").optional(),
+      to: observedAtBoundSchema("last").optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/governance/config-changes": () =>
+    z.object({
+      limit: limitSchema(
+        BLOCK_PAGINATION.maxLimit,
+        BLOCK_PAGINATION.defaultLimit,
+      ).optional(),
+      offset: offsetSchema().optional(),
+      cursor: keysetCursorSchema().optional(),
+      block: blockBoundSchema("first").optional(),
+      call_function: z.string().optional(),
+      success: z.enum(["true", "false"] as const).optional(),
+      block_start: blockBoundSchema("first").optional(),
+      block_end: blockBoundSchema("last").optional(),
+      from: observedAtBoundSchema("first").optional(),
+      to: observedAtBoundSchema("last").optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/runtime": () =>
+    z.object({
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/activity": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/calls": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      group_by: z.enum(["module", "module_function"] as const).optional(),
+      limit: limitSchema(
+        CHAIN_CALLS_LIMIT_MAX,
+        CHAIN_CALLS_LIMIT_DEFAULT,
+      ).optional(),
+      call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/signers": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      sort: sortSchema(
+        ["tx_count", "total_fee_tao"] as const,
+        "tx_count",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_SIGNERS_LIMIT_MAX,
+        CHAIN_SIGNERS_LIMIT_DEFAULT,
+      ).optional(),
+      call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/transfers": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_TRANSFER_LIMIT_MAX,
+        CHAIN_TRANSFER_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/transfer-pairs": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_TRANSFER_PAIR_LIMIT_MAX,
+        CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
+      ).optional(),
+      sort: sortSchema(["volume", "count"] as const, "volume").optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/stake-flow": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_STAKE_FLOW_LIMIT_MAX,
+        CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/alpha-volume": () =>
+    z.object({
+      limit: limitSchema(
+        CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+        CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/weights": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_WEIGHTS_LIMIT_MAX,
+        CHAIN_WEIGHTS_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/weights/setters": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+        CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/serving": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_SERVING_LIMIT_MAX,
+        CHAIN_SERVING_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/axon-removals": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_AXON_REMOVALS_LIMIT_MAX,
+        CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/prometheus": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_PROMETHEUS_LIMIT_MAX,
+        CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/registrations": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_REGISTRATIONS_LIMIT_MAX,
+        CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/deregistrations": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_DEREGISTRATIONS_LIMIT_MAX,
+        CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
   // The five-value window, not the 7d/30d the per-UID feed above takes: a
   // SUBNET registers or deregisters a handful of times in its life, so a 7d
   // default would answer "nothing happened" almost always. Defaults to `all`
   // for the same reason.
   // No `offset`: the chain feeds do not page, and with a 1000 ceiling over a
   // few-hundred-row table the whole network's lifecycle fits in one request.
-  "/api/v1/chain/subnet-lifecycle": z.object({
-    window: windowSchema(
-      HISTORY_WINDOWS as [string, ...string[]],
-      "all",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX,
-      CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/stake-transfers": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
-      CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/stake-moves": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_STAKE_MOVES_LIMIT_MAX,
-      CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/fees": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_FEES_LIMIT_MAX,
-      CHAIN_FEES_LIMIT_DEFAULT,
-    ).optional(),
-    call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/chain/concentration/subnets": z.object({
-    lens: z
-      .enum([
-        "emission",
-        "stake",
-        "entity_emission",
-        "entity_stake",
-        "validator_stake",
-      ] as const)
-      .optional(),
-    sort: sortSchema(
-      [
+  "/api/v1/chain/subnet-lifecycle": () =>
+    z.object({
+      window: windowSchema(
+        HISTORY_WINDOWS as [string, ...string[]],
+        "all",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX,
+        CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/stake-transfers": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
+        CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/stake-moves": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_STAKE_MOVES_LIMIT_MAX,
+        CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/fees": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_FEES_LIMIT_MAX,
+        CHAIN_FEES_LIMIT_DEFAULT,
+      ).optional(),
+      call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/chain/concentration/subnets": () =>
+    z.object({
+      lens: z
+        .enum([
+          "emission",
+          "stake",
+          "entity_emission",
+          "entity_stake",
+          "validator_stake",
+        ] as const)
+        .optional(),
+      sort: sortSchema(
+        [
+          "nakamoto_coefficient",
+          "gini",
+          "holders",
+          "top_1pct_share",
+          "total",
+          "netuid",
+        ] as const,
         "nakamoto_coefficient",
-        "gini",
-        "holders",
-        "top_1pct_share",
-        "total",
-        "netuid",
-      ] as const,
-      "nakamoto_coefficient",
-    ).optional(),
-    order: orderSchema("desc").optional(),
-    limit: limitSchema(
-      CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
-      CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
-    ).optional(),
-  }),
-  "/api/v1/chain/identity-history": z.object({
-    limit: limitSchema(
-      CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-      CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
-    ).optional(),
-  }),
-  "/api/v1/chain/turnover": z.object({
-    window: windowSchema(
-      TREND_WINDOWS as [string, ...string[]],
-      "30d",
-    ).optional(),
-    limit: limitSchema(
-      CHAIN_TURNOVER_LIMIT_MAX,
-      CHAIN_TURNOVER_LIMIT_DEFAULT,
-    ).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/subnets/{netuid}/uptime": z.object({
-    window: windowSchema(
-      UPTIME_WINDOWS as [string, ...string[]],
-      "90d",
-    ).optional(),
-    min_samples: z.int().min(0).optional(),
-    format: formatSchema().optional(),
-  }),
-  "/api/v1/registry/leaderboards": z.object({
-    board: z
-      .enum([
-        "healthiest",
-        "fastest-rpc",
-        "most-complete",
-        "most-enriched",
-        "fastest-growing",
-        "most-reliable",
-        "open-slots",
-        "cheapest-registration",
-        "highest-emission",
-        "validator-headroom",
-        "biggest-alpha-gain-1d",
-        "biggest-alpha-gain-7d",
-      ] as const)
-      .optional(),
-    limit: limitSchema(
-      LEADERBOARDS_LIMIT_MAX,
-      LEADERBOARDS_LIMIT_DEFAULT,
-    ).optional(),
-  }),
-  "/api/v1/compare": z.object({
-    netuids: netuidListSchema().optional(),
-    dimensions: z.string().optional(),
-  }),
-  "/api/v1/compare/validators": z.object({
-    hotkeys: z
-      .string()
-      .regex(
-        /^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$/,
-      )
-      .max(783)
-      .optional(),
-    netuid: netuidSchema().optional(),
-  }),
-  "/api/v1/rpc/usage": z.object({
-    window: windowSchema(
-      ANALYTICS_WINDOWS as [string, ...string[]],
-      "7d",
-    ).optional(),
-  }),
-} satisfies Record<string, z.ZodObject>;
+      ).optional(),
+      order: orderSchema("desc").optional(),
+      limit: limitSchema(
+        CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+        CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+      ).optional(),
+    }),
+  "/api/v1/chain/identity-history": () =>
+    z.object({
+      limit: limitSchema(
+        CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+        CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+      ).optional(),
+    }),
+  "/api/v1/chain/turnover": () =>
+    z.object({
+      window: windowSchema(
+        TREND_WINDOWS as [string, ...string[]],
+        "30d",
+      ).optional(),
+      limit: limitSchema(
+        CHAIN_TURNOVER_LIMIT_MAX,
+        CHAIN_TURNOVER_LIMIT_DEFAULT,
+      ).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/subnets/{netuid}/uptime": () =>
+    z.object({
+      window: windowSchema(
+        UPTIME_WINDOWS as [string, ...string[]],
+        "90d",
+      ).optional(),
+      min_samples: z.int().min(0).optional(),
+      format: formatSchema().optional(),
+    }),
+  "/api/v1/registry/leaderboards": () =>
+    z.object({
+      board: z
+        .enum([
+          "healthiest",
+          "fastest-rpc",
+          "most-complete",
+          "most-enriched",
+          "fastest-growing",
+          "most-reliable",
+          "open-slots",
+          "cheapest-registration",
+          "highest-emission",
+          "validator-headroom",
+          "biggest-alpha-gain-1d",
+          "biggest-alpha-gain-7d",
+        ] as const)
+        .optional(),
+      limit: limitSchema(
+        LEADERBOARDS_LIMIT_MAX,
+        LEADERBOARDS_LIMIT_DEFAULT,
+      ).optional(),
+    }),
+  "/api/v1/compare": () =>
+    z.object({
+      netuids: netuidListSchema().optional(),
+      dimensions: z.string().optional(),
+    }),
+  "/api/v1/compare/validators": () =>
+    z.object({
+      hotkeys: z
+        .string()
+        .regex(
+          /^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$/,
+        )
+        .max(783)
+        .optional(),
+      netuid: netuidSchema().optional(),
+    }),
+  "/api/v1/rpc/usage": () =>
+    z.object({
+      window: windowSchema(
+        ANALYTICS_WINDOWS as [string, ...string[]],
+        "7d",
+      ).optional(),
+    }),
+}) satisfies Record<string, z.ZodObject>;
