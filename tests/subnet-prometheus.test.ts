@@ -8,7 +8,7 @@ import {
   DEFAULT_SUBNET_PROMETHEUS_WINDOW,
 } from "../src/subnet-prometheus.ts";
 import type { Row } from "./row-type.ts";
-import { PROMETHEUS_DEGRADED_NOT_CURATED } from "../src/uncurated-event-streams.ts";
+import { DEGRADED_UNAVAILABLE } from "../src/uncurated-event-streams.ts";
 
 describe("buildSubnetPrometheus", () => {
   test("cold / null row yields a zeroed, schema-stable card", () => {
@@ -91,7 +91,7 @@ describe("buildSubnetPrometheus honesty marker (#9307)", () => {
     // projection this route reads carries 0 of them. Without the marker the
     // card is indistinguishable from "this subnet announced nothing".
     const d = buildSubnetPrometheus(null, 7, { window: "7d" });
-    assert.deepEqual(d.degraded, { reason: PROMETHEUS_DEGRADED_NOT_CURATED });
+    assert.deepEqual(d.degraded, { reason: DEGRADED_UNAVAILABLE });
   });
 
   test("a card with announcements carries NO marker", () => {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { forbiddenDataApi } from "./helpers/cold-tier-env.ts";
-import { PROMETHEUS_DEGRADED_NOT_CURATED } from "../src/uncurated-event-streams.ts";
+import { DEGRADED_UNAVAILABLE } from "../src/uncurated-event-streams.ts";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainPrometheus,
@@ -240,7 +240,7 @@ describe("buildChainPrometheus honesty marker (#9307)", () => {
     // GraphQL resolver all inherit it from the one function they share.
     for (const rows of [null, [], [{ netuid: 1, distinct_exporters: 0 }]]) {
       const d = buildChainPrometheus(rows, { window: "7d" });
-      assert.deepEqual(d.degraded, { reason: PROMETHEUS_DEGRADED_NOT_CURATED });
+      assert.deepEqual(d.degraded, { reason: DEGRADED_UNAVAILABLE });
     }
   });
 

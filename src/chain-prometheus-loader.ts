@@ -60,16 +60,20 @@ export async function loadChainPrometheusColdTier(
     windowDays: ANALYTICS_WINDOW_DAYS[label],
     query,
   });
-  // A configured lakehouse that could not answer. `empty` and `miss` both keep
-  // the caller's zeros -- one is a measured quiet window, the other a
-  // deployment with no lakehouse -- and only this branch is a claim nobody
-  // measured. See ChainEventRollupOutcome.
+  // Preserve the distinction between a quiet window and a source that did not answer.
   if (rollup.kind === "gap") return declineChainEventCard(label);
-  if (rollup.kind !== "answer") return null;
+  if (rollup.kind === "miss") return null;
+  if (rollup.kind === "empty") {
+    return buildChainPrometheus([], {
+      window: label,
+      sourceAvailable: true,
+    });
+  }
   return buildChainPrometheus(rollup.rollup.rows, {
     window: label,
     limit: rowLimit,
     networkDistinct: rollup.rollup.networkDistinct,
     subnetCount: rollup.rollup.subnetCount,
+    sourceAvailable: true,
   });
 }

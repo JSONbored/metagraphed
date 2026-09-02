@@ -79,7 +79,7 @@ import {
 import {
   AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
   DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
-  PROMETHEUS_DEGRADED_NOT_CURATED,
+  DEGRADED_UNAVAILABLE,
 } from "../src/uncurated-event-streams.ts";
 import type { AnyFn, Row } from "./row-type.ts";
 
@@ -24295,17 +24295,17 @@ describe("graphql — event-stream honesty (#9307)", () => {
     [
       "chain_prometheus",
       "{ chain_prometheus { degraded { reason } } }",
-      PROMETHEUS_DEGRADED_NOT_CURATED,
+      DEGRADED_UNAVAILABLE,
     ],
     [
       "subnet_prometheus",
       "{ subnet_prometheus(netuid: 3) { degraded { reason } } }",
-      PROMETHEUS_DEGRADED_NOT_CURATED,
+      DEGRADED_UNAVAILABLE,
     ],
     [
       "account_prometheus",
       `{ account_prometheus(ss58: "${SS58_ADDR}") { degraded { reason } } }`,
-      PROMETHEUS_DEGRADED_NOT_CURATED,
+      DEGRADED_UNAVAILABLE,
     ],
     [
       "chain_axon_removals",

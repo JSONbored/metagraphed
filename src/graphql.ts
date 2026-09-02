@@ -3984,8 +3984,7 @@ const rootValue = {
       distinct_exporters: data.distinct_exporters ?? 0,
       announcements: data.announcements ?? 0,
       announcements_per_exporter: data.announcements_per_exporter ?? null,
-      // #9307: the account_events projection this reads carries 0 of the
-      // 18,041 PrometheusServed events the chain emitted.
+      // Preserve the shared loader's source-availability verdict.
       degraded: data.degraded ?? null,
     };
   },
@@ -6436,8 +6435,7 @@ const rootValue = {
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
       subnets: data.subnets || [],
-      // #9307: the account_events projection this reads carries 0 of the
-      // 18,041 PrometheusServed events the chain emitted.
+      // Preserve the shared loader's source-availability verdict.
       degraded: data.degraded ?? null,
     };
   },
@@ -8313,8 +8311,7 @@ const rootValue = {
       },
       intensity_distribution: data.intensity_distribution ?? null,
       subnets: data.subnets || [],
-      // #9307: the chain emits PrometheusServed and our account_events
-      // curation drops it, so an empty answer here is not a measurement.
+      // Preserve the shared loader's source-availability verdict.
       degraded: data.degraded ?? null,
     };
   },

@@ -15,10 +15,8 @@
 // declines unconditionally and the card is all that is left. A 200, no degraded marker,
 // and a number that reads as "this subnet has no activity of this kind".
 //
-// Deliberately NOT extended to `/prometheus` and `/axon-removals`: those report 0
-// per-subnet AND 0 chain-wide, because `PrometheusServed` and `AxonInfoRemoved` do not
-// occur in the window at all. Their zero is the right answer, and wiring a loader there
-// would have been a fix for a bug that is not there.
+// Prometheus also uses this loader. A successful quiet window is a measurement;
+// an unavailable source must remain distinguishable from it.
 import { loadChainEventIdentityRollup } from "./chain-event-rollup-cold-tier.ts";
 import {
   DEGRADED_UNAVAILABLE,
@@ -45,7 +43,11 @@ export async function loadSubnetEventCardColdTier<T extends object>(
   env: Parameters<R2SqlReader>[0],
   spec: ChainEventRollupSpec,
   netuid: number,
-  build: (row: Row | null, netuid: unknown, options: { window?: unknown }) => T,
+  build: (
+    row: Row | null,
+    netuid: unknown,
+    options: { window?: unknown; sourceAvailable?: boolean },
+  ) => T,
   {
     windowLabel,
     windowDays,
@@ -69,10 +71,7 @@ export async function loadSubnetEventCardColdTier<T extends object>(
   // the zeroed card, which the header above calls "the whole defect this
   // closes". It was closed at this frame and reopened at the next one.
   //
-  // Only a configured lakehouse that could not answer is marked. An `empty`
-  // window is a MEASUREMENT and a `miss` is a deployment with no lakehouse;
-  // both keep the caller's zeros, unmarked, because in both cases the zeros are
-  // the right answer.
+  // An empty window is a measurement. A miss leaves the fallback to the caller.
   //
   // The card is still built, from a null row, so the marked payload has exactly
   // the key set the measured one has -- a consumer branches on `degraded`, never
@@ -83,6 +82,9 @@ export async function loadSubnetEventCardColdTier<T extends object>(
       degraded: { reason: DEGRADED_UNAVAILABLE },
     };
   }
-  if (rollup.kind !== "answer") return null;
-  return build(rollup.rollup.totals, netuid, { window: windowLabel });
+  if (rollup.kind === "miss") return null;
+  return build(rollup.kind === "answer" ? rollup.rollup.totals : null, netuid, {
+    window: windowLabel,
+    sourceAvailable: true,
+  });
 }

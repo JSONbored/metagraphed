@@ -64,22 +64,6 @@ export interface EventStreamDegraded {
 export const DEGRADED_UNAVAILABLE = "unavailable";
 
 /**
- * The chain emits `PrometheusServed` and our `account_events` curation drops
- * it: 18,041 events in the complete stream, 0 in the projection every
- * prometheus route reads. A CURATION gap, not a chain fact -- the fix is
- * upstream in the indexer's extract() match arm (metagraphed-infra #242) plus
- * a backfill, neither of which lives in this repo.
- *
- * Worth stating precisely, because "deploy #242 and the route lights up" is
- * only half true: the newest `PrometheusServed` in the complete stream is
- * 2026-07-19 and exactly ONE lands inside the widest window these routes
- * offer (30d). Curating it makes the routes correct; it does not make them
- * busy. The 18,041 are historical and reach back to 2023-03-20, so the
- * backfill is what makes them visible at all.
- */
-export const PROMETHEUS_DEGRADED_NOT_CURATED = "prometheus_stream_not_curated";
-
-/**
  * `AxonInfoRemoved` has ZERO occurrences in the complete pallet-level stream,
  * ever. The routes were modelled on an event the Subtensor runtime does not
  * emit, so no indexer work can populate them.

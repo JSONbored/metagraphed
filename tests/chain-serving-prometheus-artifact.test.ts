@@ -141,6 +141,11 @@ for (const { name, key, distinctField, load } of CASES) {
       const card = await load(env, { window: "30d" });
       assert.ok(card, "an empty stored window is not a decline");
       assert.deepEqual(card.subnets, []);
+      assert.equal(
+        card.degraded,
+        undefined,
+        "a validated empty window is measured",
+      );
     });
 
     test("defaults to the route's own window when none is asked for", async () => {

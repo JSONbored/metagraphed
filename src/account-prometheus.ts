@@ -16,7 +16,7 @@
 
 import { roundBelowOne } from "./lib/stats.ts";
 import {
-  PROMETHEUS_DEGRADED_NOT_CURATED,
+  DEGRADED_UNAVAILABLE,
   type EventStreamDegraded,
 } from "./uncurated-event-streams.ts";
 
@@ -97,7 +97,10 @@ export interface AccountPrometheusResult {
 export function buildAccountPrometheus(
   rows: Array<Record<string, unknown>> | null | undefined,
   address: string,
-  { window }: { window?: string | null } = {},
+  {
+    window,
+    sourceAvailable = false,
+  }: { window?: string | null; sourceAvailable?: boolean } = {},
 ): AccountPrometheusResult {
   const list = Array.isArray(rows) ? rows : [];
   // Merge by netuid so a malformed direct caller passing duplicate rows for a subnet sums rather
@@ -170,11 +173,9 @@ export function buildAccountPrometheus(
     dominant_netuid: dominantNetuid,
     subnets,
   };
-  // An empty footprint here has never been a measurement of this account: the
-  // chain emitted 18,041 PrometheusServed events and the account_events
-  // projection this reads carries 0 of them.
-  if (totalAnnouncements === 0) {
-    card.degraded = { reason: PROMETHEUS_DEGRADED_NOT_CURATED };
+  // Empty reads are measurements; a fallback without a source is unavailable.
+  if (totalAnnouncements === 0 && !sourceAvailable) {
+    card.degraded = { reason: DEGRADED_UNAVAILABLE };
   }
   return card;
 }
@@ -215,7 +216,10 @@ export async function loadAccountPrometheus(
     }
   }
   return {
-    data: buildAccountPrometheus(rows, address, { window: windowLabel }),
+    data: buildAccountPrometheus(rows, address, {
+      window: windowLabel,
+      sourceAvailable: true,
+    }),
     generatedAt: toIso(latestObserved),
   };
 }
