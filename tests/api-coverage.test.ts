@@ -3421,6 +3421,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     // exactly one row from a real engine, so an empty result there is a
     // DECLINE by design -- feeding them is what makes chain-weight-setters
     // exercise its store path here rather than its failure path.
+    if (sql.startsWith("SELECT netuid, sum(n) AS weight_sets")) return [];
     if (sql.includes("ORDER BY weight_sets DESC")) {
       // The identity rollup's GROUPED leg, matched on its ORDER BY rather than
       // its GROUP BY: the DISTINCT leg wraps the same `GROUP BY netuid, uid`

@@ -136,6 +136,10 @@ function lakeFetchWithBlocks(onFail?: (sql: string) => boolean) {
       sql.includes("AS newest_observed")
     ) {
       rows = [{ newest_observed: NOW - 1000 }];
+    } else if (sql.startsWith("SELECT netuid, sum(n) AS weight_sets")) {
+      // The per-subnet rollup is an empty window in this fixture. The
+      // identity leaderboard below is a separate query with its own row.
+      rows = [];
     } else if (sql.includes("ORDER BY weight_sets DESC")) {
       // The identity rollup's GROUPED leg, matched on its ORDER BY rather than
       // its GROUP BY: the DISTINCT leg wraps the same `GROUP BY netuid, uid`
