@@ -2881,6 +2881,87 @@ test("the snapshot stamp prepares one atomic directory materialization and both 
   assert.equal(((await validators.json()) as Row).validator_count, 3);
 });
 
+test.each(["/api/v1/accounts/directory", "/api/v1/validators/operators"])(
+  "%s repairs an older materialization from the newest completed pass",
+  async (route) => {
+    await insertNeuron({ uid: 0, hotkey: "5Old", stake_tao: 100 });
+    await seed(
+      "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+      [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+    );
+    const kv = memoryKv();
+    const materializedEnv = env({ METAGRAPH_CONTROL: kv });
+    await refreshExplorerDirectoryMaterialization(
+      materializedEnv as DataApiEnv,
+      ctx,
+      CAPTURED_AT,
+    );
+
+    const newer = CAPTURED_AT + 900_000;
+    await seed("UPDATE neurons SET captured_at = ?, stake_tao = ?", [
+      newer,
+      200,
+    ]);
+    await seed(
+      "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+      [newer, 1, 1, newer + 1],
+    );
+    const collected = collectingCtx();
+    const response = await worker.fetch(
+      req(route),
+      materializedEnv,
+      collected.ctx,
+    );
+    assert.equal(response.status, 200);
+    await Promise.all(collected.pending);
+    assert.equal(
+      JSON.parse(kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT)!).captured_at,
+      newer,
+    );
+    assert.equal(
+      JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
+        .captured_at,
+      new Date(newer).toISOString(),
+    );
+  },
+);
+
+test.each(["/api/v1/accounts/directory", "/api/v1/validators/operators"])(
+  "%s retains the last verified directory when completed-pass metadata is unavailable",
+  async (route) => {
+    await insertNeuron({ uid: 0, hotkey: "5Verified", stake_tao: 100 });
+    await seed(
+      "INSERT INTO neurons_passes (captured_at, expected_rows, received_rows, completed_at) VALUES (?, ?, ?, ?)",
+      [CAPTURED_AT, 1, 1, CAPTURED_AT + 1],
+    );
+    const kv = memoryKv();
+    const materializedEnv = env({ METAGRAPH_CONTROL: kv });
+    await refreshExplorerDirectoryMaterialization(
+      materializedEnv as DataApiEnv,
+      ctx,
+      CAPTURED_AT,
+    );
+    const previousPointer = kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT);
+    await db.exec("TRUNCATE neurons_passes");
+    const collected = collectingCtx();
+    const response = await worker.fetch(
+      req(route),
+      materializedEnv,
+      collected.ctx,
+    );
+    assert.equal(response.status, 200);
+    await Promise.all(collected.pending);
+    assert.equal(
+      kv.values.get(KV_EXPLORER_DIRECTORIES_CURRENT),
+      previousPointer,
+    );
+    assert.equal(
+      ((await response.json()) as Row).captured_at,
+      new Date(CAPTURED_AT).toISOString(),
+    );
+  },
+);
+
 test("concurrent requests share one directory refresh for a completed snapshot", async () => {
   await insertNeuron({ uid: 0, hotkey: "5Only", stake_tao: 100 });
   await seed(
@@ -3032,7 +3113,9 @@ test("a legacy combined directory restores both hot values without folding parti
   assert.equal(((await response.json()) as Row).account_count, 1);
   await Promise.all(collected.pending);
 
-  assert.equal(pg.control.queries.length, queriesBeforeFallback);
+  const fallbackQueries = pg.control.queries.slice(queriesBeforeFallback);
+  assert.equal(fallbackQueries.length, 1);
+  assert.match(fallbackQueries[0].text, /FROM neurons_passes/);
   assert.equal(
     JSON.parse(kv.values.get(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT)!)
       .account_count,

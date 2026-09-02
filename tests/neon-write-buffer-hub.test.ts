@@ -141,6 +141,105 @@ describe("enqueueStatement", () => {
 });
 
 describe("flushBuffer", () => {
+  test("refreshes explorer directories after buffered neuron statements reach Neon", async () => {
+    const storage = fakeStorage();
+    for (const text of ["neuron rows", "completed pass"])
+      await enqueueStatement(storage, stmt("neurons", text), NOW);
+    const seen: string[] = [];
+    const pending: Promise<unknown>[] = [];
+    const out = await flushBuffer(
+      storage,
+      {
+        DATA_API: {
+          async fetch(request: Request) {
+            assert.equal(
+              new URL(request.url).pathname,
+              "/api/v1/internal/neurons-snapshot-stamp",
+            );
+            seen.push("refresh");
+            return Response.json({ captured_at: NOW });
+          },
+        },
+      },
+      { waitUntil: (p) => pending.push(p) },
+      {
+        laneHealthDb: laneSpy().db,
+        sql: {
+          unsafe: async (text) => {
+            seen.push(text);
+          },
+        },
+      },
+    );
+    await Promise.all(pending);
+    assert.equal(out.ok, true);
+    assert.deepEqual(seen, ["neuron rows", "completed pass", "refresh"]);
+    assert.equal(await countPending(storage), 0);
+  });
+
+  test("a directory refresh failure does not replay committed neuron writes", async () => {
+    for (const failure of ["http", "network"]) {
+      const storage = fakeStorage();
+      await enqueueStatement(storage, stmt("neurons", "rows"), NOW);
+      const pending: Promise<unknown>[] = [];
+      const captured: string[] = [];
+      const out = await flushBuffer(
+        storage,
+        {
+          DATA_API: {
+            async fetch() {
+              if (failure === "network") throw new Error("unavailable");
+              return new Response(null, { status: 503 });
+            },
+          },
+        },
+        { waitUntil: (p) => pending.push(p) },
+        {
+          laneHealthDb: laneSpy().db,
+          sql: { unsafe: async () => [] },
+          captureException: async (_env, event) => {
+            captured.push(event.errorCode!);
+            return true;
+          },
+        },
+      );
+      await Promise.all(pending);
+      assert.equal(out.ok, true);
+      assert.equal(await countPending(storage), 0);
+      assert.deepEqual(captured, ["directory_refresh_failed"]);
+    }
+  });
+
+  test("unrelated and failed flushes do not request a directory refresh", async () => {
+    for (const lane of ["account-balances", "neurons"]) {
+      const storage = fakeStorage();
+      await enqueueStatement(storage, stmt(lane, "rows"), NOW);
+      let requests = 0;
+      await flushBuffer(
+        storage,
+        {
+          DATA_API: {
+            fetch: async () => {
+              requests++;
+              return Response.json({});
+            },
+          },
+        },
+        CTX,
+        {
+          laneHealthDb: laneSpy().db,
+          sql: {
+            unsafe: async () => {
+              if (lane === "neurons") throw new Error("offline");
+            },
+          },
+          captureException: async () => true,
+        },
+      );
+      assert.equal(requests, 0);
+    }
+  });
+
   test("an empty buffer is a clean no-op", async () => {
     const out = await flushBuffer(fakeStorage(), {}, CTX, { sql: null });
     assert.deepEqual(out, {

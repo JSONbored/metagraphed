@@ -7549,7 +7549,12 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         env.METAGRAPH_CONTROL,
       );
       if (materialized) {
-        scheduleExplorerDirectoryRefresh(env, ctx, materialized.captured_at);
+        const latest = await latestCompletedNeuronSnapshot(sql);
+        scheduleExplorerDirectoryRefresh(
+          env,
+          ctx,
+          latest ?? materialized.captured_at,
+        );
         return json(materialized.validators);
       }
       return json(
@@ -8383,7 +8388,12 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         env.METAGRAPH_CONTROL,
       );
       if (materialized) {
-        scheduleExplorerDirectoryRefresh(env, ctx, materialized.captured_at);
+        const latest = await latestCompletedNeuronSnapshot(sql);
+        scheduleExplorerDirectoryRefresh(
+          env,
+          ctx,
+          latest ?? materialized.captured_at,
+        );
         return json(materialized.accounts);
       }
       const [rows, priceByNetuid] = await Promise.all([
