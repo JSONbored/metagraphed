@@ -10,7 +10,7 @@ import {
   KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
 } from "../src/kv-keys.ts";
 
-const capturedAt = "2026-08-29T00:00:00.000Z";
+const capturedAt = new Date().toISOString();
 
 const accounts = {
   schema_version: 1 as const,
@@ -72,4 +72,25 @@ test("route-specific directory readers contain KV failures", async () => {
   );
   assert.equal(error.mock.calls.length, 1);
   error.mockRestore();
+});
+
+test("old or future directory snapshots fall through to the source repair path", async () => {
+  for (const captured_at of [
+    new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    null,
+  ]) {
+    assert.equal(
+      await readCurrentAccountDirectory({
+        get: async () => ({ ...accounts, captured_at }),
+      }),
+      null,
+    );
+    assert.equal(
+      await readCurrentValidatorDirectory({
+        get: async () => ({ ...validators, captured_at }),
+      }),
+      null,
+    );
+  }
 });

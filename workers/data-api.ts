@@ -7229,14 +7229,14 @@ export async function refreshExplorerDirectoryMaterialization(
 function scheduleExplorerDirectoryRefresh(
   env: DataApiEnv,
   ctx: ExecutionContext,
-  capturedAt: number,
+  capturedAt: number | Promise<number>,
 ) {
   ctx.waitUntil(
-    refreshExplorerDirectoryMaterialization(env, ctx, capturedAt).catch(
-      (error) => {
+    Promise.resolve(capturedAt)
+      .then((stamp) => refreshExplorerDirectoryMaterialization(env, ctx, stamp))
+      .catch((error) => {
         console.error("explorer directory publication failed:", error);
-      },
-    ),
+      }),
   );
 }
 
@@ -7549,7 +7549,14 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         env.METAGRAPH_CONTROL,
       );
       if (materialized) {
-        scheduleExplorerDirectoryRefresh(env, ctx, materialized.captured_at);
+        // Keep the verified response available if the freshness read fails.
+        scheduleExplorerDirectoryRefresh(
+          env,
+          ctx,
+          latestCompletedNeuronSnapshot(sql).then(
+            (latest) => latest ?? materialized.captured_at,
+          ),
+        );
         return json(materialized.validators);
       }
       return json(
@@ -8383,7 +8390,14 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         env.METAGRAPH_CONTROL,
       );
       if (materialized) {
-        scheduleExplorerDirectoryRefresh(env, ctx, materialized.captured_at);
+        // Keep the verified response available if the freshness read fails.
+        scheduleExplorerDirectoryRefresh(
+          env,
+          ctx,
+          latestCompletedNeuronSnapshot(sql).then(
+            (latest) => latest ?? materialized.captured_at,
+          ),
+        );
         return json(materialized.accounts);
       }
       const [rows, priceByNetuid] = await Promise.all([

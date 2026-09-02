@@ -214,6 +214,7 @@ export interface BufferStorage {
 /** What the hub needs from its environment, so the flush can be driven alone. */
 export interface BufferEnv extends TelemetryEnv {
   HYPERDRIVE?: HyperdriveLike;
+  DATA_API?: { fetch(request: Request): Promise<Response> };
   [key: string]: unknown;
 }
 
@@ -505,6 +506,33 @@ export async function flushBuffer(
     }`,
     checked_at: now(),
   });
+  // Enqueue-time publication cannot see the completed pass in Neon. Ask again
+  // after the ordered flush, when both the rows and their tally are committed.
+  // The source route still declines partial passes and folds each stamp once.
+  if (perLane.get("neurons")?.ok && env.DATA_API) {
+    const dataApi = env.DATA_API;
+    ctx.waitUntil(
+      (async () => {
+        const response = await dataApi.fetch(
+          new Request(
+            "https://data-api/api/v1/internal/neurons-snapshot-stamp",
+          ),
+        );
+        if (!response.ok) {
+          throw new Error(
+            `explorer directory refresh returned HTTP ${response.status}`,
+          );
+        }
+        await response.text();
+      })().catch((error) =>
+        capture(env, {
+          error,
+          route: BUFFER_ROUTE,
+          errorCode: "directory_refresh_failed",
+        }),
+      ),
+    );
+  }
   return { drained, undecodable, ok: true, remaining: truncated };
 }
 

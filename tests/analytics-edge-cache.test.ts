@@ -1487,7 +1487,7 @@ describe("analytics edge cache", () => {
     const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
     const directory = {
       schema_version: 1,
-      captured_at: "2026-08-29T00:00:00.000Z",
+      captured_at: new Date().toISOString(),
       block_number: 8_950_000,
       validator_count: 0,
       operator_count: 0,
@@ -1538,7 +1538,7 @@ describe("analytics edge cache", () => {
     const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
     const directory = {
       schema_version: 1,
-      captured_at: "2026-08-29T00:00:00.000Z",
+      captured_at: new Date().toISOString(),
       block_number: 8_950_000,
       account_count: 0,
       limit: 20,
