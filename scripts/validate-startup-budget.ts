@@ -39,6 +39,21 @@ const startedAt = Date.now();
 await import(pathToFileURL("workers/api.ts").href);
 const elapsedMs = Date.now() - startedAt;
 
+// A directory request must not initialize unrelated validators or generate
+// OpenAPI parameter metadata. Check the construction boundary independently
+// of machine speed, before the explicit GraphQL import below consumes them.
+const { ROUTE_QUERY_SCHEMAS } = await import("../schemas-src/route-queries.ts");
+if (
+  Object.values(Object.getOwnPropertyDescriptors(ROUTE_QUERY_SCHEMAS)).some(
+    (descriptor) => typeof descriptor.get !== "function",
+  )
+) {
+  console.error(
+    "startup budget: FAIL — unrelated route schemas initialized eagerly",
+  );
+  process.exit(1);
+}
+
 // The two modules that must never ride the static graph: if either is already
 // evaluated, importing it again is ~free — so a measurable second cost is the
 // PROOF they stayed lazy, independent of the wall-clock threshold above.

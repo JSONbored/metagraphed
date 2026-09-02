@@ -7060,6 +7060,7 @@ function route(
   requestBodySchema: string | null = null,
 ) {
   const querySpec = normalizeQueryParameters(queryParameters);
+  let publishedQueryParameters: QueryParameterSpec[] | undefined;
   return {
     id,
     method,
@@ -7071,7 +7072,14 @@ function route(
     tags,
     query_collection: querySpec.collection,
     query_filter_names: querySpec.filterNames,
-    query_parameters: queryParametersFromSchema(pathValue, querySpec),
+    // OpenAPI/catalog generation needs every parameter's JSON Schema. A data
+    // request only needs its own Zod validator, so defer this separate output.
+    get query_parameters() {
+      return (publishedQueryParameters ??= queryParametersFromSchema(
+        pathValue,
+        querySpec,
+      ));
+    },
     csv_response: querySpec.csvResponse,
     path_parameters: pathParameters,
   };

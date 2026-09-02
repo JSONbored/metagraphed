@@ -1442,7 +1442,14 @@ const RAW_ARTIFACT_ROUTES = PUBLIC_ARTIFACTS.filter((entry) =>
 }));
 
 const ROUTES = API_ROUTES.map((entry) => ({
-  ...entry,
+  // Keep published JSON Schema lazy: spreading the contract entry would read
+  // query_parameters for every route before the first request could start.
+  id: entry.id,
+  artifact_path: entry.artifact_path,
+  cache: entry.cache,
+  query_collection: entry.query_collection,
+  query_filter_names: entry.query_filter_names,
+  csv_response: entry.csv_response,
   pattern: compileRoutePattern(entry.path),
   artifactPath(params: Row) {
     return artifactPathFromTemplate(entry.artifact_path, params);
