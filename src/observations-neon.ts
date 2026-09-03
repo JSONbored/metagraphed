@@ -142,6 +142,8 @@ async function attempt(
  * A display alias may already belong to another stable key (#12005). Evict
  * that obsolete latest-status alias and upsert by stable key in ONE statement,
  * so an occupied alias cannot abort the sweep or leave a half-applied rename.
+ * Keep displaced stable-key status under a history alias: the next probe may
+ * have no cached last_ok, and deleting its status would lose a measured success.
  * Raw checks remain intact. Keyless rows retain the display-id arbiter.
  *
  * Older probes still enter history, but cannot evict a newer alias or replace
@@ -180,14 +182,25 @@ export async function persistProbesToNeon(
         await sql.unsafe(
           `${
             keyed
-              ? `WITH displaced_alias AS (
-             DELETE FROM surface_status
+              ? `WITH alias_conflict AS (
+             SELECT surface_id, surface_key FROM surface_status
              WHERE surface_id = $1 AND surface_key IS DISTINCT FROM $2
                AND COALESCE(last_checked, 0) <= $11
                AND NOT EXISTS (
                  SELECT 1 FROM surface_status newer
                  WHERE newer.surface_key = $2 AND newer.last_checked > $11
                )
+           ), displaced_alias AS (
+             UPDATE surface_status SET surface_id = 'history:' || surface_key
+             WHERE surface_id IN (
+               SELECT surface_id FROM alias_conflict WHERE surface_key IS NOT NULL
+             )
+             RETURNING surface_id
+           ), displaced_keyless AS (
+             DELETE FROM surface_status
+             WHERE surface_id IN (
+               SELECT surface_id FROM alias_conflict WHERE surface_key IS NULL
+             )
              RETURNING surface_id
            )`
               : ""
@@ -200,6 +213,7 @@ export async function persistProbesToNeon(
            ${
              keyed
                ? `FROM (SELECT COUNT(*) FROM displaced_alias) displaced
+             CROSS JOIN (SELECT COUNT(*) FROM displaced_keyless) legacy
              WHERE NOT EXISTS (
                SELECT 1 FROM surface_status newer
                WHERE newer.surface_id = $1
