@@ -7471,7 +7471,7 @@ export type SubnetProfileProvenance = {
   source_urls: Array<Scalars['String']['output']>;
 };
 
-/** Per-subnet Prometheus-endpoint serving activity (#7172) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/prometheus. */
+/** Per-subnet Prometheus-endpoint serving activity (#7172) over a 7d/30d window. Quiet windows return measured zeros after a successful source read; unavailable sources carry degraded.reason=unavailable. Mirrors GET /api/v1/subnets/{netuid}/prometheus. */
 export type SubnetPrometheus = {
   __typename?: 'SubnetPrometheus';
   announcements: Scalars['Int']['output'];

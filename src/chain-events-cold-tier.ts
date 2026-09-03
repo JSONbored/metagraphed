@@ -5,8 +5,8 @@
 // (8,759,336 when this was written; the ledger moves it, which is why the
 // ceiling below is read rather than assumed) -- as opposed to
 // `chain.account_events`, which decode.rs curates down to three pallets and
-// only the variants with an `extract()` arm. Some kinds exist ONLY here:
-// `PrometheusServed` has 18,041 rows in this table and none in the curated one.
+// only the variants with an `extract()` arm. The complete stream remains the
+// source of record, including events outside that curated projection.
 //
 // A BOUNDED BLOCK WINDOW, AND THAT IS THE WHOLE DESIGN.
 //

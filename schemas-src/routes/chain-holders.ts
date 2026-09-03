@@ -79,7 +79,7 @@ export const ChainHoldersArtifactSchema = z
       .object({ reason: z.enum(["pool_totals_unproven", "unavailable"]) })
       .strict()
       .describe(
-        "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
+        "An event-derived result could not be measured because its source is unavailable, its stream was never emitted, or its derivation could not answer this request. Absent on measured answers, including successfully read quiet windows.",
       )
       .optional()
       .describe(

@@ -17,13 +17,13 @@ export const SubnetPrometheusArtifactSchema = z
     distinct_exporters: z.int().min(0),
     announcements: z.int().min(0),
     announcements_per_exporter: z.number().min(0).nullable(),
-    // #9307: the chain emits PrometheusServed and our account_events curation
-    // drops all 18,041 of them, so this card's zero is "we could not look".
+    // A successfully read quiet window is a measured zero. An unavailable
+    // source carries a marker so its empty fallback is not mistaken for one.
     degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict()
   .describe(
-    "Per-subnet Prometheus-endpoint serving activity (#7172) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/prometheus.",
+    "Per-subnet Prometheus-endpoint serving activity (#7172) over a 7d/30d window. Quiet windows return measured zeros after a successful source read; unavailable sources carry degraded.reason=unavailable. Mirrors GET /api/v1/subnets/{netuid}/prometheus.",
   );
 export type SubnetPrometheusArtifact = z.infer<
   typeof SubnetPrometheusArtifactSchema

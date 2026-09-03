@@ -1,31 +1,13 @@
-// The event streams a route filters on that its tier cannot actually deliver.
+// Availability markers for event-derived routes.
 //
-// THE DEFECT THIS NAMES. `/chain|subnets|accounts .../prometheus` and
-// `.../axon-removals` answered 200 with every array empty and a 0 count, on
-// every scope, for every subject, permanently -- while their siblings in the
-// same family, same window, same table answered real numbers. A well-formed
-// zero is indistinguishable from "nothing happened this week", so the routes
-// read as measured quiet rather than as a missing reader. That is the class of
-// #9260, #9263, #9273 and #9286, and it is what these markers close.
+// Prometheus windows are measured zeros after a successful source read. An
+// unavailable source uses DEGRADED_UNAVAILABLE so its empty fallback cannot
+// be mistaken for a quiet window. Historical curation is repaired from the
+// complete chain_events stream; a past missing-row count is not a permanent
+// property of this API.
 //
-// MEASURED against the lakehouse (2026-08-03) -- `chain.chain_events` is the
-// COMPLETE pallet-level stream (898M rows, genesis to head) and
-// `chain.account_events` is the curated projection over it:
-//
-//   event kind          chain_events   account_events
-//   AxonServed (ctl)       2,792,038        2,792,038
-//   NeuronRegistered (ctl) 1,072,413        1,072,413
-//   PrometheusServed          18,041                0
-//   AxonInfoRemoved                0                0
-//
-// Two different faults with the same symptom, so they get two different
-// reasons rather than one vague one. Neither is a transient tier outage, so
-// neither marker is conditional on a store being cold: the marker rides the
-// EMPTY answer itself, which is the only answer these streams can produce.
-//
-// A marked payload is otherwise byte-identical to what it served before --
-// `degraded` is additive and absent from every trustworthy answer, so a
-// consumer that ignores it reads exactly what it read before.
+// Other markers describe the source or derivation used by their own route.
+// They are additive and absent from measured answers.
 
 /** A route's own statement that its zero is not a measurement. */
 export interface EventStreamDegraded {
@@ -34,32 +16,14 @@ export interface EventStreamDegraded {
 }
 
 /**
- * The reason a read that COULD NOT BE MADE carries (#11417).
+ * The requested source could not answer this read. The route's response
+ * schema determines whether its fallback counts are null or zero; this
+ * marker always says they are not measurements. Successfully read quiet
+ * windows do not carry it.
  *
- * DIFFERENT IN KIND from the two constants below, and the difference is the
- * whole reason it lives beside them. Those name a PERMANENT property of the
- * data -- a stream nothing curates, an event the runtime never emits -- so the
- * zero they mark is the true and final answer and is published as `0`. This one
- * marks a zero that is not an answer at all: the tier was asked and could not
- * reply, so the counts beside it are NULL rather than zero, because nothing is
- * known about them.
- *
- * Spelled once because the same word is the whole contract on eight declining
- * routes and in `UnavailableDegradedSchema`, and three modules had written the
- * bare literal.
- *
- * NOT THE ONLY DECLINE REASON THE API PUBLISHES, and the split is by TIER
- * rather than by accident. This one marks a LAKEHOUSE read that could not be
- * made, and its routes declare it through `UnavailableDegradedSchema`, whose
- * enum admits this value alone. `TIER_UNAVAILABLE_REASON`
- * ("tier_unavailable", `src/chain-events-degraded.ts`) marks the six PROXIED
- * chain-events routes, whose empties come from that module's own map.
- *
- * The two are emitted by disjoint code paths, so no route can publish both,
- * and neither is a rename of the other -- a consumer reading `degraded.reason`
- * on a given route sees one stable value. Stated here because two words for
- * "the read failed" is the kind of thing that grows a third: anything new
- * belongs to one of these, not beside them.
+ * Proxied chain-events routes use TIER_UNAVAILABLE_REASON ("tier_unavailable",
+ * src/chain-events-degraded.ts) on their separate response paths. Keep each
+ * route's published reason stable.
  */
 export const DEGRADED_UNAVAILABLE = "unavailable";
 

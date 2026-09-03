@@ -4,9 +4,9 @@
 // That event has ZERO occurrences in `chain.chain_events` -- the COMPLETE
 // pallet-level stream, 898M rows, genesis to head -- so the whole family
 // published a confident `0` on every scope, for every subject, forever
-// (#10805). Unlike `PrometheusServed` (18,041 on chain, 0 captured), which is
-// a curation gap an indexer can close, this one was modelled on an event the
-// runtime does not emit, so no indexer work populates it.
+// (#10805). PrometheusServed can be curated from stored events; axon removal
+// was modelled on an event the runtime does not emit, so no event-indexer
+// work populates it.
 //
 // THE DATA EXISTS ANYWAY, as state. `neuron_daily.axon` is snapshotted per
 // (netuid, uid) per day, so an axon going away is a transition we already
