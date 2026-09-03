@@ -109,12 +109,23 @@ describe("default directory entry", () => {
     { path: `${ACCOUNT_PATH}?network=invalid` },
     { path: "/finney/api/v1/accounts/directory" },
     { path: "/api/v1/validators" },
-    ...["authorization", "x-payment", "payment-signature", "upgrade"].map(
-      (name) => ({
-        path: ACCOUNT_PATH,
-        init: { headers: { [name]: "present" } },
-      }),
-    ),
+    ...[
+      "authorization",
+      "x-api-key",
+      "x-payment",
+      "payment-signature",
+      "upgrade",
+    ].map((name) => ({
+      path: ACCOUNT_PATH,
+      init: {
+        headers: {
+          [name]:
+            name === "authorization"
+              ? "Bearer mg_test_directory_key"
+              : "mg_test_directory_key",
+        },
+      },
+    })),
   ])(
     "delegates unsupported variants without reading or caching data: %j",
     async ({ path, init }) => {

@@ -46,6 +46,7 @@ export async function handleDefaultExplorerDirectory(
     (request.method !== "GET" && request.method !== "HEAD") ||
     env.METAGRAPH_NEURONS_SOURCE !== "data-api" ||
     request.headers.has("authorization") ||
+    request.headers.has("x-api-key") ||
     request.headers.has("x-payment") ||
     request.headers.has("payment-signature") ||
     request.headers.has("upgrade")
