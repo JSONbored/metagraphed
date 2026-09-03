@@ -46,6 +46,7 @@ import { z } from "zod";
 export const ContainerLaneStatusSchema = z.object({
   checked_at: z.string().nullable().optional().catch(null),
   updated_at: z.string().nullable().optional().catch(null),
+  started_at: z.string().nullable().optional().catch(null),
   ok: z.boolean().nullable().optional().catch(null),
   status: z.string().nullable().optional().catch(null),
   detail: z.string().nullable().optional().catch(null),

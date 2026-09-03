@@ -5,7 +5,8 @@
 // Five lanes run inside metagraphed-infra's decode container, one after another
 // in a single hourly pass: decode, the daily rollup, the state mirror, the
 // account-events rollup, and the account-summary projection. Every one of them
-// already publishes a status object to R2. NOTHING READ ANY OF THEM.
+// publishes a status object to R2. The account summary skips refreshes for
+// twenty hours once its history is complete; the other lanes report hourly.
 //
 // `projection-staleness` cannot: it iterates PROJECTION_LANES, the thirteen
 // lanes this Worker computes, so anything container-written is structurally
@@ -57,6 +58,8 @@ export interface ContainerLane {
   lane: string;
   /** The R2 key of its status object. */
   key: string;
+  /** Minimum refresh interval after success, in addition to the stall grace. */
+  successIntervalMs?: number;
 }
 
 /**
@@ -88,6 +91,10 @@ export const CONTAINER_LANES: readonly ContainerLane[] = [
   {
     lane: "container:account-summary",
     key: "metagraph/lakehouse/account-summary-status.json",
+    // account_summary_r2.py's min_interval_ms() defaults to twenty hours.
+    // The deployed decoder has no override. Failures and active scans do not
+    // get this allowance: only a producer that explicitly completed succeeds.
+    successIntervalMs: 20 * 60 * 60_000,
   },
 ];
 
@@ -135,6 +142,7 @@ export interface ContainerLaneVerdict {
 /** One lane's status as this watchdog reads it. */
 export interface ContainerLaneStatus {
   lane: string;
+  successIntervalMs?: number;
   /** The parsed body, or null when absent/unreadable. */
   body: {
     checked_at?: string | null;
@@ -224,7 +232,8 @@ export function evaluateContainerLanes(input: {
   thresholdMs: number;
 }): ContainerLaneVerdict {
   const { statuses, nowMs, thresholdMs } = input;
-  const entries = statuses.map(({ lane, body }): ContainerLaneEntry => {
+  const entries = statuses.map((status): ContainerLaneEntry => {
+    const { lane, body, successIntervalMs } = status;
     if (body === null) {
       return {
         lane,
@@ -287,13 +296,13 @@ export function evaluateContainerLanes(input: {
       };
     }
 
-    if (age > thresholdMs) {
+    const laneThresholdMs =
+      thresholdMs + (body.ok === true ? (successIntervalMs ?? 0) : 0);
+    if (age > laneThresholdMs) {
       return {
         lane,
         verdict: "stale",
-        detail:
-          `${hours(age)}h since the last pass (threshold ${hours(thresholdMs)}h, ` +
-          `${CONTAINER_MISSED_PASSES} missed passes)`,
+        detail: `${hours(age)}h since the last pass (threshold ${hours(laneThresholdMs)}h)`,
         age_ms: age,
       };
     }
@@ -332,7 +341,7 @@ export async function runContainerLaneWatchdog(
   const thresholdMs = deps.thresholdMs ?? CONTAINER_LANE_THRESHOLD_MS;
 
   const statuses: ContainerLaneStatus[] = [];
-  for (const { lane, key } of CONTAINER_LANES) {
+  for (const { lane, key, successIntervalMs } of CONTAINER_LANES) {
     // Declared without an initialiser: both arms below assign it, so a `= null`
     // here is a value nothing reads (`no-useless-assignment`).
     let body: ContainerLaneStatus["body"];
@@ -348,7 +357,7 @@ export async function runContainerLaneWatchdog(
       // lanes worth worrying about.
       body = null;
     }
-    statuses.push({ lane, body });
+    statuses.push({ lane, body, successIntervalMs });
   }
 
   const verdict = evaluateContainerLanes({
