@@ -6,9 +6,9 @@
  * the same brand at every rank its keys land on while splitting the stake a
  * delegator is actually choosing between.
  */
-import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
+import { CHART_RAMP_SIZE, OTHER_COLOR, RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import { formatAmount, formatPct } from "@/lib/metagraphed/format";
-import type { OperatorRow } from "@/lib/metagraphed/validator-operators";
+import { shortKey as shortKeyLabel, type OperatorRow } from "@/lib/metagraphed/validator-operators";
 export { operatorRows, shortKey } from "@/lib/metagraphed/validator-operators";
 export type { OperatorRow } from "@/lib/metagraphed/validator-operators";
 
@@ -84,5 +84,41 @@ export function filterOperators(
       if (!haystack.includes(query)) return false;
     }
     return true;
+  });
+}
+
+/** Stable category color: sorting or filtering never recolors a hotkey. */
+export function hotkeyColor(hotkey: string): string {
+  let hash = 0;
+  for (const character of hotkey) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return `var(--chart-${(hash % CHART_RAMP_SIZE) + 1})`;
+}
+
+export function hotkeyComposition(keys: OperatorRow["keys"], limit = 8) {
+  const funded = keys
+    .filter((key) => Number.isFinite(key.totalStakeTao) && key.totalStakeTao > 0)
+    .sort((a, b) => b.totalStakeTao - a.totalStakeTao);
+  const total = funded.reduce((sum, key) => sum + key.totalStakeTao, 0);
+  const shown = funded.slice(0, Math.max(1, limit)).map((key) => ({
+    key: key.hotkey,
+    label: shortKeyLabel(key.hotkey),
+    value: key.totalStakeTao,
+    color: hotkeyColor(key.hotkey),
+  }));
+  const rest = funded.slice(shown.length);
+  if (rest.length > 0) {
+    shown.push({
+      key: RESIDUAL_KEY,
+      label: `${rest.length} more hotkeys`,
+      value: rest.reduce((sum, key) => sum + key.totalStakeTao, 0),
+      color: OTHER_COLOR,
+    });
+  }
+  let offset = 0;
+  return shown.map((segment) => {
+    const share = segment.value / total;
+    const result = { ...segment, share, offset };
+    offset += share;
+    return result;
   });
 }

@@ -282,7 +282,7 @@ export function useEntityMark(
         return;
       }
       if (event.key === "Enter" || event.key === " ") {
-        if (disabled) return;
+        if (disabled || event.target !== event.currentTarget) return;
         event.preventDefault();
         onActivate?.();
         return;

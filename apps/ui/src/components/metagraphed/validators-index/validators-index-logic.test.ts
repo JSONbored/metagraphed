@@ -4,6 +4,8 @@ import {
   concentration,
   filterOperators,
   fmtStake,
+  hotkeyColor,
+  hotkeyComposition,
   median,
   operatorRows,
   shortKey,
@@ -254,6 +256,53 @@ describe("filterOperators", () => {
 
   it("passes everything through when nothing is filtered", () => {
     expect(filterOperators(operators, {})).toHaveLength(2);
+  });
+});
+
+describe("hotkeyComposition", () => {
+  const keys = [
+    { hotkey: "5A", totalStakeTao: 10, take: null },
+    { hotkey: "5B", totalStakeTao: 70, take: null },
+    { hotkey: "5C", totalStakeTao: 15, take: null },
+    { hotkey: "5D", totalStakeTao: 5, take: null },
+  ];
+
+  it("preserves the total and positions the real tail after the largest keys", () => {
+    const segments = hotkeyComposition(keys, 2);
+    expect(
+      segments.map(({ key, value, share, offset }) => ({ key, value, share, offset })),
+    ).toEqual([
+      { key: "5B", value: 70, share: 0.7, offset: 0 },
+      { key: "5C", value: 15, share: 0.15, offset: 0.7 },
+      { key: "rest", value: 15, share: 0.15, offset: 0.85 },
+    ]);
+    expect(segments.at(-1)?.label).toBe("2 more hotkeys");
+    expect(segments.reduce((total, segment) => total + segment.share, 0)).toBeCloseTo(1);
+    expect(keys.map((key) => key.hotkey)).toEqual(["5A", "5B", "5C", "5D"]);
+  });
+
+  it("keeps key colors stable when the stake ranking changes", () => {
+    const original = hotkeyComposition(keys);
+    const reordered = hotkeyComposition(
+      keys.map((key) => ({ ...key, totalStakeTao: key.hotkey === "5A" ? 100 : key.totalStakeTao })),
+    );
+    for (const segment of original) {
+      expect(reordered.find((key) => key.key === segment.key)?.color).toBe(segment.color);
+      expect(segment.color).toBe(hotkeyColor(segment.key));
+      expect(segment.color).toMatch(/^var\(--chart-\d+\)$/);
+    }
+  });
+
+  it("does not turn missing, zero or negative stake into colored holdings", () => {
+    const invalid = [0, -1, Number.NaN, Number.POSITIVE_INFINITY].map((totalStakeTao, index) => ({
+      hotkey: `invalid-${index}`,
+      totalStakeTao,
+      take: null,
+    }));
+    expect(hotkeyComposition(invalid)).toEqual([]);
+    expect(hotkeyComposition([...invalid, keys[0]!])).toMatchObject([
+      { key: "5A", value: 10, share: 1, offset: 0 },
+    ]);
   });
 });
 
