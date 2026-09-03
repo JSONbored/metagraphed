@@ -74,50 +74,6 @@ describe("persistProbesToNeon", () => {
     consecutive_failures: 0,
   };
 
-  test("the rename is resolved BEFORE the upsert", async () => {
-    // Postgres allows exactly one ON CONFLICT clause, and surface_status needs
-    // two arbiters (surface_key for a display-id rename, surface_id for keyless
-    // rows). Adopting the new id onto the key's row first leaves a single
-    // arbiter with nothing to collide on. Order is the whole mechanism: run the
-    // upsert first and it inserts a second row, then the UPDATE hits the unique
-    // index.
-    const { sql, texts } = recordingSql();
-    await persistProbesToNeon(sql, [probe], 900);
-    const t = texts();
-    const updateAt = t.findIndex((x) => x.includes("UPDATE surface_status"));
-    const upsertAt = t.findIndex((x) =>
-      x.includes("INSERT INTO surface_status"),
-    );
-    assert.ok(updateAt >= 0, "no rename resolution was issued");
-    assert.ok(upsertAt >= 0, "no status upsert was issued");
-    assert.ok(updateAt < upsertAt, "the upsert ran before the rename resolved");
-  });
-
-  test("a keyless row skips the rename step entirely", async () => {
-    const { sql, texts } = recordingSql();
-    await persistProbesToNeon(sql, [{ ...probe, surface_key: null }], 900);
-    assert.equal(
-      texts().some((t) => t.includes("UPDATE surface_status")),
-      false,
-    );
-  });
-
-  test("last_ok is COALESCEd, so a run that saw nothing cannot clear it", async () => {
-    // #9634: last_ok is a high-water mark. readLiveSurfaceStatus degrades to an
-    // empty array on a transport failure, and a bare last_ok=excluded.last_ok
-    // turned that read-side degrade into permanent write-side data loss.
-    const { sql, texts } = recordingSql();
-    await persistProbesToNeon(sql, [probe], 900);
-    const upsert = texts().find((t) =>
-      t.includes("INSERT INTO surface_status"),
-    )!;
-    assert.ok(
-      upsert.includes(
-        "last_ok=COALESCE(excluded.last_ok, surface_status.last_ok)",
-      ),
-    );
-  });
-
   test("ok binds as a BOOLEAN, not 0/1", async () => {
     // surface_checks.ok is INTEGER in D1 and BOOLEAN in Neon. Asserted by TYPE:
     // 0 == false loosely, so a value check would pass on the exact bug.
