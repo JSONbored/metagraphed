@@ -243,7 +243,11 @@ describe("mirrorNominatorPositionsToNeon", () => {
     assert.ok(sql.calls[1].text.startsWith("DELETE"));
     assert.deepEqual(
       spy.rows.map((r) => r.lane),
-      ["neon:nominator-positions", "neon:nominator-positions-prune"],
+      [
+        "neon:nominator-positions",
+        "neon:nominator-positions-prune",
+        "neon:nominator-positions-coverage",
+      ],
     );
   });
 
@@ -273,14 +277,15 @@ describe("mirrorNominatorPositionsToNeon", () => {
     const kinds = sql.calls.map((call) => call.text.split(" ")[0]);
     assert.deepEqual(
       kinds,
-      ["INSERT", "DELETE", "UPDATE", "INSERT"],
-      `expected upsert, prune, normalise, tally -- got ${kinds.join(", ")}`,
+      ["INSERT", "DELETE", "WITH", "UPDATE", "INSERT"],
+      `expected upsert, prune, receipt, normalise, tally -- got ${kinds.join(", ")}`,
     );
     assert.deepEqual(
       spy.rows.map((r) => r.lane),
       [
         "neon:nominator-positions",
         "neon:nominator-positions-prune",
+        "neon:nominator-positions-coverage",
         "neon:nominator-positions-normalize",
         "neon:nominator-positions-pass",
       ],

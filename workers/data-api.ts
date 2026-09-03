@@ -2705,7 +2705,7 @@ async function handleNominatorPositionsSync(
     // serve both. And nominator_positions_passes has no other writer once this
     // inverts, so a tally that did not land leaves a completeness ledger
     // nobody can tell is empty.
-    const failed = [neon.write, neon.prune, neon.pass].filter(
+    const failed = [neon.write, neon.prune, neon.coverage, neon.pass].filter(
       (r) => r && !r.ok,
     );
     if (!neon.attempted || failed.length > 0) {
@@ -9764,9 +9764,12 @@ export default {
           coldkeyMaxCapturedAt: cutoffs,
           pass,
         });
-        const failed = [neon.write, neon.prune, neon.pass].filter(
-          (r) => r && !r.ok,
-        );
+        const failed = [
+          neon.write,
+          neon.prune,
+          neon.coverage,
+          neon.pass,
+        ].filter((r) => r && !r.ok);
         if (!neon.attempted || failed.length > 0) {
           throw new Error(
             `nominator-positions neon write failed: ${
