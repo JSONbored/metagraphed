@@ -821,6 +821,57 @@ describe("a truncated drain must come back (#10722)", () => {
   });
 });
 
+test("arrivals during an untruncated flush retain their count and request another drain", async () => {
+  const storage = fakeStorage();
+  await enqueueStatement(
+    storage,
+    stmt("nominator-positions", "positions"),
+    NOW,
+  );
+  const applied: string[] = [];
+  const deps = {
+    laneHealthDb: laneSpy().db,
+    now: () => NOW,
+    sql: {
+      async unsafe(text: string) {
+        applied.push(text);
+        if (text === "positions") {
+          // Enqueues can run while the alarm awaits Postgres. The original
+          // list had room to spare, but its snapshot cannot see these writes.
+          await enqueueStatement(
+            storage,
+            stmt("nominator-positions", "receipt"),
+            NOW + 1,
+          );
+          await enqueueStatement(
+            storage,
+            stmt("nominator-positions", "pass"),
+            NOW + 2,
+          );
+        }
+        return [];
+      },
+    },
+  };
+
+  const first = await flushBuffer(storage, {}, CTX, deps);
+  assert.equal(first.ok, true);
+  assert.equal(first.drained, 1);
+  assert.equal(first.remaining, true, "new arrivals need the backlog retry");
+  assert.equal(
+    await storage.get("pending"),
+    2,
+    "the ceiling must count new arrivals",
+  );
+  assert.deepEqual(applied, ["positions"]);
+
+  const second = await flushBuffer(storage, {}, CTX, deps);
+  assert.equal(second.remaining, false);
+  assert.equal(await storage.get("pending"), 0);
+  assert.equal(await countPending(storage), 0);
+  assert.deepEqual(applied, ["positions", "receipt", "pass"]);
+});
+
 describe("the enqueue is O(1) (#10755)", () => {
   // THE BUG. enqueueStatement called countPending(), which lists every chunk
   // in the buffer and sorts them -- on every enqueue. Cloudflare's logs:
@@ -942,7 +993,7 @@ describe("an orphaned alarm must not block the buffer forever (#10763)", () => {
 });
 
 describe("the flush never scans either (#10775)", () => {
-  test("a TRUNCATED drain does not list the remaining backlog", async () => {
+  test("a TRUNCATED drain probes one remaining key without scanning the backlog", async () => {
     // The same O(n) that #10755 removed from the enqueue, reintroduced in the
     // alarm's reconcile. Measured in production: the flush at 13:23:12 drained
     // its 500 and never came back for the rest, because the scan outran the
@@ -951,11 +1002,11 @@ describe("the flush never scans either (#10775)", () => {
     for (let i = 0; i < FLUSH_LIST_LIMIT + 30; i += 1) {
       await enqueueStatement(storage, stmt("neurons", `S${i}`), NOW);
     }
-    let listsAfterDrain = 0;
+    const limitsAfterDrain: Array<number | undefined> = [];
     const realList = storage.list.bind(storage);
     let draining = false;
     storage.list = async (options) => {
-      if (draining) listsAfterDrain += 1;
+      if (draining) limitsAfterDrain.push(options.limit);
       return realList(options);
     };
     const out = await flushBuffer(storage, {}, CTX, {
@@ -969,12 +1020,16 @@ describe("the flush never scans either (#10775)", () => {
       },
     });
     assert.equal(out.remaining, true, "it must report work left");
-    assert.equal(listsAfterDrain, 0, "and must not scan to work that out");
+    assert.deepEqual(
+      limitsAfterDrain,
+      [1],
+      "remaining work needs only one key, never a scan",
+    );
   });
 
   test("a clean drain still reconciles the counter to exactly zero", async () => {
-    // Drift correction lives here: an untruncated flush emptied the buffer by
-    // definition, so 0 is exact and free.
+    // With no new arrivals, the bounded probe confirms the buffer is empty
+    // and can reset a drifted counter exactly.
     const storage = fakeStorage();
     for (let i = 0; i < 3; i += 1) {
       await enqueueStatement(storage, stmt("l", `S${i}`), NOW);
