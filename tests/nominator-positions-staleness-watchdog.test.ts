@@ -6,7 +6,6 @@
 // lakehouse export, which is exactly the condition that ran unnoticed for
 // 34 hours and produced this issue.
 import assert from "node:assert/strict";
-import { POSITION_SOURCE_ALPHA } from "../src/nominator-positions-neon-write.ts";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -23,12 +22,11 @@ vi.mock("pg", () => pg.module);
 import {
   NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS,
   NOMINATOR_POSITIONS_EXPECTED_COLDKEYS,
-  NOMINATOR_POSITIONS_PASS_WINDOW_MS,
-  NOMINATOR_POSITIONS_SCAN_SOURCE,
   NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
   evaluateNominatorPositionsStaleness,
   runNominatorPositionsStalenessWatchdog,
 } from "../src/nominator-positions-staleness-watchdog.ts";
+import { NOMINATOR_HISTORY_MS } from "../src/nominator-scan-coverage.ts";
 import { handleScheduled } from "../workers/api.ts";
 import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
@@ -66,7 +64,20 @@ function fakeDb(
   const throws = typeof latest === "string" || latest instanceof Error;
   pg.control.queries.length = 0;
   pg.control.answers = [];
-  pg.control.rows = throws ? null : [{ latest, covered, total }];
+  pg.control.rows = throws
+    ? null
+    : [
+        {
+          latest,
+          covered,
+          total,
+          received_rows: FULL * 5,
+          expected_rows: FULL * 5,
+          completed_at: NOW - HOUR,
+          baseline_days: 0,
+          baseline_coldkeys: null,
+        },
+      ];
   pg.control.failNext = throws ? (latest as Error) : null;
   pg.control.onQuery = (q) => {
     queries.push(q.text);
@@ -96,6 +107,9 @@ function inputs(
     latestCapturedAtMs: NOW - 2 * HOUR,
     coveredColdkeys: FULL,
     totalColdkeys: FULL,
+    receivedRows: FULL * 5,
+    expectedRows: FULL * 5,
+    completedAtMs: NOW - HOUR,
     nowMs: NOW,
     thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
     coverageFloorColdkeys: NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS,
@@ -246,56 +260,19 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     // The coverage half has to be IN the read, or the rule is being handed a
     // number nothing measured. DISTINCT coldkey, not COUNT(*) -- rows would
     // hide a scan that died after the largest delegators.
-    assert.match(queries[0]!, /COUNT\(DISTINCT coldkey\) AS total/);
-    assert.match(queries[0]!, /THEN coldkey END\) AS covered/);
+    assert.match(queries[0]!, /COUNT\(DISTINCT coldkey\)/);
+    assert.match(queries[0]!, /FROM nominator_scan_receipts/);
   });
 
-  test("the read counts only the newest pass, bounded by the pass window", () => {
-    // A window spanning the 24h poll interval would merge two consecutive
-    // passes into one coverage count, so a truncated pass landing on a complete
-    // one would report full coverage -- the bug, restored.
+  test("the coverage read bounds retained receipts and joins exact captures", async () => {
     const { env, queries, binds } = fakeDb(NOW - HOUR);
-    return runNominatorPositionsStalenessWatchdog(env, {
+    await runNominatorPositionsStalenessWatchdog(env, {
       now: () => NOW,
       recordException: (async () => true) as never,
-    }).then(() => {
-      // Scoped to the full-scan producer on both ends: nominator_positions has
-      // two writers, and an unscoped MAX(captured_at) makes a healthy
-      // self-stake run look like a truncated alpha scan (#11167 follow-up).
-      assert.deepEqual(binds[0], [
-        NOMINATOR_POSITIONS_SCAN_SOURCE,
-        NOMINATOR_POSITIONS_PASS_WINDOW_MS,
-        NOMINATOR_POSITIONS_SCAN_SOURCE,
-      ]);
-      // `source =` without the placeholder: the pg layer rewrites `?` to `$n`.
-      assert.match(queries[0], /source = /);
-      // BOTH ends, which is the half-fix this guards against: scoping the outer
-      // aggregate while leaving the window's MAX(captured_at) global would
-      // measure the alpha scan's coverage against self-stake's clock and read
-      // as zero the moment the two producers' stamps diverged.
-      assert.equal(
-        queries[0].match(/source = \$\d/g)?.length,
-        2,
-        "the window anchor and the outer aggregate must both be scoped",
-      );
-      // The writer's vocabulary, not a copy of it.
-      assert.equal(NOMINATOR_POSITIONS_SCAN_SOURCE, POSITION_SOURCE_ALPHA);
-      assert.ok(
-        NOMINATOR_POSITIONS_PASS_WINDOW_MS < 24 * HOUR,
-        "the window must stay under VALIDATOR_NOMINATORS_POLL_SECS (24h)",
-      );
-      // Counted against the newest stamp, not against `now` -- a lane that is
-      // merely late must not also read as uncovered.
-      //
-      // `$n`, not `?`: the watchdog writes SQLite's placeholder and
-      // toPositionalPlaceholders rewrites it on the way to Postgres. #9821 is
-      // what happens when it does not -- six routes served zero rows because a
-      // `?` reached Postgres unrewritten and matched nothing.
-      assert.match(
-        queries[0]!,
-        /captured_at >= \(SELECT MAX\(captured_at\) FROM nominator_positions WHERE source = \$\d\) - \$\d/,
-      );
     });
+    assert.deepEqual(binds[0], [NOW - NOMINATOR_HISTORY_MS]);
+    assert.match(queries[0]!, /s.captured_at = l.captured_at/);
+    assert.doesNotMatch(queries[0]!, /source =/);
   });
 
   test("a recent but half-scanned keyspace alerts, naming both counts", async () => {
@@ -322,7 +299,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     assert.ok(laneWrite >= 0, "the tick records a verdict");
     assert.equal(
       binds[laneWrite]![3],
-      `partial (covered=11800, total=24121, floor=${NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS})`,
+      `partial (covered=11800, total=24121, floor=${NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS}, received=${FULL * 5}, expected=${FULL * 5})`,
     );
     assert.equal(recorded.length, 1);
     assert.equal(recorded[0]!.errorCode, "stale_lane");
@@ -334,24 +311,19 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     assert.doesNotMatch(message, /nothing is refreshing/);
   });
 
-  test("the env coverage-floor and pass-window overrides win over the defaults", async () => {
+  test("the env coverage-floor override wins over the default", async () => {
     const { env, binds } = fakeDb(NOW - HOUR, 20_000, 24_121);
     const raised = await runNominatorPositionsStalenessWatchdog(
       {
         ...env,
         NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS: String(22_000),
-        NOMINATOR_POSITIONS_PASS_WINDOW_MS: String(HOUR),
       },
       { now: () => NOW, recordException: (async () => true) as never },
     );
     assert.equal(raised.alerted, true);
     assert.equal(raised.reason, "partial");
     assert.equal(raised.coverage_floor_coldkeys, 22_000);
-    assert.deepEqual(binds[0], [
-      NOMINATOR_POSITIONS_SCAN_SOURCE,
-      HOUR,
-      NOMINATOR_POSITIONS_SCAN_SOURCE,
-    ]);
+    assert.deepEqual(binds[0], [NOW - NOMINATOR_HISTORY_MS]);
 
     // Lowered under the same reading, the identical tick is quiet. This is the
     // documented remedy if the delegating population ever genuinely shrinks.
