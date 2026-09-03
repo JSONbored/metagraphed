@@ -35,6 +35,8 @@
 // parsed before it is sent, and a schema bug fails the route instead of
 // quietly shipping. That is the trade the flag exists to make.
 import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { AccountHolderDirectoryArtifactSchema } from "../schemas-src/routes/account-holder-directory.ts";
+import { ValidatorOperatorDirectoryArtifactSchema } from "../schemas-src/routes/validator-operator-directory.ts";
 import { isProjectedAway } from "./projection-signal.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import type { z } from "zod";
@@ -71,6 +73,21 @@ async function schemaForArtifact(artifactPath: string) {
   const cached = cache.get(artifactPath);
   if (cached) return cached;
   if (unresolved.has(artifactPath)) return null;
+  // These materialized directories already use their exact artifact schemas
+  // at the KV boundary. Enforcing the outgoing envelope needs the same schema,
+  // not initialization of every other component in the OpenAPI registry.
+  // Other routes still use the complete registry lookup below.
+  const directoryComponent =
+    artifactPath === "/metagraph/accounts/directory.json"
+      ? AccountHolderDirectoryArtifactSchema
+      : artifactPath === "/metagraph/validators/operators.json"
+        ? ValidatorOperatorDirectoryArtifactSchema
+        : null;
+  if (directoryComponent) {
+    const schema = successEnvelopeSchema(directoryComponent);
+    cache.set(artifactPath, schema);
+    return schema;
+  }
   const [{ schemaRefForArtifactPath }, { COMPONENT_SCHEMAS_BY_ID }] =
     await Promise.all([
       import("./contracts.ts"),
