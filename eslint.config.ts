@@ -37,6 +37,8 @@ export default tseslint.config(
   {
     ignores: [
       "node_modules/**",
+      // Compiled Worker modules and staged deploy output, not source files.
+      "dist/**",
       "packages/*/node_modules/**",
       "packages/*/dist/**",
       "packages/*/src/metagraphed-*.ts",

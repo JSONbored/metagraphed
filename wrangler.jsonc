@@ -5,7 +5,23 @@
   // handler -- see workers/api.entry.ts's own header for why this can't be
   // composed inline (breaks its ~90 existing tests, which import
   // workers/api.ts directly and are unaffected by this).
-  "main": "workers/api.entry.ts",
+  // Keep the entry's dynamic imports deferred in production (#11760). The
+  // custom build still starts at workers/api.entry.ts, including its OAuth,
+  // scheduled/queue handlers and Durable Object exports.
+  "main": "dist/api-modules/api.entry.js",
+  "no_bundle": true,
+  "find_additional_modules": true,
+  "build": {
+    "command": "node scripts/build-api-worker.ts",
+    "watch_dir": [
+      "workers",
+      "src",
+      "schemas-src",
+      "generated",
+      "scripts/build-api-worker.ts",
+    ],
+  },
+  "rules": [{ "type": "ESModule", "globs": ["**/*.js"], "fallthrough": true }],
   "compatibility_date": "2026-06-06",
   // `global_fetch_strictly_public` (#11569): required before the OAuth provider
   // will advertise Client ID Metadata Document support, and required for a
@@ -16,7 +32,6 @@
   // internal call goes over the DATA_API service binding, which the flag does
   // not touch.
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "minify": true,
   // Cloudflare's own per-deploy version UUID (metagraphed#7766: no longer
   // read for Sentry release tagging -- Sentry fully removed -- but still
   // useful as a stable deploy identifier). upload_source_maps makes Wrangler

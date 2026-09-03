@@ -47,6 +47,7 @@ function sandbox({
   failInject = false,
   failUpload = false,
   emitBundles = 1,
+  customModules = false,
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "deploy-sourcemaps-"));
   const bin = join(dir, "bin");
@@ -60,7 +61,9 @@ echo "npx $*" >> ${JSON.stringify(log)}
 args="$*"
 case "$args" in
   *"--no-install @posthog/cli --version"*) exit 0 ;;
-  *"sourcemap inject"*) exit ${failInject ? 1 : 0} ;;
+  *"sourcemap inject"*)
+    ${customModules ? "[ -f dist/worker-wrangler/chunks/lazy.js.map ] || exit 1" : ":"}
+    exit ${failInject ? 1 : 0} ;;
   *"sourcemap upload"*) exit ${failUpload ? 1 : 0} ;;
   *"--dry-run"*)
     # wrangler's build phase: write the bundle(s) the script then globs for.
@@ -72,6 +75,15 @@ case "$args" in
     done
     mkdir -p "$outdir"
     for i in $(seq 1 ${emitBundles}); do echo "// bundle" > "$outdir/entry$i.js"; done
+    ${
+      customModules
+        ? `mkdir -p dist/api-modules/chunks
+    cp "$outdir/entry1.js" dist/api-modules/entry1.js
+    echo '{}' > dist/api-modules/entry1.js.map
+    echo '// deferred module' > dist/api-modules/chunks/lazy.js
+    echo '{}' > dist/api-modules/chunks/lazy.js.map`
+        : ":"
+    }
     exit 0 ;;
   *) exit 0 ;;
 esac
@@ -96,7 +108,10 @@ function run(
   opts: Parameters<typeof sandbox>[0] & { preview?: boolean } = {},
 ): { calls: string[]; failed: boolean } {
   const { dir, bin, log } = sandbox(opts);
-  const args = ["fake.jsonc", ...(opts.preview ? ["--preview"] : [])];
+  const args = [
+    opts.customModules ? "wrangler.jsonc" : "fake.jsonc",
+    ...(opts.preview ? ["--preview"] : []),
+  ];
   let failed = false;
   try {
     execFileSync("bash", [SCRIPT, ...args], {
@@ -152,6 +167,19 @@ describe("the deploy survives PostHog being unreachable (#11421)", () => {
     assert.ok(
       !calls.some((c) => c.includes("--no-bundle")),
       "the fallback rebuilds from source rather than shipping a half-injected file",
+    );
+  });
+
+  test("the API stages external chunk maps and ships one unambiguous entry", () => {
+    const { calls, failed } = run({ customModules: true });
+    assert.equal(failed, false);
+    assert.ok(calls.some((c) => c.includes("sourcemap upload")));
+    assert.ok(
+      calls.some(
+        (c) =>
+          c.includes("dist/worker-wrangler/entry1.js") &&
+          c.includes("--no-bundle"),
+      ),
     );
   });
 

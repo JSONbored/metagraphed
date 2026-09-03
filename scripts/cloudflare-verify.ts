@@ -35,16 +35,15 @@ const requireKvBinding =
   Boolean(process.env.METAGRAPH_KV_NAMESPACE_ID);
 
 check(config.name === "metagraphed", "wrangler name must be metagraphed");
-// workers/api.entry.ts is the real deployed entry point (metagraphed#7151,
-// #7766) -- a thin composition layer that imports workers/api.ts's own
-// handler + Durable Object classes and layers the GitHub OAuth provider on
-// top (see that file's own header for why it's a separate file, not an
-// inline wrap). Either value is a legitimate, verified-working entry point;
-// this check's real intent is "the main Worker's own handler, wrapped or
-// not," not a literal string pin to one exact filename.
+// Matches worker-deploy-dry-run.ts: compile the OAuth composition entry and
+// retain its dynamic imports as separate modules through the final upload.
 check(
-  config.main === "workers/api.ts" || config.main === "workers/api.entry.ts",
-  "wrangler main must point to workers/api.ts or its deploy-entry wrapper, workers/api.entry.ts",
+  config.main === "dist/api-modules/api.entry.js" &&
+    (config.build as Row | undefined)?.command ===
+      "node scripts/build-api-worker.ts" &&
+    config.no_bundle === true &&
+    config.find_additional_modules === true,
+  "wrangler must deploy all modules from the API entry's custom build without rebundling",
 );
 check(Boolean(config.compatibility_date), "compatibility_date is required");
 check(

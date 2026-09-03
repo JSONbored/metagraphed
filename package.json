@@ -223,6 +223,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "5.20260730.1",
     "@electric-sql/pglite": "^0.5.4",
     "@eslint/js": "^10.0.1",
     "@graphql-codegen/cli": "^7.2.0",
@@ -232,8 +233,10 @@
     "@vitest/coverage-v8": "^4.1.10",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
+    "esbuild": "^0.28.2",
     "eslint": "^10.7.0",
     "knip": "^6.32.1",
+    "miniflare": "5.20260730.0-alpha",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.6",
     "sharp": "^0.35.2",
