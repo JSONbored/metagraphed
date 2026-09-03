@@ -40,12 +40,9 @@
 # `posthog-cli sourcemap inject` embeds the marker into that build output,
 # (3) `wrangler deploy --no-bundle` ships THAT EXACT injected file,
 # skipping wrangler's own esbuild step (which would otherwise silently
-# rebuild from source and discard the marker just injected). Verified
-# locally: the dry-run build + inject steps (single flat `<entry>.js`/
-# `.js.map` per Worker, no code-splitting -- confirmed via `wrangler
-# deploy --dry-run --outdir` against wrangler.jsonc). The `--no-bundle`
-# deploy step (3) could not be safely tested against a live Worker from a
-# dev sandbox -- watch the first real deploy after this lands closely.
+# rebuild from source and discard the marker just injected). The API Worker
+# uses native ESM chunks below its entry; both PostHog phases traverse them,
+# and Wrangler collects them unchanged through find_additional_modules.
 #
 # --message passed on the wrangler call itself (metagraphed#7224): the
 # deployed commit SHA needs to land in the deployment's own real
@@ -170,6 +167,15 @@ if [[ "$POSTHOG_ENABLED" == "true" ]]; then
     --message "$COMMIT_SHA" \
     --dry-run
 
+  # Wrangler --no-bundle copies JS/WASM to --outdir but leaves external maps
+  # in the custom build directory. Stage that complete build before PostHog
+  # injects it, or none of the API Worker's 25 module maps would be uploaded.
+  # Keep this separate from dist/api-modules: the final Wrangler invocation
+  # runs the custom build again and must not overwrite the injected files.
+  if [[ "$BASENAME" == "wrangler" ]]; then
+    cp -R dist/api-modules/. "$OUTDIR/"
+  fi
+
   # Phase 2: inject PostHog's chunk-ID marker into the just-built bundle,
   # BEFORE it ever ships.
   # --release-name/--release-version passed HERE as well as on the upload in
@@ -194,16 +200,15 @@ if [[ "$POSTHOG_ENABLED" == "true" ]]; then
   # Phases 3-4 below: upload the sourcemap, then ship the EXACT injected
   # file -- --no-bundle skips wrangler's
   # own esbuild step (which would otherwise rebuild from source and discard
-  # the marker just injected above). ENTRY_JS is the single flat bundle
-  # wrangler's own build produces for these Workers (no code-splitting for
-  # a single-entry Worker, confirmed locally) -- resolved by globbing
-  # rather than hardcoded per-Worker, since each of the 3 configs' `main`
-  # basename differs.
+  # the marker just injected above). ENTRY_JS is the single top-level entry;
+  # the API Worker's deferred modules live under chunks/ and are collected by
+  # find_additional_modules. Injection and upload both traverse the directory.
+  # Resolve the entry by globbing since each config's main basename differs.
   ENTRY_JS=$(find "$OUTDIR" -maxdepth 1 -name '*.js')
 
-  # Assert the "single flat bundle" the comment above asserts. Phase 0 makes
+  # Assert the single top-level entry. Phase 0 makes
   # a stale leftover impossible, so this covers the other half: wrangler
-  # emitting more than one chunk (code-splitting, a future entry shape), or
+  # emitting more than one top-level entry (a future entry shape), or
   # none at all because the build silently produced nothing. Unguarded,
   # ENTRY_JS would become an empty or newline-joined string and get passed
   # straight to `wrangler deploy` in phase 4 -- which is the point where a

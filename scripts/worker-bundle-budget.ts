@@ -65,7 +65,9 @@ try {
   // The deployable Worker bundle is the produced JS entry plus any bound wasm
   // modules. Source maps (.map) and asset metadata (README.md) are not uploaded
   // to the Worker, so they're excluded from the measurement.
-  const entries = await fs.readdir(outDir);
+  // Native ESM chunks live below chunks/. Count those too: otherwise splitting
+  // a bundle would hide most deployed bytes from this gate.
+  const entries = await fs.readdir(outDir, { recursive: true });
   const moduleFiles = entries
     .filter((name) => name.endsWith(".js") || name.endsWith(".wasm"))
     .sort();

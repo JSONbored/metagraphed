@@ -10,19 +10,16 @@ const assetsIgnore = await fs.readFile(assetsIgnorePath, "utf8");
 const errors: string[] = [];
 
 check(config.name === "metagraphed", "wrangler name must be metagraphed");
-// workers/api.entry.ts is the real deployed entry point (metagraphed#7151,
-// #7766) -- a thin composition layer that imports workers/api.ts's own
-// handler + Durable Object classes and layers the GitHub OAuth provider on
-// top (see that file's own header for why it's a separate file, not an
-// inline wrap). Either value is a legitimate, verified-working entry point;
-// this check's real intent is "the main Worker's own handler, wrapped or
-// not," not a literal string pin to one exact filename. Mirrors the same
-// check in cloudflare-verify.ts.
+// The custom build compiles the OAuth composition entry and preserves its
+// dynamic imports. Rebundling the output defeats that startup boundary.
 check(
-  config.main === "workers/api.ts" || config.main === "workers/api.entry.ts",
-  "wrangler main must point to workers/api.ts or its deploy-entry wrapper, workers/api.entry.ts",
+  config.main === "dist/api-modules/api.entry.js" &&
+    config.build?.command === "node scripts/build-api-worker.ts" &&
+    config.no_bundle === true &&
+    config.find_additional_modules === true,
+  "wrangler must deploy all modules from the API entry's custom build without rebundling",
 );
-const workerPath = path.join(repoRoot, config.main);
+const workerPath = path.join(repoRoot, "workers/api.entry.ts");
 check(
   config.compatibility_date === "2026-06-06",
   "compatibility_date must be locked to 2026-06-06",
