@@ -653,6 +653,17 @@ CREATE TABLE public.nominator_positions_passes (
 );
 
 --
+-- Name: nominator_scan_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.nominator_scan_receipts (
+    captured_at bigint NOT NULL,
+    coldkey text NOT NULL,
+    row_count integer NOT NULL,
+    CONSTRAINT nominator_scan_receipts_row_count_check CHECK ((row_count > 0))
+);
+
+--
 -- Name: origin_reachability; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1577,6 +1588,13 @@ ALTER TABLE ONLY public.nominator_positions_passes
 
 ALTER TABLE ONLY public.nominator_positions
     ADD CONSTRAINT nominator_positions_pkey PRIMARY KEY (coldkey, hotkey, netuid);
+
+--
+-- Name: nominator_scan_receipts nominator_scan_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.nominator_scan_receipts
+    ADD CONSTRAINT nominator_scan_receipts_pkey PRIMARY KEY (captured_at, coldkey);
 
 --
 -- Name: origin_reachability origin_reachability_pkey; Type: CONSTRAINT; Schema: public; Owner: -

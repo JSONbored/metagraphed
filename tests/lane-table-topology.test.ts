@@ -3,9 +3,8 @@
 // The declaration exists because three coverage rules were written without
 // knowing three things Postgres cannot tell them, and all three were wrong
 // (#11166, #11170, #11180). A declaration nobody reads would be documentation,
-// so what is asserted here is that it is LOAD-BEARING: the nominator-positions
-// rule takes its scoping from it, and a declaration that disagrees with the
-// schema fails CI rather than quietly making a rule count the wrong thing.
+// the declaration must agree with the writer and schema. Full-scan coverage
+// itself now uses immutable receipts because source ownership can change.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -20,7 +19,6 @@ import {
   resolveFullScan,
 } from "../src/lane-table-topology.ts";
 import { POSITION_SOURCE_ALPHA } from "../src/nominator-positions-neon-write.ts";
-import { NOMINATOR_POSITIONS_SCAN_SOURCE } from "../src/nominator-positions-staleness-watchdog.ts";
 import {
   columnsByTable,
   problemsFor,
@@ -77,13 +75,13 @@ describe("the committed declaration", () => {
 });
 
 describe("the declaration is load-bearing, not decorative", () => {
-  test("the nominator-positions rule takes its scoping from it", () => {
+  test("the full-scan lookup agrees with the writer", () => {
     // If this were a coincidence rather than a derivation, changing the
     // declaration would leave the rule scoping to a stale literal -- which is
     // the shape of the bug the declaration exists to prevent.
     assert.equal(
-      NOMINATOR_POSITIONS_SCAN_SOURCE,
-      LANE_TABLE_TOPOLOGY.nominator_positions.producers.fullScanValue,
+      requireFullScanValue("nominator_positions"),
+      POSITION_SOURCE_ALPHA,
     );
   });
 
