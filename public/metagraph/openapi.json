@@ -64895,7 +64895,7 @@
             "type": "string"
           },
           "limit": {
-            "maximum": 100,
+            "maximum": 2000,
             "minimum": 0,
             "type": "integer"
           },
