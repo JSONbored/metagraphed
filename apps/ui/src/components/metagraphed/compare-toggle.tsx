@@ -40,39 +40,25 @@ export function CompareToggle({ netuid }: { netuid: number }) {
   );
 }
 
-export function ValidatorCompareToggle({
-  hotkey,
-  name,
-  primary = false,
-}: {
-  hotkey: string;
-  name?: string;
-  primary?: boolean;
-}) {
+export function ValidatorCompareToggle({ hotkey }: { hotkey: string }) {
   const { has, toggle, selected, max } = useValidatorsCompareSelection();
   const on = has(hotkey);
   const disabled = !on && selected.length >= max;
-  const label = `${name ?? shortHash(hotkey) ?? hotkey}${primary ? " largest-stake hotkey" : ""}`;
+  const short = shortHash(hotkey) ?? hotkey;
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={on}
-      aria-label={on ? `Remove ${label} from compare` : `Add ${label} to compare`}
-      className="mg-compare-toggle mg-tap-target"
+      aria-label={on ? `Remove ${short} from compare` : `Add ${short} to compare`}
       disabled={disabled}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         if (!disabled) toggle(hotkey);
       }}
-      title={
-        disabled
-          ? `Compare is full (${max})`
-          : on
-            ? `Remove ${label} from compare`
-            : `Add ${label} to compare`
-      }
+      title={disabled ? `Compare is full (${max})` : on ? "Remove from compare" : "Add to compare"}
+      className="mg-compare-toggle mg-tap-target"
     >
       {on ? (
         <svg viewBox="0 0 12 12" fill="none" width="10" height="10" aria-hidden>

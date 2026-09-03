@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo } from "react";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
 import {
@@ -7,6 +7,7 @@ import {
   CompositionBreakdown,
   DataTable,
   EntityHero,
+  Fact,
   FactSentence,
   FilterField,
   FilterSelect,
@@ -14,11 +15,10 @@ import {
   RESIDUAL_KEY,
   RankedRails,
   Raw,
-  sortRows,
   type DataTableColumn,
   type FactCells,
+  type FactNodes,
   type RawRow,
-  type SortState,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { HubSections } from "@/components/metagraphed/hub-prose";
@@ -47,8 +47,8 @@ import { deserializeOperatorRows } from "@/lib/metagraphed/validator-operators";
 import { Route } from "./validators.index";
 
 const SECTIONS = [
-  { id: "operators", name: "Operators" },
   { id: "concentration", name: "Concentration" },
+  { id: "operators", name: "Operators" },
   { id: "cost", name: "Cost to validate" },
 ] as const;
 
@@ -70,7 +70,6 @@ export function ValidatorsPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
-  const [sort, setSort] = useState<SortState | null>({ key: "stake", dir: "desc" });
   const { ref: costRef, nearViewport: costNearViewport } = useNearViewport("0px 0px");
 
   const { data: listed } = useSuspenseQuery(validatorOperatorDirectoryQuery());
@@ -86,10 +85,6 @@ export function ValidatorsPage() {
   const operators = useMemo(
     () => deserializeOperatorRows(listed.data.operators),
     [listed.data.operators],
-  );
-  const comparisonNames = useMemo(
-    () => Object.fromEntries(operators.map((row) => [row.primaryHotkey, row.name])),
-    [operators],
   );
   const shown = useMemo(
     () =>
@@ -119,6 +114,16 @@ export function ValidatorsPage() {
     navigate({ search: (prev) => ({ ...prev, ...next }), replace: true });
   };
 
+  // Nothing the strip below states appears here too (#11693). The operator
+  // count, the median take and the median APY were chips AND cells, so the
+  // hero said each of them twice, a line apart, in two type sizes.
+  const sentence: FactNodes = [
+    <Fact key="keys">{`${formatNumber(listed.data.hotkey_count)} hotkeys`}</Fact>,
+    <Fact key="top">
+      {topShare === null ? "share unavailable" : `top 10 hold ${formatPct(topShare, 1)}`}
+    </Fact>,
+  ];
+
   const cells: FactCells = [
     { label: "Stake listed", value: fmtStake(listedTotal) },
     { label: "Operators", value: formatNumber(operators.length) },
@@ -135,45 +140,24 @@ export function ValidatorsPage() {
       label: "Operator",
       kind: "text",
       sortable: true,
-      width: "35%",
+      // Bounded, or an unusually long identity name widens the table past its
+      // card and takes Compare off the right edge (#11696).
+      width: 330,
       value: (row) => row.name,
       render: (row) => (
-        <span className="mg-dt-identity">
+        <span className="mg-dt-entity">
           <span className="truncate">{row.name}</span>
-          <span className="mg-dt-count">
-            {formatNumber(row.keyCount)} {row.keyCount === 1 ? "hotkey" : "hotkeys"}
-          </span>
+          {row.keyCount > 1 ? <span className="mg-dt-count">×{row.keyCount}</span> : null}
         </span>
       ),
       definition: "Operator",
     },
     {
-      key: "stake",
-      label: "Total stake",
-      width: "25%",
-      kind: "number",
-      sortable: true,
-      value: (row) => row.totalStakeTao,
-      format: (value) => (typeof value === "number" ? fmtStake(value) : "—"),
-      render: (row) => (
-        <span className="mg-dt-share">
-          <span>{fmtStake(row.totalStakeTao)}</span>
-          {row.dominance !== null ? (
-            <span className="mg-dt-share-context">
-              <span className="mg-dt-share-track" aria-hidden="true">
-                <i style={{ "--share": `${row.dominance * 100}%` } as CSSProperties} />
-              </span>
-              <span>{formatPct(row.dominance, 1)} of listed</span>
-            </span>
-          ) : null}
-        </span>
-      ),
-    },
-    {
       key: "take",
       label: "Take",
-      kind: "number",
-      sortable: true,
+      kind: "text",
+      // Wide enough for a RANGE: an operator running several hotkeys at
+      // different takes reads "9.0%-18.0%".
       width: 130,
       value: (row) => takeLabel(row.takeMin, row.takeMax),
       definition: "Take",
@@ -181,7 +165,6 @@ export function ValidatorsPage() {
     {
       key: "apy",
       label: "Est. APY",
-      width: 130,
       kind: "number",
       sortable: true,
       value: (row) => row.apyEstimate,
@@ -193,7 +176,6 @@ export function ValidatorsPage() {
       label: "Memberships",
       kind: "number",
       sortable: true,
-      demote: true,
       // Wide enough for the label PLUS its sort chevron. The column widths
       // were set against a monospace; the sans is narrower per character but
       // the chevron and the "?" are not, so two headers came out a few pixels
@@ -206,11 +188,19 @@ export function ValidatorsPage() {
       label: "Nominators",
       kind: "number",
       sortable: true,
-      demote: true,
       width: 160,
       value: (row) => row.nominators,
       format: (value) => (typeof value === "number" ? formatNumber(value) : "—"),
       definition: "Nominators",
+    },
+    {
+      key: "stake",
+      label: "Total stake",
+      width: 140,
+      kind: "number",
+      sortable: true,
+      value: (row) => row.totalStakeTao,
+      format: (value) => (typeof value === "number" ? fmtStake(value) : "—"),
     },
     {
       key: "dominance",
@@ -259,35 +249,10 @@ export function ValidatorsPage() {
       // 11 KB of served HTML and this route is on a payload ratchet.
       width: 96,
       value: () => "",
-      render: (row) => (
-        <ValidatorCompareToggle
-          hotkey={row.primaryHotkey}
-          name={row.name}
-          primary={row.keyCount > 1}
-        />
-      ),
+      render: (row) => <ValidatorCompareToggle hotkey={row.primaryHotkey} />,
       definition: "Compare",
     },
   ];
-
-  const sorted = sortRows(shown, sort, (row, key) =>
-    key === "take" ? row.takeMax : columns.find((column) => column.key === key)?.value?.(row),
-  );
-  const changeSort = (next: SortState | null) => {
-    setSort(next);
-  };
-  const sortOptions = columns
-    .filter((column) => column.sortable)
-    .flatMap((column) => [
-      {
-        value: `${column.key}:desc`,
-        label: `${column.key === "take" ? "Maximum take" : column.label} · ${column.kind === "text" ? "Z–A" : "high to low"}`,
-      },
-      {
-        value: `${column.key}:asc`,
-        label: `${column.key === "take" ? "Maximum take" : column.label} · ${column.kind === "text" ? "A–Z" : "low to high"}`,
-      },
-    ]);
 
   const costRows = (economics.data?.data.rows ?? [])
     .filter((row) => typeof row.permit_floor_cost_tao === "number")
@@ -306,12 +271,11 @@ export function ValidatorsPage() {
         sections={SECTIONS}
         hero={
           <EntityHero
-            className="mg-hero--directory mg-hero--entity"
+            className="mg-hero--directory"
             name="Validators"
             sentence={
               <FactSentence>
-                Compare operators across all subnets. {formatNumber(listed.data.hotkey_count)}{" "}
-                validator hotkeys, grouped by declared identity.
+                Every hotkey holding a validator permit, and the operator running it. {sentence}
               </FactSentence>
             }
             cells={cells}
@@ -325,25 +289,43 @@ export function ValidatorsPage() {
         }
       >
         <AnalyticsSection
+          id="concentration"
+          name="Concentration"
+          question="How much of the listed stake the largest operators hold."
+          visual={
+            segments.length > 0 ? (
+              <CompositionBreakdown
+                segments={segments}
+                formatValue={(value) => fmtStake(value)}
+                legendCols={5}
+                ariaLabel="Stake share of the largest operators"
+                source="validator-operator"
+              />
+            ) : null
+          }
+          footnote={`shares of the ${fmtStake(listedTotal)} held by the ${formatNumber(
+            operators.length,
+          )} listed operators, not of all stake`}
+        />
+        <AnalyticsSection
           id="operators"
           name="Operators"
-          question="Search and compare validator operators."
-          className="mg-directory-section mg-directory-section--table-first"
+          question="Every operator, ranked."
+          className="mg-directory-section"
           visual={
             <DataTable
-              rows={sorted}
+              rows={shown}
               columns={columns}
               rowKey={(row) => row.key}
-              caption="Operators"
-              sort={sort}
-              onSort={changeSort}
-              pageResetKey={`${search.q}:${search.minStake}:${search.named}:${sort?.key}:${sort?.dir}`}
-              className="mg-dt--directory"
+              caption={
+                shown.length === operators.length
+                  ? "Every operator"
+                  : `${formatNumber(shown.length)} of ${formatNumber(operators.length)} operators`
+              }
               rowHref={(row) => `/validators/${row.primaryHotkey}`}
               link={RouterLink}
               source="validator-operator"
               mobile="cards"
-              compactMobileLabels
               storageKey="validators-operators-columns"
               empty={
                 filtersActive ? (
@@ -391,31 +373,6 @@ export function ValidatorsPage() {
                       <option value="1">Declares an identity</option>
                     </FilterSelect>
                   </FilterField>
-                  <FilterField label="Sort by">
-                    <FilterSelect
-                      value={sort ? `${sort.key}:${sort.dir}` : ""}
-                      onChange={(event) => {
-                        const [key, dir] = event.target.value.split(":");
-                        changeSort(key ? { key, dir: dir === "asc" ? "asc" : "desc" } : null);
-                      }}
-                    >
-                      <option value="">Default order</option>
-                      {sortOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </FilterSelect>
-                  </FilterField>
-                  {filtersActive ? (
-                    <button
-                      type="button"
-                      className="mg-compare-action"
-                      onClick={() => setSearch({ q: "", minStake: 0, named: false })}
-                    >
-                      Clear filters
-                    </button>
-                  ) : null}
                 </>
               }
               expand={(row) =>
@@ -431,7 +388,7 @@ export function ValidatorsPage() {
                           : undefined,
                       href: `/validators/${validator.hotkey}`,
                     }))}
-                    cols={3}
+                    cols={4}
                     ariaLabel={`${row.name} hotkeys`}
                     source="validator-key"
                   />
@@ -439,34 +396,12 @@ export function ValidatorsPage() {
               }
             />
           }
-          footnote="Operator totals include every grouped hotkey. Comparison opens each operator’s largest-stake hotkey. Take sorting uses the maximum take."
+          footnote={`${formatNumber(
+            listed.data.hotkey_count,
+          )} hotkeys grouped by declared identity · chain-direct`}
         >
-          <ValidatorCompareBar names={comparisonNames} primary />
+          <ValidatorCompareBar />
         </AnalyticsSection>
-        <AnalyticsSection
-          id="concentration"
-          name="Concentration"
-          question={
-            topShare === null
-              ? "How listed stake is distributed."
-              : `The top 10 operators hold ${formatPct(topShare, 1)} of listed stake.`
-          }
-          visual={
-            segments.length > 0 ? (
-              <CompositionBreakdown
-                segments={segments}
-                formatValue={(value) => fmtStake(value)}
-                legendCols={3}
-                className="mg-composition--ledger"
-                ariaLabel="Stake share of the largest operators"
-                source="validator-operator"
-              />
-            ) : null
-          }
-          footnote={`shares of the ${fmtStake(listedTotal)} held by the ${formatNumber(
-            operators.length,
-          )} listed operators, not of all stake`}
-        />
         <AnalyticsSection
           id="cost"
           name="Cost to validate"

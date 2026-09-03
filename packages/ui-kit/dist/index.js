@@ -1486,7 +1486,7 @@ function useEntityMark(key, opts = {}) {
         return;
       }
       if (event.key === "Enter" || event.key === " ") {
-        if (disabled || event.target !== event.currentTarget) return;
+        if (disabled) return;
         event.preventDefault();
         onActivate?.();
         return;
@@ -4243,7 +4243,6 @@ function DataTable({
   onSort,
   page: pageProp,
   onPage,
-  pageResetKey,
   pageSize = 50,
   pageSizes,
   onPageSize,
@@ -4274,10 +4273,6 @@ function DataTable({
   );
   const [expanded, setExpanded] = useState(null);
   const viewportRef = useRef(null);
-  useEffect(() => {
-    setOwnPage(1);
-    viewportRef.current?.scrollTo({ top: 0 });
-  }, [pageResetKey]);
   const columnSignature = columns.map((c) => `${c.key}:${c.demote ? 1 : 0}`).join(",");
   const columnSpec = useMemo(
     () => columnSignature.split(",").filter(Boolean).map((part) => {

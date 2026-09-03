@@ -129,8 +129,6 @@ export interface DataTableProps<Row> {
   /** Controlled paging. Omit both to let the table page itself. */
   page?: number;
   onPage?: (page: number) => void;
-  /** Reset client paging when external filters or a controlled sort changes. */
-  pageResetKey?: string;
   pageSize?: number;
   /**
    * Rows-per-page choices, offered in the table menu. Pass `onPageSize` with
@@ -249,7 +247,6 @@ export function DataTable<Row>({
   onSort,
   page: pageProp,
   onPage,
-  pageResetKey,
   pageSize = 50,
   pageSizes,
   onPageSize,
@@ -280,11 +277,6 @@ export function DataTable<Row>({
   );
   const [expanded, setExpanded] = useState<string | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setOwnPage(1);
-    viewportRef.current?.scrollTo({ top: 0 });
-  }, [pageResetKey]);
 
   // The column SET is what matters, not the render-identity of the array: a
   // caller that builds `columns` inline (most of them do) hands us a new array
