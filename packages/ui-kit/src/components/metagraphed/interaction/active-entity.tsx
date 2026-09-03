@@ -282,7 +282,8 @@ export function useEntityMark(
         return;
       }
       if (event.key === "Enter" || event.key === " ") {
-        if (disabled) return;
+        // Nested links and checkboxes must keep their native activation.
+        if (disabled || event.target !== event.currentTarget) return;
         event.preventDefault();
         onActivate?.();
         return;

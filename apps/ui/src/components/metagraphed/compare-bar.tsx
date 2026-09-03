@@ -16,6 +16,7 @@ function Dock({
   search,
   onClear,
   ready,
+  action = "Compare",
 }: {
   label: string;
   chips: Array<{ key: string; text: string; onRemove: () => void }>;
@@ -23,6 +24,7 @@ function Dock({
   search: { subnets?: string; validators?: string };
   onClear: () => void;
   ready: boolean;
+  action?: string;
 }) {
   if (chips.length === 0) return null;
   return (
@@ -30,7 +32,7 @@ function Dock({
       <span>{label}</span>
       {chips.map((chip) => (
         <span key={chip.key} className="mg-compare-chip">
-          {chip.text}
+          <span title={chip.text}>{chip.text}</span>
           <button
             type="button"
             onClick={chip.onRemove}
@@ -47,7 +49,7 @@ function Dock({
           className="mg-compare-action"
           aria-disabled={ready ? undefined : true}
         >
-          Compare
+          {action}
         </Link>
         <button type="button" onClick={onClear} className="mg-compare-action">
           Clear
@@ -75,20 +77,27 @@ export function SubnetCompareBar() {
   );
 }
 
-export function ValidatorCompareBar() {
+export function ValidatorCompareBar({
+  names,
+  primary = false,
+}: {
+  names?: Readonly<Record<string, string>>;
+  primary?: boolean;
+} = {}) {
   const { selected, remove, clear } = useValidatorsCompareSelection();
   return (
     <Dock
-      label="Compare"
+      label={primary ? "Largest hotkeys" : "Compare"}
       chips={selected.map((hotkey) => ({
         key: hotkey,
-        text: truncateSs58(hotkey, 4),
+        text: names?.[hotkey] ?? truncateSs58(hotkey, 4),
         onRemove: () => remove(hotkey),
       }))}
       href="/compare"
       search={{ validators: selected.slice(0, 3).join(",") }}
       onClear={clear}
       ready={selected.length >= 2}
+      action={`Compare ${selected.length}`}
     />
   );
 }

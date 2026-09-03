@@ -31,15 +31,10 @@ describe("parseRaw", () => {
     expect(parseRaw(JSON.stringify({ a: HK_A }))).toEqual([]);
   });
 
-  it("keeps only non-empty strings and caps at 4", async () => {
+  it("keeps only non-empty strings and trims older four-key selections to the route limit", async () => {
     const { parseRaw } = await freshStore(makeWindow());
     expect(parseRaw(JSON.stringify([HK_A, 7, null, HK_B, "", HK_C]))).toEqual([HK_A, HK_B, HK_C]);
-    expect(parseRaw(JSON.stringify([HK_A, HK_B, HK_C, HK_D, HK_E]))).toEqual([
-      HK_A,
-      HK_B,
-      HK_C,
-      HK_D,
-    ]);
+    expect(parseRaw(JSON.stringify([HK_A, HK_B, HK_C, HK_D, HK_E]))).toEqual([HK_A, HK_B, HK_C]);
   });
 });
 
@@ -76,12 +71,12 @@ describe("writeRaw", () => {
     expect(readSnapshot()).toEqual([]);
   });
 
-  it("cleans (non-empty strings only), caps at 4, and persists", async () => {
+  it("cleans (non-empty strings only), caps at 3, and persists", async () => {
     const win = makeWindow();
     const { writeRaw, readSnapshot } = await freshStore(win);
     writeRaw([HK_A, "", HK_B, HK_C, HK_D, HK_E]);
-    expect(win.store.get(KEY)).toBe(JSON.stringify([HK_A, HK_B, HK_C, HK_D]));
-    expect(readSnapshot()).toEqual([HK_A, HK_B, HK_C, HK_D]);
+    expect(win.store.get(KEY)).toBe(JSON.stringify([HK_A, HK_B, HK_C]));
+    expect(readSnapshot()).toEqual([HK_A, HK_B, HK_C]);
   });
 
   it("notifies registered subscribers", async () => {

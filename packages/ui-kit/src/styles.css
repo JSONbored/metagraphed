@@ -4433,6 +4433,19 @@
     align-items: center;
     gap: 8px;
   }
+  .mg-compare-chip {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .mg-compare-chip > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mg-compare-chip > button {
+    flex: none;
+  }
   .mg-compare-action {
     display: inline-flex;
     align-items: center;
@@ -4479,6 +4492,75 @@
   .mg-dt-entity > :first-child:not(.truncate) {
     max-width: 20px;
     max-height: 20px;
+  }
+  .mg-dt-identity,
+  .mg-dt-share {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .mg-dt-identity .mg-dt-count {
+    font-size: 11px;
+    font-weight: 400;
+  }
+  .mg-dt-share-context {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    color: var(--ink-muted);
+    font-size: 11px;
+  }
+  .mg-dt-share-track {
+    display: block;
+    width: 56px;
+    height: 3px;
+    background: var(--rule);
+  }
+  .mg-dt-share-track > i {
+    display: block;
+    width: var(--share);
+    height: 100%;
+    background: var(--accent);
+  }
+  /* A directory shares the page canvas. Its controls remain visible, while
+     thin row rules carry the grouping instead of another enclosing card. */
+  .mg-dt--directory {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .mg-dt--directory .mg-dt-caption {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 0 0 16px;
+    border-bottom: 0;
+  }
+  .mg-dt--directory .mg-dt-tools {
+    justify-content: flex-start;
+  }
+  .mg-dt--directory .mg-dt-search {
+    flex: 1 1 240px;
+    max-width: none;
+  }
+  .mg-dt--directory .mg-dt-search,
+  .mg-dt--directory .mg-dt-tools select {
+    border-color: var(--rule);
+    background: var(--canvas);
+  }
+  .mg-dt--directory .mg-dt-tools select {
+    padding-right: 28px;
+    /* FilterSelect's quiet utility defaults otherwise hide this affordance. */
+    border-color: var(--rule) !important;
+    appearance: auto !important;
+  }
+  .mg-dt--directory .mg-dt-tools label {
+    flex: 0 1 auto;
+  }
+  .mg-dt--directory .mg-dt-menu-trigger {
+    margin-left: auto;
   }
   .mg-dt-tools {
     display: flex;
@@ -5003,6 +5085,9 @@
     padding: 16px;
     background: var(--layer);
   }
+  .mg-dt-expansion td::before {
+    display: none;
+  }
   .mg-dt-footer {
     display: flex;
     align-items: center;
@@ -5062,6 +5147,11 @@
      model but trade cramped columns for an authored evidence grid. At 768px
      the old table technically fitted, yet its nine fields were all ellipses;
      a three-column tablet grid gives each fact enough room to mean something. */
+  @media (min-width: 1024px) {
+    .mg-dt[data-mobile="cards"] tbody td::before {
+      display: none;
+    }
+  }
   @media (max-width: 1023px) {
     /* A SHORT table flows into the page; a long one keeps the same bounded,
        internally-scrolling viewport it has on a desktop.
@@ -5152,6 +5242,47 @@
       gap: 0 20px;
       padding: 16px 20px;
     }
+  }
+
+  @media (max-width: 1023px) {
+    .mg-dt--directory[data-mobile="cards"] .mg-dt-row {
+      position: relative;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0 16px;
+      padding: 16px 0;
+    }
+    .mg-dt--directory[data-mobile="cards"] tbody td[data-mobile-lead="true"] {
+      padding-right: 52px;
+      padding-bottom: 8px;
+      border-bottom: 0;
+    }
+    .mg-dt--directory[data-mobile="cards"]
+      tbody
+      td[data-mobile-lead="true"]::before {
+      display: none;
+    }
+    .mg-dt--directory[data-mobile="cards"] tbody td:has(.mg-compare-toggle) {
+      position: absolute;
+      top: 12px;
+      right: 0;
+      align-items: center;
+      gap: 8px;
+    }
+    .mg-dt--directory .mg-dt-share-context {
+      justify-content: flex-start;
+      gap: 4px;
+    }
+    .mg-dt--directory .mg-dt-share-track {
+      display: none;
+    }
+  }
+
+  /* Give concentration names a readable ledger after the primary directory. */
+  .mg-composition--ledger .mg-rank-grid-row {
+    padding: 8px 0;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 0;
   }
 
   @media (max-width: 639px) {
