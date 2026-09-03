@@ -1,7 +1,7 @@
 // Full-scan proof comes from immutable receipts, never the mutable position
 // source or an additive delivery counter (#11997, #11390).
 export const NOMINATOR_POSITIONS_EXPECTED_COLDKEYS = 21_263;
-export const NOMINATOR_POSITIONS_COVERAGE_FLOOR_RATIO = 0.8;
+const NOMINATOR_POSITIONS_COVERAGE_FLOOR_RATIO = 0.8;
 /** Bootstrap floor: 17,010 coldkeys, until seven completed days establish history. */
 export const NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS = Math.round(
   NOMINATOR_POSITIONS_EXPECTED_COLDKEYS *
