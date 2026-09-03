@@ -1377,6 +1377,14 @@ describe("runLaneAlarm", () => {
           checked_at: NOW - 1000,
         },
       ],
+      rates: [
+        {
+          lane: "neurons-staleness",
+          sampled: 96,
+          faulty: 0,
+          since: NOW - 24 * HOUR,
+        },
+      ],
     });
     const github = fakeGitHub({
       "neurons-staleness": { issue: 4242, updatedAt: NOW },
@@ -1388,6 +1396,54 @@ describe("runLaneAlarm", () => {
     assert.equal(out.recovered, 1);
     assert.equal(out.closed, 1);
     assert.deepEqual(github.closed, [4242]);
+  });
+
+  test("keeps the existing incident when the fresh ok still has an alarming failure rate", async () => {
+    const db = healthDb({
+      latest: [{ ...record({ lane: "container:decode", verdict: "ok" }) }],
+      rates: [
+        {
+          lane: "container:decode",
+          sampled: 96,
+          faulty: 34,
+          since: NOW - 24 * HOUR,
+        },
+      ],
+    });
+    const github = fakeGitHub({
+      "container:decode": { issue: 77, updatedAt: NOW },
+    });
+    const capture = vi.fn(async () => true);
+    const out = await runLaneAlarm(db.env, {
+      github,
+      now: () => NOW,
+      recordException: capture,
+    });
+    assert.equal(out.closed, 0);
+    assert.deepEqual(github.closed, []);
+    assert.deepEqual(github.opened, []);
+    assert.equal(capture.mock.calls.length, 0);
+  });
+
+  test("does not close an incident when its fault-rate query fails", async () => {
+    const db = healthDb({
+      latest: [{ ...record({ lane: "a", verdict: "ok" }) }],
+    });
+    const onQuery = pg.control.onQuery;
+    pg.control.onQuery = (query) => {
+      onQuery?.(query);
+      if (query.text.includes("AS sampled"))
+        throw new Error("history unavailable");
+    };
+    const github = fakeGitHub({ a: { issue: 77, updatedAt: NOW } });
+    const out = await runLaneAlarm(db.env, {
+      github,
+      now: () => NOW,
+      recordException: async () => true,
+    });
+    assert.equal(out.ok, true);
+    assert.equal(out.closed, 0);
+    assert.deepEqual(github.closed, []);
   });
 
   // THE END OF THE HOLE THE TOKEN OPENED. A dead-letter lane never reports
@@ -1889,6 +1945,7 @@ describe("runLaneAlarm", () => {
       latest: [
         { lane: "a", verdict: "ok", age_ms: 1, detail: null, checked_at: NOW },
       ],
+      rates: [{ lane: "a", sampled: 96, faulty: 0, since: NOW - 24 * HOUR }],
     });
     const github = fakeGitHub({ a: { issue: 5, updatedAt: NOW } });
     github.close = async () => {
@@ -2305,6 +2362,78 @@ describe("flapping: a lane that recovers between episodes (#11488)", () => {
     assert.equal(plan.open.length, 0);
   });
 
+  test("a healthy tick cannot close an incident that still qualifies as flapping", () => {
+    const lane = "container:decode";
+    const input = {
+      ...base,
+      latest: { [lane]: record({ lane, verdict: "ok" }) },
+      faultRates: {
+        [lane]: { sampled: 96, faulty: 32, since: NOW - 24 * HOUR },
+      },
+      observedMaxGap: { [lane]: 15 * 60_000 },
+    };
+    const first = laneAlarmPlan(input);
+    assert.deepEqual(
+      first.open.map((alarm) => alarm.lane),
+      [lane],
+    );
+
+    const openAlarms = { [lane]: { issue: 77, updatedAt: NOW } };
+    for (let tick = 1; tick <= 4; tick += 1) {
+      const nowMs = NOW + tick * 30 * 60_000;
+      const next = laneAlarmPlan({
+        ...input,
+        nowMs,
+        latest: { [lane]: record({ lane, verdict: "ok", checked_at: nowMs }) },
+        openAlarms,
+      });
+      assert.deepEqual(next.open, [], "the original incident already exists");
+      assert.deepEqual(next.close, [], "the failure rate has not recovered");
+    }
+
+    const recovered = laneAlarmPlan({
+      ...input,
+      openAlarms,
+      faultRates: {
+        [lane]: { sampled: 96, faulty: 31, since: NOW - 24 * HOUR },
+      },
+    });
+    assert.deepEqual(
+      recovered.close.map((entry) => entry.issue),
+      [77],
+    );
+    assert.deepEqual(recovered.open, []);
+  });
+
+  test.each(["ok", "unknown"] as const)(
+    "a silent lane with a last %s verdict opens only one incident despite its failure rate",
+    (verdict) => {
+      const plan = laneAlarmPlan({
+        ...base,
+        latest: {
+          a: record({ lane: "a", verdict, checked_at: NOW - 2 * HOUR }),
+        },
+        faultRates: { a: { sampled: 96, faulty: 32, since: NOW - 24 * HOUR } },
+        observedMaxGap: { a: 15 * 60_000 },
+      });
+      assert.deepEqual(
+        plan.open.map((alarm) => alarm.kind),
+        ["silent"],
+      );
+      assert.equal(plan.suppressed, 0);
+    },
+  );
+
+  test("a missing rate from an attempted history read cannot prove recovery", () => {
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: { a: record({ lane: "a", verdict: "ok" }) },
+      faultRates: {},
+      openAlarms: { a: { issue: 77, updatedAt: NOW } },
+    });
+    assert.deepEqual(plan.close, []);
+  });
+
   test("too few samples is an anecdote, not a rate", () => {
     // A daily lane that logged twice, once badly, reads as 50% faulty. That is
     // not a rate and must not open an issue.
@@ -2344,6 +2473,8 @@ describe("flapping: a lane that recovers between episodes (#11488)", () => {
     );
     assert.ok(body.includes("32 of its last 96 ticks (33%)"));
     assert.ok(body.includes("recovering between each one"));
+    assert.ok(body.includes("no active alarm condition"));
+    assert.ok(!body.includes("first `ok` verdict"));
   });
 });
 
@@ -2460,7 +2591,8 @@ describe("flapping edge cases", () => {
 
   test("a stale-dated verdict is residue, not a flap", () => {
     // Same bound the stale loop applies: a verdict older than the max age is
-    // left over from a lane nobody reads any more.
+    // left over from a lane nobody reads any more. An uncalibrated cadence
+    // leaves it to the flapping age guard rather than qualifying as silent.
     const plan = laneAlarmPlan({
       ...base,
       latest: {
@@ -2471,9 +2603,8 @@ describe("flapping edge cases", () => {
         }),
       },
       faultRates: { a: { sampled: 96, faulty: 96, since: NOW - 24 * HOUR } },
-      observedMaxGap: { a: 15 * 60_000 },
     });
-    assert.equal(plan.open.filter((a) => a.kind === "flapping").length, 0);
+    assert.deepEqual(plan.open, []);
   });
 
   test("a flapping alarm with no sample count reports 0%, never NaN", () => {
