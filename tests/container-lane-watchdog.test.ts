@@ -289,6 +289,98 @@ describe("runContainerLaneWatchdog", () => {
     };
   }
 
+  for (const { name, lane, body, expected } of [
+    {
+      name: "a completed summary between scheduled refreshes is healthy",
+      lane: "container:account-summary",
+      body: {
+        checked_at: new Date(NOW - 6.4 * 3_600_000).toISOString(),
+        ok: true,
+        phase: "complete",
+      },
+      expected: "ok",
+    },
+    {
+      name: "the summary refresh interval includes six hours of grace",
+      lane: "container:account-summary",
+      body: {
+        checked_at: new Date(NOW - 26 * 3_600_000).toISOString(),
+        ok: true,
+        phase: "current",
+      },
+      expected: "ok",
+    },
+    {
+      name: "a successful summary overdue for its next refresh is stale",
+      lane: "container:account-summary",
+      body: {
+        checked_at: new Date(NOW - 26 * 3_600_000 - 1).toISOString(),
+        ok: true,
+        phase: "complete",
+      },
+      expected: "stale",
+    },
+    {
+      name: "a fresh summary scan preserves its start time through R2 parsing",
+      lane: "container:account-summary",
+      body: { started_at: FRESH, ok: null, phase: "scanning" },
+      expected: "ok",
+    },
+    {
+      name: "an active summary scan gets no daily refresh allowance",
+      lane: "container:account-summary",
+      body: {
+        started_at: new Date(NOW - 7 * 3_600_000).toISOString(),
+        ok: null,
+        phase: "scanning",
+      },
+      expected: "stale",
+    },
+    {
+      name: "a failed summary is stale immediately",
+      lane: "container:account-summary",
+      body: { checked_at: FRESH, ok: false, phase: "complete" },
+      expected: "stale",
+    },
+    {
+      name: "an unreadable summary start time remains unknown",
+      lane: "container:account-summary",
+      body: { started_at: 123, ok: null, phase: "scanning" },
+      expected: "unknown",
+    },
+    {
+      name: "an invalid summary start date remains unknown",
+      lane: "container:account-summary",
+      body: { started_at: "invalid", ok: null, phase: "scanning" },
+      expected: "unknown",
+    },
+    {
+      name: "an hourly lane keeps the six-hour limit after success",
+      lane: "container:daily-rollup",
+      body: {
+        checked_at: new Date(NOW - 7 * 3_600_000).toISOString(),
+        ok: true,
+      },
+      expected: "stale",
+    },
+  ]) {
+    test(name, async () => {
+      const bodies = Object.fromEntries(
+        CONTAINER_LANES.map(({ key, lane: candidate }) => [
+          key,
+          candidate === lane ? body : { checked_at: FRESH, ok: true },
+        ]),
+      );
+      const spy = laneSpy();
+      await runContainerLaneWatchdog(bucketWith(bodies), {
+        now: () => NOW,
+        recordException: (async () => true) as never,
+        laneHealthDb: spy.db,
+      });
+      assert.equal(spy.rows.find((row) => row[0] === lane)?.[1], expected);
+    });
+  }
+
   test("writes a DURABLE verdict for every lane, every tick", async () => {
     // #9330/#9340: PostHog drops `$exception` once the free-tier quota is
     // exhausted, and a dropped notification is indistinguishable from a fleet
