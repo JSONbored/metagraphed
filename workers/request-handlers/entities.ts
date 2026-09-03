@@ -1,3 +1,8 @@
+import { metagraphMeta } from "../responses.ts";
+export {
+  handleAccountHolderDirectory,
+  handleValidatorOperatorDirectory,
+} from "./explorer-directories.ts";
 // Single-entity chain-data handlers: the cheap per-key D1 lookups behind the
 // metagraph, account, block, and extrinsic routes (extracted from workers/api.ts
 // per #1763).
@@ -91,12 +96,7 @@ import {
   overlayFeaturedValidators,
 } from "../../src/metagraph-neurons.ts";
 import { buildAccountsList } from "../../src/accounts-list.ts";
-import { buildAccountHolderDirectory } from "../../src/account-holder-directory.ts";
-import { buildValidatorOperatorDirectory } from "../../src/validator-operator-directory.ts";
-import {
-  readCurrentAccountDirectory,
-  readCurrentValidatorDirectory,
-} from "../../src/explorer-directory-current.ts";
+
 import { buildTopHoldersList } from "../../src/top-holders.ts";
 import {
   buildDeregistrationHistory,
@@ -934,26 +934,6 @@ function parseBooleanParam(
   return { value: raw === "true" };
 }
 
-// --- Per-UID metagraph (#1304/#1305) --- D1 fully eliminated (2026-07-17);
-// neurons' D1 write path was retired in #4772/#4909 (see handleSubnetMetagraph
-// below), so this now serves a schema-stable literal rather than a live
-// query, like the other Postgres-backed analytics routes.
-async function metagraphMeta(
-  env: Env,
-  artifactPath: string,
-  generatedAt: unknown,
-  publishedAtPromise: Promise<string | null> | null = null,
-) {
-  return {
-    artifact_path: artifactPath,
-    cache: "short",
-    contract_version: contractVersion(env),
-    generated_at: generatedAt,
-    published_at: await (publishedAtPromise ?? publishedAt(env)),
-    source: "metagraph-snapshot",
-  };
-}
-
 export async function handleSubnetMetagraph(
   request: Request,
   env: Env,
@@ -1388,38 +1368,6 @@ export async function handleGlobalValidators(
   );
 }
 
-export async function handleValidatorOperatorDirectory(
-  request: Request,
-  env: Env,
-) {
-  const publishedAtPromise = publishedAt(env);
-  const materialized =
-    env.METAGRAPH_NEURONS_SOURCE === "data-api"
-      ? await readCurrentValidatorDirectory(env.METAGRAPH_CONTROL)
-      : null;
-  const data =
-    materialized ??
-    ((await tryDataApiTier(
-      env,
-      request,
-      "METAGRAPH_NEURONS_SOURCE",
-    )) as ReturnType<typeof buildValidatorOperatorDirectory> | null) ??
-    buildValidatorOperatorDirectory(null);
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await metagraphMeta(
-        env,
-        "/metagraph/validators/operators.json",
-        data.captured_at,
-        publishedAtPromise,
-      ),
-    },
-    "short",
-  );
-}
-
 // GET /api/v1/accounts?sort=total_stake|total_emission|subnet_count|uid_count|
 // validator_count|stake_dominance|last_active&limit=20 (#4324/5.3): site-wide
 // accounts leaderboard — every currently-registered hotkey, miners included,
@@ -1490,35 +1438,6 @@ export async function handleAccountsList(request: Request, env: Env, url: URL) {
         env,
         "/metagraph/accounts.json",
         data.captured_at,
-      ),
-    },
-    "short",
-  );
-}
-
-export async function handleAccountHolderDirectory(request: Request, env: Env) {
-  const publishedAtPromise = publishedAt(env);
-  const materialized =
-    env.METAGRAPH_NEURONS_SOURCE === "data-api"
-      ? await readCurrentAccountDirectory(env.METAGRAPH_CONTROL)
-      : null;
-  const data =
-    materialized ??
-    ((await tryDataApiTier(
-      env,
-      request,
-      "METAGRAPH_NEURONS_SOURCE",
-    )) as ReturnType<typeof buildAccountHolderDirectory> | null) ??
-    buildAccountHolderDirectory([], { priceByNetuid: NO_ALPHA_PRICES });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await metagraphMeta(
-        env,
-        "/metagraph/accounts/directory.json",
-        data.captured_at,
-        publishedAtPromise,
       ),
     },
     "short",
