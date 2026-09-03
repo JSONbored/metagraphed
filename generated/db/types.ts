@@ -413,6 +413,13 @@ export interface NominatorPositionsPasses {
   received_rows: number;
 }
 
+/** `public.nominator_scan_receipts` */
+export interface NominatorScanReceipts {
+  captured_at: number | string;
+  coldkey: string;
+  row_count: number;
+}
+
 /** `public.origin_reachability` */
 export interface OriginReachability {
   checked_at: number | string;
@@ -880,6 +887,7 @@ export interface DatabaseTables {
   NeuronsPasses: NeuronsPasses;
   NominatorPositions: NominatorPositions;
   NominatorPositionsPasses: NominatorPositionsPasses;
+  NominatorScanReceipts: NominatorScanReceipts;
   OriginReachability: OriginReachability;
   Providers: Providers;
   RawCaptureState: RawCaptureState;
