@@ -1,4 +1,14 @@
 import {
+  CONTRACT_VERSION,
+  ARTIFACT_BASE_PATH,
+  PRIMARY_DOMAIN,
+} from "./contract-constants.ts";
+export {
+  CONTRACT_VERSION,
+  CACHE_SECONDS,
+  PRIMARY_DOMAIN,
+} from "./contract-constants.ts";
+import {
   DECLARATIONS_REQUIRING_A_GPU,
   MIN_COMPUTE_SURFACES_REGISTERED,
   SUBNETS_IN_REGISTRY,
@@ -151,13 +161,7 @@ interface RetirementInfo {
   http_status: number;
   message: string;
 }
-
-export const CONTRACT_VERSION = "2026-07-03.2";
 export const SCHEMA_VERSION = 1;
-// The API + artifacts are served from the api subdomain; the bare apex
-// (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
-// server URL and the consumer metadata in contracts.json / api-index.json.
-export const PRIMARY_DOMAIN = "api.metagraph.sh";
 
 /**
  * The human-facing origin — the block explorer, not the API.
@@ -192,14 +196,7 @@ export function subnetPageUrl(netuid: number | null | undefined): string {
  */
 export const REPOSITORY_URL = "https://github.com/JSONbored/metagraphed";
 export const API_BASE_PATH = "/api/v1";
-export const ARTIFACT_BASE_PATH = "/metagraph";
 export const TYPE_DEFINITIONS_PATH = "/metagraph/types.d.ts";
-
-export const CACHE_SECONDS = {
-  short: 60,
-  standard: 300,
-  static: 600,
-};
 
 // The published query-parameter schemas, derived from the ONE vocabulary in
 // schemas-src/query-params.ts (#10073).

@@ -17,6 +17,7 @@ let outdir: string;
 let runtime: Miniflare;
 let eagerBytes: number;
 let totalBytes: number;
+let eagerInputs: Set<string>;
 
 beforeAll(async () => {
   outdir = await mkdtemp(path.join(tmpdir(), "api-worker-modules-"));
@@ -35,6 +36,9 @@ beforeAll(async () => {
   };
   eagerBytes = visit(
     path.relative(repoRoot, path.join(outdir, "api.entry.js")),
+  );
+  eagerInputs = new Set(
+    [...visited].flatMap((name) => Object.keys(metafile.outputs[name].inputs)),
   );
   totalBytes = Object.entries(metafile.outputs)
     .filter(([name]) => name.endsWith(".js"))
@@ -91,8 +95,10 @@ afterAll(async () => {
   if (outdir) await rm(outdir, { recursive: true, force: true });
 });
 
-test("directory startup excludes at least a third of the JavaScript", () => {
-  expect(eagerBytes).toBeLessThan(totalBytes * (2 / 3));
+test("directory startup excludes the full router and at least three quarters of the JavaScript", () => {
+  expect(eagerBytes).toBeLessThan(totalBytes / 4);
+  expect(eagerInputs.has("workers/api.ts")).toBe(false);
+  expect(eagerInputs.has("src/contracts.ts")).toBe(false);
 });
 
 test("the composed entry serves both validated directory projections", async () => {

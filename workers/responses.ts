@@ -7,7 +7,7 @@ import {
   ARTIFACT_BASE_PATH,
   CONTRACT_VERSION,
   PRIMARY_DOMAIN,
-} from "../src/contracts.ts";
+} from "../src/contract-constants.ts";
 
 /**
  * The `service-desc` link every API response carries.
@@ -163,4 +163,20 @@ export async function envelopeResponse(
     status: 200,
     headers,
   });
+}
+
+export async function metagraphMeta(
+  env: Env,
+  artifactPath: string,
+  generatedAt: unknown,
+  publishedAtPromise: Promise<string | null> | null = null,
+) {
+  return {
+    artifact_path: artifactPath,
+    cache: "short",
+    contract_version: contractVersion(env),
+    generated_at: generatedAt,
+    published_at: await (publishedAtPromise ?? publishedAt(env)),
+    source: "metagraph-snapshot",
+  };
 }
