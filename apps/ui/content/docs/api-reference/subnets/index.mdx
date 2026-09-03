@@ -98,7 +98,7 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
 - [Subnet Performance History](/docs/api-reference/subnets/subnet-performance-history) — `GET /api/v1/subnets/{netuid}/performance/history`  
   Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily rollup).
 - [Subnet Prometheus](/docs/api-reference/subnets/subnet-prometheus) — `GET /api/v1/subnets/{netuid}/prometheus`  
-  Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted — an empty card is marked `degraded` rather than published as a measured zero.
+  Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, read from the account_events PrometheusServed stream.
 - [Subnet Recycled](/docs/api-reference/subnets/subnet-recycled) — `GET /api/v1/subnets/{netuid}/recycled`  
   Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache.
 - [Subnet Recycled By Network](/docs/api-reference/subnets/subnet-recycled-by-network) — `GET /api/v1/{network}/subnets/{netuid}/recycled`  

@@ -86,17 +86,15 @@ describe("buildSubnetPrometheus", () => {
 });
 
 describe("buildSubnetPrometheus honesty marker (#9307)", () => {
-  test("an empty card says its zero is not a measurement", () => {
-    // The chain emitted 18,041 PrometheusServed events; the account_events
-    // projection this route reads carries 0 of them. Without the marker the
-    // card is indistinguishable from "this subnet announced nothing".
+  test("an unavailable source marks its empty fallback", () => {
+    // No source was read, so this fallback cannot establish that the subnet
+    // announced nothing in the requested window.
     const d = buildSubnetPrometheus(null, 7, { window: "7d" });
     assert.deepEqual(d.degraded, { reason: DEGRADED_UNAVAILABLE });
   });
 
   test("a card with announcements carries NO marker", () => {
-    // Marking a real answer would be as wrong as not marking an empty one --
-    // this is what makes the marker disappear once the curation gap closes.
+    // An observed announcement is a measured answer.
     const d = buildSubnetPrometheus(
       {
         distinct_exporters: 2,

@@ -82,9 +82,8 @@ export const AccountPrometheusArtifactSchema = z
           "One subnet's Prometheus-announcement activity in an account's footprint, ranked most-active-first.",
         ),
     ),
-    // #9307: the chain emits PrometheusServed and our account_events curation
-    // drops all 18,041 of them, so this footprint's zero is "we could not
-    // look".
+    // A successfully read quiet window is a measured zero. An unavailable
+    // source carries a marker so its empty fallback is not mistaken for one.
     degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict()
