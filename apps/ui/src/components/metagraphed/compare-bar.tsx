@@ -1,8 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { useCompareSelection } from "@/lib/metagraphed/compare-selection";
-import { useValidatorsCompareSelection } from "@/lib/metagraphed/validators-compare-selection";
-import { truncateSs58 } from "@/lib/metagraphed/resolve-address";
 
 /**
  * The selection dock (#11611). It holds what you picked and links to
@@ -69,24 +67,6 @@ export function SubnetCompareBar() {
       }))}
       href="/compare"
       search={{ subnets: selected.slice(0, 3).join(",") }}
-      onClear={clear}
-      ready={selected.length >= 2}
-    />
-  );
-}
-
-export function ValidatorCompareBar() {
-  const { selected, remove, clear } = useValidatorsCompareSelection();
-  return (
-    <Dock
-      label="Compare"
-      chips={selected.map((hotkey) => ({
-        key: hotkey,
-        text: truncateSs58(hotkey, 4),
-        onRemove: () => remove(hotkey),
-      }))}
-      href="/compare"
-      search={{ validators: selected.slice(0, 3).join(",") }}
       onClear={clear}
       ready={selected.length >= 2}
     />
