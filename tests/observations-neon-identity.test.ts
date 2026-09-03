@@ -127,6 +127,45 @@ test("an older rename cannot evict the other key currently holding its requested
   );
 });
 
+test("a failed alias swap retains both keys' measured successes when the status read was unavailable", async () => {
+  await persistProbesToNeon(
+    sql,
+    [probe("one", "key-a", 100), probe("two", "key-b", 120)],
+    120,
+  );
+  assert.equal(
+    (
+      await persistProbesToNeon(
+        sql,
+        [probe("two", "key-a", 200, false), probe("one", "key-b", 200, false)],
+        200,
+      )
+    ).ok,
+    true,
+  );
+  assert.deepEqual(
+    (
+      await db.query(
+        "SELECT surface_id,surface_key,status,last_ok FROM surface_status ORDER BY surface_key",
+      )
+    ).rows,
+    [
+      {
+        surface_id: "two",
+        surface_key: "key-a",
+        status: "failed",
+        last_ok: 100,
+      },
+      {
+        surface_id: "one",
+        surface_key: "key-b",
+        status: "failed",
+        last_ok: 120,
+      },
+    ],
+  );
+});
+
 test("last_ok never moves backwards when a new failed probe carries an older cached success", async () => {
   await persistProbesToNeon(sql, [probe("current", "key-a", 300)], 300);
   await persistProbesToNeon(
@@ -138,6 +177,66 @@ test("last_ok never moves backwards when a new failed probe carries an older cac
     (await db.query("SELECT last_checked,last_ok,status FROM surface_status"))
       .rows,
     [{ last_checked: 400, last_ok: 300, status: "failed" }],
+  );
+});
+
+test("a displaced stable identity keeps its prior status until it returns under a new alias", async () => {
+  await persistProbesToNeon(sql, [probe("shared", "key-a", 100)], 100);
+  await persistProbesToNeon(sql, [probe("shared", "key-b", 200)], 200);
+  const prior = (
+    await db.query(
+      "SELECT last_ok,last_checked,status FROM surface_status WHERE surface_key='key-a'",
+    )
+  ).rows;
+  assert.deepEqual(prior, [{ last_ok: 100, last_checked: 100, status: "ok" }]);
+  assert.equal(
+    (
+      await persistProbesToNeon(
+        sql,
+        [probe("returned", "key-a", 300, false)],
+        300,
+      )
+    ).ok,
+    true,
+  );
+  assert.deepEqual(
+    (
+      await db.query(
+        "SELECT surface_id,last_ok,last_checked,status FROM surface_status WHERE surface_key='key-a'",
+      )
+    ).rows,
+    [
+      {
+        surface_id: "returned",
+        last_ok: 100,
+        last_checked: 300,
+        status: "failed",
+      },
+    ],
+  );
+});
+
+test("a keyed probe can replace a legacy keyless alias without losing raw checks", async () => {
+  await persistProbesToNeon(sql, [probe("shared", null, 100)], 100);
+  assert.equal(
+    (await persistProbesToNeon(sql, [probe("shared", "key-a", 200)], 200)).ok,
+    true,
+  );
+  assert.deepEqual(
+    (
+      await db.query(
+        "SELECT surface_id,surface_key,last_ok FROM surface_status",
+      )
+    ).rows,
+    [{ surface_id: "shared", surface_key: "key-a", last_ok: 200 }],
+  );
+  assert.equal(
+    (
+      await db.query<{ n: number }>(
+        "SELECT count(*)::int n FROM surface_checks",
+      )
+    ).rows[0]!.n,
+    2,
   );
 });
 
