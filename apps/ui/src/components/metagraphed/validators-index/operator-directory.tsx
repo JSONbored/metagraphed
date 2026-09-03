@@ -1,6 +1,17 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { Link } from "@tanstack/react-router";
-import { DataTable, sortRows, type DataTableColumn, type SortState } from "@jsonbored/ui-kit";
+import { SlidersHorizontal } from "lucide-react";
+import {
+  DataTable,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+  sortRows,
+  type DataTableColumn,
+  type SortState,
+} from "@jsonbored/ui-kit";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { EmptyState } from "@/components/metagraphed/states";
 import { useValidatorsCompareSelection } from "@/lib/metagraphed/validators-compare-selection";
@@ -25,6 +36,14 @@ const SORTS = [
   { key: "take", label: "Take", dir: "asc" },
   { key: "keys", label: "Hotkeys", dir: "desc" },
 ] as const;
+
+const MOBILE_SORTS = SORTS.flatMap((option) =>
+  ([option.dir, option.dir === "desc" ? "asc" : "desc"] as const).map((dir) => ({
+    key: option.key,
+    dir,
+    label: `${option.key === "take" ? "Maximum take" : option.label}: ${dir === "desc" ? "high to low" : "low to high"}`,
+  })),
+);
 
 function StakeProfile({ row }: { row: OperatorRow }) {
   const segments = hotkeyComposition(row.keys);
@@ -124,6 +143,7 @@ export function OperatorDirectory({
   onSearch: (next: Partial<ValidatorsSearch>) => void;
 }) {
   const [sort, setSort] = useState<SortState | null>({ key: "stake", dir: "desc" });
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const selection = useValidatorsCompareSelection();
   const names = useMemo(
     () => new Map(operators.map((row) => [row.primaryHotkey, row.name])),
@@ -302,6 +322,23 @@ export function OperatorDirectory({
   });
   const namedCount = operators.filter((row) => row.named).length;
   const compareReady = selection.selected.length >= 2;
+  const optionsActive = Boolean(
+    search.named || search.minStake || sort?.key !== "stake" || sort?.dir !== "desc",
+  );
+  const compareLink = (
+    <Link
+      to="/compare"
+      search={{ validators: selection.selected.join(",") }}
+      className="mg-operator-compare-link"
+      aria-disabled={!compareReady || undefined}
+      tabIndex={compareReady ? 0 : -1}
+      onClick={(event) => {
+        if (!compareReady) event.preventDefault();
+      }}
+    >
+      Compare <b>{selection.selected.length}</b>
+    </Link>
+  );
 
   return (
     <div className="mg-operator-directory">
@@ -354,31 +391,23 @@ export function OperatorDirectory({
             ))}
           </div>
         </fieldset>
-        <div className="mg-operator-compare-control">
-          <span>Largest hotkeys</span>
-          <Link
-            to="/compare"
-            search={{ validators: selection.selected.join(",") }}
-            className="mg-operator-compare-link"
-            aria-disabled={!compareReady || undefined}
-            tabIndex={compareReady ? 0 : -1}
-            onClick={(event) => {
-              if (!compareReady) event.preventDefault();
-            }}
-          >
-            Compare <b>{selection.selected.length}</b>
-          </Link>
-        </div>
+        {selection.selected.length > 0 ? (
+          <div className="mg-operator-compare-control">
+            <span>Largest hotkeys</span>
+            {compareLink}
+          </div>
+        ) : null}
       </div>
       <div className="mg-operator-search-row">
         <input
           type="search"
           aria-label="Search operators"
-          placeholder="Search operator, hotkey or coldkey"
+          placeholder="Search operators"
           value={search.q}
           onChange={(event) => onSearch({ q: event.target.value })}
         />
         <select
+          className="mg-operator-desktop-option"
           aria-label="Minimum stake"
           value={String(search.minStake)}
           onChange={(event) => onSearch({ minStake: Number(event.target.value) })}
@@ -389,13 +418,96 @@ export function OperatorDirectory({
           <option value="100000">100kτ and up</option>
         </select>
         {filtersActive ? (
-          <button type="button" onClick={() => onSearch({ q: "", minStake: 0, named: false })}>
+          <button
+            type="button"
+            className="mg-operator-desktop-option"
+            onClick={() => onSearch({ q: "", minStake: 0, named: false })}
+          >
             Clear filters
           </button>
         ) : null}
+        <Sheet open={optionsOpen} onOpenChange={setOptionsOpen}>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              className="mg-operator-mobile-options"
+              aria-label={`Filter and sort operators${optionsActive ? ", options active" : ""}`}
+              data-active={optionsActive || undefined}
+            >
+              <SlidersHorizontal width={16} height={16} aria-hidden="true" />
+            </button>
+          </SheetTrigger>
+          <SheetContent
+            side="bottom"
+            className="mg-operator-options-sheet border-border bg-canvas p-6 pb-[max(var(--mg-space-lg),env(safe-area-inset-bottom))] text-ink"
+          >
+            <SheetTitle>Filter and sort</SheetTitle>
+            <SheetDescription>Refine the operator list.</SheetDescription>
+            <div className="mg-operator-options-fields">
+              <label>
+                Operators
+                <select
+                  value={search.named ? "named" : "all"}
+                  onChange={(event) => onSearch({ named: event.target.value === "named" })}
+                >
+                  <option value="all">All operators</option>
+                  <option value="named">Named operators</option>
+                </select>
+              </label>
+              <label>
+                Minimum stake
+                <select
+                  value={String(search.minStake)}
+                  onChange={(event) => onSearch({ minStake: Number(event.target.value) })}
+                >
+                  <option value="0">Any stake</option>
+                  <option value="1000">1kτ and up</option>
+                  <option value="10000">10kτ and up</option>
+                  <option value="100000">100kτ and up</option>
+                </select>
+              </label>
+              <label>
+                Sort by
+                <select
+                  value={`${sort?.key}:${sort?.dir}`}
+                  onChange={(event) => {
+                    const next = MOBILE_SORTS.find(
+                      (option) => `${option.key}:${option.dir}` === event.target.value,
+                    );
+                    if (next) setSort({ key: next.key, dir: next.dir });
+                  }}
+                >
+                  {MOBILE_SORTS.map((option) => (
+                    <option
+                      key={`${option.key}:${option.dir}`}
+                      value={`${option.key}:${option.dir}`}
+                    >
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="mg-operator-options-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  onSearch({ q: "", minStake: 0, named: false });
+                  setSort({ key: "stake", dir: "desc" });
+                }}
+              >
+                Reset
+              </button>
+              <button type="button" onClick={() => setOptionsOpen(false)}>
+                Show {formatNumber(filtered.length)} operators
+              </button>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
       {selection.selected.length > 0 ? (
         <div className="mg-operator-selection" aria-label="Selected operators">
+          <div className="mg-operator-mobile-compare">{compareLink}</div>
           {selection.selected.map((hotkey) => (
             <button
               key={hotkey}

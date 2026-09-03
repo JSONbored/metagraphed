@@ -87,7 +87,7 @@ test("named comparison selections respect the comparison page's three-hotkey lim
   await expect(
     page.getByRole("checkbox", { name: "Add Taostats to comparison", exact: true }),
   ).toBeDisabled();
-  const compare = page.locator(".mg-operator-compare-link");
+  const compare = page.locator(".mg-operator-compare-link:visible");
   await expect(compare).toHaveText("Compare 3");
   const href = new URL((await compare.getAttribute("href"))!, "http://localhost");
   const selected = href.searchParams.get("validators")!.split(",");
@@ -102,14 +102,33 @@ test("named comparison selections respect the comparison page's three-hotkey lim
 test.describe("operator directory on phones", () => {
   test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
 
-  test("visible sort controls, labeled metrics and color profiles use one page scroll", async ({
+  test("compact options preserve filters, sorting, focus and the single-scroll directory", async ({
     page,
   }) => {
     const table = await openDirectory(page);
-    await page.getByRole("button", { name: "Sort by Hotkeys", exact: true }).tap();
     await expect(
-      page.getByRole("button", { name: "Sort by Hotkeys, high to low", exact: true }),
-    ).toHaveAttribute("aria-pressed", "true");
+      page.getByRole("heading", { name: "Operators. Every operator, ranked.", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /^All operators/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Sort by / })).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Minimum stake" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /^Compare/ })).toHaveCount(0);
+    const options = page.getByRole("button", { name: /^Filter and sort operators/ });
+    await options.tap();
+    const panel = page.getByRole("dialog", { name: "Filter and sort" });
+    await panel.getByRole("combobox", { name: "Operators", exact: true }).selectOption("named");
+    await panel.getByRole("combobox", { name: "Minimum stake" }).selectOption("100000");
+    await panel.getByRole("combobox", { name: "Sort by" }).selectOption("keys:desc");
+    await panel.getByRole("button", { name: /^Show [\d,]+ operators$/ }).tap();
+    await expect(panel).not.toBeVisible();
+    await expect(options).toBeFocused();
+    await expect(options).toHaveAccessibleName("Filter and sort operators, options active");
+    await expect(table.locator(".mg-dt-title")).toContainText("of 604 operators");
+    await options.tap();
+    await expect(panel.getByRole("combobox", { name: "Sort by" })).toHaveValue("keys:desc");
+    await page.keyboard.press("Escape");
+    await expect(panel).not.toBeVisible();
+    await expect(options).toBeFocused();
     const first = table.locator(".mg-dt-row").first();
     await first.scrollIntoViewIfNeeded();
     await expect(first.getByRole("button", { name: "Expand row", exact: true })).toBeVisible();
@@ -146,5 +165,41 @@ test.describe("operator directory on phones", () => {
     expect(layout.pageFits).toBe(true);
     await first.getByRole("button", { name: "Expand row", exact: true }).tap();
     await expect(table.locator(".mg-operator-details")).toBeVisible();
+  });
+
+  test("comparison appears on selection and reset returns to the quiet default view", async ({
+    page,
+  }) => {
+    const table = await openDirectory(page);
+    await page.getByRole("checkbox", { name: "Add tao.bot to comparison", exact: true }).tap();
+    const compare = page.locator(".mg-operator-compare-link:visible");
+    await expect(compare).toHaveText("Compare 1");
+    await expect(compare).toHaveAttribute("aria-disabled", "true");
+    await page
+      .getByRole("checkbox", { name: "Add Yuma, a DCG Company to comparison", exact: true })
+      .tap();
+    await expect(compare).toHaveText("Compare 2");
+    await expect(compare).not.toHaveAttribute("aria-disabled");
+    await page.getByRole("button", { name: "Clear selection", exact: true }).tap();
+    await expect(page.getByRole("link", { name: /^Compare/ })).toHaveCount(0);
+
+    const search = page.getByRole("searchbox", { name: "Search operators" });
+    await search.fill("Yuma");
+    await expect(table.locator(".mg-dt-row")).toHaveCount(1);
+    const options = page.getByRole("button", { name: /^Filter and sort operators/ });
+    await options.tap();
+    const panel = page.getByRole("dialog", { name: "Filter and sort" });
+    await panel.getByRole("combobox", { name: "Operators", exact: true }).selectOption("named");
+    await panel.getByRole("combobox", { name: "Sort by" }).selectOption("take:asc");
+    await panel.getByRole("button", { name: "Reset", exact: true }).tap();
+    await expect(panel.getByRole("combobox", { name: "Operators", exact: true })).toHaveValue(
+      "all",
+    );
+    await expect(panel.getByRole("combobox", { name: "Sort by" })).toHaveValue("stake:desc");
+    await panel.getByRole("button", { name: /^Show [\d,]+ operators$/ }).tap();
+    await expect(search).toHaveValue("");
+    await expect(options).toHaveAccessibleName("Filter and sort operators");
+    await expect(table.locator(".mg-dt-row")).toHaveCount(50);
+    await expect(table.locator(".mg-dt-row").first()).toContainText("tao.bot");
   });
 });

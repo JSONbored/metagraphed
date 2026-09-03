@@ -151,7 +151,7 @@ export function ValidatorsPage() {
         <AnalyticsSection
           id="operators"
           name="Operators"
-          question="Find and compare validator operators."
+          question="Every operator, ranked."
           className="mg-directory-section mg-directory-section--table-first"
           visual={<OperatorDirectory operators={operators} search={search} onSearch={setSearch} />}
         />
