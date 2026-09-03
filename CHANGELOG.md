@@ -19,6 +19,34 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [2.5.1](https://github.com/JSONbored/metagraphed/compare/platform-v2.5.0...platform-v2.5.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* **alarms:** keep subnet turnover informational ([#11818](https://github.com/JSONbored/metagraphed/issues/11818)) ([1ea450c](https://github.com/JSONbored/metagraphed/commit/1ea450c46bd29b1bf0e0a971507d698296d493e0))
+* **analytics:** reject stale chain activity projections ([#11793](https://github.com/JSONbored/metagraphed/issues/11793)) ([6bcf033](https://github.com/JSONbored/metagraphed/commit/6bcf0339b8f23ac71efe01c36a6e3131720388cb))
+* **blocks:** preserve decoded economic detail ([#11823](https://github.com/JSONbored/metagraphed/issues/11823)) ([706603c](https://github.com/JSONbored/metagraphed/commit/706603cf4c0e402f437cea737ed5d6614c3156a7))
+* **ui:** attach TAO suffix to amounts ([#11795](https://github.com/JSONbored/metagraphed/issues/11795)) ([7e9ee7a](https://github.com/JSONbored/metagraphed/commit/7e9ee7ab8c8f07dca08d7bff909e284a32ebcfb6))
+* **ui:** eliminate hydration mismatches ([#11814](https://github.com/JSONbored/metagraphed/issues/11814)) ([87c24d7](https://github.com/JSONbored/metagraphed/commit/87c24d7992711e4df9d4327e7dda3b330f4542cd))
+* **ui:** isolate degraded chain activity ([#11817](https://github.com/JSONbored/metagraphed/issues/11817)) ([f0117a4](https://github.com/JSONbored/metagraphed/commit/f0117a4f9ce36e0672df92b55c04d2638022bc21))
+* **ui:** preserve nominated row links ([#11816](https://github.com/JSONbored/metagraphed/issues/11816)) ([4ac8886](https://github.com/JSONbored/metagraphed/commit/4ac888614660f3d2be3bce726c90dd83f0be5ec6))
+* **ui:** surface unverified API fallbacks ([#11808](https://github.com/JSONbored/metagraphed/issues/11808)) ([172ecc5](https://github.com/JSONbored/metagraphed/commit/172ecc5a2125fd324703517a097a9f911cbfcf88))
+
+
+### Performance
+
+* **api:** cache settled historical blocks ([#11797](https://github.com/JSONbored/metagraphed/issues/11797)) ([3ec2115](https://github.com/JSONbored/metagraphed/commit/3ec21159d3a255d7b8f6a5f4da7205335fb9827f))
+* **api:** cache settled priced block detail ([#11799](https://github.com/JSONbored/metagraphed/issues/11799)) ([35e36dc](https://github.com/JSONbored/metagraphed/commit/35e36dcc0ea8de2dad2f7c89fc99222fd8684bd7))
+* **data:** bootstrap route directory values ([#11810](https://github.com/JSONbored/metagraphed/issues/11810)) ([79b8c1f](https://github.com/JSONbored/metagraphed/commit/79b8c1f2252e0c35b32cad197bd7384a51f058f0))
+* **data:** materialize explorer directories ([#11802](https://github.com/JSONbored/metagraphed/issues/11802)) ([861c608](https://github.com/JSONbored/metagraphed/commit/861c608d241cd741b15c9322a85301f16d6de751))
+* **data:** publish directories from direct neuron sync ([#11804](https://github.com/JSONbored/metagraphed/issues/11804)) ([fe1f912](https://github.com/JSONbored/metagraphed/commit/fe1f912f9368dffc2fbe6583f3fba1e93d35065a))
+* **data:** publish explorer directories after neuron passes ([#11803](https://github.com/JSONbored/metagraphed/issues/11803)) ([241aa5c](https://github.com/JSONbored/metagraphed/commit/241aa5c57c3fda7ccabaf8669779d52aa6e7c316))
+* **data:** reduce directory cold path to one KV read ([e78e71b](https://github.com/JSONbored/metagraphed/commit/e78e71b09d9974d0b0d380a92789fd4b07b60a3a))
+* **data:** restore legacy directory values ([#11812](https://github.com/JSONbored/metagraphed/issues/11812)) ([6a256ce](https://github.com/JSONbored/metagraphed/commit/6a256cedbf0348b47335a0902a09d2ca380d5010))
+* **data:** serve explorer directories from shared KV ([#11805](https://github.com/JSONbored/metagraphed/issues/11805)) ([9f1e607](https://github.com/JSONbored/metagraphed/commit/9f1e607ef317367c26c0ca356af731675cb547e9))
+* **ui:** preload homepage live blocks ([#11801](https://github.com/JSONbored/metagraphed/issues/11801)) ([b34d5ab](https://github.com/JSONbored/metagraphed/commit/b34d5ab24b6585a2b1d1d40df2ee1f0fa692dee3))
+
 ## [2.5.0](https://github.com/JSONbored/metagraphed/compare/platform-v2.4.0...platform-v2.5.0) (2026-08-29)
 
 

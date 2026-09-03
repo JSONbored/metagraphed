@@ -9,6 +9,21 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [1.4.1](https://github.com/JSONbored/metagraphed/compare/ui-v1.4.0...ui-v1.4.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* **ui:** attach TAO suffix to amounts ([#11795](https://github.com/JSONbored/metagraphed/issues/11795)) ([7e9ee7a](https://github.com/JSONbored/metagraphed/commit/7e9ee7ab8c8f07dca08d7bff909e284a32ebcfb6))
+* **ui:** eliminate hydration mismatches ([#11814](https://github.com/JSONbored/metagraphed/issues/11814)) ([87c24d7](https://github.com/JSONbored/metagraphed/commit/87c24d7992711e4df9d4327e7dda3b330f4542cd))
+* **ui:** isolate degraded chain activity ([#11817](https://github.com/JSONbored/metagraphed/issues/11817)) ([f0117a4](https://github.com/JSONbored/metagraphed/commit/f0117a4f9ce36e0672df92b55c04d2638022bc21))
+* **ui:** surface unverified API fallbacks ([#11808](https://github.com/JSONbored/metagraphed/issues/11808)) ([172ecc5](https://github.com/JSONbored/metagraphed/commit/172ecc5a2125fd324703517a097a9f911cbfcf88))
+
+
+### Performance
+
+* **ui:** preload homepage live blocks ([#11801](https://github.com/JSONbored/metagraphed/issues/11801)) ([b34d5ab](https://github.com/JSONbored/metagraphed/commit/b34d5ab24b6585a2b1d1d40df2ee1f0fa692dee3))
+
 ## [1.4.0](https://github.com/JSONbored/metagraphed/compare/ui-v1.3.0...ui-v1.4.0) (2026-08-29)
 
 
