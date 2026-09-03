@@ -248,7 +248,7 @@
   },
   "overrides": {
     "esbuild": "^0.28.2",
-    "js-yaml": "^4.3.1",
+    "js-yaml": "^4.3.2",
     "ws": "^8.21.3",
     "@substrate/connect": "^2.1.8"
   }
