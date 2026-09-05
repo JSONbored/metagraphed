@@ -594,7 +594,10 @@ describe("loadCrowdloan", () => {
     )) as Row;
     assert.equal(out.exists, null);
     assert.equal(out.crowdloan, null);
-    assert.equal(puts[0].options?.expirationTtl, CROWDLOANS_NEGATIVE_KV_TTL);
+    assert.equal(
+      puts[0].options?.expirationTtl,
+      Math.max(60, CROWDLOANS_NEGATIVE_KV_TTL),
+    );
   });
 
   test("an undecodable record is exists:null, not a partial row", async () => {

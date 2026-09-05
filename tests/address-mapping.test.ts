@@ -225,7 +225,10 @@ describe("loadAddressMapping", () => {
     })) as unknown as typeof fetch;
     try {
       await loadAddressMapping(mockEnv(env), H160);
-      assert.equal(putOptions!.expirationTtl, ADDRESS_MAPPING_NEGATIVE_KV_TTL);
+      assert.equal(
+        putOptions!.expirationTtl,
+        Math.max(60, ADDRESS_MAPPING_NEGATIVE_KV_TTL),
+      );
     } finally {
       globalThis.fetch = orig;
     }

@@ -371,7 +371,9 @@ describe("loadUpgradeRadar", () => {
     expect(radar.pending_upgrade).toBe("unknown");
     expect(radar.testnet.spec_version).toBeNull();
     expect(radar.mainnet.spec_version).toBe(440);
-    expect(kv.puts.some((p) => p.key === UPGRADE_RADAR_CACHE_KEY)).toBe(true);
+    expect(
+      kv.puts.some((p) => p.key === `${UPGRADE_RADAR_CACHE_KEY}:failure:v1`),
+    ).toBe(true);
   });
 
   it("degrades to a live read when the cache is unreadable", async () => {

@@ -9,6 +9,7 @@
 // Crypto's SubtleCrypto.digest() has no BLAKE2b algorithm either. @noble/hashes
 // is audited, zero-dependency, pure JS, and verified working in workerd
 // (wrangler dev) with output identical to node:crypto's blake2b512.
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { chainRpc } from "./chain-rpc.ts";
 import type { FieldSources } from "./field-provenance.ts";
@@ -31,7 +32,8 @@ const FINNEY_SS58_DECODED_LENGTH = 35;
 const FINNEY_SS58_CHECKSUM_LENGTH = 2; // prefix < 64 → 2-byte SS58 checksum
 const SS58_PREIMAGE = new TextEncoder().encode("SS58PRE");
 export const BALANCE_KV_TTL = 60; // seconds
-export const BALANCE_NEGATIVE_KV_TTL = 10; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const BALANCE_NEGATIVE_KV_TTL = 10;
 export const BALANCE_RPC_TIMEOUT_MS = 5000;
 
 // System::Account(AccountId) storage prefix = twox128("System") ++ twox128("Account").
@@ -243,9 +245,9 @@ async function loadAccountBalanceSnapshot(
   const cacheKey = networkKvKey(`balance:${ss58}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
+      const cached = await readLiveRpcCache(kv, cacheKey);
       if (cached) return cached as AccountBalanceResult;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
@@ -301,10 +303,11 @@ async function loadAccountBalanceSnapshot(
     queried_at: queriedAt,
   };
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: rpcOk ? BALANCE_KV_TTL : BALANCE_NEGATIVE_KV_TTL,
+      await writeLiveRpcCache(kv, cacheKey, payload, {
+        ttlSeconds: rpcOk ? BALANCE_KV_TTL : BALANCE_NEGATIVE_KV_TTL,
+        negative: !rpcOk,
       });
     } catch {
       // KV write failure is non-fatal.

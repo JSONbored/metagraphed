@@ -62,6 +62,7 @@
 // The field order is not a guess that happens to fit: on a live sample the
 // U64F64's INTEGER part equalled `locked_mass` exactly with a zero fraction,
 // which only holds if both are being read from the right offsets.
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { encodeAccountId32 } from "./ss58.ts";
 import { buildSubnetConviction } from "./subnet-conviction.ts";
 import {
@@ -79,6 +80,7 @@ export const SUBNET_CONVICTION_RPC_TIMEOUT_MS = 5000;
 export const LOCK_STATE_KV_TTL = 60;
 /** Seconds a DECLINE stays cached. Short enough that a blip clears quickly,
  * long enough that a throttled endpoint is not retried on every request. */
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
 export const LOCK_STATE_NEGATIVE_KV_TTL = 10;
 const LOCK_STATE_KV_PREFIX = "subnet-conviction:v1";
 
@@ -233,9 +235,9 @@ export async function loadSubnetConvictionChainTier(
   }
 
   const cacheKey = `${LOCK_STATE_KV_PREFIX}:${netuid}`;
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = (await kv.get(cacheKey, { type: "json" })) as {
+      const cached = (await readLiveRpcCache(kv, cacheKey)) as {
         board: ReturnType<typeof buildSubnetConviction> | null;
       } | null;
       // A cached DECLINE is stored as an explicit null board, so it is
@@ -314,12 +316,18 @@ async function remember<T>(
   cacheKey: string,
   board: T,
 ): Promise<T> {
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify({ board }), {
-        expirationTtl:
-          board === null ? LOCK_STATE_NEGATIVE_KV_TTL : LOCK_STATE_KV_TTL,
-      });
+      await writeLiveRpcCache(
+        kv,
+        cacheKey,
+        { board },
+        {
+          ttlSeconds:
+            board === null ? LOCK_STATE_NEGATIVE_KV_TTL : LOCK_STATE_KV_TTL,
+          negative: board === null,
+        },
+      );
     } catch {
       // A KV write failure is non-fatal.
     }

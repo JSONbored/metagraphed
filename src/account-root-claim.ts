@@ -22,6 +22,7 @@
 // Blake2_128Concat + storageMapPrefix reuse the child-hotkey-delegation
 // pattern; I96F32 decode mirrors network-parameters' fixed-point split.
 
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { encodeAccountId32 } from "./ss58.ts";
 import { isFinneySs58Address } from "./account-balance.ts";
@@ -34,7 +35,8 @@ import {
 } from "./chain-network.ts";
 
 export const ROOT_CLAIM_KV_TTL = 120; // seconds
-export const ROOT_CLAIM_NEGATIVE_KV_TTL = 10; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const ROOT_CLAIM_NEGATIVE_KV_TTL = 10;
 export const ROOT_CLAIM_RPC_TIMEOUT_MS = 5000;
 const I96F32_SCALE = 2n ** 32n;
 const I96F32_BYTES = 16;
@@ -482,21 +484,20 @@ async function loadAccountRootClaimSnapshot(
   const compatibility = await rootClaimCompatibility(network);
   const cacheKey = networkKvKey(`root-claim:v2:${ss58}`, network);
   const kv = env?.METAGRAPH_CONTROL;
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get<AccountRootClaimResultSnapshot>(cacheKey, {
-        type: "json",
-      });
-      if (
-        cached?.schema_version === 1 &&
-        cached.ss58 === ss58 &&
-        cached.compatibility?.spec_name === compatibility.spec_name &&
-        cached.compatibility?.spec_version === compatibility.spec_version &&
-        Object.hasOwn(cached, "claim_type") &&
-        Object.hasOwn(cached, "hotkeys")
-      ) {
-        return cached;
-      }
+      const cached = await readLiveRpcCache<AccountRootClaimResultSnapshot>(
+        kv,
+        cacheKey,
+        (value) =>
+          value.schema_version === 1 &&
+          value.ss58 === ss58 &&
+          value.compatibility?.spec_name === compatibility.spec_name &&
+          value.compatibility?.spec_version === compatibility.spec_version &&
+          Object.hasOwn(value, "claim_type") &&
+          Object.hasOwn(value, "hotkeys"),
+      );
+      if (cached) return cached;
     } catch {
       // non-fatal
     }
@@ -516,13 +517,14 @@ async function loadAccountRootClaimSnapshot(
       queried_at: queriedAt,
       compatibility: context,
     };
-    if (kv?.put) {
+    if (typeof kv?.put === "function") {
       try {
-        await kv.put(cacheKey, JSON.stringify(payload), {
-          expirationTtl:
+        await writeLiveRpcCache(kv, cacheKey, payload, {
+          ttlSeconds:
             context.status === "unavailable"
               ? ROOT_CLAIM_NEGATIVE_KV_TTL
               : ROOT_CLAIM_KV_TTL,
+          negative: context.status === "unavailable",
         });
       } catch {
         // non-fatal

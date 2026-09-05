@@ -355,8 +355,11 @@ describe("loadAccountRootClaim", () => {
       }),
       SS58,
     );
-    assert.equal(stored!.opts.expirationTtl, ROOT_CLAIM_NEGATIVE_KV_TTL);
-    assert.equal(stored!.value.hotkeys, null);
+    assert.equal(
+      stored!.opts.expirationTtl,
+      Math.max(60, ROOT_CLAIM_NEGATIVE_KV_TTL),
+    );
+    assert.equal(stored!.value.value.hotkeys, null);
   });
 
   test("treats non-ok RPC and JSON-RPC errors as failures", async () => {
@@ -414,7 +417,10 @@ describe("loadAccountRootClaim", () => {
       SS58,
     );
     assert.equal(payload.hotkeys, null);
-    assert.equal(stored!.expirationTtl, ROOT_CLAIM_NEGATIVE_KV_TTL);
+    assert.equal(
+      stored!.expirationTtl,
+      Math.max(60, ROOT_CLAIM_NEGATIVE_KV_TTL),
+    );
   });
 
   test("nulls out when a per-hotkey claimable fetch fails", async () => {
@@ -613,7 +619,10 @@ describe("loadAccountRootClaim", () => {
       SS58,
     );
     assert.equal(payload.hotkeys, null);
-    assert.equal(stored!.opts.expirationTtl, ROOT_CLAIM_NEGATIVE_KV_TTL);
+    assert.equal(
+      stored!.opts.expirationTtl,
+      Math.max(60, ROOT_CLAIM_NEGATIVE_KV_TTL),
+    );
   });
 
   test("nulls when claimed/threshold RPC is non-ok", async () => {

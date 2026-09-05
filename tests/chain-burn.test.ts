@@ -270,7 +270,7 @@ describe("loadChainBurn", () => {
         },
       };
       await loadChainBurn(env as never);
-      assert.equal(puts[0]?.ttl, expected);
+      assert.equal(puts[0]?.ttl, Math.max(60, expected));
     }
   });
 

@@ -247,7 +247,7 @@ describe("loadSubnetRecycled", () => {
     globalThis.fetch = (async () => ({ ok: false })) as unknown as typeof fetch;
     try {
       await loadSubnetRecycled(env, 42);
-      assert.equal(sawKey, "recycled:42");
+      assert.equal(sawKey, "recycled:42:failure:v1");
     } finally {
       globalThis.fetch = orig;
     }
@@ -305,7 +305,10 @@ describe("loadSubnetRecycled", () => {
     globalThis.fetch = (async () => ({ ok: false })) as unknown as typeof fetch;
     try {
       await loadSubnetRecycled(env, GOLDEN_NETUID);
-      assert.equal(putOptions!.expirationTtl, RECYCLED_NEGATIVE_KV_TTL);
+      assert.equal(
+        putOptions!.expirationTtl,
+        Math.max(60, RECYCLED_NEGATIVE_KV_TTL),
+      );
     } finally {
       globalThis.fetch = orig;
     }

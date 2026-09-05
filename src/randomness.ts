@@ -17,6 +17,7 @@
 // changes). Cross-checked against that module's already-verified
 // twox-storage-key.ts output at write time -- see tests/randomness.test.ts.
 
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { chainRpcResult } from "./chain-rpc.ts";
 
 import type { FieldSources } from "./field-provenance.ts";
@@ -27,7 +28,8 @@ import {
 } from "./chain-network.ts";
 
 export const RANDOMNESS_KV_TTL = 30; // seconds -- pulses land ~3s apart, but this is a snapshot, not a feed
-export const RANDOMNESS_NEGATIVE_KV_TTL = 10; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const RANDOMNESS_NEGATIVE_KV_TTL = 10;
 export const RANDOMNESS_RPC_TIMEOUT_MS = 5000;
 
 // twox128("Drand") ++ twox128("LastStoredRound").
@@ -126,14 +128,12 @@ async function loadRandomnessSnapshot(
   network?: ChainNetworkId,
 ): Promise<RandomnessSnapshot> {
   // Drand rounds differ per chain -- testnet stores its own pulse history.
-  const cacheKey = networkKvKey("network:randomness", network);
+  const cacheKey = networkKvKey("network:randomness:v2", network);
   const kv = env?.METAGRAPH_CONTROL;
 
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get<RandomnessSnapshot>(cacheKey, {
-        type: "json",
-      });
+      const cached = await readLiveRpcCache<RandomnessSnapshot>(kv, cacheKey);
       if (cached) return cached;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
@@ -174,10 +174,11 @@ async function loadRandomnessSnapshot(
     queried_at: queriedAt,
   };
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: rpcOk ? RANDOMNESS_KV_TTL : RANDOMNESS_NEGATIVE_KV_TTL,
+      await writeLiveRpcCache(kv, cacheKey, payload, {
+        ttlSeconds: rpcOk ? RANDOMNESS_KV_TTL : RANDOMNESS_NEGATIVE_KV_TTL,
+        negative: !rpcOk,
       });
     } catch {
       // KV write failure is non-fatal.

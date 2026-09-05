@@ -547,7 +547,10 @@ describe("loadSubnetLease", () => {
     globalThis.fetch = (async () => ({ ok: false })) as unknown as typeof fetch;
     try {
       await loadSubnetLease(env, 3);
-      assert.equal(putOptions!.expirationTtl, SUBNET_LEASE_NEGATIVE_KV_TTL);
+      assert.equal(
+        putOptions!.expirationTtl,
+        Math.max(60, SUBNET_LEASE_NEGATIVE_KV_TTL),
+      );
       assert.equal(SUBNET_LEASE_NEGATIVE_KV_TTL, 10);
     } finally {
       globalThis.fetch = orig;

@@ -160,7 +160,14 @@ test("upgrade invalidates cached legacy defaults and uses the v2 network namespa
   assert.equal(upgraded.compatibility.status, "unsupported");
   assert.equal(upgraded.claim_type, null);
   assert.equal(upgraded.hotkeys, null);
-  assert.ok(keys.every((key) => key === `testnet:root-claim:v2:${SS58}`));
+  assert.ok(
+    keys.every((key) =>
+      [
+        `testnet:root-claim:v2:${SS58}`,
+        `testnet:root-claim:v2:${SS58}:failure:v1`,
+      ].includes(key),
+    ),
+  );
   assert.ok(calls.every((call) => call.url.includes("test.finney")));
 });
 

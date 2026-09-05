@@ -307,9 +307,12 @@ describe("loadAccountBalance", () => {
     try {
       const data = await loadAccountBalance(mockEnv(env), SS58);
       assert.equal(data.balance_tao, null);
-      assert.equal(putKey, `balance:${SS58}`);
-      assert.equal(putValue!.balance_tao, null);
-      assert.equal(putOptions!.expirationTtl, BALANCE_NEGATIVE_KV_TTL);
+      assert.equal(putKey, `balance:${SS58}:failure:v1`);
+      assert.equal(putValue!.value.balance_tao, null);
+      assert.equal(
+        putOptions!.expirationTtl,
+        Math.max(60, BALANCE_NEGATIVE_KV_TTL),
+      );
     } finally {
       globalThis.fetch = orig;
     }
