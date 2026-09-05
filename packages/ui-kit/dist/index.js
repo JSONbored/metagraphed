@@ -1486,7 +1486,7 @@ function useEntityMark(key, opts = {}) {
         return;
       }
       if (event.key === "Enter" || event.key === " ") {
-        if (disabled || event.target !== event.currentTarget) return;
+        if (disabled) return;
         event.preventDefault();
         onActivate?.();
         return;
@@ -3788,7 +3788,6 @@ function CompositionBreakdown({
   limit,
   other = OTHER_KEY,
   legendCols = 4,
-  legendLimit,
   ariaLabel,
   source = "composition",
   onActivate,
@@ -3889,7 +3888,7 @@ function CompositionBreakdown({
         /* @__PURE__ */ jsx(
           RankGrid,
           {
-            items: legendLimit === void 0 ? legend : legend.slice(0, legendLimit),
+            items: legend,
             cols: legendCols,
             ariaLabel,
             source,

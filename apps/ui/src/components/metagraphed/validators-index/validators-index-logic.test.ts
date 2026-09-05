@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 import {
-  concentration,
   filterOperators,
   fmtStake,
-  hotkeyColor,
-  hotkeyComposition,
-  median,
   operatorRows,
   shortKey,
   takeLabel,
@@ -81,7 +77,7 @@ describe("operatorRows", () => {
     expect(operators[0]).toMatchObject({ keyCount: 2, totalStakeTao: 1000, named: true });
   });
 
-  it("anchors an operator on its LARGEST key, which is the one to link", () => {
+  it("preserves the largest-key compatibility field independently of chosen links", () => {
     expect(operatorRows(rows)[0]?.primaryHotkey).toBe("5B");
   });
 
@@ -328,36 +324,6 @@ describe("takeLabel", () => {
   });
 });
 
-describe("median", () => {
-  it("takes the middle, averages an even set, and refuses an empty one", () => {
-    expect(median([3, 1, 2])).toBe(2);
-    expect(median([1, 2, 3, 4])).toBe(2.5);
-    // Null, not 0: zero is a reading, and "no readings" is not.
-    expect(median([])).toBeNull();
-    expect(median([null, undefined, Number.NaN])).toBeNull();
-  });
-});
-
-describe("concentration", () => {
-  const operators = operatorRows(
-    [1, 2, 3, 4].map((n) => validator({ hotkey: `5${n}`, total_stake_tao: n * 10 })),
-  );
-
-  it("collapses everything past the head into one residual", () => {
-    const { segments } = concentration(operators, 2);
-    expect(segments.map((s) => s.key)).toEqual(["hotkey:54", "hotkey:53", "rest"]);
-    expect(segments[2]).toMatchObject({ label: "2 more operators", value: 30 });
-  });
-
-  it("totals the LISTED stake, which is not the network's", () => {
-    expect(concentration(operators, 2).listedTotal).toBe(100);
-  });
-
-  it("emits no residual when the head is everything", () => {
-    expect(concentration(operators, 10).segments.some((s) => s.key === "rest")).toBe(false);
-  });
-});
-
 describe("filterOperators", () => {
   const operators = operatorRows([
     validator({
@@ -370,8 +336,8 @@ describe("filterOperators", () => {
   ]);
 
   it("ANDs the filters", () => {
-    expect(filterOperators(operators, { minStake: 1000, namedOnly: true })).toHaveLength(1);
-    expect(filterOperators(operators, { minStake: 10_000, namedOnly: true })).toHaveLength(0);
+    expect(filterOperators(operators, { q: "yuma", namedOnly: true })).toHaveLength(1);
+    expect(filterOperators(operators, { q: "5bbb", namedOnly: true })).toHaveLength(0);
   });
 
   it("searches the operator name, its primary hotkey and every child key", () => {
@@ -385,53 +351,6 @@ describe("filterOperators", () => {
 
   it("passes everything through when nothing is filtered", () => {
     expect(filterOperators(operators, {})).toHaveLength(2);
-  });
-});
-
-describe("hotkeyComposition", () => {
-  const keys = [
-    { hotkey: "5A", totalStakeTao: 10, take: null },
-    { hotkey: "5B", totalStakeTao: 70, take: null },
-    { hotkey: "5C", totalStakeTao: 15, take: null },
-    { hotkey: "5D", totalStakeTao: 5, take: null },
-  ];
-
-  it("preserves the total and positions the real tail after the largest keys", () => {
-    const segments = hotkeyComposition(keys, 2);
-    expect(
-      segments.map(({ key, value, share, offset }) => ({ key, value, share, offset })),
-    ).toEqual([
-      { key: "5B", value: 70, share: 0.7, offset: 0 },
-      { key: "5C", value: 15, share: 0.15, offset: 0.7 },
-      { key: "rest", value: 15, share: 0.15, offset: 0.85 },
-    ]);
-    expect(segments.at(-1)?.label).toBe("2 more hotkeys");
-    expect(segments.reduce((total, segment) => total + segment.share, 0)).toBeCloseTo(1);
-    expect(keys.map((key) => key.hotkey)).toEqual(["5A", "5B", "5C", "5D"]);
-  });
-
-  it("keeps key colors stable when the stake ranking changes", () => {
-    const original = hotkeyComposition(keys);
-    const reordered = hotkeyComposition(
-      keys.map((key) => ({ ...key, totalStakeTao: key.hotkey === "5A" ? 100 : key.totalStakeTao })),
-    );
-    for (const segment of original) {
-      expect(reordered.find((key) => key.key === segment.key)?.color).toBe(segment.color);
-      expect(segment.color).toBe(hotkeyColor(segment.key));
-      expect(segment.color).toMatch(/^var\(--chart-\d+\)$/);
-    }
-  });
-
-  it("does not turn missing, zero or negative stake into colored holdings", () => {
-    const invalid = [0, -1, Number.NaN, Number.POSITIVE_INFINITY].map((totalStakeTao, index) => ({
-      hotkey: `invalid-${index}`,
-      totalStakeTao,
-      take: null,
-    }));
-    expect(hotkeyComposition(invalid)).toEqual([]);
-    expect(hotkeyComposition([...invalid, keys[0]!])).toMatchObject([
-      { key: "5A", value: 10, share: 1, offset: 0 },
-    ]);
   });
 });
 

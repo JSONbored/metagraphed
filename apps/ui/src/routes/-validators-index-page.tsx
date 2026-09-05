@@ -4,15 +4,11 @@ import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
 import {
   AnalyticsPage,
   AnalyticsSection,
-  CompositionBreakdown,
   EntityHero,
   Fact,
   FactSentence,
-  FactStrip,
-  RESIDUAL_KEY,
   RankedRails,
   Raw,
-  type FactCells,
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -20,24 +16,20 @@ import { HubSections } from "@/components/metagraphed/hub-prose";
 import { ErrorState } from "@/components/metagraphed/states";
 import { OperatorDirectory } from "@/components/metagraphed/validators-index/operator-directory";
 import { useNearViewport } from "@/hooks/use-near-viewport";
-import {
-  concentration,
-  fmtStake,
-  median,
-} from "@/components/metagraphed/validators-index/validators-index-logic";
+import { fmtStake } from "@/components/metagraphed/validators-index/validators-index-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import {
   validatorEconomicsQuery,
   validatorOperatorDirectoryQuery,
 } from "@/lib/metagraphed/queries";
-import { formatDecimal, formatNumber, formatPct } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { deserializeOperatorRows } from "@/lib/metagraphed/validator-operators";
 import { Route } from "./validators.index";
 
 const SECTIONS = [
   { id: "operators", name: "Operators" },
-  { id: "concentration", name: "Concentration" },
+  { id: "concentration", name: "Data scope" },
   { id: "cost", name: "Cost to validate" },
 ] as const;
 
@@ -68,28 +60,9 @@ export function ValidatorsPage() {
     () => deserializeOperatorRows(listed.data.operators),
     [listed.data.operators],
   );
-  const { segments, listedTotal } = useMemo(() => concentration(operators, 10), [operators]);
-
-  const medianTake = median(operators.flatMap((operator) => operator.keys.map((key) => key.take)));
-  const medianApy = median(operators.map((operator) => operator.apyEstimate));
-  const topTen = segments
-    .filter((segment) => segment.key !== RESIDUAL_KEY)
-    .reduce((acc, segment) => acc + segment.value, 0);
-  const topShare = listedTotal > 0 ? topTen / listedTotal : null;
-
   const setSearch = (next: Partial<typeof search>) => {
     navigate({ search: (prev) => ({ ...prev, ...next }), replace: true });
   };
-
-  const cells: FactCells = [
-    { label: "Stake listed", value: fmtStake(listedTotal) },
-    { label: "Operators", value: formatNumber(operators.length) },
-    {
-      label: "Median take",
-      value: medianTake === null ? "—" : `${formatPct(medianTake, 1)}`,
-    },
-    { label: "Median APY", value: medianApy === null ? "—" : `${formatPct(medianApy, 1)}` },
-  ];
 
   const costRows = (economics.data?.data.rows ?? [])
     .filter((row) => typeof row.permit_floor_cost_tao === "number")
@@ -106,41 +79,19 @@ export function ValidatorsPage() {
       <ApiSources />
       <AnalyticsPage
         sections={SECTIONS}
-        className="mg-page--validators"
         hero={
           <EntityHero
-            className="mg-hero--validators"
+            className="mg-hero--directory"
             name="Validators"
             sentence={
               <FactSentence>
-                Compare stake, estimated yield and the operators behind{" "}
+                Find operators, inspect their hotkeys and compare individual keys.{" "}
+                <Fact>{formatNumber(operators.length)} operators</Fact>{" "}
                 <Fact>{formatNumber(listed.data.hotkey_count)} validator hotkeys</Fact>
               </FactSentence>
             }
-            facts={
-              <div className="mg-validator-summary">
-                <FactStrip cells={cells} />
-                <div className="mg-validator-concentration">
-                  <div className="mg-validator-concentration-label">
-                    <span>Listed stake distribution</span>
-                    <a href="#concentration">
-                      Top 10 {topShare === null ? "—" : formatPct(topShare, 1)}
-                    </a>
-                  </div>
-                  <CompositionBreakdown
-                    segments={segments}
-                    formatValue={fmtStake}
-                    legendCols={3}
-                    legendLimit={3}
-                    ariaLabel="Listed stake by operator"
-                    source="validator-operator"
-                    className="mg-composition--preview"
-                  />
-                </div>
-              </div>
-            }
             live={{
-              updatedAt: listed.meta?.generated_at ?? null,
+              updatedAt: listed.data.captured_at,
               source: "chain-direct index",
               onRefresh: () =>
                 void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
@@ -151,28 +102,21 @@ export function ValidatorsPage() {
         <AnalyticsSection
           id="operators"
           name="Operators"
-          question="Every operator, ranked."
+          question="Find a validator."
           className="mg-directory-section mg-directory-section--table-first"
           visual={<OperatorDirectory operators={operators} search={search} onSearch={setSearch} />}
+          footnote={`${formatNumber(listed.data.hotkey_count)} validator hotkeys · chain-direct`}
         />
         <AnalyticsSection
           id="concentration"
-          name="Concentration"
-          question="How much listed stake the largest operators hold."
+          name="Data scope"
+          question="What these records describe."
           visual={
-            segments.length > 0 ? (
-              <CompositionBreakdown
-                segments={segments}
-                formatValue={fmtStake}
-                legendCols={3}
-                ariaLabel="Stake share of the largest operators"
-                source="validator-operator"
-              />
-            ) : null
+            <p className="max-w-prose text-13 text-ink-muted">
+              Declared names are labels, not verification. Expand a row to inspect its individual
+              hotkeys. Balance, return and holdings-concentration figures are unavailable here.
+            </p>
           }
-          footnote={`shares of the ${fmtStake(listedTotal)} held by the ${formatNumber(
-            operators.length,
-          )} listed operators, not of all stake`}
         />
         <AnalyticsSection
           id="cost"

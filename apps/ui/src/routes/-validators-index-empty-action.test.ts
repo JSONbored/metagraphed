@@ -49,7 +49,6 @@ describe("empty-state 'Open the API' actions", () => {
       validators.indexOf("No validators indexed yet"),
     );
     expect(branch).toContain("search.q");
-    expect(branch).toContain("search.minStake");
     expect(branch).toContain("search.named");
     expect(branch).toContain("filtersActive ? (");
     expect(branch).toContain("No operators match these filters");

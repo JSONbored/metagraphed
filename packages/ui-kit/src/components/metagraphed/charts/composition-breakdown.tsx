@@ -33,8 +33,6 @@ export interface CompositionBreakdownProps {
   limit?: number;
   other?: string;
   legendCols?: 3 | 4 | 5;
-  /** A compact preview can name its leaders while the bar retains every share. */
-  legendLimit?: number;
   ariaLabel: string;
   source?: string;
   /** Click / Enter on a legend row; receives the segment key. */
@@ -53,7 +51,6 @@ export function CompositionBreakdown({
   limit,
   other = OTHER_KEY,
   legendCols = 4,
-  legendLimit,
   ariaLabel,
   source = "composition",
   onActivate,
@@ -158,9 +155,7 @@ export function CompositionBreakdown({
         ))}
       </div>
       <RankGrid
-        items={
-          legendLimit === undefined ? legend : legend.slice(0, legendLimit)
-        }
+        items={legend}
         cols={legendCols}
         ariaLabel={ariaLabel}
         source={source}

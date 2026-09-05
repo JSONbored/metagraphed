@@ -125,23 +125,22 @@ export const HUB_COPY = {
     },
   },
   "/validators": {
-    title: `Bittensor validators — stake & performance${BRAND}`,
+    title: `Bittensor validator directory${BRAND}`,
     description:
-      "Every Bittensor validator ranked by stake across all subnets — take, estimated APY, " +
-      "nominators and dominance, computed live from the chain-direct metagraph.",
+      "Find Bittensor validator hotkeys, declared operator identities, observed take and subnet memberships.",
     intro: {
       lede: {
-        heading: "Every Bittensor validator, ranked by stake",
-        body: "Validators score miners' work and set the weights that route emission. This directory ranks every hotkey validating on any subnet, with the stake behind it, the commission it takes and the yield that implies — computed live from the chain-direct metagraph.",
+        heading: "Explore validator records",
+        body: "Validators score miners' work and set the weights that route emission. Find an operator by name, hotkey or coldkey, then expand its row to inspect individual validator keys.",
       },
       sections: [
         {
-          heading: "Stake, take and yield",
-          body: "Stake is the validator's own TAO plus everything delegated to it, and it decides how much its votes weigh. Take is the commission kept from delegator rewards. Estimated APY annualises the latest emission-over-stake rate net of take — a description of the recent past, not a forecast, and on alpha stake it is price-exposed, so a positive nominal figure can still lose TAO.",
+          heading: "Identity and membership",
+          body: "A declared name is a label, not proof of an organization. Memberships count registrations across validator hotkeys, so the same subnet may appear more than once. Links and comparison selections refer to the individual hotkey you choose.",
         },
         {
-          heading: "Reading concentration",
-          body: "Dominance is a validator's share of total network stake. It is worth reading alongside the subnet count: a large operator concentrates influence over consensus, a smaller one spreads it. This directory describes the on-chain data and deliberately does not rank or recommend any validator.",
+          heading: "Reading take",
+          body: "Take is the commission a validator keeps from delegated rewards. An operator can have different takes across its hotkeys; the directory shows the observed range and identifies missing observations. Take does not establish a return rate.",
         },
       ],
     },

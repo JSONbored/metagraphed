@@ -296,22 +296,6 @@ describe("CompositionBreakdown", () => {
     expect(html).toContain("--swatch:var(--chart-residual)");
   });
 
-  it("shortens a preview legend without changing the chart's shares", () => {
-    const html = render(
-      h(CompositionBreakdown, {
-        segments: COMPOSITION_SPECIMEN,
-        legendLimit: 1,
-        formatValue: String,
-        ariaLabel: "Emission split",
-      }),
-    );
-    expect(html).toContain(
-      'aria-label="Emission split: Targon 41%, Chutes 41%, Affine 18%"',
-    );
-    expect(html).toContain("--weight:0.18");
-    expect((html.match(/class="mg-rank-grid-name"/g) ?? []).length).toBe(1);
-  });
-
   it("keeps the composition bar and legend geometry while its source is pending", () => {
     const html = render(
       h(CompositionBreakdown, {

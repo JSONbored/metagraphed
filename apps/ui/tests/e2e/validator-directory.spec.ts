@@ -2,204 +2,334 @@ import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart";
 
-const TAO_BOT = "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u";
-const YUMA = "5DXdHixxtCvoa6GHKs2Jgrdzc61882Ftx1zN2sYFQuwgL1S1";
+const KNOWN_HOTKEY = "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u";
+const LONG_OPERATOR_NAME = `Operator 00${"X".repeat(180)}`;
+const member = (index: number) => `synthetic-hotkey-${String(index).padStart(3, "0")}`;
+const operators = Array.from({ length: 56 }, (_, index) => {
+  const hotkeys =
+    index === 0
+      ? [KNOWN_HOTKEY, ...Array.from({ length: 8 }, (_, n) => member(n))]
+      : [member(index + 8)];
+  return {
+    operator_id: `coldkey:synthetic-owner-${index}`,
+    ownership_basis: "single_coldkey",
+    identity_name: index === 55 ? null : `Operator ${String(index).padStart(2, "0")}`,
+    primary_hotkey: hotkeys[0],
+    coldkey: `synthetic-owner-${index}`,
+    hotkey_count: hotkeys.length,
+    hotkeys:
+      hotkeys.length > 1
+        ? hotkeys.map((hotkey, n) => ({
+            hotkey,
+            total_stake_tao: 9000000 - n,
+            take: n === 0 ? 0 : null,
+          }))
+        : [],
+    total_stake_tao: 9000000 - index,
+    total_emission_tao: 100,
+    stake_dominance: 0.5,
+    apy_estimate: 0.9,
+    membership_count: 56 - index,
+    uid_count: 56 - index,
+    take_min: index === 0 ? 0 : 0.18,
+    take_max: index === 0 ? 0 : 0.18,
+    nominator_count: index === 0 ? null : 0,
+  };
+});
 
-async function openDirectory(page: Page) {
-  await gotoThroughRestart(page, "/validators");
+async function openDirectory(page: Page, captured_at?: string, firstName?: string) {
+  await gotoThroughRestart(page, "/settings");
   await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
-  return page.locator("#operators .mg-dt");
+  await page.route("**/api/v1/validators/operators*", async (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          validator_count: 64,
+          operators: operators.map((operator, index) =>
+            index === 0 && firstName ? { ...operator, identity_name: firstName } : operator,
+          ),
+          captured_at,
+        },
+        meta: { generated_at: new Date().toISOString() },
+      },
+    }),
+  );
+  if ((page.viewportSize()?.width ?? 1280) < 768) {
+    await page.getByRole("button", { name: "Open menu", exact: true }).click();
+    await page
+      .getByRole("dialog", { name: "Site navigation" })
+      .getByRole("link", { name: "Validators", exact: true })
+      .click();
+  } else await page.getByRole("link", { name: "Validators", exact: true }).first().click();
+  const table = page.locator("#operators .mg-dt");
+  await expect(table.locator(".mg-dt-row").first()).toContainText("Operator 00");
+  return table;
 }
 
-test("operator filters reset paging without losing search focus; CSV retains every result", async ({
+test("source freshness stays older than publication metadata and missing stays unknown", async ({
+  page,
+}) => {
+  await openDirectory(page, new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString());
+  await expect(page.locator(".mg-live-meta")).toContainText("2h ago");
+  await openDirectory(page);
+  await expect(page.locator(".mg-live-meta")).toContainText("Updated —");
+});
+
+test("search resets pagination and CSV exports every match without unsupported metrics", async ({
   page,
 }) => {
   const table = await openDirectory(page);
   const rows = table.locator(".mg-dt-row");
-  const allCount = Number(
-    (await page.getByRole("button", { name: /^All operators/ }).innerText())
-      .match(/[\d,]+$/)![0]
-      .replaceAll(",", ""),
-  );
   await expect(rows).toHaveCount(50);
   await table.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(rows.first()).not.toContainText("tao.bot");
+  await expect(rows.first()).toContainText("Operator 50");
   const search = page.getByRole("searchbox", { name: "Search operators" });
-  await search.fill("Yuma");
+  await search.fill("Operator 03");
   await expect(search).toBeFocused();
   await expect(rows).toHaveCount(1);
-  await expect(table.locator(".mg-dt-title")).toHaveText(`1 of ${allCount} operators`);
-  await page.getByRole("button", { name: "Clear filters", exact: true }).click();
-  await expect(rows.first()).toContainText("tao.bot");
+  await expect(table.locator(".mg-dt-title")).toHaveText("1 of 56 operators");
+  await page.getByRole("button", { name: "Reset", exact: true }).click();
+  await expect(rows.first()).toContainText("Operator 00");
   await expect(table.getByRole("button", { name: "Page 1", exact: true })).toHaveAttribute(
     "aria-current",
     "page",
   );
-
   await table.getByRole("button", { name: "Operators options" }).click();
+  await expect(page.getByRole("checkbox", { name: /stake|APY|dominance|emission/i })).toHaveCount(
+    0,
+  );
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download CSV", exact: true }).click();
-  const download = await downloadPromise;
-  const csv = await readFile((await download.path())!, "utf8");
-  expect(csv.trim().split(/\r?\n/)).toHaveLength(allCount + 1);
-  expect(csv).toContain("Stake by hotkey");
-  expect(csv).toContain(`${TAO_BOT}:`);
-  expect(csv).toContain(" TAO");
+  const csv = await readFile((await (await downloadPromise).path())!, "utf8");
+  expect(csv.trim().split(/\r?\n/)).toHaveLength(57);
+  expect(csv.split(/\r?\n/)[0]).toBe("Operator,Hotkeys,Observed take,Memberships");
+  expect(csv).not.toMatch(/9000000|Total stake|APY|Dominance|TAO/);
+  expect(csv).toContain("0.0% (1 of 9 hotkeys)");
 });
 
-test("expanded operators reveal their keys and keyboard identity links still navigate", async ({
-  page,
-}) => {
+test("comparison keeps explicitly chosen members within the three-key limit", async ({ page }) => {
   const table = await openDirectory(page);
-  const yuma = table
+  await expect(table.locator('.mg-dt-row [role="checkbox"]')).toHaveCount(0);
+  await expect(table.locator("button a, button button, button input, button select")).toHaveCount(
+    0,
+  );
+  await table.getByRole("button", { name: "Operators options" }).click();
+  const operatorColumn = page.getByRole("checkbox", { name: "Operator", exact: true });
+  await operatorColumn.uncheck();
+  await expect(table.locator("button a, button button, button input, button select")).toHaveCount(
+    0,
+  );
+  await operatorColumn.check();
+  await page.keyboard.press("Escape");
+  const visibleKey = table.locator(".mg-dt-row").first().getByRole("link");
+  await visibleKey.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(new RegExp(`/validators/${KNOWN_HOTKEY}(?:\\?|$)`));
+  await openDirectory(page);
+  await table
     .locator(".mg-dt-row")
-    .filter({ has: page.locator(`a[href="/validators/${YUMA}"]`) });
-  await yuma.getByRole("button", { name: "Expand row", exact: true }).focus();
+    .first()
+    .getByRole("button", { name: "Expand row", exact: true })
+    .focus();
   await page.keyboard.press("Enter");
-  const detail = table.locator(".mg-operator-details");
-  await expect(
-    detail.getByRole("heading", { name: "Yuma, a DCG Company", exact: true }),
-  ).toBeVisible();
-  await expect(detail.locator(".mg-operator-keys li")).toHaveCount(8);
-  await expect(detail).toContainText("Memberships count registrations across hotkeys");
-  const count = Number((await yuma.locator(".mg-op-profile").innerText()).match(/^\d+/)![0]);
-  await detail.getByRole("button", { name: `Show all ${count} hotkeys` }).click();
-  await expect(detail.locator(".mg-operator-keys li")).toHaveCount(count);
-  await yuma.getByRole("button", { name: "Collapse row", exact: true }).focus();
+  const detail = table.locator(".mg-dt-expansion");
+  await expect(detail.locator("li")).toHaveCount(8);
+  await expect(table.locator(".mg-dt-row").first()).toContainText("1 of 9 hotkeys");
+  await detail.getByRole("button", { name: "Show all 9 hotkeys", exact: true }).click();
+  await expect(detail.locator("li")).toHaveCount(9);
+  const checks = detail.getByRole("checkbox");
+  for (const index of [1, 2, 3]) {
+    await checks.nth(index).focus();
+    await page.keyboard.press("Space");
+    await expect(checks.nth(index)).toHaveAttribute("aria-checked", "true");
+  }
+  await expect(checks.first()).toBeDisabled();
+  const dock = page.locator(".mg-compare-dock");
+  const compare = dock.getByRole("link", { name: "Compare", exact: true });
+  const href = new URL((await compare.getAttribute("href"))!, "http://localhost");
+  expect(href.searchParams.get("kind")).toBe("validators");
+  expect(href.searchParams.get("validators")?.split(",")).toEqual([
+    member(0),
+    member(1),
+    member(2),
+  ]);
+  await expect(dock).toContainText("Selected hotkeys");
+  await expect(dock).toContainText("Operator 00");
+  await dock.getByRole("button", { name: "Clear", exact: true }).click();
+  await expect(checks.first()).toBeEnabled();
+  await detail.locator(`a[href="/validators/${KNOWN_HOTKEY}"]`).focus();
   await page.keyboard.press("Enter");
-  await expect(detail).toHaveCount(0);
-  await yuma.locator(".mg-dt-rowlink").focus();
-  await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(new RegExp(`/validators/${YUMA}(?:\\?|$)`));
+  await expect(page).toHaveURL(new RegExp(`/validators/${KNOWN_HOTKEY}(?:\\?|$)`));
 });
 
-test("named comparison selections respect the comparison page's three-hotkey limit", async ({
+test("legacy balance filters are explained and supported sort links survive reload", async ({
   page,
 }) => {
-  await openDirectory(page);
-  for (const name of ["tao.bot", "Yuma, a DCG Company", "Kraken"]) {
-    await page.getByRole("checkbox", { name: `Add ${name} to comparison`, exact: true }).focus();
-    await page.keyboard.press("Space");
-    await expect(
-      page.getByRole("button", { name: `Remove ${name} from comparison`, exact: true }),
-    ).toBeVisible();
-  }
-  await expect(
-    page.getByRole("checkbox", { name: "Add Taostats to comparison", exact: true }),
-  ).toBeDisabled();
-  const compare = page.locator(".mg-operator-compare-link:visible");
-  await expect(compare).toHaveText("Compare 3");
-  const href = new URL((await compare.getAttribute("href"))!, "http://localhost");
-  const selected = href.searchParams.get("validators")!.split(",");
-  expect(selected).toHaveLength(3);
-  expect(selected).toEqual(expect.arrayContaining([TAO_BOT, YUMA]));
-  await page.getByRole("button", { name: "Remove Kraken from comparison", exact: true }).click();
-  await expect(
-    page.getByRole("checkbox", { name: "Add Taostats to comparison", exact: true }),
-  ).toBeEnabled();
+  await gotoThroughRestart(page, "/validators?minStake=100000&sort=keys&order=desc");
+  await expect(page.getByText("Balance filtering is unavailable.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Clear this saved filter", exact: true }).click();
+  await expect(page).not.toHaveURL(/minStake=/);
+  await expect(page).toHaveURL(/sort=keys/);
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "Sort by", exact: true })).toHaveValue(
+    "keys:desc",
+  );
+  await expect(page.locator("section#concentration")).toContainText(
+    "Balance, return and holdings-concentration figures are unavailable here.",
+  );
 });
 
 test.describe("operator directory on phones", () => {
   test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
-
-  test("compact options preserve filters, sorting, focus and the single-scroll directory", async ({
-    page,
-  }) => {
-    const table = await openDirectory(page);
-    await expect(
-      page.getByRole("heading", { name: "Operators. Every operator, ranked.", exact: true }),
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: /^All operators/ })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /^Sort by / })).toHaveCount(0);
-    await expect(page.getByRole("combobox", { name: "Minimum stake" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /^Compare/ })).toHaveCount(0);
+  test("one options sheet preserves URL state, focus and page scrolling", async ({ page }) => {
+    const table = await openDirectory(page, undefined, LONG_OPERATOR_NAME);
+    await expect(page.getByRole("combobox", { name: "Sort by", exact: true })).not.toBeVisible();
     const options = page.getByRole("button", { name: /^Filter and sort operators/ });
     await options.tap();
     const panel = page.getByRole("dialog", { name: "Filter and sort" });
-    await panel.getByRole("combobox", { name: "Operators", exact: true }).selectOption("named");
-    await panel.getByRole("combobox", { name: "Minimum stake" }).selectOption("100000");
-    await panel.getByRole("combobox", { name: "Sort by" }).selectOption("keys:desc");
-    await panel.getByRole("button", { name: /^Show [\d,]+ operators$/ }).tap();
+    await panel.getByRole("combobox", { name: "Identity", exact: true }).selectOption("named");
+    await panel.getByRole("combobox", { name: "Sort by", exact: true }).selectOption("keys:desc");
+    await panel.getByRole("button", { name: "Show 55 operators", exact: true }).tap();
     await expect(panel).not.toBeVisible();
     await expect(options).toBeFocused();
-    await expect(options).toHaveAccessibleName("Filter and sort operators, options active");
-    await expect(table.locator(".mg-dt-title")).toContainText("of 604 operators");
+    await expect(page).toHaveURL(/sort=keys/);
+    await expect(table.locator(".mg-dt-title")).toHaveText("55 of 56 operators");
     await options.tap();
-    await expect(panel.getByRole("combobox", { name: "Sort by" })).toHaveValue("keys:desc");
+    await expect(panel.getByRole("combobox", { name: "Sort by", exact: true })).toHaveValue(
+      "keys:desc",
+    );
     await page.keyboard.press("Escape");
-    await expect(panel).not.toBeVisible();
     await expect(options).toBeFocused();
-    const first = table.locator(".mg-dt-row").first();
-    await first.scrollIntoViewIfNeeded();
-    await expect(first.getByRole("button", { name: "Expand row", exact: true })).toBeVisible();
-    const layout = await first.evaluate((row) => {
-      const profile = row.querySelector(".mg-op-profile")!.getBoundingClientRect();
-      const identity = row.querySelector(".mg-op-name")!.getBoundingClientRect();
-      const disclosure = row.querySelector(".mg-dt-disclosure")!.getBoundingClientRect();
-      const cells = [".mg-op-stake", "em", "td:nth-child(5)"].map((selector) => {
-        const element = row.querySelector(selector)!;
-        const cell = element.closest("td")!;
-        return {
-          label: getComputedStyle(cell, "::before").content.replaceAll('"', ""),
-          top: cell.getBoundingClientRect().top,
-        };
+    const firstRow = table.locator(".mg-dt-row").first();
+    await firstRow.scrollIntoViewIfNeeded();
+    const rowBox = (await firstRow.boundingBox())!;
+    const startY = Math.min(720, rowBox.y + rowBox.height - 20);
+    const initialScroll = await table.locator(".mg-dt-viewport").evaluate((element) => ({
+      page: window.scrollY,
+      table: element.scrollTop,
+    }));
+    const session = await page.context().newCDPSession(page);
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: 180, y: startY }],
+    });
+    for (let y = startY - 40; y >= startY - 240; y -= 40) {
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: 180, y }],
       });
-      const viewport = row.closest(".mg-dt-viewport")!;
+      await page.evaluate(
+        () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+      );
+    }
+    await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await session.detach();
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY))
+      .toBeGreaterThan(initialScroll.page + 100);
+    expect(await table.locator(".mg-dt-viewport").evaluate((element) => element.scrollTop)).toBe(
+      initialScroll.table,
+    );
+    await table
+      .locator(".mg-dt-row")
+      .first()
+      .getByRole("button", { name: "Expand row", exact: true })
+      .tap();
+    await expect(table.locator(".mg-dt-expansion")).toBeVisible();
+    const detailHeading = table.locator(".mg-dt-expansion h3");
+    await expect(detailHeading).toHaveText(LONG_OPERATOR_NAME);
+    expect(
+      await detailHeading.evaluate(
+        (element) =>
+          element.scrollWidth <= element.clientWidth &&
+          element.getBoundingClientRect().right <=
+            element.closest("td")!.getBoundingClientRect().right - 16,
+      ),
+    ).toBe(true);
+    const memberRow = table.locator(".mg-dt-expansion li").first();
+    const keyBox = (await memberRow.getByRole("link").boundingBox())!;
+    const takeBox = (await memberRow.getByText("0.0% take", { exact: true }).boundingBox())!;
+    const compareBox = (await memberRow.getByRole("checkbox").boundingBox())!;
+    expect(keyBox.y + keyBox.height).toBeLessThanOrEqual(takeBox.y);
+    expect(takeBox.x + takeBox.width).toBeLessThanOrEqual(compareBox.x);
+    await expect(memberRow.getByText("Compare", { exact: true })).toBeVisible();
+    const containment = await memberRow.evaluate((element) => {
+      const row = element.getBoundingClientRect();
+      const key = element.querySelector("a")!;
+      const label = element.querySelector("label")!;
       return {
-        profileWidth: profile.width,
-        rowWidth: row.getBoundingClientRect().width,
-        profileTop: profile.top,
-        cells,
-        disclosureFits:
-          disclosure.left >= row.getBoundingClientRect().left && disclosure.right <= identity.left,
-        overflow: getComputedStyle(viewport).overflowY,
-        pageFits: document.documentElement.scrollWidth <= innerWidth,
+        contentFits: element.scrollWidth <= element.clientWidth,
+        keyFits: key.scrollWidth <= key.clientWidth,
+        labelFits: label.getBoundingClientRect().right <= row.right,
+        rightInset: element.closest("td")!.getBoundingClientRect().right - row.right,
       };
     });
-    expect(layout.cells.map((cell) => cell.label)).toEqual(["Total stake", "Est. APY", "Take"]);
-    expect(new Set(layout.cells.map((cell) => cell.top)).size).toBe(1);
-    expect(layout.profileTop).toBeGreaterThan(layout.cells[0]!.top);
-    expect(layout.profileWidth).toBeGreaterThan(layout.rowWidth * 0.8);
-    expect(layout.disclosureFits).toBe(true);
-    expect(layout.overflow).toBe("visible");
-    expect(layout.pageFits).toBe(true);
-    await first.getByRole("button", { name: "Expand row", exact: true }).tap();
-    await expect(table.locator(".mg-operator-details")).toBeVisible();
-  });
-
-  test("comparison appears on selection and reset returns to the quiet default view", async ({
-    page,
-  }) => {
-    const table = await openDirectory(page);
-    await page.getByRole("checkbox", { name: "Add tao.bot to comparison", exact: true }).tap();
-    const compare = page.locator(".mg-operator-compare-link:visible");
-    await expect(compare).toHaveText("Compare 1");
-    await expect(compare).toHaveAttribute("aria-disabled", "true");
-    await page
-      .getByRole("checkbox", { name: "Add Yuma, a DCG Company to comparison", exact: true })
-      .tap();
-    await expect(compare).toHaveText("Compare 2");
-    await expect(compare).not.toHaveAttribute("aria-disabled");
-    await page.getByRole("button", { name: "Clear selection", exact: true }).tap();
-    await expect(page.getByRole("link", { name: /^Compare/ })).toHaveCount(0);
-
-    const search = page.getByRole("searchbox", { name: "Search operators" });
-    await search.fill("Yuma");
-    await expect(table.locator(".mg-dt-row")).toHaveCount(1);
-    const options = page.getByRole("button", { name: /^Filter and sort operators/ });
-    await options.tap();
-    const panel = page.getByRole("dialog", { name: "Filter and sort" });
-    await panel.getByRole("combobox", { name: "Operators", exact: true }).selectOption("named");
-    await panel.getByRole("combobox", { name: "Sort by" }).selectOption("take:asc");
-    await panel.getByRole("button", { name: "Reset", exact: true }).tap();
-    await expect(panel.getByRole("combobox", { name: "Operators", exact: true })).toHaveValue(
-      "all",
+    expect(containment.contentFits).toBe(true);
+    expect(containment.keyFits).toBe(true);
+    expect(containment.labelFits).toBe(true);
+    expect(containment.rightInset).toBeGreaterThanOrEqual(16);
+    const geometry = await table.evaluate((element) => ({
+      overflow: getComputedStyle(element.querySelector(".mg-dt-viewport")!).overflowY,
+      pageFits: document.documentElement.scrollWidth <= innerWidth,
+    }));
+    expect(geometry.overflow).toBe("visible");
+    expect(geometry.pageFits).toBe(true);
+    const detail = table.locator(".mg-dt-expansion");
+    await detail.locator("li").first().getByText("Compare", { exact: true }).tap();
+    await expect(detail.getByRole("checkbox").nth(0)).toHaveAttribute("aria-checked", "true");
+    await detail.getByRole("checkbox").nth(1).tap();
+    await detail.locator("li").nth(6).scrollIntoViewIfNeeded();
+    const dock = page.locator(".mg-compare-dock");
+    await expect(dock).toBeInViewport({ ratio: 1 });
+    await expect(dock).toContainText(LONG_OPERATOR_NAME);
+    for (const remove of await dock.getByRole("button", { name: /^Remove / }).all()) {
+      await expect(remove).toBeInViewport({ ratio: 1 });
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
     );
-    await expect(panel.getByRole("combobox", { name: "Sort by" })).toHaveValue("stake:desc");
-    await panel.getByRole("button", { name: /^Show [\d,]+ operators$/ }).tap();
-    await expect(search).toHaveValue("");
+    await expect(
+      page.locator(".mg-compare-dock").getByRole("link", { name: "Compare", exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    const targets = await dock.locator("button, a").evaluateAll((elements) =>
+      elements.map((element) => {
+        const { x, y, width, height } = element.getBoundingClientRect();
+        return { x, y, width, height };
+      }),
+    );
+    for (const target of targets) {
+      expect(target.width).toBeGreaterThanOrEqual(44);
+      expect(target.height).toBeGreaterThanOrEqual(44);
+    }
+    for (let i = 0; i < targets.length; i += 1) {
+      for (let j = i + 1; j < targets.length; j += 1) {
+        const a = targets[i]!;
+        const b = targets[j]!;
+        expect(
+          Math.min(a.x + a.width, b.x + b.width) > Math.max(a.x, b.x) &&
+            Math.min(a.y + a.height, b.y + b.height) > Math.max(a.y, b.y),
+        ).toBe(false);
+      }
+    }
+    await dock
+      .getByRole("button", { name: /^Remove / })
+      .first()
+      .tap();
+    await expect(dock.locator(".mg-compare-chip")).toHaveCount(1);
+    const compare = dock.getByRole("link", { name: "Compare", exact: true });
+    const remaining = new URL((await compare.getAttribute("href"))!, "http://localhost");
+    expect(remaining.searchParams.get("validators")).toBe(member(0));
+    await expect(compare).toBeInViewport({ ratio: 1 });
+    await expect(compare).toHaveAttribute("aria-disabled", "true");
+    await dock.getByRole("button", { name: "Clear", exact: true }).tap();
+    await expect(dock).toHaveCount(0);
+    await options.tap();
+    await panel.getByRole("button", { name: "Reset", exact: true }).tap();
+    await expect(panel.getByRole("combobox", { name: "Sort by", exact: true })).toHaveValue(
+      "name:asc",
+    );
+    await panel.getByRole("button", { name: "Show 56 operators", exact: true }).tap();
     await expect(options).toHaveAccessibleName("Filter and sort operators");
-    await expect(table.locator(".mg-dt-row")).toHaveCount(50);
-    await expect(table.locator(".mg-dt-row").first()).toContainText("tao.bot");
   });
 });
