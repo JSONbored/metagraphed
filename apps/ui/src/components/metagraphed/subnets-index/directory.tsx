@@ -115,14 +115,6 @@ export function DirectorySection({
         format: (value) =>
           typeof value === "number" ? `${value >= 0 ? "+" : ""}${formatPct(value, 1)}` : "—",
       },
-      {
-        key: "stake",
-        label: "Total stake",
-        kind: "number",
-        sortable: true,
-        value: (row) => row.total_stake_alpha ?? null,
-        format: (value) => (typeof value === "number" ? `${fmtAlpha(value)} α` : "—"),
-      },
       { key: "health", label: "Health", kind: "status", value: (row) => row.health ?? "unknown" },
       {
         key: "volume",
