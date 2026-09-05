@@ -318,35 +318,15 @@ export function facet<Row>(
   return [...seen].sort((a, b) => a.localeCompare(b));
 }
 
-export interface DirectoryFilters {
-  q: string;
-  status: string;
-  kind: string;
-  provider: string;
+/** The API measures its bound before trimming, using JavaScript string length. */
+export const ENDPOINT_SEARCH_MAX_LENGTH = 200;
+
+/** Only a recorded non-negative integer is an exact matched-result count. */
+export function endpointMatchCount(total: unknown): number | null {
+  return typeof total === "number" && Number.isSafeInteger(total) && total >= 0 ? total : null;
 }
 
-/**
- * The directory filter.
- *
- * `status: "monitored"` is offered as its own option because the honest
- * default for this table is the 621 endpoints something actually watches: a
- * directory whose first 2,770 rows all read "unknown" answers the page's
- * question — is this endpoint up — with a shrug, 82% of the time.
- */
-export function filterEndpoints(
-  rows: readonly EndpointRow[],
-  filters: DirectoryFilters,
-): EndpointRow[] {
-  const q = filters.q.trim().toLowerCase();
-  return rows.filter((row) => {
-    if (filters.status === "monitored") {
-      if (!row.status || row.status === "unknown") return false;
-    } else if (filters.status && row.status !== filters.status) return false;
-    if (filters.kind && row.kind !== filters.kind) return false;
-    if (filters.provider && row.provider !== filters.provider) return false;
-    if (!q) return true;
-    return [row.provider, row.url, row.kind, row.subnet].some(
-      (field) => typeof field === "string" && field.toLowerCase().includes(q),
-    );
-  });
+/** Preserve the existing loaded-row interpretation of the monitored view. */
+export function filterMonitoredEndpoints(rows: readonly EndpointRow[]): EndpointRow[] {
+  return rows.filter((row) => Boolean(row.status && row.status !== "unknown"));
 }
