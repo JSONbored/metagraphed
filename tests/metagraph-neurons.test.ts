@@ -19,6 +19,8 @@ import {
 } from "../src/metagraph-neurons.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { GlobalValidatorEntrySchema } from "../schemas-src/routes/global-validators.ts";
+import { ValidatorDetailArtifactSchema } from "../schemas-src/routes/validator-detail.ts";
 import type { Row } from "./row-type.ts";
 
 // #9051 price table for the ACCUMULATION tests below. Every netuid is priced
@@ -989,139 +991,86 @@ describe("metagraph-neurons builders", () => {
     assert.ok(entry.apy_estimate > 0);
   });
 
-  test("buildGlobalValidators computes realized_return_* from the per-hotkey neuron_daily baselines (#7228)", () => {
-    // Current total stake is 1000 (single membership); baselines are the
-    // summed neuron_daily stake ~1d/1w ago. 1d: (1000-800)/800 = 0.25; 1w:
-    // (1000-500)/500 = 1.0; 1m has no baseline row far enough back -> null.
-    const data = buildGlobalValidators(
-      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
-      {
-        realizedStakeByHotkey: new Map([
-          ["hk-a", { d1: 800, d7: 500, d30: null }],
-        ]),
-      },
-    );
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    assert.equal(entry.realized_return_1d, 0.25);
-    assert.equal(entry.realized_return_1w, 1);
-    assert.equal(entry.realized_return_1m, null);
-  });
+  // Even apparently complete balance history cannot tell a deposit apart
+  // from investment performance. Keep the legacy inputs in these cases to
+  // guard against re-enabling the former ratio when old callers pass them.
+  test.each([
+    { label: "deposit without rewards", current: 1200, baseline: 1000 },
+    { label: "unstake without rewards", current: 800, baseline: 1000 },
+    { label: "unchanged balance", current: 1000, baseline: 1000 },
+    { label: "new position", current: 1000, baseline: 0 },
+    { label: "missing history", current: 1000, baseline: null },
+  ])(
+    "$label does not publish a realized return (#12015)",
+    ({ current, baseline }) => {
+      const rows = [
+        {
+          ...ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          stake_tao: current,
+          emission_tao: 0,
+        },
+      ];
+      const history = {
+        d1: baseline,
+        d7: baseline,
+        d30: baseline,
+        d1_as_of: "2026-08-05",
+        d7_as_of: "2026-07-31",
+        d30_as_of: "2026-07-06",
+      };
+      const list = buildGlobalValidators(rows, {
+        realizedStakeByHotkey: new Map([["hk-a", history]]),
+      });
+      const detail = buildValidatorDetail(rows, "hk-a", {
+        realizedStake: history,
+      });
+      for (const entry of [list.validators[0], detail]) {
+        assert.equal(
+          entry.total_stake_tao,
+          current,
+          "stake remains available as stake",
+        );
+        for (const window of ["1d", "1w", "1m"]) {
+          assert.equal(entry[`realized_return_${window}`], null);
+          assert.equal(entry[`realized_return_${window}_as_of`], null);
+        }
+      }
+    },
+  );
 
-  // The window labels are NOMINAL (#9885). REALIZED_RETURN_BASELINE_TOLERANCE_DAYS
-  // lets a window fall back to the prior day when a snapshot is missing or late
-  // (#8837), so on such a day every validator's "1-day" return is really a
-  // two-day one -- and before this the response said nothing about it. The
-  // `ranked` CTE always knew which day won; the projection dropped it.
-  test("buildGlobalValidators publishes the day each baseline actually resolved to (#9885)", () => {
-    const data = buildGlobalValidators(
-      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
-      {
-        realizedStakeByHotkey: new Map([
-          [
-            "hk-a",
-            {
-              d1: 800,
-              d7: 500,
-              d30: null,
-              // The 1-day window fell back two days -- the case the field exists for.
-              d1_as_of: "2026-08-05",
-              d7_as_of: "2026-07-31",
-              d30_as_of: null,
-            },
-          ],
-        ]),
-      },
-    );
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    assert.equal(entry.realized_return_1d, 0.25);
-    assert.equal(entry.realized_return_1d_as_of, "2026-08-05");
-    assert.equal(entry.realized_return_1w_as_of, "2026-07-31");
-    // No baseline means no date to report, so the pair stays consistent rather
-    // than pairing a null return with a date that measured nothing.
-    assert.equal(entry.realized_return_1m, null);
-    assert.equal(entry.realized_return_1m_as_of, null);
-  });
-
-  test("a baseline that arrives without its date reports null rather than guessing (#9885)", () => {
-    const data = buildGlobalValidators(
-      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
-      { realizedStakeByHotkey: new Map([["hk-a", { d1: 800 }]]) },
-    );
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    assert.equal(entry.realized_return_1d, 0.25);
-    assert.equal(entry.realized_return_1d_as_of, null);
-  });
-
-  test("buildGlobalValidators sums current stake across memberships in rao before the realized-return ratio (#7228)", () => {
-    // Two memberships -> current total 1500; a 1200 baseline gives
-    // (1500-1200)/1200 = 0.25, computed from the rao-BigInt stake sum.
-    const data = buildGlobalValidators(
-      [
-        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 },
-        { ...ROW, netuid: 8, uid: 1, hotkey: "hk-a", stake_tao: 500 },
-      ],
-      {
-        realizedStakeByHotkey: new Map([["hk-a", { d7: 1200 }]]),
-      },
-    );
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    assert.equal(entry.realized_return_1w, 0.25);
-    // Windows with no baseline key stay null, never fabricated.
-    assert.equal(entry.realized_return_1d, null);
-    assert.equal(entry.realized_return_1m, null);
-  });
-
-  test("buildGlobalValidators reports a negative realized_return_* when stake shrank (#7228)", () => {
-    const data = buildGlobalValidators(
-      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 800 }],
-      { realizedStakeByHotkey: new Map([["hk-a", { d30: 1000 }]]) },
-    );
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    assert.equal(entry.realized_return_1m, -0.2);
-  });
-
-  test("buildGlobalValidators nulls realized_return_* when the baseline stake is non-positive (#7228)", () => {
-    const data = buildGlobalValidators(
-      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
-      { realizedStakeByHotkey: new Map([["hk-a", { d1: 0 }]]) },
-    );
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    assert.equal(entry.realized_return_1d, null);
-  });
-
-  test("buildGlobalValidators defaults every realized_return_* to null when no baseline map is passed (store fallback) (#7228)", () => {
-    const data = buildGlobalValidators([
+  test("validator returns remain unavailable without any baseline inputs (#12015)", () => {
+    const rows = [
       { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 },
-    ]);
-    const entry = data.validators[0];
-    assert.equal(entry.realized_return_1d, null);
-    assert.equal(entry.realized_return_1w, null);
-    assert.equal(entry.realized_return_1m, null);
+    ];
+    const list = buildGlobalValidators(rows);
+    const detail = buildValidatorDetail(rows, "hk-a");
+    for (const entry of [list.validators[0], detail]) {
+      for (const window of ["1d", "1w", "1m"]) {
+        assert.equal(entry[`realized_return_${window}`], null);
+        assert.equal(entry[`realized_return_${window}_as_of`], null);
+      }
+    }
   });
 
-  test("buildValidatorDetail carries realized_return_* from the per-hotkey baseline, null where absent (#7228)", () => {
-    const detail = buildValidatorDetail(
-      [
-        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 },
-        { ...ROW, netuid: 8, uid: 1, hotkey: "hk-a", stake_tao: 500 },
-      ],
-      "hk-a",
-      { realizedStake: { d1: 1200, d7: null, d30: 1500 } },
-    );
-    // current total = 1500; 1d: (1500-1200)/1200 = 0.25; 1m: (1500-1500)/1500 = 0.
-    assert.equal(detail.realized_return_1d, 0.25);
-    assert.equal(detail.realized_return_1w, null);
-    assert.equal(detail.realized_return_1m, 0);
-  });
-
-  test("buildValidatorDetail defaults realized_return_* to null with no baseline (store fallback) (#7228)", () => {
-    const detail = buildValidatorDetail(
-      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
-      "hk-a",
-    );
-    assert.equal(detail.realized_return_1d, null);
-    assert.equal(detail.realized_return_1w, null);
-    assert.equal(detail.realized_return_1m, null);
+  test("validator schemas keep nullable legacy return keys and document deprecation (#12015)", () => {
+    for (const schema of [
+      GlobalValidatorEntrySchema,
+      ValidatorDetailArtifactSchema,
+    ]) {
+      for (const window of ["1d", "1w", "1m"] as const) {
+        const metric = schema.shape[`realized_return_${window}`];
+        const date = schema.shape[`realized_return_${window}_as_of`];
+        assert.equal(metric.parse(null), null);
+        assert.equal(date.parse(null), null);
+        assert.equal(metric.meta()?.deprecated, true);
+        assert.equal(date.meta()?.deprecated, true);
+        assert.match(metric.description ?? "", /always null/);
+        assert.match(date.description ?? "", /always null/);
+      }
+    }
   });
 
   test("buildGlobalValidators takes the first non-null take per hotkey and ignores later rows (#2548)", () => {

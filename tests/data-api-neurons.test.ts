@@ -777,7 +777,7 @@ async function insertIdentity(account: string, name: string) {
   );
 }
 
-test("GET /api/v1/validators serves the leaderboard from D1 with real prices and realized-return baselines", async () => {
+test("GET /api/v1/validators keeps priced stake and identity without fabricated returns", async () => {
   // Current state: one validator on root (price 1) with stake 200.
   insertNeuron({
     netuid: 0,
@@ -787,8 +787,8 @@ test("GET /api/v1/validators serves the leaderboard from D1 with real prices and
     stake_tao: 200,
     validator_permit: 1,
   });
-  // Yesterday's baseline: stake 100 on root -- inside the 1d window's
-  // tolerance, so realized_return_1d resolves against it.
+  // Yesterday's balance cannot tell whether the increase was a delegation
+  // deposit or performance, so the legacy return remains unavailable.
   insertDaily({
     netuid: 0,
     uid: 0,
@@ -805,11 +805,8 @@ test("GET /api/v1/validators serves the leaderboard from D1 with real prices and
   const entry = (body.validators as Row[])[0];
   assert.equal(entry.hotkey, "5Val");
   assert.equal(entry.total_stake_tao, 200);
-  assert.notEqual(
-    entry.realized_return_1d,
-    null,
-    "the baseline window resolved from neuron_daily on D1",
-  );
+  assert.equal(entry.realized_return_1d, null);
+  assert.equal(entry.realized_return_1d_as_of, null);
   // The identity join is live again: the coldkey's account_identity row
   // surfaces as coldkey_identity, not the degraded has_identity:false shape.
   const identity = entry.coldkey_identity as Row;
@@ -817,98 +814,56 @@ test("GET /api/v1/validators serves the leaderboard from D1 with real prices and
   assert.equal(identity.name, "Ventura Labs");
 });
 
-test("a non-root baseline is priced through subnet_snapshots inside the window", async () => {
-  // netuid != 0, so the CASE falls to `tao_in_pool_tao / alpha_in_pool` and the
-  // LEFT JOIN is actually load-bearing. The root-only test above never reaches
-  // it: `CASE WHEN nd.netuid = 0 THEN 1` short-circuits the price entirely.
-  insertNeuron({
-    netuid: 7,
-    uid: 0,
-    hotkey: "5Priced",
-    coldkey: "5ColdPriced",
-    stake_tao: 200,
-    validator_permit: 1,
-  });
-  insertDaily({
-    netuid: 7,
-    uid: 0,
-    hotkey: "5Priced",
-    stake_tao: 100,
-    validator_permit: 1,
-    snapshot_date: dayAgo(1),
-  });
-  await insertPrice(7, dayAgo(1), 3);
-  const res = await call(req("/api/v1/validators"));
-  assert.equal(res.status, 200);
-  const entry = ((await res.json()) as Row).validators as Row[];
-  const priced = entry.find((v) => v.hotkey === "5Priced") as Row;
-  assert.ok(priced, "the validator is served");
-  assert.notEqual(
-    priced.realized_return_1d,
-    null,
-    "the join found the snapshot inside the window, so the baseline is priced",
-  );
-  assert.equal(priced.realized_return_1d_as_of, dayAgo(1));
-});
-
-test("the newest day still wins even when it has no price row", async () => {
-  // THE TEST THAT PINS THE JOIN AS A *LEFT* JOIN. The window bound is repeated
-  // on the ON clause so the planner can prune subnet_snapshots; moving it into
-  // WHERE would prune the same rows but ALSO drop every unmatched left row,
-  // silently turning this into an inner join.
-  //
-  // The difference is observable exactly here: with two candidate days inside
-  // the tolerance and a price on only the older one, the correct answer is the
-  // NEWEST day with a null baseline. An inner join would discard that day and
-  // hand back the older one's price as though it were today's -- a wrong number
-  // where there should be an honest absence.
-  insertNeuron({
-    netuid: 7,
-    uid: 1,
-    hotkey: "5Gap",
-    coldkey: "5ColdGap",
-    stake_tao: 200,
-    validator_permit: 1,
-  });
-  insertDaily({
-    netuid: 7,
-    uid: 1,
-    hotkey: "5Gap",
-    stake_tao: 100,
-    validator_permit: 1,
-    snapshot_date: dayAgo(1),
-  });
-  insertDaily({
-    netuid: 7,
-    uid: 1,
-    hotkey: "5Gap",
-    stake_tao: 50,
-    validator_permit: 1,
-    snapshot_date: dayAgo(2),
-  });
-  // Price ONLY the older day.
-  await insertPrice(7, dayAgo(2), 3);
-  const res = await call(req("/api/v1/validators"));
-  assert.equal(res.status, 200);
-  const rows = ((await res.json()) as Row).validators as Row[];
-  const gap = rows.find((v) => v.hotkey === "5Gap") as Row;
-  assert.ok(gap, "the validator is still served");
-  // NULL IS THE DISCRIMINATOR. The newest qualifying day has no price row, so
-  // its SUM is NULL and the return is honestly absent. Under an inner join that
-  // day would be gone from `daily` entirely, rn = 1 would land on dayAgo(2),
-  // and this would be a NUMBER -- yesterday's price presented as today's
-  // baseline.
-  //
-  // `realized_return_1d_as_of` cannot be asserted alongside it: it is
-  // deliberately nulled whenever the return is null
-  // (src/metagraph-neurons.ts:743), so it reads the same either way.
-  assert.equal(
-    gap.realized_return_1d,
-    null,
-    "no price on the newest day means no baseline; an inner join would have " +
-      "silently substituted dayAgo(2)'s",
-  );
-});
+test.each([
+  { label: "deposit", stake: 200, history: true },
+  { label: "unstake", stake: 80, history: true },
+  { label: "missing history", stake: 100, history: false },
+])(
+  "validator REST routes keep $label out of realized returns (#12015)",
+  async ({ stake, history }) => {
+    await insertNeuron({
+      netuid: 7,
+      uid: 0,
+      hotkey: "5Return",
+      coldkey: "5ColdReturn",
+      stake_tao: stake,
+      emission_tao: 0,
+      validator_permit: 1,
+    });
+    await insertPrice(7, dayAgo(0), 3);
+    if (history) {
+      for (const days of [1, 7, 30]) {
+        await insertDaily({
+          netuid: 7,
+          uid: 0,
+          hotkey: "5Return",
+          stake_tao: 100,
+          emission_tao: 0,
+          validator_permit: 1,
+          snapshot_date: dayAgo(days),
+        });
+        await insertPrice(7, dayAgo(days), 3);
+      }
+    }
+    for (const route of ["/api/v1/validators", "/api/v1/validators/5Return"]) {
+      pg.control.queries.length = 0;
+      const response = await call(req(route));
+      assert.equal(response.status, 200);
+      const body = (await response.json()) as Row;
+      const entry = route === "/api/v1/validators" ? body.validators[0] : body;
+      assert.equal(entry.total_stake_tao, stake * 3);
+      for (const window of ["1d", "1w", "1m"]) {
+        assert.equal(entry[`realized_return_${window}`], null);
+        assert.equal(entry[`realized_return_${window}_as_of`], null);
+      }
+      assert.equal(
+        pg.control.queries.some(({ text }) => /FROM neuron_daily/i.test(text)),
+        false,
+        "no historical balance scan is needed for an unavailable return",
+      );
+    }
+  },
+);
 
 test("GET /api/v1/validators honors an explicit sort and clamps a bogus limit", async () => {
   insertNeuron({
@@ -2407,7 +2362,7 @@ test("windowed leaderboard params: an explicit valid limit is honored on /api/v1
   assert.equal((body.validators as Row[]).length, 1);
 });
 
-test("a NULL alpha_price_tao snapshot and a NULL-hotkey daily row are carried and skipped, not crashed on", async () => {
+test("a NULL alpha_price_tao snapshot excludes unpriceable stake without crashing", async () => {
   insertNeuron({
     netuid: 7,
     uid: 0,
@@ -2420,14 +2375,6 @@ test("a NULL alpha_price_tao snapshot and a NULL-hotkey daily row are carried an
     "INSERT INTO subnet_snapshots (netuid, snapshot_date, alpha_price_tao, tao_in_pool_tao, alpha_in_pool) VALUES (7, ?, NULL, NULL, NULL)",
     [dayAgo(0)],
   );
-  // A permitted daily row with no hotkey: the baseline fold must skip it.
-  insertDaily({
-    netuid: 7,
-    uid: 1,
-    hotkey: null,
-    validator_permit: 1,
-    snapshot_date: dayAgo(1),
-  });
   const res = await call(req("/api/v1/validators"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
@@ -2469,7 +2416,7 @@ test("movers normalizes a bogus window plus explicit sort/limit on an empty stor
   assert.equal(body.subnet_count, 0);
 });
 
-test("a missing subnet_snapshots table degrades prices and baselines, never the validators route", async () => {
+test("a missing subnet_snapshots table degrades prices, never the validators route", async () => {
   await db.exec("DROP TABLE subnet_snapshots");
   insertNeuron({
     netuid: 7,
@@ -2492,7 +2439,7 @@ test("a missing subnet_snapshots table degrades prices and baselines, never the 
   assert.equal(body.validator_count, 1);
   const entry = (body.validators as Row[])[0];
   // Unpriceable non-root stake is EXCLUDED from the totals (never counted
-  // 1:1), and the baseline map degraded to empty -> realized returns null.
+  // 1:1). Realized returns remain unavailable regardless of snapshot coverage.
   assert.equal(entry.total_stake_tao, 0);
   assert.equal(entry.realized_return_1d, null);
 });

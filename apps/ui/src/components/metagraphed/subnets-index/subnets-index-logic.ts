@@ -17,7 +17,6 @@ export type RankWindow = "7d" | "30d" | "90d";
 
 export const METRIC_OPTIONS = [
   { value: "emission", label: "Emission" },
-  { value: "stake", label: "Stake" },
   { value: "price", label: "Price" },
   { value: "validators", label: "Validators" },
 ] as const;
@@ -107,10 +106,14 @@ export function rankSubnets(
   domainOf: (netuid: number) => string | undefined,
   limit = 18,
 ): RankedSubnet[] {
+  // The legacy economics stake field originates in metagraph voting weights,
+  // mixing inherited alpha and weighted root TAO. It is not token holdings.
+  // Keep old metric=stake URLs safe until a certified valuation is available.
+  if (metric === "stake") return [];
+
   const change = new Map<number, number | "new" | undefined>();
   for (const mover of movers) {
     if (metric === "emission") change.set(mover.netuid, pctToFraction(mover.emission_pct_change));
-    else if (metric === "stake") change.set(mover.netuid, pctToFraction(mover.stake_pct_change));
     else if (metric === "validators") {
       change.set(
         mover.netuid,
@@ -148,17 +151,6 @@ export function rankSubnets(
         netuid: row.netuid,
         sort: share,
         value: fmtPct(share, 3),
-        delta: change.get(row.netuid),
-      });
-      continue;
-    }
-    if (metric === "stake") {
-      const stake = row.total_stake_alpha;
-      if (typeof stake !== "number" || !Number.isFinite(stake)) continue;
-      rows.push({
-        netuid: row.netuid,
-        sort: stake,
-        value: `${fmtAlpha(stake)} α`,
         delta: change.get(row.netuid),
       });
       continue;
@@ -241,7 +233,6 @@ export interface DirectoryRow extends Subnet {
   emission_share?: number;
   alpha_price_tao?: number;
   alpha_price_change_7d?: number;
-  total_stake_alpha?: number;
   subnet_volume_tao?: number;
   domain?: string;
 }
@@ -269,8 +260,6 @@ export function directoryRows(
       // Normalised at the join, so the column and the ranking cannot disagree
       // about whether this field is a percentage or a fraction.
       alpha_price_change_7d: pctToFraction(econ?.alpha_price_change_7d),
-      total_stake_alpha:
-        typeof econ?.total_stake_alpha === "number" ? econ.total_stake_alpha : undefined,
       subnet_volume_tao: econ?.subnet_volume_tao,
       domain: domainOf(subnet.netuid),
     };

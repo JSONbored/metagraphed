@@ -13,7 +13,6 @@ import {
   directoryRows,
   filterDirectory,
   specSubnets,
-  fmtAlpha,
   type RankMetric,
   type RankWindow,
 } from "@/components/metagraphed/subnets-index/subnets-index-logic";
@@ -147,7 +146,6 @@ export function SubnetsPage() {
     [domains.data],
   );
 
-  const totalStake = econRows.reduce((acc, row) => acc + (row.total_stake_alpha ?? 0), 0);
   const probedStates = Object.values(health.data?.data ?? {});
   const healthy = probedStates.filter((entry) => entry.health === "ok").length;
   const probedCount = probedStates.length;
@@ -167,7 +165,6 @@ export function SubnetsPage() {
       value: probedCount > 0 ? `${formatNumber(healthy)} / ${formatNumber(probedCount)}` : "—",
       loading: health.isPending,
     },
-    { label: "Total stake", value: `${fmtAlpha(totalStake)} α`, loading: economics.isPending },
   ];
 
   const rawRows: RawRow[] = API_PATHS.map((path) => ({

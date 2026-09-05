@@ -64,7 +64,7 @@ describe("windowsFor / resolveWindow", () => {
 describe("rankSubnets", () => {
   const movers = [
     mover({ netuid: 1, stake_pct_change: 10, emission_pct_change: -2 }),
-    mover({ netuid: 2, stake_pct_change: -5 }),
+    mover({ netuid: 2, stake_pct_change: -5, emission_pct_change: 10 }),
   ];
   const econ: SubnetEconomics[] = [
     { netuid: 1, emission_share: 0.01, total_stake_alpha: 100, validator_count: 4 },
@@ -76,24 +76,21 @@ describe("rankSubnets", () => {
     expect(
       rankSubnets("emission", "30d", movers, econ, name, noDomain).map((r) => r.netuid),
     ).toEqual([2, 3, 1]);
-    expect(rankSubnets("stake", "30d", movers, econ, name, noDomain).map((r) => r.netuid)).toEqual([
-      2, 3, 1,
-    ]);
     expect(
       rankSubnets("validators", "30d", movers, econ, name, noDomain).map((r) => r.netuid),
     ).toEqual([2, 3, 1]);
   });
 
   it("takes the delta from movers and converts its percentage to a fraction", () => {
-    const ranked = rankSubnets("stake", "30d", movers, econ, name, noDomain);
-    expect(ranked.find((r) => r.netuid === 1)?.delta).toBeCloseTo(0.1);
-    expect(ranked.find((r) => r.netuid === 2)?.delta).toBeCloseTo(-0.05);
+    const ranked = rankSubnets("emission", "30d", movers, econ, name, noDomain);
+    expect(ranked.find((r) => r.netuid === 1)?.delta).toBeCloseTo(-0.02);
+    expect(ranked.find((r) => r.netuid === 2)?.delta).toBeCloseTo(0.1);
   });
 
   it("keeps a subnet the movers slice omitted, with no delta", () => {
     // `/subnets/movers` serves at most 100 rows of 129 and ranks by CHANGE, so
     // ranking off it would quietly exclude a large subnet that did not move.
-    const ranked = rankSubnets("stake", "30d", movers, econ, name, noDomain);
+    const ranked = rankSubnets("emission", "30d", movers, econ, name, noDomain);
     expect(ranked.map((r) => r.netuid)).toContain(3);
     expect(ranked.find((r) => r.netuid === 3)?.delta).toBeUndefined();
   });
@@ -142,8 +139,18 @@ describe("rankSubnets", () => {
     expect(rankSubnets("emission", "7d", [], partial, name, noDomain)).toEqual([]);
   });
 
+  it("does not invent a stake ranking from incomparable quantities or a capped movers slice", () => {
+    const assets: SubnetEconomics[] = [
+      { netuid: 0, total_stake_alpha: 1_000_000, alpha_price_tao: 1 },
+      { netuid: 1, total_stake_alpha: 10, alpha_price_tao: 100 },
+      { netuid: 2, total_stake_alpha: 100, alpha_price_tao: 0.01 },
+      { netuid: 3, total_stake_alpha: 1_000 },
+    ];
+    expect(rankSubnets("stake", "30d", movers, assets, name, noDomain)).toEqual([]);
+  });
+
   it("honours the limit", () => {
-    expect(rankSubnets("stake", "30d", movers, econ, name, noDomain, 2)).toHaveLength(2);
+    expect(rankSubnets("emission", "30d", movers, econ, name, noDomain, 2)).toHaveLength(2);
   });
 
   it("maps every non-price metric onto a sort the endpoint accepts", () => {
@@ -224,6 +231,42 @@ describe("directoryRows", () => {
     const rows = directoryRows(subnets, econ, () => undefined);
     expect(rows).toHaveLength(2);
     expect(rows[1]?.alpha_price_tao).toBeUndefined();
+    expect(rows[0]).not.toHaveProperty("total_stake_alpha");
+  });
+
+  it("keeps the Root row while withholding its ambiguous legacy stake aggregate", () => {
+    const rows = directoryRows(
+      [{ netuid: 0, name: "Root" }] as Subnet[],
+      [{ netuid: 0, total_stake_alpha: 6_420_000, alpha_price_tao: 1 }],
+      () => undefined,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).not.toHaveProperty("total_stake_alpha");
+    expect(rows[0]?.name).toBe("Root");
+  });
+
+  it("does not publish weighted stake as native holdings for any subnet or partial snapshot", () => {
+    const assets: SubnetEconomics[] = [
+      { netuid: 1, total_stake_alpha: 10, alpha_price_tao: 100 },
+      { netuid: 2, total_stake_alpha: 100, alpha_price_tao: 0.01 },
+      { netuid: 3, total_stake_alpha: 0 },
+      { netuid: 4, total_stake_alpha: 9_007_199_254_740_991 },
+      { netuid: 5 },
+    ];
+    const rows = directoryRows(
+      assets.map(({ netuid }) => ({ netuid }) as Subnet),
+      assets,
+      () => undefined,
+    );
+    expect(rows).toHaveLength(5);
+    for (const row of rows) expect(row).not.toHaveProperty("total_stake_alpha");
+    expect(rows.map((row) => row.alpha_price_tao)).toEqual([
+      100,
+      0.01,
+      undefined,
+      undefined,
+      undefined,
+    ]);
   });
 
   it("normalises the price change from a percentage to a fraction at the join", () => {

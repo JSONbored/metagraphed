@@ -194,3 +194,34 @@ test.describe("directory secondary analytics", () => {
     expect(mobileLeadLabel).toContain("Name");
   });
 });
+
+test("subnet directory withholds weighted stake and old ranking links recover honestly", async ({
+  page,
+}) => {
+  let moversRequests = 0;
+  await page.route("**/api/v1/subnets/movers*", async (route) => {
+    moversRequests += 1;
+    await route.continue();
+  });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoThroughRestart(page, "/subnets?metric=stake");
+
+  const directory = page.locator("section#directory");
+  await expect(directory.getByRole("columnheader", { name: /stake/i })).toHaveCount(0);
+  await expect(page.locator(".mg-hero").getByText("Total stake", { exact: true })).toHaveCount(0);
+  const root = directory.getByRole("row").filter({ has: page.locator('a[href="/subnets/0"]') });
+  await expect(root).toHaveCount(1);
+  await expect(directory.getByRole("columnheader", { name: "Price", exact: true })).toBeVisible();
+
+  const rankings = page.locator("section#rankings");
+  await rankings.scrollIntoViewIfNeeded();
+  await expect(rankings.getByText("Stake ranking is unavailable", { exact: true })).toBeVisible();
+  await expect(rankings.getByRole("group", { name: "Window", exact: true })).toHaveCount(0);
+  expect(moversRequests).toBe(0);
+  await rankings.getByRole("radio", { name: "Emission", exact: true }).click();
+  await expect(rankings.getByText("Stake ranking is unavailable", { exact: true })).toHaveCount(0);
+  await expect(
+    rankings.getByRole("group", { name: "Subnets ranked by emission over 30d", exact: true }),
+  ).toBeVisible();
+  await expect.poll(() => moversRequests).toBeGreaterThan(0);
+});
