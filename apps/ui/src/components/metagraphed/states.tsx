@@ -13,6 +13,9 @@ import { getNetworkPrefix } from "@/lib/metagraphed/config";
 import { isUsableTimestamp } from "@/lib/metagraphed/format";
 import { NativeOnlyNotice } from "./native-only-notice";
 
+const retryClassName =
+  "inline-flex min-h-11 items-center justify-center gap-1.5 rounded border border-ink-strong/40 bg-surface px-3 py-2 text-13 font-medium text-ink-strong hover:border-ink-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong";
+
 /** A truthful replacement for a response the API marked as unverified. */
 function DataTierUnavailableNotice({
   context,
@@ -22,7 +25,10 @@ function DataTierUnavailableNotice({
   onRetry?: () => void;
 }) {
   return (
-    <div role="status" className="rounded border border-border bg-surface p-4">
+    <div
+      role="status"
+      className="whitespace-normal rounded border border-border bg-surface p-4 text-left"
+    >
       <div className="flex items-start gap-3">
         <Database className="size-4 shrink-0 text-ink-muted" />
         <div className="min-w-0 flex-1">
@@ -34,12 +40,8 @@ function DataTierUnavailableNotice({
             zero or empty result is shown. The rest of the page can continue updating.
           </p>
           {onRetry ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
-            >
-              <RefreshCw className="size-3" /> Retry
+            <button type="button" onClick={onRetry} className={`mt-3 ${retryClassName}`}>
+              <RefreshCw aria-hidden className="size-3" /> Retry
             </button>
           ) : null}
         </div>
@@ -63,7 +65,10 @@ function BlockDetailUnavailableNotice({
   onRetry?: () => void;
 }) {
   return (
-    <div role="status" className="rounded border border-border bg-surface p-4">
+    <div
+      role="status"
+      className="whitespace-normal rounded border border-border bg-surface p-4 text-left"
+    >
       <div className="flex items-start gap-3">
         <Hourglass className="size-4 shrink-0 text-ink-muted" />
         <div className="min-w-0 flex-1">
@@ -76,11 +81,8 @@ function BlockDetailUnavailableNotice({
             reconciles the record.
           </p>
           {onRetry ? (
-            <button
-              onClick={onRetry}
-              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
-            >
-              <RefreshCw className="size-3" /> Retry
+            <button type="button" onClick={onRetry} className={`mt-3 ${retryClassName}`}>
+              <RefreshCw aria-hidden className="size-3" /> Retry
             </button>
           ) : null}
         </div>
@@ -135,7 +137,10 @@ export function BlockDetailCatchupStatus({
  */
 function OfflineNotice({ context }: { context?: string }) {
   return (
-    <div role="status" className="rounded border border-border bg-surface p-4 text-center">
+    <div
+      role="status"
+      className="whitespace-normal rounded border border-border bg-surface p-4 text-center"
+    >
       <WifiOff className="mx-auto size-4 text-ink-muted" />
       <p className="mt-2 text-13 leading-relaxed text-ink-muted">
         Couldn't load {context ?? "this data"} — you're offline. It'll refresh automatically once
@@ -163,7 +168,10 @@ function OfflineNotice({ context }: { context?: string }) {
  */
 function RateLimitedNotice({ context }: { context?: string }) {
   return (
-    <div role="status" className="rounded border border-border bg-surface p-4 text-center">
+    <div
+      role="status"
+      className="whitespace-normal rounded border border-border bg-surface p-4 text-center"
+    >
       <Hourglass className="mx-auto size-4 text-ink-muted" />
       <p className="mt-2 text-13 leading-relaxed text-ink-muted">
         Rate-limited while loading {context ?? "this data"} — you've hit the public API's per-minute
@@ -238,7 +246,12 @@ export function ErrorState({
   if (isApi && error.status === 429) {
     return <RateLimitedNotice context={context} />;
   }
-  const message = (error as Error)?.message ?? "Unknown error";
+  const message =
+    typeof (error as Error)?.message === "string"
+      ? (error as Error).message
+      : typeof error === "string"
+        ? error
+        : "Unknown error";
   const url = isApi ? error.url : undefined;
   const safeUrl = safeExternalUrl(url); // scheme barrier before using as an href
   const status = isApi ? error.status : undefined;
@@ -246,41 +259,44 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="rounded border border-health-down/30 bg-health-down/5 p-4 text-center"
+      className="min-w-0 whitespace-normal rounded border border-health-down/30 bg-health-down/5 p-4 text-left"
     >
-      <AlertCircle className="mx-auto size-4 text-health-down" />
-      <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-        <span className="font-display text-13 font-medium text-ink-strong">
-          Couldn't load {context ?? "this data"}
-        </span>
-        {status ? (
-          <code className="rounded bg-surface px-1.5 py-0.5 text-10 text-ink-muted">
-            HTTP {status}
-          </code>
-        ) : null}
-      </div>
-      <p className="mx-auto mt-1 max-w-md text-13 leading-relaxed text-ink-muted">{message}</p>
-      {url ? (
-        <code className="mx-auto mt-1 block max-w-md truncate text-10 text-ink-muted">{url}</code>
-      ) : null}
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-        {onRetry ? (
-          <button
-            onClick={onRetry}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium hover:border-ink/30"
-          >
-            <RefreshCw className="size-3" /> Retry
-          </button>
-        ) : null}
-        {safeUrl ? (
-          <ExternalLink
-            bare
-            href={safeUrl}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-13 font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong"
-          >
-            <ExternalLinkIcon className="size-3" /> Open API URL
-          </ExternalLink>
-        ) : null}
+      <div className="flex items-start gap-3">
+        <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0 text-health-down" />
+        <div className="min-w-0 flex-1">
+          <p className="break-words font-display text-13 font-medium text-ink-strong">
+            Couldn't load {context ?? "this data"}
+          </p>
+          {onRetry ? (
+            <button type="button" onClick={onRetry} className={`mt-3 ${retryClassName}`}>
+              <RefreshCw aria-hidden className="size-3" /> Retry
+            </button>
+          ) : null}
+          <details className="mt-3 min-w-0 border-t border-health-down/20">
+            <summary className="min-h-11 cursor-pointer content-center py-2 text-13 text-ink-muted hover:text-ink-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong">
+              Technical details
+            </summary>
+            <div className="min-w-0 space-y-3 pb-1 text-13 text-ink-muted">
+              {status ? <p>HTTP {status}</p> : null}
+              <p className="break-words leading-relaxed">{message}</p>
+              {url ? (
+                <div>
+                  <p className="mb-1 text-11">Request URL</p>
+                  <code className="block break-all text-11">{url}</code>
+                </div>
+              ) : null}
+              {safeUrl ? (
+                <ExternalLink
+                  bare
+                  href={safeUrl}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded px-2 text-13 text-ink-muted underline underline-offset-4 hover:text-ink-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong"
+                >
+                  <ExternalLinkIcon aria-hidden className="size-3 shrink-0" /> Open API URL
+                </ExternalLink>
+              ) : null}
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   );
