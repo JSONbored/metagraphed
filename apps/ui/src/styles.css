@@ -13,12 +13,8 @@
 @import "@jsonbored/ui-kit/styles.css";
 @import "./styles/fumadocs-theme.css";
 
-/* #11628: this file used to carry the page masthead, the query-progress
-   track, a hash-focus ring, a page gutter and a mobile scroll fade -- 129
-   lines of route-specific CSS for components the v2 rebuild deleted. What is
-   left is the two rules that are genuinely this APP's rather than the design
-   system's: a scroll container's chrome, and a defensive rule about Radix
-   portals. Everything else lives in packages/ui-kit/src/styles.css. */
+/* Shared design primitives live in packages/ui-kit/src/styles.css. These rules
+   handle app behavior and the scoped Settings composition. */
 
 /* Horizontal rails never allocate a cross-axis gutter. */
 .mg-scroll {
@@ -38,4 +34,19 @@
   pointer-events: none !important;
   opacity: 0 !important;
   animation: none !important;
+}
+
+/* Settings uses a wrapping section navigation on phones. Keep fragment targets
+   clear of that navigation and the shared header at every viewport. */
+.mg-settings-groups .mg-section {
+  scroll-margin-top: calc(var(--mg-sticky-offset, 60px) + var(--mg-space-3xl) + var(--mg-space-xs));
+  padding-block: var(--mg-space-lg);
+}
+.mg-settings-groups .mg-section-head {
+  margin-bottom: var(--mg-space-md);
+}
+.mg-settings-groups .mg-section-h {
+  font-size: var(--text-16);
+  line-height: var(--text-16--line-height);
+  text-wrap: pretty;
 }
