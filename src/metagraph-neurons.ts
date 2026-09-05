@@ -772,70 +772,20 @@ function finalizeApy(acc: ApyAccumulator): Row {
   };
 }
 
-// Realized-return windows (#7228): the lookback in days for each of the three
-// backward-looking return figures. The keys index the per-hotkey baseline
-// object the worker resolves from neuron_daily (see loadRealizedStakeBaselines
-// in workers/data-api.ts); the values are the human window labels the field
-// names carry (1d/1w/1m). A cold/absent baseline (store fallback, or a hotkey with
-// no neuron_daily row far enough back) leaves that window's return null.
-const REALIZED_RETURN_FIELDS: Array<[string, string]> = [
-  ["d1", "realized_return_1d"],
-  ["d7", "realized_return_1w"],
-  ["d30", "realized_return_1m"],
-];
-
-// One window's realized return on staked capital (#7228): the rao-exact
-// fractional change between a validator's current total stake (`currentStakeRao`,
-// already summed across every subnet membership in rao-BigInt space) and its
-// total stake at the newest permitted neuron_daily snapshot within a few days
-// of the ~N-days-ago target date (`baselineStakeTao`, the summed baseline the
-// worker passes in; the worker bounds that lookback so a stale far-older
-// snapshot can never stand in, #8837). Unlike apy_estimate (a forward-looking
-// annualized projection from one epoch's emission rate), this is backward-
-// looking over an actually-elapsed window -- it captures both emission-driven
-// compounding and net delegation flow, since a two-snapshot comparison cannot
-// separate them. Null (never 0) when the worker found no permitted snapshot in
-// that bounded window (baselineStakeTao null) or the baseline stake is non-positive (a return is
-// undefined with nothing staked) -- "no realized figure" vs. "confirmed zero
-// return", mirroring finalizeApy's null-never-fabricated convention.
-function realizedReturn(
-  currentStakeRao: bigint,
-  baselineStakeTao: number | null,
-): number | null {
-  if (baselineStakeTao == null) return null;
-  const baselineRao = toRaoBig(baselineStakeTao);
-  if (baselineRao <= 0n) return null;
-  return round9OrNull(
-    raoBigToTao(currentStakeRao - baselineRao) / raoBigToTao(baselineRao),
-  );
-}
-
-// Project a per-hotkey baseline object ({d1,d7,d30} of baseline total_stake_tao,
-// or null/absent when the worker resolved no baselines) into the three
-// realized_return_* output fields. Always returns all three keys so the
-// response shape is schema-stable across every tier (a cold baseline yields
-// three nulls, never omitted fields), mirroring finalizeApy.
-function realizedReturns(
-  currentStakeRao: bigint,
-  baseline: Row | null | undefined,
-): Row {
-  const b = baseline ?? {};
-  const out: Row = {};
-  for (const [key, field] of REALIZED_RETURN_FIELDS) {
-    out[field] = realizedReturn(currentStakeRao, (b[key] as number) ?? null);
-    // The date the baseline actually resolved to (#9885). The window labels
-    // are NOMINAL: REALIZED_RETURN_BASELINE_TOLERANCE_DAYS lets `_1d` fall back
-    // to the prior day when a snapshot is missing or late, so on such a day
-    // every validator's "1-day" return is really a two-day one and nothing in
-    // the response said so. Publishing the date lets a caller compute the true
-    // elapsed interval and decide whether to use, scale, or discard the figure.
-    //
-    // Null whenever the return is null -- there is no baseline to date -- so
-    // the pair is always consistent.
-    out[`${field}_as_of`] =
-      out[field] == null ? null : ((b[`${key}_as_of`] as string) ?? null);
-  }
-  return out;
+// Retained response keys for existing REST/MCP/SDK consumers (#12015).
+// A change in total delegated stake mixes deposits, withdrawals, rewards and
+// price moves. Two balance snapshots cannot isolate investment performance,
+// even when their units and dates are correct. Keep these fields unavailable
+// until a flow-neutral source exists; zero would claim measured performance.
+function unavailableRealizedReturns(): Row {
+  return {
+    realized_return_1d: null,
+    realized_return_1d_as_of: null,
+    realized_return_1w: null,
+    realized_return_1w_as_of: null,
+    realized_return_1m: null,
+    realized_return_1m_as_of: null,
+  };
 }
 
 interface ValidatorAccumEntry {
@@ -862,7 +812,6 @@ function buildGlobalValidatorEntry(
   entry: ValidatorAccumEntry,
   identityByColdkey: Map<string, Row>,
   nominatorCounts: Map<string, number> = new Map(),
-  realizedStakeByHotkey: Map<string, Row> = new Map(),
 ): Row {
   const avgTrust =
     entry.validatorTrustCount > 0
@@ -917,10 +866,7 @@ function buildGlobalValidatorEntry(
     // nominators" as opposed to "unknown."
     nominator_count: nominatorCounts.get(entry.hotkey) ?? null,
     ...finalizeApy(entry),
-    ...realizedReturns(
-      entry.stakeTotalRao,
-      realizedStakeByHotkey.get(entry.hotkey),
-    ),
+    ...unavailableRealizedReturns(),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(entry.maxValidatorTrust),
     latest_captured_at: toIso(entry.latestCapturedAt),
@@ -979,6 +925,7 @@ export interface BuildGlobalValidatorsOptions {
   identityByColdkey?: Map<string, Row>;
   nominatorCounts?: Map<string, number>;
   tempoByNetuid?: Map<number, number>;
+  /** @deprecated Ignored: balance snapshots cannot measure returns (#12015). */
   realizedStakeByHotkey?: Map<string, Row>;
 }
 
@@ -1002,11 +949,6 @@ export function buildGlobalValidators(
     // excluded rather than defaulted. A cold/absent map leaves every entry's
     // apy_estimate null, never throws.
     tempoByNetuid = new Map<number, number>(),
-    // hotkey -> {d1,d7,d30} baseline total_stake_tao ~1d/1w/1m ago (#7228),
-    // sourced from the neuron_daily rollup (loadRealizedStakeBaselines). A
-    // cold/absent map (e.g. the D1-retired fallback below, which never has one)
-    // leaves every entry's realized_return_* null, never throws.
-    realizedStakeByHotkey = new Map<string, Row>(),
   }: BuildGlobalValidatorsOptions,
 ): Row {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
@@ -1141,12 +1083,7 @@ export function buildGlobalValidators(
     // index arg never lands in buildGlobalValidatorEntry's identityByColdkey
     // parameter -- same landmine formatNeuron's own header comment documents.
     [...validatorsByHotkey.values()].map((entry) =>
-      buildGlobalValidatorEntry(
-        entry,
-        identityByColdkey,
-        nominatorCounts,
-        realizedStakeByHotkey,
-      ),
+      buildGlobalValidatorEntry(entry, identityByColdkey, nominatorCounts),
     ),
   ).sort(
     (a, b) =>
@@ -1340,6 +1277,7 @@ export interface BuildValidatorDetailOptions {
   priceByNetuid: Map<number, number | null>;
   nominatorCount?: number | null;
   tempoByNetuid?: Map<number, number>;
+  /** @deprecated Ignored: balance snapshots cannot measure returns (#12015). */
   realizedStake?: Row | null;
 }
 
@@ -1366,10 +1304,6 @@ export function buildValidatorDetail(
     // accumulateApyRow's own comment. A cold/absent map leaves apy_estimate
     // null, never throws.
     tempoByNetuid = new Map<number, number>(),
-    // {d1,d7,d30} baseline total_stake_tao ~1d/1w/1m ago for this hotkey
-    // (#7228), from the neuron_daily rollup (loadRealizedStakeBaselines). Null
-    // (the D1-retired fallback default) leaves every realized_return_* null.
-    realizedStake = null,
   }: BuildValidatorDetailOptions,
 ): Row {
   const coldkeys = new Map<string, number>();
@@ -1500,7 +1434,7 @@ export function buildValidatorDetail(
     total_emission_tao: round9NonNegative(raoBigToTao(emissionTotalRao)),
     nominator_count: nominatorCount,
     ...finalizeApy(apyAcc),
-    ...realizedReturns(stakeTotalRao, realizedStake),
+    ...unavailableRealizedReturns(),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(maxValidatorTrust),
     captured_at: toIso(latestCapturedAt),

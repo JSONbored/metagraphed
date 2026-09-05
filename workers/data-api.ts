@@ -3542,33 +3542,6 @@ function json(data: unknown, status: number = 200) {
   });
 }
 
-// Lookback (days) for each realized-return window (#7228), keyed by the
-// baseline-object field buildGlobalValidators/buildValidatorDetail read
-// (realized_return_1d/1w/1m). Mirrors the neuron_daily HISTORY_WINDOW_DAYS map --
-// the rollup's snapshot_date is a native DATE, so each cutoff is computed the
-// same way windowCutoffDate does.
-const REALIZED_RETURN_WINDOWS = { d1: 1, d7: 7, d30: 30 };
-
-// #8837: a permitted snapshot may serve as a window's baseline only when it
-// lands within this many days of that window's target date (today − N days).
-// neuron_daily writes one snapshot per validator per UTC day, so a tolerance
-// of 2 lets a window fall back to the prior day when a single day's snapshot
-// is missing or late, while rejecting anything older -- so a "1-day return"
-// can never be computed against a week-old baseline (the stale-baseline bug
-// this closes). Applied uniformly to all three REALIZED_RETURN_WINDOWS.
-//
-// A CONSEQUENCE WORTH STATING, because it looks exactly like a dead field
-// (#9455 filed it as one): a window is unanswerable until neuron_daily holds
-// history reaching past `days + tolerance`. The table began accumulating
-// 2026-07-10, so through early August the d30 window's bound
-// [today-32, today-30] fell entirely before the oldest row and
-// realized_return_1m was null for EVERY validator while 1d and 1w -- the same
-// query, the same code path -- returned values for ~49/50. That is the correct
-// answer, not a defect: the alternative is reaching further back, which is
-// precisely the stale baseline #8837 exists to refuse. It resolves itself once
-// the table is deep enough (~2026-08-09); nothing here needs changing for it.
-export const REALIZED_RETURN_BASELINE_TOLERANCE_DAYS = 2;
-
 // postgres.js returns BIGINT columns as strings; the store-backed routes return them
 // as numbers. block_number and observed_at are both < 2^53, so Number(...) is
 // lossless — coerce them per event row for a consistent numeric API shape.
@@ -6755,119 +6728,6 @@ async function loadNominatorCountFromStore(
   }
 }
 
-// The D1 twin of loadRealizedStakeBaselines (#7228/#9051): per-hotkey
-// baseline TAO-priced stake ~1d/1w/1m back from neuron_daily. The Postgres
-// original's `SELECT DISTINCT ON (hotkey) ... ORDER BY hotkey,
-// snapshot_date DESC` (newest qualifying day per hotkey) becomes a
-// ROW_NUMBER() window over the same daily CTE. Same failure contract: any
-// error degrades every realized_return_* to null via an empty map.
-async function loadRealizedStakeBaselinesFromStore(
-  sql: PgSql,
-  { hotkey = null }: { hotkey?: string | null },
-  env: DataApiEnv,
-) {
-  const windows = Object.entries(REALIZED_RETURN_WINDOWS);
-  try {
-    const perWindow = await Promise.all(
-      windows.map(([, days]) => {
-        const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
-          .toISOString()
-          .slice(0, 10);
-        const floor = new Date(
-          Date.now() -
-            (days + REALIZED_RETURN_BASELINE_TOLERANCE_DAYS) * ANALYTICS_DAY_MS,
-        )
-          .toISOString()
-          .slice(0, 10);
-        // THE WINDOW IS REPEATED ON THE JOIN, and it is not redundant to the
-        // planner even though it is redundant to the reader. `s.snapshot_date =
-        // nd.snapshot_date` already confines the right side to the same three
-        // days the WHERE clause allows -- but Postgres does not propagate that
-        // equality into a bound on `s`, so it built the hash from the WHOLE of
-        // subnet_snapshots and probed it with the handful of rows that could
-        // match. Measured on production, d1 window:
-        //
-        //   without:  Seq Scan on subnet_snapshots  51,407 rows   27.454 ms
-        //   with:     Bitmap Index Scan                387 rows   10.484 ms
-        //
-        // 2.6x, on an index that already exists
-        // (idx_subnet_snapshots_date_netuid). Stated as a JOIN predicate rather
-        // than in WHERE on purpose: in WHERE it would filter away the unmatched
-        // left rows and silently turn this into an INNER join, which is exactly
-        // the ~1,000 hotkeys per d30 window that legitimately have no snapshot
-        // that far back and must keep returning NULL.
-        //
-        // Equivalence checked against production over all three windows: 0
-        // differing rows of 1,066 / 1,084 / 1,061, max absolute difference 0.
-        const text =
-          `WITH daily AS (
-            SELECT nd.hotkey AS hotkey, nd.snapshot_date AS snapshot_date,
-              SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END) AS stake_tao
-            FROM neuron_daily nd
-            LEFT JOIN subnet_snapshots s
-              ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
-              AND s.snapshot_date <= ? AND s.snapshot_date >= ?
-            WHERE nd.validator_permit = TRUE` +
-          (hotkey ? " AND nd.hotkey = ?" : "") +
-          ` AND nd.snapshot_date <= ? AND nd.snapshot_date >= ?
-            GROUP BY nd.hotkey, nd.snapshot_date
-          ), ranked AS (
-            SELECT hotkey, stake_tao, snapshot_date,
-              ROW_NUMBER() OVER (PARTITION BY hotkey ORDER BY snapshot_date DESC) AS rn
-            FROM daily
-          )
-          SELECT hotkey, stake_tao AS baseline_stake_tao,
-            snapshot_date AS baseline_date
-          FROM ranked WHERE rn = 1`;
-        // The join bounds come FIRST -- they appear earlier in the statement,
-        // and these are positional placeholders.
-        return sql.unsafe<{
-          hotkey: NeuronDaily["hotkey"];
-          baseline_stake_tao: NeuronDaily["stake_tao"];
-          baseline_date: NeuronDaily["snapshot_date"];
-        }>(
-          text,
-          hotkey
-            ? [cutoff, floor, hotkey, cutoff, floor]
-            : [cutoff, floor, cutoff, floor],
-        );
-      }),
-    );
-    const byHotkey = new Map();
-    windows.forEach(([key], i) => {
-      for (const row of perWindow[i]) {
-        if (row?.hotkey == null) continue;
-        const entry = byHotkey.get(row.hotkey) ?? {
-          d1: null,
-          d7: null,
-          d30: null,
-          d1_as_of: null,
-          d7_as_of: null,
-          d30_as_of: null,
-        };
-        entry[key] = numberOrNull(row.baseline_stake_tao);
-        // The date the tolerance actually landed on (#9885). The `ranked` CTE
-        // orders by snapshot_date DESC, so it has always KNOWN which day won --
-        // the projection just dropped it, leaving one field carrying a 1-, 2- or
-        // 3-day return with no way for a caller to tell which.
-        //
-        // Taken as-is, with no type guard: `snapshot_date` is TEXT on BOTH
-        // stores (migrations/neon/0001_side_tables.sql keeps it TEXT rather
-        // than DATE precisely so the value round-trips identically), and it is
-        // in the GROUP BY, so a returned row always carries a 'YYYY-MM-DD'
-        // string. A `typeof` guard here would be a branch no query can take.
-        entry[`${key}_as_of`] = row.baseline_date;
-        byHotkey.set(row.hotkey, entry);
-      }
-    });
-    return byHotkey;
-  } catch (err) {
-    console.error("neuron_daily realized-return baseline query failed:", err);
-    await captureDataApiError(err, "realized-return-baseline-query", env);
-    return new Map();
-  }
-}
-
 // Pure matcher: resolves a pathname to its D1 route handler (or null for
 // every non-neurons-family route, which then flows on to the dispatcher's
 // remaining tiers unchanged). Split from execution so the caller can check
@@ -7019,37 +6879,30 @@ async function loadGlobalValidatorsFromStore(
   limit: number,
   includeAll = false,
 ) {
-  const [
-    rows,
-    realizedStakeByHotkey,
-    priceByNetuid,
-    nominatorCounts,
-    tempos,
-    identityByColdkey,
-  ] = await Promise.all([
-    sql<{
-      netuid: Neurons["netuid"];
-      uid: Neurons["uid"];
-      hotkey: Neurons["hotkey"];
-      coldkey: Neurons["coldkey"];
-      validator_trust: Neurons["validator_trust"];
-      emission_tao: Neurons["emission_tao"];
-      stake_tao: Neurons["stake_tao"];
-      block_number: Neurons["block_number"];
-      captured_at: Neurons["captured_at"];
-      take: Neurons["take"];
-    }>`
+  const [rows, priceByNetuid, nominatorCounts, tempos, identityByColdkey] =
+    await Promise.all([
+      sql<{
+        netuid: Neurons["netuid"];
+        uid: Neurons["uid"];
+        hotkey: Neurons["hotkey"];
+        coldkey: Neurons["coldkey"];
+        validator_trust: Neurons["validator_trust"];
+        emission_tao: Neurons["emission_tao"];
+        stake_tao: Neurons["stake_tao"];
+        block_number: Neurons["block_number"];
+        captured_at: Neurons["captured_at"];
+        take: Neurons["take"];
+      }>`
       SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
       FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
       ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
-    loadRealizedStakeBaselinesFromStore(sql, {}, env),
-    loadStoreAlphaPricesByNetuid(sql, env),
-    loadNominatorCountsFromStore(sql, env),
-    loadSubnetTemposFromStore(sql, env),
-    loadIdentityByColdkeyMap((statement, parameters) =>
-      sql.unsafe<AccountIdentityStoreRow>(statement, parameters),
-    ),
-  ]);
+      loadStoreAlphaPricesByNetuid(sql, env),
+      loadNominatorCountsFromStore(sql, env),
+      loadSubnetTemposFromStore(sql, env),
+      loadIdentityByColdkeyMap((statement, parameters) =>
+        sql.unsafe<AccountIdentityStoreRow>(statement, parameters),
+      ),
+    ]);
   return buildGlobalValidators(rows, {
     sort,
     limit,
@@ -7059,7 +6912,6 @@ async function loadGlobalValidatorsFromStore(
     identityByColdkey,
     nominatorCounts,
     tempoByNetuid: tempos,
-    realizedStakeByHotkey,
   });
 }
 
@@ -7517,13 +7369,9 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     };
   }
 
-  // GET /api/v1/validators?sort=&limit=. Prices, realized-return baselines,
-  // nominator counts, tempos AND the coldkey_identity join are all D1-native
-  // now. Identity was the last straggler: this dispatcher shipped with
-  // identityByColdkey: new Map() while "the Postgres-backed route" did the
-  // join -- and when Postgres was removed, every operator name on /validators
-  // silently vanished. account_identity IS actively written in the store (the
-  // account-identity-sync path above), so the join reads it directly.
+  // GET /api/v1/validators?sort=&limit=. Prices, nominator counts, tempos
+  // and coldkey identity come from the current store. Historical stake scans
+  // are unnecessary: realized-return fields remain null (#12015).
   if (url.pathname === "/api/v1/validators") {
     return async (sql, env) => {
       const sortParam = url.searchParams.get("sort");
@@ -7580,33 +7428,25 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   if (validatorDetail) {
     return async (sql, env) => {
       const hotkey = decodeURIComponent(validatorDetail[1]);
-      const [
-        rows,
-        realizedByHotkey,
-        priceByNetuid,
-        nominatorCount,
-        tempos,
-        identityByColdkey,
-      ] = await Promise.all([
-        sql.unsafe<NeuronColumnsRow>(
-          `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`,
-          [hotkey],
-        ),
-        loadRealizedStakeBaselinesFromStore(sql, { hotkey }, env),
-        loadStoreAlphaPricesByNetuid(sql, env),
-        loadNominatorCountFromStore(sql, hotkey, env),
-        loadSubnetTemposFromStore(sql, env),
-        loadIdentityByColdkeyMap((s, p) =>
-          sql.unsafe<AccountIdentityStoreRow>(s, p),
-        ),
-      ]);
+      const [rows, priceByNetuid, nominatorCount, tempos, identityByColdkey] =
+        await Promise.all([
+          sql.unsafe<NeuronColumnsRow>(
+            `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`,
+            [hotkey],
+          ),
+          loadStoreAlphaPricesByNetuid(sql, env),
+          loadNominatorCountFromStore(sql, hotkey, env),
+          loadSubnetTemposFromStore(sql, env),
+          loadIdentityByColdkeyMap((s, p) =>
+            sql.unsafe<AccountIdentityStoreRow>(s, p),
+          ),
+        ]);
       return json(
         buildValidatorDetail(rows, hotkey, {
           identityByColdkey,
           priceByNetuid,
           nominatorCount,
           tempoByNetuid: tempos,
-          realizedStake: realizedByHotkey.get(hotkey) ?? null,
         }),
       );
     };
