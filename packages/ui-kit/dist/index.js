@@ -4363,7 +4363,7 @@ function DataTable({
       "data-mobile-label-template": useCompactMobileLabels ? captionId : void 0,
       "data-dense": dense ? "true" : void 0,
       children: [
-        useCompactMobileLabels ? /* @__PURE__ */ jsx("style", { children: shown.map(
+        useCompactMobileLabels ? /* @__PURE__ */ jsx("style", { media: "(max-width: 1023px)", children: shown.map(
           (column, index) => `[data-mobile-label-template=${JSON.stringify(captionId)}] tbody td:nth-child(${index + 1})::before{content:${JSON.stringify(column.label)}}`
         ).join("") }) : null,
         /* @__PURE__ */ jsxs("div", { className: "mg-dt-caption", children: [

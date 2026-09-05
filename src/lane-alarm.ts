@@ -795,37 +795,6 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
     });
   }
 
-  // FLAPPING (#11488). A lane that recovers between episodes never builds a run
-  // the minimum can reach, however often it breaks: `chain-detail-staleness`
-  // sat 851s behind a 300s threshold for 12.5 minutes, recorded `stale`, and
-  // opened nothing, because no single episode lasted the 45 minutes three
-  // consecutive quarter-hourly ticks would need.
-  //
-  // AFTER the run loops and gated on their output, so a lane in a long unbroken
-  // run -- which is also 100% faulty by this measure -- reports once as `stale`
-  // rather than twice. The run rule is the better description when it applies;
-  // this only speaks where it cannot.
-  const alreadyQualified = new Set(qualified.map((alarm) => alarm.lane));
-  for (const [lane, rate] of Object.entries(faultRates)) {
-    if (!isFlapping(rate, alreadyQualified.has(lane))) continue;
-    const record = latest[lane];
-    // No latest verdict for a lane with rows in the window means the two reads
-    // disagree; the silence loop below is the right reporter for that.
-    if (!record) continue;
-    if (nowMs - record.checked_at > LANE_ALARM_MAX_VERDICT_AGE_MS) continue;
-    qualified.push({
-      lane,
-      kind: "flapping",
-      since: rate.since,
-      ticks: rate.faulty,
-      sampled: rate.sampled,
-      detail: record.detail,
-      age_ms: record.age_ms,
-      cadence_ms: cadenceFor(lane),
-    });
-    alreadyQualified.add(lane);
-  }
-
   for (const record of Object.values(latest)) {
     // A lane already alarming as STALE is not also alarming as SILENT. The
     // watchdog said so itself; that it then stopped saying so is the same
@@ -851,6 +820,30 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
       age_ms: record.age_ms,
       cadence_ms: cadenceMs,
     });
+  }
+
+  // Flapping covers lanes whose repeated failures never build a long run.
+  // Evaluate it after both run and silence findings: a stopped watchdog may
+  // also have a bad failure rate, but still needs only one incident.
+  const qualifiedLanes = new Set(qualified.map((alarm) => alarm.lane));
+  for (const [lane, rate] of Object.entries(faultRates)) {
+    if (!isFlapping(rate, qualifiedLanes.has(lane))) continue;
+    const record = latest[lane];
+    // The reads disagree when a rate has no matching latest verdict. Do not
+    // invent a current finding from that incomplete view.
+    if (!record) continue;
+    if (nowMs - record.checked_at > LANE_ALARM_MAX_VERDICT_AGE_MS) continue;
+    qualified.push({
+      lane,
+      kind: "flapping",
+      since: rate.since,
+      ticks: rate.faulty,
+      sampled: rate.sampled,
+      detail: record.detail,
+      age_ms: record.age_ms,
+      cadence_ms: cadenceFor(lane),
+    });
+    qualifiedLanes.add(lane);
   }
 
   // Worst first, so the per-tick cap keeps the longest-running faults rather
@@ -921,6 +914,15 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
     ) {
       continue;
     }
+    // A single healthy tick does not clear a flapping finding. Use the same
+    // complete set as the open path, before its cap and issue deduplication,
+    // or the next tick will reopen the incident we just falsely resolved.
+    if (qualifiedLanes.has(lane)) continue;
+    // An attempted history read with no result for this lane cannot prove
+    // recovery. This also covers loadLaneFaultRates returning {} on failure.
+    if (input.faultRates !== undefined && faultRates[lane] === undefined) {
+      continue;
+    }
     close.push({ lane, issue: open.issue, record });
   }
 
@@ -933,7 +935,6 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
   // that stopped qualifying has stopped alarming, and an issue about it should
   // stop growing too. Membership rather than the alarm itself, because what a
   // recurrence needs is the NEWEST row, and `alarm.since` is the oldest.
-  const qualifiedLanes = new Set(qualified.map((alarm) => alarm.lane));
   const update: LaneAlarmPlan["update"] = [];
   for (const [lane, openIssue] of Object.entries(openAlarms)) {
     if (!isDeadLetterLane(lane)) continue;
@@ -1044,14 +1045,11 @@ export function laneAlarmIssueBody(alarm: LaneAlarm, nowMs: number): string {
     `ORDER BY checked_at DESC LIMIT 40;`,
     "```",
     "",
-    // A PROMISE THIS ISSUE CAN KEEP. "Closed automatically on the first `ok`
-    // verdict" is true of a producer and impossible for a dead-letter lane --
-    // nothing writes one `ok`, so the sentence told the reader to wait for an
-    // event that cannot happen, on the one lane whose issue a human has to
-    // close.
+    // Producer recovery also requires its failure rate to clear. Dead-letter
+    // lanes instead need acknowledgement because nothing can un-lose a message.
     isDeadLetterLane(alarm.lane)
       ? "This will NOT close itself: nothing writes a dead-letter lane `ok`, because\nnothing un-loses a message. Closing it is a decision, and the next loss after\nit closes opens a fresh alarm. Until then, further losses arrive here as\ncomments."
-      : "Closed automatically on the first `ok` verdict.",
+      : "Closed automatically after a fresh `ok` verdict with no active alarm condition and readable fault-rate history.",
     "Opened by the lane-health reader (`src/lane-alarm.ts`); the record it reads",
     "is also served at `GET /api/v1/self-health`.",
   );
@@ -1087,7 +1085,7 @@ export function laneAlarmRecoveryComment(
   const detail = record.detail ? ` (\`${record.detail}\`)` : "";
   return (
     `\`${lane}\` reported **ok** at ${new Date(record.checked_at).toISOString()}${detail}. ` +
-    `Closing automatically.`
+    `No active alarm condition remains. Closing automatically.`
   );
 }
 

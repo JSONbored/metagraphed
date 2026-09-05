@@ -1656,6 +1656,24 @@
     "nullable": false
   },
   {
+    "table": "nominator_scan_receipts",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "nominator_scan_receipts",
+    "column": "coldkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "nominator_scan_receipts",
+    "column": "row_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
     "table": "origin_reachability",
     "column": "checked_at",
     "udt": "int8",

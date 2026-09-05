@@ -91,15 +91,31 @@ test("GET /accounts/{ss58}/root-claim proceeds when the RPC rate limiter allows"
   assert.equal((await res.json()).data.hotkeys, null);
 });
 
-test("GET /accounts/{ss58}/root-claim serves from KV cache", async () => {
+test("GET /accounts/{ss58}/root-claim validates runtime before a KV hit", async () => {
   const cached = {
     schema_version: 1,
     ss58: SS58,
     claim_type: { kind: "Swap" },
     hotkeys: [],
     queried_at: "2026-07-20T00:00:00.000Z",
+    compatibility: {
+      status: "legacy_supported",
+      reason: null,
+      spec_name: "node-subtensor",
+      spec_version: 440,
+      block_hash: `0x${"ab".repeat(32)}`,
+      claim_type_source: "storage",
+    },
   };
-  const fetchSpy = vi.fn();
+  const fetchSpy = vi.fn(async (_url: unknown, init: RequestInit) => {
+    const { method } = JSON.parse(String(init.body));
+    return Response.json({
+      result:
+        method === "chain_getFinalizedHead"
+          ? `0x${"ab".repeat(32)}`
+          : { specName: "node-subtensor", specVersion: 440 },
+    });
+  });
   vi.stubGlobal("fetch", fetchSpy);
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/root-claim`),
@@ -118,5 +134,5 @@ test("GET /accounts/{ss58}/root-claim serves from KV cache", async () => {
     ...cached,
     field_sources: ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
   });
-  assert.equal(fetchSpy.mock.calls.length, 0);
+  assert.equal(fetchSpy.mock.calls.length, 2);
 });

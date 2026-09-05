@@ -31,10 +31,7 @@ import {
   NEURONS_PASS_WINDOW_MS,
   NEURONS_STALENESS_THRESHOLD_MS,
 } from "../src/neurons-staleness-watchdog.ts";
-import {
-  NOMINATOR_POSITIONS_PASS_WINDOW_MS,
-  NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
-} from "../src/nominator-positions-staleness-watchdog.ts";
+import { NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS } from "../src/nominator-positions-staleness-watchdog.ts";
 import { VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS } from "../src/top-holders-staleness-watchdog.ts";
 import {
@@ -52,11 +49,6 @@ const WINDOWS: [string, ProducerLane, number][] = [
   ["account-balances", "account_balances", ACCOUNT_BALANCES_PASS_WINDOW_MS],
   ["hotkey-alpha", "hotkey_alpha", HOTKEY_ALPHA_PASS_WINDOW_MS],
   ["neurons", "metagraph", NEURONS_PASS_WINDOW_MS],
-  [
-    "nominator-positions",
-    "validator_nominators",
-    NOMINATOR_POSITIONS_PASS_WINDOW_MS,
-  ],
   [
     "validator-nominator-counts",
     "validator_nominators",
@@ -82,7 +74,8 @@ describe("a pass window must stay under its producer's cadence", () => {
   test("the list covers every window that exists", () => {
     // A watchdog that gains a pass window and is not added here is unguarded,
     // and the rule is invisible again. Counted rather than described.
-    assert.equal(WINDOWS.length, 5);
+    // Nominator positions use an exact receipt capture instead of a window.
+    assert.equal(WINDOWS.length, 4);
   });
 });
 
@@ -103,7 +96,6 @@ describe("thresholds are unchanged by the refactor", () => {
     // and lane_health carried 9 age-based `stale` verdicts between 30.02h and
     // 33.02h on a lane that never skipped a pass. 36h clears the ceiling.
     assert.equal(NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS, 36 * HOUR);
-    assert.equal(NOMINATOR_POSITIONS_PASS_WINDOW_MS, 4 * HOUR);
     assert.equal(VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS, 4 * HOUR);
     assert.equal(TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS, 48 * HOUR);
   });

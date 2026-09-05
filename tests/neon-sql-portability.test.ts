@@ -221,7 +221,7 @@ const REACHABLE_LOADERS = [
  * counts -- and they run on THE SAME RUNNER, which is the property that makes
  * them in scope at all (#9814).
  *
- * All four read a table that only reached Neon in #9828's first migration, so
+ * These read tables that only reached Neon in #9828's first migration, so
  * before that they could not have been exercised there. They can now, which is
  * exactly when their SQL starts having to be portable.
  */
@@ -229,7 +229,6 @@ const DATA_API_SIDE_LOADERS = [
   "loadStoreAlphaPricesByNetuid",
   "loadSubnetTemposFromStore",
   "loadNominatorCountsFromStore",
-  "loadRealizedStakeBaselinesFromStore",
 ];
 
 /** A named function's body from workers/data-api.ts, by brace matching. */

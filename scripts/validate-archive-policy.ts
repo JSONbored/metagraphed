@@ -165,6 +165,8 @@ export const POLICY: Readonly<Record<string, Policy>> = {
   hotkey_alpha_passes: "transient",
   neurons_passes: "transient",
   nominator_positions_passes: "transient",
+  // Bounded delivery evidence for the scan watchdog, retained for 30 days.
+  nominator_scan_receipts: "transient",
   validator_nominator_counts_passes: "transient",
   schema_migrations: "meta",
 };

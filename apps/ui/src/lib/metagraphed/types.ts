@@ -2846,6 +2846,8 @@ export interface GlobalValidator {
 export interface OperatorValidator {
   hotkey: string;
   coldkey: string | null;
+  /** Distinct observed owners; absent on older projected cache entries. */
+  coldkey_count?: number;
   coldkey_identity: Pick<ColdkeyIdentity, "has_identity" | "name"> | null;
   subnet_count: number;
   uid_count: number;

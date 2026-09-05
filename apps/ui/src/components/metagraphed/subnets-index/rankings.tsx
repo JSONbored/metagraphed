@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, BrandIcon, LeaderCards, RangeControl } from "@jsonbored/ui-kit";
-import { ErrorState } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import { economicsQuery, subnetMoversQuery } from "@/lib/metagraphed/queries";
 import {
@@ -20,7 +20,7 @@ const FEATURED = 3;
 
 const FOOTNOTE: Record<RankMetric, string> = {
   emission: "ranked by share of daily emission, changed over the window",
-  stake: "ranked by alpha staked, changed over the window",
+  stake: "Choose emission, price change, or validator count above.",
   price: "ranked by price CHANGE — one subnet's alpha price is not another's",
   validators: "ranked by validators holding a permit, changed over the window",
 };
@@ -47,6 +47,7 @@ export function RankingsSection({
   nameOf: (netuid: number) => string;
   domainOf: (netuid: number) => string | undefined;
 }) {
+  const stakeUnavailable = metric === "stake";
   const resolved = resolveWindow(metric, window);
   const { ref, nearViewport } = useNearViewport("0px 0px");
   // The movers slice is aligned with the metric so the deltas that DO land
@@ -62,7 +63,7 @@ export function RankingsSection({
     // The directory is the route's opening answer. Movers provide a separate
     // comparative reading below it, so wait until that evidence region is
     // actually approached instead of competing with the first result list.
-    enabled: nearViewport,
+    enabled: nearViewport && !stakeUnavailable,
     retry: 0,
   });
   const economics = useQuery({ ...economicsQuery({ fields: "directory" }), retry: 0 });
@@ -97,16 +98,23 @@ export function RankingsSection({
             value={metric}
             onChange={(next) => onMetric(next as RankMetric)}
           />
-          <RangeControl
-            label="Window"
-            options={windowsFor(metric)}
-            value={resolved}
-            onChange={onWindow}
-          />
+          {!stakeUnavailable ? (
+            <RangeControl
+              label="Window"
+              options={windowsFor(metric)}
+              value={resolved}
+              onChange={onWindow}
+            />
+          ) : null}
         </>
       }
       visual={
-        !nearViewport || loading ? (
+        stakeUnavailable ? (
+          <EmptyState
+            title="Stake ranking is unavailable"
+            description="The available figures describe voting weight, not token holdings. Comparable stake values are unavailable; choose another ranking above."
+          />
+        ) : !nearViewport || loading ? (
           <LeaderCards
             items={[]}
             featured={FEATURED}
@@ -143,7 +151,9 @@ export function RankingsSection({
         ) : null
       }
       footnote={
-        !nearViewport ? (
+        stakeUnavailable ? (
+          FOOTNOTE.stake
+        ) : !nearViewport ? (
           `${resolved} · ${FOOTNOTE[metric]} · chain-direct`
         ) : loading ? (
           `loading ${resolved} subnet rankings by ${metric}`

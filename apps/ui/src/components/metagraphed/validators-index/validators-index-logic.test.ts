@@ -14,6 +14,7 @@ import {
 import {
   deserializeOperatorRows,
   serializeOperatorRows,
+  type SerializedOperatorRow,
 } from "@/lib/metagraphed/validator-operators";
 
 const validator = (over: Partial<GlobalValidator> & { hotkey: string }): GlobalValidator =>
@@ -56,15 +57,27 @@ const named = (name: string) =>
 
 describe("operatorRows", () => {
   const rows = [
-    validator({ hotkey: "5A", coldkey_identity: named("Yuma"), total_stake_tao: 100, take: 0.18 }),
-    validator({ hotkey: "5B", coldkey_identity: named("Yuma"), total_stake_tao: 900, take: 0.09 }),
+    validator({
+      hotkey: "5A",
+      coldkey: "owner-a",
+      coldkey_identity: named("Yuma"),
+      total_stake_tao: 100,
+      take: 0.18,
+    }),
+    validator({
+      hotkey: "5B",
+      coldkey: "owner-a",
+      coldkey_identity: named("Yuma"),
+      total_stake_tao: 900,
+      take: 0.09,
+    }),
     validator({ hotkey: "5C", total_stake_tao: 500 }),
     validator({ hotkey: "5D", total_stake_tao: 50 }),
   ];
 
   it("sums an operator's keys and ranks operators by the sum", () => {
     const operators = operatorRows(rows);
-    expect(operators.map((o) => o.key)).toEqual(["Yuma", "5C", "5D"]);
+    expect(operators.map((o) => o.key)).toEqual(["coldkey:owner-a", "hotkey:5C", "hotkey:5D"]);
     expect(operators[0]).toMatchObject({ keyCount: 2, totalStakeTao: 1000, named: true });
   });
 
@@ -87,10 +100,107 @@ describe("operatorRows", () => {
     expect(deserializeOperatorRows(serialized)).toEqual(operators);
   });
 
+  it("keeps equal-name owners separate through grouping and SSR serialization", () => {
+    const operators = operatorRows([
+      validator({ hotkey: "first", coldkey: "owner-a", coldkey_identity: named("Shared Name") }),
+      validator({ hotkey: "second", coldkey: "owner-b", coldkey_identity: named("Shared Name") }),
+      validator({ hotkey: "third", coldkey_identity: named("Shared Name") }),
+      validator({ hotkey: "fourth", coldkey_identity: named("Shared Name") }),
+    ]);
+    const restored = deserializeOperatorRows(serializeOperatorRows(operators));
+    expect(restored).toEqual(operators);
+    expect(restored).toHaveLength(4);
+    expect(new Set(restored.map((row) => row.key)).size).toBe(4);
+    expect(restored.every((row) => row.name === "Shared Name")).toBe(true);
+  });
+
+  it("keeps owner identity stable through names and primary-key changes", () => {
+    const before = operatorRows([
+      validator({
+        hotkey: "first",
+        coldkey: "owner",
+        coldkey_identity: named("Old Name"),
+        total_stake_tao: 2,
+      }),
+      validator({ hotkey: "second", coldkey: "owner", total_stake_tao: 1 }),
+    ])[0]!;
+    const after = operatorRows([
+      validator({ hotkey: "first", coldkey: "owner", total_stake_tao: 1 }),
+      validator({
+        hotkey: "second",
+        coldkey: "owner",
+        coldkey_identity: named("New Name"),
+        total_stake_tao: 2,
+      }),
+    ])[0]!;
+    expect(after.key).toBe(before.key);
+    expect(after.name).toBe("New Name");
+    expect(after.primaryHotkey).toBe("second");
+    expect(deserializeOperatorRows(serializeOperatorRows([after]))[0]).toEqual(after);
+  });
+
+  it("keeps ambiguous and missing ownership separate and orders ties deterministically", () => {
+    const rows = [
+      validator({ hotkey: "second", coldkey: "owner" }),
+      validator({ hotkey: "first", coldkey: "owner" }),
+      validator({ hotkey: "ambiguous", coldkey: "owner", coldkey_count: 2 }),
+      validator({ hotkey: "unknown", coldkey: "owner", coldkey_count: undefined }),
+    ];
+    const forward = operatorRows(rows);
+    expect(operatorRows([...rows].reverse())).toEqual(forward);
+    expect(forward.map((row) => row.key)).toEqual([
+      "hotkey:ambiguous",
+      "coldkey:owner",
+      "hotkey:unknown",
+    ]);
+    expect(forward[1]!.keys.map((row) => row.hotkey)).toEqual(["first", "second"]);
+  });
+
+  it("reads older SSR tuples without treating their labels as row identity", () => {
+    const tuples: SerializedOperatorRow[] = [
+      ["Shared Name", [], "first", "owner-a", 1, 0, 0, 1, 1, null, null],
+      ["Shared Name", [], "second", "owner-b", 1, 0, 4, 1, 1, null, null],
+    ];
+    const rows = deserializeOperatorRows(tuples);
+    expect(rows.map((row) => row.key)).toEqual(["hotkey:first", "hotkey:second"]);
+    expect(rows.map((row) => row.name)).toEqual(["Shared Name", "Shared Name"]);
+    expect(rows.map((row) => row.nominators)).toEqual([0, 4]);
+  });
+
+  it.each([
+    [3, 3],
+    [3, null],
+    [null, 3],
+    [0, 0],
+  ])("does not sum member nominator counts %s and %s", (first, second) => {
+    const rows = operatorRows([
+      validator({ hotkey: "first", coldkey: "owner", nominator_count: first }),
+      validator({ hotkey: "second", coldkey: "owner", nominator_count: second }),
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.nominators).toBeNull();
+    const legacy = serializeOperatorRows(rows)[0]!;
+    legacy[6] = 6;
+    expect(deserializeOperatorRows([legacy])[0]!.nominators).toBeNull();
+  });
+
+  it("keeps opaque future IDs while compacting IDs derived from existing addresses", () => {
+    const rows = operatorRows([
+      validator({ hotkey: "known", coldkey: "owner" }),
+      validator({ hotkey: "unknown" }),
+    ]);
+    const compact = serializeOperatorRows(rows);
+    expect(compact[0]?.[11]).toBe(1);
+    expect(compact[1]).toHaveLength(11);
+    rows[0]!.key = "operator:future-id";
+    expect(deserializeOperatorRows(serializeOperatorRows(rows))).toEqual(rows);
+  });
+
   it("compacts display precision and reconstructs take ranges from child keys", () => {
     const operators = operatorRows([
       validator({
         hotkey: "5A",
+        coldkey: "owner-a",
         coldkey_identity: named("Yuma"),
         total_stake_tao: 100.123456789,
         total_emission_tao: 1.23456789,
@@ -99,6 +209,7 @@ describe("operatorRows", () => {
       }),
       validator({
         hotkey: "5B",
+        coldkey: "owner-a",
         coldkey_identity: named("Yuma"),
         total_stake_tao: 10.987654321,
         total_emission_tao: 0.123456789,
@@ -113,7 +224,8 @@ describe("operatorRows", () => {
     ]);
     const serialized = serializeOperatorRows(operators);
 
-    expect(serialized.every((row) => row.length === 11)).toBe(true);
+    expect(serialized.map((row) => row.length)).toEqual([12, 11]);
+    expect(serialized[0]?.[11]).toBe(1);
     expect(serialized[0]?.[1]).toEqual([
       ["5A", 100.12346, 0.123457],
       ["5B", 10.98765, 0.012346],
@@ -141,19 +253,21 @@ describe("operatorRows", () => {
     // merging them would invent an operator that does not exist.
     const operators = operatorRows(rows);
     expect(operators.filter((o) => !o.named).map((o) => o.keyCount)).toEqual([1, 1]);
-    expect(operators.find((o) => o.key === "5C")?.name).toBe("5C");
+    expect(operators.find((o) => o.key === "hotkey:5C")?.name).toBe("5C");
   });
 
   it("weights APY by stake, so a dust key cannot move the headline", () => {
     const weighted = operatorRows([
       validator({
         hotkey: "5A",
+        coldkey: "owner-a",
         coldkey_identity: named("Yuma"),
         total_stake_tao: 999,
         apy_estimate: 0.1,
       }),
       validator({
         hotkey: "5B",
+        coldkey: "owner-a",
         coldkey_identity: named("Yuma"),
         total_stake_tao: 1,
         apy_estimate: 10,
@@ -174,8 +288,20 @@ describe("operatorRows", () => {
   // gives it (#11695).
   it("counts memberships off the scalar that survives the projection", () => {
     const rows = operatorRows([
-      validator({ hotkey: "5A", coldkey_identity: named("Yuma"), subnet_count: 2, subnets: [] }),
-      validator({ hotkey: "5B", coldkey_identity: named("Yuma"), subnet_count: 3, subnets: [] }),
+      validator({
+        hotkey: "5A",
+        coldkey: "owner-a",
+        coldkey_identity: named("Yuma"),
+        subnet_count: 2,
+        subnets: [],
+      }),
+      validator({
+        hotkey: "5B",
+        coldkey: "owner-a",
+        coldkey_identity: named("Yuma"),
+        subnet_count: 3,
+        subnets: [],
+      }),
     ]);
     expect(rows[0]?.memberships).toBe(5);
   });
@@ -188,7 +314,7 @@ describe("operatorRows", () => {
     ).toBe(7);
   });
 
-  it("sums nominators only when at least one key reports them", () => {
+  it("preserves available singleton nominator counts", () => {
     expect(operatorRows([validator({ hotkey: "5A" })])[0]?.nominators).toBeNull();
     expect(operatorRows([validator({ hotkey: "5A", nominator_count: 4 })])[0]?.nominators).toBe(4);
   });
@@ -219,7 +345,7 @@ describe("concentration", () => {
 
   it("collapses everything past the head into one residual", () => {
     const { segments } = concentration(operators, 2);
-    expect(segments.map((s) => s.key)).toEqual(["54", "53", "rest"]);
+    expect(segments.map((s) => s.key)).toEqual(["hotkey:54", "hotkey:53", "rest"]);
     expect(segments[2]).toMatchObject({ label: "2 more operators", value: 30 });
   });
 
@@ -236,6 +362,7 @@ describe("filterOperators", () => {
   const operators = operatorRows([
     validator({
       hotkey: "5AAAAAAAAAAAAAAA",
+      coldkey: "owner-a",
       coldkey_identity: named("Yuma"),
       total_stake_tao: 5000,
     }),
@@ -248,9 +375,11 @@ describe("filterOperators", () => {
   });
 
   it("searches the operator name, its primary hotkey and every child key", () => {
-    expect(filterOperators(operators, { q: "yuma" }).map((o) => o.key)).toEqual(["Yuma"]);
+    expect(filterOperators(operators, { q: "yuma" }).map((o) => o.key)).toEqual([
+      "coldkey:owner-a",
+    ]);
     expect(filterOperators(operators, { q: "5bbb" }).map((o) => o.key)).toEqual([
-      "5BBBBBBBBBBBBBBB",
+      "hotkey:5BBBBBBBBBBBBBBB",
     ]);
   });
 

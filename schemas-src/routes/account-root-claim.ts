@@ -27,7 +27,7 @@ const RootClaimTypeSchema = z
   })
   .strict()
   .describe(
-    "Per-account RootClaimTypeEnum (#7229): Swap / Keep / KeepSubnets.",
+    "Legacy v440 per-account RootClaimTypeEnum: Swap / Keep / KeepSubnets. A runtime-default value is explicitly identified by compatibility.claim_type_source.",
   );
 
 const RootClaimEntrySchema = z
@@ -59,13 +59,33 @@ export const AccountRootClaimArtifactSchema = z
     claim_type: RootClaimTypeSchema.nullable().optional(),
     hotkeys: z.array(RootClaimHotkeySchema).nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    compatibility: z
+      .object({
+        status: z.enum(["legacy_supported", "unsupported", "unavailable"]),
+        reason: z
+          .enum([
+            "root_reborn",
+            "unverified_runtime",
+            "rpc_or_decode_failure",
+            "legacy_limit_exceeded",
+          ])
+          .nullable(),
+        spec_name: z.string().nullable(),
+        spec_version: z.int().min(0).nullable(),
+        block_hash: z.string().nullable(),
+        claim_type_source: z.enum(["storage", "runtime_default"]).nullable(),
+      })
+      .strict()
+      .describe(
+        "Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here.",
+      ),
     // #9108. Required: attached outside the KV cache on every read, so no
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
   .strict()
   .describe(
-    "Live root-claim current state for one Finney ss58 account (#7229), read directly from chain via RPC (KV-cached). claim_type/hotkeys are null on RPC failure (schema-stable, never a GraphQL error). Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
+    "Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
   );
 export type AccountRootClaimArtifact = z.infer<
   typeof AccountRootClaimArtifactSchema

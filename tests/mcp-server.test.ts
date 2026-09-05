@@ -15602,6 +15602,34 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     }
   });
 
+  test("get_account_root_claim reports modern runtime unsupported without reading storage", async () => {
+    const orig = globalThis.fetch;
+    const methods: string[] = [];
+    globalThis.fetch = async (_url, init) => {
+      const { method, params } = JSON.parse(String(init?.body));
+      methods.push(method);
+      if (method === "chain_getFinalizedHead")
+        return Response.json({ result: `0x${"ab".repeat(32)}` });
+      assert.equal(method, "state_getRuntimeVersion");
+      assert.deepEqual(params, [`0x${"ab".repeat(32)}`]);
+      return Response.json({
+        result: { specName: "node-subtensor", specVersion: 454 },
+      });
+    };
+    try {
+      const res = await callTool("get_account_root_claim", { ss58: SS58 }, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false);
+      assert.equal(out.compatibility.status, "unsupported");
+      assert.equal(out.compatibility.reason, "root_reborn");
+      assert.equal(out.claim_type, null);
+      assert.equal(out.hotkeys, null);
+      assert.equal(methods.length, 2);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
   test("get_account_root_claim rejects a non-finney ss58", async () => {
     const res = await callTool(
       "get_account_root_claim",

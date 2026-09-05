@@ -52,13 +52,15 @@ CREATE TABLE IF NOT EXISTS nominator_positions (
   captured_at    BIGINT  NOT NULL,
   PRIMARY KEY (coldkey, hotkey, netuid)
 );`;
-const MIGRATION = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "migrations/neon/0027_nominator_positions_source.sql",
-  ),
-  "utf8",
-);
+const MIGRATION =
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "migrations/neon/0027_nominator_positions_source.sql",
+    ),
+    "utf8",
+  ) +
+  fs.readFileSync("migrations/neon/0035_nominator_scan_receipts.sql", "utf8");
 
 let db: PGlite;
 

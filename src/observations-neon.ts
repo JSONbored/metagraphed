@@ -58,25 +58,49 @@ export interface ObservationWrite {
  *
  * Ranks each stable surface's ok-latency rows by latency and counts them,
  * passing every row through so uptime still totals over all checks.
+ * A current status owns its display alias. If history contains another key
+ * under that alias, retain it under a history-qualified identity instead of
+ * colliding with or merging into the current surface. Metadata comes from
+ * the latest check, so missing older metadata cannot split one identity.
  */
 function rankedChecksCte(): string {
-  return `WITH ranked AS (
+  return `WITH windowed AS (
+    SELECT surface_id, COALESCE(surface_key, surface_id) AS surface_key,
+           netuid, ok, latency_ms, checked_at
+    FROM surface_checks
+    WHERE checked_at >= $1 AND checked_at < $2
+  ), latest_identity AS (
+    SELECT DISTINCT ON (c.surface_key)
+      c.surface_key, c.netuid,
+      COALESCE(s.surface_id, c.surface_id) AS alias,
+      s.surface_id IS NOT NULL AS current_alias, c.checked_at
+    FROM windowed c
+    LEFT JOIN surface_status s ON s.surface_key = c.surface_key
+    ORDER BY c.surface_key, c.checked_at DESC, c.surface_id DESC
+  ), identities AS (
+    SELECT surface_key, netuid,
+      CASE WHEN ROW_NUMBER() OVER (
+        PARTITION BY alias
+        ORDER BY current_alias DESC, checked_at DESC, surface_key
+      ) = 1 THEN alias ELSE 'history:' || surface_key END AS surface_id
+    FROM latest_identity
+  ), ranked AS (
     SELECT
-      surface_id,
-      COALESCE(surface_key, surface_id) AS surface_key,
-      netuid,
+      i.surface_id,
+      c.surface_key,
+      i.netuid,
       ok,
       latency_ms,
       CASE WHEN ${OK_LATENCY} THEN ROW_NUMBER() OVER (
-        PARTITION BY COALESCE(surface_key, surface_id), netuid,
+        PARTITION BY c.surface_key,
                      CASE WHEN ${OK_LATENCY} THEN 0 ELSE 1 END
         ORDER BY latency_ms
       ) END AS rn,
       COUNT(*) FILTER (WHERE ${OK_LATENCY}) OVER (
-        PARTITION BY COALESCE(surface_key, surface_id), netuid
+        PARTITION BY c.surface_key
       ) AS lat_cnt
-    FROM surface_checks
-    WHERE checked_at >= $1 AND checked_at < $2
+    FROM windowed c
+    JOIN identities i ON i.surface_key = c.surface_key
   )`;
 }
 
@@ -115,26 +139,15 @@ async function attempt(
  * One probe sweep: a surface_checks row per surface, plus the latest-status
  * upsert.
  *
- * THE RENAME, AND WHY IT IS TWO STATEMENTS. the store's upsert names two conflict
- * targets -- surface_key when present, so a display-id rename updates the alias
- * in place, and surface_id as the fallback for keyless rows. Postgres permits
- * exactly ONE ON CONFLICT clause per statement, and both arbiters exist in Neon
- * (idx_surface_status_key partial-unique, surface_status_pkey), so they cannot
- * be combined.
+ * A display alias may already belong to another stable key (#12005). Evict
+ * that obsolete latest-status alias and upsert by stable key in ONE statement,
+ * so an occupied alias cannot abort the sweep or leave a half-applied rename.
+ * Keep displaced stable-key status under a history alias: the next probe may
+ * have no cached last_ok, and deleting its status would lose a measured success.
+ * Raw checks remain intact. Keyless rows retain the display-id arbiter.
  *
- * Splitting rows by whether surface_key is present would ALMOST work, and fails
- * on the one case the second arbiter was added for: a keyed row whose
- * surface_id already exists under a different key raises a unique violation
- * instead of updating. So the rename is RESOLVED FIRST -- the row holding this
- * surface_key adopts the new surface_id -- and the upsert then has a single
- * arbiter with nothing left to collide on. Verified against the live schema:
- * one row, the new id, and last_ok preserved.
- *
- * LAST_OK IS A HIGH-WATER MARK (#9634). Every other column takes what this run
- * measured; last_ok records when the surface was last seen WORKING, so a run
- * that did not see it working has observed nothing about it and must not clear
- * it. COALESCE rather than a WHERE guard, because excluded.last_ok is
- * authoritative whenever it is non-null and only "we do not know" arrives null.
+ * Older probes still enter history, but cannot evict a newer alias or replace
+ * newer status. last_ok remains a high-water mark of measured successes.
  */
 export async function persistProbesToNeon(
   sql: ObservationsSql,
@@ -165,30 +178,63 @@ export async function persistProbesToNeon(
             row.checked_at_ms,
           ],
         );
-        if (row.surface_key) {
-          // Resolve the rename before the upsert -- see this function's header.
-          await sql.unsafe(
-            `UPDATE surface_status SET surface_id = $1
-              WHERE surface_key = $2 AND surface_id <> $1`,
-            [row.surface_id, row.surface_key],
-          );
-        }
+        const keyed = Boolean(row.surface_key);
         await sql.unsafe(
-          `INSERT INTO surface_status
+          `${
+            keyed
+              ? `WITH alias_conflict AS (
+             SELECT surface_id, surface_key FROM surface_status
+             WHERE surface_id = $1 AND surface_key IS DISTINCT FROM $2
+               AND COALESCE(last_checked, 0) <= $11
+               AND NOT EXISTS (
+                 SELECT 1 FROM surface_status newer
+                 WHERE newer.surface_key = $2 AND newer.last_checked > $11
+               )
+           ), displaced_alias AS (
+             UPDATE surface_status SET surface_id = 'history:' || surface_key
+             WHERE surface_id IN (
+               SELECT surface_id FROM alias_conflict WHERE surface_key IS NOT NULL
+             )
+             RETURNING surface_id
+           ), displaced_keyless AS (
+             DELETE FROM surface_status
+             WHERE surface_id IN (
+               SELECT surface_id FROM alias_conflict WHERE surface_key IS NULL
+             )
+             RETURNING surface_id
+           )`
+              : ""
+          }
+           INSERT INTO surface_status
              (surface_id, surface_key, netuid, kind, url, provider, status,
               classification, latency_ms, status_code, last_checked, last_ok,
               consecutive_failures, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-           ON CONFLICT (surface_id) DO UPDATE SET
-             surface_key=excluded.surface_key,
+           SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
+           ${
+             keyed
+               ? `FROM (SELECT COUNT(*) FROM displaced_alias) displaced
+             CROSS JOIN (SELECT COUNT(*) FROM displaced_keyless) legacy
+             WHERE NOT EXISTS (
+               SELECT 1 FROM surface_status newer
+               WHERE newer.surface_id = $1
+                 AND newer.surface_key IS DISTINCT FROM $2
+                 AND newer.last_checked > $11
+             )`
+               : ""
+           }
+           ON CONFLICT ${keyed ? "(surface_key) WHERE surface_key IS NOT NULL" : "(surface_id)"} DO UPDATE SET
+             surface_id=excluded.surface_id,
+             surface_key=COALESCE(excluded.surface_key, surface_status.surface_key),
              netuid=excluded.netuid, kind=excluded.kind, url=excluded.url,
              provider=excluded.provider, status=excluded.status,
              classification=excluded.classification,
              latency_ms=excluded.latency_ms, status_code=excluded.status_code,
              last_checked=excluded.last_checked,
-             last_ok=COALESCE(excluded.last_ok, surface_status.last_ok),
+             last_ok=GREATEST(excluded.last_ok, surface_status.last_ok),
              consecutive_failures=excluded.consecutive_failures,
-             updated_at=excluded.updated_at`,
+             updated_at=excluded.updated_at
+           WHERE surface_status.last_checked IS NULL
+              OR surface_status.last_checked <= excluded.last_checked`,
           [
             row.surface_id,
             row.surface_key ?? null,
@@ -259,25 +305,20 @@ export async function rollupUptimeDailyToNeon(
   days: { date: string; start: number; end: number }[],
   runAt: number,
 ): Promise<ObservationWrite> {
-  const conflictColumns = `
-       surface_key = excluded.surface_key,
-       netuid = excluded.netuid,
-       samples = excluded.samples,
-       ok_count = excluded.ok_count,
-       uptime_ratio = excluded.uptime_ratio,
-       avg_latency_ms = excluded.avg_latency_ms,
-       latency_samples = excluded.latency_samples,
-       p50_latency_ms = excluded.p50_latency_ms,
-       p95_latency_ms = excluded.p95_latency_ms,
-       p99_latency_ms = excluded.p99_latency_ms,
-       status = excluded.status,
-       updated_at = excluded.updated_at`;
   return attempt(
     sql,
     async () => {
       for (const { date, start, end } of days) {
         await sql.unsafe(
-          `${rankedChecksCte()}
+          // Today and yesterday are recomputed from the retained raw window.
+          // Replace the day's aliases atomically, including alias swaps; an
+          // upsert cannot arbitrate both (display id, day) and (stable key, day).
+          // No raw checks means no evidence to replace a previous rollup.
+          `${rankedChecksCte()}, replaced_day AS (
+             DELETE FROM surface_uptime_daily
+             WHERE day = $3 AND EXISTS (SELECT 1 FROM ranked)
+             RETURNING surface_id
+           )
            INSERT INTO surface_uptime_daily
              (surface_id, surface_key, netuid, day, samples, ok_count,
               uptime_ratio, latency_samples, avg_latency_ms, p50_latency_ms,
@@ -304,8 +345,8 @@ export async function rollupUptimeDailyToNeon(
              END,
              $4
            FROM ranked
-           GROUP BY surface_key, netuid
-           ON CONFLICT (surface_id, day) DO UPDATE SET${conflictColumns}`,
+           CROSS JOIN (SELECT COUNT(*) FROM replaced_day) previous
+           GROUP BY surface_key, netuid`,
           [start, end, date, runAt],
         );
       }

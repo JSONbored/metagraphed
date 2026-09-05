@@ -166,6 +166,7 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   AccountRegistrationsArtifactSubnets: "AccountRegistrationSubnet",
   AccountRootClaimArtifact: "AccountRootClaim",
   AccountRootClaimArtifactClaimType: "RootClaimType",
+  AccountRootClaimArtifactCompatibility: "RootClaimCompatibility",
   AccountRootClaimArtifactHotkeys: "RootClaimHotkey",
   AccountRootClaimArtifactHotkeysEntries: "RootClaimEntry",
   AccountServingArtifact: "AccountServing",

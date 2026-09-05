@@ -10,6 +10,7 @@ import {
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
+import { ValidatorNominatorsArtifactSchema } from "../schemas-src/routes/validator-nominators.ts";
 
 // One GROUP BY coldkey, event_kind row.
 function row(
@@ -543,6 +544,35 @@ describe("buildValidatorNominators — count and concentration", () => {
     }) as Row;
     assert.equal(d.limit, served);
     assert.equal((d.nominators as Row[]).length, served);
+  });
+
+  test.each([101, 200, 2000])(
+    "a served page of %i satisfies the published response contract",
+    (limit) => {
+      const page = nominators(
+        ...Array.from({ length: limit }, (_, i) => i + 1),
+      );
+      const output = buildValidatorNominators(page, HOTKEY, {
+        limit,
+        totalCount: 3020,
+        alreadyPaged: true,
+      });
+      const parsed = ValidatorNominatorsArtifactSchema.parse(output);
+      assert.equal(parsed.limit, limit);
+      assert.equal(parsed.nominators.length, limit);
+    },
+  );
+
+  test("the response contract rejects a page beyond the route's 2000 ceiling", () => {
+    const output = buildValidatorNominators([], HOTKEY, {
+      limit: 2001,
+      totalCount: 3020,
+      alreadyPaged: true,
+    });
+    assert.equal(
+      ValidatorNominatorsArtifactSchema.safeParse(output).success,
+      false,
+    );
   });
 
   test("the in-memory slice is still capped at NOMINATOR_LIMIT_MAX", () => {

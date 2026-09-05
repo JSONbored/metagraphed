@@ -340,6 +340,13 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     reason: "written with nominator_positions",
     producer: "validator_nominators",
   },
+  nominator_scan_receipts: {
+    column: "captured_at",
+    kind: "ms",
+    maxAgeMs: missedTicksMs("validator_nominators", 1.5),
+    reason: "full-scan delivery receipts, independent of self-stake refreshes",
+    producer: "validator_nominators",
+  },
   validator_nominator_counts_passes: {
     column: "captured_at",
     kind: "ms",

@@ -9,6 +9,7 @@
 // via repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
+import { GLOBAL_VALIDATOR_LIMIT_MAX } from "../../src/route-limits.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES = [
@@ -60,7 +61,9 @@ export const ValidatorNominatorsArtifactSchema = z
       .describe(
         "The resolved sort actually applied (an omitted sort resolves to net_staked).",
       ),
-    limit: z.int().min(0).max(100),
+    // Echo the supported request limit, including pages above the cold-tier
+    // in-memory slice cap. The response boundary must accept a served page.
+    limit: z.int().min(0).max(GLOBAL_VALIDATOR_LIMIT_MAX),
     offset: z.int().min(0),
     nominator_count: z
       .int()

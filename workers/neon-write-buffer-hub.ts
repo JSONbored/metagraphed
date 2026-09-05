@@ -312,10 +312,6 @@ export async function flushBuffer(
     limit: FLUSH_LIST_LIMIT,
   });
   const groups = groupChunkKeys([...stored.keys()]);
-  // A full page back means there is almost certainly more behind it. Cheaper
-  // and more honest than a second count: the caller only needs to know whether
-  // to come back, not exactly how much is left.
-  const truncated = stored.size >= FLUSH_LIST_LIMIT;
   if (groups.length === 0) {
     // RECORD IT. An empty drain returning silently is why "the alarm never
     // fired" and "the alarm fired and found nothing" were indistinguishable
@@ -465,21 +461,15 @@ export async function flushBuffer(
   }
 
   await storage.delete(drainedKeys);
-  // O(1) ON BOTH PATHS (#10775). This reconciled with countPending() when the
-  // drain was truncated -- which is the same full storage.list() that #10755
-  // removed from the enqueue, just moved into the alarm. Measured in
-  // production: the flush at 13:23:12 drained its 500 and then did NOT come
-  // back for the remainder, because the scan on a large backlog outran the
-  // handler.
-  //
-  // A clean drain still reconciles to the TRUE value, and that is where drift
-  // gets corrected: an untruncated flush has emptied the buffer by definition,
-  // so 0 is exact and costs nothing to write. A truncated one decrements, which
-  // can drift slightly but is bounded and self-corrects on the next clean
-  // drain -- and a counter that is slightly high only makes the ceiling
-  // slightly conservative, which is the safe direction.
+  // Enqueues can arrive while SQL is in flight (#12001). Even an untruncated
+  // initial listing cannot prove the buffer is empty after those awaits.
+  // Probe ONE remaining chunk, never scan the backlog (#10775). Preserve new
+  // arrivals in the counter and send them through the short backlog retry.
+  // Only a confirmed empty buffer can reconcile a drifted counter to zero.
+  const remaining =
+    (await storage.list({ prefix: STATEMENT_PREFIX, limit: 1 })).size > 0;
   await storage.put({
-    [PENDING_KEY]: truncated
+    [PENDING_KEY]: remaining
       ? Math.max(
           0,
           ((await storage.get<number>(PENDING_KEY)) ?? 0) -
@@ -533,7 +523,7 @@ export async function flushBuffer(
       ),
     );
   }
-  return { drained, undecodable, ok: true, remaining: truncated };
+  return { drained, undecodable, ok: true, remaining };
 }
 
 /**

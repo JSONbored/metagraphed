@@ -31,7 +31,7 @@ import { VALIDATOR_NOMINATOR_COUNTS_COVERAGE_FLOOR_ROWS } from "../src/validator
 
 const FLOORS = [
   {
-    file: "src/nominator-positions-staleness-watchdog.ts",
+    file: "src/nominator-scan-coverage.ts",
     name: "NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS",
     value: NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS,
   },

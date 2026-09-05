@@ -415,7 +415,7 @@ export function DataTable<Row>({
       data-dense={dense ? "true" : undefined}
     >
       {useCompactMobileLabels ? (
-        <style>
+        <style media="(max-width: 1023px)">
           {shown
             .map(
               (column, index) =>

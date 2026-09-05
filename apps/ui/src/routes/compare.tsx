@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   defineSearchSchema,
+  enumSearch,
   stripDefaultSearchParams,
   stringSearch,
   type SearchOutput,
@@ -18,7 +19,19 @@ import { ComparePage } from "./-compare-page";
  * out (`?subnets=%5B19%2C1%5D`) and 307 every shared link to that shape.
  */
 export const compareSearchSchema = defineSearchSchema({
-  subnets: stringSearch(),
+  // Empty means a legacy link: infer its kind from the selected entities.
+  kind: enumSearch(["", "subnets", "validators"] as const, ""),
+  subnets: {
+    defaultValue: "",
+    parse(value: unknown) {
+      // TanStack JSON-parses a single netuid in legacy `?subnets=19` links.
+      // Keep the validated value a CSV string, just like multi-subnet links.
+      if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
+        return String(value);
+      }
+      return typeof value === "string" ? value : "";
+    },
+  },
   validators: stringSearch(),
 });
 

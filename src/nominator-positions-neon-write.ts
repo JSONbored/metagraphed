@@ -37,6 +37,7 @@ import {
   type NeonWriteResult,
 } from "./neon-write.ts";
 import { NOMINATOR_POSITION_INSERT_COLUMNS } from "./account-nominator-positions.ts";
+import { writeNominatorScanReceipts } from "./nominator-scan-receipts.ts";
 import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
 import {
   neonWriteBufferEnabled,
@@ -82,6 +83,8 @@ export interface NominatorPositionsMirrorOutcome {
   attempted: boolean;
   write?: NeonWriteResult;
   prune?: NeonWriteResult;
+  /** Full-scan receipts must land before acknowledging a delivered chunk. */
+  coverage?: NeonWriteResult;
   /** The pass tally, SURFACED so an inverted caller can require it (#10109).
    * It was written but not reported, so once this lane is Neon's the request
    * could answer ok while nominator_positions_passes -- a table with no other
@@ -209,6 +212,23 @@ export async function mirrorNominatorPositionsToNeon(
     true,
   );
 
+  // The position key excludes source: a newer self-stake write can replace
+  // alpha's source and timestamp. Preserve full-scan evidence separately,
+  // after durable data and pruning, before a pass can be counted complete.
+  let coverage: NeonWriteResult | undefined;
+  if (prune.ok && source === POSITION_SOURCE_ALPHA) {
+    coverage = await writeNominatorScanReceipts(sql, input.rows);
+    await recordNeonWriteVerdict(
+      laneDb,
+      `${NOMINATOR_POSITIONS_NEON_LANE}-coverage`,
+      coverage,
+      now(),
+      buffered,
+      true,
+    );
+    if (!coverage.ok) return { attempted: true, write, prune, coverage };
+  }
+
   // AFTER THE PRUNE, BEFORE THE TALLY (metagraphed-infra#414). Recomputes
   // share_fraction from the raw shares of this pass, which is what lets the
   // producer stop buffering the whole keyspace to compute a pool-normalised
@@ -274,7 +294,7 @@ export async function mirrorNominatorPositionsToNeon(
       true,
     );
   }
-  return { attempted: true, write, prune, pass: passResult };
+  return { attempted: true, write, prune, coverage, pass: passResult };
 }
 
 /**

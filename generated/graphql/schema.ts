@@ -1006,7 +1006,7 @@ type Query {
   account_balance(ss58: String!, network: Network): AccountBalance
 
   """
-  Live root-claim current state for one Finney ss58 account (#7229) — claim type, per-hotkey claimable rates, cumulative claimed watermarks, and per-netuid thresholds — read directly from chain via RPC (KV-cached, not the Postgres tier). claim_type/hotkeys are null on RPC failure, schema-stable, never a GraphQL error. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
+  Deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
   """
   account_root_claim(ss58: String!, network: Network): AccountRootClaim
 
@@ -5905,32 +5905,32 @@ type Validator {
   apy_estimate_eligible_subnet_count: Int!
 
   """
-  Realized return on staked capital over a NOMINAL 1-day window. The interval is not exact: the baseline is the newest neuron_daily snapshot within a 2-day tolerance of the target date (#8837), so this can measure 1, 2 or 3 elapsed days. Read realized_return_1d_as_of for the day it actually resolved to before annualizing or plotting day-over-day (#9885).
+  Deprecated compatibility field; always null since #12015. Changes in delegated stake include deposits, withdrawals and price moves, so the former balance-change calculation did not measure investment return. Flow-neutral performance is unavailable; do not treat null as zero.
   """
   realized_return_1d: Float
 
   """
-  The neuron_daily snapshot_date the 1-day baseline resolved to, or null when there is no baseline (in which case realized_return_1d is null too). Subtract it from the response stamp for the true elapsed interval.
+  Deprecated compatibility field; always null with realized_return_1d. No investment-return measurement window is available.
   """
   realized_return_1d_as_of: String
 
   """
-  Realized return over a NOMINAL 7-day window; the same 2-day tolerance makes the true interval 5-9 days. See realized_return_1w_as_of (#9885).
+  Deprecated compatibility field; always null since #12015. Changes in delegated stake include deposits, withdrawals and price moves, so the former balance-change calculation did not measure investment return. Flow-neutral performance is unavailable; do not treat null as zero.
   """
   realized_return_1w: Float
 
   """
-  The neuron_daily snapshot_date the 7-day baseline resolved to, or null when realized_return_1w is null.
+  Deprecated compatibility field; always null with realized_return_1w. No investment-return measurement window is available.
   """
   realized_return_1w_as_of: String
 
   """
-  Realized return over a NOMINAL 30-day window; the same 2-day tolerance makes the true interval 28-32 days. See realized_return_1m_as_of (#9885).
+  Deprecated compatibility field; always null since #12015. Changes in delegated stake include deposits, withdrawals and price moves, so the former balance-change calculation did not measure investment return. Flow-neutral performance is unavailable; do not treat null as zero.
   """
   realized_return_1m: Float
 
   """
-  The neuron_daily snapshot_date the 30-day baseline resolved to, or null when realized_return_1m is null.
+  Deprecated compatibility field; always null with realized_return_1m. No investment-return measurement window is available.
   """
   realized_return_1m_as_of: String
   avg_validator_trust: Float
@@ -8781,7 +8781,7 @@ type AccountBalance {
 }
 
 """
-Live root-claim current state for one Finney ss58 account (#7229), read directly from chain via RPC (KV-cached). claim_type/hotkeys are null on RPC failure (schema-stable, never a GraphQL error). Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
+Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
 """
 type AccountRootClaim {
   schema_version: Int!
@@ -8791,12 +8791,19 @@ type AccountRootClaim {
   queried_at: String
 
   """
+  Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here.
+  """
+  compatibility: RootClaimCompatibility!
+
+  """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
   """
   field_sources: JSON!
 }
 
-"""Per-account RootClaimTypeEnum (#7229): Swap / Keep / KeepSubnets."""
+"""
+Legacy v440 per-account RootClaimTypeEnum: Swap / Keep / KeepSubnets. A runtime-default value is explicitly identified by compatibility.claim_type_source.
+"""
 type RootClaimType {
   kind: String!
   subnets: [Int!]
@@ -8818,6 +8825,18 @@ type RootClaimEntry {
   claimable_rate: Float!
   claimed: String!
   threshold: Float!
+}
+
+"""
+Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here.
+"""
+type RootClaimCompatibility {
+  status: String!
+  reason: String
+  spec_name: String
+  spec_version: Int
+  block_hash: String
+  claim_type_source: String
 }
 
 """

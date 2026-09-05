@@ -9961,7 +9961,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/root-claim.json",
       "cache": "short",
-      "description": "Fetch the live root-claim current state for one Finney ss58 account (#7229) — RootClaimType setting, per-hotkey RootClaimable rates, RootClaimed cumulative watermarks, and RootClaimableThreshold — queried from the finney RPC at request time with 120s KV cache. Returns 400 on invalid ss58; claim_type/hotkeys are null on RPC failure. Read-only display only; never submits claim_root or any other extrinsic.",
+      "description": "Read deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Returns 400 on invalid ss58. This does not report native basket entitlement or submit a claim.",
       "id": "account-root-claim",
       "mainnet_only": false,
       "method": "GET",

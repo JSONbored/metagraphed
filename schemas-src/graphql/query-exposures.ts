@@ -1485,7 +1485,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "account-root-claim",
     returns: "AccountRootClaim",
     description:
-      "Live root-claim current state for one Finney ss58 account (#7229) — claim type, per-hotkey claimable rates, cumulative claimed watermarks, and per-netuid thresholds — read directly from chain via RPC (KV-cached, not the Postgres tier). claim_type/hotkeys are null on RPC failure, schema-stable, never a GraphQL error. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
+      "Deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
   },
   {
     field: "account_children",
