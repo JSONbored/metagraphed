@@ -105,7 +105,6 @@ export interface ApiKeys {
   last_used_at: number | string | null;
   owner_contact: string;
   prefix: string | null;
-  revocation_requested_at: number | string | null;
   revoked_at: number | string | null;
   secret_hash: string | null;
   tier: string;
