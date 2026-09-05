@@ -38,11 +38,47 @@ existing row. The states are `active`, `pending`, and `revoked`, with
 `revoked_at` taking precedence over a pending timestamp. The nullable intent
 column preserves existing records and can be deployed before its writers.
 
-This capability is a prerequisite for a staged rollout. Deploy the nullable
-schema first, then the internal capability, then its request enforcement
-consumers. Durable intent writers and their pending responses are activated
-only after those consumers and the corresponding settings UI are deployed.
-This prerequisite retains the existing DELETE behavior and writes no intents.
+Apply migration 0038 and verify the nullable column in the bound database
+before deploying the internal capability. Then deploy its request enforcement
+consumers and the compatible settings UI. The intent writer requires the
+migration, capability, all enforcing readers, and UI to be confirmed deployed.
+The capability uses an explicit typed SELECT projection; the generated live
+schema snapshot follows its separate refresh and policy workflow tracked in
+#12072.
+
+Once revocation intent can be persisted, compatible rollbacks must retain the
+internal state capability and every reader that checks the ledger on each
+request. A reader that relies only on a cached positive verification result
+is not a compatible rollback target.
+
+The owned DELETE route records `revocation_requested_at` before calling the
+provider. This immediately causes the state readers to deny access. An intent
+write failure leaves provider state untouched and returns the existing error.
+Unknown IDs and IDs owned by another account retain the same 404 response.
+
+After intent commits, provider failure or a failed completion write returns
+HTTP 502 with this body:
+
+```json
+{
+  "error": {
+    "code": "KEY_REVOCATION_PENDING",
+    "message": "Key access is disabled. Revocation confirmation is pending; retry."
+  },
+  "key_id": "key_example",
+  "revoked": false,
+  "revocation_state": "pending",
+  "access_disabled": true
+}
+```
+
+The key list continues to show pending until completion is persisted. Retrying
+the same DELETE preserves the first intent timestamp and retries provider
+confirmation. Once the provider confirms and the completion write succeeds,
+the response is the existing HTTP 200 `{ "key_id": "key_example", "revoked": true }`.
+Repeating an owned completed revoke returns that same success without another
+provider call. There is no background retry; the settings UI offers the retry
+action and refreshes the list after both successful and failed requests.
 
 The ledger guard addresses application-managed state. Changes made directly
 at the external provider still require a new provider observation; the ledger

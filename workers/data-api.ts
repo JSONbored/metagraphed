@@ -5482,30 +5482,56 @@ async function handleAccountKeyRevoke(
     return writeJson({ error: "malformed key id" }, 400);
   }
   return withAccountsSql(env, ctx, async (sql) => {
-    // Ownership check BEFORE ever calling Unkey -- a key_id that exists but
-    // belongs to a different account gets the SAME 404 a nonexistent one
-    // would (no existence oracle across accounts, same posture as
-    // requireAlertTriggerOwner), and we never touch Unkey for a key this
-    // session doesn't own.
-    const [row] = await sql<{ unkey_key_id: ApiKeys["unkey_key_id"] }>`
-      SELECT unkey_key_id FROM api_keys
+    // Persist intent atomically with ownership before any provider mutation.
+    // Retries retain the first timestamp. The independently deployed state
+    // readers deny pending rows, even if provider confirmation later fails.
+    const [intent] = await sql<{ unkey_key_id: ApiKeys["unkey_key_id"] }>`
+      UPDATE api_keys
+      SET revocation_requested_at = COALESCE(revocation_requested_at, ${Date.now()})
       WHERE unkey_key_id = ${keyId}
         AND account_id = ${session.accountId}
-        AND revoked_at IS NULL`;
-    if (!row) return writeJson({ error: "no such key" }, 404);
-
-    // Unkey is the actual enforcement point (verifyKey() is what the
-    // fullnode gate checks, not this table) -- disable there FIRST. Only
-    // mark our own bookkeeping row revoked once that's confirmed, so
-    // revoked_at never claims a state Unkey didn't actually reach: a key
-    // that fails to revoke stays reported as still-active, not falsely
-    // "revoked" while actually still working.
-    const revoked = await revokeUnkeyKey(env, keyId);
-    if (!revoked.ok) {
-      return writeJson({ error: "revoke failed; try again" }, 502);
+        AND revoked_at IS NULL
+      RETURNING unkey_key_id`;
+    if (!intent) {
+      const [existing] = await sql<Pick<ApiKeys, "revoked_at">>`
+        SELECT revoked_at FROM api_keys
+        WHERE unkey_key_id = ${keyId} AND account_id = ${session.accountId}`;
+      if (existing?.revoked_at != null)
+        return writeJson({ key_id: keyId, revoked: true });
+      return writeJson({ error: "no such key" }, 404);
     }
-    await sql<never>`UPDATE api_keys SET revoked_at = ${Date.now()} WHERE unkey_key_id = ${keyId}`;
-    return writeJson({ key_id: keyId, revoked: true });
+
+    const pending = () =>
+      writeJson(
+        {
+          error: {
+            code: "KEY_REVOCATION_PENDING",
+            message:
+              "Key access is disabled. Revocation confirmation is pending; retry.",
+          },
+          key_id: keyId,
+          revoked: false,
+          revocation_state: "pending",
+          access_disabled: true,
+        },
+        502,
+      );
+    try {
+      const revoked = await revokeUnkeyKey(env, keyId);
+      if (!revoked.ok) return pending();
+      const [completed] = await sql<{ unkey_key_id: ApiKeys["unkey_key_id"] }>`
+        UPDATE api_keys SET revoked_at = COALESCE(revoked_at, ${Date.now()})
+        WHERE unkey_key_id = ${keyId} AND account_id = ${session.accountId}
+          AND revocation_requested_at IS NOT NULL
+        RETURNING unkey_key_id`;
+      if (!completed) return pending();
+      return writeJson({ key_id: keyId, revoked: true });
+    } catch (err) {
+      // Intent is already durable. Do not claim provider-side completion or
+      // clear the marker when the confirmation write must be retried.
+      console.error("data-api key revocation confirmation failed:", err);
+      return pending();
+    }
   });
 }
 
