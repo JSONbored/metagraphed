@@ -12,6 +12,8 @@ import {
   providerLeaders,
   providerRows,
   providerSurfaces,
+  publishedSurfaceCount,
+  surfaceAuth,
 } from "./providers-logic";
 
 const providers = [
@@ -97,13 +99,13 @@ describe("providerFacts", () => {
     expect(claimed?.value).toBe("1 (33%)");
   });
 
-  it("prefers the health summary's endpoint count over the row sum", () => {
+  it("keeps the registry endpoint count independent of the health snapshot", () => {
     const rows = providerRows(providers, health);
     expect(
       providerFacts(rows, { endpoint_count: 3391, status_counts: {} }, fmt).find(
         (f) => f.key === "endpoints",
       )?.value,
-    ).toBe("3391");
+    ).toBe("20");
     expect(providerFacts(rows, null, fmt).find((f) => f.key === "endpoints")?.value).toBe("20");
   });
 
@@ -223,8 +225,10 @@ describe("endpointRails", () => {
     expect(endpointRails(endpoints)[0]!.label).toBe("subtensor-rpc · rpc.example");
   });
 
-  it("says never rather than blank for an endpoint that has never answered", () => {
-    expect(endpointRails(endpoints)[1]!.detail.find((d) => d.key === "probe")?.value).toBe("never");
+  it("does not infer lifetime failure from an absent last successful probe", () => {
+    expect(endpointRails(endpoints)[1]!.detail.find((d) => d.key === "probe")?.value).toBe(
+      "no successful probe recorded",
+    );
   });
 
   it("honours the limit and survives nothing", () => {
@@ -317,5 +321,110 @@ describe("mergeSurfaceProbes", () => {
     expect(mergeSurfaceProbes(surfaces, endpoints)).toHaveLength(surfaces.length);
     expect(mergeSurfaceProbes(surfaces, [])).toHaveLength(surfaces.length);
     expect(mergeSurfaceProbes([], endpoints)).toEqual([]);
+  });
+});
+
+describe("provider service evidence", () => {
+  it("preserves published zero and unknown counts independently of loaded rows", () => {
+    for (const count of [0, 501]) {
+      const provider = { surfaces_count: count } as Provider;
+      expect(publishedSurfaceCount(provider)).toBe(count);
+      expect(providerDetailFacts(provider, null, publishedSurfaceCount(provider), fmt)).toEqual([
+        { key: "surfaces", label: "Published surfaces", value: String(count) },
+      ]);
+    }
+    for (const count of [undefined, null, -1, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1, "10"]) {
+      expect(publishedSurfaceCount({ surfaces_count: count } as Provider)).toBeNull();
+    }
+    expect(providerDetailFacts({ name: "x" } as Provider, null, null, fmt)).toEqual([]);
+  });
+
+  it("requires explicit booleans for open or required authentication", () => {
+    expect(surfaceAuth(true)).toBe("Required");
+    expect(surfaceAuth(false)).toBe("Open");
+    for (const value of [undefined, null, "false", "true", 0, 1])
+      expect(surfaceAuth(value)).toBe("Unknown");
+  });
+
+  const surface = {
+    id: "service-a",
+    key: "srf-a",
+    url: "https://example.test/api?x=1&y=2",
+    provider: "a",
+    netuid: 0,
+    kind: "subnet-api",
+  } as Surface;
+  const probe = {
+    id: "endpoint-a",
+    surface_id: "service-a",
+    surface_key: "srf-a",
+    url: surface.url,
+    provider: "a",
+    netuid: 0,
+    kind: "subnet-api",
+    status: "ok",
+    latency_ms: 42,
+  } as Endpoint;
+
+  it("joins stable identities even when another service uses the same URL", () => {
+    const other = { ...surface, id: "service-b", key: "srf-b" };
+    const otherProbe = {
+      ...probe,
+      id: "endpoint-b",
+      surface_id: "service-b",
+      surface_key: "srf-b",
+      status: "failed",
+      latency_ms: 900,
+    };
+    for (const endpoints of [
+      [probe, otherProbe],
+      [otherProbe, probe],
+    ]) {
+      expect(mergeSurfaceProbes([surface, other], endpoints).map((row) => row.probeStatus)).toEqual(
+        ["ok", "failed"],
+      );
+    }
+  });
+
+  it("rejects conflicting IDs, providers, subnets including zero, kind and URL", () => {
+    for (const patch of [
+      { surface_key: "other" },
+      { surface_id: "other" },
+      { provider: "b" },
+      { netuid: 1 },
+      { kind: "website" },
+      { url: "https://other.test" },
+    ]) {
+      expect(mergeSurfaceProbes([surface], [{ ...probe, ...patch }])[0]?.probeStatus).toBeNull();
+    }
+    expect(
+      mergeSurfaceProbes([surface], [probe, { ...probe, id: "duplicate" }])[0]?.probeStatus,
+    ).toBeNull();
+  });
+
+  it("never resolves ambiguous legacy URL matches by input order", () => {
+    const legacy = { id: "old", url: surface.url, status: "ok" } as Endpoint;
+    expect(mergeSurfaceProbes([surface], [legacy])[0]?.probeStatus).toBe("ok");
+    expect(
+      mergeSurfaceProbes([surface, { ...surface, id: "b", netuid: 1 }], [legacy]).map(
+        (row) => row.probeStatus,
+      ),
+    ).toEqual([null, null]);
+    expect(
+      mergeSurfaceProbes([surface], [legacy, { ...legacy, id: "other", status: "failed" }])[0]
+        ?.probeStatus,
+    ).toBeNull();
+    expect(
+      mergeSurfaceProbes(
+        [surface, { ...surface, id: "b", netuid: 1 }],
+        [{ ...legacy, netuid: 0 }],
+      ).map((row) => row.probeStatus),
+    ).toEqual(["ok", null]);
+  });
+
+  it("keeps a non-finite latency unavailable", () => {
+    expect(
+      mergeSurfaceProbes([surface], [{ ...probe, latency_ms: NaN }])[0]?.probeLatencyMs,
+    ).toBeNull();
   });
 });

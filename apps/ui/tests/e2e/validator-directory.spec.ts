@@ -2,6 +2,10 @@ import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart";
 
+// This spec supplies synthetic operator responses through page.route. Keep
+// service-worker-controlled navigation outside that fixture boundary.
+test.use({ serviceWorkers: "block" });
+
 const KNOWN_HOTKEY = "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u";
 const LONG_OPERATOR_NAME = `Operator 00${"X".repeat(180)}`;
 const member = (index: number) => `synthetic-hotkey-${String(index).padStart(3, "0")}`;
@@ -40,8 +44,10 @@ const operators = Array.from({ length: 56 }, (_, index) => {
 async function openDirectory(page: Page, captured_at?: string, firstName?: string) {
   await gotoThroughRestart(page, "/settings");
   await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
-  await page.route("**/api/v1/validators/operators*", async (route) =>
-    route.fulfill({
+  let operatorRequests = 0;
+  await page.route("**/api/v1/validators/operators*", async (route) => {
+    operatorRequests += 1;
+    await route.fulfill({
       json: {
         ok: true,
         data: {
@@ -53,8 +59,8 @@ async function openDirectory(page: Page, captured_at?: string, firstName?: strin
         },
         meta: { generated_at: new Date().toISOString() },
       },
-    }),
-  );
+    });
+  });
   if ((page.viewportSize()?.width ?? 1280) < 768) {
     await page.getByRole("button", { name: "Open menu", exact: true }).click();
     await page
@@ -62,6 +68,7 @@ async function openDirectory(page: Page, captured_at?: string, firstName?: strin
       .getByRole("link", { name: "Validators", exact: true })
       .click();
   } else await page.getByRole("link", { name: "Validators", exact: true }).first().click();
+  await expect.poll(() => operatorRequests).toBeGreaterThan(0);
   const table = page.locator("#operators .mg-dt");
   await expect(table.locator(".mg-dt-row").first()).toContainText("Operator 00");
   return table;
