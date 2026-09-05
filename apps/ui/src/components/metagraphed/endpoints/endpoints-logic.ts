@@ -16,9 +16,9 @@ export interface EndpointRow {
   latencyMs: number | null;
   lastChecked: string | null;
   lastOk: string | null;
-  archive: boolean;
-  poolEligible: boolean;
-  authRequired: boolean;
+  archive: boolean | null;
+  poolEligible: boolean | null;
+  authRequired: boolean | null;
   [key: string]: unknown;
 }
 
@@ -80,6 +80,7 @@ export type LatencyView = (typeof LATENCY_VIEWS)[number]["value"];
 
 const str = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value : null;
+const flag = (value: unknown): boolean | null => (typeof value === "boolean" ? value : null);
 const num = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
@@ -106,9 +107,9 @@ export function endpointRows(raw: readonly Endpoint[] | null | undefined): Endpo
     latencyMs: num(row.latency_ms),
     lastChecked: str(row.last_checked) ?? str(row.observed_at),
     lastOk: str(row.last_ok),
-    archive: row.archive_support === true,
-    poolEligible: row.pool_eligible === true,
-    authRequired: row.auth_required === true,
+    archive: flag(row.archive_support),
+    poolEligible: flag(row.pool_eligible),
+    authRequired: flag(row.auth_required),
   }));
 }
 
@@ -191,8 +192,16 @@ export function latencyRails(
     href: row.netuid == null ? undefined : `/subnets/${row.netuid}`,
     detail: [
       { key: "status", label: "Status", value: row.status ?? "unknown" },
-      { key: "archive", label: "Archive", value: row.archive ? "yes" : "no" },
-      { key: "pool", label: "Pool-eligible", value: row.poolEligible ? "yes" : "no" },
+      {
+        key: "archive",
+        label: "Archive",
+        value: row.archive == null ? "unknown" : row.archive ? "yes" : "no",
+      },
+      {
+        key: "pool",
+        label: "Pool-eligible",
+        value: row.poolEligible == null ? "unknown" : row.poolEligible ? "yes" : "no",
+      },
     ],
   }));
 }

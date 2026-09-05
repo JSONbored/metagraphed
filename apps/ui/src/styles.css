@@ -50,3 +50,31 @@
   line-height: var(--text-16--line-height);
   text-wrap: pretty;
 }
+
+/* Endpoint cards lead with identity, status and observed latency. The same
+   desktop metadata remains available in each row's disclosure on touch screens. */
+.mg-endpoint-directory .mg-dt-disclosure {
+  min-width: 44px;
+  min-height: 44px;
+}
+@media (max-width: 1023px) {
+  .mg-endpoint-directory .mg-dt-row td[data-mobile-lead="true"]::before {
+    display: none;
+  }
+  .mg-endpoint-directory .mg-dt-row .mg-dt-status {
+    align-self: flex-start;
+  }
+  .mg-endpoint-directory .mg-dt-row td[data-label="Provider"]:not([data-mobile-lead="true"]),
+  .mg-endpoint-directory .mg-dt-row td[data-label="Kind"]:not([data-mobile-lead="true"]),
+  .mg-endpoint-directory .mg-dt-row td[data-label="Subnet"]:not([data-mobile-lead="true"]),
+  .mg-endpoint-directory .mg-dt-row td[data-label="Last probe"]:not([data-mobile-lead="true"]) {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .mg-endpoint-detail .mg-raw-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--mg-space-xs);
+  }
+}

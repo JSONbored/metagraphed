@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   AnalyticsSection,
   DataTable,
@@ -11,10 +11,10 @@ import {
   LoadMore,
   RankedRails,
   Raw,
-  SectionNav,
   type DataTableColumn,
   type RawRow,
 } from "@jsonbored/ui-kit";
+import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { factCells } from "@/lib/metagraphed/facts";
 import { useNearViewport } from "@/hooks/use-near-viewport";
@@ -27,11 +27,7 @@ import { formatAbsoluteTime, formatNumber, formatPct } from "@/lib/metagraphed/f
 import { coverageQuery, surfacesInfiniteQuery } from "@/lib/metagraphed/queries";
 import type { Surface } from "@/lib/metagraphed/types";
 import type { CoverageCounts } from "@/components/metagraphed/apis/apis-logic";
-import {
-  apisNav,
-  catalogHeadlineFacts,
-  interfaceCoverage,
-} from "@/components/metagraphed/apis/apis-logic";
+import { catalogHeadlineFacts, interfaceCoverage } from "@/components/metagraphed/apis/apis-logic";
 import { matchesSurfaceFilters } from "@/lib/metagraphed/surface-filters";
 import { Route } from "./apis.index";
 
@@ -54,7 +50,6 @@ function ApiSources() {
 export function ApisCatalogPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/apis" });
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
@@ -220,7 +215,7 @@ export function ApisCatalogPage() {
           refreshing: feed.isFetching || coverage.isFetching,
         }}
       />
-      <SectionNav items={apisNav(pathname)} link={RouterLink} />
+      <ApiNavigation />
 
       <AnalyticsSection
         id="coverage"

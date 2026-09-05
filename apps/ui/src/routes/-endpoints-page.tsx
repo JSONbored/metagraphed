@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   AnalyticsSection,
   CopyableCode,
   DataTable,
   EntityHero,
   FactSentence,
+  FactStrip,
   FilterField,
   FilterSelect,
   LoadMore,
@@ -14,10 +15,11 @@ import {
   RangeControl,
   RankedRails,
   Raw,
-  SectionNav,
   type DataTableColumn,
   type RawRow,
 } from "@jsonbored/ui-kit";
+import { EndpointDirectoryControls } from "@/components/metagraphed/endpoints/endpoint-directory-controls";
+import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
@@ -32,7 +34,6 @@ import {
   endpointsSummaryQuery,
   rpcPoolsQuery,
 } from "@/lib/metagraphed/queries";
-import { apisNav } from "@/components/metagraphed/apis/apis-logic";
 import { hostOf } from "@/components/metagraphed/providers/providers-logic";
 import {
   LATENCY_VIEWS,
@@ -66,39 +67,19 @@ function ApiSources() {
   return null;
 }
 
-/**
- * Endpoints (#11623) — four sections.
- *
- * What went: a four-tab strip (`Directory / Managed RPC / Pools / Incidents`),
- * four summary count cards, four more `DEGRADED NOW / OPEN INCIDENTS /
- * SLOWEST ARCHIVE / FRESHLY PROBED` cards, nine `AsyncPanel`s, thirty-five
- * bordered boxes, an incident banner, a `Share view` button and a Grid view
- * that was a second rendering of the table. The tabs were four answers to one
- * question, so they are four sections of one page.
- *
- * The managed-proxy tab is one copyable URL in the Pools footnote: it was a
- * whole tab to say "point your client here", and the pools rail is the part a
- * caller actually needs before doing so.
- */
+/** The endpoint directory leads; routing and probe diagnostics follow it. */
 export function EndpointsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/apis/endpoints" });
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
       resetScroll: false,
+      hash: true,
     });
 
-  /**
-   * The facets go to the SERVER; only the free-text one stays here.
-   *
-   * /api/v1/endpoints caps `limit` at 1,000 against a 3,391-row fleet and
-   * takes `status`, `kind` and `provider`, so filtering a loaded page
-   * client-side would answer "how many degraded" from the first thousand rows.
-   * It has no text search, so `q` is the one filter applied to the rows in
-   * hand, and the section footnote says how many are in hand.
-   */
+  // Exact status, kind and provider filter on the server. Text search and
+  // the combined "monitored" status still match only the rows loaded here.
   const serverParams: Record<string, string | number> = {
     limit: 200,
     fields: ENDPOINT_PAGE_FIELDS,
@@ -128,6 +109,15 @@ export function EndpointsPage() {
   );
   const openIncidents = useMemo(() => incidentList.filter((row) => row.open), [incidentList]);
   const shownIncidents = search.incidents === "open" ? openIncidents : incidentList;
+  const fleetCells = factCells(
+    endpointFacts(
+      summary as Parameters<typeof endpointFacts>[0],
+      pools.isPending || (pools.isError && !pools.data) ? null : poolList.length,
+      incidents.isPending || (incidents.isError && !incidents.data) ? null : openIncidents.length,
+      { count: formatNumber },
+      { pools: pools.isPending, incidents: incidents.isPending },
+    ),
+  );
   const refreshAll = () => {
     void Promise.all([
       feed.refetch(),
@@ -166,7 +156,7 @@ export function EndpointsPage() {
     { key: "status", label: "Status", kind: "status", width: 110, value: (row) => row.status },
     {
       key: "latency",
-      label: "p50",
+      label: "Latency",
       kind: "number",
       align: "right",
       width: 100,
@@ -219,28 +209,75 @@ export function EndpointsPage() {
    * competing for width with the six a reader scans (#11696).
    */
   const endpointDetail = (row: EndpointRow) => (
-    <dl>
+    <dl className="mg-endpoint-detail">
+      <div className="mg-raw-row">
+        <dt>Provider</dt>
+        <dd>{row.provider ?? "unknown"}</dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Kind</dt>
+        <dd>{row.kind ?? "unknown"}</dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Subnet</dt>
+        <dd>
+          {row.netuid == null ? (
+            "not recorded"
+          ) : (
+            <RouterLink href={`/subnets/${row.netuid}`}>SN{row.netuid}</RouterLink>
+          )}
+        </dd>
+      </div>
+      <div className="mg-raw-row">
+        <dt>Last probe</dt>
+        <dd>{row.lastChecked ? formatAbsoluteTime(row.lastChecked) : "no probe recorded"}</dd>
+      </div>
       {row.url ? (
         <div className="mg-raw-row">
           <dt>URL</dt>
-          <dd>{row.url}</dd>
+          <dd>
+            <CopyableCode
+              value={row.url}
+              label="endpoint URL"
+              truncate={false}
+              className="min-h-11"
+            />
+          </dd>
         </div>
       ) : null}
       <div className="mg-raw-row">
         <dt>Pool</dt>
-        <dd>{row.poolEligible ? "eligible" : "not eligible"}</dd>
+        <dd>
+          {row.poolEligible == null
+            ? "eligibility unknown"
+            : row.poolEligible
+              ? "eligible"
+              : "not eligible"}
+        </dd>
       </div>
       <div className="mg-raw-row">
         <dt>Archive</dt>
-        <dd>{row.archive ? "serves archive state" : "recent state only"}</dd>
+        <dd>
+          {row.archive == null
+            ? "support unknown"
+            : row.archive
+              ? "serves archive state"
+              : "archive not supported"}
+        </dd>
       </div>
       <div className="mg-raw-row">
         <dt>Auth</dt>
-        <dd>{row.authRequired ? "a key is required" : "open"}</dd>
+        <dd>
+          {row.authRequired == null
+            ? "requirement unknown"
+            : row.authRequired
+              ? "a key is required"
+              : "open"}
+        </dd>
       </div>
       <div className="mg-raw-row">
         <dt>Last ok</dt>
-        <dd>{row.lastOk ? formatAbsoluteTime(row.lastOk) : "never answered"}</dd>
+        <dd>{row.lastOk ? formatAbsoluteTime(row.lastOk) : "no successful probe recorded"}</dd>
       </div>
     </dl>
   );
@@ -283,31 +320,120 @@ export function EndpointsPage() {
         className="mg-hero--directory"
         name="Endpoints"
         sentence={
-          <FactSentence>What the registry can reach, and how it answered last time.</FactSentence>
-        }
-        // A STRIP, not chips (#11696). This page's subject is a table, and its
-        // headline counts were 11px `Fact` chips inside the sentence -- set
-        // smaller than the rows they frame. The lede stays prose.
-        cells={
-          factCells(
-            endpointFacts(
-              summary as Parameters<typeof endpointFacts>[0],
-              pools.isPending ? null : poolList.length,
-              incidents.isPending ? null : openIncidents.length,
-              { count: formatNumber },
-              { pools: pools.isPending, incidents: incidents.isPending },
-            ),
-          ) ?? undefined
+          <FactSentence>
+            Find an endpoint, check its latest probe and copy the exact URL.
+          </FactSentence>
         }
         live={{
           updatedAt: summary?.observed_at ?? rows[0]?.lastChecked ?? null,
-          source: "probed every 15 min",
+          source: "recorded probes",
           onRefresh: refreshAll,
           refreshing:
             feed.isFetching || summaryQuery.isFetching || pools.isFetching || incidents.isFetching,
         }}
       />
-      <SectionNav items={apisNav(pathname)} link={RouterLink} />
+      <ApiNavigation />
+
+      <AnalyticsSection
+        id="directory"
+        className="mg-directory-section mg-directory-section--table-first"
+        name="Directory"
+        question="Every endpoint the registry knows about."
+        visual={
+          <>
+            <EndpointDirectoryControls
+              search={search}
+              kinds={kinds}
+              providers={providers}
+              onChange={setSearch}
+            />
+            <DataTable
+              id="directory"
+              className="mg-endpoint-directory"
+              mobile="cards"
+              rows={shown}
+              columns={columns}
+              rowKey={(row) => row.id}
+              caption="Endpoints"
+              link={RouterLink}
+              source="endpoint"
+              storageKey="mg-endpoints-columns"
+              expand={endpointDetail}
+              loading={feed.isPending}
+              error={
+                feed.isError ? (
+                  <ErrorState
+                    error={feed.error}
+                    onRetry={() => void feed.refetch()}
+                    context="tracked endpoints"
+                  />
+                ) : undefined
+              }
+              empty={
+                search.q || search.status === "monitored"
+                  ? "No loaded endpoints match this view."
+                  : "No endpoints match these filters."
+              }
+            />
+          </>
+        }
+        legend={
+          // Only while there IS more to fetch. The table states its own range
+          // and total in the pager ("1-50 of 1,545"), so a terminal
+          // "1545 of 1545 - end of list" strip directly beneath it was the
+          // same fact twice, in two vocabularies (#11696). An error still
+          // shows, because a feed that stopped early is not the end of a list.
+          feed.isRefetchError && rows.length > 0 ? (
+            <ErrorState
+              error={feed.error}
+              onRetry={() => void feed.refetch()}
+              context="endpoint refresh"
+            />
+          ) : feed.hasNextPage || (feed.error && rows.length > 0) ? (
+            <LoadMore
+              hasMore={feed.hasNextPage}
+              isLoading={feed.isFetchingNextPage}
+              onLoadMore={() => void feed.fetchNextPage()}
+              shown={rows.length}
+              total={summary?.endpoint_count}
+              error={feed.error}
+            />
+          ) : null
+        }
+        footnote={
+          feed.isPending
+            ? "Loading tracked endpoints · probe-derived"
+            : feed.isError
+              ? rows.length > 0
+                ? "Refresh failed · previously loaded endpoints remain visible · probe-derived"
+                : "Tracked endpoints are temporarily unavailable · probe-derived"
+              : `${formatNumber(shown.length)} shown of ${formatNumber(
+                  summary?.endpoint_count ?? rows.length,
+                )} tracked · text search and monitored status match loaded rows · other filters apply server-side · probe-derived`
+        }
+      />
+
+      <AnalyticsSection
+        id="fleet"
+        name="Fleet observations"
+        question="The recorded probe coverage and routing context."
+        visual={fleetCells ? <FactStrip cells={fleetCells} /> : null}
+        legend={
+          summaryQuery.isError ? (
+            <ErrorState
+              error={summaryQuery.error}
+              onRetry={() => void summaryQuery.refetch()}
+              context="endpoint fleet observations"
+            />
+          ) : undefined
+        }
+        empty={false}
+        footnote={
+          summaryQuery.isPending
+            ? "Loading fleet observations"
+            : "Health reflects measured endpoints · unknown status is separate from a successful probe"
+        }
+      />
 
       <AnalyticsSection
         id="pools"
@@ -319,7 +445,7 @@ export function EndpointsPage() {
               items={[]}
               max={100}
               formatValue={(value) => `${value}%`}
-              columns={{ ratio: "Ready", name: "Pool", scale: "Members that can be routed to" }}
+              columns={{ ratio: "Eligible", name: "Pool", scale: "Observed eligible members" }}
               ariaLabel="RPC pool readiness"
               source="rpc-pool"
               loading
@@ -343,7 +469,7 @@ export function EndpointsPage() {
               }))}
               max={100}
               formatValue={(value) => `${value}%`}
-              columns={{ ratio: "Ready", name: "Pool", scale: "Members that can be routed to" }}
+              columns={{ ratio: "Eligible", name: "Pool", scale: "Observed eligible members" }}
               ariaLabel="RPC pool readiness"
               source="rpc-pool"
             />
@@ -360,7 +486,7 @@ export function EndpointsPage() {
             <CopyableCode value={PROXY_URL} className="max-w-full" />
           </p>
         }
-        footnote="eligible ÷ members · p50 is the median of members that reported one · probe-derived"
+        footnote="observed eligible ÷ recorded members · pool p50 is the median of reported member latencies · probe-derived"
       />
 
       <AnalyticsSection
@@ -381,13 +507,13 @@ export function EndpointsPage() {
               items={[]}
               formatValue={(value: number) => `${formatNumber(value)} ms`}
               scale="sqrt"
-              columns={{ value: "p50", name: "Provider · kind", track: "Last probe" }}
+              columns={{ value: "Latency", name: "Provider · kind", track: "Last probe" }}
               ariaLabel="Endpoint latency"
               source="endpoint-latency"
               loading
               loadingRows={8}
             />
-          ) : feed.isError ? (
+          ) : feed.isError && rows.length === 0 ? (
             <ErrorState
               error={feed.error}
               onRetry={() => void feed.refetch()}
@@ -398,7 +524,7 @@ export function EndpointsPage() {
               items={rails}
               formatValue={(value: number) => `${formatNumber(value)} ms`}
               scale="sqrt"
-              columns={{ value: "p50", name: "Provider · kind", track: "Last probe" }}
+              columns={{ value: "Latency", name: "Provider · kind", track: "Last probe" }}
               ariaLabel="Endpoint latency"
               source="endpoint-latency"
             />
@@ -408,110 +534,10 @@ export function EndpointsPage() {
         // Only endpoints that REPORTED a latency are ranked: `latency_ms: null`
         // means unmeasured, and ranking it as 0 would put every dead endpoint
         // at the top of "fastest".
-        footnote="measured endpoints only · probe-derived"
-      />
-
-      <AnalyticsSection
-        id="directory"
-        name="Directory"
-        question="Every endpoint the registry knows about."
-        visual={
-          <DataTable
-            id="directory"
-            rows={shown}
-            columns={columns}
-            rowKey={(row) => row.id}
-            caption="Endpoints"
-            link={RouterLink}
-            source="endpoint"
-            storageKey="mg-endpoints-columns"
-            expand={endpointDetail}
-            loading={feed.isPending}
-            error={
-              feed.isError ? (
-                <ErrorState
-                  error={feed.error}
-                  onRetry={() => void feed.refetch()}
-                  context="tracked endpoints"
-                />
-              ) : undefined
-            }
-            search={{
-              value: search.q,
-              onChange: (q) => setSearch({ q }),
-              placeholder: "Endpoint, provider or kind",
-            }}
-            filters={
-              <>
-                <FilterField label="Status">
-                  <FilterSelect
-                    value={search.status}
-                    onChange={(event) => setSearch({ status: event.target.value })}
-                  >
-                    <option value="">Any status</option>
-                    <option value="monitored">Monitored only</option>
-                    <option value="ok">ok</option>
-                    <option value="degraded">degraded</option>
-                    <option value="failed">failed</option>
-                    <option value="unknown">unknown</option>
-                  </FilterSelect>
-                </FilterField>
-                <FilterField label="Kind">
-                  <FilterSelect
-                    value={search.kind}
-                    onChange={(event) => setSearch({ kind: event.target.value })}
-                  >
-                    <option value="">Any kind</option>
-                    {kinds.map((kind) => (
-                      <option key={kind} value={kind}>
-                        {kind}
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </FilterField>
-                <FilterField label="Provider">
-                  <FilterSelect
-                    value={search.provider}
-                    onChange={(event) => setSearch({ provider: event.target.value })}
-                  >
-                    <option value="">Any provider</option>
-                    {providers.map((provider) => (
-                      <option key={provider} value={provider}>
-                        {provider}
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </FilterField>
-              </>
-            }
-            empty="No endpoints match these filters."
-          />
-        }
-        legend={
-          // Only while there IS more to fetch. The table states its own range
-          // and total in the pager ("1-50 of 1,545"), so a terminal
-          // "1545 of 1545 - end of list" strip directly beneath it was the
-          // same fact twice, in two vocabularies (#11696). An error still
-          // shows, because a feed that stopped early is not the end of a list.
-          feed.hasNextPage || (feed.error && rows.length > 0) ? (
-            <LoadMore
-              hasMore={feed.hasNextPage}
-              isLoading={feed.isFetchingNextPage}
-              onLoadMore={() => void feed.fetchNextPage()}
-              shown={rows.length}
-              total={summary?.endpoint_count}
-              error={feed.error}
-            />
-          ) : null
-        }
         footnote={
-          feed.isPending
-            ? "Loading tracked endpoints · probe-derived"
-            : feed.isError
-              ? "Tracked endpoints are temporarily unavailable · probe-derived"
-              : `${formatNumber(shown.length)} shown of ${formatNumber(
-                  summary?.endpoint_count ?? rows.length,
-                )} tracked · facets applied server-side · probe-derived`
+          feed.isError && rows.length > 0
+            ? "Refresh failed · previous measured endpoints remain visible · probe-derived"
+            : "last recorded latency per endpoint · measured endpoints only · probe-derived"
         }
       />
 

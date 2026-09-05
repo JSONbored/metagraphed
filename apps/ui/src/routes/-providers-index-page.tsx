@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   AnalyticsSection,
   BrandIcon,
@@ -11,10 +11,10 @@ import {
   FilterSelect,
   LeaderCards,
   Raw,
-  SectionNav,
   type DataTableColumn,
   type RawRow,
 } from "@jsonbored/ui-kit";
+import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ErrorState } from "@/components/metagraphed/states";
 import { factCells } from "@/lib/metagraphed/facts";
@@ -24,7 +24,6 @@ import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { providersQuery, sourceHealthProvidersQuery } from "@/lib/metagraphed/queries";
-import { apisNav } from "@/components/metagraphed/apis/apis-logic";
 import {
   facet,
   filterProviders,
@@ -56,7 +55,6 @@ export function ProvidersPage() {
   const [leadersExpanded, setLeadersExpanded] = useState(false);
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/apis/providers" });
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
@@ -212,7 +210,7 @@ export function ProvidersPage() {
           refreshing: providers.isFetching || health.isFetching,
         }}
       />
-      <SectionNav items={apisNav(pathname)} link={RouterLink} />
+      <ApiNavigation />
 
       <AnalyticsSection
         id="leaders"
