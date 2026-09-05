@@ -1151,7 +1151,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the live root-claim current state for one Finney ss58 account (#7229) — RootClaimType setting, per-hotkey RootClaimable rates, RootClaimed cumulative watermarks, and RootClaimableThreshold — queried from the finney RPC at request time with 120s KV cache. Returns 400 on invalid ss58; claim_type/hotkeys are null on RPC failure. Read-only display only; never submits claim_root or any other extrinsic. */
+        /** @description Read deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Returns 400 on invalid ss58. This does not report native basket entitlement or submit a claim. */
         get: operations["accountRootClaim"];
         put?: never;
         post?: never;
@@ -5735,13 +5735,23 @@ export interface components {
             total_registrations: number;
             window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description Live root-claim current state for one Finney ss58 account (#7229), read directly from chain via RPC (KV-cached). claim_type/hotkeys are null on RPC failure (schema-stable, never a GraphQL error). Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
+        /** @description Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
         AccountRootClaimArtifact: {
             claim_type?: {
                 /** @enum {string} */
                 kind: "Swap" | "Keep" | "KeepSubnets";
                 subnets?: number[];
             } | null;
+            /** @description Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here. */
+            compatibility: {
+                block_hash: string | null;
+                claim_type_source: ("storage" | "runtime_default") | null;
+                reason: ("root_reborn" | "unverified_runtime" | "rpc_or_decode_failure" | "legacy_limit_exceeded") | null;
+                spec_name: string | null;
+                spec_version: number | null;
+                /** @enum {string} */
+                status: "legacy_supported" | "unsupported" | "unavailable";
+            };
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -14861,6 +14871,14 @@ export interface operations {
                      *             1
                      *           ]
                      *         },
+                     *         "compatibility": {
+                     *           "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "claim_type_source": "storage",
+                     *           "reason": "root_reborn",
+                     *           "spec_name": "example",
+                     *           "spec_version": 1,
+                     *           "status": "legacy_supported"
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -23656,6 +23674,14 @@ export interface operations {
                      *           "subnets": [
                      *             1
                      *           ]
+                     *         },
+                     *         "compatibility": {
+                     *           "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "claim_type_source": "storage",
+                     *           "reason": "root_reborn",
+                     *           "spec_name": "example",
+                     *           "spec_version": 1,
+                     *           "status": "legacy_supported"
                      *         },
                      *         "field_sources": {
                      *           "example": {
