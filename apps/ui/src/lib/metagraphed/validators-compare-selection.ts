@@ -7,7 +7,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
  * Holds up to MAX hotkeys and notifies subscribers across components.
  */
 const KEY = "metagraphed:compare-validators";
-const MAX = 4;
+const MAX = 3;
 
 type Listener = () => void;
 const listeners = new Set<Listener>();

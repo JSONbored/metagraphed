@@ -4867,6 +4867,15 @@ async function handleHotkeyAlphaSyncProxy(request: Request, env: Env) {
   });
 }
 
+async function handleRootBasketCaptureSyncProxy(request: Request, env: Env) {
+  return proxyToDataApi(request, env, {
+    code: "root_basket_capture_sync_unavailable",
+    notBoundMessage: "The root basket capture sync tier is not bound.",
+    unreadableMessage:
+      "The root basket capture sync tier returned an unreadable response.",
+  });
+}
+
 // Proxies POST /api/v1/internal/poller-lane-health-sync -- the poller's own
 // tick outcomes (#9599). NOT a data lane: this is the DIAGNOSTIC channel, and
 // it exists because hotkey_alpha failed 95 seconds into every run for ten hours
@@ -5937,6 +5946,9 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   // scan POSTs here. Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/hotkey-alpha-sync") {
     return handleHotkeyAlphaSyncProxy(request, env);
+  }
+  if (url.pathname === "/api/v1/internal/root-basket-capture-sync") {
+    return handleRootBasketCaptureSyncProxy(request, env);
   }
   // The poller's own tick outcomes (#9599) -- the diagnostic channel, not a
   // data lane. Same DATA_API service binding.

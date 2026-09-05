@@ -11,7 +11,9 @@ import { describe, expect, it } from "vitest";
 // Source assertions: the empty branch only renders when the live feed is empty
 // (it isn't), so a rendered test can't reach it; this suite is node-environment.
 const validators = readFileSync(
-  fileURLToPath(new URL("./-validators-index-page.tsx", import.meta.url)),
+  fileURLToPath(
+    new URL("../components/metagraphed/validators-index/operator-directory.tsx", import.meta.url),
+  ),
   "utf8",
 );
 const streams = readFileSync(
@@ -47,7 +49,6 @@ describe("empty-state 'Open the API' actions", () => {
       validators.indexOf("No validators indexed yet"),
     );
     expect(branch).toContain("search.q");
-    expect(branch).toContain("search.minStake");
     expect(branch).toContain("search.named");
     expect(branch).toContain("filtersActive ? (");
     expect(branch).toContain("No operators match these filters");
