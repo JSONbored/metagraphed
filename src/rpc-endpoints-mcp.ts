@@ -150,6 +150,11 @@ export function rpcEndpointsQueryUrl(
     }
     url.searchParams.set("netuid", String(netuid));
   }
+  const q = ListRpcEndpointsInputSchema.shape.q.safeParse(args?.q);
+  if (!q.success) {
+    throw rpcEndpointsMcpError("invalid_params", q.error.issues[0].message);
+  }
+  if (q.data !== undefined) url.searchParams.set("q", q.data);
   const kind = optionalEnum(args, "kind", SURFACE_KINDS);
   if (kind) url.searchParams.set("kind", kind);
   const layer = optionalEnum(args, "layer", ENDPOINT_LAYERS);

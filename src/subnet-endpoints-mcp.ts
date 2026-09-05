@@ -118,6 +118,11 @@ export function subnetEndpointsQueryUrl(
 ): URL {
   const url = new URL("https://mcp.internal/subnets/endpoints");
   requireNetuid(args);
+  const q = ListSubnetEndpointsInputSchema.shape.q.safeParse(args?.q);
+  if (!q.success) {
+    throw subnetEndpointsMcpError("invalid_params", q.error.issues[0].message);
+  }
+  if (q.data !== undefined) url.searchParams.set("q", q.data);
   const kind = optionalEnum(args, "kind", SURFACE_KINDS);
   if (kind) url.searchParams.set("kind", kind);
   const layer = optionalEnum(args, "layer", ENDPOINT_LAYERS);

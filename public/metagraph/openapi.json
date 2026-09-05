@@ -86824,6 +86824,16 @@
             }
           },
           {
+            "description": "Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
             "description": "Inclusive lower bound: only rows at or above this value are returned.",
             "in": "query",
             "name": "min_latency_ms",
@@ -93859,6 +93869,16 @@
             }
           },
           {
+            "description": "Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
             "description": "Inclusive lower bound: only rows at or above this value are returned.",
             "in": "query",
             "name": "min_latency_ms",
@@ -96381,6 +96401,16 @@
                 "failed",
                 "unknown"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
               "type": "string"
             }
           },
@@ -100440,6 +100470,16 @@
                 "failed",
                 "unknown"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
               "type": "string"
             }
           },

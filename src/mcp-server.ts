@@ -13601,7 +13601,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "monitored public endpoint/surface across providers and subnets, each " +
       "with its kind, layer, provider, subnet (netuid), publication state, and " +
       "probe-derived status/latency/score. Use it to discover live endpoints " +
-      "network-wide. Optionally filter by kind/layer/netuid/provider/" +
+      "network-wide. Search the full catalog with q before pagination. " +
+      "Optionally filter by kind/layer/netuid/provider/" +
       "publication_state/status/pool_eligible, bound by min_/max_latency_ms " +
       "and min_/max_score, sort with sort + order, project a subset of fields " +
       "with fields, and page with limit/cursor — the full catalog can be " +
@@ -13665,6 +13666,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // REST-parity path list_subnet_endpoints and list_endpoint_pools
       // already use -- replacing the hand-rolled filter + cursorWindow pass.
       const queryUrl = new URL("https://mcp.internal/endpoints");
+      if (args.q !== undefined) queryUrl.searchParams.set("q", args.q);
       if (kind) queryUrl.searchParams.set("kind", kind);
       if (layer) queryUrl.searchParams.set("layer", layer);
       if (netuid !== null) queryUrl.searchParams.set("netuid", String(netuid));

@@ -1111,6 +1111,7 @@ interface SubnetNodeParent extends Row {
     const endpoints = (await parent.endpoints(args, context, info)) as Row[];
     const queryUrl = new URL("https://graphql.internal/subnets/endpoints");
     for (const [name, value] of [
+      ["q", args?.q],
       ["kind", args?.kind],
       ["layer", args?.layer],
       ["provider", args?.provider],
@@ -2145,6 +2146,7 @@ function endpointsListQueryUrl(args: Row): URL {
   const set = (key: string, value: unknown) => {
     if (value !== undefined) url.searchParams.set(key, String(value));
   };
+  set("q", args.q);
   set("netuid", args.netuid);
   set("kind", args.kind);
   set("layer", args.layer);

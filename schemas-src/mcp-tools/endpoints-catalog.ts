@@ -18,6 +18,7 @@ import { z } from "zod";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   fieldsSchema,
+  querySchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -57,6 +58,7 @@ const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
  * where the difference is visible instead of being averaged away.
  */
 export const ENDPOINT_LIST_FILTERS = {
+  q: querySchema().optional(),
   kind: kindSchema(SURFACE_KINDS).optional(),
   layer: z
     .enum(ENDPOINT_LAYERS)
