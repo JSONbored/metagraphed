@@ -55,9 +55,8 @@ test.describe("Settings record states", () => {
       page.on("pageerror", (error) => errors.push(error.message));
       const session = await page.context().newCDPSession(page);
       await session.send("Emulation.setCPUThrottlingRate", { rate: 12 });
-      await gotoThroughRestart(page, "/settings");
+      await gotoThroughRestart(page, connected ? "/settings#keys" : "/settings#alerts");
       if (connected) {
-        await expect(page.locator("#wallet").getByText("Connected via fixture")).toBeVisible();
         await expect(
           page.locator("#keys").getByRole("group", { name: "API key management" }),
         ).toBeVisible();
@@ -104,7 +103,7 @@ test.describe("Settings record states", () => {
         }
       });
 
-      await gotoThroughRestart(page, "/settings");
+      await gotoThroughRestart(page, `/settings#${section}`);
       const panel = page.locator(`#${section}`);
       const trigger = panel.getByRole("button", { name: "Connect wallet", exact: true });
       await expect(trigger).toBeVisible();
@@ -134,7 +133,7 @@ test.describe("Settings record states", () => {
       page,
     }) => {
       await signInAsOwner(page, false);
-      await gotoThroughRestart(page, "/settings");
+      await gotoThroughRestart(page, `/settings#${section}`);
       const panel = page.locator(`#${section}`);
       const trigger = panel.getByRole("button", { name: "Connect wallet", exact: true });
       await trigger.click();
@@ -165,7 +164,7 @@ test.describe("Settings record states", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await gotoThroughRestart(page, "/settings");
+    await gotoThroughRestart(page, "/settings#keys");
     const trigger = page.locator("#keys").getByRole("button", { name: "Connect wallet" });
     await trigger.click();
     await expect(page.getByRole("link", { name: "Talisman", exact: true }).last()).toBeVisible();
@@ -213,7 +212,7 @@ test.describe("Settings record states", () => {
       });
     });
 
-    await gotoThroughRestart(page, "/settings");
+    await gotoThroughRestart(page, "/settings#keys");
 
     const keys = page.locator("#keys");
     const alerts = page.locator("#alerts");
@@ -225,6 +224,7 @@ test.describe("Settings record states", () => {
       .getByRole("alert")
       .filter({ hasText: "Couldn't load push devices" });
     await expect(keysError).toBeVisible();
+    await page.getByRole("link", { name: "Watchlists & alerts", exact: true }).click();
     await expect(triggersError).toBeVisible();
     await expect(devicesError).toBeVisible();
     await expect(alerts.getByText("Push devices · —/—")).toBeVisible();
@@ -233,11 +233,13 @@ test.describe("Settings record states", () => {
     await expect(alerts.getByText("No devices yet.", { exact: false })).toHaveCount(0);
 
     unavailable = false;
+    await page.getByRole("link", { name: "Developer access", exact: true }).click();
     await keysError.getByRole("button", { name: "Retry" }).click();
+    await expect(keys.getByText("No active keys", { exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Watchlists & alerts", exact: true }).click();
     await triggersError.getByRole("button", { name: "Retry" }).click();
     await devicesError.getByRole("button", { name: "Retry" }).click();
 
-    await expect(keys.getByText("No active keys", { exact: true })).toBeVisible();
     await expect(alerts.getByText("No alerts yet", { exact: true })).toBeVisible();
     await expect(alerts.getByText("Push devices · 0/3")).toBeVisible();
 
@@ -310,7 +312,7 @@ test.describe("Settings record states", () => {
       });
     });
 
-    await gotoThroughRestart(page, "/settings");
+    await gotoThroughRestart(page, "/settings#keys");
     const keys = page.locator("#keys");
     await expect(keys.getByRole("group", { name: "Loading API-key usage" })).toBeVisible();
     await expect(keys.locator(".mg-line [aria-busy='true']")).toHaveCount(1);
@@ -380,7 +382,7 @@ test.describe("Settings record states", () => {
       await route.fulfill({ contentType: "application/json", body: envelope({ deliveries: [] }) });
     });
 
-    await gotoThroughRestart(page, "/settings");
+    await gotoThroughRestart(page, "/settings#alerts");
     const alerts = page.locator("#alerts");
     const triggerTable = alerts.getByRole("table", { name: "Alert triggers" });
     await triggerTable.getByRole("button", { name: "Expand row" }).click();

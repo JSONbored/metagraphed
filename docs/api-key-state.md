@@ -46,6 +46,11 @@ The capability uses an explicit typed SELECT projection; the generated live
 schema snapshot follows its separate refresh and policy workflow tracked in
 #12072.
 
+Once revocation intent can be persisted, compatible rollbacks must retain the
+internal state capability and every reader that checks the ledger on each
+request. A reader that relies only on a cached positive verification result
+is not a compatible rollback target.
+
 The owned DELETE route records `revocation_requested_at` before calling the
 provider. This immediately causes the state readers to deny access. An intent
 write failure leaves provider state untouched and returns the existing error.

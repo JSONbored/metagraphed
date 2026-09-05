@@ -1,4 +1,4 @@
-import { useState, type RefObject } from "react";
+import { useContext, useEffect, useState, type RefObject } from "react";
 import { Wallet } from "lucide-react";
 import { Popover, PopoverTrigger } from "@jsonbored/ui-kit";
 import { ClampedPopoverContent } from "./clamped-popover-content";
@@ -6,6 +6,7 @@ import { WalletConnectPanel } from "./wallet-connect";
 import { useWallet } from "@/hooks/use-wallet";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { classNames } from "@/lib/metagraphed/format";
+import { SettingsGroupActiveContext } from "@/lib/metagraphed/settings-group-context";
 
 /**
  * Header trigger + popover. Icon-only when disconnected, shows the truncated
@@ -21,10 +22,14 @@ export function WalletConnectButton({
 }) {
   const { wallet, status } = useWallet();
   const [open, setOpen] = useState(false);
+  const active = useContext(SettingsGroupActiveContext);
+  useEffect(() => {
+    if (!active) setOpen(false);
+  }, [active]);
   const connected = status === "connected" && wallet;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && active} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -48,6 +53,10 @@ export function WalletConnectButton({
         align="end"
         className="w-80 p-3"
         onCloseAutoFocus={(event) => {
+          if (!active) {
+            event.preventDefault();
+            return;
+          }
           // A contextual connect prompt unmounts on success. Its replacement
           // supplies the next focus target; Escape still returns to the trigger.
           const target = returnFocusRef?.current;
