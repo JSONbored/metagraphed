@@ -9,6 +9,7 @@ import {
   churnByDay,
   churnWindow,
   directoryRows,
+  apiSpecStatus,
   directoryHealthFilter,
   filterDirectory,
   fmtAlpha,
@@ -373,5 +374,17 @@ describe("formatters", () => {
     expect(fmtPct(0.00821)).toBe("0.82%");
     expect(fmtPct(0.5, 1)).toBe("50.0%");
     expect(fmtPct(undefined)).toBe("—");
+  });
+});
+
+describe("API specification evidence", () => {
+  it("distinguishes an explicit absence from missing or blocked coverage", () => {
+    expect(apiSpecStatus({ service_kinds: ["openapi"] })).toBe("yes");
+    expect(apiSpecStatus({ service_kinds: ["dashboard"] })).toBe("no");
+    expect(apiSpecStatus({ service_kinds: [] })).toBe("no");
+    expect(apiSpecStatus({ service_count: 0 })).toBe("no");
+    expect(apiSpecStatus({ service_count: 2 })).toBe("unknown");
+    expect(apiSpecStatus({ service_kinds: null })).toBe("unknown");
+    expect(apiSpecStatus()).toBe("unknown");
   });
 });

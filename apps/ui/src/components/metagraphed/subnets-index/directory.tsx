@@ -34,7 +34,7 @@ export function DirectorySection({
   domains,
   filters,
   onFilter,
-  withApi,
+  unknownApiCount = 0,
   filterState = "ready",
   status,
 }: {
@@ -43,8 +43,7 @@ export function DirectorySection({
   domains: readonly string[];
   filters: DirectoryFilters;
   onFilter: (next: Partial<DirectoryFilters>) => void;
-  /** The netuids publishing an API contract, for the column and the filter. */
-  withApi: ReadonlySet<number> | null;
+  unknownApiCount?: number;
   filterState?: "ready" | "pending" | "unavailable";
   status?: ReactNode;
 }) {
@@ -144,7 +143,7 @@ export function DirectorySection({
         label: "API spec",
         kind: "status",
         demote: true,
-        value: (row) => (withApi == null ? "unknown" : withApi.has(row.netuid) ? "yes" : "no"),
+        value: (row) => row.api_spec ?? "unknown",
       },
       {
         // #11613 rebuilt this table and dropped the compare selection #11611
@@ -157,7 +156,7 @@ export function DirectorySection({
         definition: "Compare",
       },
     ],
-    [withApi],
+    [],
   );
 
   return (
@@ -170,6 +169,12 @@ export function DirectorySection({
         <>
           <SubnetDirectoryControls filters={filters} domains={domains} onChange={onFilter} />
           {status}
+          {unknownApiCount > 0 ? (
+            <p className="mb-4 text-13 text-ink-muted">
+              API spec coverage is unknown for {formatNumber(unknownApiCount)} indexed
+              {unknownApiCount === 1 ? " subnet" : " subnets"}.
+            </p>
+          ) : null}
           {filterState !== "ready" ? (
             <p role="status" className="border-y border-border py-8 text-13 text-ink-muted">
               {filterState === "pending"

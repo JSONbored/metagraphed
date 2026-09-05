@@ -47,6 +47,19 @@ describe("subnet directory secondary reads", () => {
       client.clear();
     });
 
+    for (const malformed of [null, {}, { subnets: null }, { subnets: {} }]) {
+      it(`${name} retains cached data after a malformed successful response ${JSON.stringify(malformed)}`, async () => {
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        fetch.mockResolvedValue({ data: payload, meta: {}, url: "/fixture" });
+        const first = await read(client);
+        fetch.mockResolvedValue({ data: malformed, meta: {}, url: "/fixture" });
+        await expect(read(client)).rejects.toThrow("invalid response");
+        expect(client.getQueryData(query().queryKey)).toEqual(first);
+        expect(client.getQueryState(query().queryKey)?.status).toBe("error");
+        client.clear();
+      });
+    }
+
     it(`${name} distinguishes a successful empty catalog`, async () => {
       const client = new QueryClient();
       fetch.mockResolvedValue({
@@ -77,4 +90,37 @@ describe("subnet directory secondary reads", () => {
     expect(result.data[19]?.health).toBe("down");
     client.clear();
   });
+});
+
+for (const blocked of [null, {}, "invalid"]) {
+  it(`rejects malformed optional blocked catalog entries: ${JSON.stringify(blocked)}`, async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    fetch.mockResolvedValue({
+      data: { subnets: [], blocked_subnets: blocked },
+      meta: {},
+      url: "/fixture",
+    });
+    await expect(client.fetchQuery(agentCatalogMapQuery())).rejects.toThrow("invalid response");
+    client.clear();
+  });
+}
+
+it("preserves empty service-kind evidence and permits omitted optional blocked entries", async () => {
+  const client = new QueryClient();
+  fetch.mockResolvedValue({
+    data: {
+      subnets: [
+        { netuid: 0, service_kinds: [] },
+        { netuid: 19, service_count: 2 },
+        { netuid: 20, service_kinds: [null] },
+      ],
+    },
+    meta: {},
+    url: "/fixture",
+  });
+  const result = await client.fetchQuery(agentCatalogMapQuery());
+  expect(result.data[0]?.service_kinds).toEqual([]);
+  expect(result.data[19]?.service_kinds).toBeUndefined();
+  expect(result.data[20]?.service_kinds).toBeUndefined();
+  client.clear();
 });

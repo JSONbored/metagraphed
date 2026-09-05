@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
+import { useIsFetching, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { AnalyticsPage, EntityHero, Raw, type FactCells, type RawRow } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ErrorState } from "@/components/metagraphed/states";
@@ -11,6 +12,7 @@ import { RevenueCoverageSection } from "@/components/metagraphed/subnets-index/r
 import { DomainsSection } from "@/components/metagraphed/subnets-index/domains";
 import { ChurnSection } from "@/components/metagraphed/subnets-index/churn";
 import {
+  apiSpecStatus,
   directoryRows,
   filterDirectory,
   specSubnets,
@@ -92,6 +94,8 @@ function ApiSources() {
 export function SubnetsPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const queryClient = useQueryClient();
+  const refreshing = useIsFetching(metagraphedQueryInvalidationTarget()) > 0;
 
   const registry = useSuspenseQuery(
     subnetsQuery({ limit: SUBNETS_ALL_LIMIT, fields: SUBNET_DIRECTORY_FIELDS }),
@@ -125,8 +129,12 @@ export function SubnetsPage() {
     // Probe health is an overlay on the registry row, keyed by netuid; the
     // list's own `health` is chain lifecycle and means something else.
     const probed = health.data?.data ?? {};
-    return joined.map((row) => ({ ...row, health: probed[row.netuid]?.health ?? row.health }));
-  }, [subnets, econRows, domainOf, health.data]);
+    return joined.map((row) => ({
+      ...row,
+      health: probed[row.netuid]?.health ?? "unknown",
+      api_spec: apiSpecStatus(catalog.data?.data[row.netuid]),
+    }));
+  }, [subnets, econRows, domainOf, health.data, catalog.data]);
 
   const withApi = useMemo(
     () => (catalog.data ? specSubnets(catalog.data.data) : null),
@@ -224,8 +232,9 @@ export function SubnetsPage() {
             live={{
               updatedAt: recordModifiedAt(listed.meta) ?? null,
               source: "registry + chain",
-              onRefresh: () => void Promise.all(secondaryReads.map(({ query }) => query.refetch())),
-              refreshing: secondaryReads.some(({ query }) => query.isFetching),
+              onRefresh: () =>
+                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
+              refreshing,
             }}
           />
         }
@@ -241,7 +250,9 @@ export function SubnetsPage() {
             q: search.q,
           }}
           onFilter={setSearch}
-          withApi={withApi}
+          unknownApiCount={
+            catalog.data ? rows.filter((row) => row.api_spec === "unknown").length : 0
+          }
           filterState={filterState}
           status={
             secondaryReads.some(({ query }) => query.isError) ? (
