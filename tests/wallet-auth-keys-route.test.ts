@@ -812,6 +812,14 @@ test("internal key verify: returns Unkey's not-found result untouched", async ()
 
 test("internal key verify: 200 on a valid key, and bumps last_used_at", async () => {
   const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  mockQueue.current.push([
+    {
+      account_id: 5,
+      owner_id: 5,
+      revoked_at: null,
+      revocation_requested_at: null,
+    },
+  ]);
   let capturedBody: Row | undefined;
   vi.stubGlobal("fetch", async (_url: unknown, opts: Row) => {
     capturedBody = JSON.parse(opts.body);
@@ -844,6 +852,8 @@ test("internal key verify: 200 on a valid key, and bumps last_used_at", async ()
     code: "VALID",
     tier: "free",
     accountId: "5",
+    keyId: "key_cccc",
+    managed: true,
   });
   assert.equal(capturedBody!.key, "mg_real");
   assert.ok(
@@ -2343,10 +2353,19 @@ test("#8607 e2e: sign in -> mint -> authenticated request -> revoke -> rejected"
       tier: "free",
       revoked_at: null,
       unkey_key_id: issuedKeyId,
+      owner_id: 11,
+      revocation_requested_at: null,
     },
   ]);
   stubUnkeyFetch([
-    { data: { valid: true, keyId: issuedKeyId, meta: { tier: "free" } } },
+    {
+      data: {
+        valid: true,
+        keyId: issuedKeyId,
+        meta: { tier: "free" },
+        identity: { externalId: "11" },
+      },
+    },
   ]);
   const verified = await fetchRoute(
     req("/api/v1/internal/keys/verify", {
