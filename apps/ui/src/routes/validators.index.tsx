@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   booleanSearch,
   defineSearchSchema,
+  enumSearch,
   numberSearch,
   stripDefaultSearchParams,
   stringSearch,
@@ -10,20 +11,14 @@ import {
 import { ValidatorsPage } from "./-validators-index-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
-/**
- * Three keys: the search and the two filters the operator table offers.
- *
- * The `grouped` toggle went with the flat ranking (#11616) -- the page's unit
- * is the operator now, and a hotkey is a child row rather than a peer, so a
- * control that ungrouped them would be offering a view the page no longer
- * has. `sort`/`order`/`watched` went with the table that read them;
- * `validateSearch` REPLACES the search object, so an unread key is dropped on
- * the next parse rather than sitting inert.
- */
+/** Search and supported directory controls are shareable. The legacy balance
+ * parameter remains readable so saved links can explain its unavailable state. */
 export const validatorsSearchSchema = defineSearchSchema({
   q: stringSearch(),
   minStake: numberSearch(0),
   named: booleanSearch(false),
+  sort: enumSearch(["name", "keys", "take", "memberships"] as const, "name"),
+  order: enumSearch(["asc", "desc"] as const, "asc"),
 });
 
 export type ValidatorsSearch = SearchOutput<typeof validatorsSearchSchema>;

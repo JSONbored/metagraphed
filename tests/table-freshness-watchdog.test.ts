@@ -147,6 +147,12 @@ describe("TABLE_FRESHNESS coverage", () => {
           "utf8",
         ),
       );
+      await db.exec(
+        readFileSync(
+          "migrations/neon/0037_root_basket_capture_completion.sql",
+          "utf8",
+        ),
+      );
       const spec = Object.fromEntries(
         Object.entries(TABLE_FRESHNESS).filter(([table]) =>
           table.startsWith("root_basket_"),
@@ -158,7 +164,10 @@ describe("TABLE_FRESHNESS coverage", () => {
       await db.query(freshnessSql(swept, spec));
       const crossCheck = crossCheckSql(spec);
       if (crossCheck) await db.query(crossCheck);
-      assert.deepEqual(swept, ["root_basket_captures"]);
+      assert.deepEqual(swept, [
+        "root_basket_capture_completions",
+        "root_basket_captures",
+      ]);
     } finally {
       await db.close();
     }

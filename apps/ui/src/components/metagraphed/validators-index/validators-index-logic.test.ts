@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 import {
-  concentration,
   filterOperators,
   fmtStake,
-  median,
   operatorRows,
   shortKey,
   takeLabel,
@@ -79,7 +77,7 @@ describe("operatorRows", () => {
     expect(operators[0]).toMatchObject({ keyCount: 2, totalStakeTao: 1000, named: true });
   });
 
-  it("anchors an operator on its LARGEST key, which is the one to link", () => {
+  it("preserves the largest-key compatibility field independently of chosen links", () => {
     expect(operatorRows(rows)[0]?.primaryHotkey).toBe("5B");
   });
 
@@ -326,36 +324,6 @@ describe("takeLabel", () => {
   });
 });
 
-describe("median", () => {
-  it("takes the middle, averages an even set, and refuses an empty one", () => {
-    expect(median([3, 1, 2])).toBe(2);
-    expect(median([1, 2, 3, 4])).toBe(2.5);
-    // Null, not 0: zero is a reading, and "no readings" is not.
-    expect(median([])).toBeNull();
-    expect(median([null, undefined, Number.NaN])).toBeNull();
-  });
-});
-
-describe("concentration", () => {
-  const operators = operatorRows(
-    [1, 2, 3, 4].map((n) => validator({ hotkey: `5${n}`, total_stake_tao: n * 10 })),
-  );
-
-  it("collapses everything past the head into one residual", () => {
-    const { segments } = concentration(operators, 2);
-    expect(segments.map((s) => s.key)).toEqual(["hotkey:54", "hotkey:53", "rest"]);
-    expect(segments[2]).toMatchObject({ label: "2 more operators", value: 30 });
-  });
-
-  it("totals the LISTED stake, which is not the network's", () => {
-    expect(concentration(operators, 2).listedTotal).toBe(100);
-  });
-
-  it("emits no residual when the head is everything", () => {
-    expect(concentration(operators, 10).segments.some((s) => s.key === "rest")).toBe(false);
-  });
-});
-
 describe("filterOperators", () => {
   const operators = operatorRows([
     validator({
@@ -368,8 +336,8 @@ describe("filterOperators", () => {
   ]);
 
   it("ANDs the filters", () => {
-    expect(filterOperators(operators, { minStake: 1000, namedOnly: true })).toHaveLength(1);
-    expect(filterOperators(operators, { minStake: 10_000, namedOnly: true })).toHaveLength(0);
+    expect(filterOperators(operators, { q: "yuma", namedOnly: true })).toHaveLength(1);
+    expect(filterOperators(operators, { q: "5bbb", namedOnly: true })).toHaveLength(0);
   });
 
   it("searches the operator name, its primary hotkey and every child key", () => {

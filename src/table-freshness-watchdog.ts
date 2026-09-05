@@ -762,6 +762,18 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     reason:
       "no child timestamp; no producer or published current view (#12019)",
   },
+  root_basket_capture_completions: {
+    column: "accepted_at_ms",
+    kind: "ms",
+    maxAgeMs: null,
+    reason: "protected capture receiver only; no scheduled producer (#12019)",
+  },
+  root_basket_current: {
+    column: "",
+    kind: "ms",
+    maxAgeMs: null,
+    reason: "capture pointer has no timestamp; no scheduled producer (#12019)",
+  },
 
   // Written by scripts/neon-migrate.ts, once per migration. The same "only
   // when a human acts" class as api_keys above.
