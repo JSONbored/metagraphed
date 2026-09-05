@@ -18,4 +18,4 @@ description: Every Validators endpoint in the metagraphed API, with its method a
 - [Validator Nominators](/docs/api-reference/validators/validator-nominators) — `GET /api/v1/validators/{hotkey}/nominators`  
   Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity.
 - [Validator Operator Directory](/docs/api-reference/validators/validator-operator-directory) — `GET /api/v1/validators/operators`  
-  Fetch the compact validator operator directory used by the website: validator hotkeys grouped by declared identity, with the primary key, optional multi-key expansion, cross-key stake/emission totals, take range, estimated APY, nominators, memberships, UIDs and stake dominance.
+  Fetch the compact validator operator directory used by the website: hotkeys sharing one observed owner account form a group, while unknown or conflicting owners remain separate.

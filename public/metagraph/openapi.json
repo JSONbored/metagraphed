@@ -65209,7 +65209,8 @@
                     {
                       "type": "null"
                     }
-                  ]
+                  ],
+                  "description": "The source-selected owner account of the primary hotkey. Common to all members only when ownership_basis is single_coldkey; otherwise this is a representative source field, not evidence of shared ownership."
                 },
                 "hotkey_count": {
                   "maximum": 9007199254740991,
@@ -65272,7 +65273,21 @@
                     {
                       "type": "null"
                     }
-                  ]
+                  ],
+                  "description": "Distinct nominator accounts (coldkeys) for a singleton operator, from its hotkey's available count. Always null for multiple hotkeys: per-hotkey counts cannot deduplicate overlapping accounts or establish complete operator coverage. Accounts are not people, and null is unavailable rather than zero."
+                },
+                "operator_id": {
+                  "description": "Stable identifier within the response network: coldkey:<address> for an observed single-owner group, otherwise hotkey:<address>. Independent of declared name, ranking and primary-hotkey selection. Optional only for older cached responses; callers must include network in cross-network keys.",
+                  "type": "string"
+                },
+                "ownership_basis": {
+                  "description": "single_coldkey means every member has exactly one observed owner and all members share that owner account. This is snapshot ownership agreement, not verified branding or organizational identity. ambiguous means multiple owners were observed for a singleton hotkey; unknown means ownership evidence is absent or unusable. Missing on older cached responses means unknown, never verified.",
+                  "enum": [
+                    "single_coldkey",
+                    "ambiguous",
+                    "unknown"
+                  ],
+                  "type": "string"
                 },
                 "primary_hotkey": {
                   "type": "string"
@@ -109669,7 +109684,7 @@
     },
     "/api/v1/validators/operators": {
       "get": {
-        "description": "Fetch the compact validator operator directory used by the website: validator hotkeys grouped by declared identity, with the primary key, optional multi-key expansion, cross-key stake/emission totals, take range, estimated APY, nominators, memberships, UIDs and stake dominance. Anonymous hotkeys remain separate operators. Computed from the same complete neuron snapshot as /api/v1/validators without changing that full response.",
+        "description": "Fetch the compact validator operator directory used by the website: hotkeys sharing one observed owner account form a group, while unknown or conflicting owners remain separate. Stable IDs are scoped to the response network; ownership agreement does not verify a declared brand or organization. Retains the primary key and multi-key expansion. Unique nominator counts are available only for singletons because per-hotkey counts cannot deduplicate accounts across members. Computed from the same complete neuron snapshot as /api/v1/validators without changing that full response.",
         "operationId": "validatorOperatorDirectory",
         "parameters": [],
         "responses": {

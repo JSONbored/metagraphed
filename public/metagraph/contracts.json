@@ -939,7 +939,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Website-sized validator operator directory: the current validator hotkeys grouped by declared identity, with the stake, emission, take, APY, nominator, membership, UID and dominance fields needed to search, compare and expand the directory. Computed live at /api/v1/validators/operators from the same neurons snapshot as /api/v1/validators; the rich per-hotkey REST/MCP response remains unchanged.",
+      "description": "Website-sized validator operator directory: current validator hotkeys grouped only by a shared unambiguous observed owner account, with stable network-scoped IDs and explicit ownership evidence. Declared names do not establish ownership; unknown or conflicting owners remain hotkey-scoped. Multi-key unique nominator counts are unavailable. Computed live at /api/v1/validators/operators from the same neurons snapshot as /api/v1/validators; the rich per-hotkey REST/MCP response remains unchanged.",
       "id": "validator-operator-directory",
       "path": "/metagraph/validators/operators.json",
       "retirement": null,

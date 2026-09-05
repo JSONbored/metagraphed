@@ -8136,7 +8136,7 @@
     {
       "artifact_path": "/metagraph/validators/operators.json",
       "cache": "short",
-      "description": "Fetch the compact validator operator directory used by the website: validator hotkeys grouped by declared identity, with the primary key, optional multi-key expansion, cross-key stake/emission totals, take range, estimated APY, nominators, memberships, UIDs and stake dominance. Anonymous hotkeys remain separate operators. Computed from the same complete neuron snapshot as /api/v1/validators without changing that full response.",
+      "description": "Fetch the compact validator operator directory used by the website: hotkeys sharing one observed owner account form a group, while unknown or conflicting owners remain separate. Stable IDs are scoped to the response network; ownership agreement does not verify a declared brand or organization. Retains the primary key and multi-key expansion. Unique nominator counts are available only for singletons because per-hotkey counts cannot deduplicate accounts across members. Computed from the same complete neuron snapshot as /api/v1/validators without changing that full response.",
       "id": "validator-operator-directory",
       "mainnet_only": true,
       "method": "GET",
