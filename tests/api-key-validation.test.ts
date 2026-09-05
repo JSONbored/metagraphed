@@ -22,7 +22,17 @@ function createFakeKv() {
 }
 
 function fakeDataApi(handler: AnyFn) {
-  return { fetch: handler };
+  const stateRequests: Request[] = [];
+  return {
+    stateRequests,
+    fetch: async (request: Request) => {
+      if (new URL(request.url).pathname.endsWith("/keys/state")) {
+        stateRequests.push(request);
+        return Response.json({ state: "active" });
+      }
+      return handler(request);
+    },
+  };
 }
 
 describe("validateApiKey", () => {
@@ -52,6 +62,8 @@ describe("validateApiKey", () => {
         async () =>
           new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier: "free",
@@ -72,6 +84,8 @@ describe("validateApiKey", () => {
         async () =>
           new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier: "free",
@@ -155,6 +169,8 @@ describe("validateApiKey", () => {
         capturedRequest = request;
         return new Response(
           JSON.stringify({
+            keyId: "key_fixture",
+            managed: true,
             valid: true,
             code: "VALID",
             tier: "pro",
@@ -177,7 +193,7 @@ describe("validateApiKey", () => {
     assert.equal(kv._store.size, 1);
   });
 
-  test("serves from KV cache on a repeat lookup of the same key, without calling DATA_API again", async () => {
+  test("reuses provider verification while checking current key state on a repeat lookup", async () => {
     let fetchCalls = 0;
     const env = {
       METAGRAPH_CONTROL: createFakeKv(),
@@ -186,6 +202,8 @@ describe("validateApiKey", () => {
         fetchCalls += 1;
         return new Response(
           JSON.stringify({
+            keyId: "key_fixture",
+            managed: true,
             valid: true,
             code: "VALID",
             tier: "free",
@@ -198,6 +216,11 @@ describe("validateApiKey", () => {
     await validateApiKey(mockEnv(env), RAW_KEY);
     const second = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.equal(fetchCalls, 1);
+    assert.equal(env.DATA_API.stateRequests.length, 1);
+    assert.deepEqual(await env.DATA_API.stateRequests[0]!.json(), {
+      keyId: "key_fixture",
+      accountId: "3",
+    });
     assert.deepEqual(second, { ok: true, tier: "free", accountId: "3" });
   });
 
@@ -210,6 +233,8 @@ describe("validateApiKey", () => {
         fetchCalls += 1;
         return new Response(
           JSON.stringify({
+            keyId: "key_fixture",
+            managed: true,
             valid: true,
             code: "VALID",
             tier: "free",
@@ -257,6 +282,8 @@ describe("validateApiKey", () => {
         async () =>
           new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier: "free",
@@ -285,6 +312,8 @@ describe("validateApiKey", () => {
         async () =>
           new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier: "free",
@@ -305,7 +334,13 @@ describe("validateApiKey", () => {
       DATA_API: fakeDataApi(
         async () =>
           new Response(
-            JSON.stringify({ valid: true, code: "VALID", tier: "keyed" }),
+            JSON.stringify({
+              keyId: "key_fixture",
+              managed: false,
+              valid: true,
+              code: "VALID",
+              tier: "keyed",
+            }),
             {
               status: 200,
             },

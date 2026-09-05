@@ -514,6 +514,8 @@ describe("webhook subscription rate limiting", () => {
           }
           return new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier: "free",

@@ -870,6 +870,8 @@ describe("state-query methods (#4344/9.2)", () => {
         fetch: async () =>
           new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier: "free",

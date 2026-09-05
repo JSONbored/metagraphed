@@ -654,7 +654,7 @@ test("keys revoke: 401 when the session is missing (revoke's own call site)", as
 test("keys revoke: 404 when the key doesn't exist or isn't owned by this account", async () => {
   const env = baseEnv();
   const token = await sessionToken();
-  mockQueue.current.push([]); // ownership SELECT -> no row
+  mockQueue.current.push([]); // intent and completed-state reads -> no row
   const res = await fetchRoute(
     req("/api/v1/keys/key_aaaa", {
       method: "DELETE",
@@ -668,7 +668,7 @@ test("keys revoke: 404 when the key doesn't exist or isn't owned by this account
 test("keys revoke: 502 when Unkey's revoke call fails, and the local row is NOT marked revoked", async () => {
   const env = baseEnv();
   const token = await sessionToken(3, "5Owner");
-  mockQueue.current.push([{ unkey_key_id: "key_bbbb" }]); // ownership check finds it
+  mockQueue.current.push([{ unkey_key_id: "key_bbbb" }]); // durable owned intent is recorded
   stubUnkeyFetch([{ status: 500 }]);
   const res = await fetchRoute(
     req("/api/v1/keys/key_bbbb", {
@@ -686,7 +686,10 @@ test("keys revoke: 502 when Unkey's revoke call fails, and the local row is NOT 
 test("keys revoke: 200 on a key owned by this account, disables via Unkey then marks revoked_at", async () => {
   const env = baseEnv();
   const token = await sessionToken(3, "5Owner");
-  mockQueue.current.push([{ unkey_key_id: "key_bbbb" }]); // ownership check
+  mockQueue.current.push(
+    [{ unkey_key_id: "key_bbbb" }],
+    [{ unkey_key_id: "key_bbbb" }],
+  ); // intent and confirmation
   let capturedBody: Row | undefined;
   vi.stubGlobal("fetch", async (url: unknown, opts: Row) => {
     capturedBody = JSON.parse(opts.body);
@@ -812,6 +815,14 @@ test("internal key verify: returns Unkey's not-found result untouched", async ()
 
 test("internal key verify: 200 on a valid key, and bumps last_used_at", async () => {
   const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  mockQueue.current.push([
+    {
+      account_id: 5,
+      owner_id: 5,
+      revoked_at: null,
+      revocation_requested_at: null,
+    },
+  ]);
   let capturedBody: Row | undefined;
   vi.stubGlobal("fetch", async (_url: unknown, opts: Row) => {
     capturedBody = JSON.parse(opts.body);
@@ -844,6 +855,8 @@ test("internal key verify: 200 on a valid key, and bumps last_used_at", async ()
     code: "VALID",
     tier: "free",
     accountId: "5",
+    keyId: "key_cccc",
+    managed: true,
   });
   assert.equal(capturedBody!.key, "mg_real");
   assert.ok(
@@ -2343,10 +2356,19 @@ test("#8607 e2e: sign in -> mint -> authenticated request -> revoke -> rejected"
       tier: "free",
       revoked_at: null,
       unkey_key_id: issuedKeyId,
+      owner_id: 11,
+      revocation_requested_at: null,
     },
   ]);
   stubUnkeyFetch([
-    { data: { valid: true, keyId: issuedKeyId, meta: { tier: "free" } } },
+    {
+      data: {
+        valid: true,
+        keyId: issuedKeyId,
+        meta: { tier: "free" },
+        identity: { externalId: "11" },
+      },
+    },
   ]);
   const verified = await fetchRoute(
     req("/api/v1/internal/keys/verify", {
@@ -2361,7 +2383,10 @@ test("#8607 e2e: sign in -> mint -> authenticated request -> revoke -> rejected"
 
   // 4. REVOKE the same key id the mint returned.
   sqlCalls.length = 0;
-  mockQueue.current.push([{ id: 1, unkey_key_id: issuedKeyId }]);
+  mockQueue.current.push(
+    [{ id: 1, unkey_key_id: issuedKeyId }],
+    [{ unkey_key_id: issuedKeyId }],
+  );
   stubUnkeyFetch([{ data: {} }]);
   const revoked = await fetchRoute(
     req(`/api/v1/keys/${issuedKeyId}`, {

@@ -1605,6 +1605,8 @@ describe("MCP transport handling", () => {
           }
           return new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier: "paid",

@@ -108,9 +108,16 @@ const MODES = [
   {
     name: "API key",
     prefix: "api-key-lookup",
+    version: "v3",
     positiveTtl: 1800,
     lookup: (env: Env) => validateApiKey(env, RAW_KEY),
-    positive: { valid: true, tier: "paid", accountId: "7" },
+    positive: {
+      keyId: "key_fixture",
+      managed: true,
+      valid: true,
+      tier: "paid",
+      accountId: "7",
+    },
     negative: { valid: false, code: "DISABLED" },
     positiveResult: { ok: true, tier: "paid", accountId: "7" },
     negativeResult: { ok: false, code: "key_revoked" },
@@ -119,6 +126,7 @@ const MODES = [
   {
     name: "OAuth account tier",
     prefix: "oauth-account-tier",
+    version: "v2",
     positiveTtl: 300,
     lookup: (env: Env) => resolveOAuthAccountTier(env, 7),
     positive: { found: true, tier: "paid" },
@@ -132,11 +140,18 @@ const MODES = [
 for (const mode of MODES) {
   function harness() {
     const kv = providerKv();
-    const fetch = vi.fn(async () => Response.json(mode.negative));
+    const fetch = vi.fn(async (_request?: Request) =>
+      Response.json(mode.negative),
+    );
     const env = mockEnv({
       METAGRAPH_CONTROL: kv,
       API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
-      DATA_API: { fetch },
+      DATA_API: {
+        fetch: async (request: Request) =>
+          new URL(request.url).pathname.endsWith("/keys/state")
+            ? Response.json({ state: "active" })
+            : fetch(request),
+      },
     });
     return { kv, fetch, env };
   }
@@ -178,11 +193,11 @@ for (const mode of MODES) {
       const { kv, fetch, env } = harness();
       await mode.lookup(env);
       const key = kv.puts[0]!.key;
-      assert.ok(key.startsWith(`${mode.prefix}:v2:`));
+      assert.ok(key.startsWith(`${mode.prefix}:${mode.version}:`));
       assert.ok(!key.includes(RAW_KEY));
       assert.ok(!kv.puts[0]!.value.includes(RAW_KEY));
       kv.store.clear();
-      kv.store.set(key.replace(":v2:", ":"), {
+      kv.store.set(key.replace(`:${mode.version}:`, ":"), {
         value: JSON.stringify({ found: true, tier: "paid", accountId: "7" }),
         expiresAt: NOW + 1_800_000,
       });
@@ -285,13 +300,24 @@ test("account and credential identities remain isolated in a shared KV", async (
     return Response.json(
       input.account_id
         ? { found: input.account_id === 7, tier: "paid" }
-        : { valid: input.key === RAW_KEY, tier: "free", accountId: "7" },
+        : {
+            keyId: "key_fixture",
+            managed: true,
+            valid: input.key === RAW_KEY,
+            tier: "free",
+            accountId: "7",
+          },
     );
   });
   const env = mockEnv({
     METAGRAPH_CONTROL: kv,
     API_KEY_LOOKUP_INTERNAL_TOKEN: "test-token",
-    DATA_API: { fetch },
+    DATA_API: {
+      fetch: async (request: Request) =>
+        new URL(request.url).pathname.endsWith("/keys/state")
+          ? Response.json({ state: "active" })
+          : fetch(request),
+    },
   });
   assert.deepEqual(await validateApiKey(env, RAW_KEY), {
     ok: true,
@@ -336,14 +362,25 @@ test("OAuth tier upgrades and downgrades refresh without changing identity", asy
 
 test("a cached identity still undergoes each request's account block and rate checks", async () => {
   const kv = providerKv();
-  const fetch = vi.fn(async () =>
-    Response.json({ valid: true, tier: "free", accountId: "7" }),
+  const fetch = vi.fn(async (_request?: Request) =>
+    Response.json({
+      keyId: "key_fixture",
+      managed: true,
+      valid: true,
+      tier: "free",
+      accountId: "7",
+    }),
   );
   const limit = vi.fn(async () => ({ success: true }));
   const env = mockEnv({
     METAGRAPH_CONTROL: kv,
     API_KEY_LOOKUP_INTERNAL_TOKEN: "test-token",
-    DATA_API: { fetch },
+    DATA_API: {
+      fetch: async (request: Request) =>
+        new URL(request.url).pathname.endsWith("/keys/state")
+          ? Response.json({ state: "active" })
+          : fetch(request),
+    },
     TEST_KEYED_LIMITER: { limit },
   });
   const policy = { envVar: "TEST_KEYED_LIMITER", limit: 60, windowSeconds: 60 };

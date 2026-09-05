@@ -119,7 +119,13 @@ describe("Worker runtime", () => {
             const path = new URL(request.url).pathname;
             if (path === "/api/v1/internal/keys/verify") {
               return new Response(
-                JSON.stringify({ valid: true, tier: "free", accountId: "99" }),
+                JSON.stringify({
+                  keyId: "key_fixture",
+                  managed: true,
+                  valid: true,
+                  tier: "free",
+                  accountId: "99",
+                }),
                 { status: 200 },
               );
             }
@@ -168,7 +174,13 @@ describe("Worker runtime", () => {
             const path = new URL(request.url).pathname;
             if (path === "/api/v1/internal/keys/verify") {
               return new Response(
-                JSON.stringify({ valid: true, tier: "free", accountId: "99" }),
+                JSON.stringify({
+                  keyId: "key_fixture",
+                  managed: true,
+                  valid: true,
+                  tier: "free",
+                  accountId: "99",
+                }),
                 { status: 200 },
               );
             }
