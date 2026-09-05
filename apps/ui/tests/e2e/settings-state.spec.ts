@@ -46,49 +46,101 @@ function envelope(data: unknown) {
 }
 
 test.describe("Settings record states", () => {
-  for (const width of [375, 768, 1280]) {
-    test(`opens the connected address directly without signing (${width}px)`, async ({ page }) => {
-      const address = "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9";
-      await page.setViewportSize({ width, height: 812 });
-      await page.addInitScript((address) => {
-        if (location.origin === "null") return;
-        window.injectedWeb3 = {
-          fixture: {
-            enable: async () => ({
-              accounts: { get: async () => [{ address, name: "Fixture account" }] },
-              signer: {
-                signRaw: async () => {
-                  sessionStorage.setItem("fixture:signature-requested", "true");
-                  throw new Error("Viewing a public account must not request a signature");
-                },
-              },
-            }),
-          },
-        };
-        localStorage.setItem("metagraphed:wallet", JSON.stringify({ address, source: "fixture" }));
-        localStorage.removeItem("metagraphed:watch-token");
-        sessionStorage.removeItem("metagraphed:api-session");
-      }, address);
-      const privateRequests: string[] = [];
-      page.on("request", (request) => {
-        if (/\/api\/v1\/(auth\/wallet|keys|watch\/)/.test(new URL(request.url()).pathname)) {
-          privateRequests.push(request.url());
-        }
-      });
+  test.describe("connected account navigation", () => {
+    test.use({ hasTouch: true });
 
-      await gotoThroughRestart(page, "/settings#wallet");
-      const accountLink = page.locator("#wallet").getByRole("link", { name: "View your account" });
-      await expect(accountLink).toHaveAttribute("href", `/accounts/${address}`);
-      await accountLink.click();
-      await expect(page).toHaveURL(new RegExp(`/accounts/${address}$`));
-      await expect(page.getByRole("group", { name: "Stake by subnet" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Positions", exact: true })).toBeVisible();
-      expect(privateRequests).toEqual([]);
-      expect(
-        await page.evaluate(() => sessionStorage.getItem("fixture:signature-requested")),
-      ).toBeNull();
-    });
-  }
+    for (const width of [375, 768, 1280]) {
+      test(`opens each selected address without signing (${width}px)`, async ({ page }) => {
+        const address = "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9";
+        await page.setViewportSize({ width, height: 812 });
+        await page.addInitScript(
+          ({ address, secondAddress }) => {
+            if (location.origin === "null") return;
+            window.injectedWeb3 = {
+              fixture: {
+                enable: async () => ({
+                  accounts: {
+                    get: async () => [
+                      { address, name: "First fixture account" },
+                      { address: secondAddress, name: "Second fixture account" },
+                    ],
+                  },
+                  signer: {
+                    signRaw: async () => {
+                      sessionStorage.setItem("fixture:signature-requested", "true");
+                      throw new Error("Viewing a public account must not request a signature");
+                    },
+                  },
+                }),
+              },
+            };
+            localStorage.setItem(
+              "metagraphed:wallet",
+              JSON.stringify({ address, source: "fixture" }),
+            );
+            localStorage.removeItem("metagraphed:watch-token");
+            sessionStorage.removeItem("metagraphed:api-session");
+          },
+          { address, secondAddress: OWNER },
+        );
+        // Reuse recorded public data as a synthetic second account response.
+        // The browser must request the newly selected address before this fixture applies.
+        const secondAccountRequests: string[] = [];
+        await page.route(
+          (url) =>
+            url.pathname === `/api/v1/accounts/${OWNER}` ||
+            url.pathname.startsWith(`/api/v1/accounts/${OWNER}/`),
+          async (route) => {
+            secondAccountRequests.push(new URL(route.request().url()).pathname);
+            const response = await route.fetch({
+              url: route.request().url().replace(OWNER, address),
+            });
+            await route.fulfill({
+              response,
+              body: (await response.text()).replaceAll(address, OWNER),
+            });
+          },
+        );
+        const privateRequests: string[] = [];
+        page.on("request", (request) => {
+          if (/\/api\/v1\/(auth\/wallet|keys|watch\/)/.test(new URL(request.url()).pathname)) {
+            privateRequests.push(request.url());
+          }
+        });
+
+        await gotoThroughRestart(page, "/settings#wallet");
+        const walletPanel = page.locator("#wallet");
+        const accountLink = walletPanel.getByRole("link", { name: "View your account" });
+        await expect(accountLink).toHaveAttribute("href", `/accounts/${address}`);
+        expect((await accountLink.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+        await accountLink.focus();
+        await expect(accountLink).toBeFocused();
+        await page.keyboard.press("Enter");
+        await expect(page).toHaveURL(new RegExp(`/accounts/${address}$`));
+        await expect(page.getByRole("group", { name: "Stake by subnet" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Positions", exact: true })).toBeVisible();
+
+        await page.goBack();
+        await walletPanel.getByRole("button", { name: "Disconnect", exact: true }).click();
+        await walletPanel.getByRole("button", { name: "Connect Wallet", exact: true }).click();
+        await walletPanel.getByRole("button", { name: /Second fixture account/ }).click();
+        await expect(accountLink).toHaveAttribute("href", `/accounts/${OWNER}`);
+        expect((await accountLink.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+        await accountLink.tap();
+        await expect(page).toHaveURL(new RegExp(`/accounts/${OWNER}$`));
+        const positions = page.getByRole("group", { name: "Stake by subnet" });
+        await expect(positions).toBeVisible();
+        await expect(positions).not.toHaveAttribute("aria-busy", "true");
+        await expect
+          .poll(() => secondAccountRequests)
+          .toContain(`/api/v1/accounts/${OWNER}/positions`);
+        expect(privateRequests).toEqual([]);
+        expect(
+          await page.evaluate(() => sessionStorage.getItem("fixture:signature-requested")),
+        ).toBeNull();
+      });
+    }
+  });
 
   for (const connected of [false, true]) {
     test(`hydrates wallet panels without replacing their first interaction (${connected ? "saved wallet" : "installed extension"})`, async ({

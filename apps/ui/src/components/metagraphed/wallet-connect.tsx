@@ -196,7 +196,7 @@ function ConnectedView({
       <Link
         to="/accounts/$ss58"
         params={{ ss58: wallet.address }}
-        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 transition-colors"
+        className="w-full min-h-11 inline-flex items-center justify-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 transition-colors"
       >
         <Wallet className="size-3.5" aria-hidden="true" />
         View your account
