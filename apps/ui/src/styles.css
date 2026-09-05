@@ -58,10 +58,16 @@
   min-height: 44px;
 }
 @media (max-width: 1023px) {
-  .mg-endpoint-directory .mg-dt-row td[data-label="Provider"],
-  .mg-endpoint-directory .mg-dt-row td[data-label="Kind"],
-  .mg-endpoint-directory .mg-dt-row td[data-label="Subnet"],
-  .mg-endpoint-directory .mg-dt-row td[data-label="Last probe"] {
+  .mg-endpoint-directory .mg-dt-row td[data-mobile-lead="true"]::before {
+    display: none;
+  }
+  .mg-endpoint-directory .mg-dt-row .mg-dt-status {
+    align-self: flex-start;
+  }
+  .mg-endpoint-directory .mg-dt-row td[data-label="Provider"]:not([data-mobile-lead="true"]),
+  .mg-endpoint-directory .mg-dt-row td[data-label="Kind"]:not([data-mobile-lead="true"]),
+  .mg-endpoint-directory .mg-dt-row td[data-label="Subnet"]:not([data-mobile-lead="true"]),
+  .mg-endpoint-directory .mg-dt-row td[data-label="Last probe"]:not([data-mobile-lead="true"]) {
     display: none;
   }
 }

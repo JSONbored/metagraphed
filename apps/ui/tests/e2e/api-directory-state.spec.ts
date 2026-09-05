@@ -412,6 +412,39 @@ test.describe("endpoint discovery", () => {
     });
   }
 
+  test("keeps a saved provider-first mobile row expandable when the host column is hidden", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        "mg-columns:mg-endpoints-columns",
+        JSON.stringify(["provider", "status", "latency"]),
+      );
+    });
+    await discoveryFixture(page);
+    await gotoThroughRestart(page, "/apis/endpoints");
+    const directory = page.locator("section#directory");
+    const firstRow = directory.locator(".mg-dt-row").first();
+    await expect(firstRow.locator('td[data-label="Endpoint"]')).toHaveCount(0);
+    const lead = firstRow.locator('td[data-mobile-lead="true"]');
+    await expect(lead).toHaveAttribute("data-label", "Provider");
+    await expect(lead).toBeVisible();
+    await expect(lead).toContainText("fixture-a");
+    const expand = lead.getByRole("button", { name: "Expand row", exact: true });
+    expect((await expand.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await expand.tap();
+    const copy = directory
+      .locator(".mg-dt-expansion")
+      .getByRole("button", { name: "Copy endpoint URL", exact: true });
+    await expect(copy).toBeVisible();
+    await expect(copy.locator("code")).toHaveText(EXACT_ENDPOINT);
+    await copy.tap();
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe(EXACT_ENDPOINT);
+  });
+
   test("preserves selected URL filters through loading, empty results and mobile history", async ({
     page,
   }) => {
