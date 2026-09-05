@@ -1436,7 +1436,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "validator-operator-directory",
     "/metagraph/validators/operators.json",
-    "Website-sized validator operator directory: the current validator hotkeys grouped by declared identity, with the stake, emission, take, APY, nominator, membership, UID and dominance fields needed to search, compare and expand the directory. Computed live at /api/v1/validators/operators from the same neurons snapshot as /api/v1/validators; the rich per-hotkey REST/MCP response remains unchanged.",
+    "Website-sized validator operator directory: current validator hotkeys grouped only by a shared unambiguous observed owner account, with stable network-scoped IDs and explicit ownership evidence. Declared names do not establish ownership; unknown or conflicting owners remain hotkey-scoped. Multi-key unique nominator counts are unavailable. Computed live at /api/v1/validators/operators from the same neurons snapshot as /api/v1/validators; the rich per-hotkey REST/MCP response remains unchanged.",
     "ValidatorOperatorDirectoryArtifact",
     COMPUTED_LIVE,
   ),
@@ -3319,7 +3319,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/validators/operators",
     "/metagraph/validators/operators.json",
-    "Fetch the compact validator operator directory used by the website: validator hotkeys grouped by declared identity, with the primary key, optional multi-key expansion, cross-key stake/emission totals, take range, estimated APY, nominators, memberships, UIDs and stake dominance. Anonymous hotkeys remain separate operators. Computed from the same complete neuron snapshot as /api/v1/validators without changing that full response.",
+    "Fetch the compact validator operator directory used by the website: hotkeys sharing one observed owner account form a group, while unknown or conflicting owners remain separate. Stable IDs are scoped to the response network; ownership agreement does not verify a declared brand or organization. Retains the primary key and multi-key expansion. Unique nominator counts are available only for singletons because per-hotkey counts cannot deduplicate accounts across members. Computed from the same complete neuron snapshot as /api/v1/validators without changing that full response.",
     "short",
     ["validators", "analytics"],
     [],
