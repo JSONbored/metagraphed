@@ -78,15 +78,8 @@ export function EndpointsPage() {
       hash: true,
     });
 
-  /**
-   * The facets go to the SERVER; only the free-text one stays here.
-   *
-   * /api/v1/endpoints caps `limit` at 1,000 against a 3,391-row fleet and
-   * takes `status`, `kind` and `provider`, so filtering a loaded page
-   * client-side would answer "how many degraded" from the first thousand rows.
-   * It has no text search, so `q` is the one filter applied to the rows in
-   * hand, and the section footnote says how many are in hand.
-   */
+  // Exact status, kind and provider filter on the server. Text search and
+  // the combined "monitored" status still match only the rows loaded here.
   const serverParams: Record<string, string | number> = {
     limit: 200,
     fields: ENDPOINT_PAGE_FIELDS,
@@ -216,7 +209,7 @@ export function EndpointsPage() {
    * competing for width with the six a reader scans (#11696).
    */
   const endpointDetail = (row: EndpointRow) => (
-    <dl>
+    <dl className="mg-endpoint-detail">
       <div className="mg-raw-row">
         <dt>Provider</dt>
         <dd>{row.provider ?? "unknown"}</dd>
@@ -376,7 +369,11 @@ export function EndpointsPage() {
                   />
                 ) : undefined
               }
-              empty={search.q ? "No loaded endpoints match this search." : "No endpoints match these filters."}
+              empty={
+                search.q || search.status === "monitored"
+                  ? "No loaded endpoints match this view."
+                  : "No endpoints match these filters."
+              }
             />
           </>
         }
@@ -412,7 +409,7 @@ export function EndpointsPage() {
                 : "Tracked endpoints are temporarily unavailable · probe-derived"
               : `${formatNumber(shown.length)} shown of ${formatNumber(
                   summary?.endpoint_count ?? rows.length,
-                )} tracked · text search matches loaded rows · facets applied server-side · probe-derived`
+                )} tracked · text search and monitored status match loaded rows · other filters apply server-side · probe-derived`
         }
       />
 

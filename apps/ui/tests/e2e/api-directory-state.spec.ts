@@ -387,6 +387,8 @@ test.describe("endpoint discovery", () => {
       await expect(detail).toContainText("no successful probe recorded");
       const copy = detail.getByRole("button", { name: "Copy endpoint URL", exact: true });
       expect((await copy.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      expect((await copy.boundingBox())!.height).toBeLessThan(120);
+      expect((await copy.locator("code").boundingBox())!.width).toBeGreaterThan(100);
       await expect(copy.locator("code")).toHaveText(EXACT_ENDPOINT);
       await copy.focus();
       await page.keyboard.press("Enter");
@@ -430,22 +432,34 @@ test.describe("endpoint discovery", () => {
     expect((await trigger.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await trigger.tap();
     const sheet = page.getByRole("dialog", { name: "Filter endpoints" });
-    await expect(sheet.getByRole("combobox", { name: "Provider", exact: true })).toHaveValue("unlisted");
-    await expect(sheet.getByRole("combobox", { name: "Kind", exact: true })).toHaveValue("custom-kind");
-    await expect(sheet.getByRole("combobox", { name: "Status", exact: true })).toHaveValue("unknown");
+    await expect(sheet.getByRole("combobox", { name: "Provider", exact: true })).toHaveValue(
+      "unlisted",
+    );
+    await expect(sheet.getByRole("combobox", { name: "Kind", exact: true })).toHaveValue(
+      "custom-kind",
+    );
+    await expect(sheet.getByRole("combobox", { name: "Status", exact: true })).toHaveValue(
+      "unknown",
+    );
     for (const label of ["Provider", "Kind", "Status"])
       expect(
         (await sheet.getByRole("combobox", { name: label, exact: true }).boundingBox())!.height,
       ).toBeGreaterThanOrEqual(44);
-    expect((await sheet.getByRole("button", { name: "Close", exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect(
+      (await sheet.getByRole("button", { name: "Close", exact: true }).boundingBox())!.height,
+    ).toBeGreaterThanOrEqual(44);
     release();
     await expect(page.locator("section#directory")).toContainText(
       "No endpoints match these filters.",
     );
-    await expect(sheet.getByRole("combobox", { name: "Provider", exact: true })).toHaveValue("unlisted");
+    await expect(sheet.getByRole("combobox", { name: "Provider", exact: true })).toHaveValue(
+      "unlisted",
+    );
     await sheet.getByRole("button", { name: "Reset filters" }).tap();
     await expect(
-      sheet.getByRole("combobox", { name: "Provider", exact: true }).locator('option[value="fixture-b"]'),
+      sheet
+        .getByRole("combobox", { name: "Provider", exact: true })
+        .locator('option[value="fixture-b"]'),
     ).toHaveCount(1);
     await sheet.getByRole("combobox", { name: "Provider", exact: true }).selectOption("fixture-b");
     await page.keyboard.press("Escape");
@@ -457,13 +471,22 @@ test.describe("endpoint discovery", () => {
     expect(url.hash).toBe("#directory");
     await page.getByRole("searchbox", { name: "Search endpoints" }).fill("missing endpoint");
     await expect(page.locator("section#directory")).toContainText(
-      "No loaded endpoints match this search.",
+      "No loaded endpoints match this view.",
     );
     await page.goBack();
     await expect(page.getByRole("searchbox", { name: "Search endpoints" })).toHaveValue("");
     await expect(page.locator("section#directory .mg-dt-row")).toHaveCount(1);
     expect(new URL(page.url()).searchParams.get("provider")).toBe("fixture-b");
     expect(new URL(page.url()).hash).toBe("#directory");
+  });
+
+  test("scopes an empty monitored view to loaded records", async ({ page }) => {
+    const state = await discoveryFixture(page);
+    await gotoThroughRestart(page, "/apis/endpoints?provider=fixture-a&status=monitored");
+    const directory = page.locator("section#directory");
+    await expect(directory).toContainText("No loaded endpoints match this view.");
+    await expect(directory).toContainText("text search and monitored status match loaded rows");
+    expect(state.reads.every((search) => !new URLSearchParams(search).has("status"))).toBe(true);
   });
 
   test("recovers a failed refresh with retained rows and no next page while supporting reads fail", async ({

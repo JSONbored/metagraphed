@@ -65,3 +65,10 @@
     display: none;
   }
 }
+
+@media (max-width: 639px) {
+  .mg-endpoint-detail .mg-raw-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--mg-space-xs);
+  }
+}
