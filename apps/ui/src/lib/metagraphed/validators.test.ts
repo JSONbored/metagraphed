@@ -151,6 +151,36 @@ describe("validatorsQuery", () => {
 });
 
 describe("validatorOperatorDirectoryQuery", () => {
+  it("preserves additive IDs through normalization and SSR while keeping display names separate", () => {
+    const compact = normalizeValidatorOperatorDirectory({
+      operators: [
+        {
+          operator_id: "coldkey:owner-a",
+          ownership_basis: "single_coldkey",
+          identity_name: "Shared Name",
+          primary_hotkey: "first",
+        },
+        {
+          operator_id: "coldkey:owner-b",
+          ownership_basis: "single_coldkey",
+          identity_name: "Shared Name",
+          primary_hotkey: "second",
+        },
+        { identity_name: "Shared Name", primary_hotkey: "legacy" },
+        { operator_id: 123, identity_name: "Shared Name", primary_hotkey: "malformed" },
+      ],
+    });
+    const rows = deserializeOperatorRows(compact.operators);
+    expect(rows.map((row) => row.key)).toEqual([
+      "coldkey:owner-a",
+      "coldkey:owner-b",
+      "hotkey:legacy",
+      "hotkey:malformed",
+    ]);
+    expect(rows.every((row) => row.name === "Shared Name")).toBe(true);
+    expect(new Set(rows.map((row) => row.key)).size).toBe(4);
+  });
+
   it("uses a dedicated cache lane for the already-grouped SSR result", () => {
     const options = validatorOperatorDirectoryQuery();
     expect(options.queryKey).toContain("validator-operator-directory");
@@ -203,14 +233,14 @@ describe("validatorOperatorDirectoryQuery", () => {
     expect(compact.hotkey_count).toBe(3);
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({
-      key: "Tensor Team",
+      key: "hotkey:hk-large",
       name: "Tensor Team",
       named: true,
       keyCount: 2,
       primaryHotkey: "hk-large",
       totalStakeTao: 100,
       totalEmissionTao: 8,
-      nominators: 10,
+      nominators: null,
       memberships: 6,
       uidCount: 8,
       takeMin: 0.1,
@@ -220,7 +250,7 @@ describe("validatorOperatorDirectoryQuery", () => {
     });
     expect(rows[0]!.keys.map((key) => key.hotkey)).toEqual(["hk-large", "hk-small"]);
     expect(rows[1]).toMatchObject({
-      key: "anonymous-hotkey",
+      key: "hotkey:anonymous-hotkey",
       named: false,
       keyCount: 1,
       takeMin: null,
@@ -238,6 +268,7 @@ describe("projectOperatorValidator", () => {
         {
           hotkey: "hk",
           coldkey: "ck",
+          coldkey_count: 1,
           coldkey_identity: {
             has_identity: true,
             name: "Operator",
@@ -260,6 +291,7 @@ describe("projectOperatorValidator", () => {
     expect(projectOperatorValidator(validator)).toEqual({
       hotkey: "hk",
       coldkey: "ck",
+      coldkey_count: 1,
       coldkey_identity: { has_identity: true, name: "Operator" },
       subnet_count: 2,
       uid_count: 3,
