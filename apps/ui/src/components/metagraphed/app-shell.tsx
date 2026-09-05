@@ -278,7 +278,7 @@ export function AppShell({
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetContent
                 side="left"
-                className="flex w-72 max-w-[82vw] flex-col gap-6 border-r border-border bg-canvas p-4"
+                className="flex w-72 max-w-[82vw] flex-col gap-6 overflow-hidden border-r border-border bg-canvas p-4"
                 onCloseAutoFocus={(event) => {
                   const el = hamburgerRef.current;
                   if (el && el.isConnected) {
@@ -289,45 +289,54 @@ export function AppShell({
               >
                 <SheetTitle className="sr-only">Site navigation</SheetTitle>
                 <Brand onNavigate={() => setMobileOpen(false)} />
-                <nav aria-label="Primary" className="flex flex-col">
-                  {PRIMARY_NAV.map((item) => {
-                    const active = isActive(pathname, item.to);
-                    return (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        onClick={() => setMobileOpen(false)}
-                        aria-current={active ? "page" : undefined}
-                        className={classNames(
-                          "flex items-center min-h-11 border px-2 rounded text-16 transition-colors",
-                          item.badge
-                            ? active
-                              ? "border-agent/60 bg-agent-surface text-ink-strong"
-                              : "border-agent/35 text-agent hover:border-agent/60 hover:bg-agent-surface"
-                            : active
-                              ? "border-transparent text-ink-strong bg-layer"
-                              : "border-transparent text-ink hover:bg-layer",
-                        )}
-                      >
-                        {item.label}
-                        {item.badge ? (
-                          <span className="ml-auto border-l border-agent/35 pl-2 text-10 font-semibold text-agent">
-                            {item.badge}
-                          </span>
-                        ) : null}
-                      </Link>
-                    );
-                  })}
-                  <Link
-                    to="/settings"
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center min-h-11 px-2 rounded text-16 text-ink hover:bg-layer transition-colors"
-                  >
-                    Settings
-                  </Link>
-                </nav>
-                <div className="mt-auto border-t border-border pt-4">
-                  <SettingsPanel />
+                <div
+                  className="-m-1 flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain scroll-py-1 p-1"
+                  onFocusCapture={(event) => {
+                    // Dialog focus wrapping can prevent native scrolling. Keep
+                    // the focused control visible within the navigation body.
+                    event.target.scrollIntoView({ block: "nearest", inline: "nearest" });
+                  }}
+                >
+                  <nav aria-label="Primary" className="flex flex-col">
+                    {PRIMARY_NAV.map((item) => {
+                      const active = isActive(pathname, item.to);
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setMobileOpen(false)}
+                          aria-current={active ? "page" : undefined}
+                          className={classNames(
+                            "flex items-center min-h-11 border px-2 rounded text-16 transition-colors",
+                            item.badge
+                              ? active
+                                ? "border-agent/60 bg-agent-surface text-ink-strong"
+                                : "border-agent/35 text-agent hover:border-agent/60 hover:bg-agent-surface"
+                              : active
+                                ? "border-transparent text-ink-strong bg-layer"
+                                : "border-transparent text-ink hover:bg-layer",
+                          )}
+                        >
+                          {item.label}
+                          {item.badge ? (
+                            <span className="ml-auto border-l border-agent/35 pl-2 text-10 font-semibold text-agent">
+                              {item.badge}
+                            </span>
+                          ) : null}
+                        </Link>
+                      );
+                    })}
+                    <Link
+                      to="/settings"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center min-h-11 px-2 rounded text-16 text-ink hover:bg-layer transition-colors"
+                    >
+                      Settings
+                    </Link>
+                  </nav>
+                  <div className="mt-auto border-t border-border pt-4">
+                    <SettingsPanel />
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
