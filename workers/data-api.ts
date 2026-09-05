@@ -7370,7 +7370,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   }
 
   // GET /api/v1/validators?sort=&limit=. Prices, nominator counts, tempos
-  // and coldkey identity come from the current store. Historical stake scans
+  // and public account identities come from the current store. Historical stake scans
   // are unnecessary: realized-return fields remain null (#12015).
   if (url.pathname === "/api/v1/validators") {
     return async (sql, env) => {
