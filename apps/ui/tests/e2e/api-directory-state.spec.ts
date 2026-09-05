@@ -299,12 +299,20 @@ async function discoveryFixture(page: Page, waitForFeed?: Promise<void>) {
         return;
       }
     }
-    const rows = DISCOVERY_ROWS.filter((row) =>
-      ["status", "kind", "provider"].every(
-        (key) =>
-          !url.searchParams.get(key) ||
-          row[key as "status" | "kind" | "provider"] === url.searchParams.get(key),
-      ),
+    const rows = DISCOVERY_ROWS.filter(
+      (row) =>
+        (url.searchParams.get("q") ?? "")
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(Boolean)
+          .every((term) =>
+            `${row.id} ${row.provider} ${row.kind} ${row.url}`.toLowerCase().includes(term),
+          ) &&
+        ["status", "kind", "provider"].every(
+          (key) =>
+            !url.searchParams.get(key) ||
+            row[key as "status" | "kind" | "provider"] === url.searchParams.get(key),
+        ),
     );
     await route.fulfill({
       status: 200,
@@ -316,7 +324,7 @@ async function discoveryFixture(page: Page, waitForFeed?: Promise<void>) {
           summary: { endpoint_count: 3, monitored_count: 1, by_status: { ok: 1, unknown: 2 } },
           operational_observed_at: "2026-09-01T10:00:00Z",
         },
-        meta: { pagination: { next_cursor: null } },
+        meta: { pagination: { total: rows.length, next_cursor: null } },
       }),
     });
   });
@@ -474,9 +482,14 @@ test.describe("endpoint discovery", () => {
     await expect(sheet.getByRole("combobox", { name: "Status", exact: true })).toHaveValue(
       "unknown",
     );
+    // A translated sheet can report 43.99994px for a 44px control.
     for (const label of ["Provider", "Kind", "Status"])
       expect(
-        (await sheet.getByRole("combobox", { name: label, exact: true }).boundingBox())!.height,
+        Number(
+          (await sheet
+            .getByRole("combobox", { name: label, exact: true })
+            .boundingBox())!.height.toFixed(2),
+        ),
       ).toBeGreaterThanOrEqual(44);
     expect(
       (await sheet.getByRole("button", { name: "Close", exact: true }).boundingBox())!.height,
@@ -504,7 +517,7 @@ test.describe("endpoint discovery", () => {
     expect(url.hash).toBe("#directory");
     await page.getByRole("searchbox", { name: "Search endpoints" }).fill("missing endpoint");
     await expect(page.locator("section#directory")).toContainText(
-      "No loaded endpoints match this view.",
+      "No endpoints match this search.",
     );
     await page.goBack();
     await expect(page.getByRole("searchbox", { name: "Search endpoints" })).toHaveValue("");
@@ -518,7 +531,7 @@ test.describe("endpoint discovery", () => {
     await gotoThroughRestart(page, "/apis/endpoints?provider=fixture-a&status=monitored");
     const directory = page.locator("section#directory");
     await expect(directory).toContainText("No loaded endpoints match this view.");
-    await expect(directory).toContainText("text search and monitored status match loaded rows");
+    await expect(directory).toContainText("monitored status matches loaded rows");
     expect(state.reads.every((search) => !new URLSearchParams(search).has("status"))).toBe(true);
   });
 

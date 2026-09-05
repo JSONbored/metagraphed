@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -37,10 +37,12 @@ import {
 import { hostOf } from "@/components/metagraphed/providers/providers-logic";
 import {
   LATENCY_VIEWS,
+  ENDPOINT_SEARCH_MAX_LENGTH,
   endpointFacts,
+  endpointMatchCount,
   endpointRows,
   facet,
-  filterEndpoints,
+  filterMonitoredEndpoints,
   incidentRows,
   latencyRails,
   poolRows,
@@ -71,6 +73,12 @@ function ApiSources() {
 export function EndpointsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/apis/endpoints" });
+  const [settledSearch, setSettledSearch] = useState(search.q);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettledSearch(search.q), 150);
+    return () => window.clearTimeout(timer);
+  }, [search.q]);
+  const searchWaiting = search.q !== settledSearch;
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
@@ -78,29 +86,58 @@ export function EndpointsPage() {
       hash: true,
     });
 
-  // Exact status, kind and provider filter on the server. Text search and
-  // the combined "monitored" status still match only the rows loaded here.
+  // Search and exact facets filter before server pagination. The combined
+  // "monitored" status retains its existing loaded-row interpretation.
+  const searchError =
+    search.q.length > ENDPOINT_SEARCH_MAX_LENGTH
+      ? "Search is too long. Use 200 characters or fewer."
+      : undefined;
+  const canSearch = !searchError && !searchWaiting;
   const serverParams: Record<string, string | number> = {
     limit: 200,
     fields: ENDPOINT_PAGE_FIELDS,
   };
+  if (search.q) serverParams.q = search.q;
   if (search.status && search.status !== "monitored") serverParams.status = search.status;
   if (search.kind) serverParams.kind = search.kind;
   if (search.provider) serverParams.provider = search.provider;
 
-  const feed = useInfiniteQuery({ ...endpointsInfiniteQuery(serverParams), retry: 0 });
+  const feed = useInfiniteQuery({
+    ...endpointsInfiniteQuery(serverParams),
+    retry: 0,
+    enabled: canSearch,
+  });
+  const directoryKey = JSON.stringify([search.q, search.status, search.kind, search.provider]);
+  const retryFeed = () => {
+    if (canSearch) void feed.refetch();
+  };
+  const loadNextPage = () => {
+    if (canSearch) void feed.fetchNextPage();
+  };
   const summaryQuery = useQuery({ ...endpointsSummaryQuery(), retry: 0 });
   const pools = useQuery({ ...rpcPoolsQuery(), retry: 0 });
   const incidents = useQuery({ ...endpointIncidentsQuery(), retry: 0 });
   const rows = useMemo(
-    () => endpointRows((feed.data?.pages ?? []).flatMap((page) => page.data)),
-    [feed.data],
+    () =>
+      searchWaiting ? [] : endpointRows((feed.data?.pages ?? []).flatMap((page) => page.data)),
+    [feed.data, searchWaiting],
   );
   const poolList = useMemo(() => poolRows(pools.data?.data), [pools.data]);
   const incidentList = useMemo(() => incidentRows(incidents.data?.data), [incidents.data]);
 
   const summary = summaryQuery.data?.data;
-  const shown = useMemo(() => filterEndpoints(rows, search), [rows, search]);
+  const monitored = search.status === "monitored";
+  const shown = useMemo(
+    () => (monitored ? filterMonitoredEndpoints(rows) : rows),
+    [rows, monitored],
+  );
+  const matchedTotal = searchWaiting
+    ? null
+    : endpointMatchCount(feed.data?.pages.at(-1)?.meta?.pagination?.total);
+  const resultScope = `${formatNumber(rows.length)} loaded${matchedTotal == null ? " · match count unavailable" : ` of ${formatNumber(matchedTotal)} matching`}`;
+  const fleetScope = summary
+    ? ` · ${formatNumber(summary.endpoint_count)} tracked across the fleet`
+    : "";
   const kinds = useMemo(() => facet(rows, (row) => row.kind), [rows]);
   const providers = useMemo(() => facet(rows, (row) => row.provider), [rows]);
   const rails = useMemo(
@@ -120,7 +157,7 @@ export function EndpointsPage() {
   );
   const refreshAll = () => {
     void Promise.all([
-      feed.refetch(),
+      ...(canSearch ? [feed.refetch()] : []),
       summaryQuery.refetch(),
       pools.refetch(),
       incidents.refetch(),
@@ -346,8 +383,10 @@ export function EndpointsPage() {
               kinds={kinds}
               providers={providers}
               onChange={setSearch}
+              searchError={searchError}
             />
             <DataTable
+              key={directoryKey}
               id="directory"
               className="mg-endpoint-directory"
               mobile="cards"
@@ -355,24 +394,25 @@ export function EndpointsPage() {
               columns={columns}
               rowKey={(row) => row.id}
               caption="Endpoints"
+              captionCount={monitored || searchError ? null : matchedTotal}
               link={RouterLink}
               source="endpoint"
               storageKey="mg-endpoints-columns"
               expand={endpointDetail}
-              loading={feed.isPending}
+              loading={(feed.isPending || searchWaiting) && !searchError}
               error={
-                feed.isError ? (
-                  <ErrorState
-                    error={feed.error}
-                    onRetry={() => void feed.refetch()}
-                    context="tracked endpoints"
-                  />
+                canSearch && feed.isError ? (
+                  <ErrorState error={feed.error} onRetry={retryFeed} context="tracked endpoints" />
                 ) : undefined
               }
               empty={
-                search.q || search.status === "monitored"
-                  ? "No loaded endpoints match this view."
-                  : "No endpoints match these filters."
+                searchError
+                  ? "Shorten the search to show endpoint results."
+                  : monitored
+                    ? "No loaded endpoints match this view."
+                    : search.q.trim()
+                      ? "No endpoints match this search."
+                      : "No endpoints match these filters."
               }
             />
           </>
@@ -383,33 +423,31 @@ export function EndpointsPage() {
           // "1545 of 1545 - end of list" strip directly beneath it was the
           // same fact twice, in two vocabularies (#11696). An error still
           // shows, because a feed that stopped early is not the end of a list.
-          feed.isRefetchError && rows.length > 0 ? (
-            <ErrorState
-              error={feed.error}
-              onRetry={() => void feed.refetch()}
-              context="endpoint refresh"
-            />
+          !canSearch ? null : feed.isRefetchError && rows.length > 0 ? (
+            <ErrorState error={feed.error} onRetry={retryFeed} context="endpoint refresh" />
           ) : feed.hasNextPage || (feed.error && rows.length > 0) ? (
             <LoadMore
               hasMore={feed.hasNextPage}
               isLoading={feed.isFetchingNextPage}
-              onLoadMore={() => void feed.fetchNextPage()}
+              onLoadMore={loadNextPage}
               shown={rows.length}
-              total={summary?.endpoint_count}
+              total={matchedTotal ?? undefined}
               error={feed.error}
             />
           ) : null
         }
         footnote={
-          feed.isPending
-            ? "Loading tracked endpoints · probe-derived"
-            : feed.isError
-              ? rows.length > 0
-                ? "Refresh failed · previously loaded endpoints remain visible · probe-derived"
-                : "Tracked endpoints are temporarily unavailable · probe-derived"
-              : `${formatNumber(shown.length)} shown of ${formatNumber(
-                  summary?.endpoint_count ?? rows.length,
-                )} tracked · text search and monitored status match loaded rows · other filters apply server-side · probe-derived`
+          searchError
+            ? "Search needs attention · endpoint results have not been requested"
+            : searchWaiting
+              ? "Waiting for search input · results update shortly"
+              : feed.isPending
+                ? "Searching the endpoint catalog · probe-derived"
+                : feed.isError
+                  ? rows.length > 0
+                    ? "Refresh failed · previously loaded endpoints remain visible · probe-derived"
+                    : "Endpoint results are temporarily unavailable · probe-derived"
+                  : `${monitored ? `${formatNumber(shown.length)} observed in ` : ""}${resultScope}${fleetScope}${monitored ? " · monitored status matches loaded rows" : ""} · probe-derived`
         }
       />
 
@@ -502,7 +540,7 @@ export function EndpointsPage() {
           />
         }
         visual={
-          feed.isPending ? (
+          (feed.isPending || searchWaiting) && !searchError ? (
             <RankedRails
               items={[]}
               formatValue={(value: number) => `${formatNumber(value)} ms`}
@@ -513,12 +551,8 @@ export function EndpointsPage() {
               loading
               loadingRows={8}
             />
-          ) : feed.isError && rows.length === 0 ? (
-            <ErrorState
-              error={feed.error}
-              onRetry={() => void feed.refetch()}
-              context="endpoint latency"
-            />
+          ) : canSearch && feed.isError && rows.length === 0 ? (
+            <ErrorState error={feed.error} onRetry={retryFeed} context="endpoint latency" />
           ) : rails.length > 0 ? (
             <RankedRails
               items={rails}
@@ -530,14 +564,20 @@ export function EndpointsPage() {
             />
           ) : null
         }
-        empty={feed.isPending ? false : "No endpoints reported latency for this view."}
+        empty={
+          searchError
+            ? "Shorten the search to load endpoint latency."
+            : feed.isPending || searchWaiting
+              ? false
+              : "No endpoints reported latency for this view."
+        }
         // Only endpoints that REPORTED a latency are ranked: `latency_ms: null`
         // means unmeasured, and ranking it as 0 would put every dead endpoint
         // at the top of "fastest".
         footnote={
           feed.isError && rows.length > 0
             ? "Refresh failed · previous measured endpoints remain visible · probe-derived"
-            : "last recorded latency per endpoint · measured endpoints only · probe-derived"
+            : "last recorded latency per endpoint · measured endpoints in loaded search results · probe-derived"
         }
       />
 
