@@ -9,6 +9,21 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [1.4.2](https://github.com/JSONbored/metagraphed/compare/ui-v1.4.1...ui-v1.4.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **api:** group validator operators by observed ownership ([#12056](https://github.com/JSONbored/metagraphed/issues/12056)) ([850b32e](https://github.com/JSONbored/metagraphed/commit/850b32e702565aecbbc51305022b00f7d0cbc2a5))
+* **api:** report legacy Root claim compatibility explicitly ([#12057](https://github.com/JSONbored/metagraphed/issues/12057)) ([bc9da24](https://github.com/JSONbored/metagraphed/commit/bc9da240913eaaa5eee9ac14f27ff4624cb240c9))
+* **ui-kit:** keep compact table labels within card layout ([#12040](https://github.com/JSONbored/metagraphed/issues/12040)) ([#12044](https://github.com/JSONbored/metagraphed/issues/12044)) ([725248e](https://github.com/JSONbored/metagraphed/commit/725248ec4553f2ced53d9cfa5e9ec976e3662819))
+* **ui:** connect wallets directly from API-key and alert settings ([#12045](https://github.com/JSONbored/metagraphed/issues/12045)) ([1757979](https://github.com/JSONbored/metagraphed/commit/1757979a83518fba26f2469071f002b45b408769))
+* **ui:** hydrate browser wallet state consistently ([#12058](https://github.com/JSONbored/metagraphed/issues/12058)) ([7da99ce](https://github.com/JSONbored/metagraphed/commit/7da99cea87fee7764bb6e02fc12583699acfb7a5))
+* **ui:** keep mobile navigation reachable in short viewports ([#12053](https://github.com/JSONbored/metagraphed/issues/12053)) ([8c29208](https://github.com/JSONbored/metagraphed/commit/8c292084ec585230716564bf363747deb8638d37))
+* **ui:** preserve empty comparison mode in shared URLs ([#12036](https://github.com/JSONbored/metagraphed/issues/12036)) ([#12042](https://github.com/JSONbored/metagraphed/issues/12042)) ([fb25469](https://github.com/JSONbored/metagraphed/commit/fb25469dd74415c9e29a84959159045ffad2a4c5))
+* **ui:** preserve operator identity through directory adapters ([#12054](https://github.com/JSONbored/metagraphed/issues/12054)) ([9d56c9a](https://github.com/JSONbored/metagraphed/commit/9d56c9a83dd7cd354a2a36dcbbc36964ff1bb876))
+* **ui:** withhold unsupported subnet stake quantities ([#12037](https://github.com/JSONbored/metagraphed/issues/12037)) ([#12043](https://github.com/JSONbored/metagraphed/issues/12043)) ([886af15](https://github.com/JSONbored/metagraphed/commit/886af158c14357f49b50dcb47874a567fe056846))
+
 ## [1.4.1](https://github.com/JSONbored/metagraphed/compare/ui-v1.4.0...ui-v1.4.1) (2026-09-01)
 
 
