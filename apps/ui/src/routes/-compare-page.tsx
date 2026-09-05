@@ -49,7 +49,8 @@ export function ComparePage() {
   const navigate = useNavigate();
   const subnets = useMemo(() => parseNetuids(search.subnets), [search.subnets]);
   const validators = useMemo(() => parseHotkeys(search.validators), [search.validators]);
-  const kind = validators.length > 0 && subnets.length === 0 ? "validators" : "subnets";
+  const kind =
+    search.kind || (validators.length > 0 && subnets.length === 0 ? "validators" : "subnets");
 
   return (
     <AppShell>
@@ -85,8 +86,8 @@ export function ComparePage() {
                 to: "/compare",
                 search:
                   next === "subnets"
-                    ? { subnets: search.subnets, validators: "" }
-                    : { subnets: "", validators: search.validators },
+                    ? { kind: next, subnets: search.subnets, validators: "" }
+                    : { kind: next, subnets: "", validators: search.validators },
               })
             }
           />
