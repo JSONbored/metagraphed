@@ -9,6 +9,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@jsonbored/ui-kit";
+import { ENDPOINT_SEARCH_MAX_LENGTH } from "./endpoints-logic";
 import type { EndpointsSearch } from "@/routes/apis.endpoints";
 
 type DirectorySearch = Pick<EndpointsSearch, "q" | "status" | "kind" | "provider">;
@@ -18,11 +19,13 @@ export function EndpointDirectoryControls({
   kinds,
   providers,
   onChange,
+  searchError,
 }: {
   search: DirectorySearch;
   kinds: string[];
   providers: string[];
   onChange: (patch: Partial<DirectorySearch>) => void;
+  searchError?: string;
 }) {
   const [open, setOpen] = useState(false);
   const active = Boolean(search.status || search.kind || search.provider);
@@ -96,7 +99,11 @@ export function EndpointDirectoryControls({
         Search endpoints
         <input
           type="search"
+          aria-label="Search endpoints"
           placeholder="Endpoint, provider or kind"
+          maxLength={ENDPOINT_SEARCH_MAX_LENGTH}
+          aria-invalid={searchError ? true : undefined}
+          aria-describedby={searchError ? "endpoint-search-error" : undefined}
           className="min-h-11 w-full border border-border bg-canvas px-3 text-13 text-ink-strong outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
           value={search.q}
           onChange={(event) => onChange({ q: event.target.value })}
@@ -138,6 +145,15 @@ export function EndpointDirectoryControls({
           </div>
         </SheetContent>
       </Sheet>
+      {searchError ? (
+        <span
+          id="endpoint-search-error"
+          role="alert"
+          className="basis-full text-13 text-health-down"
+        >
+          {searchError}
+        </span>
+      ) : null}
     </div>
   );
 }

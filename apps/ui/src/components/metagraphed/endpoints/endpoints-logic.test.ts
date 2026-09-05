@@ -4,7 +4,8 @@ import {
   endpointFacts,
   endpointRows,
   facet,
-  filterEndpoints,
+  filterMonitoredEndpoints,
+  endpointMatchCount,
   incidentRows,
   latencyRails,
   median,
@@ -316,37 +317,27 @@ describe("endpointFacts", () => {
   });
 });
 
-describe("filterEndpoints", () => {
-  const rows = endpointRows(raw);
-  const none = { q: "", status: "", kind: "", provider: "" };
-
-  it("`monitored` means anything the prober has a reading for", () => {
-    // The honest default for this table: a directory whose first 2,770 rows
-    // all read "unknown" answers "is this endpoint up" with a shrug.
-    expect(filterEndpoints(rows, { ...none, status: "monitored" }).map((r) => r.id)).toEqual([
-      "e1",
-      "e2",
-      "e4",
-    ]);
+describe("filterMonitoredEndpoints", () => {
+  it("preserves the existing nonempty, non-unknown status interpretation", () => {
+    expect(
+      filterMonitoredEndpoints(
+        endpointRows([...raw, { id: "missing" }, { id: "unrecognized", status: "other" }]),
+      ).map((row) => row.id),
+    ).toEqual(["e1", "e2", "e4", "unrecognized"]);
   });
+});
 
-  it("matches an exact status otherwise", () => {
-    expect(filterEndpoints(rows, { ...none, status: "unknown" }).map((r) => r.id)).toEqual(["e3"]);
+describe("endpointMatchCount", () => {
+  it("preserves a reported zero and exact matching count", () => {
+    expect(endpointMatchCount(0)).toBe(0);
+    expect(endpointMatchCount(350)).toBe(350);
   });
-
-  it("filters by kind and provider", () => {
-    expect(filterEndpoints(rows, { ...none, kind: "subnet-api" })).toHaveLength(2);
-    expect(filterEndpoints(rows, { ...none, provider: "affine" })).toHaveLength(1);
-  });
-
-  it("searches provider, url, kind and subnet together", () => {
-    expect(filterEndpoints(rows, { ...none, q: "TARGON" }).map((r) => r.id)).toEqual(["e2"]);
-    expect(filterEndpoints(rows, { ...none, q: "root" }).map((r) => r.id)).toEqual(["e1"]);
-  });
-
-  it("returns everything with no filters", () => {
-    expect(filterEndpoints(rows, none)).toHaveLength(4);
-  });
+  it.each([undefined, null, "350", true, -1, 3.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    "does not invent a matching count from %s",
+    (value) => {
+      expect(endpointMatchCount(value)).toBeNull();
+    },
+  );
 });
 
 describe("facet", () => {
