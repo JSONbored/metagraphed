@@ -723,6 +723,46 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     coveredBy: "subnet-lifecycle",
   },
 
+  // Unserved observation storage has no scheduled writer yet (#12019).
+  // Enable cadence and completeness checks when the producer is introduced.
+  // Child rows have no arrival stamp; a parent capture timestamp cannot prove
+  // their persistence or supply the child's stamp required by crossCheckSql.
+  root_basket_captures: {
+    column: "finished_at_ms",
+    kind: "ms",
+    maxAgeMs: null,
+    reason:
+      "storage contract only; no producer or published current view (#12019)",
+  },
+  root_basket_capture_pages: {
+    column: "",
+    kind: "ms",
+    maxAgeMs: null,
+    reason:
+      "no child timestamp; no producer or published current view (#12019)",
+  },
+  root_basket_fund_snapshots: {
+    column: "",
+    kind: "ms",
+    maxAgeMs: null,
+    reason:
+      "no child timestamp; no producer or published current view (#12019)",
+  },
+  root_basket_holdings: {
+    column: "",
+    kind: "ms",
+    maxAgeMs: null,
+    reason:
+      "no child timestamp; no producer or published current view (#12019)",
+  },
+  root_basket_targets: {
+    column: "",
+    kind: "ms",
+    maxAgeMs: null,
+    reason:
+      "no child timestamp; no producer or published current view (#12019)",
+  },
+
   // Written by scripts/neon-migrate.ts, once per migration. The same "only
   // when a human acts" class as api_keys above.
   schema_migrations: {
