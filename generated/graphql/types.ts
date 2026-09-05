@@ -4406,6 +4406,7 @@ export type QueryEndpointsArgs = {
   pool_eligible?: InputMaybe<Scalars['Boolean']['input']>;
   provider?: InputMaybe<Scalars['String']['input']>;
   publication_state?: InputMaybe<Scalars['String']['input']>;
+  q?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
 };
@@ -4604,6 +4605,7 @@ export type QueryProvider_EndpointsArgs = {
   order?: InputMaybe<Scalars['String']['input']>;
   pool_eligible?: InputMaybe<Scalars['Boolean']['input']>;
   publication_state?: InputMaybe<Scalars['String']['input']>;
+  q?: InputMaybe<Scalars['String']['input']>;
   slug: Scalars['String']['input'];
   sort?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
@@ -4743,6 +4745,7 @@ export type QueryRpc_EndpointsArgs = {
   pool_eligible?: InputMaybe<Scalars['Boolean']['input']>;
   provider?: InputMaybe<Scalars['String']['input']>;
   publication_state?: InputMaybe<Scalars['String']['input']>;
+  q?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
 };
@@ -4898,6 +4901,7 @@ export type QuerySubnet_EndpointsArgs = {
   pool_eligible?: InputMaybe<Scalars['Boolean']['input']>;
   provider?: InputMaybe<Scalars['String']['input']>;
   publication_state?: InputMaybe<Scalars['String']['input']>;
+  q?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
 };
@@ -6150,6 +6154,7 @@ export type SubnetEndpointsArgs = {
   pool_eligible?: InputMaybe<Scalars['Boolean']['input']>;
   provider?: InputMaybe<Scalars['String']['input']>;
   publication_state?: InputMaybe<Scalars['String']['input']>;
+  q?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
 };

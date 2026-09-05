@@ -400,6 +400,17 @@ export const API_QUERY_COLLECTIONS = {
       publication_state: enumSchema(QUERY_ENUMS.endpointPublicationState),
       status: enumSchema(QUERY_ENUMS.healthStatus),
     },
+    search: [
+      "id",
+      "surface_id",
+      "surface_key",
+      "url",
+      "provider",
+      "operator",
+      "kind",
+      "subnet_name",
+      "subnet_slug",
+    ],
     sort: [
       "kind",
       "last_checked",
