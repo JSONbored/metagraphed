@@ -397,6 +397,12 @@
   },
   {
     "table": "api_keys",
+    "column": "revocation_requested_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "api_keys",
     "column": "revoked_at",
     "udt": "int8",
     "nullable": true
