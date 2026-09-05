@@ -21150,6 +21150,40 @@ describe("graphql — account_root_claim (#7229)", () => {
     );
   });
 
+  test("existing field reports unsupported compatibility without a legacy storage read", async () => {
+    const methods: string[] = [];
+    await withFetchStub(
+      async (_url: unknown, init: RequestInit) => {
+        const { method } = JSON.parse(String(init.body));
+        methods.push(method);
+        if (method === "chain_getFinalizedHead")
+          return Response.json({ result: `0x${"ab".repeat(32)}` });
+        assert.equal(method, "state_getRuntimeVersion");
+        return Response.json({
+          result: { specName: "node-subtensor", specVersion: 454 },
+        });
+      },
+      async () => {
+        const { status, body } = await gql(
+          `{ account_root_claim(ss58: "${SS58}") { claim_type { kind } hotkeys { hotkey } compatibility { status reason spec_version } } }`,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(
+          body.data.account_root_claim.compatibility.status,
+          "unsupported",
+        );
+        assert.equal(
+          body.data.account_root_claim.compatibility.spec_version,
+          454,
+        );
+        assert.equal(body.data.account_root_claim.claim_type, null);
+        assert.equal(body.data.account_root_claim.hotkeys, null);
+        assert.equal(methods.length, 2);
+      },
+    );
+  });
+
   test("rejects an invalid ss58", async () => {
     const { body } = await gql(
       '{ account_root_claim(ss58: "not-an-address") { ss58 } }',

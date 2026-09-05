@@ -16,6 +16,31 @@ import { encodeAccountId32 } from "../src/ss58.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const BLOCK_HASH = `0x${"ab".repeat(32)}`;
+const LEGACY_COMPATIBILITY = {
+  status: "legacy_supported",
+  reason: null,
+  spec_name: "node-subtensor",
+  spec_version: 440,
+  block_hash: BLOCK_HASH,
+  claim_type_source: "storage",
+};
+
+// Existing byte-layout tests exercise only the audited pre-Reborn adapter.
+function stubLegacyFetch(storageFetch: typeof fetch) {
+  vi.stubGlobal("fetch", async (...args: Parameters<typeof fetch>) => {
+    const rpc = JSON.parse(String(args[1]?.body));
+    if (rpc.method === "chain_getFinalizedHead")
+      return Response.json({ result: BLOCK_HASH });
+    if (rpc.method === "state_getRuntimeVersion")
+      return Response.json({
+        result: { specName: "node-subtensor", specVersion: 440 },
+      });
+    assert.equal(rpc.method, "state_getStorage");
+    assert.equal(rpc.params[1], BLOCK_HASH);
+    return storageFetch(...args);
+  });
+}
 
 function compactU32(n: number) {
   if (n < 64) return Uint8Array.of(n << 2);
@@ -87,8 +112,8 @@ describe("i96f32ToFloat", () => {
 });
 
 describe("decodeRootClaimType", () => {
-  test("defaults unset storage to Swap", () => {
-    assert.deepEqual(decodeRootClaimType(null), { kind: "Swap" });
+  test("does not infer a claim mode from absent storage", () => {
+    assert.equal(decodeRootClaimType(null), null);
   });
 
   test("decodes Swap / Keep / KeepSubnets", () => {
@@ -112,7 +137,7 @@ describe("decodeRootClaimType", () => {
 
 describe("decodeClaimableMap", () => {
   test("decodes an empty map and unset storage", () => {
-    assert.deepEqual(decodeClaimableMap(null), []);
+    assert.equal(decodeClaimableMap(null), null);
     assert.deepEqual(decodeClaimableMap(toHex(compactU32(0))), []);
   });
 
@@ -143,9 +168,9 @@ describe("decodeAccountIdVec / decodeU128 / decodeI96F32", () => {
   });
 
   test("decodes claimed u128 and threshold I96F32", () => {
-    assert.equal(decodeU128(null), "0");
+    assert.equal(decodeU128(null), null);
     assert.equal(decodeU128(toHex(u128Le(42))), "42");
-    assert.equal(decodeI96F32(null), 0);
+    assert.equal(decodeI96F32(null), null);
     assert.equal(decodeI96F32(toHex(i128LeFromFloat(1.5))), 1.5);
     assert.equal(decodeU128("0xdead"), null);
     assert.equal(decodeI96F32("0xdead"), null);
@@ -161,8 +186,7 @@ describe("loadAccountRootClaim", () => {
   });
 
   test("returns schema-stable nulls when RPC fails", async () => {
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         throw new Error("boom");
       }),
@@ -188,8 +212,7 @@ describe("loadAccountRootClaim", () => {
     const thresholdHex = toHex(i128LeFromFloat(0.5));
 
     let call = 0;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         let result;
@@ -221,8 +244,7 @@ describe("loadAccountRootClaim", () => {
     const hotAccountId = Uint8Array.from({ length: 32 }, (_, i) => 40 + i);
     const hotSs58 = encodeAccountId32(hotAccountId);
     let call = 0;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         let result;
@@ -254,9 +276,10 @@ describe("loadAccountRootClaim", () => {
       claim_type: { kind: "Swap" },
       hotkeys: [],
       queried_at: "2026-07-20T00:00:00.000Z",
+      compatibility: LEGACY_COMPATIBILITY,
     };
     const fetchSpy = vi.fn();
-    vi.stubGlobal("fetch", fetchSpy);
+    stubLegacyFetch(fetchSpy);
     const payload = await loadAccountRootClaim(
       mockEnv({
         METAGRAPH_CONTROL: {
@@ -280,8 +303,7 @@ describe("loadAccountRootClaim", () => {
   test("positive-caches a successful payload", async () => {
     let stored: { value: Row; opts: Row } | null = null;
     let call = 0;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         const result =
@@ -315,8 +337,7 @@ describe("loadAccountRootClaim", () => {
 
   test("negative-caches RPC failure", async () => {
     let stored: { value: Row; opts: Row } | null = null;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         throw new Error("down");
       }),
@@ -339,14 +360,10 @@ describe("loadAccountRootClaim", () => {
   });
 
   test("treats non-ok RPC and JSON-RPC errors as failures", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("nope", { status: 502 })),
-    );
+    stubLegacyFetch(vi.fn(async () => new Response("nope", { status: 502 })));
     assert.equal((await loadAccountRootClaim(mockEnv(), SS58)).hotkeys, null);
 
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(
         async () =>
           new Response(
@@ -368,8 +385,7 @@ describe("loadAccountRootClaim", () => {
   test("nulls out when claim_type or hotkey vec decode fails", async () => {
     let call = 0;
     let stored: Row | null = null;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         // Malformed KeepSubnets (truncated)
@@ -404,8 +420,7 @@ describe("loadAccountRootClaim", () => {
   test("nulls out when a per-hotkey claimable fetch fails", async () => {
     const hotAccountId = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
     let call = 0;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         if (call <= 3) {
@@ -430,8 +445,7 @@ describe("loadAccountRootClaim", () => {
   test("nulls out when claimed/threshold decode fails mid-entry", async () => {
     const hotAccountId = Uint8Array.from({ length: 32 }, (_, i) => i + 2);
     let call = 0;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         let result;
@@ -456,8 +470,7 @@ describe("loadAccountRootClaim", () => {
 
   test("tolerates KV get/put failures", async () => {
     let call = 0;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         const result =
@@ -517,8 +530,8 @@ describe("loadAccountRootClaim", () => {
       ),
       null,
     );
-    assert.deepEqual(decodeClaimableMap("0x"), []);
-    assert.deepEqual(decodeAccountIdVec("0x"), []);
+    assert.equal(decodeClaimableMap("0x"), null);
+    assert.equal(decodeAccountIdVec("0x"), null);
   });
 
   test("covers compact modes, Keep trailing bytes, and malformed claimable", () => {
@@ -541,7 +554,7 @@ describe("loadAccountRootClaim", () => {
     assert.equal(decodeClaimableMap(mode2One)![0].netuid, 11);
     assert.equal(decodeClaimableMap(mode2One)![0].claimable_rate, 3);
     assert.equal(decodeClaimableMap("0xzz"), null);
-    assert.deepEqual(decodeAccountIdVec(null), []);
+    assert.equal(decodeAccountIdVec(null), null);
     assert.equal(decodeAccountIdVec("0xzz"), null);
     assert.equal(decodeAccountIdVec("0x03"), null); // mode-3 compact
     assert.equal(decodeClaimableMap("0x03"), null); // mode-3 via claimable map
@@ -570,8 +583,7 @@ describe("loadAccountRootClaim", () => {
     const hotAccountId = Uint8Array.from({ length: 32 }, (_, i) => i + 5);
     let stored: { opts: Row; value: Row } | null = null;
     let call = 0;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         let result;
@@ -607,8 +619,7 @@ describe("loadAccountRootClaim", () => {
   test("nulls when claimed/threshold RPC is non-ok", async () => {
     const hotAccountId = Uint8Array.from({ length: 32 }, (_, i) => i + 6);
     let call = 0;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         if (call <= 4) {
@@ -634,8 +645,7 @@ describe("loadAccountRootClaim", () => {
 
   test("works with a null env (no KV)", async () => {
     let call = 0;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         // Omit `result` entirely so fetchStorage takes the `?? null` arm.
@@ -658,16 +668,16 @@ describe("loadAccountRootClaim", () => {
         );
       }),
     );
-    // Missing result on StakingHotkeys/OwnedHotkeys → empty vecs → empty hotkeys
+    // A missing JSON-RPC result is unavailable, never a ValueQuery default.
     const payload = await loadAccountRootClaim(null as unknown as Env, SS58);
-    assert.deepEqual(payload.claim_type, { kind: "Swap" });
-    assert.deepEqual(payload.hotkeys, []);
+    assert.equal(payload.claim_type, null);
+    assert.equal(payload.hotkeys, null);
+    assert.equal(payload.compatibility.status, "unavailable");
   });
 
   test("skips KV when get/put bindings are missing", async () => {
     let call = 0;
-    vi.stubGlobal(
-      "fetch",
+    stubLegacyFetch(
       vi.fn(async () => {
         call += 1;
         const result =
