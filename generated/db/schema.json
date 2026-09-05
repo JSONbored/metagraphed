@@ -397,6 +397,12 @@
   },
   {
     "table": "api_keys",
+    "column": "revocation_requested_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "api_keys",
     "column": "revoked_at",
     "udt": "int8",
     "nullable": true
@@ -1833,6 +1839,372 @@
     "table": "revenue_probe_failures",
     "column": "surface_id",
     "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_capture_completions",
+    "column": "accepted_at_ms",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_capture_completions",
+    "column": "capture_id",
+    "udt": "uuid",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_capture_completions",
+    "column": "content_sha256",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_capture_pages",
+    "column": "capture_id",
+    "udt": "uuid",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_capture_pages",
+    "column": "fund_count",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_capture_pages",
+    "column": "next_after",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "root_basket_capture_pages",
+    "column": "page_index",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_capture_pages",
+    "column": "response_sha256",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_capture_pages",
+    "column": "start_after",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "bag_index_q64_bits",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "capture_id",
+    "udt": "uuid",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "decoder_version",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "expected_funds",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "expected_pages",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "finalized_block",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "finalized_block_hash",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "finished_at_ms",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "index_completed_block",
+    "udt": "numeric",
+    "nullable": true
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "index_status",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "metadata_sha256",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "network",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "network_genesis_hash",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "runtime_api_version",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "runtime_spec_version",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "stake_index_q64_bits",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_captures",
+    "column": "started_at_ms",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_current",
+    "column": "capture_id",
+    "udt": "uuid",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_current",
+    "column": "decoder_version",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_current",
+    "column": "network_genesis_hash",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "capture_id",
+    "udt": "uuid",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "deposited_rao",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "display_price_q64_bits",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "display_shares_q64_bits",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "first_block",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "holdings_count",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "hotkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "page_index",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "pending_entitlement_q64_bits",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "price_divisor_q64_bits",
+    "udt": "numeric",
+    "nullable": true
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "provisional",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "rate0_q32_bits",
+    "udt": "numeric",
+    "nullable": true
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "raw_spot_price_q64_bits",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "realizable_nav_rao",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "redeemed_rao",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "shares_atomic",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "spot_nav_rao",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "stake_price_q64_bits",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "staker_twr_q64_bits",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "targets_count",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_fund_snapshots",
+    "column": "tr_splice_q64_bits",
+    "udt": "numeric",
+    "nullable": true
+  },
+  {
+    "table": "root_basket_holdings",
+    "column": "capture_id",
+    "udt": "uuid",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_holdings",
+    "column": "hotkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_holdings",
+    "column": "netuid",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_holdings",
+    "column": "quantity_atomic",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_holdings",
+    "column": "quantity_unit",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_holdings",
+    "column": "realizable_value_rao",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_holdings",
+    "column": "spot_value_rao",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_targets",
+    "column": "capture_id",
+    "udt": "uuid",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_targets",
+    "column": "hotkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_targets",
+    "column": "netuid",
+    "udt": "numeric",
+    "nullable": false
+  },
+  {
+    "table": "root_basket_targets",
+    "column": "weight",
+    "udt": "numeric",
     "nullable": false
   },
   {

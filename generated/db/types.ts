@@ -105,6 +105,7 @@ export interface ApiKeys {
   last_used_at: number | string | null;
   owner_contact: string;
   prefix: string | null;
+  revocation_requested_at: number | string | null;
   revoked_at: number | string | null;
   secret_hash: string | null;
   tier: string;
@@ -465,6 +466,95 @@ export interface RevenueProbeFailures {
   observed_at: number | string;
   reason: string;
   surface_id: string;
+}
+
+/** `public.root_basket_capture_completions` */
+export interface RootBasketCaptureCompletions {
+  accepted_at_ms: string;
+  capture_id: string;
+  content_sha256: string;
+}
+
+/** `public.root_basket_capture_pages` */
+export interface RootBasketCapturePages {
+  capture_id: string;
+  fund_count: string;
+  next_after: string | null;
+  page_index: string;
+  response_sha256: string;
+  start_after: string | null;
+}
+
+/** `public.root_basket_captures` */
+export interface RootBasketCaptures {
+  bag_index_q64_bits: string;
+  capture_id: string;
+  decoder_version: string;
+  expected_funds: string;
+  expected_pages: string;
+  finalized_block: string;
+  finalized_block_hash: string;
+  finished_at_ms: string;
+  index_completed_block: string | null;
+  index_status: string;
+  metadata_sha256: string;
+  network: string;
+  network_genesis_hash: string;
+  runtime_api_version: string;
+  runtime_spec_version: string;
+  stake_index_q64_bits: string;
+  started_at_ms: string;
+}
+
+/** `public.root_basket_current` */
+export interface RootBasketCurrent {
+  capture_id: string;
+  decoder_version: string;
+  network_genesis_hash: string;
+}
+
+/** `public.root_basket_fund_snapshots` */
+export interface RootBasketFundSnapshots {
+  capture_id: string;
+  deposited_rao: string;
+  display_price_q64_bits: string;
+  display_shares_q64_bits: string;
+  first_block: string;
+  holdings_count: string;
+  hotkey: string;
+  page_index: string;
+  pending_entitlement_q64_bits: string;
+  price_divisor_q64_bits: string | null;
+  provisional: boolean;
+  rate0_q32_bits: string | null;
+  raw_spot_price_q64_bits: string;
+  realizable_nav_rao: string;
+  redeemed_rao: string;
+  shares_atomic: string;
+  spot_nav_rao: string;
+  stake_price_q64_bits: string;
+  staker_twr_q64_bits: string;
+  targets_count: string;
+  tr_splice_q64_bits: string | null;
+}
+
+/** `public.root_basket_holdings` */
+export interface RootBasketHoldings {
+  capture_id: string;
+  hotkey: string;
+  netuid: string;
+  quantity_atomic: string;
+  quantity_unit: string;
+  realizable_value_rao: string;
+  spot_value_rao: string;
+}
+
+/** `public.root_basket_targets` */
+export interface RootBasketTargets {
+  capture_id: string;
+  hotkey: string;
+  netuid: string;
+  weight: string;
 }
 
 /** `public.rpc_accounts` */
@@ -893,6 +983,13 @@ export interface DatabaseTables {
   RawCaptureState: RawCaptureState;
   RevenueObservations: RevenueObservations;
   RevenueProbeFailures: RevenueProbeFailures;
+  RootBasketCaptureCompletions: RootBasketCaptureCompletions;
+  RootBasketCapturePages: RootBasketCapturePages;
+  RootBasketCaptures: RootBasketCaptures;
+  RootBasketCurrent: RootBasketCurrent;
+  RootBasketFundSnapshots: RootBasketFundSnapshots;
+  RootBasketHoldings: RootBasketHoldings;
+  RootBasketTargets: RootBasketTargets;
   RpcAccounts: RpcAccounts;
   SchemaMigrations: SchemaMigrations;
   SelfHealthChecks: SelfHealthChecks;
