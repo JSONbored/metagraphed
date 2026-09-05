@@ -4,6 +4,7 @@
 // tests/tiered-rate-limit.test.ts mocks them.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { authLookupCacheWrite } from "../src/auth-lookup-cache.ts";
 import {
   OAUTH_ACCOUNT_TIER_KV_TTL,
   OAUTH_ACCOUNT_TIER_NEGATIVE_KV_TTL,
@@ -142,13 +143,13 @@ describe("resolveOAuthAccountTier", () => {
       { METAGRAPH_CONTROL: kv },
     );
     await resolveOAuthAccountTier(env, 42);
-    assert.deepEqual(kv.puts, [
-      {
-        key: "oauth-account-tier:42",
-        value: JSON.stringify({ found: true, tier: "paid" }),
-        options: { expirationTtl: OAUTH_ACCOUNT_TIER_KV_TTL },
-      },
-    ]);
+    assert.equal(kv.puts.length, 1);
+    assert.equal(kv.puts[0]!.key, "oauth-account-tier:v2:42");
+    assert.equal(kv.puts[0]!.options?.expirationTtl, OAUTH_ACCOUNT_TIER_KV_TTL);
+    assert.deepEqual(JSON.parse(kv.puts[0]!.value).record, {
+      found: true,
+      tier: "paid",
+    });
     // Second call is served from cache -- no second round trip.
     assert.deepEqual(await resolveOAuthAccountTier(env, 42), {
       found: true,
@@ -161,9 +162,11 @@ describe("resolveOAuthAccountTier", () => {
     const kv = createFakeKv();
     const { env } = envWith({ found: false }, { METAGRAPH_CONTROL: kv });
     await resolveOAuthAccountTier(env, 42);
+    assert.equal(kv.puts[0]!.options?.expirationTtl, 60);
+    const envelope = JSON.parse(kv.puts[0]!.value);
     assert.equal(
-      kv.puts[0]!.options?.expirationTtl,
-      OAUTH_ACCOUNT_TIER_NEGATIVE_KV_TTL,
+      envelope.expires_at_ms - envelope.cached_at_ms,
+      OAUTH_ACCOUNT_TIER_NEGATIVE_KV_TTL * 1000,
     );
     assert.ok(
       OAUTH_ACCOUNT_TIER_NEGATIVE_KV_TTL < OAUTH_ACCOUNT_TIER_KV_TTL,
@@ -172,16 +175,22 @@ describe("resolveOAuthAccountTier", () => {
   });
 
   test("the tier TTL is short enough to be a tolerable upgrade latency", () => {
-    // This cache's TTL *is* how long a paid upgrade takes to be honoured --
-    // there is no second fast path the way the blocklist is for key
-    // revocation. Pinned so it cannot drift up to the key cache's 30 minutes
-    // without someone deciding to.
+    // Pin local tier reuse so it cannot drift up to the key cache's
+    // 30 minutes without a deliberate policy change.
     assert.ok(OAUTH_ACCOUNT_TIER_KV_TTL <= 300);
   });
 
   test("serves a cached answer without calling upstream at all", async () => {
     const kv = createFakeKv({
-      "oauth-account-tier:9": { found: true, tier: "paid" },
+      "oauth-account-tier:v2:9": JSON.parse(
+        authLookupCacheWrite(
+          { found: true, tier: "paid" },
+          {
+            positiveTtlSeconds: OAUTH_ACCOUNT_TIER_KV_TTL,
+            negativeTtlSeconds: OAUTH_ACCOUNT_TIER_NEGATIVE_KV_TTL,
+          },
+        ).value,
+      ),
     });
     const { env, requests } = envWith(
       { found: true, tier: "free" },

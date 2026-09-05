@@ -31,21 +31,29 @@
 //
 // ## WHY THE TTL IS SHORTER THAN THE KEY CACHE'S
 //
-// api-key-validation.ts caches a valid key for 30 minutes, which is right for
-// its job: that cache exists to keep `verifyKey()` call volume down, and key
-// REVOCATION has its own faster path (the blocklist, on its own short TTL). No
-// such second path exists for a tier change, so this cache's TTL *is* the
-// upgrade latency. Five minutes keeps the read cheap while keeping "I paid and
-// nothing happened" inside the window a person will sit through.
+// api-key-validation.ts caches a valid key for 30 minutes to keep
+// `verifyKey()` call volume down. Its separate account blocklist does not
+// invalidate an individual key's cached verification. This tier cache uses
+// five minutes so subscription changes can be observed sooner. KV remains
+// eventually consistent; these TTLs bound local reuse, not global visibility.
 
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "./api-key-validation.ts";
+import {
+  authLookupCacheWrite,
+  readAuthLookupCache,
+} from "./auth-lookup-cache.ts";
 
-/** How long a resolved tier is cached. This is the upgrade latency -- see the
- * header for why it is not the key cache's 30 minutes. */
+/** How long a resolved tier can be reused locally -- see the header for why
+ * it is not the key cache's 30 minutes. */
 export const OAUTH_ACCOUNT_TIER_KV_TTL = 300; // 5 min
 /** How long "no such account" is cached. Short, so an account that appears
  * (or a lookup that failed transiently) is not denied for a full TTL. */
 export const OAUTH_ACCOUNT_TIER_NEGATIVE_KV_TTL = 30;
+
+const CACHE_POLICY = {
+  positiveTtlSeconds: OAUTH_ACCOUNT_TIER_KV_TTL,
+  negativeTtlSeconds: OAUTH_ACCOUNT_TIER_NEGATIVE_KV_TTL,
+};
 
 export interface OAuthAccountTierRecord {
   found: boolean;
@@ -53,7 +61,7 @@ export interface OAuthAccountTierRecord {
 }
 
 function cacheKeyFor(accountId: number): string {
-  return `oauth-account-tier:${accountId}`;
+  return `oauth-account-tier:v2:${accountId}`;
 }
 
 /**
@@ -115,9 +123,9 @@ async function lookupViaDataApi(
 /**
  * The current tier for an OAuth-authenticated account, KV-cache-fronted.
  *
- * Returns `{ found: false }` for an unreadable id, an unknown account, or any
- * upstream/KV failure -- one shape for every "we cannot say", so the caller has
- * exactly one branch to take and it is the safe one.
+ * Returns `{ found: false }` for an unreadable id, an unknown account, or an
+ * upstream failure. KV failures fall through to the lookup or retain its
+ * result, so cache availability does not itself decide authorization.
  */
 export async function resolveOAuthAccountTier(
   env: Env,
@@ -130,8 +138,11 @@ export async function resolveOAuthAccountTier(
   const cacheKey = cacheKeyFor(accountId);
   if (kv?.get) {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached as OAuthAccountTierRecord;
+      const cached = readAuthLookupCache(
+        await kv.get(cacheKey, { type: "json" }),
+        CACHE_POLICY,
+      );
+      if (cached) return cached;
     } catch {
       // KV read failure is non-fatal -- fall through to the live lookup.
     }
@@ -140,10 +151,9 @@ export async function resolveOAuthAccountTier(
   const payload = await lookupViaDataApi(env, accountId);
   if (kv?.put) {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: payload.found
-          ? OAUTH_ACCOUNT_TIER_KV_TTL
-          : OAUTH_ACCOUNT_TIER_NEGATIVE_KV_TTL,
+      const entry = authLookupCacheWrite(payload, CACHE_POLICY);
+      await kv.put(cacheKey, entry.value, {
+        expirationTtl: entry.expirationTtl,
       });
     } catch {
       // KV write failure is non-fatal.

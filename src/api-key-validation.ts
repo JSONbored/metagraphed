@@ -22,15 +22,23 @@
 // accepting eventual consistency for identity/revocation (NOT rate-limiting;
 // see src/unkey-client.ts's header for why that stays live/uncached), and a
 // longer TTL directly cuts how often verifyKey() gets called, keeping usage
-// comfortably inside Unkey's free tier. A revoked/disabled/not-found/garbage
-// key gets a SHORT TTL (30s) instead -- this falls straight out of caching
-// by `record.valid` rather than being a separate rule, and it's a genuinely
-// better property than one flat TTL would give: revocation propagates fast
-// (≤30s) precisely because a just-revoked key is, correctly, no longer
-// "valid" the moment it's checked.
+// comfortably inside Unkey's free tier. An observed rejection is reused for
+// only 30s before retrying. This does NOT bound revocation propagation: an
+// already-cached valid identity can remain reusable for its full 30-minute
+// TTL. Account blocklist and request rate/quota checks run separately.
+import {
+  authLookupCacheWrite,
+  readAuthLookupCache,
+} from "./auth-lookup-cache.ts";
+
 export const API_KEY_LOOKUP_KV_TTL = 1800; // 30 min
 export const API_KEY_LOOKUP_NEGATIVE_KV_TTL = 30;
 export const API_KEY_LOOKUP_TOKEN_HEADER = "x-api-key-lookup-token";
+
+const CACHE_POLICY = {
+  positiveTtlSeconds: API_KEY_LOOKUP_KV_TTL,
+  negativeTtlSeconds: API_KEY_LOOKUP_NEGATIVE_KV_TTL,
+};
 
 // Loose, not an exact-length assertion -- Unkey's own random-suffix
 // charset/length isn't a contract this codebase hard-codes. Just enough to
@@ -56,7 +64,7 @@ async function hashKeyForCache(bareKey: string): Promise<string> {
 }
 
 function cacheKeyFor(hash: string): string {
-  return `api-key-lookup:${hash}`;
+  return `api-key-lookup:v2:${hash}`;
 }
 
 export interface ApiKeyLookupRecord {
@@ -113,8 +121,11 @@ async function lookupApiKey(
   const cacheKey = cacheKeyFor(await hashKeyForCache(bareKey));
   if (kv?.get) {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached as ApiKeyLookupRecord;
+      const cached = readAuthLookupCache(
+        await kv.get(cacheKey, { type: "json" }),
+        CACHE_POLICY,
+      );
+      if (cached) return cached;
     } catch {
       // KV read failure is non-fatal -- fall through to the live lookup.
     }
@@ -123,10 +134,9 @@ async function lookupApiKey(
   const payload = await lookupViaDataApi(env, bareKey);
   if (kv?.put) {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: payload.found
-          ? API_KEY_LOOKUP_KV_TTL
-          : API_KEY_LOOKUP_NEGATIVE_KV_TTL,
+      const entry = authLookupCacheWrite(payload, CACHE_POLICY);
+      await kv.put(cacheKey, entry.value, {
+        expirationTtl: entry.expirationTtl,
       });
     } catch {
       // KV write failure is non-fatal.

@@ -10,6 +10,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleMcpRequest } from "../src/mcp-server.ts";
+import { authLookupCacheWrite } from "../src/auth-lookup-cache.ts";
+import {
+  API_KEY_LOOKUP_KV_TTL,
+  API_KEY_LOOKUP_NEGATIVE_KV_TTL,
+} from "../src/api-key-validation.ts";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import type { Row } from "./row-type.ts";
@@ -2331,9 +2336,14 @@ describe("surface credential store (#9009)", () => {
     const hash = [...new Uint8Array(digest)]
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("");
-    env.store.set(`api-key-lookup:${hash}`, {
-      value: JSON.stringify({ found: true, tier: "free", accountId: 7 }),
-    });
+    const identity = { found: true, tier: "free", accountId: 7 };
+    env.store.set(
+      `api-key-lookup:v2:${hash}`,
+      authLookupCacheWrite(identity, {
+        positiveTtlSeconds: API_KEY_LOOKUP_KV_TTL,
+        negativeTtlSeconds: API_KEY_LOOKUP_NEGATIVE_KV_TTL,
+      }),
+    );
 
     // Registered through the OAuth door as account 7…
     await callAs(
