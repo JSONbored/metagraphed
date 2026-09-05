@@ -18,6 +18,7 @@
 // they answered before the deletion -- see dispatchDataApiRequest's own note
 // for why that matters to the forward gate.
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
+import { handleRootBasketCaptureSync } from "../src/root-basket-capture-sync.ts";
 import {
   accountBalanceSyncRowSchema,
   accountIdentitySyncRowSchema,
@@ -8969,6 +8970,15 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/hotkey-alpha-sync"
     ) {
       return handleHotkeyAlphaSync(request, env, ctx);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/root-basket-capture-sync"
+    ) {
+      return handleRootBasketCaptureSync(request, env, {
+        onError: (error) =>
+          captureDataApiError(error, "root-basket-capture-sync", env),
+      });
     }
     if (
       request.method === "POST" &&

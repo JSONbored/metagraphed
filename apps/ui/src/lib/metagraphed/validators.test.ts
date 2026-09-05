@@ -151,6 +151,20 @@ describe("validatorsQuery", () => {
 });
 
 describe("validatorOperatorDirectoryQuery", () => {
+  it("preserves the source observation timestamp without publication-time fallback", () => {
+    const captured_at = "2026-01-01T00:00:00Z";
+    expect(
+      normalizeValidatorOperatorDirectory({ captured_at, generated_at: "2026-01-02T00:00:00Z" })
+        .captured_at,
+    ).toBe(captured_at);
+    for (const captured_at of [undefined, null, "", 123]) {
+      expect(
+        normalizeValidatorOperatorDirectory({ captured_at, generated_at: "2026-01-02T00:00:00Z" })
+          .captured_at,
+      ).toBeNull();
+    }
+  });
+
   it("preserves additive IDs through normalization and SSR while keeping display names separate", () => {
     const compact = normalizeValidatorOperatorDirectory({
       operators: [

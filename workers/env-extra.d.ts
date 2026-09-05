@@ -213,6 +213,8 @@ interface RuntimeSecretEnv {
   NEURON_DAILY_BACKFILL_SECRET?: string;
   NEURONS_SYNC_SECRET?: string;
   NOMINATOR_POSITIONS_SYNC_SECRET?: string;
+  /** Optional authentication for the bounded internal capture receiver. */
+  ROOT_BASKET_CAPTURE_SYNC_SECRET?: string;
   POSTHOG_EXCEPTION_STORM_WINDOW_MS?: string;
   POSTHOG_HOST?: string;
   POSTHOG_PROJECT_TOKEN?: string;

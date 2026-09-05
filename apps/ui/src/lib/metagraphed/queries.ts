@@ -8871,6 +8871,7 @@ export const validatorsQuery = <Projection extends "full" | "operator" = "full">
 export interface ValidatorOperatorDirectory {
   operators: SerializedOperatorRow[];
   hotkey_count: number;
+  captured_at: string | null;
 }
 
 export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOperatorDirectory {
@@ -8931,6 +8932,7 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
   return {
     operators: serializeOperatorRows(rows),
     hotkey_count: coerceFiniteNumber(data.validator_count) ?? 0,
+    captured_at: firstString(data.captured_at)?.trim() || null,
   };
 }
 
