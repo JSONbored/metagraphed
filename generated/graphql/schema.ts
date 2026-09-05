@@ -5905,32 +5905,32 @@ type Validator {
   apy_estimate_eligible_subnet_count: Int!
 
   """
-  Realized return on staked capital over a NOMINAL 1-day window. The interval is not exact: the baseline is the newest neuron_daily snapshot within a 2-day tolerance of the target date (#8837), so this can measure 1, 2 or 3 elapsed days. Read realized_return_1d_as_of for the day it actually resolved to before annualizing or plotting day-over-day (#9885).
+  Deprecated compatibility field; always null since #12015. Changes in delegated stake include deposits, withdrawals and price moves, so the former balance-change calculation did not measure investment return. Flow-neutral performance is unavailable; do not treat null as zero.
   """
   realized_return_1d: Float
 
   """
-  The neuron_daily snapshot_date the 1-day baseline resolved to, or null when there is no baseline (in which case realized_return_1d is null too). Subtract it from the response stamp for the true elapsed interval.
+  Deprecated compatibility field; always null with realized_return_1d. No investment-return measurement window is available.
   """
   realized_return_1d_as_of: String
 
   """
-  Realized return over a NOMINAL 7-day window; the same 2-day tolerance makes the true interval 5-9 days. See realized_return_1w_as_of (#9885).
+  Deprecated compatibility field; always null since #12015. Changes in delegated stake include deposits, withdrawals and price moves, so the former balance-change calculation did not measure investment return. Flow-neutral performance is unavailable; do not treat null as zero.
   """
   realized_return_1w: Float
 
   """
-  The neuron_daily snapshot_date the 7-day baseline resolved to, or null when realized_return_1w is null.
+  Deprecated compatibility field; always null with realized_return_1w. No investment-return measurement window is available.
   """
   realized_return_1w_as_of: String
 
   """
-  Realized return over a NOMINAL 30-day window; the same 2-day tolerance makes the true interval 28-32 days. See realized_return_1m_as_of (#9885).
+  Deprecated compatibility field; always null since #12015. Changes in delegated stake include deposits, withdrawals and price moves, so the former balance-change calculation did not measure investment return. Flow-neutral performance is unavailable; do not treat null as zero.
   """
   realized_return_1m: Float
 
   """
-  The neuron_daily snapshot_date the 30-day baseline resolved to, or null when realized_return_1m is null.
+  Deprecated compatibility field; always null with realized_return_1m. No investment-return measurement window is available.
   """
   realized_return_1m_as_of: String
   avg_validator_trust: Float
