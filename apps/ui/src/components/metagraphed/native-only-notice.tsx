@@ -27,7 +27,10 @@ export function NativeOnlyNotice({ context }: { context?: string }) {
   const notes = typeof coverage?.data?.notes === "string" ? coverage.data.notes.trim() : "";
 
   return (
-    <div role="status" className="rounded border border-border bg-surface p-4">
+    <div
+      role="status"
+      className="whitespace-normal rounded border border-border bg-surface p-4 text-left"
+    >
       <div className="flex items-start gap-3">
         <Compass className="size-4 shrink-0 text-ink-muted" />
         <div className="min-w-0 flex-1">
