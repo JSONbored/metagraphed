@@ -521,7 +521,7 @@ describe("loadNetworkParameters", () => {
         await loadNetworkParameters(env);
         assert.equal(
           putOptions!.expirationTtl,
-          NETWORK_PARAMETERS_NEGATIVE_KV_TTL,
+          Math.max(60, NETWORK_PARAMETERS_NEGATIVE_KV_TTL),
         );
       },
     );

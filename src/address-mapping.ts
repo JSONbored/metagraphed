@@ -12,6 +12,7 @@
 // rpcUrlForNetwork() for Substrate-native methods; eth_call is the
 // Ethereum-native sibling on that identical endpoint). Mirrors
 // src/sudo-key.ts's live-RPC + KV-cache shape.
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { encodeAccountId32 } from "./ss58.ts";
 import { functionSelector } from "./evm-precompiles.ts";
 import type { FieldSources } from "./field-provenance.ts";
@@ -25,7 +26,8 @@ const ADDRESS_MAPPING_PRECOMPILE_ADDRESS =
   "0x000000000000000000000000000000000000080c";
 const ADDRESS_MAPPING_SELECTOR = functionSelector("addressMapping(address)");
 export const ADDRESS_MAPPING_KV_TTL = 3600; // seconds -- deterministic given h160, never changes
-export const ADDRESS_MAPPING_NEGATIVE_KV_TTL = 10; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const ADDRESS_MAPPING_NEGATIVE_KV_TTL = 10;
 export const ADDRESS_MAPPING_RPC_TIMEOUT_MS = 5000;
 const FINNEY_SS58_PREFIX = 42;
 
@@ -92,9 +94,9 @@ async function loadAddressMappingSnapshot(
   const cacheKey = networkKvKey(`evm-address-mapping:${normalized}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
+      const cached = await readLiveRpcCache(kv, cacheKey);
       if (cached) return cached as AddressMappingResult;
     } catch {
       // KV read failure is non-fatal -- fall through to the live RPC.
@@ -141,12 +143,13 @@ async function loadAddressMappingSnapshot(
     queried_at: queriedAt,
   };
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: rpcOk
+      await writeLiveRpcCache(kv, cacheKey, payload, {
+        ttlSeconds: rpcOk
           ? ADDRESS_MAPPING_KV_TTL
           : ADDRESS_MAPPING_NEGATIVE_KV_TTL,
+        negative: !rpcOk,
       });
     } catch {
       // KV write failure is non-fatal.

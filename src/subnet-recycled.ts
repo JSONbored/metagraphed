@@ -33,6 +33,7 @@
 // (bittensor 10.4.0, substrate.create_storage_key("SubtensorModule",
 // "RAORecycledForRegistration", [netuid])) across netuid 0/1/4/101/65535.
 
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { chainRpcResult } from "./chain-rpc.ts";
 
 import type { FieldSources } from "./field-provenance.ts";
@@ -45,7 +46,8 @@ import {
 type Row = Record<string, unknown>;
 
 export const RECYCLED_KV_TTL = 600; // seconds — a registration-count counter, not a live price
-export const RECYCLED_NEGATIVE_KV_TTL = 10; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const RECYCLED_NEGATIVE_KV_TTL = 10;
 export const RECYCLED_RPC_TIMEOUT_MS = 5000;
 export const MAX_U16_NETUID = 65535;
 
@@ -130,9 +132,9 @@ async function loadSubnetRecycledSnapshot(
   const cacheKey = networkKvKey(`recycled:${netuid}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
+      const cached = await readLiveRpcCache(kv, cacheKey);
       if (cached) return cached as Row;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
@@ -182,10 +184,11 @@ async function loadSubnetRecycledSnapshot(
     queried_at: queriedAt,
   };
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: rpcOk ? RECYCLED_KV_TTL : RECYCLED_NEGATIVE_KV_TTL,
+      await writeLiveRpcCache(kv, cacheKey, payload, {
+        ttlSeconds: rpcOk ? RECYCLED_KV_TTL : RECYCLED_NEGATIVE_KV_TTL,
+        negative: !rpcOk,
       });
     } catch {
       // KV write failure is non-fatal.

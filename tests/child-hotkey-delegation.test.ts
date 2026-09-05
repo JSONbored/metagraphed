@@ -462,7 +462,10 @@ describe("loadAccountChildren", () => {
     const restore = stubFetch(async () => ({ ok: false }));
     try {
       await loadAccountChildren(env as unknown as Env, KNOWN_SS58);
-      assert.equal(putOptions!.expirationTtl, CHILD_HOTKEY_NEGATIVE_KV_TTL);
+      assert.equal(
+        putOptions!.expirationTtl,
+        Math.max(60, CHILD_HOTKEY_NEGATIVE_KV_TTL),
+      );
       assert.equal(CHILD_HOTKEY_NEGATIVE_KV_TTL, 10);
     } finally {
       restore();

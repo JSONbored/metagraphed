@@ -36,6 +36,7 @@
 // twox64/twox128 (src/twox-storage-key.ts), which needed a hand-rolled
 // implementation because no XXHash64 dependency exists in this repo.
 
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { encodeAccountId32 } from "./ss58.ts";
 import { isFinneySs58Address } from "./account-balance.ts";
@@ -48,7 +49,8 @@ import {
 } from "./chain-network.ts";
 
 export const CHILD_HOTKEY_KV_TTL = 120; // seconds -- live chain state, same profile as subnet-lease.ts
-export const CHILD_HOTKEY_NEGATIVE_KV_TTL = 10; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const CHILD_HOTKEY_NEGATIVE_KV_TTL = 10;
 export const CHILD_HOTKEY_RPC_TIMEOUT_MS = 5000;
 // A hotkey having children/parents on more than a handful of subnets would
 // be extraordinary; this stays a single state_getKeysPaged page in every
@@ -329,9 +331,9 @@ async function loadChildHotkeyGraph(
   // different child/parent sets on testnet.
   const cacheKey = networkKvKey(`${cacheKeyPrefix}:${ss58}`, network);
   const kv = env?.METAGRAPH_CONTROL;
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
+      const cached = await readLiveRpcCache(kv, cacheKey);
       if (cached) return cached as ChildHotkeyGraphSnapshot;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
@@ -359,10 +361,11 @@ async function loadChildHotkeyGraph(
     queried_at: queriedAt,
   };
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: ok ? CHILD_HOTKEY_KV_TTL : CHILD_HOTKEY_NEGATIVE_KV_TTL,
+      await writeLiveRpcCache(kv, cacheKey, payload, {
+        ttlSeconds: ok ? CHILD_HOTKEY_KV_TTL : CHILD_HOTKEY_NEGATIVE_KV_TTL,
+        negative: !ok,
       });
     } catch {
       // KV write failure is non-fatal.

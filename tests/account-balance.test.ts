@@ -495,9 +495,13 @@ test("GET /accounts/{ss58}/balance briefly negative-caches RPC failures", async 
         {},
       );
       assert.equal(res.status, 200);
-      assert.equal(putKey, `balance:${SS58}`);
-      assert.equal(putValue!.balance_tao, null);
-      assert.equal(putOptions!.expirationTtl, 10);
+      assert.equal(putKey, `balance:${SS58}:failure:v1`);
+      assert.equal(putValue!.value.balance_tao, null);
+      assert.equal(putOptions!.expirationTtl, 60);
+      const body = await res.json();
+      assert.equal(body.data.balance_tao, null);
+      assert.equal(body.data.queried_at, putValue!.value.queried_at);
+      assert.equal(Object.hasOwn(body.data, "live_rpc_cache_version"), false);
     },
   );
 });

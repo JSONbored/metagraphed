@@ -25,6 +25,8 @@
 // publishes no schedule, so a predicted date would be our guess wearing the
 // costume of a fact. The radar reports observed states only.
 
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
+
 /**
  * The upgrade lifecycle state, derived from the three spec-version readings.
  *
@@ -518,7 +520,8 @@ export const SOAK_ALERT_STATE_KEY = "upgrade-radar:last-soak-alert-spec";
 // well inside the upstream's 2-3 day release cadence.
 
 export const UPGRADE_RADAR_KV_TTL = 300; // seconds
-export const UPGRADE_RADAR_NEGATIVE_KV_TTL = 30; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const UPGRADE_RADAR_NEGATIVE_KV_TTL = 30;
 export const UPGRADE_RADAR_RPC_TIMEOUT_MS = 5000;
 export const UPGRADE_RADAR_GITHUB_TIMEOUT_MS = 8000;
 
@@ -674,7 +677,7 @@ export async function refreshUpgradeRadarSources(
     stale_upstreams: stale,
   };
   const kv = env?.METAGRAPH_CONTROL;
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
       await kv.put(UPGRADE_RADAR_SOURCES_KEY, JSON.stringify(snapshot), {
         expirationTtl: UPGRADE_RADAR_SOURCES_KV_TTL,
@@ -712,11 +715,12 @@ export async function readUpgradeRadarSources(
  */
 export async function loadUpgradeRadar(env: Env): Promise<UpgradeRadar> {
   const kv = env?.METAGRAPH_CONTROL;
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get<UpgradeRadar>(UPGRADE_RADAR_CACHE_KEY, {
-        type: "json",
-      });
+      const cached = await readLiveRpcCache<UpgradeRadar>(
+        kv,
+        UPGRADE_RADAR_CACHE_KEY,
+      );
       if (cached) return cached;
     } catch {
       // Fall through to a live read.
@@ -736,13 +740,14 @@ export async function loadUpgradeRadar(env: Env): Promise<UpgradeRadar> {
     observedAt,
   });
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(UPGRADE_RADAR_CACHE_KEY, JSON.stringify(radar), {
-        expirationTtl:
+      await writeLiveRpcCache(kv, UPGRADE_RADAR_CACHE_KEY, radar, {
+        ttlSeconds:
           radar.pending_upgrade === "unknown"
             ? UPGRADE_RADAR_NEGATIVE_KV_TTL
             : UPGRADE_RADAR_KV_TTL,
+        negative: radar.pending_upgrade === "unknown",
       });
     } catch {
       // Non-fatal.
@@ -838,7 +843,7 @@ export async function evaluateUpgradeRadarScan(env: Env): Promise<{
   }
 
   let lastAlertedSpec: unknown = null;
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
       lastAlertedSpec = await kv.get(SOAK_ALERT_STATE_KEY);
     } catch {

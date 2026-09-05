@@ -414,7 +414,10 @@ describe("the KV cache in front of the chain reads (#9335)", () => {
       rpc: async () => undefined,
       kv: kvBad,
     });
-    assert.equal(kvBad.puts.at(-1)?.ttl, LOCK_STATE_NEGATIVE_KV_TTL);
+    assert.equal(
+      kvBad.puts.at(-1)?.ttl,
+      Math.max(60, LOCK_STATE_NEGATIVE_KV_TTL),
+    );
     assert.ok(
       LOCK_STATE_NEGATIVE_KV_TTL < LOCK_STATE_KV_TTL,
       "a blip must clear sooner than a good board expires",

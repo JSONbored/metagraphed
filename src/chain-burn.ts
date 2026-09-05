@@ -22,6 +22,7 @@
 // "this value is unset chain-wide" rather than like a bug. The control that catches it
 // is reading a value you already know by another route: Tempo[64] must be 360.
 
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { chainRpc } from "./chain-rpc.ts";
 import {
   type ChainNetworkId,
@@ -37,6 +38,7 @@ type Row = Record<string, unknown>;
  * costs TAO. */
 export const CHAIN_BURN_KV_TTL = 120;
 /** A failed read is re-tried soon rather than cached as an answer. */
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
 export const CHAIN_BURN_NEGATIVE_KV_TTL = 10;
 /** Larger than the single-subnet timeout: this is one call carrying ~129 keys. */
 export const CHAIN_BURN_RPC_TIMEOUT_MS = 12_000;
@@ -179,9 +181,9 @@ async function loadChainBurnSnapshot(
 ): Promise<Row> {
   const cacheKey = networkKvKey("chain-burn", network);
   const kv = env?.METAGRAPH_CONTROL;
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
+      const cached = await readLiveRpcCache(kv, cacheKey);
       if (cached) return cached as Row;
     } catch {
       // A KV read failure is non-fatal -- fall through to the live RPC.
@@ -226,10 +228,11 @@ async function loadChainBurnSnapshot(
     payload = buildChainBurn(null, null, { queriedAt });
   }
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: rpcOk ? CHAIN_BURN_KV_TTL : CHAIN_BURN_NEGATIVE_KV_TTL,
+      await writeLiveRpcCache(kv, cacheKey, payload, {
+        ttlSeconds: rpcOk ? CHAIN_BURN_KV_TTL : CHAIN_BURN_NEGATIVE_KV_TTL,
+        negative: !rpcOk,
       });
     } catch {
       // A KV write failure is non-fatal.
