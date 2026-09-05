@@ -254,6 +254,52 @@ test("preserves literal reserved characters and bounds raw URL searches without 
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
+test("preserves raw typed-looking search links through aliases, reload and history", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const state = await searchFixture(page);
+  const search = page.getByRole("searchbox", { name: "Search endpoints", exact: true });
+  const directory = page.locator("section#directory");
+  const values = [
+    "404",
+    "0",
+    "1e3",
+    "9007199254740993",
+    "true",
+    "false",
+    "null",
+    " [ 1, false, null ] ",
+    ' { "b": 2, "a": 1 } ',
+  ];
+  for (const q of values) {
+    await gotoThroughRestart(page, "/endpoints?" + new URLSearchParams({ q }));
+    await expect(search).toHaveValue(q);
+    await expect(directory).toContainText("No endpoints match this search.");
+    expect(state.reads.at(-1)?.q).toBe(q);
+  }
+  await page.reload();
+  await expect(search).toHaveValue(values.at(-1)!);
+  await expect(directory).toContainText("0 loaded of 0 matching");
+  await search.fill("404");
+  await expect.poll(() => state.reads.at(-1)?.q).toBe("404");
+  await expect(directory).toContainText("0 loaded of 0 matching");
+  await page.goBack();
+  await expect(search).toHaveValue(values.at(-1)!);
+  await page.goForward();
+  await expect(search).toHaveValue("404");
+  await expect(directory).toContainText("0 loaded of 0 matching");
+  await gotoThroughRestart(page, "/apis/endpoints?q=%22404%22");
+  await expect(search).toHaveValue("404");
+  await expect(directory).toContainText("0 loaded of 0 matching");
+  const beforeInvalid = state.reads.length;
+  const tooLong = "9".repeat(201);
+  await gotoThroughRestart(page, "/apis/endpoints?q=" + tooLong);
+  await expect(search).toHaveValue(tooLong);
+  await expect(page.getByRole("alert")).toContainText("Search is too long");
+  expect(state.reads.length).toBe(beforeInvalid);
+});
+
 test("combines server facets with search and keeps the monitored observation scope explicit", async ({
   page,
 }) => {
