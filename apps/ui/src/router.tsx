@@ -4,6 +4,7 @@ import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query
 import { routeTree } from "./routeTree.gen";
 import { ApiError } from "./lib/metagraphed/client";
 import { DefaultRouteError, DefaultRoutePending } from "./router-fallbacks";
+import { parseAppSearch } from "./lib/metagraphed/search-params";
 
 export const getRouter = () => {
   const queryClient = new QueryClient({
@@ -47,6 +48,7 @@ export const getRouter = () => {
 
   const router = createRouter({
     routeTree,
+    parseSearch: parseAppSearch,
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
