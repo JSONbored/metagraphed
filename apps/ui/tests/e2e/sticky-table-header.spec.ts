@@ -39,6 +39,38 @@ const TABLE_VIEWPORTS = [
 ];
 const CARD_VIEWPORT = { name: "tablet", width: 768, height: 1024 };
 
+test("compact card labels follow the table breakpoint when the viewport resizes", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoThroughRestart(page, "/subnets");
+  const table = page.locator(".mg-dt[data-mobile-label-template]").first();
+  const cells = table.locator("tbody .mg-dt-row").first().locator("td");
+  await expect(table).toBeVisible();
+  await expect(cells.first()).toBeVisible();
+
+  for (const width of [1280, 1023, 1024, 375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    const cards = width < 1024;
+    const labels = await cells.evaluateAll((nodes) =>
+      nodes.map((node) => getComputedStyle(node, "::before").content),
+    );
+    expect(labels.length).toBeGreaterThan(3);
+    if (cards) {
+      expect(labels.every((label) => label !== "none" && label !== '""')).toBe(true);
+      await expect(table.locator("thead")).toBeHidden();
+    } else {
+      expect(labels.every((label) => label === "none" || label === "normal")).toBe(true);
+      await expect(table.locator("thead")).toBeVisible();
+    }
+    const dimensions = await page.evaluate(() => ({
+      viewport: innerWidth,
+      document: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+  }
+});
+
 // Playwright's default is 30s per test, and these do not fit in it: the
 // settle sequence (goto, up to 5s for networkidle or a 2s fallback, fonts)
 // runs before a table wait that has to tolerate /chain/extrinsics taking
