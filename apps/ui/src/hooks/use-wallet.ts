@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useHydrated } from "@/hooks/use-hydrated";
 import {
   getConnectedWallet,
   setConnectedWallet,
@@ -52,6 +53,7 @@ export function isStaleWallet(
  * header comment and docs/adr/0018-native-staking-architecture.md).
  */
 export function useWallet() {
+  const hydrated = useHydrated();
   const [wallet, setWallet] = useState<ConnectedWallet | null>(() => getConnectedWallet());
   const [status, setStatus] = useState<WalletStatus>(() => (wallet ? "connected" : "idle"));
   const [accounts, setAccounts] = useState<InjectedAccountWithMeta[]>([]);
@@ -122,11 +124,14 @@ export function useWallet() {
   }, []);
 
   return {
-    wallet,
-    status,
+    // Browser persistence and injected extensions are absent from server HTML.
+    // Match that first render before exposing them, including nested boundaries
+    // that hydrate after the global shell has already mounted.
+    wallet: hydrated ? wallet : null,
+    status: hydrated ? status : "idle",
     accounts,
     error,
-    hasExtension: hasInjectedWallet(),
+    hasExtension: hydrated && hasInjectedWallet(),
     connect,
     selectAccount,
     disconnect,
