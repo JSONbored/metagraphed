@@ -6,6 +6,8 @@ import {
   PENDING_CEILING,
   compare,
   neonTables,
+  BUNDLE_CONTRACTS,
+  BUNDLE_MAPPINGS,
 } from "../scripts/validate-archive-policy.ts";
 
 describe("archive policy", () => {
@@ -68,6 +70,7 @@ describe("archive policy", () => {
     const kinds = new Set([
       "mirrored",
       "pending",
+      "bundled",
       "serving",
       "sensitive",
       "transient",
@@ -83,5 +86,12 @@ describe("archive policy", () => {
       neonTables([{ table: "b" }, { table: "a" }, { table: "b" }]),
       ["a", "b"],
     );
+  });
+
+  test("bundle support adds no production archive or table declaration", () => {
+    assert.deepEqual(BUNDLE_CONTRACTS, {});
+    assert.deepEqual(BUNDLE_MAPPINGS, []);
+    assert.equal(Object.values(POLICY).includes("bundled"), false);
+    assert.equal(PENDING_CEILING, 0);
   });
 });
