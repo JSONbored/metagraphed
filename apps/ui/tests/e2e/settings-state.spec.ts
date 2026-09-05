@@ -46,6 +46,50 @@ function envelope(data: unknown) {
 }
 
 test.describe("Settings record states", () => {
+  for (const width of [375, 768, 1280]) {
+    test(`opens the connected address directly without signing (${width}px)`, async ({ page }) => {
+      const address = "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9";
+      await page.setViewportSize({ width, height: 812 });
+      await page.addInitScript((address) => {
+        if (location.origin === "null") return;
+        window.injectedWeb3 = {
+          fixture: {
+            enable: async () => ({
+              accounts: { get: async () => [{ address, name: "Fixture account" }] },
+              signer: {
+                signRaw: async () => {
+                  sessionStorage.setItem("fixture:signature-requested", "true");
+                  throw new Error("Viewing a public account must not request a signature");
+                },
+              },
+            }),
+          },
+        };
+        localStorage.setItem("metagraphed:wallet", JSON.stringify({ address, source: "fixture" }));
+        localStorage.removeItem("metagraphed:watch-token");
+        sessionStorage.removeItem("metagraphed:api-session");
+      }, address);
+      const privateRequests: string[] = [];
+      page.on("request", (request) => {
+        if (/\/api\/v1\/(auth\/wallet|keys|watch\/)/.test(new URL(request.url()).pathname)) {
+          privateRequests.push(request.url());
+        }
+      });
+
+      await gotoThroughRestart(page, "/settings#wallet");
+      const accountLink = page.locator("#wallet").getByRole("link", { name: "View your account" });
+      await expect(accountLink).toHaveAttribute("href", `/accounts/${address}`);
+      await accountLink.click();
+      await expect(page).toHaveURL(new RegExp(`/accounts/${address}$`));
+      await expect(page.getByRole("group", { name: "Stake by subnet" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Positions", exact: true })).toBeVisible();
+      expect(privateRequests).toEqual([]);
+      expect(
+        await page.evaluate(() => sessionStorage.getItem("fixture:signature-requested")),
+      ).toBeNull();
+    });
+  }
+
   for (const connected of [false, true]) {
     test(`hydrates wallet panels without replacing their first interaction (${connected ? "saved wallet" : "installed extension"})`, async ({
       page,
