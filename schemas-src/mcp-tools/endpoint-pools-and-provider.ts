@@ -18,6 +18,7 @@ import {
   McpListPageFields,
   RPC_POOL_KIND_VALUES,
   fieldsSchema,
+  querySchema,
   idFilterSchema,
   kindSchema,
   limitSchema,
@@ -159,6 +160,7 @@ const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
 const ENDPOINT_PUBLICATION_STATES = ENDPOINT_PUBLICATION_STATE_VALUES;
 export const ListProviderEndpointsInputSchema = z
   .object({
+    q: querySchema().optional(),
     slug: z
       .string()
       .regex(/^[a-z0-9-]+$/)

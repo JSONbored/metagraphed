@@ -34223,6 +34223,8 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
+                q?: string;
                 /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_latency_ms?: number;
                 /** @description Inclusive upper bound: only rows at or below this value are returned. */
@@ -39293,6 +39295,8 @@ export interface operations {
                 pool_eligible?: "true" | "false";
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
+                q?: string;
                 /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_latency_ms?: number;
                 /** @description Inclusive upper bound: only rows at or below this value are returned. */
@@ -41000,6 +41004,8 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
+                q?: string;
                 /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_latency_ms?: number;
                 /** @description Inclusive upper bound: only rows at or below this value are returned. */
@@ -44904,6 +44910,8 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
+                q?: string;
                 /** @description Inclusive lower bound: only rows at or above this value are returned. */
                 min_latency_ms?: number;
                 /** @description Inclusive upper bound: only rows at or below this value are returned. */
