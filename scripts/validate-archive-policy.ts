@@ -27,6 +27,13 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
+import {
+  validateArchiveBundles,
+  type ArchiveBundleContract,
+  type ArchiveBundleMapping,
+  type BundleSourceColumn,
+  type BundleCatalogColumn,
+} from "./archive-policy-bundles.ts";
 
 /**
  * What the archive does with each Neon table.
@@ -38,6 +45,10 @@ import { repoRoot } from "./lib.ts";
  *             This is a debt list, not a verdict: every entry is a table whose
  *             history is being kept only in the serving tier, where nothing
  *             promises to keep it. Tracked in metagraphed-infra#510.
+ *
+ * `bundled`   immutable row families preserved together in a verified complete
+ *             capture bundle, with a separately declared catalog index. Requires
+ *             an explicit whole-group mapping; not a same-name table mirror.
  *
  * `serving`   operational state that describes the SYSTEM rather than the
  *             chain: probe results, lane health, capture cursors, usage
@@ -56,7 +67,21 @@ import { repoRoot } from "./lib.ts";
  * `meta`      schema bookkeeping.
  */
 export type Policy =
-  "mirrored" | "pending" | "serving" | "sensitive" | "transient" | "meta";
+  | "mirrored"
+  | "pending"
+  | "bundled"
+  | "serving"
+  | "sensitive"
+  | "transient"
+  | "meta";
+
+// Support only (#12086). Actual mappings require credentialed catalog metadata
+// and deployed publication/read-back evidence. This pure metadata gate cannot
+// establish those runtime facts, and an authored declaration is not that proof.
+// Keep unprovisioned examples in tests; do not classify history to bypass debt.
+export const BUNDLE_CONTRACTS: Readonly<Record<string, ArchiveBundleContract>> =
+  {};
+export const BUNDLE_MAPPINGS: readonly ArchiveBundleMapping[] = [];
 
 export const POLICY: Readonly<Record<string, Policy>> = {
   // -- mirrored: the 18 tables the archive already holds -------------------
@@ -203,11 +228,22 @@ export function compare(tables: string[]): {
 function main(): void {
   const snapshot = JSON.parse(
     readFileSync(path.join(repoRoot, "generated/db/schema.json"), "utf8"),
-  ) as Column[];
+  ) as BundleSourceColumn[];
   const tables = neonTables(snapshot);
   const { unclassified, stale, pending } = compare(tables);
 
-  const problems: string[] = [];
+  const problems = validateArchiveBundles({
+    source: snapshot,
+    catalog: JSON.parse(
+      readFileSync(
+        path.join(repoRoot, "generated/lakehouse/schema.json"),
+        "utf8",
+      ),
+    ) as BundleCatalogColumn[],
+    policies: POLICY,
+    contracts: BUNDLE_CONTRACTS,
+    mappings: BUNDLE_MAPPINGS,
+  });
   if (unclassified.length) {
     problems.push(
       `${unclassified.length} Neon table(s) have no archive policy:\n  ` +
@@ -216,7 +252,8 @@ function main(): void {
         `\n     "mirrored" if the state mirror carries it, "pending" if it is` +
         `\n     chain history still owed an archive copy, "serving" if it` +
         `\n     describes the system rather than the chain, "sensitive" if it` +
-        `\n     must never be archived.`,
+        `\n     must never be archived. "bundled" requires a complete verified` +
+        `\n     capture mapping, actual catalog metadata and deployed evidence.`,
     );
   }
   if (stale.length) {
