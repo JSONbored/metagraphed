@@ -192,15 +192,14 @@ function ConnectedView({
       {/* #8484: one-click entry point into the private-label editor, pre-filled
           from the extension's own account name where available. */}
       <AddressLabelEditor ss58={wallet.address} defaultName={accountName} trigger="button" />
-      {/* #5243: the connected wallet's read-side entry point into its
-          portfolio. #8252: that view moved from the retired /portfolio route
-          into /accounts' own "Your wallet" panel. */}
+      {/* Public account details need the selected address, without a signed session. */}
       <Link
-        to="/accounts"
-        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 transition-colors"
+        to="/accounts/$ss58"
+        params={{ ss58: wallet.address }}
+        className="w-full min-h-11 inline-flex items-center justify-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-ink-strong hover:bg-primary-soft/80 transition-colors"
       >
         <Wallet className="size-3.5" aria-hidden="true" />
-        Your positions
+        View your account
       </Link>
       <button
         type="button"
