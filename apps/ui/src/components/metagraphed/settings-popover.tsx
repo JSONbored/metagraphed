@@ -1,24 +1,16 @@
-import type { CSSProperties } from "react";
-import { Check, Globe2, Settings, Sun, Moon, Monitor } from "lucide-react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { Settings } from "lucide-react";
 import { Popover, PopoverTrigger } from "@jsonbored/ui-kit";
 import { ClampedPopoverContent } from "./clamped-popover-content";
-import { useTheme, type ThemeChoice } from "@/lib/theme";
-import { useNetwork } from "@/hooks/use-api-base";
-import { CHAIN_NETWORKS } from "@/lib/metagraphed/config";
-import { useHealthPalette, HEALTH_PALETTES, type HealthPaletteId } from "@/lib/health-palette";
-import { classNames } from "@/lib/metagraphed/format";
 
-const THEMES: Array<{ id: ThemeChoice; label: string; Icon: typeof Sun }> = [
-  { id: "light", label: "Light", Icon: Sun },
-  { id: "dark", label: "Dark", Icon: Moon },
-  { id: "system", label: "System", Icon: Monitor },
-];
+type PanelComponent = typeof import("./settings-panel").default;
 
 /**
- * Single header gear button. Opens a popover with theme, chain network and the
- * health colour preset. State persists to localStorage via the underlying hooks.
+ * Single header gear button. Controls load only when this popover or the mobile
+ * navigation mounts them; closed settings add no panel request to a route visit.
  */
 export function SettingsPopover() {
+  const contentRef = useRef<HTMLDivElement>(null);
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -30,180 +22,67 @@ export function SettingsPopover() {
           <Settings className="size-3.5" aria-hidden="true" />
         </button>
       </PopoverTrigger>
-      <ClampedPopoverContent align="end" className="w-72 p-3">
-        <SettingsPanel />
+      <ClampedPopoverContent ref={contentRef} align="end" className="w-72 p-3">
+        <SettingsPanel focusWithinRef={contentRef} />
       </ClampedPopoverContent>
     </Popover>
   );
 }
 
-/**
- * The theme + network + health-colour controls, without the popover chrome, so
- * they can be reused in the mobile navigation sheet.
- */
-export function SettingsPanel() {
-  const { choice, setChoice } = useTheme();
-  const { network, change: changeNetwork } = useNetwork();
-  const { paletteId, setPalette } = useHealthPalette();
-
-  return (
-    <div className="space-y-4">
-      <Section label="Theme">
-        <SegmentedRow>
-          {THEMES.map(({ id, label, Icon }) => (
-            <SegmentBtn key={id} active={choice === id} onClick={() => setChoice(id)} label={label}>
-              <Icon className="size-3.5" aria-hidden="true" />
-              <span>{label}</span>
-            </SegmentBtn>
-          ))}
-        </SegmentedRow>
-      </Section>
-
-      <Section label="Network" sub="Which Bittensor network's data the app shows.">
-        <ul className="space-y-1">
-          {CHAIN_NETWORKS.map((n) => {
-            const active = n.id === network.id;
-            return (
-              <li key={n.id}>
-                <button
-                  type="button"
-                  onClick={() => changeNetwork(n.id)}
-                  aria-pressed={active}
-                  className={classNames(
-                    "w-full flex items-center gap-2 rounded border px-2 py-1.5 text-left transition-colors min-h-9",
-                    active
-                      ? "border-rule-strong bg-layer"
-                      : "border-border hover:border-rule-strong",
-                  )}
-                >
-                  <Globe2 className="size-3.5 text-ink-muted shrink-0" aria-hidden="true" />
-                  <span className="flex-1 min-w-0 text-13 font-medium text-ink-strong">
-                    {n.label}
-                  </span>
-                  {active ? <Check className="size-3 text-health-ok" aria-hidden="true" /> : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </Section>
-
-      <Section label="Health colors" sub="Preset for ok / warn / down / unknown dots.">
-        <ul className="space-y-1">
-          {HEALTH_PALETTES.map((p) => (
-            <PaletteRow
-              key={p.id}
-              id={p.id}
-              label={p.label}
-              description={p.description}
-              swatches={[p.swatch.ok, p.swatch.warn, p.swatch.down, p.swatch.unknown]}
-              active={paletteId === p.id}
-              onSelect={() => setPalette(p.id)}
-            />
-          ))}
-        </ul>
-      </Section>
-    </div>
-  );
-}
-
-function Section({
-  label,
-  sub,
-  children,
+/** Shared deferred controls for the desktop popover and mobile navigation. */
+export function SettingsPanel({
+  focusWithinRef,
 }: {
-  label: string;
-  sub?: string;
-  children: React.ReactNode;
+  focusWithinRef?: RefObject<HTMLElement | null>;
 }) {
-  return (
-    <div>
-      <div className="text-13 text-ink-muted mb-1.5">{label}</div>
-      {children}
-      {sub ? <p className="mt-1 text-11 text-ink-muted">{sub}</p> : null}
-    </div>
-  );
-}
+  const [Panel, setPanel] = useState<PanelComponent | null>(null);
+  const [failed, setFailed] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-function SegmentedRow({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="inline-flex w-full items-center rounded border border-border bg-layer p-0.5">
-      {children}
-    </div>
-  );
-}
+  useEffect(() => {
+    let mounted = true;
+    void import("./settings-panel").then(
+      (module) => {
+        if (mounted) setPanel(() => module.default);
+      },
+      () => {
+        if (mounted) setFailed(true);
+      },
+    );
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-function SegmentBtn({
-  active,
-  onClick,
-  label,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  children: React.ReactNode;
-}) {
+  useEffect(() => {
+    // Radix focuses the empty popover while the chunk loads. Complete its usual
+    // first-control focus only if the reader has stayed inside it. The mobile
+    // sheet keeps focus in its navigation, and a closed panel cannot steal it.
+    if ((Panel || failed) && focusWithinRef?.current?.contains(document.activeElement)) {
+      panelRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    }
+  }, [Panel, failed, focusWithinRef]);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      aria-label={label}
-      className={classNames(
-        "flex-1 inline-flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-13 font-medium transition-colors min-h-8",
-        active ? "bg-raised text-ink-strong" : "text-ink-muted hover:text-ink-strong",
+    <div ref={panelRef}>
+      {Panel ? (
+        <Panel />
+      ) : failed ? (
+        <div role="alert" className="space-y-2 text-13 text-ink-muted">
+          <p>Settings could not load.</p>
+          <button
+            type="button"
+            className="min-h-9 rounded border border-border px-2 text-13 text-ink-strong hover:border-rule-strong"
+            onClick={() => window.location.reload()}
+          >
+            Reload settings
+          </button>
+        </div>
+      ) : (
+        <p role="status" className="text-13 text-ink-muted">
+          Loading settings…
+        </p>
       )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function PaletteRow({
-  id,
-  label,
-  description,
-  swatches,
-  active,
-  onSelect,
-}: {
-  id: HealthPaletteId;
-  label: string;
-  description: string;
-  swatches: string[];
-  active: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onSelect}
-        aria-pressed={active}
-        className={classNames(
-          "w-full flex items-center gap-2 rounded border px-2 py-1.5 text-left transition-colors min-h-9",
-          active ? "border-rule-strong bg-layer" : "border-border hover:border-rule-strong",
-        )}
-      >
-        <span className="flex shrink-0 items-center gap-1" aria-hidden>
-          {swatches.map((c, i) => (
-            <span
-              key={`${id}-${i}`}
-              className="mg-dot mg-dot-swatch"
-              // The swatch colour IS the datum this row is previewing -- it
-              // comes from the palette module, not from a class, so it rides in
-              // as a custom property the way every other data-carrying value on
-              // the site does.
-              style={{ "--mg-swatch": c } as CSSProperties}
-            />
-          ))}
-        </span>
-        <span className="flex-1 min-w-0">
-          <span className="block text-13 font-medium text-ink-strong">{label}</span>
-          <span className="block text-11 text-ink-muted truncate">{description}</span>
-        </span>
-      </button>
-    </li>
+    </div>
   );
 }

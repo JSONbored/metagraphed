@@ -7,7 +7,7 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/state
 import { useWallet } from "@/hooks/use-wallet";
 import { useApiSession } from "@/hooks/use-api-session";
 import { toLinePoints } from "@/components/metagraphed/metric-history";
-import { WalletConnectPrompt } from "@/components/metagraphed/wallet-connect";
+import { WalletConnectPrompt } from "@/components/metagraphed/wallet-connect-button";
 
 interface ApiKeyRow {
   key_id: string;

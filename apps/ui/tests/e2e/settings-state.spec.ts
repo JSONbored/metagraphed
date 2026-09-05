@@ -72,6 +72,8 @@ test.describe("Settings record states", () => {
       const trigger = panel.getByRole("button", { name: "Connect wallet", exact: true });
       await expect(trigger).toBeVisible();
       await trigger.click();
+      await expect(trigger).toHaveAttribute("aria-expanded", "true");
+      await expect(trigger).toHaveAttribute("aria-controls", /.+/);
       const popoverId = await trigger.getAttribute("aria-controls");
       expect(popoverId).toBeTruthy();
       await page
@@ -99,6 +101,8 @@ test.describe("Settings record states", () => {
       const panel = page.locator(`#${section}`);
       const trigger = panel.getByRole("button", { name: "Connect wallet", exact: true });
       await trigger.click();
+      await expect(trigger).toHaveAttribute("aria-expanded", "true");
+      await expect(trigger).toHaveAttribute("aria-controls", /.+/);
       const popoverId = await trigger.getAttribute("aria-controls");
       await page
         .locator(`[id="${popoverId}"]`)

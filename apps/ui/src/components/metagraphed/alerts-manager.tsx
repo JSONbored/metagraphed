@@ -8,7 +8,7 @@ import { DataTable, TimeAgo, type DataTableColumn } from "@jsonbored/ui-kit";
 import { ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { useWallet } from "@/hooks/use-wallet";
 import { useWatchToken } from "@/hooks/use-watch-token";
-import { WalletConnectPrompt } from "@/components/metagraphed/wallet-connect";
+import { WalletConnectPrompt } from "@/components/metagraphed/wallet-connect-button";
 
 // #8375: the Alert Center -- lists, pauses/resumes, edits, and deletes a
 // verified address' own chain_alert_triggers, plus each trigger's recent
