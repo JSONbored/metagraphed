@@ -12,6 +12,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { PGlite } from "@electric-sql/pglite";
 import { describe, test } from "vitest";
 import { tablesInMigrations } from "../scripts/validate-declared-tables-exist.ts";
 import {
@@ -137,6 +138,32 @@ function neonTables(): Set<string> {
 }
 
 describe("TABLE_FRESHNESS coverage", () => {
+  test("unserved basket storage generates only reads supported by its actual migration", async () => {
+    const db = new PGlite();
+    try {
+      await db.exec(
+        readFileSync(
+          "migrations/neon/0036_root_basket_observations.sql",
+          "utf8",
+        ),
+      );
+      const spec = Object.fromEntries(
+        Object.entries(TABLE_FRESHNESS).filter(([table]) =>
+          table.startsWith("root_basket_"),
+        ),
+      );
+      const swept = freshnessTables().filter((table) => table in spec);
+      // A redirected stamp also reads the child's own column in the hourly
+      // cross-check. The migration, not a SQL-shaped mock, proves both reads.
+      await db.query(freshnessSql(swept, spec));
+      const crossCheck = crossCheckSql(spec);
+      if (crossCheck) await db.query(crossCheck);
+      assert.deepEqual(swept, ["root_basket_captures"]);
+    } finally {
+      await db.close();
+    }
+  });
+
   test("every table the repo has committed to is classified", () => {
     // THE LOAD-BEARING TEST. A table absent from the map is one nobody has
     // decided the freshness meaning of, and it would be swept by nothing --

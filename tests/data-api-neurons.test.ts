@@ -921,24 +921,38 @@ test("GET /api/v1/validators/operators serves the grouped website projection", a
   });
   await insertIdentity("5TeamColdLarge", "Tensor Team");
   await insertIdentity("5TeamColdSmall", "Tensor Team");
+  insertNeuron({
+    netuid: 0,
+    uid: 3,
+    hotkey: "5SameOwner",
+    coldkey: "5TeamColdLarge",
+    stake_tao: 10,
+    emission_tao: 1,
+    take: 0.2,
+  });
 
   const res = await call(req("/api/v1/validators/operators"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
-  assert.equal(body.validator_count, 3);
-  assert.equal(body.operator_count, 2);
+  assert.equal(body.validator_count, 4);
+  assert.equal(body.operator_count, 3);
   const operators = body.operators as Row[];
   assert.equal(operators[0]!.identity_name, "Tensor Team");
+  assert.equal(operators[0]!.operator_id, "coldkey:5TeamColdLarge");
+  assert.equal(operators[0]!.ownership_basis, "single_coldkey");
   assert.equal(operators[0]!.hotkey_count, 2);
   assert.equal(operators[0]!.primary_hotkey, "5TeamLarge");
-  assert.equal(operators[0]!.total_stake_tao, 100);
+  assert.equal(operators[0]!.total_stake_tao, 85);
   assert.deepEqual(
     (operators[0]!.hotkeys as Row[]).map((entry) => entry.hotkey),
-    ["5TeamLarge", "5TeamSmall"],
+    ["5TeamLarge", "5SameOwner"],
   );
   assert.equal(operators[1]!.identity_name, null);
   assert.equal(operators[1]!.primary_hotkey, "5Anonymous");
   assert.deepEqual(operators[1]!.hotkeys, []);
+  assert.equal(operators[2]!.identity_name, "Tensor Team");
+  assert.equal(operators[2]!.operator_id, "coldkey:5TeamColdSmall");
+  assert.equal(operators[2]!.hotkey_count, 1);
 });
 
 test("GET /api/v1/validators/:hotkey aggregates one hotkey across subnets with priced totals", async () => {

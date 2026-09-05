@@ -5268,7 +5268,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the compact validator operator directory used by the website: validator hotkeys grouped by declared identity, with the primary key, optional multi-key expansion, cross-key stake/emission totals, take range, estimated APY, nominators, memberships, UIDs and stake dominance. Anonymous hotkeys remain separate operators. Computed from the same complete neuron snapshot as /api/v1/validators without changing that full response. */
+        /** @description Fetch the compact validator operator directory used by the website: hotkeys sharing one observed owner account form a group, while unknown or conflicting owners remain separate. Stable IDs are scoped to the response network; ownership agreement does not verify a declared brand or organization. Retains the primary key and multi-key expansion. Unique nominator counts are available only for singletons because per-hotkey counts cannot deduplicate accounts across members. Computed from the same complete neuron snapshot as /api/v1/validators without changing that full response. */
         get: operations["validatorOperatorDirectory"];
         put?: never;
         post?: never;
@@ -14138,6 +14138,7 @@ export interface components {
             operator_count: number;
             operators: {
                 apy_estimate: number | null;
+                /** @description The source-selected owner account of the primary hotkey. Common to all members only when ownership_basis is single_coldkey; otherwise this is a representative source field, not evidence of shared ownership. */
                 coldkey: string | null;
                 hotkey_count: number;
                 hotkeys: {
@@ -14147,7 +14148,15 @@ export interface components {
                 }[];
                 identity_name: string | null;
                 membership_count: number;
+                /** @description Distinct nominator accounts (coldkeys) for a singleton operator, from its hotkey's available count. Always null for multiple hotkeys: per-hotkey counts cannot deduplicate overlapping accounts or establish complete operator coverage. Accounts are not people, and null is unavailable rather than zero. */
                 nominator_count: number | null;
+                /** @description Stable identifier within the response network: coldkey:<address> for an observed single-owner group, otherwise hotkey:<address>. Independent of declared name, ranking and primary-hotkey selection. Optional only for older cached responses; callers must include network in cross-network keys. */
+                operator_id?: string;
+                /**
+                 * @description single_coldkey means every member has exactly one observed owner and all members share that owner account. This is snapshot ownership agreement, not verified branding or organizational identity. ambiguous means multiple owners were observed for a singleton hotkey; unknown means ownership evidence is absent or unusable. Missing on older cached responses means unknown, never verified.
+                 * @enum {string}
+                 */
+                ownership_basis?: "single_coldkey" | "ambiguous" | "unknown";
                 primary_hotkey: string;
                 stake_dominance: number | null;
                 take_max: number | null;

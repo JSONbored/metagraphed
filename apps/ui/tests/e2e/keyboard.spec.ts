@@ -99,3 +99,98 @@ test.describe("keyboard", () => {
     }
   });
 });
+
+test.describe("mobile navigation access", () => {
+  for (const viewport of [
+    { width: 375, height: 812 },
+    { width: 375, height: 568 },
+    { width: 768, height: 512 },
+  ]) {
+    for (const theme of ["light", "dark"] as const) {
+      test(`scrolls all navigation content and keeps keyboard access at ${viewport.width}×${viewport.height} in ${theme}`, async ({
+        page,
+      }) => {
+        await page.setViewportSize(viewport);
+        await page.addInitScript((choice) => localStorage.setItem("mg-theme", choice), theme);
+        await gotoThroughRestart(page, ROUTE);
+        await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+        const trigger = page.getByRole("button", { name: "Open menu", exact: true });
+        const originalPageScroll = await page.evaluate(() => window.scrollY);
+        await trigger.click();
+        const navigation = page.getByRole("dialog", { name: "Site navigation" });
+        await expect(navigation.getByRole("button", { name: "Light", exact: true })).toBeVisible();
+        await navigation.evaluate((el) =>
+          Promise.all(el.getAnimations().map((animation) => animation.finished)),
+        );
+        await navigation.hover({ position: { x: 140, y: viewport.height - 100 } });
+        await page.mouse.wheel(0, 1000);
+        const helper = navigation.getByText("Preset for ok / warn / down / unknown dots.", {
+          exact: true,
+        });
+        await expect(helper).toBeInViewport({ ratio: 1 });
+        expect(await page.evaluate(() => window.scrollY)).toBe(originalPageScroll);
+        await page.keyboard.press("Escape");
+        await expect(trigger).toBeFocused();
+
+        await trigger.click();
+        await expect(navigation.getByRole("button", { name: "Light", exact: true })).toBeVisible();
+        await navigation.getByRole("button", { name: "Close", exact: true }).focus();
+        const stops = await navigation.locator("a[href], button").count();
+        for (let i = 0; i < stops; i += 1) {
+          await page.keyboard.press("Tab");
+          const focused = navigation.locator(":focus");
+          await expect(focused).toBeInViewport({ ratio: 1 });
+          expect(await page.evaluate(() => window.scrollY)).toBe(originalPageScroll);
+        }
+        const close = navigation.getByRole("button", { name: "Close", exact: true });
+        await expect(close).toBeFocused();
+        await page.keyboard.press("Shift+Tab");
+        await expect(navigation.locator(":focus")).toBeInViewport({ ratio: 1 });
+        await page.keyboard.press("Tab");
+        await expect(close).toBeFocused();
+        await expect(close).toBeInViewport({ ratio: 1 });
+        await page.keyboard.press("Enter");
+        await expect(navigation).toBeHidden();
+        await expect(trigger).toBeFocused();
+      });
+    }
+  }
+
+  test("touch scrolling reaches the final preferences without moving the page", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 568 });
+    await gotoThroughRestart(page, ROUTE);
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await page.getByRole("button", { name: "Open menu", exact: true }).click();
+    const navigation = page.getByRole("dialog", { name: "Site navigation" });
+    await expect(navigation.getByRole("button", { name: "Light", exact: true })).toBeVisible();
+    await navigation.evaluate((el) =>
+      Promise.all(el.getAnimations().map((animation) => animation.finished)),
+    );
+    const originalPageScroll = await page.evaluate(() => window.scrollY);
+    const session = await page.context().newCDPSession(page);
+    await session.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: 140, y: 490 }],
+    });
+    for (let y = 440; y >= 90; y -= 50) {
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: 140, y }],
+      });
+      await page.evaluate(
+        () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+      );
+    }
+    await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(
+      navigation.getByText("Preset for ok / warn / down / unknown dots.", { exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    expect(await page.evaluate(() => window.scrollY)).toBe(originalPageScroll);
+    await navigation.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(navigation).toBeHidden();
+    await expect(page.getByRole("button", { name: "Open menu", exact: true })).toBeFocused();
+  });
+});

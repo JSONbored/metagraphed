@@ -18,6 +18,10 @@ export interface ValidatorOperatorKey {
 }
 
 export interface ValidatorOperatorEntry {
+  /** Stable within the response network; independent of name or primary hotkey. */
+  operator_id?: string;
+  /** Observed ownership agreement, never verification of a brand or organization. */
+  ownership_basis?: "single_coldkey" | "ambiguous" | "unknown";
   /** Declared on-chain identity name; null means the primary hotkey is the label. */
   identity_name: string | null;
   /** Present only for a multi-key operator; a singleton's primary key is enough. */
@@ -87,12 +91,31 @@ function hotkey(validator: Row): string | null {
   return nullableString(validator.hotkey);
 }
 
+function nullableCount(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  const count = finite(value);
+  return count !== null && Number.isSafeInteger(count) && count >= 0
+    ? count
+    : null;
+}
+
+function ownershipBasis(
+  validator: Row,
+): NonNullable<ValidatorOperatorEntry["ownership_basis"]> {
+  const count = nullableCount(validator.coldkey_count);
+  if (count !== null && count > 1) return "ambiguous";
+  return count === 1 && nullableString(validator.coldkey)?.trim()
+    ? "single_coldkey"
+    : "unknown";
+}
+
 /**
  * Group validator hotkeys into the same operator rows the site renders.
  *
- * A declared identity name is the grouping key, preserving the directory's
- * established behaviour. An anonymous hotkey groups only with itself: two
- * missing identities are unknown, not evidence that the keys share an owner.
+ * The complete leaderboard reports distinct observed coldkeys per hotkey.
+ * Only a single owner can establish shared membership; its declared name is
+ * display metadata. Missing or conflicting ownership stays hotkey-scoped.
+ * IDs are stable within this response's network, not global across networks.
  */
 export function buildValidatorOperatorDirectory(
   globalValidators: Row | null | undefined,
@@ -105,14 +128,17 @@ export function buildValidatorOperatorDirectory(
   const grouped = new Map<string, Row[]>();
   for (const validator of validators) {
     const validatorHotkey = hotkey(validator)!;
-    const groupKey = declaredIdentityName(validator) ?? validatorHotkey;
+    const groupKey =
+      ownershipBasis(validator) === "single_coldkey"
+        ? `coldkey:${validator.coldkey}`
+        : `hotkey:${validatorHotkey}`;
     const group = grouped.get(groupKey);
     if (group) group.push(validator);
     else grouped.set(groupKey, [validator]);
   }
 
   const operators: ValidatorOperatorEntry[] = [];
-  for (const unsorted of grouped.values()) {
+  for (const [operatorId, unsorted] of grouped) {
     const keys = [...unsorted].sort(
       (a, b) =>
         nonNegative(b.total_stake_tao) - nonNegative(a.total_stake_tao) ||
@@ -123,9 +149,6 @@ export function buildValidatorOperatorDirectory(
     const takes = keys
       .map((validator) => finite(validator.take))
       .filter((take): take is number => take !== null);
-    const nominators = keys
-      .map((validator) => finite(validator.nominator_count))
-      .filter((count): count is number => count !== null);
     const totalStake = keys.reduce(
       (sum, validator) => sum + nonNegative(validator.total_stake_tao),
       0,
@@ -146,6 +169,8 @@ export function buildValidatorOperatorDirectory(
       take: finite(validator.take),
     }));
     operators.push({
+      operator_id: operatorId,
+      ownership_basis: ownershipBasis(primary),
       identity_name: identityName,
       hotkeys: operatorKeys.length > 1 ? operatorKeys : [],
       hotkey_count: operatorKeys.length,
@@ -156,10 +181,11 @@ export function buildValidatorOperatorDirectory(
         (sum, validator) => sum + nonNegative(validator.total_emission_tao),
         0,
       ),
+      // Per-hotkey counts cannot deduplicate the same account across keys.
+      // Even complete counts cannot establish an operator-wide unique total;
+      // missing members must not silently disappear from an aggregate either.
       nominator_count:
-        nominators.length > 0
-          ? nominators.reduce((sum, count) => sum + count, 0)
-          : null,
+        keys.length === 1 ? nullableCount(primary.nominator_count) : null,
       membership_count: keys.reduce(
         (sum, validator) => sum + nonNegativeInteger(validator.subnet_count),
         0,

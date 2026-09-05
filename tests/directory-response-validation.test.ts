@@ -25,7 +25,9 @@ describe("directory response validation without the full registry", () => {
     {
       id: "validator-operator-directory",
       path: "/metagraph/validators/operators.json",
-      data: buildValidatorOperatorDirectory(null),
+      data: buildValidatorOperatorDirectory({
+        validators: [{ hotkey: "hk-a", coldkey: "ck-a", coldkey_count: 1 }],
+      }),
       count: "operator_count",
     },
   ]) {
