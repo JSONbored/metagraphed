@@ -8,7 +8,7 @@
 // Key validation goes through src/api-key-validation.ts's real KV-cache-
 // fronted lookup, which on a miss calls the DATA_API service binding's
 // internal verify route -- mocked here to return whatever
-// {valid, code, tier, accountId} shape each test needs, exactly the
+// verified identity and fresh ledger state each test needs, matching the
 // contract workers/data-api.ts's handleApiKeyVerify actually returns.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "vitest";
@@ -42,16 +42,23 @@ function makeValidatedKeyEnv(overrides: Row = {}) {
     METAGRAPH_CONTROL: createFakeKv(),
     API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
     DATA_API: {
-      fetch: async () =>
-        new Response(
+      fetch: async (request: Request) => {
+        if (new URL(request.url).pathname.endsWith("/keys/state"))
+          return Response.json({
+            state: overrides.revoked_at ? "revoked" : "active",
+          });
+        return new Response(
           JSON.stringify({
+            keyId: "key_fixture",
+            managed: true,
             valid: overrides.revoked_at ? false : true,
             code: overrides.revoked_at ? "DISABLED" : "VALID",
             tier: overrides.tier ?? "free",
             accountId: "1",
           }),
           { status: 200 },
-        ),
+        );
+      },
     },
     FULLNODE_RPC_ORIGINS: "https://fullnode-gated.metagraph.sh",
     ...overrides,
@@ -271,6 +278,8 @@ test("keys with the same tier from different accounts are rate-limited independe
       fetch: async () =>
         new Response(
           JSON.stringify({
+            keyId: "key_fixture",
+            managed: true,
             valid: true,
             code: "VALID",
             tier: "free",

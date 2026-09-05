@@ -2325,7 +2325,23 @@ describe("surface credential store (#9009)", () => {
   // whichever mechanism the caller used, and if it ever broke, a caller would
   // silently lose access to their own registrations by switching clients.
   test("an mg_ key resolves the same identity as the OAuth props", async () => {
-    const env = credentialEnv();
+    const env = {
+      ...credentialEnv(),
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "synthetic-lookup",
+      DATA_API: {
+        fetch: async (request: Request) => {
+          assert.equal(
+            new URL(request.url).pathname,
+            "/api/v1/internal/keys/state",
+          );
+          assert.deepEqual(await request.json(), {
+            keyId: "key_fixture",
+            accountId: 7,
+          });
+          return Response.json({ state: "active" });
+        },
+      },
+    };
     const key = "mg_test_key_0123456789abcdef";
     // Prime the key-validation cache (src/api-key-validation.ts) so the gate
     // resolves the key without a live Unkey round trip.
@@ -2336,9 +2352,15 @@ describe("surface credential store (#9009)", () => {
     const hash = [...new Uint8Array(digest)]
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("");
-    const identity = { found: true, tier: "free", accountId: 7 };
+    const identity = {
+      found: true,
+      tier: "free",
+      accountId: 7,
+      keyId: "key_fixture",
+      managed: true,
+    };
     env.store.set(
-      `api-key-lookup:v2:${hash}`,
+      `api-key-lookup:v3:${hash}`,
       authLookupCacheWrite(identity, {
         positiveTtlSeconds: API_KEY_LOOKUP_KV_TTL,
         negativeTtlSeconds: API_KEY_LOOKUP_NEGATIVE_KV_TTL,
