@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useRef, type CSSProperties, type RefObject } from "react";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/state
 import { useWallet } from "@/hooks/use-wallet";
 import { useApiSession } from "@/hooks/use-api-session";
 import { toLinePoints } from "@/components/metagraphed/metric-history";
+import { WalletConnectPrompt } from "@/components/metagraphed/wallet-connect";
 
 interface ApiKeyRow {
   key_id: string;
@@ -128,6 +129,7 @@ function keyColumns(revoke: {
 export function ApiKeysManager() {
   const { wallet, status: walletStatus } = useWallet();
   const apiSession = useApiSession(wallet);
+  const connectedFocusRef = useRef<HTMLElement | null>(null);
 
   // No `SectionHead` and no `<section>` of its own: /settings wraps each
   // manager in an `AnalyticsSection` now (#11627), and two headings for one
@@ -136,18 +138,28 @@ export function ApiKeysManager() {
     <>
       <div className="min-w-0 mg-panel-pad">
         {walletStatus !== "connected" || !wallet ? (
-          <EmptyState
-            title="Connect your wallet"
-            description="Connect a wallet from the header above to sign in and manage your API keys."
+          <WalletConnectPrompt
+            description="Connect your wallet to manage API keys. You can then sign a message to sign in."
+            returnFocusRef={connectedFocusRef}
           />
         ) : apiSession.status === "active" && apiSession.token ? (
-          <ApiKeysPanel
-            token={apiSession.token}
-            tier={apiSession.tier}
-            onSignOut={apiSession.signOut}
-          />
+          <div
+            ref={(element) => {
+              connectedFocusRef.current = element;
+            }}
+            tabIndex={-1}
+            role="group"
+            aria-label="API key management"
+          >
+            <ApiKeysPanel
+              token={apiSession.token}
+              tier={apiSession.tier}
+              onSignOut={apiSession.signOut}
+            />
+          </div>
         ) : (
           <SignInPrompt
+            focusRef={connectedFocusRef}
             signingIn={apiSession.status === "signing-in"}
             error={apiSession.error}
             onSignIn={apiSession.signIn}
@@ -159,10 +171,12 @@ export function ApiKeysManager() {
 }
 
 function SignInPrompt({
+  focusRef,
   signingIn,
   error,
   onSignIn,
 }: {
+  focusRef: RefObject<HTMLElement | null>;
   signingIn: boolean;
   error: string | null;
   onSignIn: () => void;
@@ -182,6 +196,9 @@ function SignInPrompt({
         </div>
       ) : null}
       <button
+        ref={(element) => {
+          focusRef.current = element;
+        }}
         type="button"
         onClick={onSignIn}
         disabled={signingIn}

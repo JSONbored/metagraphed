@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import { Link } from "@tanstack/react-router";
 import { Wallet, Check, LogOut, Loader2, ShieldCheck } from "lucide-react";
 import { Popover, PopoverTrigger, ExternalLink } from "@jsonbored/ui-kit";
@@ -30,7 +30,13 @@ const SUPPORTED_WALLETS = [
  * connected address when connected (matches NetworkSwitcher's active-state
  * treatment).
  */
-export function WalletConnectButton() {
+export function WalletConnectButton({
+  label,
+  returnFocusRef,
+}: {
+  label?: string;
+  returnFocusRef?: RefObject<HTMLElement | null>;
+}) {
   const { wallet, status } = useWallet();
   const [open, setOpen] = useState(false);
   const connected = status === "connected" && wallet;
@@ -49,13 +55,45 @@ export function WalletConnectButton() {
           )}
         >
           <Wallet className="size-3.5" aria-hidden="true" />
-          {connected ? <span>{shortHash(wallet.address, 4)}</span> : null}
+          {connected ? (
+            <span>{shortHash(wallet.address, 4)}</span>
+          ) : label ? (
+            <span>{label}</span>
+          ) : null}
         </button>
       </PopoverTrigger>
-      <ClampedPopoverContent align="end" className="w-80 p-3">
+      <ClampedPopoverContent
+        align="end"
+        className="w-80 p-3"
+        onCloseAutoFocus={(event) => {
+          // A contextual connect prompt unmounts on success. Its replacement
+          // supplies the next focus target; Escape still returns to the trigger.
+          const target = returnFocusRef?.current;
+          if (target) {
+            event.preventDefault();
+            target.focus();
+          }
+        }}
+      >
         <WalletConnectPanel onConnected={() => setOpen(false)} />
       </ClampedPopoverContent>
     </Popover>
+  );
+}
+
+/** Keep the connection action beside the feature that requires it. */
+export function WalletConnectPrompt({
+  description,
+  returnFocusRef,
+}: {
+  description: string;
+  returnFocusRef?: RefObject<HTMLElement | null>;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-13 text-ink-muted">{description}</p>
+      <WalletConnectButton label="Connect wallet" returnFocusRef={returnFocusRef} />
+    </div>
   );
 }
 

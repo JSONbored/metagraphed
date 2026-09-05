@@ -1,13 +1,14 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type RefObject } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { PushDevicesManager } from "@/components/metagraphed/push-devices-manager";
 import { classNames } from "@/lib/metagraphed/format";
 import { DataTable, TimeAgo, type DataTableColumn } from "@jsonbored/ui-kit";
-import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { useWallet } from "@/hooks/use-wallet";
 import { useWatchToken } from "@/hooks/use-watch-token";
+import { WalletConnectPrompt } from "@/components/metagraphed/wallet-connect";
 
 // #8375: the Alert Center -- lists, pauses/resumes, edits, and deletes a
 // verified address' own chain_alert_triggers, plus each trigger's recent
@@ -110,6 +111,7 @@ const inputCls =
 export function AlertsManager() {
   const { wallet, status: walletStatus } = useWallet();
   const watchToken = useWatchToken(wallet);
+  const connectedFocusRef = useRef<HTMLElement | null>(null);
 
   return (
     // No `SectionHead` and no `<section>` of its own: /settings wraps each
@@ -117,14 +119,24 @@ export function AlertsManager() {
     // list is exactly the doubling that rebuild removes.
     <>
       {walletStatus !== "connected" || !wallet ? (
-        <EmptyState
-          title="Connect your wallet"
-          description="Connect a wallet from the header above to sign in and manage your alerts."
+        <WalletConnectPrompt
+          description="Connect your wallet to manage alerts. You can then sign a message to verify your address."
+          returnFocusRef={connectedFocusRef}
         />
       ) : watchToken.status === "active" && watchToken.token ? (
-        <AlertsPanel token={watchToken.token} onSignOut={watchToken.clear} />
+        <div
+          ref={(element) => {
+            connectedFocusRef.current = element;
+          }}
+          tabIndex={-1}
+          role="group"
+          aria-label="Alert management"
+        >
+          <AlertsPanel token={watchToken.token} onSignOut={watchToken.clear} />
+        </div>
       ) : (
         <AlertsSignInPrompt
+          focusRef={connectedFocusRef}
           signingIn={watchToken.status === "issuing"}
           error={watchToken.error}
           onSignIn={watchToken.issue}
@@ -135,10 +147,12 @@ export function AlertsManager() {
 }
 
 function AlertsSignInPrompt({
+  focusRef,
   signingIn,
   error,
   onSignIn,
 }: {
+  focusRef: RefObject<HTMLElement | null>;
   signingIn: boolean;
   error: string | null;
   onSignIn: () => void;
@@ -159,6 +173,9 @@ function AlertsSignInPrompt({
         </div>
       ) : null}
       <button
+        ref={(element) => {
+          focusRef.current = element;
+        }}
         type="button"
         onClick={onSignIn}
         disabled={signingIn}
