@@ -14,7 +14,7 @@ export interface OperatorKey {
 }
 
 export interface OperatorRow {
-  /** Grouping key: the declared identity name, or the hotkey when unnamed. */
+  /** Stable row ID scoped to the query's network, independent of display name. */
   key: string;
   name: string;
   /** Whether the name is self-declared or a truncated key standing in for one. */
@@ -58,6 +58,8 @@ export type SerializedOperatorRow = [
   uidCount: number,
   singleKeyTake: number | null,
   apyEstimate: number | null,
+  // Omitted = primary hotkey; 1 = the owner already stored at index 3.
+  operatorId?: string | 1,
 ];
 
 const declaredName = (validator: OperatorValidator): string | null => {
@@ -73,13 +75,16 @@ export const shortKey = (key: string): string =>
 /**
  * Validator keys aggregated into operators, largest first.
  *
- * A key with no declared identity is its own operator of one: two anonymous
- * keys sharing nothing but their anonymity are not the same team.
+ * Only one matching observed owner establishes shared membership. Missing or
+ * conflicting evidence stays hotkey-scoped; declared names never group keys.
  */
 export function operatorRows(validators: readonly OperatorValidator[]): OperatorRow[] {
   const groups = new Map<string, OperatorValidator[]>();
   for (const validator of validators) {
-    const key = declaredName(validator) ?? validator.hotkey;
+    const key =
+      validator.coldkey_count === 1 && validator.coldkey?.trim()
+        ? `coldkey:${validator.coldkey}`
+        : `hotkey:${validator.hotkey}`;
     const group = groups.get(key);
     if (group) group.push(validator);
     else groups.set(key, [validator]);
@@ -87,15 +92,15 @@ export function operatorRows(validators: readonly OperatorValidator[]): Operator
 
   const rows: OperatorRow[] = [];
   for (const [key, keys] of groups) {
-    const sorted = [...keys].sort((a, b) => b.total_stake_tao - a.total_stake_tao);
+    const sorted = [...keys].sort(
+      (a, b) => b.total_stake_tao - a.total_stake_tao || a.hotkey.localeCompare(b.hotkey),
+    );
     const primary = sorted[0]!;
-    const named = declaredName(primary) !== null;
+    const name = declaredName(primary);
+    const named = name !== null;
     const takes = sorted
       .map((validator) => validator.take)
       .filter((take): take is number => typeof take === "number" && Number.isFinite(take));
-    const nominatorCounts = sorted
-      .map((validator) => validator.nominator_count)
-      .filter((count): count is number => typeof count === "number");
     const totalStakeTao = sorted.reduce((acc, validator) => acc + validator.total_stake_tao, 0);
 
     let weighted = 0;
@@ -110,7 +115,7 @@ export function operatorRows(validators: readonly OperatorValidator[]): Operator
 
     rows.push({
       key,
-      name: named ? key : shortKey(primary.hotkey),
+      name: name ?? shortKey(primary.hotkey),
       named,
       keys: sorted.map((validator) => ({
         hotkey: validator.hotkey,
@@ -122,7 +127,7 @@ export function operatorRows(validators: readonly OperatorValidator[]): Operator
       coldkey: primary.coldkey,
       totalStakeTao,
       totalEmissionTao: sorted.reduce((acc, validator) => acc + validator.total_emission_tao, 0),
-      nominators: nominatorCounts.length > 0 ? nominatorCounts.reduce((a, b) => a + b, 0) : null,
+      nominators: operatorNominatorCount(primary.nominator_count, sorted.length),
       memberships: sorted.reduce((acc, validator) => acc + (validator.subnet_count ?? 0), 0),
       uidCount: sorted.reduce((acc, validator) => acc + validator.uid_count, 0),
       takeMin: takes.length > 0 ? Math.min(...takes) : null,
@@ -131,12 +136,21 @@ export function operatorRows(validators: readonly OperatorValidator[]): Operator
       dominance: null,
     });
   }
-  const ranked = rows.sort((a, b) => b.totalStakeTao - a.totalStakeTao);
+  const ranked = rows.sort(
+    (a, b) => b.totalStakeTao - a.totalStakeTao || a.primaryHotkey.localeCompare(b.primaryHotkey),
+  );
   const listedStake = ranked.reduce((acc, row) => acc + row.totalStakeTao, 0);
   return ranked.map((row) => ({
     ...row,
     dominance: listedStake > 0 ? row.totalStakeTao / listedStake : null,
   }));
+}
+
+/** Per-hotkey counts cannot establish unique accounts across an operator's keys. */
+export function operatorNominatorCount(count: number | null, keyCount: number): number | null {
+  return keyCount === 1 && count !== null && Number.isSafeInteger(count) && count >= 0
+    ? count
+    : null;
 }
 
 function compactDecimal(value: number, decimals: number): number {
@@ -149,25 +163,33 @@ function compactNullableDecimal(value: number | null, decimals: number): number 
 }
 
 export function serializeOperatorRows(rows: readonly OperatorRow[]): SerializedOperatorRow[] {
-  return rows.map((row) => [
-    row.named ? row.key : null,
-    row.keyCount > 1
-      ? row.keys.map((key) => [
-          key.hotkey,
-          compactDecimal(key.totalStakeTao, 5),
-          compactNullableDecimal(key.take, 6),
-        ])
-      : [],
-    row.primaryHotkey,
-    row.coldkey,
-    compactDecimal(row.totalStakeTao, 5),
-    compactDecimal(row.totalEmissionTao, 5),
-    row.nominators,
-    row.memberships,
-    row.uidCount,
-    row.keyCount === 1 ? compactNullableDecimal(row.takeMin, 6) : null,
-    compactNullableDecimal(row.apyEstimate, 8),
-  ]);
+  return rows.map((row) => {
+    const serialized: SerializedOperatorRow = [
+      row.named ? row.name : null,
+      row.keyCount > 1
+        ? row.keys.map((key) => [
+            key.hotkey,
+            compactDecimal(key.totalStakeTao, 5),
+            compactNullableDecimal(key.take, 6),
+          ])
+        : [],
+      row.primaryHotkey,
+      row.coldkey,
+      compactDecimal(row.totalStakeTao, 5),
+      compactDecimal(row.totalEmissionTao, 5),
+      row.nominators,
+      row.memberships,
+      row.uidCount,
+      row.keyCount === 1 ? compactNullableDecimal(row.takeMin, 6) : null,
+      compactNullableDecimal(row.apyEstimate, 8),
+    ];
+    // Most IDs are losslessly reconstructible from addresses already present.
+    // Repeating full addresses here exceeds the directory's HTML budget.
+    if (row.key !== `hotkey:${row.primaryHotkey}`) {
+      serialized.push(row.coldkey !== null && row.key === `coldkey:${row.coldkey}` ? 1 : row.key);
+    }
+    return serialized;
+  });
 }
 
 export function deserializeOperatorRows(rows: readonly SerializedOperatorRow[]): OperatorRow[] {
@@ -186,7 +208,13 @@ export function deserializeOperatorRows(rows: readonly SerializedOperatorRow[]):
       .map((key) => key.take)
       .filter((take): take is number => typeof take === "number");
     return {
-      key: identityName ?? primaryHotkey,
+      // Older dehydrated tuples contain a label but no ownership evidence.
+      key:
+        typeof row[11] === "string"
+          ? row[11]
+          : row[11] === 1 && row[3]
+            ? `coldkey:${row[3]}`
+            : `hotkey:${primaryHotkey}`,
       name: identityName ?? shortKey(primaryHotkey),
       named: identityName !== null,
       keys,
@@ -195,7 +223,7 @@ export function deserializeOperatorRows(rows: readonly SerializedOperatorRow[]):
       coldkey: row[3],
       totalStakeTao: row[4],
       totalEmissionTao: row[5],
-      nominators: row[6],
+      nominators: operatorNominatorCount(row[6], keys.length),
       memberships: row[7],
       uidCount: row[8],
       takeMin: takes.length > 0 ? Math.min(...takes) : null,

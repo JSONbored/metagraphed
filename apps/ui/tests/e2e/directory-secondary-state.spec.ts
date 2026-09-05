@@ -1,6 +1,77 @@
 import { expect, test } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
 
+test.describe("operator identity compatibility", () => {
+  test.use({ serviceWorkers: "block" });
+
+  for (const width of [375, 1280]) {
+    test(`equal-name owners expand independently at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 812 });
+      await gotoThroughRestart(page, "/settings");
+      await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+      await page.route("**/api/v1/validators/operators*", async (route) => {
+        await route.fulfill({
+          json: {
+            ok: true,
+            data: {
+              validator_count: 4,
+              operators: ["first", "second"].map((owner) => ({
+                operator_id: `coldkey:${owner}`,
+                ownership_basis: "single_coldkey",
+                identity_name: "Shared Name",
+                primary_hotkey: `${owner}-primary`,
+                coldkey: owner,
+                hotkey_count: 2,
+                hotkeys: ["primary", "secondary"].map((member) => ({
+                  hotkey: `${owner}-${member}`,
+                  total_stake_tao: 5,
+                  take: null,
+                })),
+                total_stake_tao: 10,
+                total_emission_tao: 0,
+                membership_count: 2,
+                uid_count: 2,
+                nominator_count: null,
+              })),
+            },
+          },
+        });
+      });
+      if (width < 768) {
+        await page.getByRole("button", { name: "Open menu", exact: true }).click();
+        await page
+          .getByRole("dialog", { name: "Site navigation" })
+          .getByRole("link", { name: "Validators", exact: true })
+          .click();
+      } else {
+        await page.getByRole("link", { name: "Validators", exact: true }).first().click();
+      }
+
+      const table = page.locator("section#operators table");
+      await expect(
+        page.getByText("4 validator hotkeys · chain-direct", { exact: true }),
+      ).toBeVisible();
+      const rows = table.locator("tbody > tr.mg-dt-row");
+      await expect(rows).toHaveCount(2);
+      await rows.nth(0).getByRole("button", { name: "Expand row", exact: true }).click();
+      await expect(table.locator('tr[data-expanded="true"]')).toHaveCount(1);
+      await expect(
+        rows.nth(1).getByRole("button", { name: "Expand row", exact: true }),
+      ).toHaveAttribute("aria-expanded", "false");
+      await expect(table.locator('a[href="/validators/first-secondary"]')).toBeVisible();
+      await expect(table.locator('a[href="/validators/second-secondary"]')).toHaveCount(0);
+
+      await rows.nth(1).getByRole("button", { name: "Expand row", exact: true }).click();
+      await expect(table.locator('tr[data-expanded="true"]')).toHaveCount(1);
+      await expect(table.locator('a[href="/validators/first-secondary"]')).toHaveCount(0);
+      await expect(table.locator('a[href="/validators/second-secondary"]')).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width,
+      );
+    });
+  }
+});
+
 test.describe("directory secondary analytics", () => {
   test("keeps account holders immediate while deferring the separate activity ledger", async ({
     page,
