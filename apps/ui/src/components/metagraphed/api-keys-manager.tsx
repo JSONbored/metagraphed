@@ -8,14 +8,11 @@ import { useWallet } from "@/hooks/use-wallet";
 import { useApiSession } from "@/hooks/use-api-session";
 import { toLinePoints } from "@/components/metagraphed/metric-history";
 import { WalletConnectPrompt } from "@/components/metagraphed/wallet-connect-button";
-
-interface ApiKeyRow {
-  key_id: string;
-  tier: string;
-  created_at: number;
-  revoked_at: number | null;
-  last_used_at: number | null;
-}
+import {
+  keyRevocationState,
+  reconcileApiKeys,
+  type ApiKeyRow,
+} from "@/lib/metagraphed/api-key-state";
 
 interface ApiKeyMinted {
   key: string;
@@ -94,6 +91,12 @@ function keyColumns(revoke: {
   return [
     { key: "id", label: "Key", kind: "identifier", value: (key) => key.key_id },
     {
+      key: "status",
+      label: "Status",
+      kind: "text",
+      value: (key) => (keyRevocationState(key) === "pending" ? "Revocation pending" : "Active"),
+    },
+    {
       key: "created",
       label: "Created",
       kind: "time",
@@ -110,16 +113,20 @@ function keyColumns(revoke: {
     {
       key: "revoke",
       label: "",
-      width: 110,
+      width: 150,
       align: "right",
       render: (key) => (
         <button
           type="button"
           onClick={() => revoke.mutate(key.key_id)}
-          disabled={revoke.isPending && revoke.variables === key.key_id}
-          className="mg-section-more"
+          disabled={revoke.isPending}
+          className="mg-section-more min-h-11 whitespace-normal"
         >
-          {revoke.isPending && revoke.variables === key.key_id ? "Revoking…" : "Revoke"}
+          {revoke.isPending && revoke.variables === key.key_id
+            ? "Revoking…"
+            : keyRevocationState(key) === "pending"
+              ? "Retry revocation"
+              : "Revoke"}
         </button>
       ),
     },
@@ -152,6 +159,7 @@ export function ApiKeysManager() {
             aria-label="API key management"
           >
             <ApiKeysPanel
+              key={apiSession.token}
               token={apiSession.token}
               tier={apiSession.tier}
               onSignOut={apiSession.signOut}
@@ -224,11 +232,12 @@ function ApiKeysPanel({
 
   const listQuery = useQuery({
     queryKey,
-    queryFn: async (): Promise<ApiKeyRow[]> => {
+    queryFn: async ({ signal }): Promise<ApiKeyRow[]> => {
       const res = await apiFetch<{ keys: ApiKeyRow[] }>("/api/v1/keys", {
+        signal,
         init: { headers: authHeaders(token) },
       });
-      return res.data.keys;
+      return reconcileApiKeys(res.data.keys, queryClient.getQueryData<ApiKeyRow[]>(queryKey));
     },
     retry: 0,
   });
@@ -249,11 +258,35 @@ function ApiKeysPanel({
         init: { method: "DELETE", headers: authHeaders(token) },
       });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: (_data, keyId) => {
+      queryClient.setQueryData<ApiKeyRow[]>(queryKey, (rows) =>
+        rows?.map((key) => (key.key_id === keyId ? { ...key, revocation_state: "revoked" } : key)),
+      );
+    },
+    onError: (error, keyId) => {
+      // The server has durably disabled local access. Preserve that known
+      // state even if the following list refresh is unavailable.
+      if (error instanceof ApiError && error.code === "KEY_REVOCATION_PENDING") {
+        queryClient.setQueryData<ApiKeyRow[]>(queryKey, (rows) =>
+          rows?.map((key) =>
+            key.key_id === keyId && keyRevocationState(key) !== "revoked"
+              ? { ...key, revocation_state: "pending" }
+              : key,
+          ),
+        );
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   const keys = listQuery.data ?? [];
-  const activeKeys = keys.filter((k) => !k.revoked_at);
+  const activeKeys = keys.filter((key) => keyRevocationState(key) === "active");
+  const visibleKeys = keys.filter((key) => keyRevocationState(key) !== "revoked");
+  const pendingKeys = visibleKeys.length - activeKeys.length;
+  const pendingRevocationError =
+    revokeMutation.isError &&
+    revokeMutation.error instanceof ApiError &&
+    revokeMutation.error.code === "KEY_REVOCATION_PENDING";
 
   const usageQuery = useQuery({
     queryKey: ["api-keys-usage", token],
@@ -354,30 +387,56 @@ function ApiKeysPanel({
       ) : null}
 
       <div className="space-y-2">
+        {revokeMutation.isError ? (
+          <div
+            role="alert"
+            className="border border-health-down/30 bg-health-down/5 p-3 text-13 text-health-down"
+          >
+            {describeApiError(revokeMutation.error)}
+          </div>
+        ) : null}
+        {pendingKeys > 0 && !pendingRevocationError ? (
+          <p className="text-13 text-ink-muted">
+            Access is disabled for keys with pending revocation. Retry to confirm revocation.
+          </p>
+        ) : null}
+        {listQuery.isError && listQuery.data !== undefined ? (
+          <ErrorState
+            error={listQuery.error}
+            onRetry={() => void listQuery.refetch()}
+            context="API keys"
+          />
+        ) : null}
         <DataTable
           id="api-keys"
-          rows={activeKeys}
+          rows={visibleKeys}
           columns={keyColumns(revokeMutation)}
           rowKey={(key) => key.key_id}
-          caption="Active keys"
+          caption="API keys"
           source="api-key"
           paginate={false}
           loading={listQuery.isPending}
           error={
-            listQuery.isError ? (
+            listQuery.isError && listQuery.data === undefined ? (
               <ErrorState
                 error={listQuery.error}
                 onRetry={() => void listQuery.refetch()}
-                context="active API keys"
+                context="API keys"
               />
             ) : undefined
           }
           empty={
-            !listQuery.isPending && !listQuery.isError ? (
+            !listQuery.isPending && listQuery.data !== undefined ? (
               <EmptyState title="No active keys" description="Generate one above to get started." />
             ) : undefined
           }
         />
+        {!listQuery.isPending && visibleKeys.length > 0 ? (
+          <p className="text-11 text-ink-muted" role="status">
+            {formatNumber(activeKeys.length)} active · {formatNumber(pendingKeys)} pending
+            revocation
+          </p>
+        ) : null}
       </div>
 
       {activeKeys.length > 0 ? (
