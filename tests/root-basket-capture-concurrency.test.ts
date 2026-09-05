@@ -4,11 +4,16 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client } from "pg";
-import { afterAll, beforeAll, beforeEach, describe, test } from "vitest";
 import {
-  createProducerStore,
-  type ProducerStore,
-} from "../src/producer-store.ts";
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  test,
+  vi,
+} from "vitest";
+import { createProducerStore } from "../src/producer-store.ts";
 import {
   rootBasketCaptureDigest,
   writeRootBasketCapture,
@@ -31,7 +36,38 @@ const available =
   process.getuid?.() !== 0;
 let directory: string;
 let admin: Client;
-const stores: ProducerStore[] = [];
+const clients = new Set<Client>();
+const barriers = new Set<() => void>();
+
+function client(name: string) {
+  const connection = new Client({
+    host: directory,
+    user: "capture_test",
+    database: "postgres",
+    application_name: name,
+    // A server-side bound actually cancels blocked SQL; a client-side promise
+    // timeout could leave the transaction blocking the next test's TRUNCATE.
+    statement_timeout: 5_000,
+  });
+  clients.add(connection);
+  return connection;
+}
+
+async function closeClients() {
+  for (const release of barriers) release();
+  barriers.clear();
+  const pending = [...clients];
+  clients.clear();
+  // end() disconnects an active pg query and rolls back its transaction. Never
+  // enqueue ROLLBACK behind a blocked query or await the blocked client first.
+  const results = await Promise.allSettled(
+    pending.map((connection) => connection.end()),
+  );
+  const errors = results.flatMap((result) =>
+    result.status === "rejected" ? [result.reason] : [],
+  );
+  if (errors.length) throw new AggregateError(errors, "closing race clients");
+}
 
 describe.skipIf(!available)(
   "capture publication with concurrent PostgreSQL connections",
@@ -69,6 +105,8 @@ describe.skipIf(!available)(
         host: directory,
         user: "capture_test",
         database: "postgres",
+        application_name: "observer",
+        statement_timeout: 5_000,
       });
       await admin.connect();
       for (const file of [
@@ -80,53 +118,66 @@ describe.skipIf(!available)(
     beforeEach(async () => {
       await admin.query("TRUNCATE root_basket_captures CASCADE");
     });
+    afterEach(closeClients);
     afterAll(async () => {
-      await Promise.all(stores.map((store) => store.close()));
-      await admin?.end();
-      if (directory) {
-        spawnSync(
-          path.join(bindir!, "pg_ctl"),
-          ["-D", path.join(directory, "data"), "-m", "immediate", "-w", "stop"],
-          { stdio: "ignore" },
-        );
-        rmSync(directory, { recursive: true, force: true });
+      try {
+        await closeClients();
+      } finally {
+        try {
+          await admin?.end();
+        } finally {
+          if (directory) {
+            spawnSync(
+              path.join(bindir!, "pg_ctl"),
+              [
+                "-D",
+                path.join(directory, "data"),
+                "-m",
+                "immediate",
+                "-w",
+                "stop",
+              ],
+              { stdio: "ignore" },
+            );
+            rmSync(directory, { recursive: true, force: true });
+          }
+        }
       }
     });
 
     function store(name: string, locked?: () => Promise<void>) {
-      const client = new Client({
-        host: directory,
-        user: "capture_test",
-        database: "postgres",
-        application_name: name,
-      });
+      const connection = client(name);
       const result = createProducerStore("unused-local-test", {
         clientFactory: () => ({
-          connect: () => client.connect(),
-          end: () => client.end(),
+          connect: () => connection.connect(),
+          end: () => connection.end(),
           query: async (sql, values) => {
-            const result = await client.query(sql, values);
+            const result = await connection.query(sql, values);
             if (sql.startsWith("SELECT root_basket_check_replay"))
               await locked?.();
             return result;
           },
         }),
       });
-      stores.push(result);
       return result;
     }
 
     async function assertWaiting(name: string, event = "advisory") {
       for (let i = 0; i < 300; i++) {
         const result = await admin.query(
-          "SELECT wait_event FROM pg_stat_activity WHERE application_name = $1",
+          "SELECT state, wait_event, pg_blocking_pids(pid) AS blockers, query FROM pg_stat_activity WHERE application_name = $1",
           [name],
         );
         if (result.rows[0]?.wait_event === event) return;
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        // Keep native lock coordination independent of shared-registry global
+        // timers. PostgreSQL advances this wait even if a test clock is frozen.
+        await admin.query("SELECT pg_sleep(0.01)");
       }
+      const activity = await admin.query(
+        "SELECT application_name, state, wait_event, pg_blocking_pids(pid) AS blockers, query FROM pg_stat_activity WHERE datname = current_database()",
+      );
       assert.fail(
-        "the second writer never waited on the source-scope transaction lock",
+        `expected ${name} to wait on ${event}: ${JSON.stringify(activity.rows)}`,
       );
     }
 
@@ -153,6 +204,101 @@ describe.skipIf(!available)(
       return capture;
     }
 
+    test("polling observes a later lock wait with frozen test timers", async () => {
+      const capture = await stageIncomplete();
+      const completing = client("completing");
+      const mutating = client("delayed-mutation");
+      await completing.connect();
+      await mutating.connect();
+      try {
+        await completing.query("BEGIN");
+        await completing.query(
+          "SELECT root_basket_complete_capture($1, $2, 3000)",
+          [
+            capture.capture_id,
+            rootBasketCaptureDigest(RootBasketCaptureSchema.parse(capture)),
+          ],
+        );
+        await mutating.query("BEGIN");
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        const waiting = assertWaiting("delayed-mutation", "transactionid");
+        // This observer query queues after the initial poll, proving it saw no
+        // lock wait before the mutation starts. A first-poll success cannot
+        // accidentally bypass the pacing path under test.
+        await admin.query("SELECT 1");
+        const result = mutating
+          .query(
+            "UPDATE root_basket_holdings SET quantity_atomic = 17 WHERE capture_id = $1",
+            [capture.capture_id],
+          )
+          .then(
+            () => null,
+            (error: unknown) => error,
+          );
+        await waiting;
+        await completing.query("COMMIT");
+        assert.match(
+          String(await result),
+          /completed root basket observation is immutable/,
+        );
+      } finally {
+        vi.useRealTimers();
+        await closeClients();
+      }
+    });
+
+    test("failed race cleanup disconnects a blocked mutation and releases the next reset", async () => {
+      const capture = await stageIncomplete();
+      const completing = client("completing");
+      const mutating = client("failed-mutation");
+      await completing.connect();
+      await mutating.connect();
+      let result: Promise<unknown> | undefined;
+      await assert.rejects(async () => {
+        try {
+          await completing.query("BEGIN");
+          await completing.query(
+            "SELECT root_basket_complete_capture($1, $2, 3000)",
+            [
+              capture.capture_id,
+              rootBasketCaptureDigest(RootBasketCaptureSchema.parse(capture)),
+            ],
+          );
+          await mutating.query("BEGIN");
+          result = mutating
+            .query("DELETE FROM root_basket_holdings WHERE capture_id = $1", [
+              capture.capture_id,
+            ])
+            .then(
+              () => null,
+              (error: unknown) => error,
+            );
+          await assertWaiting("failed-mutation", "transactionid");
+          assert.fail("injected race assertion failure");
+        } finally {
+          await closeClients();
+        }
+      }, /injected race assertion failure/);
+      assert.ok(await result, "the blocked mutation must be interrupted");
+      assert.equal(
+        (
+          await admin.query(
+            "SELECT count(*)::int AS n FROM root_basket_capture_completions",
+          )
+        ).rows[0].n,
+        0,
+      );
+      await admin.query("TRUNCATE root_basket_captures CASCADE");
+      assert.equal(
+        (
+          await admin.query(
+            "SELECT count(*)::int AS n FROM root_basket_captures",
+          )
+        ).rows[0].n,
+        0,
+      );
+    });
+
     for (const mutation of ["update", "delete", "insert", "move"] as const) {
       test(`a concurrent child ${mutation} cannot commit after completion`, async () => {
         const capture = await stageIncomplete();
@@ -163,17 +309,8 @@ describe.skipIf(!available)(
           finalized_block: "501",
         };
         if (mutation === "move") await stageIncomplete(other);
-        const completing = new Client({
-          host: directory,
-          user: "capture_test",
-          database: "postgres",
-        });
-        const mutating = new Client({
-          host: directory,
-          user: "capture_test",
-          database: "postgres",
-          application_name: "mutating",
-        });
+        const completing = client("completing");
+        const mutating = client("mutating");
         await completing.connect();
         await mutating.connect();
         try {
@@ -220,27 +357,15 @@ describe.skipIf(!available)(
           );
           assert.equal(held.rows[0].quantity, "1000000000");
         } finally {
-          await completing.query("ROLLBACK");
-          await mutating.query("ROLLBACK");
-          await completing.end();
-          await mutating.end();
+          await closeClients();
         }
       });
     }
 
     test("completion waits for an earlier child delete and rejects the now-incomplete rows", async () => {
       const capture = await stageIncomplete();
-      const deleting = new Client({
-        host: directory,
-        user: "capture_test",
-        database: "postgres",
-      });
-      const completing = new Client({
-        host: directory,
-        user: "capture_test",
-        database: "postgres",
-        application_name: "completing",
-      });
+      const deleting = client("deleting");
+      const completing = client("completing");
       await deleting.connect();
       await completing.connect();
       try {
@@ -273,9 +398,7 @@ describe.skipIf(!available)(
           0,
         );
       } finally {
-        await deleting.query("ROLLBACK");
-        await deleting.end();
-        await completing.end();
+        await closeClients();
       }
     });
 
@@ -306,6 +429,7 @@ describe.skipIf(!available)(
         const barrier = new Promise<void>((resolve) => {
           release = resolve;
         });
+        barriers.add(release);
         const ready = new Promise<void>((resolve) => {
           locked = resolve;
         });
@@ -319,7 +443,14 @@ describe.skipIf(!available)(
           first,
           3000,
         );
-        await ready;
+        // A writer failing before acquiring the lock must fail this test, not
+        // leave it waiting forever for a callback that will never run.
+        await Promise.race([
+          ready,
+          firstWrite.then(() => {
+            throw new Error("first writer completed without the lock barrier");
+          }),
+        ]);
         const secondWrite = writeRootBasketCapture(
           store("second"),
           second,
@@ -361,7 +492,7 @@ describe.skipIf(!available)(
           receipts.rows[0].n,
           scenario === "late_history" || scenario === "newer" ? 2 : 1,
         );
-        await Promise.all(stores.splice(0).map((store) => store.close()));
+        await closeClients();
       });
     }
   },
