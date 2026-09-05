@@ -34,6 +34,7 @@
 // single hardcoded prefix, this file needs three different item prefixes so
 // they're computed via that shared module rather than each hardcoded here.
 
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { chainRpcResult } from "./chain-rpc.ts";
 
 import { encodeAccountId32 } from "./ss58.ts";
@@ -52,7 +53,8 @@ import {
 type Row = Record<string, unknown>;
 
 export const SUBNET_LEASE_KV_TTL = 120; // seconds -- same freshness profile as subnet-burn.ts
-export const SUBNET_LEASE_NEGATIVE_KV_TTL = 10; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const SUBNET_LEASE_NEGATIVE_KV_TTL = 10;
 export const SUBNET_LEASE_RPC_TIMEOUT_MS = 5000;
 
 interface StorageFetchResult {
@@ -220,9 +222,9 @@ async function loadSubnetLeaseSnapshot(
   const cacheKey = networkKvKey(`lease:${netuid}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
+      const cached = await readLiveRpcCache(kv, cacheKey);
       if (cached) return cached as Row;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
@@ -315,12 +317,11 @@ async function loadSubnetLeaseSnapshot(
     queried_at: queriedAt,
   };
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: rpcOk
-          ? SUBNET_LEASE_KV_TTL
-          : SUBNET_LEASE_NEGATIVE_KV_TTL,
+      await writeLiveRpcCache(kv, cacheKey, payload, {
+        ttlSeconds: rpcOk ? SUBNET_LEASE_KV_TTL : SUBNET_LEASE_NEGATIVE_KV_TTL,
+        negative: !rpcOk,
       });
     } catch {
       // KV write failure is non-fatal.

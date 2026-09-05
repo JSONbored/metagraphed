@@ -195,7 +195,10 @@ describe("loadSudoKey", () => {
     globalThis.fetch = (async () => ({ ok: false })) as unknown as typeof fetch;
     try {
       await loadSudoKey(env as unknown as Env);
-      assert.equal(putOptions!.expirationTtl, SUDO_KEY_NEGATIVE_KV_TTL);
+      assert.equal(
+        putOptions!.expirationTtl,
+        Math.max(60, SUDO_KEY_NEGATIVE_KV_TTL),
+      );
     } finally {
       globalThis.fetch = orig;
     }

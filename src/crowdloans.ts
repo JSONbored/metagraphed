@@ -47,6 +47,7 @@
 // SubnetLeaseShares (#6719). `contributors_count` on each record already gives
 // the aggregate; the per-contributor breakdown is a future extension.
 
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { chainRpcResult } from "./chain-rpc.ts";
 
 import { encodeAccountId32 } from "./ss58.ts";
@@ -65,7 +66,8 @@ import {
 type Row = Record<string, unknown>;
 
 export const CROWDLOANS_KV_TTL = 120; // seconds -- same freshness profile as subnet-lease.ts
-export const CROWDLOANS_NEGATIVE_KV_TTL = 10; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const CROWDLOANS_NEGATIVE_KV_TTL = 10;
 
 /**
  * `degraded.reason` when the crowdloan storage batch read did not land (#9898).
@@ -439,9 +441,9 @@ async function loadCrowdloanSnapshot(
   const cacheKey = networkKvKey(`crowdloan:${id}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
+      const cached = await readLiveRpcCache(kv, cacheKey);
       if (cached) return cached as Row;
     } catch {
       // KV read failure is non-fatal.
@@ -485,10 +487,11 @@ async function loadCrowdloanSnapshot(
     queried_at: queriedAt,
   };
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: rpcOk ? CROWDLOANS_KV_TTL : CROWDLOANS_NEGATIVE_KV_TTL,
+      await writeLiveRpcCache(kv, cacheKey, payload, {
+        ttlSeconds: rpcOk ? CROWDLOANS_KV_TTL : CROWDLOANS_NEGATIVE_KV_TTL,
+        negative: !rpcOk,
       });
     } catch {
       // KV write failure is non-fatal.

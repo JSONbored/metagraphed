@@ -215,9 +215,9 @@ describe("loadRandomnessStatus", () => {
     } as unknown as Env;
     await withFetchStub(goldenFetchStub(), async () => {
       await loadRandomnessStatus(env);
-      assert.equal(putKey, "network:randomness");
-      assert.equal(putValue!.last_stored_round, GOLDEN_LAST_ROUND);
-      assert.equal(putOptions!.expirationTtl, RANDOMNESS_KV_TTL);
+      assert.equal(putKey, "network:randomness:v2");
+      assert.equal(putValue!.value.last_stored_round, GOLDEN_LAST_ROUND);
+      assert.equal(putOptions!.expirationTtl, Math.max(60, RANDOMNESS_KV_TTL));
       assert.equal(RANDOMNESS_KV_TTL, 30);
     });
   });
@@ -245,7 +245,10 @@ describe("loadRandomnessStatus", () => {
       },
       async () => {
         await loadRandomnessStatus(env);
-        assert.equal(putOptions!.expirationTtl, RANDOMNESS_NEGATIVE_KV_TTL);
+        assert.equal(
+          putOptions!.expirationTtl,
+          Math.max(60, RANDOMNESS_NEGATIVE_KV_TTL),
+        );
       },
     );
   });

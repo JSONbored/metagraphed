@@ -10,6 +10,7 @@
 // Server-side SS58 encoding lives in src/ss58.ts (extracted #4688) -- see
 // that module's header for why @noble/hashes' blake2b is required over
 // node:crypto's createHash("blake2b512") (unsupported in workerd).
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { chainRpcResult } from "./chain-rpc.ts";
 
 import { encodeAccountId32 } from "./ss58.ts";
@@ -38,7 +39,8 @@ export const SUDO_KEY_FIELD_SOURCES = {
 } as const satisfies FieldSources;
 
 export const SUDO_KEY_KV_TTL = 3600; // seconds — the sudo key changes extremely rarely
-export const SUDO_KEY_NEGATIVE_KV_TTL = 10; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const SUDO_KEY_NEGATIVE_KV_TTL = 10;
 export const SUDO_KEY_RPC_TIMEOUT_MS = 5000;
 // SS58 prefix 42 is the generic Substrate format Bittensor uses on every
 // network, so the encoding is network-independent even though the key is not.
@@ -70,9 +72,9 @@ async function loadSudoKeySnapshot(
   const cacheKey = networkKvKey("sudo:key", network);
   const kv = env?.METAGRAPH_CONTROL;
 
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
+      const cached = await readLiveRpcCache(kv, cacheKey);
       if (cached) return cached as Row;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
@@ -115,10 +117,11 @@ async function loadSudoKeySnapshot(
     queried_at: queriedAt,
   };
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: rpcOk ? SUDO_KEY_KV_TTL : SUDO_KEY_NEGATIVE_KV_TTL,
+      await writeLiveRpcCache(kv, cacheKey, payload, {
+        ttlSeconds: rpcOk ? SUDO_KEY_KV_TTL : SUDO_KEY_NEGATIVE_KV_TTL,
+        negative: !rpcOk,
       });
     } catch {
       // KV write failure is non-fatal.

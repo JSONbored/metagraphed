@@ -26,6 +26,7 @@
 // PendingChildKeyCooldown raw result 0x201c000000000000 -> a plain u64
 // block count (7200, no TAO conversion).
 
+import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { chainRpcResult } from "./chain-rpc.ts";
 
 import { blockEmissionForIssuance } from "./block-emission.ts";
@@ -37,7 +38,8 @@ import {
 } from "./chain-network.ts";
 
 export const NETWORK_PARAMETERS_KV_TTL = 300; // seconds -- governance-adjustable, changes rarely but not never
-export const NETWORK_PARAMETERS_NEGATIVE_KV_TTL = 10; // seconds
+// Logical retry seconds; physical KV expiration is at least 60 seconds.
+export const NETWORK_PARAMETERS_NEGATIVE_KV_TTL = 10;
 export const NETWORK_PARAMETERS_RPC_TIMEOUT_MS = 5000;
 
 // twox128("SubtensorModule") ++ twox128("TaoWeight").
@@ -453,6 +455,8 @@ export interface NetworkParameters extends NetworkParametersSnapshot {
  * which is precisely a lane that cannot go stale and therefore cannot be gated on.
  *
  * Null when KV is unbound or cold — the caller reports `missing`, not an age.
+ * Only read the successful key: freshness consumers treat its timestamp as a
+ * current observation, so a separately cached failure must not advance it.
  */
 export async function readCachedNetworkParametersSnapshot(
   env: Env,
@@ -488,11 +492,12 @@ async function loadNetworkParametersSnapshot(
   const cacheKey = networkKvKey("network:parameters", network);
   const kv = env?.METAGRAPH_CONTROL;
 
-  if (kv?.get) {
+  if (typeof kv?.get === "function") {
     try {
-      const cached = await kv.get<NetworkParametersSnapshot>(cacheKey, {
-        type: "json",
-      });
+      const cached = await readLiveRpcCache<NetworkParametersSnapshot>(
+        kv,
+        cacheKey,
+      );
       if (cached) return cached;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
@@ -652,12 +657,13 @@ async function loadNetworkParametersSnapshot(
     queried_at: queriedAt,
   };
 
-  if (kv?.put) {
+  if (typeof kv?.put === "function") {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: rpcOk
+      await writeLiveRpcCache(kv, cacheKey, payload, {
+        ttlSeconds: rpcOk
           ? NETWORK_PARAMETERS_KV_TTL
           : NETWORK_PARAMETERS_NEGATIVE_KV_TTL,
+        negative: !rpcOk,
       });
     } catch {
       // KV write failure is non-fatal.
