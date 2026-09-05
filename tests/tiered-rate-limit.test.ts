@@ -43,7 +43,14 @@ function envWithTier(tier: string, overrides: Row = {}) {
     DATA_API: {
       fetch: async () =>
         new Response(
-          JSON.stringify({ valid: true, code: "VALID", tier, accountId: "42" }),
+          JSON.stringify({
+            keyId: "key_fixture",
+            managed: true,
+            valid: true,
+            code: "VALID",
+            tier,
+            accountId: "42",
+          }),
           { status: 200 },
         ),
     },
@@ -59,6 +66,8 @@ function envWithKeyVerify(overrides: Row = {}) {
       fetch: async () =>
         new Response(
           JSON.stringify({
+            keyId: "key_fixture",
+            managed: true,
             valid: overrides.revoked_at ? false : true,
             code: overrides.revoked_at ? "DISABLED" : "VALID",
             tier: "free",
@@ -731,6 +740,8 @@ describe("daily quotas (#8608)", () => {
           }
           return new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier,
@@ -1088,6 +1099,8 @@ describe("per-minute limiter runs before the daily quota is spent (#8812)", () =
           }
           return new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier: "paid",
@@ -1197,6 +1210,8 @@ describe("per-minute limiter runs before the daily quota is spent (#8812)", () =
             return Response.json({ allowed: true });
           }
           return Response.json({
+            keyId: "key_fixture",
+            managed: true,
             valid: true,
             code: "VALID",
             tier: "paid",
@@ -1251,6 +1266,8 @@ describe("key-level blocklist (#8611)", () => {
             });
           }
           return Response.json({
+            keyId: "key_fixture",
+            managed: true,
             valid: true,
             code: "VALID",
             tier: "paid",
@@ -1885,6 +1902,8 @@ describe("applyTieredRateLimit — limiter key shapes", () => {
         fetch: async () =>
           new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: false,
               valid: true,
               code: "VALID",
               tier: "free",

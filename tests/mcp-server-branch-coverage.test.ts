@@ -1097,6 +1097,8 @@ describe("handleMcpRequest — rate limiter success + content-length guard", () 
           }
           return new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier: "free",
@@ -1153,6 +1155,8 @@ describe("handleMcpRequest — rate limiter success + content-length guard", () 
           }
           return new Response(
             JSON.stringify({
+              keyId: "key_fixture",
+              managed: true,
               valid: true,
               code: "VALID",
               tier: "free",

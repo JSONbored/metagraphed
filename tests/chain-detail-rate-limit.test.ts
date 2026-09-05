@@ -170,6 +170,8 @@ describe("chain-detail lookup rate limit", () => {
               return Promise.resolve(
                 new Response(
                   JSON.stringify({
+                    keyId: "key_fixture",
+                    managed: true,
                     valid: true,
                     tier: "free",
                     accountId: "42",

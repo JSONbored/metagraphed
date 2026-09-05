@@ -1,6 +1,6 @@
 // KV-cache-fronted API key validation (freemium-API rework, 2026-07-19).
 // Resolves a caller-supplied mg_... key to its Unkey-verified identity
-// without a live Unkey round trip on every request -- mirrors this file's
+// with cached provider verification for managed keys -- mirrors this file's
 // original ADR 0020/0021 shape, except the "live" fallback on a cache miss
 // now calls Unkey's verifyKey() (via the DATA_API service binding's internal
 // route, the only place holding UNKEY_ROOT_KEY -- src/unkey-client.ts)
@@ -19,17 +19,19 @@
 //
 // TTL is asymmetric and deliberately NOT the same for every outcome: a
 // verified, valid key gets a long TTL (30 min) -- this is the one place
-// accepting eventual consistency for identity/revocation (NOT rate-limiting;
+// accepting eventual consistency for provider identity changes (NOT rate-limiting;
 // see src/unkey-client.ts's header for why that stays live/uncached), and a
 // longer TTL directly cuts how often verifyKey() gets called, keeping usage
 // comfortably inside Unkey's free tier. An observed rejection is reused for
-// only 30s before retrying. This does NOT bound revocation propagation: an
-// already-cached valid identity can remain reusable for its full 30-minute
-// TTL. Account blocklist and request rate/quota checks run separately.
+// only 30s before retrying. Cached managed identities require a fresh ledger
+// state check on every request. Unmanaged credentials are verified externally
+// each time. Provider-side changes to managed keys still require provider
+// refresh; account blocklist and request rate/quota checks run separately.
 import {
   authLookupCacheWrite,
   readAuthLookupCache,
 } from "./auth-lookup-cache.ts";
+import { isUnkeyKeyId } from "./api-key-state.ts";
 
 export const API_KEY_LOOKUP_KV_TTL = 1800; // 30 min
 export const API_KEY_LOOKUP_NEGATIVE_KV_TTL = 30;
@@ -64,7 +66,7 @@ async function hashKeyForCache(bareKey: string): Promise<string> {
 }
 
 function cacheKeyFor(hash: string): string {
-  return `api-key-lookup:v2:${hash}`;
+  return `api-key-lookup:v3:${hash}`;
 }
 
 export interface ApiKeyLookupRecord {
@@ -72,11 +74,14 @@ export interface ApiKeyLookupRecord {
   code?: unknown;
   tier?: unknown;
   accountId?: unknown;
+  keyId?: unknown;
+  managed?: unknown;
 }
 
 // Calls the data-api Worker's internal verify route (the only place holding
 // UNKEY_ROOT_KEY) with the raw key. Returns
-// { found, code, tier, accountId } -- found mirrors Unkey's own `valid`,
+// { found, code, tier, accountId, keyId, managed } -- found requires a valid
+// provider identity and the data Worker's current ledger guard,
 // never null/throws, so callers have one shape to check regardless of
 // whether the upstream call itself succeeded.
 async function lookupViaDataApi(
@@ -99,16 +104,65 @@ async function lookupViaDataApi(
     );
     if (!upstream.ok) return { found: false };
     const record: Record<string, unknown> = await upstream.json();
+    if (
+      record.valid === true &&
+      (!isUnkeyKeyId(record.keyId) || typeof record.managed !== "boolean")
+    ) {
+      return { found: false };
+    }
     return {
-      found: !!record.valid,
+      found: record.valid === true,
       code: record.code,
       tier: record.tier ?? null,
       accountId: record.accountId ?? null,
+      keyId: record.keyId,
+      managed: record.managed,
     };
   } catch {
     // Upstream failure is non-fatal -- treated as "not found" below rather
     // than throwing (a validation call must never 500 the caller's RPC
     // request; it just fails closed as "invalid key").
+    return { found: false };
+  }
+}
+
+async function checkCachedApiKey(
+  env: Env,
+  record: ApiKeyLookupRecord,
+): Promise<ApiKeyLookupRecord | null> {
+  if (!record.found) return record;
+  // Old or malformed positives cannot skip fresh provider verification.
+  if (record.managed !== true || !isUnkeyKeyId(record.keyId)) return null;
+  if (!env.DATA_API?.fetch || !env.API_KEY_LOOKUP_INTERNAL_TOKEN)
+    return { found: false };
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request("https://api.metagraph.sh/api/v1/internal/keys/state", {
+        method: "POST",
+        headers: {
+          [API_KEY_LOOKUP_TOKEN_HEADER]: env.API_KEY_LOOKUP_INTERNAL_TOKEN,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          keyId: record.keyId,
+          accountId: record.accountId,
+        }),
+      }),
+    );
+    if (!upstream.ok) return { found: false };
+    const body: Record<string, unknown> = await upstream.json();
+    if (body.state === "active") return record;
+    // A missing ledger row is compatibility fallback, not authorization.
+    // The verification route will check the ledger again after the provider.
+    if (body.state === "unmanaged") return null;
+    return {
+      found: false,
+      code:
+        body.state === "pending" || body.state === "revoked"
+          ? "DISABLED"
+          : "NOT_FOUND",
+    };
+  } catch {
     return { found: false };
   }
 }
@@ -125,14 +179,17 @@ async function lookupApiKey(
         await kv.get(cacheKey, { type: "json" }),
         CACHE_POLICY,
       );
-      if (cached) return cached;
+      if (cached) {
+        const checked = await checkCachedApiKey(env, cached);
+        if (checked) return checked;
+      }
     } catch {
       // KV read failure is non-fatal -- fall through to the live lookup.
     }
   }
 
   const payload = await lookupViaDataApi(env, bareKey);
-  if (kv?.put) {
+  if (kv?.put && (!payload.found || payload.managed === true)) {
     try {
       const entry = authLookupCacheWrite(payload, CACHE_POLICY);
       await kv.put(cacheKey, entry.value, {
