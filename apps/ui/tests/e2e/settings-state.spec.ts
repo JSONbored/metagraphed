@@ -3,31 +3,38 @@ import { gotoThroughRestart } from "./server-restart.ts";
 
 const OWNER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-async function signInAsOwner(page: Page) {
-  await page.addInitScript((address) => {
-    const expiresAtMs = Date.now() + 60 * 60 * 1000;
-    // useWallet rechecks stored accounts after hydration. Supply the smallest
-    // compliant extension shape so that this fixture verifies the same
-    // signed-in state a reader reaches, rather than bypassing the check.
-    window.injectedWeb3 = {
-      fixture: {
-        enable: async () => ({
-          accounts: {
-            get: async () => [{ address, name: "Fixture account" }],
-          },
-        }),
-      },
-    };
-    localStorage.setItem("metagraphed:wallet", JSON.stringify({ address, source: "fixture" }));
-    localStorage.setItem(
-      "metagraphed:watch-token",
-      JSON.stringify({ token: "fixture-watch-token", ss58: address, expiresAtMs }),
-    );
-    sessionStorage.setItem(
-      "metagraphed:api-session",
-      JSON.stringify({ token: "fixture-api-token", ss58: address, tier: "pro", expiresAtMs }),
-    );
-  }, OWNER);
+async function signInAsOwner(page: Page, connected = true) {
+  await page.addInitScript(
+    ({ address, connected }) => {
+      const expiresAtMs = Date.now() + 60 * 60 * 1000;
+      // useWallet rechecks stored accounts after hydration. Supply the smallest
+      // compliant extension shape so that this fixture verifies the same
+      // signed-in state a reader reaches, rather than bypassing the check.
+      window.injectedWeb3 = {
+        fixture: {
+          enable: async () => ({
+            accounts: {
+              get: async () => [{ address, name: "Fixture account" }],
+            },
+          }),
+        },
+      };
+      if (connected) {
+        localStorage.setItem("metagraphed:wallet", JSON.stringify({ address, source: "fixture" }));
+      } else {
+        localStorage.removeItem("metagraphed:wallet");
+      }
+      localStorage.setItem(
+        "metagraphed:watch-token",
+        JSON.stringify({ token: "fixture-watch-token", ss58: address, expiresAtMs }),
+      );
+      sessionStorage.setItem(
+        "metagraphed:api-session",
+        JSON.stringify({ token: "fixture-api-token", ss58: address, tier: "pro", expiresAtMs }),
+      );
+    },
+    { address: OWNER, connected },
+  );
 }
 
 function envelope(data: unknown) {
@@ -35,6 +42,105 @@ function envelope(data: unknown) {
 }
 
 test.describe("Settings record states", () => {
+  for (const section of ["keys", "alerts"]) {
+    test(`connects a wallet from ${section} without requesting a signature`, async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.addInitScript((address) => {
+        localStorage.removeItem("metagraphed:wallet");
+        window.injectedWeb3 = {
+          fixture: {
+            enable: async () => ({
+              accounts: { get: async () => [{ address, name: "Fixture account" }] },
+              signer: {
+                signRaw: async () => {
+                  throw new Error("Connecting must not request a signature");
+                },
+              },
+            }),
+          },
+        };
+      }, OWNER);
+      const authRequests: string[] = [];
+      page.on("request", (request) => {
+        if (request.method() !== "GET" && /\/api\/v1\//.test(request.url())) {
+          authRequests.push(request.url());
+        }
+      });
+
+      await gotoThroughRestart(page, "/settings");
+      const panel = page.locator(`#${section}`);
+      const trigger = panel.getByRole("button", { name: "Connect wallet", exact: true });
+      await expect(trigger).toBeVisible();
+      await trigger.click();
+      await expect(trigger).toHaveAttribute("aria-expanded", "true");
+      await expect(trigger).toHaveAttribute("aria-controls", /.+/);
+      const popoverId = await trigger.getAttribute("aria-controls");
+      expect(popoverId).toBeTruthy();
+      await page
+        .locator(`[id="${popoverId}"]`)
+        .getByRole("button", { name: "Connect Wallet", exact: true })
+        .click();
+      await expect(panel.getByRole("button", { name: "Sign in with wallet" })).toBeFocused();
+      await expect(trigger).toHaveCount(0);
+      expect(authRequests).toEqual([]);
+      await expect(
+        page.getByText("Connect a wallet from the header above", { exact: false }),
+      ).toHaveCount(0);
+    });
+  }
+
+  for (const [section, group] of [
+    ["keys", "API key management"],
+    ["alerts", "Alert management"],
+  ]) {
+    test(`returns focus to ${section} when a stored session restores after connecting`, async ({
+      page,
+    }) => {
+      await signInAsOwner(page, false);
+      await gotoThroughRestart(page, "/settings");
+      const panel = page.locator(`#${section}`);
+      const trigger = panel.getByRole("button", { name: "Connect wallet", exact: true });
+      await trigger.click();
+      await expect(trigger).toHaveAttribute("aria-expanded", "true");
+      await expect(trigger).toHaveAttribute("aria-controls", /.+/);
+      const popoverId = await trigger.getAttribute("aria-controls");
+      await page
+        .locator(`[id="${popoverId}"]`)
+        .getByRole("button", { name: "Connect Wallet", exact: true })
+        .click();
+      await expect(panel.getByRole("group", { name: group, exact: true })).toBeFocused();
+    });
+  }
+
+  test("does not move focus when an already connected wallet opens settings", async ({ page }) => {
+    await signInAsOwner(page);
+    await gotoThroughRestart(page, "/settings");
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await expect(
+      page.locator("#keys").getByRole("button", { name: "Connect wallet", exact: true }),
+    ).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => document.activeElement?.tagName)).toBe("BODY");
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
+  });
+
+  test("offers wallet setup from the API-key panel when no extension is available", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await gotoThroughRestart(page, "/settings");
+    const trigger = page.locator("#keys").getByRole("button", { name: "Connect wallet" });
+    await trigger.click();
+    await expect(page.getByRole("link", { name: "Talisman", exact: true }).last()).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
+    const size = await page.evaluate(() => ({
+      page: document.documentElement.scrollWidth,
+      viewport: innerWidth,
+    }));
+    expect(size.page).toBeLessThanOrEqual(size.viewport);
+  });
+
   test("does not turn failed private records into empty lists or a default device cap", async ({
     page,
   }) => {

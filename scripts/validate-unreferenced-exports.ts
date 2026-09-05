@@ -95,8 +95,10 @@ export const MAX_UNREFERENCED_EXPORTS: number = 730;
  *
  * 153 after the sitewide route pass removed one UI export from the measured
  * residue. Lock the gain in rather than leaving unused-export capacity behind.
+ *
+ * 152 after #12039 reuses the wallet connection trigger in contextual settings.
  */
-export const MAX_UNREFERENCED_EXPORTS_UI: number = 153;
+export const MAX_UNREFERENCED_EXPORTS_UI: number = 152;
 
 /** Whether a knip issue belongs to the UI workspaces rather than the backend. */
 export function isUiFile(file: string): boolean {
