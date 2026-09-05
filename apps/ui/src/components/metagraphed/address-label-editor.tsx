@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { SettingsGroupActiveContext } from "@/lib/metagraphed/settings-group-context";
 import { Pencil, Tag, Trash2, UserRound } from "lucide-react";
 import { Popover, PopoverTrigger } from "@jsonbored/ui-kit";
 import { ClampedPopoverContent } from "./clamped-popover-content";
@@ -45,6 +46,10 @@ export function AddressLabelEditor({
   const { getLabel, setLabel, removeLabel } = useAddressLabels();
   const existing = getLabel(ss58);
   const [open, setOpen] = useState(false);
+  const active = useContext(SettingsGroupActiveContext);
+  useEffect(() => {
+    if (!active) setOpen(false);
+  }, [active]);
   const [name, setName] = useState(existing?.name ?? defaultName ?? "");
   const [note, setNote] = useState(existing?.note ?? "");
 
@@ -69,7 +74,7 @@ export function AddressLabelEditor({
   }
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover open={open && active} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         {trigger === "icon" ? (
           <button
@@ -93,7 +98,13 @@ export function AddressLabelEditor({
           </button>
         )}
       </PopoverTrigger>
-      <ClampedPopoverContent align="start" className="ph-no-capture w-72 p-3">
+      <ClampedPopoverContent
+        align="start"
+        className="ph-no-capture w-72 p-3"
+        onCloseAutoFocus={(event) => {
+          if (!active) event.preventDefault();
+        }}
+      >
         <div className="space-y-3">
           <div>
             <div className="text-10 text-ink-muted mb-1">Private label</div>
