@@ -38,10 +38,13 @@ existing row. The states are `active`, `pending`, and `revoked`, with
 `revoked_at` taking precedence over a pending timestamp. The nullable intent
 column preserves existing records and can be deployed before its writers.
 
-Deploy the nullable schema first, refresh the live schema snapshot, then
-deploy the internal capability and its request enforcement consumers. Deploy
-the compatible settings UI before activating durable intent writes. The
-intent writer requires all these prerequisites to be fully deployed.
+Apply migration 0038 and verify the nullable column in the bound database
+before deploying the internal capability. Then deploy its request enforcement
+consumers and the compatible settings UI. The intent writer requires the
+migration, capability, all enforcing readers, and UI to be confirmed deployed.
+The capability uses an explicit typed SELECT projection; the generated live
+schema snapshot follows its separate refresh and policy workflow tracked in
+#12072.
 
 The owned DELETE route records `revocation_requested_at` before calling the
 provider. This immediately causes the state readers to deny access. An intent
