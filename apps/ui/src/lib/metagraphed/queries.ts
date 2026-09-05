@@ -8,6 +8,7 @@ import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
 import { isUsableTimestamp } from "./format";
 import {
   serializeOperatorRows,
+  operatorNominatorCount,
   shortKey,
   type OperatorRow,
   type SerializedOperatorRow,
@@ -8776,6 +8777,7 @@ export function projectOperatorValidator(validator: GlobalValidator): OperatorVa
   return {
     hotkey: validator.hotkey,
     coldkey: validator.coldkey,
+    coldkey_count: validator.coldkey_count,
     coldkey_identity:
       validator.coldkey_identity === null
         ? null
@@ -8900,18 +8902,22 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
           children.length > 0
             ? children
             : [{ hotkey: primaryHotkey, totalStakeTao, take: takeMin }];
+        const keyCount = coerceFiniteNumber(entry.hotkey_count) ?? keys.length;
         return [
           {
-            key: identityName ?? primaryHotkey,
+            key: firstString(entry.operator_id) ?? `hotkey:${primaryHotkey}`,
             name: identityName ?? shortKey(primaryHotkey),
             named: identityName !== null,
             keys,
-            keyCount: coerceFiniteNumber(entry.hotkey_count) ?? keys.length,
+            keyCount,
             primaryHotkey,
             coldkey: firstString(entry.coldkey) ?? null,
             totalStakeTao,
             totalEmissionTao: coerceFiniteNumber(entry.total_emission_tao) ?? 0,
-            nominators: coerceFiniteNumber(entry.nominator_count) ?? null,
+            nominators: operatorNominatorCount(
+              coerceFiniteNumber(entry.nominator_count) ?? null,
+              Math.max(keyCount, keys.length),
+            ),
             memberships: coerceFiniteNumber(entry.membership_count) ?? 0,
             uidCount: coerceFiniteNumber(entry.uid_count) ?? 0,
             takeMin,

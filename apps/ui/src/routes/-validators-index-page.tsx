@@ -396,9 +396,7 @@ export function ValidatorsPage() {
               }
             />
           }
-          footnote={`${formatNumber(
-            listed.data.hotkey_count,
-          )} hotkeys grouped by declared identity · chain-direct`}
+          footnote={`${formatNumber(listed.data.hotkey_count)} validator hotkeys · chain-direct`}
         >
           <ValidatorCompareBar />
         </AnalyticsSection>

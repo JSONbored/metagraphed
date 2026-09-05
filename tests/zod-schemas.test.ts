@@ -1352,6 +1352,8 @@ describe("batch 4 (#8058) route artifact schemas parse real builder output", () 
       vi.fn(async () => {
         call += 1;
         const results = [
+          `0x${"ab".repeat(32)}`,
+          { specName: "node-subtensor", specVersion: 440 },
           claimTypeHex,
           stakingHex,
           ownedHex,
@@ -1366,6 +1368,8 @@ describe("batch 4 (#8058) route artifact schemas parse real builder output", () 
     const data = await loadAccountRootClaim(mockEnv(), ROOT_CLAIM_SS58);
     const parsed = AccountRootClaimArtifactSchema.parse(data);
     assert.ok(parsed);
+    assert.equal(parsed.compatibility.status, "legacy_supported");
+    assert.equal(parsed.claim_type?.kind, "Keep");
   });
   test("account-root-claim: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = AccountRootClaimArtifactSchema.safeParse({});

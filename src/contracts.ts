@@ -1772,7 +1772,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "account-root-claim",
     "/metagraph/accounts/{ss58}/root-claim.json",
-    "Live root-claim current state for a Finney ss58 account (#7229) — claim type, per-hotkey claimable rates, cumulative claimed, and thresholds — queried from the finney RPC at request time with 120s KV cache. claim_type/hotkeys null on RPC failure. Read-only; never submits claim_root.",
+    "Deprecated per-subnet Root-claim compatibility read at a finalized block. The audited node-subtensor v440 adapter supplies legacy values; v441+ is unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys stay null unless supported. Runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits claim_root.",
     "AccountRootClaimArtifact",
     COMPUTED_LIVE,
   ),
@@ -3882,7 +3882,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/root-claim",
     "/metagraph/accounts/{ss58}/root-claim.json",
-    "Fetch the live root-claim current state for one Finney ss58 account (#7229) — RootClaimType setting, per-hotkey RootClaimable rates, RootClaimed cumulative watermarks, and RootClaimableThreshold — queried from the finney RPC at request time with 120s KV cache. Returns 400 on invalid ss58; claim_type/hotkeys are null on RPC failure. Read-only display only; never submits claim_root or any other extrinsic.",
+    "Read deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Returns 400 on invalid ss58. This does not report native basket entitlement or submit a claim.",
     "short",
     ["accounts"],
     [],

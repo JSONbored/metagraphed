@@ -6,6 +6,9 @@ const OWNER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 async function signInAsOwner(page: Page, connected = true) {
   await page.addInitScript(
     ({ address, connected }) => {
+      // A supervised server restart can briefly navigate to an opaque error
+      // document. Seed storage only once the app origin is available.
+      if (window.location.origin === "null") return;
       const expiresAtMs = Date.now() + 60 * 60 * 1000;
       // useWallet rechecks stored accounts after hydration. Supply the smallest
       // compliant extension shape so that this fixture verifies the same
@@ -42,6 +45,39 @@ function envelope(data: unknown) {
 }
 
 test.describe("Settings record states", () => {
+  for (const connected of [false, true]) {
+    test(`hydrates wallet panels without replacing their first interaction (${connected ? "saved wallet" : "installed extension"})`, async ({
+      page,
+    }) => {
+      await signInAsOwner(page, connected);
+      const errors: string[] = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      const session = await page.context().newCDPSession(page);
+      await session.send("Emulation.setCPUThrottlingRate", { rate: 12 });
+      await gotoThroughRestart(page, "/settings");
+      if (connected) {
+        await expect(page.locator("#wallet").getByText("Connected via fixture")).toBeVisible();
+        await expect(
+          page.locator("#keys").getByRole("group", { name: "API key management" }),
+        ).toBeVisible();
+      } else {
+        const trigger = page
+          .locator("#alerts")
+          .getByRole("button", { name: "Connect wallet", exact: true });
+        // A single real pointer interaction must survive nested hydration.
+        await trigger.click();
+        await expect(trigger).toHaveAttribute("aria-expanded", "true");
+        const popoverId = await trigger.getAttribute("aria-controls");
+        await expect(
+          page
+            .locator(`[id="${popoverId}"]`)
+            .getByRole("button", { name: "Connect Wallet", exact: true }),
+        ).toBeVisible();
+      }
+      expect(errors).toEqual([]);
+    });
+  }
+
   for (const section of ["keys", "alerts"]) {
     test(`connects a wallet from ${section} without requesting a signature`, async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 812 });
