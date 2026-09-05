@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useRouterState } from "@tanstack/react-router";
 import {
   AnalyticsSection,
   DataTable,
@@ -8,10 +7,10 @@ import {
   FactSentence,
   RankedRails,
   Raw,
-  SectionNav,
   type DataTableColumn,
   type RawRow,
 } from "@jsonbored/ui-kit";
+import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
@@ -21,7 +20,6 @@ import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { schemasQuery } from "@/lib/metagraphed/queries";
 import {
-  apisNav,
   driftRails,
   schemaHeadlineFacts,
   schemaRows,
@@ -58,7 +56,6 @@ function ApiSources() {
  * subnet's "has an OpenAPI" is three paths or three hundred.
  */
 export function SchemasPage() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [showAllDrift, setShowAllDrift] = useState(false);
   const schemas = useQuery({ ...schemasQuery(), retry: 0 });
 
@@ -205,7 +202,7 @@ export function SchemasPage() {
           refreshing: schemas.isFetching,
         }}
       />
-      <SectionNav items={apisNav(pathname)} link={RouterLink} />
+      <ApiNavigation />
 
       <AnalyticsSection
         id="drift"

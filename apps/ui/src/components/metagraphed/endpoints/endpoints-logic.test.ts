@@ -53,10 +53,24 @@ describe("endpointRows", () => {
     expect(endpointRows(raw)[1]!.lastChecked).toBe("2026-08-23T08:01:48.647Z");
   });
 
-  it("reads the booleans strictly, so a missing flag is false and not undefined", () => {
+  it("preserves missing endpoint capability and auth flags as unknown", () => {
     const [, , third] = endpointRows(raw);
-    expect(third).toMatchObject({ archive: false, poolEligible: false, authRequired: false });
+    expect(third).toMatchObject({ archive: null, poolEligible: null, authRequired: null });
   });
+
+  for (const [field, property] of [
+    ["auth_required", "authRequired"],
+    ["archive_support", "archive"],
+    ["pool_eligible", "poolEligible"],
+  ] as const) {
+    it.each([true, false, null, undefined, "false", 0])(
+      `preserves explicit ${field} without treating %s as a negative fact`,
+      (value) => {
+        const [row] = endpointRows([{ id: "flag-state", [field]: value }]);
+        expect(row![property]).toBe(typeof value === "boolean" ? value : null);
+      },
+    );
+  }
 
   it("is empty for a missing payload", () => {
     expect(endpointRows(undefined)).toEqual([]);
@@ -140,6 +154,17 @@ describe("latencyRails", () => {
 
   it("narrows to archive-capable endpoints in the archive view", () => {
     expect(latencyRails(rows, "archive").map((r) => r.key)).toEqual(["opentensor"]);
+  });
+
+  it("keeps unknown capabilities out of archive-only results and labels their detail", () => {
+    const unknown = endpointRows([{ id: "unknown-capability", latency_ms: 12 }]);
+    expect(latencyRails(unknown, "archive")).toEqual([]);
+    expect(latencyRails(unknown, "fastest")[0]!.detail).toEqual(
+      expect.arrayContaining([
+        { key: "archive", label: "Archive", value: "unknown" },
+        { key: "pool", label: "Pool-eligible", value: "unknown" },
+      ]),
+    );
   });
 
   it("labels a rail provider · kind and links a subnet endpoint", () => {
