@@ -9,6 +9,7 @@ import {
   churnByDay,
   churnWindow,
   directoryRows,
+  directoryHealthFilter,
   filterDirectory,
   fmtAlpha,
   fmtPct,
@@ -18,7 +19,24 @@ import {
   rankSubnets,
   resolveWindow,
   windowsFor,
+  type DirectoryRow,
 } from "./subnets-index-logic";
+
+it("keeps legacy health links aligned with normalized directory rows", () => {
+  const rows = [
+    { netuid: 0, health: "warn" },
+    { netuid: 19, health: "down" },
+  ] as DirectoryRow[];
+  expect(
+    filterDirectory(rows, { health: directoryHealthFilter("degraded") }).map((r) => r.netuid),
+  ).toEqual([0]);
+  expect(
+    filterDirectory(rows, { health: directoryHealthFilter("failed") }).map((r) => r.netuid),
+  ).toEqual([19]);
+  expect(directoryHealthFilter("unknown")).toBe("unknown");
+  expect(directoryHealthFilter("future-state")).toBe("future-state");
+  expect(directoryHealthFilter(null)).toBe("");
+});
 
 const mover = (over: Partial<SubnetMover> & { netuid: number }): SubnetMover => ({
   stake_start_alpha: 0,
