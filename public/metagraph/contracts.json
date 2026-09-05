@@ -1467,7 +1467,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Live root-claim current state for a Finney ss58 account (#7229) — claim type, per-hotkey claimable rates, cumulative claimed, and thresholds — queried from the finney RPC at request time with 120s KV cache. claim_type/hotkeys null on RPC failure. Read-only; never submits claim_root.",
+      "description": "Deprecated per-subnet Root-claim compatibility read at a finalized block. The audited node-subtensor v440 adapter supplies legacy values; v441+ is unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys stay null unless supported. Runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits claim_root.",
       "id": "account-root-claim",
       "path": "/metagraph/accounts/{ss58}/root-claim.json",
       "retirement": null,

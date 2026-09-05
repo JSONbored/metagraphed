@@ -3,7 +3,10 @@
 // submits claim_root or any other extrinsic (same posture as account-balance /
 // subnet-lease).
 //
-// Storage (opentensor/subtensor pallets/subtensor/src/lib.rs, verified 2026-07-20):
+// Legacy storage adapter: node-subtensor v440 only. Root Reborn (v441)
+// removed RootClaimType and retained claimable/claimed only for migration.
+// See docs/root-claim-compatibility.md for pinned source and defaults.
+// Storage:
 //   RootClaimable(hotkey) -> BTreeMap<NetUid, I96F32>     Blake2_128Concat
 //   RootClaimType(account) -> RootClaimTypeEnum           Blake2_128Concat
 //   RootClaimed(netuid, hotkey, account) -> u128          NMap Identity+Blake2×2
@@ -127,7 +130,9 @@ async function rpcCall(
     });
     if (!resp.ok) return { ok: false, result: undefined };
     const body: { error?: unknown; result?: unknown } = await resp.json();
-    if (body?.error) return { ok: false, result: undefined };
+    if (!body || body.error || !Object.hasOwn(body, "result")) {
+      return { ok: false, result: undefined };
+    }
     return { ok: true, result: body?.result };
   } catch {
     return { ok: false, result: undefined };
@@ -214,8 +219,8 @@ export type RootClaimType =
 export function decodeRootClaimType(
   hex: string | null | undefined,
 ): RootClaimType | null {
-  // ValueQuery default Swap when storage is unset.
-  if (hex == null) return { kind: "Swap" };
+  // Defaults belong to the verified runtime adapter, never to a raw decoder.
+  if (hex == null) return null;
   const bytes = hexToBytes(hex);
   if (!bytes || bytes.length === 0) return null;
   const tag = bytes[0];
@@ -249,14 +254,14 @@ export interface ClaimableMapEntry {
   claimable_rate: number;
 }
 
-/** Decode BTreeMap<NetUid, I96F32>. null on malformed; [] when empty/unset. */
+/** Decode BTreeMap<NetUid, I96F32>. Only encoded empty maps yield []. */
 export function decodeClaimableMap(
   hex: string | null | undefined,
 ): ClaimableMapEntry[] | null {
-  if (hex == null) return [];
+  if (hex == null) return null;
   const bytes = hexToBytes(hex);
   if (!bytes) return null;
-  if (bytes.length === 0) return [];
+  if (bytes.length === 0) return null;
   const lenResult = readCompactU32(bytes, 0);
   if (!lenResult) return null;
   const { value: count, nextOffset } = lenResult;
@@ -281,10 +286,10 @@ export function decodeClaimableMap(
 export function decodeAccountIdVec(
   hex: string | null | undefined,
 ): string[] | null {
-  if (hex == null) return [];
+  if (hex == null) return null;
   const bytes = hexToBytes(hex);
   if (!bytes) return null;
-  if (bytes.length === 0) return [];
+  if (bytes.length === 0) return null;
   const lenResult = readCompactU32(bytes, 0);
   if (!lenResult) return null;
   const { value: count, nextOffset } = lenResult;
@@ -303,9 +308,9 @@ export function decodeAccountIdVec(
   return accounts;
 }
 
-/** Decode I96F32 ValueQuery (threshold). null unset→default handled by caller. */
+/** Decode I96F32; runtime-specific defaults are applied by the caller. */
 export function decodeI96F32(hex: string | null | undefined): number | null {
-  if (hex == null) return 0;
+  if (hex == null) return null;
   const bytes = hexToBytes(hex);
   if (!bytes || bytes.length !== I96F32_BYTES) return null;
   return i96f32ToFloat(readI128Le(bytes, 0));
@@ -313,7 +318,7 @@ export function decodeI96F32(hex: string | null | undefined): number | null {
 
 /** Decode u128 ValueQuery (RootClaimed). */
 export function decodeU128(hex: string | null | undefined): string | null {
-  if (hex == null) return "0";
+  if (hex == null) return null;
   const bytes = hexToBytes(hex);
   if (!bytes || bytes.length !== I96F32_BYTES) return null;
   return readU128Le(bytes, 0).toString();
@@ -322,10 +327,21 @@ export function decodeU128(hex: string | null | undefined): string | null {
 async function fetchStorage(
   key: string,
   timeoutMs: number,
-  network?: ChainNetworkId,
+  network: ChainNetworkId | undefined,
+  blockHash: string,
 ): Promise<{ ok: boolean; hex: string | null | undefined }> {
-  const result = await rpcCall("state_getStorage", [key], timeoutMs, network);
-  if (!result.ok) return { ok: false, hex: undefined };
+  const result = await rpcCall(
+    "state_getStorage",
+    [key, blockHash],
+    timeoutMs,
+    network,
+  );
+  if (
+    !result.ok ||
+    (result.result !== null && typeof result.result !== "string")
+  ) {
+    return { ok: false, hex: undefined };
+  }
   return {
     ok: true,
     hex: (result.result as string | null | undefined) ?? null,
@@ -354,6 +370,7 @@ export interface AccountRootClaimResultSnapshot {
   claim_type: RootClaimType | null;
   hotkeys: RootClaimHotkeyRow[] | null;
   queried_at: string;
+  compatibility: RootClaimCompatibility;
 }
 
 /**
@@ -364,18 +381,92 @@ export interface AccountRootClaimResultSnapshot {
 /**
  * Where each published value came from (#9108).
  *
- * `claim_type` is one read. `hotkeys` is not: each row joins this account's
- * `RootClaimableThreshold` and `RootClaimed` entries per hotkey and netuid, so
- * it is an assembly of many reads rather than any single one.
+ * `claim_type` uses one legacy storage value or an audited runtime default.
+ * Each `hotkeys` row joins this account's `RootClaimableThreshold` and
+ * `RootClaimed` entries per hotkey and netuid, so it assembles many reads.
  */
 export interface AccountRootClaimResult extends AccountRootClaimResultSnapshot {
   field_sources: typeof ACCOUNT_ROOT_CLAIM_FIELD_SOURCES;
 }
 
 export const ACCOUNT_ROOT_CLAIM_FIELD_SOURCES = {
-  claim_type: { kind: "measured", storage: "SubtensorModule.RootClaimType" },
+  claim_type: { kind: "reconstructed", storage: null },
   hotkeys: { kind: "reconstructed", storage: null },
+  compatibility: { kind: "reconstructed", storage: null },
 } as const satisfies FieldSources;
+
+export interface RootClaimCompatibility {
+  status: "legacy_supported" | "unsupported" | "unavailable";
+  reason:
+    | "root_reborn"
+    | "unverified_runtime"
+    | "rpc_or_decode_failure"
+    | "legacy_limit_exceeded"
+    | null;
+  spec_name: string | null;
+  spec_version: number | null;
+  block_hash: string | null;
+  claim_type_source: "storage" | "runtime_default" | null;
+}
+
+const BLOCK_HASH = /^0x[0-9a-fA-F]{64}$/;
+const LEGACY_THRESHOLD_DEFAULT = 500_000;
+const ZERO_U128 = "0x00000000000000000000000000000000";
+
+async function rootClaimCompatibility(
+  network?: ChainNetworkId,
+): Promise<RootClaimCompatibility> {
+  const head = await rpcCall(
+    "chain_getFinalizedHead",
+    [],
+    ROOT_CLAIM_RPC_TIMEOUT_MS,
+    network,
+  );
+  const blockHash =
+    head.ok && typeof head.result === "string" && BLOCK_HASH.test(head.result)
+      ? head.result
+      : null;
+  const version =
+    blockHash === null
+      ? null
+      : await rpcCall(
+          "state_getRuntimeVersion",
+          [blockHash],
+          ROOT_CLAIM_RPC_TIMEOUT_MS,
+          network,
+        );
+  const runtime =
+    version?.ok && version.result && typeof version.result === "object"
+      ? (version.result as Record<string, unknown>)
+      : null;
+  const specName =
+    typeof runtime?.specName === "string" ? runtime.specName : null;
+  const specVersion =
+    Number.isSafeInteger(runtime?.specVersion) &&
+    (runtime!.specVersion as number) >= 0
+      ? (runtime!.specVersion as number)
+      : null;
+  const identity = {
+    spec_name: specName,
+    spec_version: specVersion,
+    block_hash: blockHash,
+    claim_type_source: null,
+  };
+  if (specName === null || specVersion === null) {
+    return {
+      ...identity,
+      status: "unavailable",
+      reason: "rpc_or_decode_failure",
+    };
+  }
+  if (specName !== "node-subtensor" || specVersion < 440) {
+    return { ...identity, status: "unavailable", reason: "unverified_runtime" };
+  }
+  if (specVersion >= 441) {
+    return { ...identity, status: "unsupported", reason: "root_reborn" };
+  }
+  return { ...identity, status: "legacy_supported", reason: null };
+}
 
 async function loadAccountRootClaimSnapshot(
   env: Env,
@@ -386,114 +477,111 @@ async function loadAccountRootClaimSnapshot(
     throw new RangeError("ss58 must be a valid finney SS58 account address");
   }
 
-  const cacheKey = networkKvKey(`root-claim:${ss58}`, network);
+  // Check runtime before cache lookup so a pre-upgrade record cannot survive
+  // an upgrade. v2 also excludes entries written without compatibility checks.
+  const compatibility = await rootClaimCompatibility(network);
+  const cacheKey = networkKvKey(`root-claim:v2:${ss58}`, network);
   const kv = env?.METAGRAPH_CONTROL;
   if (kv?.get) {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached as AccountRootClaimResult;
+      const cached = await kv.get<AccountRootClaimResultSnapshot>(cacheKey, {
+        type: "json",
+      });
+      if (
+        cached?.schema_version === 1 &&
+        cached.ss58 === ss58 &&
+        cached.compatibility?.spec_name === compatibility.spec_name &&
+        cached.compatibility?.spec_version === compatibility.spec_version &&
+        Object.hasOwn(cached, "claim_type") &&
+        Object.hasOwn(cached, "hotkeys")
+      ) {
+        return cached;
+      }
     } catch {
       // non-fatal
     }
   }
 
   const queriedAt = new Date().toISOString();
+  async function finish(
+    claimType: RootClaimType | null,
+    hotkeys: RootClaimHotkeyRow[] | null,
+    context = compatibility,
+  ): Promise<AccountRootClaimResultSnapshot> {
+    const payload: AccountRootClaimResultSnapshot = {
+      schema_version: 1,
+      ss58,
+      claim_type: claimType,
+      hotkeys,
+      queried_at: queriedAt,
+      compatibility: context,
+    };
+    if (kv?.put) {
+      try {
+        await kv.put(cacheKey, JSON.stringify(payload), {
+          expirationTtl:
+            context.status === "unavailable"
+              ? ROOT_CLAIM_NEGATIVE_KV_TTL
+              : ROOT_CLAIM_KV_TTL,
+        });
+      } catch {
+        // non-fatal
+      }
+    }
+    return payload;
+  }
+  const unavailable = (
+    reason:
+      | "rpc_or_decode_failure"
+      | "legacy_limit_exceeded" = "rpc_or_decode_failure",
+  ) => finish(null, null, { ...compatibility, status: "unavailable", reason });
+  if (compatibility.status !== "legacy_supported") return finish(null, null);
+
+  const blockHash = compatibility.block_hash!;
   const coldAccountId = accountIdFromSs58(ss58);
-  const timeoutMs = ROOT_CLAIM_RPC_TIMEOUT_MS;
-
+  const storage = (key: string) =>
+    fetchStorage(key, ROOT_CLAIM_RPC_TIMEOUT_MS, network, blockHash);
   const [claimTypeRaw, stakingHotkeysRaw, ownedHotkeysRaw] = await Promise.all([
-    fetchStorage(
-      accountScopedKey("RootClaimType", coldAccountId),
-      timeoutMs,
-      network,
-    ),
-    fetchStorage(
-      accountScopedKey("StakingHotkeys", coldAccountId),
-      timeoutMs,
-      network,
-    ),
-    fetchStorage(
-      accountScopedKey("OwnedHotkeys", coldAccountId),
-      timeoutMs,
-      network,
-    ),
+    storage(accountScopedKey("RootClaimType", coldAccountId)),
+    storage(accountScopedKey("StakingHotkeys", coldAccountId)),
+    storage(accountScopedKey("OwnedHotkeys", coldAccountId)),
   ]);
+  if (!claimTypeRaw.ok || !stakingHotkeysRaw.ok || !ownedHotkeysRaw.ok)
+    return unavailable();
 
-  if (!claimTypeRaw.ok || !stakingHotkeysRaw.ok || !ownedHotkeysRaw.ok) {
-    const payload: AccountRootClaimResultSnapshot = {
-      schema_version: 1,
-      ss58,
-      claim_type: null,
-      hotkeys: null,
-      queried_at: queriedAt,
-    };
-    if (kv?.put) {
-      try {
-        await kv.put(cacheKey, JSON.stringify(payload), {
-          expirationTtl: ROOT_CLAIM_NEGATIVE_KV_TTL,
-        });
-      } catch {
-        // non-fatal
-      }
-    }
-    return payload;
-  }
+  // ValueQuery defaults are justified only by this audited v440 adapter.
+  // Undefined/malformed RPC results never reach these fallbacks.
+  const claimType = decodeRootClaimType(claimTypeRaw.hex ?? "0x00");
+  const stakingHotkeys = decodeAccountIdVec(stakingHotkeysRaw.hex ?? "0x00");
+  const ownedHotkeys = decodeAccountIdVec(ownedHotkeysRaw.hex ?? "0x00");
+  if (claimType === null || stakingHotkeys === null || ownedHotkeys === null)
+    return unavailable();
 
-  const claimType = decodeRootClaimType(claimTypeRaw.hex);
-  const stakingHotkeys = decodeAccountIdVec(stakingHotkeysRaw.hex);
-  const ownedHotkeys = decodeAccountIdVec(ownedHotkeysRaw.hex);
-
-  if (claimType == null || stakingHotkeys == null || ownedHotkeys == null) {
-    const payload: AccountRootClaimResultSnapshot = {
-      schema_version: 1,
-      ss58,
-      claim_type: null,
-      hotkeys: null,
-      queried_at: queriedAt,
-    };
-    if (kv?.put) {
-      try {
-        await kv.put(cacheKey, JSON.stringify(payload), {
-          expirationTtl: ROOT_CLAIM_NEGATIVE_KV_TTL,
-        });
-      } catch {
-        // non-fatal
-      }
-    }
-    return payload;
-  }
-
-  // Prefer StakingHotkeys (matches do_root_claim); fall back to OwnedHotkeys.
-  const hotkeyList = (
-    stakingHotkeys.length > 0 ? stakingHotkeys : ownedHotkeys
-  ).slice(0, MAX_HOTKEYS);
-
+  const hotkeyList = stakingHotkeys.length > 0 ? stakingHotkeys : ownedHotkeys;
+  if (hotkeyList.length > MAX_HOTKEYS)
+    return unavailable("legacy_limit_exceeded");
   const hotkeyRows = await Promise.all(
     hotkeyList.map(async (hotkey): Promise<RootClaimHotkeyRow | null> => {
       const hotAccountId = accountIdFromSs58(hotkey);
-      const claimableRaw = await fetchStorage(
+      const claimableRaw = await storage(
         accountScopedKey("RootClaimable", hotAccountId),
-        timeoutMs,
-        network,
       );
       if (!claimableRaw.ok) return null;
-      const rates = decodeClaimableMap(claimableRaw.hex);
-      if (rates == null) return null;
-
+      const rates = decodeClaimableMap(claimableRaw.hex ?? "0x00");
+      if (rates === null) return null;
       const entries = await Promise.all(
         rates.map(async (row): Promise<RootClaimHotkeyEntry | null> => {
           const [claimedRaw, thresholdRaw] = await Promise.all([
-            fetchStorage(
-              claimedKey(row.netuid, hotAccountId, coldAccountId),
-              timeoutMs,
-              network,
-            ),
-            fetchStorage(thresholdKey(row.netuid), timeoutMs, network),
+            storage(claimedKey(row.netuid, hotAccountId, coldAccountId)),
+            storage(thresholdKey(row.netuid)),
           ]);
           if (!claimedRaw.ok || !thresholdRaw.ok) return null;
-          const claimed = decodeU128(claimedRaw.hex);
-          const threshold = decodeI96F32(thresholdRaw.hex);
-          if (claimed == null || threshold == null) return null;
+          const claimed = decodeU128(claimedRaw.hex ?? ZERO_U128);
+          const threshold =
+            thresholdRaw.hex === null
+              ? LEGACY_THRESHOLD_DEFAULT
+              : decodeI96F32(thresholdRaw.hex);
+          if (claimed === null || threshold === null) return null;
           return {
             netuid: row.netuid,
             claimable_rate: row.claimable_rate,
@@ -502,50 +590,16 @@ async function loadAccountRootClaimSnapshot(
           };
         }),
       );
-      if (entries.some((e) => e == null)) return null;
+      if (entries.some((entry) => entry === null)) return null;
       return { hotkey, entries: entries as RootClaimHotkeyEntry[] };
     }),
   );
-
-  if (hotkeyRows.some((row) => row == null)) {
-    const payload: AccountRootClaimResultSnapshot = {
-      schema_version: 1,
-      ss58,
-      claim_type: null,
-      hotkeys: null,
-      queried_at: queriedAt,
-    };
-    if (kv?.put) {
-      try {
-        await kv.put(cacheKey, JSON.stringify(payload), {
-          expirationTtl: ROOT_CLAIM_NEGATIVE_KV_TTL,
-        });
-      } catch {
-        // non-fatal
-      }
-    }
-    return payload;
-  }
-
-  const payload: AccountRootClaimResultSnapshot = {
-    schema_version: 1,
-    ss58,
-    claim_type: claimType,
-    hotkeys: hotkeyRows as RootClaimHotkeyRow[],
-    queried_at: queriedAt,
-  };
-
-  if (kv?.put) {
-    try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: ROOT_CLAIM_KV_TTL,
-      });
-    } catch {
-      // non-fatal
-    }
-  }
-
-  return payload;
+  if (hotkeyRows.some((row) => row === null)) return unavailable();
+  return finish(claimType, hotkeyRows as RootClaimHotkeyRow[], {
+    ...compatibility,
+    claim_type_source:
+      claimTypeRaw.hex === null ? "runtime_default" : "storage",
+  });
 }
 
 /**

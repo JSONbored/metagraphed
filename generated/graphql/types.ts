@@ -533,10 +533,12 @@ export type AccountRegistrations = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
-/** Live root-claim current state for one Finney ss58 account (#7229), read directly from chain via RPC (KV-cached). claim_type/hotkeys are null on RPC failure (schema-stable, never a GraphQL error). Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
+/** Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
 export type AccountRootClaim = {
   __typename?: 'AccountRootClaim';
   claim_type?: Maybe<RootClaimType>;
+  /** Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here. */
+  compatibility: RootClaimCompatibility;
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources: Scalars['JSON']['output'];
   hotkeys?: Maybe<Array<RootClaimHotkey>>;
@@ -3471,7 +3473,7 @@ export type Query = {
   account_prometheus: AccountPrometheus;
   /** One account's per-subnet registration footprint over a 7d/30d/90d window (default 30d): NeuronRegistered count and first/last timestamps per subnet, an HHI concentration of where its registration activity is focused, and the dominant subnet; an address with no registrations in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/registrations. */
   account_registrations: AccountRegistrations;
-  /** Live root-claim current state for one Finney ss58 account (#7229) — claim type, per-hotkey claimable rates, cumulative claimed watermarks, and per-netuid thresholds — read directly from chain via RPC (KV-cached, not the Postgres tier). claim_type/hotkeys are null on RPC failure, schema-stable, never a GraphQL error. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
+  /** Deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
   account_root_claim?: Maybe<AccountRootClaim>;
   /** One account's per-subnet axon-serving footprint over a 7d/30d/90d window (default 30d): AxonServed announcement count and first/last timestamps per subnet, an HHI concentration of where its serving activity is focused, and the dominant subnet; an address with no announcements in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/serving. */
   account_serving: AccountServing;
@@ -5725,6 +5727,17 @@ export type ReviewProfileCompletenessList = {
   total: Scalars['Int']['output'];
 };
 
+/** Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here. */
+export type RootClaimCompatibility = {
+  __typename?: 'RootClaimCompatibility';
+  block_hash?: Maybe<Scalars['String']['output']>;
+  claim_type_source?: Maybe<Scalars['String']['output']>;
+  reason?: Maybe<Scalars['String']['output']>;
+  spec_name?: Maybe<Scalars['String']['output']>;
+  spec_version?: Maybe<Scalars['Int']['output']>;
+  status: Scalars['String']['output'];
+};
+
 /** One netuid's root-claim accounting for a (hotkey, account) pair (#7229). */
 export type RootClaimEntry = {
   __typename?: 'RootClaimEntry';
@@ -5741,7 +5754,7 @@ export type RootClaimHotkey = {
   hotkey: Scalars['String']['output'];
 };
 
-/** Per-account RootClaimTypeEnum (#7229): Swap / Keep / KeepSubnets. */
+/** Legacy v440 per-account RootClaimTypeEnum: Swap / Keep / KeepSubnets. A runtime-default value is explicitly identified by compatibility.claim_type_source. */
 export type RootClaimType = {
   __typename?: 'RootClaimType';
   kind: Scalars['String']['output'];
@@ -8764,6 +8777,7 @@ export type ResolversTypes = ResolversObject<{
   ReviewProfileCompletenessArtifactProfiles: ResolverTypeWrapper<ReviewProfileCompletenessArtifactProfiles>;
   ReviewProfileCompletenessArtifactSummary: ResolverTypeWrapper<ReviewProfileCompletenessArtifactSummary>;
   ReviewProfileCompletenessList: ResolverTypeWrapper<ReviewProfileCompletenessList>;
+  RootClaimCompatibility: ResolverTypeWrapper<RootClaimCompatibility>;
   RootClaimEntry: ResolverTypeWrapper<RootClaimEntry>;
   RootClaimHotkey: ResolverTypeWrapper<RootClaimHotkey>;
   RootClaimType: ResolverTypeWrapper<RootClaimType>;
@@ -9234,6 +9248,7 @@ export type ResolversParentTypes = ResolversObject<{
   ReviewProfileCompletenessArtifactProfiles: ReviewProfileCompletenessArtifactProfiles;
   ReviewProfileCompletenessArtifactSummary: ReviewProfileCompletenessArtifactSummary;
   ReviewProfileCompletenessList: ReviewProfileCompletenessList;
+  RootClaimCompatibility: RootClaimCompatibility;
   RootClaimEntry: RootClaimEntry;
   RootClaimHotkey: RootClaimHotkey;
   RootClaimType: RootClaimType;
@@ -9838,6 +9853,7 @@ export type AccountRegistrationsResolvers<ContextType = GqlContext, ParentType e
 
 export type AccountRootClaimResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountRootClaim'] = ResolversParentTypes['AccountRootClaim']> = ResolversObject<{
   claim_type?: Resolver<Maybe<ResolversTypes['RootClaimType']>, ParentType, ContextType>;
+  compatibility?: Resolver<ResolversTypes['RootClaimCompatibility'], ParentType, ContextType>;
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   hotkeys?: Resolver<Maybe<Array<ResolversTypes['RootClaimHotkey']>>, ParentType, ContextType>;
   queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -12677,6 +12693,15 @@ export type ReviewProfileCompletenessListResolvers<ContextType = GqlContext, Par
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type RootClaimCompatibilityResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RootClaimCompatibility'] = ResolversParentTypes['RootClaimCompatibility']> = ResolversObject<{
+  block_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  claim_type_source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  reason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  spec_name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  spec_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type RootClaimEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RootClaimEntry'] = ResolversParentTypes['RootClaimEntry']> = ResolversObject<{
   claimable_rate?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   claimed?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -14988,6 +15013,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ReviewProfileCompletenessArtifactProfiles?: ReviewProfileCompletenessArtifactProfilesResolvers<ContextType>;
   ReviewProfileCompletenessArtifactSummary?: ReviewProfileCompletenessArtifactSummaryResolvers<ContextType>;
   ReviewProfileCompletenessList?: ReviewProfileCompletenessListResolvers<ContextType>;
+  RootClaimCompatibility?: RootClaimCompatibilityResolvers<ContextType>;
   RootClaimEntry?: RootClaimEntryResolvers<ContextType>;
   RootClaimHotkey?: RootClaimHotkeyResolvers<ContextType>;
   RootClaimType?: RootClaimTypeResolvers<ContextType>;
