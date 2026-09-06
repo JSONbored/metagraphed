@@ -11,6 +11,17 @@ import {
 } from "./og-entity-content";
 
 describe("entity preview content", () => {
+  it("keeps a qualified record label intact when it fits above the minimum title size", () => {
+    for (const title of [
+      "Balances.Issued",
+      "System.ExtrinsicSuccess",
+      "SubtensorModule.register_limit",
+    ]) {
+      const layout = cardTitleLayout(title, false, false, "Record details on Bittensor.");
+      expect(layout.fontSize).toBeGreaterThanOrEqual(42);
+      expect(layout.lines).toEqual([title]);
+    }
+  });
   it("keeps every standard description fully visible in the bounded two-line layout", () => {
     const cards = [
       subnetOgContent(1),

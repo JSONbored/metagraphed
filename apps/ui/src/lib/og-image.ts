@@ -336,7 +336,16 @@ export function cardTitleLayout(title: string, entity: boolean, facts: boolean, 
   const availableHeight = (facts ? 260 : 368) - subtitleHeight - 28;
   let fontSize = Math.min(titleFontSize(title.length), entity ? 84 : 96);
   let lines = wrapCardTitle(title, Math.floor(measureWidth / (fontSize * 0.64)));
-  while ((lines.length > 3 || lines.length * fontSize * 1.13 > availableHeight) && fontSize > 42) {
+  // A qualified call/event name is one readable label. Prefer slightly smaller
+  // type to splitting it mid-word when it can fit above the legibility floor.
+  const longestWord = Math.max(...title.split(/\s+/).map(textUnits));
+  const wordFitsAtFloor = longestWord * 42 * 0.64 <= measureWidth;
+  while (
+    (lines.length > 3 ||
+      lines.length * fontSize * 1.13 > availableHeight ||
+      (wordFitsAtFloor && longestWord * fontSize * 0.64 > measureWidth)) &&
+    fontSize > 42
+  ) {
     fontSize -= 2;
     lines = wrapCardTitle(title, Math.floor(measureWidth / (fontSize * 0.64)));
   }

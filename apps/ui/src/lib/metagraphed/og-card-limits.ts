@@ -37,4 +37,4 @@ export const OG_LIMITS = {
 } as const;
 
 /** Shared by emitted image URLs and the renderer cache key. */
-export const OG_CARD_VERSION = "7";
+export const OG_CARD_VERSION = "8";
