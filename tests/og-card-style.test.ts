@@ -231,6 +231,7 @@ describe("API preview font requests", () => {
       const url = new URL(input);
       asked.push(url);
       assert.ok(init.signal instanceof AbortSignal);
+      assert.equal(init.redirect, "error");
       return url.hostname === "fonts.googleapis.com"
         ? new Response(
             "@font-face { src: url(https://fonts.gstatic.com/test.woff) format('woff'); }",
@@ -255,6 +256,30 @@ describe("API preview font requests", () => {
       assert.equal([...url.searchParams.keys()].length, 2);
     }
     assert.deepEqual(new Uint8Array(fonts[0].data), new Uint8Array([1, 2, 3]));
+  });
+
+  test("rejects CSS sources outside the fixed HTTPS font origin before fetching them", async () => {
+    for (const source of [
+      "http://fonts.gstatic.com/font.ttf",
+      "https://example.com/font.ttf",
+      "https://fonts.gstatic.com.example.com/font.ttf",
+      "https://name@fonts.gstatic.com/font.ttf",
+      "https://:password@fonts.gstatic.com/font.ttf",
+      "https://fonts.gstatic.com:444/font.ttf",
+      "https://127.0.0.1/font.ttf",
+      "/relative-font.ttf",
+    ]) {
+      const asked: string[] = [];
+      vi.stubGlobal("fetch", async (input: string) => {
+        asked.push(input);
+        return new Response(`src: url(${source})`);
+      });
+      await assert.rejects(loadCardFonts("<div>Public card title</div>"));
+      assert.ok(asked.length > 0);
+      assert.ok(
+        asked.every((url) => new URL(url).hostname === "fonts.googleapis.com"),
+      );
+    }
   });
 
   test("fails a render on unavailable CSS, missing face, font error or network failure", async () => {
