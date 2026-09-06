@@ -17,6 +17,7 @@ export const OG_LIMITS = {
   title: 110,
   subtitle: 90,
   eyebrow: 32,
+  identifier: 80,
   statLabel: 24,
   statValue: 28,
   /** A bare DNS name, never a URL — see normalizeLogoHost. */
@@ -36,4 +37,4 @@ export const OG_LIMITS = {
 } as const;
 
 /** Shared by emitted image URLs and the renderer cache key. */
-export const OG_CARD_VERSION = "6";
+export const OG_CARD_VERSION = "7";
