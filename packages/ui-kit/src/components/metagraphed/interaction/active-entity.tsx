@@ -177,24 +177,26 @@ export interface EntityMarkProps {
 }
 
 const MARKS_SELECTOR = "[data-marks]";
-// A mark is a button (role="button" is in EntityMarkProps); a chart may also
-// stamp data-entity on non-focusable parts -- a stacked column's segments --
-// which must not join the roving order.
-const MARK_SELECTOR = '[data-entity][role="button"]';
+// Native links retain their link semantics. Decorative parts (for example a
+// stacked column's segments) also carry data-entity but are not controls.
+const MARK_SELECTOR =
+  '[data-entity][role="button"], a[data-entity][href], button[data-entity]';
 
 function siblingsOf(el: Element): Element[] {
   const group = el.closest(MARKS_SELECTOR);
   if (!group) return [el];
   return Array.from(group.querySelectorAll(MARK_SELECTOR)).filter(
-    (m) => m.getAttribute("aria-disabled") !== "true",
+    (m) =>
+      m.closest(MARKS_SELECTOR) === group &&
+      m.getAttribute("aria-disabled") !== "true" &&
+      !m.hasAttribute("disabled"),
   );
 }
 
 /**
- * Props to spread on a mark. Every mark is a button: `role="button"`, an
- * accessible name, and a roving tabindex so that a `[data-marks]` group is one
- * Tab stop (the first mark, or the active one) and ArrowLeft/Right/Home/End
- * move focus inside it.
+ * Props to spread on a mark: an accessible name, a default button role and
+ * roving tabindex. Native anchors omit the role and keep their href behavior.
+ * ArrowLeft/Right/Home/End move focus inside the nearest `[data-marks]` group.
  */
 export function useEntityMark(
   key: string,
@@ -212,16 +214,13 @@ export function useEntityMark(
     elRef.current = el;
   }, []);
 
-  // Exactly one tabbable mark per group at rest: the first one. Re-evaluated
-  // when the key changes (a re-keyed list) -- group membership is static
-  // otherwise.
+  // At rest the first enabled mark is tabbable. Groups have static membership;
+  // re-key a changed group when its membership or disabled states change.
   useLayoutEffect(() => {
     const el = elRef.current;
     if (!el) return;
-    const group = el.closest(MARKS_SELECTOR);
-    const head = group ? group.querySelector(MARK_SELECTOR) : null;
-    setIsFirst(head === el || head === null);
-  }, [key]);
+    setIsFirst(siblingsOf(el)[0] === el);
+  }, [key, disabled]);
 
   const entity = useCallback(
     (): ActiveEntity => ({ key, source, element: elRef.current, data }),
@@ -258,11 +257,24 @@ export function useEntityMark(
   }, [ctx]);
   const onClick = useCallback(
     (event: MouseEvent<Element>) => {
+      // Table rows share the highlight contract, but their links, disclosure
+      // buttons and inputs own their activation, including a first touch tap.
+      const control =
+        event.target instanceof Element
+          ? event.target.closest(
+              'a[href], button, input, select, textarea, [role="button"], [role="link"]',
+            )
+          : null;
+      if (control && control !== event.currentTarget) return;
       if (disabled) {
         event.preventDefault();
         return;
       }
-      if (tapIntent(lastPointerType.current, isPinnedHere) === "pin") {
+      // Native keyboard clicks have no pointer detail, even when this mark
+      // was last touched on a device that also has a keyboard.
+      const pointerType =
+        event.detail === 0 ? "keyboard" : lastPointerType.current;
+      if (tapIntent(pointerType, isPinnedHere) === "pin") {
         // A first touch tap pins; it must not also follow a link.
         event.preventDefault();
         ctx.pin(entity());
@@ -274,6 +286,9 @@ export function useEntityMark(
   );
   const onKeyDown = useCallback(
     (event: KeyboardEvent<Element>) => {
+      // Do not cancel a link, disclosure or input's native key event when it
+      // bubbles through an entity-marked table row.
+      if (event.target !== event.currentTarget) return;
       const el = elRef.current;
       if (!el) return;
       if (event.key === "Escape") {
@@ -282,7 +297,14 @@ export function useEntityMark(
         return;
       }
       if (event.key === "Enter" || event.key === " ") {
-        if (disabled) return;
+        if (disabled) {
+          event.preventDefault();
+          return;
+        }
+        // Enter follows an anchor; Space keeps its native scrolling behavior.
+        // Button marks still invoke their callback once, without a second
+        // synthetic click from the browser.
+        if (el.matches("a[href]")) return;
         event.preventDefault();
         onActivate?.();
         return;
