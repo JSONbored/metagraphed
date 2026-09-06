@@ -231,7 +231,7 @@ describe("API preview font requests", () => {
       const url = new URL(input);
       asked.push(url);
       assert.ok(init.signal instanceof AbortSignal);
-      assert.equal(init.redirect, "error");
+      assert.equal(init.redirect, "manual");
       return url.hostname === "fonts.googleapis.com"
         ? new Response(
             "@font-face { src: url(https://fonts.gstatic.com/test.woff) format('woff'); }",
@@ -279,6 +279,22 @@ describe("API preview font requests", () => {
       assert.ok(
         asked.every((url) => new URL(url).hostname === "fonts.googleapis.com"),
       );
+    }
+  });
+
+  test("refuses redirects from either font request without following them", async () => {
+    for (const redirectHost of ["fonts.googleapis.com", "fonts.gstatic.com"]) {
+      vi.stubGlobal("fetch", async (input: string, init: RequestInit) => {
+        assert.equal(init.redirect, "manual");
+        const url = new URL(input);
+        if (url.hostname === redirectHost)
+          return new Response(null, {
+            status: 302,
+            headers: { location: "https://example.com/font" },
+          });
+        return new Response("src: url(https://fonts.gstatic.com/font.ttf)");
+      });
+      await assert.rejects(loadCardFonts("<div>Public card title</div>"));
     }
   });
 

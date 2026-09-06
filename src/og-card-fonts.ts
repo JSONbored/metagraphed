@@ -24,13 +24,14 @@ export async function loadCardFonts(markup: string) {
             "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; de-at) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1",
         },
         signal: AbortSignal.timeout(5000),
-        redirect: "error",
+        redirect: "manual",
       });
       if (!css.ok) throw new Error(`card font CSS unavailable: ${css.status}`);
       const src = (await css.text()).match(/src:\s*url\(([^)]+)\)/)?.[1];
       if (!src) throw new Error("card font CSS has no source");
       // CSS is a remote response, not authority to request an arbitrary host.
-      // Disallow redirects on both requests so the same boundary holds at
+      // Inspect redirects without following them (Workers supports manual, not
+      // error mode). Non-success responses below preserve the same boundary at
       // every hop, including for a compromised font stylesheet.
       const source = new URL(src);
       if (
@@ -44,7 +45,7 @@ export async function loadCardFonts(markup: string) {
       }
       const font = await fetch(source.href, {
         signal: AbortSignal.timeout(5000),
-        redirect: "error",
+        redirect: "manual",
       });
       if (!font.ok) throw new Error(`card font unavailable: ${font.status}`);
       return {
