@@ -8,7 +8,11 @@ import type { ReactNode } from "react";
 import satori from "satori";
 import { html } from "satori-html";
 import { loadCardFonts } from "../src/og-card-fonts.ts";
-import { CARD_VERSION, LOGO_DATA_URI } from "../src/og-card-style.ts";
+import {
+  CARD_VERSION,
+  LOGO_DATA_URI,
+  renderCardLayout,
+} from "../src/og-card-style.ts";
 import { renderMarkup } from "../src/og-image.ts";
 import {
   accountFacts,
@@ -35,6 +39,21 @@ const subnet = subnetFacts(
   19,
 )!;
 const variants = {
+  "all-fields-maximum": renderCardLayout({
+    title: "W".repeat(110),
+    identifier: "Identifier ".repeat(4),
+    subtitle: "W".repeat(90),
+    stats: [1, 2, 3, 4].map(() => ({
+      label: "W".repeat(24),
+      value: "9".repeat(28),
+    })),
+    mark: "65535",
+    entity: true,
+  }),
+  "black-logo": renderEntityMarkup({
+    ...subnet,
+    logo: `data:image/png;base64,${new Resvg(Buffer.from(LOGO_DATA_URI.split(",")[1], "base64").toString().replaceAll("#30ffc0", "#000000")).render().asPng().toString("base64")}`,
+  }),
   landing: renderMarkup([
     "128 subnets",
     "2,540 endpoints",
@@ -55,6 +74,7 @@ const variants = {
   }),
   "subnet-absent": renderEntityMarkup({
     kind: "Bittensor subnet 65535",
+    identifier: "Subnet 65535",
     title: "Subnet 65535",
     stats: [],
     mark: "65535",
@@ -65,6 +85,7 @@ const variants = {
   "maximum-text": renderEntityMarkup({
     title: "Long public subnet identity ".repeat(5),
     kind: "Bittensor subnet 65535",
+    identifier: "Subnet 65535",
     mark: "65535",
     stats: ["Coverage", "Published field", "Observed value"].map((label) => ({
       label: label.repeat(4),
@@ -73,12 +94,14 @@ const variants = {
   }),
   "unbroken-text": renderEntityMarkup({
     kind: "Bittensor subnet 0",
+    identifier: "Subnet 0",
     title: "W".repeat(150),
     stats: [],
     mark: "0",
   }),
   unicode: renderEntityMarkup({
     kind: "Bittensor subnet 7",
+    identifier: "Subnet 7",
     title: "Research & data — τ",
     stats: [
       { label: "Readiness", value: "96/100" },

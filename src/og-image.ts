@@ -191,7 +191,6 @@ export function buildStatParts(
 export function renderMarkup(statParts: string[] | null | undefined): string {
   return renderCardLayout({
     title: "Metagraphed API",
-    eyebrow: "Public registry",
     subtitle: TAGLINE,
     stats: (statParts ?? []).slice(0, 4).map((part) => {
       const separator = part.indexOf(" ");

@@ -117,6 +117,7 @@ describe("the facts a card draws", () => {
     const facts = subnetFacts(INDEX, 64);
     assert.equal(facts?.title, "Chutes");
     assert.equal(facts?.kind, "Bittensor subnet 64");
+    assert.equal(facts?.identifier, "Subnet 64");
     assert.deepEqual(
       facts?.stats.map((s) => s.label),
       ["Readiness", "Surfaces", "Coverage"],
@@ -143,6 +144,8 @@ describe("the facts a card draws", () => {
   test("an account card names the address it can stand behind", () => {
     const ss58 = "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3";
     const facts = accountFacts(ss58);
+    assert.deepEqual(facts.stats, []);
+    assert.equal(facts.subtitle, "Account activity on Bittensor");
     assert.ok(facts.title.startsWith("5F4tQy"));
     assert.ok(facts.title.endsWith("uyHbZAc3".slice(-6)));
   });
@@ -156,6 +159,14 @@ describe("the cache key", () => {
       64,
     );
     assert.notEqual(factsDigest(a!), factsDigest(b!));
+    assert.notEqual(
+      factsDigest(a!),
+      factsDigest({ ...a!, identifier: "Subnet 65" }),
+    );
+    assert.notEqual(
+      factsDigest(a!),
+      factsDigest({ ...a!, subtitle: "Context" }),
+    );
   });
 
   test("the digest is stable when nothing drawn changed", () => {
@@ -485,9 +496,8 @@ describe("the font subset", () => {
     for (const glyph of "Chutes96/100") {
       assert.ok(text.includes(glyph), `missing glyph: ${glyph}`);
     }
-    // The card draws labels uppercased, so the subset must carry that form.
-    assert.ok(text.includes("READINESS"));
-    assert.ok(text.includes("Metagraphed"));
+    // The subset must carry sentence-case labels exactly as painted.
+    assert.ok(text.includes("Readiness"));
     assert.ok(text.includes("api.metagraph.sh"));
   });
 });
@@ -570,13 +580,13 @@ describe("the font subset", () => {
     assert.ok(cardText(facts).includes("7"), "the netuid badge glyph");
   });
 
-  test("covers the UPPERCASED labels the card actually draws", () => {
-    // The card uppercases kind and labels. A subset built from the lowercase
-    // form leaves every label a row of blank boxes.
+  test("covers the identifier and sentence-case labels the card draws", () => {
+    // The explicit identifier stays beside the subject after the generic
+    // category badge is removed.
     const facts = subnetFacts(INDEX, 64)!;
     const text = cardText(facts);
-    assert.ok(text.includes("BITTENSOR"));
-    assert.ok(text.includes("READINESS"));
+    assert.ok(text.includes("Subnet 64"));
+    assert.ok(text.includes("Readiness"));
   });
 });
 
@@ -647,7 +657,7 @@ describe("the logo fetch is allowlisted", () => {
 });
 
 describe("the badge", () => {
-  test("a wide netuid gets the smaller face so it fits the square", () => {
+  test("a wide netuid gets the smaller face so it fits the identity area", () => {
     const wide = renderEntityMarkup({
       kind: "k",
       title: "t",
@@ -660,8 +670,8 @@ describe("the badge", () => {
       stats: [],
       mark: "1",
     });
-    assert.ok(wide.includes("font-size:24px"));
-    assert.ok(one.includes("font-size:32px"));
+    assert.ok(wide.includes("font-size:58px"));
+    assert.ok(one.includes("font-size:108px"));
   });
 
   test("no logo and no mark draws no badge rather than an empty square", () => {

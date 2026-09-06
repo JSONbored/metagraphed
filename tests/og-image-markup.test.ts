@@ -14,13 +14,13 @@ describe("published landing card markup", () => {
       "Metagraphed API",
       "The Bittensor subnet integration registry",
       "128",
-      "SUBNETS",
+      "Subnets",
       "2,540",
-      "ENDPOINTS",
+      "Endpoints",
       "312",
-      "PROVIDERS",
+      "Providers",
       "87%",
-      "COVERAGE",
+      "Coverage",
     ])
       assert.ok(markup.includes(text));
     assert.ok(markup.includes("background:#161616"));
@@ -29,13 +29,13 @@ describe("published landing card markup", () => {
     for (const parts of [[], null, undefined]) {
       const markup = renderMarkup(parts);
       assert.ok(markup.includes("Metagraphed API"));
-      assert.ok(!markup.includes("COVERAGE"));
+      assert.ok(!markup.includes("Coverage"));
       assert.ok(!markup.includes("0/100"));
     }
   });
   test("keeps a count without a separator safe and bounded", () => {
     const markup = renderMarkup(["123"]);
-    assert.ok(markup.includes("REGISTRY"));
+    assert.ok(markup.includes("Registry"));
     assert.ok(markup.includes("123"));
   });
 });

@@ -1,18 +1,22 @@
 # API social previews
 
 The API landing and subnet/account images use a fixed graphite treatment with
-the site's dark tokens, owned mark and bounded text. A preview depicts supplied
+the site's dark tokens, owned wordmark and bounded text. The open composition
+uses a prominent Geist Mono subject, compact sentence-case facts and a separate
+entity identity area. It has no header/footer bands or repeated category label.
+A preview depicts supplied
 public data; it does not establish the freshness of a crawler's cached image.
 
 `src/og-card-style.ts` contains renderer-compatible literals and layout only.
 Its selected colors are checked against `packages/ui-kit/src/styles.css`; the
-backend imports no website runtime. Geist is the primary face, Geist Mono draws
-fact values, and Inter covers additional identity glyphs. The shared font loader
+backend imports no website runtime. The wordmark geometry is checked against
+the site's owned asset. Geist Mono draws headlines and fact values; Geist draws
+supporting copy, and Inter covers additional identity glyphs. The shared font loader
 requests five bounded faces with encoded glyph subsets and timeouts. A font or
 render failure uses the existing short-cache static fallback.
 
 The landing card stays a publish-time artifact, with its renderer version in
-the filename: `/metagraph/og-image-v3.png` for version 3. The Worker reads only
+the filename: `/metagraph/og-image-v4.png` for version 4. The Worker reads only
 its matching filename. Until that version has been published, it serves the new
 dark static fallback for 60 seconds without warming the successful image cache.
 An older unversioned image therefore cannot masquerade as the new artwork.
@@ -32,6 +36,12 @@ runtime renderer and bounded registry read, with R2 keys under
 therefore gets new artwork after a renderer version change. Old cache objects
 need no purge. Public entity URLs remain stable, and third-party recrawl is
 outside these internal cache guarantees.
+
+Subnet identifiers have their own field beside the title rather than taking a
+fact slot. Account cards show one abbreviated address and destination context,
+with no duplicate address statistic or invented account values. Both identifiers
+and context participate in the content digest. The landing retains up to four
+published facts and subnet cards up to three; missing facts reserve no empty row.
 
 Regenerate local synthetic examples and the committed full-size API fallback:
 

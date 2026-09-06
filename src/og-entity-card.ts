@@ -60,8 +60,12 @@ const ACCOUNT_PATH = /^\/og\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\.png$/;
 export interface EntityCardFacts {
   /** The line a reader identifies the entity by. */
   title: string;
-  /** What kind of thing this is, shown small above the title. */
+  /** What kind of record this is, retained in the content cache identity. */
   kind: string;
+  /** Essential identifier when the subject is a declared name. */
+  identifier?: string;
+  /** Short destination context, separate from the entity's name. */
+  subtitle?: string;
   /** Up to three `label -> value` pairs. Fewer is fine; a card with one real
    * fact reads better than one padded with nulls. */
   stats: { label: string; value: string }[];
@@ -92,10 +96,12 @@ export interface EntityCardFacts {
 export function renderEntityMarkup(facts: EntityCardFacts): string {
   return renderCardLayout({
     title: facts.title,
-    eyebrow: facts.kind,
+    identifier: facts.identifier,
+    subtitle: facts.subtitle,
     stats: facts.stats.slice(0, 3),
     logo: facts.logo,
     mark: facts.mark,
+    entity: true,
   });
 }
 
@@ -113,6 +119,8 @@ export function factsDigest(facts: EntityCardFacts): string {
   // every request to learn the same thing would be absurd.
   const canonical = JSON.stringify([
     facts.kind,
+    facts.identifier ?? null,
+    facts.subtitle ?? null,
     facts.title,
     facts.stats.map((s) => [s.label, s.value]),
     facts.logoUrl ?? null,
@@ -127,7 +135,7 @@ export function factsDigest(facts: EntityCardFacts): string {
 }
 
 /**
- * `cache/og/v3/subnets/64-a1b2c3d4.png` -- the digest is IN the key, so a
+ * `cache/og/v4/subnets/64-a1b2c3d4.png` -- the digest is IN the key, so a
  * regenerate writes a new object rather than overwriting a live one.
  *
  * UNDER `cache/`, deliberately outside `metagraph/`. Objects under the
@@ -266,6 +274,7 @@ export function subnetFacts(
   }
   return {
     kind: `Bittensor subnet ${netuid}`,
+    identifier: `Subnet ${netuid}`,
     title: name ?? `Subnet ${netuid}`,
     stats,
     // Held for the render to inline; a URL alone is not something satori can
@@ -282,7 +291,8 @@ export function accountFacts(ss58: string): EntityCardFacts {
   return {
     kind: "Bittensor account",
     title: `${ss58.slice(0, 6)}…${ss58.slice(-6)}`,
-    stats: [{ label: "Address", value: `${ss58.slice(0, 12)}…` }],
+    subtitle: "Account activity on Bittensor",
+    stats: [],
     // An account has no logo and nothing short enough to badge. The card
     // carries the truncated address and our own mark, which is the honest
     // amount of identity we hold for one.

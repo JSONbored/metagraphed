@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, test, vi } from "vitest";
 import {
   CARD_LIMITS,
+  WORDMARK_DATA_URI,
+  cardTitleLines,
   CARD_VERSION,
   OG_THEME,
   cardGlyphs,
@@ -39,6 +41,63 @@ describe("API preview composition", () => {
       );
   });
 
+  test("uses the exact owned wordmark geometry and removes generic bands", () => {
+    const source = readFileSync(
+      new URL(
+        "../packages/ui-kit/src/components/metagraphed/wordmark.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    const svg = source
+      .match(/<svg[\s\S]*?<\/svg>/)![0]
+      .replace("className={className}", 'width="1190.44" height="164.29"')
+      .replaceAll("currentColor", OG_THEME.ink)
+      .replace(/\s+/g, " ")
+      .trim();
+    assert.equal(atob(WORDMARK_DATA_URI.split(",")[1]), svg);
+    const markup = renderCardLayout({
+      title: "Subnet 19",
+      identifier: "Subnet 19",
+      stats: [],
+      entity: true,
+    });
+    assert.equal((cardGlyphs(markup).match(/Subnet 19/g) ?? []).length, 1);
+    assert.ok(!markup.includes("border-bottom"));
+    assert.ok(!markup.includes("height:152px"));
+    assert.ok(markup.includes("width:1072px"));
+  });
+
+  test("bounds headline lines while retaining word and codepoint boundaries", () => {
+    assert.deepEqual(cardTitleLines("", 750, 48), []);
+    assert.deepEqual(cardTitleLines("Short title", 750, 48), ["Short title"]);
+    const words = cardTitleLines(
+      "Long public subnet identity ".repeat(8),
+      750,
+      48,
+    );
+    assert.equal(words.length, 3);
+    assert.ok(words[2].endsWith("…"));
+    assert.equal(words[0], "Long public subnet identity");
+    const unbroken = cardTitleLines("🙂".repeat(110), 750, 48, 2);
+    assert.equal(unbroken.length, 2);
+    assert.ok(unbroken[1].endsWith("…"));
+    assert.ok(unbroken.every((line) => !/[\uD800-\uDBFF]$/.test(line)));
+    const dense = renderCardLayout({
+      title: "X".repeat(110),
+      identifier: "Subnet 19",
+      subtitle: "Context",
+      stats: [{ label: "Count", value: "0" }],
+    });
+    assert.ok(dense.includes("top:128px"));
+    assert.ok(dense.includes("line-clamp:2"));
+    assert.ok(
+      dense.includes("display:block;margin:0;max-width:750px"),
+      "Satori lineClamp requires block text layout",
+    );
+    assert.ok(dense.includes(">0</p>"));
+  });
+
   test("bounds text nodes without splitting code points or injecting markup", () => {
     assert.equal(
       cardLabel(' <script>alpha</script> & "beta" \n', 100),
@@ -54,13 +113,14 @@ describe("API preview composition", () => {
 
   test("sizes short, medium, long titles and bounded stat values", () => {
     for (const [length, size] of [
-      [24, 68],
-      [48, 54],
-      [110, 42],
+      [17, 84],
+      [32, 72],
+      [52, 60],
+      [110, 48],
     ]) {
       const markup = renderCardLayout({
         title: "X".repeat(length),
-        eyebrow: "Public",
+        identifier: "Subnet 19",
         stats: [
           { label: "short", value: "1" },
           { label: "medium", value: "1".repeat(12) },
@@ -77,10 +137,10 @@ describe("API preview composition", () => {
     }
   });
 
-  test("preserves absent facts, caps the landing rail and uses only inlined PNG logos", () => {
+  test("preserves absent facts, caps the landing facts and uses only inlined PNG logos", () => {
     const bare = renderCardLayout({
       title: "Public",
-      eyebrow: "Registry",
+      identifier: "Subnet 19",
       stats: [],
     });
     assert.ok(!bare.includes("0/100"));
@@ -88,7 +148,7 @@ describe("API preview composition", () => {
     const logo = "data:image/png;base64,AQID";
     const full = renderCardLayout({
       title: "Public",
-      eyebrow: "Registry",
+      identifier: "Subnet 19",
       subtitle: "Public data",
       stats: [1, 2, 3, 4, 5].map((n) => ({
         label: `field${n}`,
@@ -98,8 +158,8 @@ describe("API preview composition", () => {
       mark: "19",
     });
     assert.ok(full.includes(`src="${logo}"`));
-    assert.ok(full.includes("FIELD4"));
-    assert.ok(!full.includes("FIELD5"));
+    assert.ok(full.includes("Field4"));
+    assert.ok(!full.includes("Field5"));
     for (const unsafe of [
       "https://example.com/logo.png",
       "data:image/svg+xml;base64,PHN2Zz4=",
@@ -107,7 +167,7 @@ describe("API preview composition", () => {
     ]) {
       const markup = renderCardLayout({
         title: "Public",
-        eyebrow: "Registry",
+        identifier: "Subnet 19",
         stats: [],
         logo: unsafe,
         mark: "65535",
@@ -118,10 +178,10 @@ describe("API preview composition", () => {
     assert.ok(
       renderCardLayout({
         title: "Public",
-        eyebrow: "Registry",
+        identifier: "Subnet 19",
         stats: [],
         logo: "invalid",
-      }).includes("width:1072px"),
+      }).includes("width:750px"),
     );
   });
 
@@ -129,16 +189,15 @@ describe("API preview composition", () => {
     const text = cardGlyphs(
       renderCardLayout({
         title: "Long ".repeat(40),
-        eyebrow: "Subnet",
+        identifier: "Subnet 19",
         stats: [{ label: "Coverage", value: "87% & τ" }],
         mark: "19",
       }),
     );
     for (const expected of [
-      "Metagraphed",
       "api.metagraph.sh",
       "…",
-      "COVERAGE",
+      "Coverage",
       "87% & τ",
       "19",
     ])
