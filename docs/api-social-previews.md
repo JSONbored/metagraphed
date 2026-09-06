@@ -66,3 +66,8 @@ invalidate a social platform's already-cached page or preview.
 Source deployment can establish the new dark fallback before the next normal
 artifact publication. Dynamic registry counts remain pending until the matching
 versioned artifact has a successful render, upload and served-image receipt.
+
+For publishing new landing artwork without a data refresh, see
+[image-only publication](image-only-publication.md). That flow preserves the
+active catalog and its data timestamps, and requires the shared release journal
+to be explicitly initialized before image publication is enabled.

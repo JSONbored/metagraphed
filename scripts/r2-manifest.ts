@@ -26,6 +26,9 @@ interface Artifact {
   sha256: string;
   size_bytes: number;
   storage_tier: string;
+  artwork_receipt_key?: string;
+  renderer_version?: string;
+  source_sha256?: string;
 }
 
 interface FullManifest {
@@ -205,6 +208,38 @@ async function buildManifest(
       size_bytes: fileStat.size,
       storage_tier: artifactStorageTierForRelativePath(relative),
     });
+  }
+  const provenance = (await readJson(
+    path.join(repoRoot, "dist/og-image-provenance.json"),
+  ).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== "ENOENT") throw error;
+    return {};
+  })) as Record<string, Record<string, unknown>>;
+  for (const artifact of artifacts) {
+    if (
+      !OG_IMAGE_FILE_NAMES.some(
+        (name) => artifact.path === `/metagraph/${name}`,
+      )
+    )
+      continue;
+    const protectedFields = new Set([
+      "path",
+      "key",
+      "latest_key",
+      "sha256",
+      "size_bytes",
+      "content_type",
+      "storage_tier",
+    ]);
+    for (const [key, value] of Object.entries(
+      provenance[artifact.path] ?? {},
+    )) {
+      if (protectedFields.has(key))
+        throw new Error(
+          "Image provenance must not replace manifest identity fields.",
+        );
+      Object.defineProperty(artifact, key, { value, enumerable: true });
+    }
   }
   artifacts.sort((a, b) => a.path.localeCompare(b.path));
   return {

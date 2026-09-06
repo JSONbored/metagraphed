@@ -574,6 +574,8 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   ...OG_IMAGE_FILE_NAMES.map(
     (name) => new RegExp(`^${name.replaceAll(".", "\\.")}$`),
   ),
+  // Successful render provenance is staged beside the PNGs, never in git.
+  /^og-image-render\.json$/,
 ];
 
 // Committed to git (and mirrored to R2): the low-churn, consumer-facing API
