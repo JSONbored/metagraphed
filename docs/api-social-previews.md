@@ -12,11 +12,18 @@ Its selected colors are checked against `packages/ui-kit/src/styles.css`; the
 backend imports no website runtime. The wordmark geometry is checked against
 the site's owned asset. Geist Mono draws headlines and fact values; Geist draws
 supporting copy, and Inter covers additional identity glyphs. The shared font loader
-requests five bounded faces with encoded glyph subsets and timeouts. A font or
+requests five base faces with encoded glyph subsets and timeouts. Han, kana and
+Hangul display text conditionally adds at most three Noto Sans subset faces;
+ordinary Latin cards add no requests or fonts. The conditional loader checks
+actual Unicode glyph coverage and bounds its downloads, concurrent requests and
+memo. Missing required glyphs fail the render instead of caching broken artwork.
+Display copy is normalized to NFC before truncation; original record keys stay
+unchanged. Arabic shaping and complex emoji sequences are separate limitations.
+A font or
 render failure uses the existing short-cache static fallback.
 
 The landing card stays a publish-time artifact, with its renderer version in
-the filename: `/metagraph/og-image-v4.png` for version 4. The Worker reads only
+the filename: `/metagraph/og-image-v5.png` for version 5. The Worker reads only
 its matching filename. Until that version has been published, it serves the new
 dark static fallback for 60 seconds without warming the successful image cache.
 An older unversioned image therefore cannot masquerade as the new artwork.

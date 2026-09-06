@@ -85,12 +85,28 @@ export function cardTitleLines(
   let remaining = Array.from(title);
   const lines: string[] = [];
   while (remaining.length) {
-    if (remaining.length <= budget || lines.length === maxLines - 1) {
-      lines.push(cardLabel(remaining.join(""), budget));
+    // Noto's CJK letters occupy a full em. A Latin-only character budget lets
+    // Satori wrap these explicit lines again and pushes the facts into the
+    // footer. Two units is conservative; the Latin path keeps its exact cut.
+    let end = 0;
+    let units = 0;
+    while (end < remaining.length) {
+      const glyphUnits =
+        /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u.test(
+          remaining[end],
+        )
+          ? 2
+          : 1;
+      if (units + glyphUnits > budget) break;
+      units += glyphUnits;
+      end++;
+    }
+    if (remaining.length <= end || lines.length === maxLines - 1) {
+      lines.push(cardLabel(remaining.join(""), end));
       break;
     }
-    const boundary = remaining.slice(0, budget).lastIndexOf(" ");
-    const end = boundary > budget / 2 ? boundary : budget;
+    const boundary = remaining.slice(0, end).lastIndexOf(" ");
+    end = boundary > end / 2 ? boundary : end;
     lines.push(remaining.slice(0, end).join(""));
     remaining = Array.from(remaining.slice(end).join("").trim());
   }

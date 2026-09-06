@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cardGlyphs, renderCardLayout } from "../src/og-card-style.ts";
+import {
+  cardGlyphs,
+  cardTitleLines,
+  renderCardLayout,
+} from "../src/og-card-style.ts";
 import { loadCardFonts } from "../src/og-card-fonts.ts";
 import {
   cardFontFamily,
@@ -111,6 +115,13 @@ afterEach(() => {
 });
 
 describe("conditional OG script policy", () => {
+  it("budgets full-width title glyphs so two requested lines stay two lines", () => {
+    const lines = cardTitleLines("漢字かなカナ한글𠮷龘".repeat(10), 750, 48, 2);
+    expect(lines).toHaveLength(2);
+    expect(lines[1].endsWith("…")).toBe(true);
+    for (const line of lines)
+      expect(Array.from(line).length).toBeLessThanOrEqual(14);
+  });
   it("loads required faces through the API/native publisher's shared entrypoint", async () => {
     const f = fetcher();
     vi.stubGlobal("fetch", (async (
