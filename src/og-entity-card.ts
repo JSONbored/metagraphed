@@ -49,10 +49,14 @@ import {
   renderCardLayout,
 } from "./og-card-style.ts";
 import { loadCardFonts } from "./og-card-fonts.ts";
+import { type EntityLogo, fetchLogoBytes } from "./og-entity-logo.ts";
+export { fetchLogoBytes } from "./og-entity-logo.ts";
 
 /** The R2 object is versioned. Public entity URLs remain stable, so social
  * platforms may retain their own image for this bounded response lifetime. */
 const CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
+const DEGRADED_CACHE_CONTROL = "public, max-age=60";
+const LOGO_CACHE_METADATA = "entity_logo";
 
 const SUBNET_PATH = /^\/og\/subnets\/(\d{1,5})\.png$/;
 const ACCOUNT_PATH = /^\/og\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\.png$/;
@@ -160,29 +164,44 @@ export function cardKey(kind: string, subject: string, digest: string): string {
  */
 export function r2CardCache(env: {
   METAGRAPH_ARCHIVE?: {
-    get?: (
-      key: string,
-    ) => Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null>;
+    get?: (key: string) => Promise<{
+      arrayBuffer(): Promise<ArrayBuffer>;
+      customMetadata?: Record<string, string>;
+    } | null>;
     put?: (
       key: string,
       body: ArrayBuffer,
-      options?: { httpMetadata?: { contentType?: string } },
+      options?: {
+        httpMetadata?: { contentType?: string };
+        customMetadata?: Record<string, string>;
+      },
     ) => Promise<unknown>;
   };
 }): Pick<EntityCardDeps, "readCard" | "writeCard"> {
   return {
-    readCard: async (key) => {
+    readCard: async (key, requiresLogo = false) => {
       // No binding is a MISS, not an error: the card renders and the run
       // simply does not get cached. A throw here would take an unfurl down
       // over a cache that was never configured.
       const archive = env.METAGRAPH_ARCHIVE;
       if (!archive?.get) return null;
       const object = await archive.get(key);
+      // Older objects do not record whether an expected logo loaded. Repair
+      // those on demand; unchanged facts must not pin a transient monogram.
+      // Intentional no-logo cards remain compatible with the existing cache.
+      if (
+        requiresLogo &&
+        object?.customMetadata?.[LOGO_CACHE_METADATA] !== "included"
+      )
+        return null;
       return object ? await object.arrayBuffer() : null;
     },
-    writeCard: async (key, body) => {
+    writeCard: async (key, body, includesLogo = false) => {
       await env.METAGRAPH_ARCHIVE?.put?.(key, body, {
         httpMetadata: { contentType: "image/png" },
+        customMetadata: {
+          [LOGO_CACHE_METADATA]: includesLogo ? "included" : "absent",
+        },
       });
     },
   };
@@ -216,14 +235,21 @@ type ArtifactReader = (
   path: string,
 ) => Promise<{ ok: boolean; data?: unknown }>;
 
-type R2Writer = (key: string, body: ArrayBuffer) => Promise<void>;
+type R2Writer = (
+  key: string,
+  body: ArrayBuffer,
+  includesLogo?: boolean,
+) => Promise<void>;
 
 export interface EntityCardDeps {
   readArtifact?: ArtifactReader;
   /** Fetches the subnet logo so it can be inlined. Injectable so a test can
    * assert the render survives a logo that will not load. */
-  fetchLogo?: (url: string) => Promise<ArrayBuffer | null>;
-  readCard?: (key: string) => Promise<ArrayBuffer | null>;
+  fetchLogo?: (url: string) => Promise<EntityLogo | ArrayBuffer | null>;
+  readCard?: (
+    key: string,
+    requiresLogo?: boolean,
+  ) => Promise<ArrayBuffer | null>;
   writeCard?: R2Writer;
   render?: (markup: string) => Promise<ArrayBuffer>;
   assets?: AssetFetcher | null;
@@ -345,13 +371,14 @@ export async function handleEntityOgImage(
   if (!facts) return fallbackResponse(assets, url);
 
   const key = cardKey(target.kind, target.subject, factsDigest(facts));
+  const expectsLogo = Boolean(facts.logoUrl);
 
   // Inlined AFTER the digest, because the digest keys on the URL: the bytes do
   // not need fetching to know whether this card is already drawn.
 
   // The cached render, if this exact card has been drawn before.
   try {
-    const cached = await deps.readCard?.(key);
+    const cached = await deps.readCard?.(key, expectsLogo);
     if (cached) {
       return request.method === "HEAD"
         ? new Response(null, {
@@ -367,7 +394,10 @@ export async function handleEntityOgImage(
 
   if (request.method === "HEAD") {
     return new Response(null, {
-      headers: imageHeaders(undefined, CACHE_CONTROL),
+      headers: imageHeaders(
+        undefined,
+        expectsLogo ? DEGRADED_CACHE_CONTROL : CACHE_CONTROL,
+      ),
     });
   }
 
@@ -376,10 +406,14 @@ export async function handleEntityOgImage(
   // rather than taking the unfurl down with it.
   if (facts.logoUrl) {
     try {
-      const bytes = await (deps.fetchLogo
+      const fetched = await (deps.fetchLogo
         ? deps.fetchLogo(facts.logoUrl)
         : fetchLogoBytes(facts.logoUrl));
-      if (bytes) facts = { ...facts, logo: toDataUri(bytes) };
+      const logo =
+        fetched instanceof ArrayBuffer
+          ? { bytes: fetched, contentType: "image/png" }
+          : fetched;
+      if (logo?.bytes.byteLength) facts = { ...facts, logo: toDataUri(logo) };
     } catch (error) {
       console.error("og-entity: logo unavailable", error);
     }
@@ -395,14 +429,22 @@ export async function handleEntityOgImage(
     return fallbackResponse(assets, url);
   }
 
-  // Written AFTER the response is known good, and a write failure is not the
-  // caller's problem -- they already have the image.
-  try {
-    await deps.writeCard?.(key, png);
-  } catch (error) {
-    console.error("og-entity: cache write failed", error);
+  const complete = !expectsLogo || Boolean(facts.logo);
+  // A monogram for an expected logo is usable but incomplete. Do not persist
+  // it under the same key as a future complete card, or extend it via SWR.
+  if (complete) {
+    try {
+      await deps.writeCard?.(key, png, expectsLogo);
+    } catch (error) {
+      console.error("og-entity: cache write failed", error);
+    }
   }
-  return new Response(png, { headers: imageHeaders(undefined, CACHE_CONTROL) });
+  return new Response(png, {
+    headers: imageHeaders(
+      undefined,
+      complete ? CACHE_CONTROL : DEGRADED_CACHE_CONTROL,
+    ),
+  });
 }
 
 /**
@@ -431,26 +473,12 @@ async function renderPng(markup: string): Promise<ArrayBuffer> {
 }
 /* v8 ignore stop */
 
-/** Only our own logo cache, and only https. The URL comes from a registry row
- * a contributor can edit, so this is the difference between inlining an image
- * and letting that row point the Worker at anything it likes. */
-const LOGO_HOST = "metagraph.sh";
-
-export async function fetchLogoBytes(url: string): Promise<ArrayBuffer | null> {
-  const parsed = new URL(url);
-  if (parsed.protocol !== "https:" || parsed.hostname !== LOGO_HOST)
-    return null;
-  const response = await fetch(parsed.toString());
-  if (!response.ok) return null;
-  return await response.arrayBuffer();
-}
-
-function toDataUri(bytes: ArrayBuffer): string {
-  const view = new Uint8Array(bytes);
+function toDataUri(logo: EntityLogo): string {
+  const view = new Uint8Array(logo.bytes);
   let binary = "";
   for (let i = 0; i < view.length; i += 1)
     binary += String.fromCharCode(view[i]);
-  return `data:image/png;base64,${btoa(binary)}`;
+  return `data:${logo.contentType};base64,${btoa(binary)}`;
 }
 
 /** Every glyph the card draws, for the font subset. */

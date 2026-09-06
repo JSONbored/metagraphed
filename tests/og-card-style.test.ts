@@ -162,7 +162,7 @@ describe("API preview composition", () => {
     assert.ok(!full.includes("Field5"));
     for (const unsafe of [
       "https://example.com/logo.png",
-      "data:image/svg+xml;base64,PHN2Zz4=",
+      "data:image/webp;base64,PHN2Zz4=",
       'data:image/png;base64,AQID" onload="x',
     ]) {
       const markup = renderCardLayout({

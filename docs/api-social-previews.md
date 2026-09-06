@@ -37,6 +37,26 @@ therefore gets new artwork after a renderer version change. Old cache objects
 need no purge. Public entity URLs remain stable, and third-party recrawl is
 outside these internal cache guarantees.
 
+An entity with a declared logo is complete only after that logo has loaded.
+Complete R2 objects record `entity_logo: included` in custom metadata; an older
+object without this marker is regenerated on demand when a logo is expected.
+An unavailable logo still produces a readable monogram, but that response gets
+`public, max-age=60` with no stale-while-revalidate and is not stored in R2.
+A later request can recover the logo with unchanged facts and URL. Intentional
+no-logo cards keep their ordinary long cache and remain compatible with older
+objects. An uncached HEAD request does no image work and uses the short lifetime
+when a logo has not yet been verified. Crawlers control their own recrawl timing.
+
+Logo reads accept only direct HTTPS requests to `metagraph.sh`, with redirects
+disabled, a three-second deadline covering headers and body, and the publisher's
+512 KiB byte limit enforced on the stream. PNG, JPEG, GIF and vector SVG retain
+their actual MIME when inlined. Missing/unsupported MIME, mismatched raster
+signatures and SVGs with embedded images or external resources are declined.
+This validates format headers and bounds; raster decoding remains the renderer's
+job. WebP and ICO originals require a supported derivative and currently produce
+the same short-lived monogram. None of these failures establishes a completed
+R2 image or triggers a background logo probe.
+
 Subnet identifiers have their own field beside the title rather than taking a
 fact slot. Account cards show one abbreviated address and destination context,
 with no duplicate address statistic or invented account values. Both identifiers

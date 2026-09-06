@@ -274,7 +274,7 @@ describe("the handler never fails a crawler", () => {
         {
           assets,
           readArtifact: OK_ARTIFACT,
-          fetchLogo: NO_LOGO,
+          fetchLogo: async () => PNG,
           readCard: async (key) => cache.get(key) ?? null,
           writeCard: async (key, bytes) => {
             cache.set(key, bytes);
@@ -366,7 +366,7 @@ describe("the handler never fails a crawler", () => {
       {
         assets,
         readArtifact: OK_ARTIFACT,
-        fetchLogo: NO_LOGO,
+        fetchLogo: async () => PNG,
         render: async () => PNG,
         writeCard: async () => {
           throw new Error("bucket full");
@@ -406,7 +406,7 @@ describe("the handler never fails a crawler", () => {
       {
         assets,
         readArtifact: OK_ARTIFACT,
-        fetchLogo: NO_LOGO,
+        fetchLogo: async () => PNG,
         render: async () => PNG,
         writeCard: async (key) => {
           written.push(key);
@@ -629,7 +629,10 @@ describe("the logo fetch is allowlisted", () => {
     const seen: string[] = [];
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       seen.push(String(input));
-      return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+      return new Response(FALLBACK_PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      });
     }) as typeof fetch;
     try {
       const result = await fn();
@@ -643,7 +646,12 @@ describe("the logo fetch is allowlisted", () => {
     const { result, seen } = await withFetch(() =>
       fetchLogoBytes("https://metagraph.sh/logos/cache/x.png"),
     );
-    assert.ok(result instanceof ArrayBuffer);
+    assert.ok(
+      result &&
+        typeof result === "object" &&
+        "bytes" in result &&
+        result.bytes instanceof ArrayBuffer,
+    );
     assert.deepEqual(seen, ["https://metagraph.sh/logos/cache/x.png"]);
   });
 

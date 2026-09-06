@@ -95,7 +95,10 @@ export function renderCardLayout(card: CardLayout): string {
   // Only the handler's inlined PNG bytes reach this attribute. No remote URL is
   // ever resolved by the layout, even if a caller supplies one accidentally.
   const logo =
-    card.logo && /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(card.logo)
+    card.logo &&
+    /^data:image\/(?:png|jpeg|gif|svg\+xml);base64,[A-Za-z0-9+/]+=*$/.test(
+      card.logo,
+    )
       ? card.logo
       : null;
   const mark = card.mark ? cardLabel(card.mark, CARD_LIMITS.mark) : null;
