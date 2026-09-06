@@ -24,11 +24,28 @@ export async function loadCardFonts(markup: string) {
             "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; de-at) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1",
         },
         signal: AbortSignal.timeout(5000),
+        redirect: "error",
       });
       if (!css.ok) throw new Error(`card font CSS unavailable: ${css.status}`);
       const src = (await css.text()).match(/src:\s*url\(([^)]+)\)/)?.[1];
       if (!src) throw new Error("card font CSS has no source");
-      const font = await fetch(src, { signal: AbortSignal.timeout(5000) });
+      // CSS is a remote response, not authority to request an arbitrary host.
+      // Disallow redirects on both requests so the same boundary holds at
+      // every hop, including for a compromised font stylesheet.
+      const source = new URL(src);
+      if (
+        source.protocol !== "https:" ||
+        source.hostname !== "fonts.gstatic.com" ||
+        source.username ||
+        source.password ||
+        source.port
+      ) {
+        throw new Error("card font source is not an allowed HTTPS font origin");
+      }
+      const font = await fetch(source.href, {
+        signal: AbortSignal.timeout(5000),
+        redirect: "error",
+      });
       if (!font.ok) throw new Error(`card font unavailable: ${font.status}`);
       return {
         ...face,
