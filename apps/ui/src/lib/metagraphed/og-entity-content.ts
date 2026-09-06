@@ -1,4 +1,3 @@
-import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { shortHash } from "./blocks";
 import { formatPct, formatTao } from "./format";
 import { firstPartyLogoPath, logoHostFrom, type OgCardOptions } from "./og-card";
@@ -23,7 +22,6 @@ export function subnetOgContent(
     website?: string | null;
     alphaPriceTao?: number | null;
     emissionShare?: number | null;
-    totalStakeAlpha?: number | null;
   } | null,
 ): OgCardOptions {
   return {
@@ -36,12 +34,11 @@ export function subnetOgContent(
       ...(finiteAmount(data?.alphaPriceTao)
         ? [{ label: "Price", value: formatTao(data.alphaPriceTao) }]
         : []),
-      ...(finiteAmount(data?.emissionShare)
+      ...(finiteAmount(data?.emissionShare) && data.emissionShare <= 1
         ? [{ label: "Emission", value: formatPct(data.emissionShare, 2) }]
         : []),
-      ...(finiteAmount(data?.totalStakeAlpha)
-        ? [{ label: "Alpha stake", value: `${taoCompact(data.totalStakeAlpha)} α` }]
-        : []),
+      // total_stake_alpha currently includes inherited voting weight. It is
+      // not a native alpha holding and must not become a preview stake claim.
     ],
   };
 }

@@ -10,16 +10,16 @@ import {
 } from "./og-entity-content";
 
 describe("entity preview content", () => {
-  it("keeps the subnet identifier outside its three economic facts", () => {
-    const card = subnetOgContent(19, {
+  it("keeps subnet identity outside supported facts and omits derived voting stake", () => {
+    const data = {
       name: "Example subnet",
       alphaPriceTao: 0.08,
       emissionShare: 0.03,
       totalStakeAlpha: 1200,
-    });
+    };
+    const card = subnetOgContent(19, data);
     expect(card.identifier).toBe("Subnet 19");
-    expect(card.stats?.map((stat) => stat.label)).toEqual(["Price", "Emission", "Alpha stake"]);
-    expect(card.stats?.[2]?.value).toContain("α");
+    expect(card.stats?.map((stat) => stat.label)).toEqual(["Price", "Emission"]);
     expect(card.status).toBeUndefined();
     expect(card.subtitle).not.toMatch(/live|healthy|failed/);
     expect(subnetOgContent(0)).toMatchObject({ title: "Subnet 0", identifier: null, stats: [] });
@@ -44,10 +44,7 @@ describe("entity preview content", () => {
 
   it("omits absent and malformed values while retaining observed zero", () => {
     for (const value of [null, undefined, NaN, Infinity, -1]) {
-      expect(
-        subnetOgContent(1, { alphaPriceTao: value, emissionShare: value, totalStakeAlpha: value })
-          .stats,
-      ).toEqual([]);
+      expect(subnetOgContent(1, { alphaPriceTao: value, emissionShare: value }).stats).toEqual([]);
       expect(
         providerOgContent("example", { endpoints: value, surfaces: value, subnets: value }).stats,
       ).toEqual([]);
@@ -57,9 +54,11 @@ describe("entity preview content", () => {
       providerOgContent("example", { endpoints: 0, surfaces: 0, subnets: 0 }).stats,
     ).toHaveLength(3);
     expect(providerOgContent("example", { endpoints: 1.5 }).stats).toEqual([]);
-    expect(
-      subnetOgContent(1, { alphaPriceTao: 0, emissionShare: 0, totalStakeAlpha: 0 }).stats,
-    ).toHaveLength(3);
+    expect(subnetOgContent(1, { alphaPriceTao: 0, emissionShare: 0 }).stats).toHaveLength(2);
+    expect(subnetOgContent(1, { emissionShare: 1.01 }).stats).toEqual([]);
+    expect(subnetOgContent(1, { emissionShare: 1 }).stats).toEqual([
+      { label: "Emission", value: "100.00%" },
+    ]);
   });
 
   it("retains curated logo paths and external-host fallback without current-health claims", () => {
