@@ -614,20 +614,20 @@ export function buildJsonLd(pathname: string): string {
  * /domains and the two subnet facets into /subnets, and #11619 folded the four
  * /chain tabs into /chain. A 301 has nothing to unfurl.
  *
- * `eyebrow` renders as the pill beside the wordmark, matching the entity
- * cards' treatment. Home is deliberately absent: its card is the brand
- * statement, and an "eyebrow" on it would be noise.
+ * Legacy `eyebrow` copy remains available to metadata consumers. The cover
+ * renders it only as entity context; generic page titles stand on their own.
  */
 interface OgCopy {
   title: string;
   subtitle?: string;
   eyebrow?: string;
+  accent?: "agent";
 }
 
 export const OG_SECTIONS: Record<string, OgCopy> = {
   "/": {
-    title: "Metagraphed",
-    subtitle: "Explore Bittensor. Follow the chain, subnets and public interfaces.",
+    title: "Bittensor, measured.",
+    subtitle: "Explore the chain, subnets and public interfaces.",
     eyebrow: "Explorer",
   },
   // Registry
@@ -767,9 +767,10 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
 
   // Agents & developers
   "/agents": {
-    title: "Agents",
-    subtitle: "Connect an AI agent to Bittensor — MCP tools, playbooks and live data",
+    title: "Bittensor in a box",
+    subtitle: "Subnets, native APIs and chain data. One MCP.",
     eyebrow: "Agents",
+    accent: "agent",
   },
   "/docs": {
     title: "Docs",

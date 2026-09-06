@@ -20,15 +20,16 @@ import {
 type Variant = Parameters<typeof renderCardMarkup>[0];
 const variants: Record<string, Variant> = {
   home: {
-    title: "Metagraphed",
-    subtitle: "Explore Bittensor. Follow the chain, subnets and public interfaces.",
+    title: "Bittensor, measured.",
+    subtitle: "Explore the chain, subnets and public interfaces.",
     eyebrow: "Explorer",
     stats: [],
   },
   agents: {
-    title: "Agents",
-    subtitle: "Connect an AI agent to Bittensor — MCP tools, playbooks and live data",
+    title: "Bittensor in a box",
+    subtitle: "Subnets, native APIs and chain data. One MCP.",
     eyebrow: "Agents",
+    accent: "agent",
     stats: [],
   },
   subnet: {
@@ -96,6 +97,14 @@ const variants: Record<string, Variant> = {
     eyebrow: "W".repeat(32),
     entity: true,
     stats: Array.from({ length: 3 }, () => ({ label: "W".repeat(24), value: "W".repeat(28) })),
+  },
+  "maximum-wide": {
+    title: normalizeTitle("界".repeat(110)),
+    subtitle: normalizeSubtitle("界".repeat(90)),
+    eyebrow: "Entity",
+    identifier: "界".repeat(80),
+    entity: true,
+    stats: Array.from({ length: 3 }, () => ({ label: "界".repeat(24), value: "界".repeat(28) })),
   },
   unicode: {
     title: "Économie & τ — observations",
