@@ -39,6 +39,7 @@ import {
 } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
 import { ENDPOINT_INCIDENT_SEVERITY_VALUES } from "../routes/endpoints-pools.ts";
+import { ENDPOINT_LIST_FILTERS } from "./endpoints-catalog.ts";
 
 /**
  * The pool list-query FILTERS, declared once for both callers (#10790).
@@ -161,6 +162,7 @@ const ENDPOINT_PUBLICATION_STATES = ENDPOINT_PUBLICATION_STATE_VALUES;
 export const ListProviderEndpointsInputSchema = z
   .object({
     q: querySchema().optional(),
+    known_status: ENDPOINT_LIST_FILTERS.known_status,
     slug: z
       .string()
       .regex(/^[a-z0-9-]+$/)

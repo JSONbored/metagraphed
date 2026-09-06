@@ -230,6 +230,7 @@ export function churnWindow(entries: readonly SubnetLifecycleEntry[]): [string, 
 }
 
 export interface DirectoryRow extends Subnet {
+  api_spec?: "yes" | "no" | "unknown";
   emission_share?: number;
   alpha_price_tao?: number;
   alpha_price_change_7d?: number;
@@ -306,11 +307,22 @@ export const SPEC_KIND = "openapi";
  * nothing to call.
  */
 export function specSubnets(
-  catalog: Record<number, { service_kinds?: string[] | null }>,
+  catalog: Record<number, { service_kinds?: string[] | null; service_count?: number }>,
 ): Set<number> {
   const out = new Set<number>();
   for (const [netuid, entry] of Object.entries(catalog)) {
-    if ((entry.service_kinds ?? []).includes(SPEC_KIND)) out.add(Number(netuid));
+    if (apiSpecStatus(entry) === "yes") out.add(Number(netuid));
   }
   return out;
+}
+
+/** Missing kinds, including blocked catalog entries, do not establish absence. */
+export function apiSpecStatus(entry?: {
+  service_kinds?: string[] | null;
+  service_count?: number;
+}): "yes" | "no" | "unknown" {
+  if (entry?.service_kinds != null) {
+    return entry.service_kinds.includes(SPEC_KIND) ? "yes" : "no";
+  }
+  return entry?.service_count === 0 ? "no" : "unknown";
 }

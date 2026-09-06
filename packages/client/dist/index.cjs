@@ -680,6 +680,7 @@ var QUERY_PARAMETER_ENUMS = {
   "/api/v1/endpoints": {
     "format": ["json", "csv"],
     "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "known_status": ["true", "false"],
     "layer": ["bittensor-base", "data-provider", "docs-provider", "subnet-app"],
     "order": ["asc", "desc"],
     "pool_eligible": ["true", "false"],
@@ -754,6 +755,7 @@ var QUERY_PARAMETER_ENUMS = {
   "/api/v1/providers/{slug}/endpoints": {
     "format": ["json", "csv"],
     "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "known_status": ["true", "false"],
     "layer": ["bittensor-base", "data-provider", "docs-provider", "subnet-app"],
     "order": ["asc", "desc"],
     "pool_eligible": ["true", "false"],
@@ -828,6 +830,7 @@ var QUERY_PARAMETER_ENUMS = {
   },
   "/api/v1/rpc/endpoints": {
     "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "known_status": ["true", "false"],
     "layer": ["bittensor-base", "data-provider", "docs-provider", "subnet-app"],
     "order": ["asc", "desc"],
     "pool_eligible": ["true", "false"],
@@ -912,6 +915,7 @@ var QUERY_PARAMETER_ENUMS = {
   "/api/v1/subnets/{netuid}/endpoints": {
     "format": ["json", "csv"],
     "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "known_status": ["true", "false"],
     "layer": ["bittensor-base", "data-provider", "docs-provider", "subnet-app"],
     "order": ["asc", "desc"],
     "pool_eligible": ["true", "false"],

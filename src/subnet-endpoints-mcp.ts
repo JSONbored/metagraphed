@@ -17,6 +17,10 @@ import {
   ListSubnetEndpointsOutputSchema,
 } from "../schemas-src/mcp-tools/subnet-scoped-lists.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import {
+  overlayArtifactEndpoints,
+  resolveLiveHealth,
+} from "./health-serving.ts";
 
 const ENDPOINT_SORT_FIELDS = API_QUERY_COLLECTIONS.endpoints.sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
@@ -24,6 +28,7 @@ const ENDPOINT_LAYERS = QUERY_ENUMS.endpointLayer;
 const PUBLICATION_STATES = QUERY_ENUMS.endpointPublicationState;
 const HEALTH_STATUSES = QUERY_ENUMS.healthStatus;
 const SUBNET_ENDPOINTS_QUERY_FILTER_NAMES = [
+  "known_status",
   "kind",
   "layer",
   "pool_eligible",
@@ -129,9 +134,11 @@ export function subnetEndpointsQueryUrl(
   if (layer) url.searchParams.set("layer", layer);
   // The route spells this filter `["true","false"]` because a query string
   // has no boolean; GraphQL publishes a real `Boolean` and this decodes it.
-  const decoded = withBooleanWords(args, ["pool_eligible"]);
+  const decoded = withBooleanWords(args, ["pool_eligible", "known_status"]);
   const poolEligible = optionalEnum(decoded, "pool_eligible", BOOLEAN_WORDS);
   if (poolEligible) url.searchParams.set("pool_eligible", poolEligible);
+  const knownStatus = optionalEnum(decoded, "known_status", BOOLEAN_WORDS);
+  if (knownStatus) url.searchParams.set("known_status", knownStatus);
   const provider = optionalString(args, "provider");
   if (provider) url.searchParams.set("provider", provider);
   const publicationState = optionalEnum(
@@ -195,12 +202,16 @@ export async function loadSubnetEndpointsList(
   ctx: {
     env: Env;
     readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+    readHealthKv?: (env: Env, key: string) => Promise<unknown>;
   },
   args: Record<string, unknown> | null | undefined,
   {
     readArtifact,
+    loadHealth,
   }: {
     readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+    // GraphQL shares its existing request-memoized health resolution.
+    loadHealth?: () => ReturnType<typeof resolveLiveHealth>;
   } = {},
 ): Promise<SubnetEndpointsListResult> {
   const netuid = requireNetuid(args);
@@ -229,8 +240,20 @@ export async function loadSubnetEndpointsList(
       `No endpoint snapshot exists for netuid ${netuid}.`,
     );
   }
+  let dataToFilter = blob as Record<string, unknown>;
+  // Match the generalized REST/inline MCP overlay before status filtering.
+  // Legacy rows without surface identities retain their existing behavior.
+  if (
+    Array.isArray(dataToFilter.endpoints) &&
+    dataToFilter.endpoints.some((endpoint: Row) => endpoint?.surface_id)
+  ) {
+    dataToFilter = overlayArtifactEndpoints(
+      dataToFilter,
+      await (loadHealth ? loadHealth() : resolveLiveHealth(ctx)),
+    )!;
+  }
   const transformed = applyMcpQueryFilters(
-    blob as Record<string, unknown>,
+    dataToFilter,
     queryUrl,
     "endpoints",
     SUBNET_ENDPOINTS_QUERY_FILTER_NAMES,
@@ -266,12 +289,12 @@ export const LIST_SUBNET_ENDPOINTS_MCP_TOOL = {
   name: "list_subnet_endpoints",
   title: "List one subnet's endpoint resources",
   description:
-    "Fetch monitored endpoint resources for one subnet by netuid: each endpoint " +
+    "Fetch endpoint resources for one subnet by netuid: each endpoint " +
     "with kind, layer, provider, publication state, and probe-derived status, " +
     "latency, and score. Filter by kind, layer, provider, publication_state, " +
-    "status, or pool_eligible; bound latency_ms and score with min_/max_ params; " +
+    "status, known_status, or pool_eligible; bound latency_ms and score with min_/max_ params; " +
     "sort with sort + order; and page with limit (1-100) / cursor. Distinct from " +
-    "get_subnet_endpoints (raw artifact dump) and list_endpoints (network-wide " +
+    "get_subnet_endpoints (subnet catalog) and list_endpoints (network-wide " +
     "catalog). Mirrors GET /api/v1/subnets/{netuid}/endpoints.",
   inputSchema: inputJsonSchema(ListSubnetEndpointsInputSchema),
 };

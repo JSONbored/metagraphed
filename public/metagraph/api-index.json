@@ -3566,6 +3566,7 @@
       "public": true,
       "query_collection": "endpoints",
       "query_filter_names": [
+        "known_status",
         "kind",
         "layer",
         "netuid",
@@ -3575,6 +3576,17 @@
         "status"
       ],
       "query_parameters": [
+        {
+          "description": "Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring.",
+          "name": "known_status",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
         {
           "name": "kind",
           "schema": {
@@ -3774,6 +3786,7 @@
       "public": true,
       "query_collection": "endpoints",
       "query_filter_names": [
+        "known_status",
         "kind",
         "layer",
         "pool_eligible",
@@ -3782,6 +3795,17 @@
         "status"
       ],
       "query_parameters": [
+        {
+          "description": "Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring.",
+          "name": "known_status",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
         {
           "name": "kind",
           "schema": {
@@ -4410,6 +4434,7 @@
       "public": true,
       "query_collection": "endpoints",
       "query_filter_names": [
+        "known_status",
         "kind",
         "layer",
         "netuid",
@@ -4418,6 +4443,17 @@
         "status"
       ],
       "query_parameters": [
+        {
+          "description": "Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring.",
+          "name": "known_status",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
         {
           "name": "kind",
           "schema": {
@@ -13271,6 +13307,7 @@
       "public": true,
       "query_collection": "endpoints",
       "query_filter_names": [
+        "known_status",
         "kind",
         "layer",
         "netuid",
@@ -13280,6 +13317,17 @@
         "status"
       ],
       "query_parameters": [
+        {
+          "description": "Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring.",
+          "name": "known_status",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
         {
           "name": "kind",
           "schema": {

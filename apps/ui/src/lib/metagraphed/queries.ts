@@ -1239,30 +1239,28 @@ export const subnetHealthMapQuery = () =>
   queryOptions({
     queryKey: k("subnet-health-map"),
     queryFn: async ({ signal }) => {
-      const empty = { data: {} as Record<number, SubnetHealthEntry> };
-      try {
-        const res = await apiFetch<Record<string, unknown>>("/api/v1/health", { signal });
-        const d = isRecord(res.data) ? res.data : {};
-        const subnets = Array.isArray(d.subnets) ? d.subnets : [];
-        const map: Record<number, SubnetHealthEntry> = {};
-        for (const sn of subnets) {
-          if (!isRecord(sn)) continue;
-          const netuid = sn.netuid;
-          if (typeof netuid !== "number") continue;
-          map[netuid] = {
-            health: statusToHealth(sn.status) ?? "unknown",
-            last_checked:
-              typeof sn.last_checked === "string"
-                ? sn.last_checked
-                : typeof sn.last_ok === "string"
-                  ? sn.last_ok
-                  : undefined,
-          };
-        }
-        return { data: map, meta: res.meta, url: res.url };
-      } catch {
-        return empty;
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/health", { signal });
+      const d = res.data;
+      if (!isRecord(d) || !Array.isArray(d.subnets)) {
+        throw new Error("Subnet surface health returned an invalid response.");
       }
+      const subnets = d.subnets;
+      const map: Record<number, SubnetHealthEntry> = {};
+      for (const sn of subnets) {
+        if (!isRecord(sn)) continue;
+        const netuid = sn.netuid;
+        if (typeof netuid !== "number") continue;
+        map[netuid] = {
+          health: statusToHealth(sn.status) ?? "unknown",
+          last_checked:
+            typeof sn.last_checked === "string"
+              ? sn.last_checked
+              : typeof sn.last_ok === "string"
+                ? sn.last_ok
+                : undefined,
+        };
+      }
+      return { data: map, meta: res.meta, url: res.url };
     },
     staleTime: STALE_SHORT,
   });
@@ -1777,7 +1775,11 @@ function normalizeAgentCatalogSummary(raw: unknown): AgentCatalogSummary | null 
     readiness_tier: resolveReadinessTier(raw),
     service_count: optionalNumber(raw.service_count),
     callable_count: optionalNumber(raw.callable_count),
-    service_kinds: stringArray(raw.service_kinds),
+    service_kinds:
+      Array.isArray(raw.service_kinds) &&
+      raw.service_kinds.every((kind) => typeof kind === "string")
+        ? raw.service_kinds
+        : undefined,
     categories: stringArray(raw.categories),
     base_url: coerceString(raw.base_url),
     health: coerceString(raw.health),
@@ -1849,22 +1851,24 @@ export const agentCatalogMapQuery = () =>
   queryOptions({
     queryKey: k("agent-catalog-map"),
     queryFn: async ({ signal }) => {
-      const empty = { data: {} as Record<number, AgentCatalogSummary> };
-      try {
-        const res = await apiFetch<Record<string, unknown>>("/api/v1/agent-catalog", { signal });
-        const d = isRecord(res.data) ? res.data : {};
-        const map: Record<number, AgentCatalogSummary> = {};
-        for (const key of ["subnets", "blocked_subnets"] as const) {
-          const arr = Array.isArray(d[key]) ? (d[key] as unknown[]) : [];
-          for (const row of arr) {
-            const norm = normalizeAgentCatalogSummary(row);
-            if (norm) map[norm.netuid] = norm;
-          }
-        }
-        return { data: map, meta: res.meta, url: res.url };
-      } catch {
-        return empty;
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/agent-catalog", { signal });
+      const d = res.data;
+      if (
+        !isRecord(d) ||
+        !Array.isArray(d.subnets) ||
+        (d.blocked_subnets !== undefined && !Array.isArray(d.blocked_subnets))
+      ) {
+        throw new Error("Subnet API specifications returned an invalid response.");
       }
+      const map: Record<number, AgentCatalogSummary> = {};
+      for (const key of ["subnets", "blocked_subnets"] as const) {
+        const arr = Array.isArray(d[key]) ? (d[key] as unknown[]) : [];
+        for (const row of arr) {
+          const norm = normalizeAgentCatalogSummary(row);
+          if (norm) map[norm.netuid] = norm;
+        }
+      }
+      return { data: map, meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });

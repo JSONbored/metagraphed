@@ -34214,6 +34214,8 @@ export interface operations {
     endpoints: {
         parameters: {
             query?: {
+                /** @description Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring. */
+                known_status?: "true" | "false";
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
@@ -39288,6 +39290,8 @@ export interface operations {
     providerEndpoints: {
         parameters: {
             query?: {
+                /** @description Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring. */
+                known_status?: "true" | "false";
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
@@ -40995,6 +40999,8 @@ export interface operations {
     rpcEndpoints: {
         parameters: {
             query?: {
+                /** @description Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring. */
+                known_status?: "true" | "false";
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
@@ -44903,6 +44909,8 @@ export interface operations {
     subnetEndpoints: {
         parameters: {
             query?: {
+                /** @description Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring. */
+                known_status?: "true" | "false";
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
                 pool_eligible?: "true" | "false";

@@ -428,21 +428,28 @@ const CONSTRAINT_DIVERGENCES: Record<string, Divergence> = {
   "compare_validators.hotkeys": "SHAPE",
   "get_governance_config_changes.success": "SHAPE",
   "get_neuron.fields": "SHAPE",
+  // Endpoint flags use JSON Booleans in MCP and Boolean words in REST;
+  // the list handlers explicitly forward both known_status values.
   "get_subnet_endpoints.pool_eligible": "SHAPE",
+  "get_subnet_endpoints.known_status": "SHAPE",
   "get_subnet_metagraph.fields": "SHAPE",
   "get_subnet_metagraph.validator_permit": "SHAPE",
   "get_subnet_turnover.changes": "SHAPE",
   "get_sudo.success": "SHAPE",
   "list_endpoints.pool_eligible": "SHAPE",
+  "list_endpoints.known_status": "SHAPE",
   "list_extrinsics.success": "SHAPE",
   "list_provider_endpoints.pool_eligible": "SHAPE",
+  "list_provider_endpoints.known_status": "SHAPE",
   // The third of the three, declared when #10790 single-sourced the endpoint
   // filter block: its handler has decoded a real boolean through
   // `withBooleanWords` since #10772, and only its SCHEMA still spelled the
   // route's `"true"`/`"false"` words. GraphQL publishes `Boolean` here too.
   "list_subnet_endpoints.pool_eligible": "SHAPE",
+  "list_subnet_endpoints.known_status": "SHAPE",
   "list_rpc_endpoints.cursor": "SHAPE",
   "list_rpc_endpoints.pool_eligible": "SHAPE",
+  "list_rpc_endpoints.known_status": "SHAPE",
   "list_subnet_validators.fields": "SHAPE",
 
   // LOOSER -- standing debt. Delete an entry by TIGHTENING the tool

@@ -1,12 +1,6 @@
-import { useMemo } from "react";
-import {
-  AnalyticsSection,
-  BrandIcon,
-  DataTable,
-  FilterField,
-  FilterSelect,
-  type DataTableColumn,
-} from "@jsonbored/ui-kit";
+import { useMemo, type ReactNode } from "react";
+import { AnalyticsSection, BrandIcon, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
+import { SubnetDirectoryControls } from "./directory-controls";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { SubnetCompareBar } from "@/components/metagraphed/compare-bar";
 import { CompareToggle } from "@/components/metagraphed/compare-toggle";
@@ -20,16 +14,8 @@ export interface DirectoryFilters {
   q: string;
 }
 
-const HEALTH_OPTIONS = [
-  { value: "", label: "Any health" },
-  { value: "ok", label: "OK" },
-  { value: "degraded", label: "Degraded" },
-  { value: "down", label: "Down" },
-  { value: "unknown", label: "Unprobed" },
-];
-
 /**
- * Section 2 — every subnet, sortable.
+ * Every subnet, sortable, with filter controls available during secondary read failures.
  *
  * `paginate={false}`: this table is the only internal link most subnet pages
  * have, and a crawler does not run our JavaScript, so every row must be in
@@ -48,15 +34,18 @@ export function DirectorySection({
   domains,
   filters,
   onFilter,
-  withApi,
+  unknownApiCount = 0,
+  filterState = "ready",
+  status,
 }: {
   rows: readonly DirectoryRow[];
   total: number;
   domains: readonly string[];
   filters: DirectoryFilters;
   onFilter: (next: Partial<DirectoryFilters>) => void;
-  /** The netuids publishing an API contract, for the column and the filter. */
-  withApi: ReadonlySet<number>;
+  unknownApiCount?: number;
+  filterState?: "ready" | "pending" | "unavailable";
+  status?: ReactNode;
 }) {
   const columns = useMemo<DataTableColumn<DirectoryRow>[]>(
     () => [
@@ -151,10 +140,10 @@ export function DirectorySection({
       },
       {
         key: "api",
-        label: "API",
+        label: "API spec",
         kind: "status",
         demote: true,
-        value: (row) => (withApi.has(row.netuid) ? "yes" : "no"),
+        value: (row) => row.api_spec ?? "unknown",
       },
       {
         // #11613 rebuilt this table and dropped the compare selection #11611
@@ -167,7 +156,7 @@ export function DirectorySection({
         definition: "Compare",
       },
     ],
-    [withApi],
+    [],
   );
 
   return (
@@ -178,69 +167,44 @@ export function DirectorySection({
       className="mg-directory-section mg-directory-section--table-first"
       visual={
         <>
-          <DataTable
-            rows={rows}
-            columns={columns}
-            rowKey={(row) => String(row.netuid)}
-            // The table appends the row count itself; the caption says what was
-            // filtered OUT, which the count alone cannot.
-            caption={
-              rows.length === total
-                ? "Every application subnet, plus root"
-                : `${formatNumber(rows.length)} of ${formatNumber(total)} chain netuids`
-            }
-            rowHref={(row) => `/subnets/${row.netuid}`}
-            link={RouterLink}
-            // Every row in the server-rendered bytes -- see the note above.
-            paginate={false}
-            source="subnet-row"
-            storageKey="subnets-directory-columns"
-            mobile="cards"
-            compactMobileLabels
-            search={{
-              value: filters.q,
-              onChange: (q) => onFilter({ q }),
-              placeholder: "Find a subnet",
-            }}
-            filters={
-              <>
-                <FilterField label="Domain">
-                  <FilterSelect
-                    value={filters.domain}
-                    onChange={(event) => onFilter({ domain: event.target.value })}
-                  >
-                    <option value="">Any domain</option>
-                    {domains.map((domain) => (
-                      <option key={domain} value={domain}>
-                        {domain}
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </FilterField>
-                <FilterField label="Health">
-                  <FilterSelect
-                    value={filters.health}
-                    onChange={(event) => onFilter({ health: event.target.value })}
-                  >
-                    {HEALTH_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </FilterField>
-                <FilterField label="API">
-                  <FilterSelect
-                    value={filters.api ? "1" : ""}
-                    onChange={(event) => onFilter({ api: event.target.value === "1" })}
-                  >
-                    <option value="">Any surface</option>
-                    <option value="1">Has an API</option>
-                  </FilterSelect>
-                </FilterField>
-              </>
-            }
-          />
+          <SubnetDirectoryControls filters={filters} domains={domains} onChange={onFilter} />
+          {status}
+          {unknownApiCount > 0 ? (
+            <p className="mb-4 text-13 text-ink-muted">
+              API spec coverage is unknown for {formatNumber(unknownApiCount)} indexed
+              {unknownApiCount === 1 ? " subnet" : " subnets"}.
+            </p>
+          ) : null}
+          {filterState !== "ready" ? (
+            <p role="status" className="border-y border-border py-8 text-13 text-ink-muted">
+              {filterState === "pending"
+                ? "Loading the data needed for these filters…"
+                : "These filters need data that is currently unavailable. Retry the source or reset the filters."}
+            </p>
+          ) : (
+            <DataTable
+              rows={rows}
+              columns={columns}
+              rowKey={(row) => String(row.netuid)}
+              // The table appends the row count itself; the caption says what was
+              // filtered OUT, which the count alone cannot.
+              caption={
+                rows.length === total
+                  ? "Every application subnet, plus root"
+                  : `${formatNumber(rows.length)} of ${formatNumber(total)} chain netuids`
+              }
+              rowHref={(row) => `/subnets/${row.netuid}`}
+              link={RouterLink}
+              // Every row in the server-rendered bytes -- see the note above.
+              paginate={false}
+              source="subnet-row"
+              storageKey="subnets-directory-columns"
+              mobile="cards"
+              compactMobileLabels
+              className="max-lg:[&_td[data-mobile-lead=true]]:before:hidden [&_.mg-dt-status]:self-start [&_.mg-dt-menu-trigger]:min-h-11 [&_.mg-dt-menu-trigger]:min-w-11"
+              empty="No subnets match these filters."
+            />
+          )}
           <SubnetCompareBar />
         </>
       }
