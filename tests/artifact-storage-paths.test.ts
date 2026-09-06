@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { CARD_VERSION, OG_IMAGE_FILE_NAMES } from "../src/og-card-version.ts";
 import {
   ARTIFACT_STORAGE_TIERS,
   artifactRelativePath,
@@ -12,6 +13,18 @@ import {
 } from "../src/artifact-storage.ts";
 
 const SS58 = "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM";
+
+test("only the current and compatibility preview filenames are R2 artifacts", () => {
+  for (const name of OG_IMAGE_FILE_NAMES)
+    assert.equal(artifactStorageTierForPath(`/metagraph/${name}`), "r2");
+  for (const name of [
+    `og-image-v${Number(CARD_VERSION) + 1}.png`,
+    "nested/og-image.png",
+    `og-image-v${CARD_VERSION}.png.pending`,
+    "other.png",
+  ])
+    assert.notEqual(artifactStorageTierForPath(`/metagraph/${name}`), "r2");
+});
 
 describe("artifactRelativePath", () => {
   test("strips a leading slash and /metagraph/ prefix for absolute paths", () => {

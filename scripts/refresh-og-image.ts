@@ -29,7 +29,8 @@
 // writes registry-summary.json to the R2 staging tree) and before r2-manifest
 // (which picks up this file from the same tree). Production-only, like its
 // sibling live-network steps -- local/PR builds skip it.
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { Resvg } from "@resvg/resvg-js";
 import type { ReactNode } from "react";
@@ -37,6 +38,9 @@ import satori from "satori";
 import { html } from "satori-html";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 import { buildStatParts, renderMarkup } from "../src/og-image.ts";
+import { CARD_VERSION, CARD_WIDTH, CARD_HEIGHT } from "../src/og-card-style.ts";
+import { loadCardFonts } from "../src/og-card-fonts.ts";
+import { OG_IMAGE_FILE_NAMES } from "../src/og-card-version.ts";
 import { repoRoot, stableStringify } from "./lib.ts";
 import {
   initObservability,
@@ -46,13 +50,8 @@ import {
 
 initObservability("refresh-og-image");
 
-const CARD_WIDTH = 1200;
-const CARD_HEIGHT = 630;
-const FALLBACK_STAT = "Live health, schemas, and discovery for every subnet";
-const OUTPUT_PATH = path.join(
-  repoRoot,
-  R2_STAGING_RELATIVE_ROOT,
-  "og-image.png",
+const OUTPUT_PATHS = OG_IMAGE_FILE_NAMES.map((name) =>
+  path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, name),
 );
 const SUMMARY_PATH = path.join(
   repoRoot,
@@ -63,25 +62,35 @@ const SUMMARY_PATH = path.join(
 try {
   const statParts = await loadStatParts();
   const png = await renderCard(statParts);
-  await mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
-  await writeFile(OUTPUT_PATH, png);
+  await mkdir(path.dirname(OUTPUT_PATHS[0]), { recursive: true });
+  // Old Workers still read the legacy file. Update it first, then the current
+  // version. A partial attempt cannot claim current-version completion.
+  for (const outputPath of OUTPUT_PATHS) {
+    const pendingPath = outputPath + ".pending";
+    await writeFile(pendingPath, png);
+    await rename(pendingPath, outputPath);
+  }
   console.log(
     stableStringify({
       step: "refresh-og-image",
       status: "rendered",
-      stat_line: (statParts ?? [FALLBACK_STAT]).join(" · "),
+      renderer_version: CARD_VERSION,
+      artifact_paths: OG_IMAGE_FILE_NAMES.map((name) => `/metagraph/${name}`),
+      sha256: createHash("sha256").update(png).digest("hex"),
+      stat_line: (statParts ?? []).join(" · "),
       size_bytes: png.length,
     }),
   );
 } catch (error) {
   await captureExceptionAndContinue(error);
   console.warn(
-    `::warning::og-image render failed (${summarizeError(error)}); leaving the previously published card in place.`,
+    `::warning::og-image refresh incomplete (${summarizeError(error)}); current-version publication was not confirmed.`,
   );
   console.log(
     stableStringify({
       step: "refresh-og-image",
       status: "skipped",
+      renderer_version: CARD_VERSION,
       error: summarizeError(error),
     }),
   );
@@ -100,10 +109,8 @@ async function loadStatParts(): Promise<string[] | null> {
 }
 
 async function renderCard(statParts: string[] | null): Promise<Buffer> {
-  const [bold, medium] = await Promise.all([
-    loadGoogleFont("Space Grotesk", 700),
-    loadGoogleFont("Space Grotesk", 500),
-  ]);
+  const markup = renderMarkup(statParts);
+  const fonts = await loadCardFonts(markup);
   // satori-html returns satori's own `VNode`; satori's published signature
   // says `ReactNode` because React is its reference renderer. Both describe
   // the same runtime object -- satori walks `{ type, props }` and never
@@ -111,52 +118,15 @@ async function renderCard(statParts: string[] | null): Promise<Buffer> {
   // relationship is stated once, here. `as ReactNode` and not `as never`: the
   // latter accepts every value there is, including the `undefined` that a
   // renderMarkup returning nothing would hand over.
-  const svg = await satori(html(renderMarkup(statParts)) as ReactNode, {
+  const svg = await satori(html(markup) as ReactNode, {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    fonts: [
-      { name: "Space Grotesk", data: bold, weight: 700, style: "normal" },
-      { name: "Space Grotesk", data: medium, weight: 500, style: "normal" },
-    ],
+    fonts,
   });
   const resvg = new Resvg(svg, {
     fitTo: { mode: "width", value: CARD_WIDTH },
   });
   return Buffer.from(resvg.render().asPng());
-}
-
-// No per-request latency pressure at build time (unlike the old live path),
-// so this fetches the standard Latin subset rather than reproducing
-// workers-og's loadGoogleFont per-glyph subsetting -- one Google Fonts CSS2
-// API call per weight, immune to drift if the rendered copy changes later.
-async function loadGoogleFont(
-  family: string,
-  weight: number,
-): Promise<ArrayBuffer> {
-  const cssUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${weight}`;
-  const cssResponse = await fetch(cssUrl, {
-    // Google Fonts serves modern woff2 only to browser-like UAs; a bare
-    // Node fetch UA gets an older, less complete format back.
-    headers: {
-      "user-agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-    },
-  });
-  if (!cssResponse.ok) {
-    throw new Error(`Google Fonts CSS request failed: ${cssResponse.status}`);
-  }
-  const css = await cssResponse.text();
-  const match = css.match(
-    /src: url\(([^)]+)\) format\('(?:opentype|truetype|woff2?)'\)/,
-  );
-  if (!match) {
-    throw new Error(`no @font-face src found for ${family} ${weight}`);
-  }
-  const fontResponse = await fetch(match[1]);
-  if (!fontResponse.ok) {
-    throw new Error(`font file fetch failed: ${fontResponse.status}`);
-  }
-  return await fontResponse.arrayBuffer();
 }
 
 function summarizeError(error: unknown): string | undefined {
