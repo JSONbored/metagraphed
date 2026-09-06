@@ -20,9 +20,20 @@ describe("docs pages own their OG card (#8624)", () => {
     }
   });
 
-  it("leaves /docs itself to the server-injected card, which has its own copy", () => {
-    expect(routeOwnsOgImage("/docs")).toBe(false);
-    expect(routeOwnsOgImage("/docs/")).toBe(false);
+  it("respects both splat routes on their bare hubs and trailing-slash forms", () => {
+    for (const path of ["/docs", "/docs/", "/news", "/news/", "/news/network/2026-w03"]) {
+      expect(routeOwnsOgImage(path), path).toBe(true);
+    }
+    for (const path of ["/docs-other", "/newsroom", "/news-other/page"]) {
+      expect(routeOwnsOgImage(path), path).toBe(false);
+    }
+  });
+
+  it("gives event detail cards to the data-owning route, including index zero", () => {
+    expect(routeOwnsOgImage("/events/8713384/0")).toBe(true);
+    expect(routeOwnsOgImage("/events/8713384/320/")).toBe(true);
+    expect(routeOwnsOgImage("/events")).toBe(false);
+    expect(routeOwnsOgImage("/chain/events")).toBe(false);
   });
 
   it("still matches the entity detail routes and nothing else", () => {

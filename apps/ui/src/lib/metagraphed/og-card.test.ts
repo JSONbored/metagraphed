@@ -162,6 +162,16 @@ describe("ogImageMeta", () => {
     expect(meta).toContainEqual({ property: "og:image:alt", content: "Chutes" });
   });
 
+  it("describes the same bounded title and subtitle that the image URL carries", () => {
+    const meta = ogImageMeta({ title: "T".repeat(200), subtitle: "S".repeat(200) });
+    const image = meta.find((tag) => "property" in tag && tag.property === "og:image");
+    const params = new URL(image!.content).searchParams;
+    const alt = `${params.get("title")} — ${params.get("subtitle")}`;
+    expect(meta).toContainEqual({ property: "og:image:alt", content: alt });
+    expect(meta).toContainEqual({ name: "twitter:image:alt", content: alt });
+    expect(alt).toHaveLength(OG_LIMITS.title + OG_LIMITS.subtitle + 3);
+  });
+
   it("points every image tag at the same card", () => {
     const meta = ogImageMeta({ title: "Chutes" });
     const urls = new Set(

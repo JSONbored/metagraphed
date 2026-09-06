@@ -209,7 +209,9 @@ export function healthFromStatusCounts(
 }
 
 /** The og:image + twitter:image meta a route's head() returns. */
-export function ogImageMeta(options: OgCardOptions) {
+export function ogImageMeta(
+  options: OgCardOptions,
+): Array<{ property: string; content: string } | { name: string; content: string }> {
   const url = buildOgImageUrl(options);
   // #11204: og:image:alt was emitted ONLY by the server-injected card, so every
   // page that took ownership of its own card silently lost it -- all 129 subnet
@@ -217,7 +219,10 @@ export function ogImageMeta(options: OgCardOptions) {
   // reader announces for an unfurl and what several platforms show as the
   // caption, and the card's own copy is exactly the right text: it IS what the
   // image says. Built the same way server.ts builds its own.
-  const alt = options.subtitle ? `${options.title} — ${options.subtitle}` : options.title;
+  const image = new URL(url);
+  const title = image.searchParams.get("title") ?? "";
+  const subtitle = image.searchParams.get("subtitle");
+  const alt = subtitle ? `${title} — ${subtitle}` : title;
   return [
     { property: "og:image", content: url },
     { property: "og:image:width", content: "1200" },
@@ -237,31 +242,24 @@ export function ogImageMeta(options: OgCardOptions) {
  * describes, and a route that starts emitting its own card should only have to
  * change one file.
  *
- * Matches the three entity detail routes that have real per-entity data to
- * put on a card. Everything else (home, docs, status, list pages) keeps the
- * server-injected brand-skinned fallback.
+ * Entity detail routes and the documentation/news splats can use resolved
+ * page data. Ordinary static pages and directories use the server-owned card.
  */
 export function routeOwnsOgImage(pathname: string): boolean {
   return (
     /^\/subnets\/[^/]+\/?$/.test(pathname) ||
     /^\/validators\/[^/]+\/?$/.test(pathname) ||
     /^\/accounts\/[^/]+\/?$/.test(pathname) ||
+    /^\/events\/[^/]+\/[^/]+\/?$/.test(pathname) ||
     // #11204: /providers/* too. All 138 provider pages were unfurling the
     // pathname-derived card -- the raw slug as a title ("404-gen"), no logo and
     // no numbers -- because server.ts builds that card from the URL alone. The
     // route has the provider's real name, its curated logo and its endpoint
     // counts in loaderData, and 102 of the 138 have a logo to show.
     /^\/providers\/[^/]+\/?$/.test(pathname) ||
-    // #8624: /docs/* too. The docs splat route has the page's real title and
-    // description in loaderData; server.ts, working from the pathname alone,
-    // gave all 20 doc pages the identical brand card. Note this matches the
-    // splat's CHILDREN only -- /docs itself has an OG_SECTIONS entry and keeps
-    // the server-injected card.
-    /^\/docs\/.+$/.test(pathname) ||
-    // #8705: /news/* for the same reason. A weekly digest's whole value is
-    // that it says something specific ("Subnet 104 - 2026-W29"), and these are
-    // the pages the issue expects search and social to land on -- a shared
-    // brand card would waste exactly the unfurl that matters most.
-    /^\/news\/.+$/.test(pathname)
+    // Both splat routes render their index and descendants, including an
+    // ogImageMeta call on the bare hub. The server must not append a second.
+    /^\/docs(?:\/.*)?$/.test(pathname) ||
+    /^\/news(?:\/.*)?$/.test(pathname)
   );
 }

@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/metagraphed/seo-meta";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   defineSearchSchema,
@@ -61,15 +62,10 @@ export const Route = createFileRoute("/compare")({
   // comparison's URL, and the visit 307s to it.
   search: { middlewares: [stripDefaultSearchParams(compareSearchSchema)] },
   head: () => ({
-    meta: [
-      { title: "Compare · Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Compare Bittensor subnets or validators side by side: emission share, stake, participation, integration surfaces, uptime, take and estimated APY.",
-      },
-      { tagName: "link", rel: "canonical", href: "https://metagraph.sh/compare" },
-    ],
+    meta: pageMeta(
+      "Compare — Metagraphed",
+      "Compare Bittensor subnets or individual validator hotkeys, including available emissions, registrations, observed take and subnet memberships.",
+    ),
   }),
   component: ComparePage,
 });

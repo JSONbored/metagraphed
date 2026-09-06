@@ -4,6 +4,15 @@ import path from "node:path";
 import { OG_SECTIONS, ogCardCopy } from "./server";
 
 describe("OG card copy coverage (#8489)", () => {
+  it("gives the homepage explicit explorer copy while unknown paths stay conservative", () => {
+    expect(ogCardCopy("/")).toEqual({
+      title: "Metagraphed",
+      subtitle: "Explore Bittensor. Follow the chain, subnets and public interfaces.",
+      eyebrow: "Explorer",
+    });
+    expect(ogCardCopy("/not-a-real-route")).toEqual({ title: "Metagraphed" });
+  });
+
   it("names entity detail pages from the path, with an eyebrow", () => {
     expect(ogCardCopy("/subnets/64")).toMatchObject({ title: "Subnet 64", eyebrow: "Subnet" });
     expect(ogCardCopy("/validators/5Grwva")).toMatchObject({ eyebrow: "Validator" });
@@ -33,12 +42,20 @@ describe("OG card copy coverage (#8489)", () => {
     expect(copy.subtitle).toMatch(/agent/i);
   });
 
-  it("tolerates a trailing slash", () => {
-    expect(ogCardCopy("/agents/")).toEqual(ogCardCopy("/agents"));
+  it("describes the current directory, settings and comparison scope", () => {
+    expect(ogCardCopy("/validators").subtitle).toBe(
+      "Validator hotkeys, declared identities, observed take and subnet memberships",
+    );
+    expect(ogCardCopy("/settings")).toMatchObject({
+      title: "Settings",
+      subtitle: "Appearance, watchlists, alerts and developer access",
+    });
+    expect(ogCardCopy("/compare").subtitle).toContain("individual validator hotkeys");
+    expect(ogCardCopy("/validators").subtitle).not.toMatch(/stake|apy|yield|return/i);
   });
 
-  it("keeps the brand card for the home route", () => {
-    expect(ogCardCopy("/")).toEqual({ title: "Metagraphed" });
+  it("tolerates a trailing slash", () => {
+    expect(ogCardCopy("/agents/")).toEqual(ogCardCopy("/agents"));
   });
 
   it("every section entry carries a subtitle and an eyebrow", () => {
