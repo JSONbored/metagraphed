@@ -35,7 +35,7 @@ export function EndpointDirectoryControls({
       label: "Status",
       options: [
         { value: "", label: "Any status" },
-        { value: "monitored", label: "Monitored only" },
+        { value: "monitored", label: "Known status" },
         ...["ok", "degraded", "failed", "unknown"].map((value) => ({ value, label: value })),
       ],
     },

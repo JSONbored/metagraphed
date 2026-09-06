@@ -16,8 +16,8 @@ import { hubMeta } from "@/lib/metagraphed/hub-copy";
  *
  * What went: `category` (the Kind filter is the endpoint's own `kind`, not a
  * bucketing of it), `region` and `eligibility` (neither was rendered by any
- * control), `callable` (the Status filter's `monitored` option is the honest
- * version of the same idea), `view` (the Grid was a second rendering of the
+ * control), `callable` (replaced by an explicit status selection),
+ * `view` (the Grid was a second rendering of the
  * table), `window` (the proxy-usage panel it drove is gone), `endpoint` and
  * `compare` (row expansion and the compare tray went with the tab strip),
  * `sort`/`order`/`page`/`pageSize` (the table owns all four).

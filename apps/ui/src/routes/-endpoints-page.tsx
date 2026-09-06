@@ -42,7 +42,6 @@ import {
   endpointMatchCount,
   endpointRows,
   facet,
-  filterMonitoredEndpoints,
   incidentRows,
   latencyRails,
   poolRows,
@@ -86,8 +85,8 @@ export function EndpointsPage() {
       hash: true,
     });
 
-  // Search and exact facets filter before server pagination. The combined
-  // "monitored" status retains its existing loaded-row interpretation.
+  // Search, facets and known status filter before server pagination. Keep
+  // the legacy monitored URL value while giving it the canonical API meaning.
   const searchError =
     search.q.length > ENDPOINT_SEARCH_MAX_LENGTH
       ? "Search is too long. Use 200 characters or fewer."
@@ -98,7 +97,8 @@ export function EndpointsPage() {
     fields: ENDPOINT_PAGE_FIELDS,
   };
   if (search.q) serverParams.q = search.q;
-  if (search.status && search.status !== "monitored") serverParams.status = search.status;
+  if (search.status === "monitored") serverParams.known_status = "true";
+  else if (search.status) serverParams.status = search.status;
   if (search.kind) serverParams.kind = search.kind;
   if (search.provider) serverParams.provider = search.provider;
 
@@ -126,11 +126,7 @@ export function EndpointsPage() {
   const incidentList = useMemo(() => incidentRows(incidents.data?.data), [incidents.data]);
 
   const summary = summaryQuery.data?.data;
-  const monitored = search.status === "monitored";
-  const shown = useMemo(
-    () => (monitored ? filterMonitoredEndpoints(rows) : rows),
-    [rows, monitored],
-  );
+  const knownStatus = search.status === "monitored";
   const matchedTotal = searchWaiting
     ? null
     : endpointMatchCount(feed.data?.pages.at(-1)?.meta?.pagination?.total);
@@ -390,11 +386,11 @@ export function EndpointsPage() {
               id="directory"
               className="mg-endpoint-directory"
               mobile="cards"
-              rows={shown}
+              rows={rows}
               columns={columns}
               rowKey={(row) => row.id}
               caption="Endpoints"
-              captionCount={monitored || searchError ? null : matchedTotal}
+              captionCount={searchError ? null : matchedTotal}
               link={RouterLink}
               source="endpoint"
               storageKey="mg-endpoints-columns"
@@ -408,11 +404,9 @@ export function EndpointsPage() {
               empty={
                 searchError
                   ? "Shorten the search to show endpoint results."
-                  : monitored
-                    ? "No loaded endpoints match this view."
-                    : search.q.trim()
-                      ? "No endpoints match this search."
-                      : "No endpoints match these filters."
+                  : search.q.trim()
+                    ? "No endpoints match this search."
+                    : "No endpoints match these filters."
               }
             />
           </>
@@ -447,7 +441,7 @@ export function EndpointsPage() {
                   ? rows.length > 0
                     ? "Refresh failed · previously loaded endpoints remain visible · probe-derived"
                     : "Endpoint results are temporarily unavailable · probe-derived"
-                  : `${monitored ? `${formatNumber(shown.length)} observed in ` : ""}${resultScope}${fleetScope}${monitored ? " · monitored status matches loaded rows" : ""} · probe-derived`
+                  : `${resultScope}${fleetScope} · probe-derived${knownStatus ? " · known status; freshness varies" : ""}`
         }
       />
 

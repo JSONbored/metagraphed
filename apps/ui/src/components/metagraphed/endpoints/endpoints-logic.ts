@@ -325,8 +325,3 @@ export const ENDPOINT_SEARCH_MAX_LENGTH = 200;
 export function endpointMatchCount(total: unknown): number | null {
   return typeof total === "number" && Number.isSafeInteger(total) && total >= 0 ? total : null;
 }
-
-/** Preserve the existing loaded-row interpretation of the monitored view. */
-export function filterMonitoredEndpoints(rows: readonly EndpointRow[]): EndpointRow[] {
-  return rows.filter((row) => Boolean(row.status && row.status !== "unknown"));
-}
