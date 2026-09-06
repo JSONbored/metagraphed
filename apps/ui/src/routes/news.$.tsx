@@ -1,3 +1,4 @@
+import { NotFoundComponent } from "./-root-views";
 import { entityNotFoundMeta, isNotFoundMatch } from "@/lib/metagraphed/entity-not-found-meta";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
@@ -19,6 +20,7 @@ import { NewsSplatPage } from "./-news-splat-page";
 const NEWS_META_DESCRIPTION_MAX = 160;
 
 export const Route = createFileRoute("/news/$")({
+  notFoundComponent: NotFoundComponent,
   component: NewsSplatPage,
   loader: async ({ params }) => {
     const slugs = params._splat?.split("/").filter(Boolean) ?? [];

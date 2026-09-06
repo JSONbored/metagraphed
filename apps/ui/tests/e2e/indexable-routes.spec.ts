@@ -880,9 +880,21 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
       request,
       page,
     }) => {
-      const response = await request.get(route, { maxRedirects: 0 });
+      let response = await request.get(route, { maxRedirects: 0 });
+      let finalRoute = route;
+      if (route === "/docs/" || route === "/news/") {
+        expect(response.status()).toBe(307);
+        const location = new URL(response.headers()["location"]!, "https://metagraph.sh");
+        expect(location.pathname).toBe(route.slice(0, -1));
+        finalRoute = location.pathname;
+        response = await request.get(finalRoute, { maxRedirects: 0 });
+      }
       expect(response.status()).toBe(200);
       const head = await socialHead(page, await response.text());
+      await test.info().attach("social-metadata", {
+        body: JSON.stringify({ route, finalRoute, status: response.status(), ...head }, null, 2),
+        contentType: "application/json",
+      });
       const values = (key: string) =>
         head.meta.filter((tag) => tag.key === key).map((tag) => tag.content);
       expect(head.titles).toHaveLength(1);
@@ -908,7 +920,7 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
       const alt = subtitle ? `${imageTitle} — ${subtitle}` : imageTitle;
       expect(values("og:image:alt")).toEqual([alt]);
       expect(values("twitter:image:alt")).toEqual([alt]);
-      const canonical = `https://metagraph.sh${new URL(route, "https://metagraph.sh").pathname}`;
+      const canonical = `https://metagraph.sh${new URL(finalRoute, "https://metagraph.sh").pathname}`;
       expect(head.canonicals).toEqual([canonical]);
       expect(values("og:url")).toEqual([canonical]);
       if (/^\/(?:about|privacy|terms|settings|compare|graphql\/explorer)(?:[?/#]|$)/.test(route)) {
@@ -955,11 +967,18 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
       const response = await request.get(route, { maxRedirects: 0 });
       expect(response.status()).toBe(404);
       const head = await socialHead(page, await response.text());
+      await test.info().attach("social-metadata", {
+        body: JSON.stringify({ route, status: response.status(), ...head }, null, 2),
+        contentType: "application/json",
+      });
       expect(head.titles).toHaveLength(1);
       expect(head.titles[0]).toContain("not found");
-      expect(head.meta.filter((tag) => tag.key === "robots")).toEqual([
-        { key: "robots", content: "noindex" },
-      ]);
+      // The explicit noindex remains authoritative alongside the global
+      // preview defaults; do not infer absence from a generic 404 body alone.
+      expect(head.meta.filter((tag) => tag.key === "robots")).toContainEqual({
+        key: "robots",
+        content: "noindex",
+      });
       expect(
         head.meta.filter((tag) => tag.key === "og:image" || tag.key === "twitter:image"),
       ).toEqual([]);

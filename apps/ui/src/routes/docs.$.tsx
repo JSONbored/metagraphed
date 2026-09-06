@@ -1,3 +1,4 @@
+import { NotFoundComponent } from "./-root-views";
 import { entityNotFoundMeta, isNotFoundMatch } from "@/lib/metagraphed/entity-not-found-meta";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
@@ -20,6 +21,7 @@ import { DocsSplatPage } from "./-docs-splat-page";
 // as every other route) so docs pages keep the real site header/footer;
 // only the content area between them is Fumadocs' sidebar+TOC shell.
 export const Route = createFileRoute("/docs/$")({
+  notFoundComponent: NotFoundComponent,
   component: DocsSplatPage,
   // Deliberately does NOT call clientLoader.preload() here. TanStack
   // Router's automatic code-splitting only extracts the `component` field
