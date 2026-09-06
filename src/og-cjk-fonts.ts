@@ -191,6 +191,7 @@ async function fetchScriptFont(
   face: CjkFontRequest,
   fetchImpl: typeof fetch,
 ): Promise<ArrayBuffer> {
+  // Workers supports manual redirects; the bounded reader rejects every 3xx.
   const signal = AbortSignal.timeout(5000);
   const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(face.name)}:wght@500&text=${encodeURIComponent(face.text)}`;
   const css = new TextDecoder().decode(
@@ -198,7 +199,7 @@ async function fetchScriptFont(
       await fetchImpl(url, {
         headers: { "user-agent": FONT_USER_AGENT },
         signal,
-        redirect: "error",
+        redirect: "manual",
       }),
       65_536,
     ),
@@ -219,7 +220,7 @@ async function fetchScriptFont(
   const bytes = await boundedResponse(
     await fetchImpl(source, {
       signal,
-      redirect: "error",
+      redirect: "manual",
     }),
     MAX_FONT_BYTES,
   );
