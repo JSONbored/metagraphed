@@ -294,7 +294,7 @@ export function createCjkFontLoader() {
         face,
         promise: loadFace(face, fetchImpl),
       }));
-      const fonts = await Promise.all(
+      const results = await Promise.allSettled(
         requests.map(async ({ face, promise }) => ({
           name: face.name,
           weight: face.weight,
@@ -302,7 +302,15 @@ export function createCjkFontLoader() {
           data: await promise,
         })),
       );
+      const fonts = results
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => result.value);
       try {
+        // A regional subset can be entirely unsupported (Google returns 400
+        // for SC containing only 𠮷). Accept another face only when its actual
+        // cmap covers every required character; never accept Latin-only tofu.
+        const failure = results.find((result) => result.status === "rejected");
+        if (failure && !fonts.length) throw failure.reason;
         for (const character of new Set(
           plan.flatMap(({ text: subset }) => [...subset]),
         )) {

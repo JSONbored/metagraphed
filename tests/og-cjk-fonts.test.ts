@@ -298,6 +298,33 @@ describe("bounded conditional font loading", () => {
     await expect(loader.load("漢", good.fetchImpl)).resolves.toHaveLength(2);
     expect(good.requests).toHaveLength(4);
   });
+  it("accepts a complementary face after a wholly unsupported regional subset fails", async () => {
+    const loader = createCjkFontLoader();
+    const good = fetcher();
+    const partial = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.searchParams.get("family")?.startsWith("Noto Sans SC"))
+        return new Response("No supported characters", { status: 400 });
+      return good.fetchImpl(input, init);
+    }) as typeof fetch;
+    const fonts = await loader.load("𠮷", partial);
+    expect(fonts.map(({ name }) => name)).toEqual(["Noto Sans JP"]);
+    expect(fontHasGlyph(fonts[0].data, "𠮷")).toBe(true);
+    const missing = fetcher({ transform: () => font("字") });
+    const incomplete = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      const url = new URL(String(input));
+      return url.searchParams.get("family")?.startsWith("Noto Sans SC")
+        ? new Response(null, { status: 503 })
+        : missing.fetchImpl(input, init);
+    }) as typeof fetch;
+    await expect(loader.load("龘", incomplete)).rejects.toThrow(
+      /glyph unavailable/,
+    );
+    await expect(loader.load("龘", good.fetchImpl)).resolves.toHaveLength(2);
+  });
   it("evicts a malformed later cmap lookup and preserves a newer replacement", async () => {
     const loader = createCjkFontLoader();
     const malformed = fetcher({
