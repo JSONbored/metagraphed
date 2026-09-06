@@ -1,7 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { OG_CARD_VERSION } from "./metagraphed/og-card-limits";
+import { parseDesignTokens } from "../components/metagraphed/design/parse-design-tokens";
 
 import {
   CARD_GLYPHS,
+  CARD_FONT_FACES,
+  OG_THEME,
+  OG_FALLBACK_PATH,
+  fallbackImageResponse,
+  handleOgImage,
   fontSubsetText,
   glyphsForMarkup,
   googleFontUrl,
@@ -161,7 +169,9 @@ describe("titleFontSize (#8489)", () => {
   it("steps down so a long title can't push the stat rail off the card", () => {
     expect(titleFontSize("Chutes".length)).toBe(68);
     expect(titleFontSize(40)).toBe(54);
-    expect(titleFontSize(110)).toBe(42);
+    expect(titleFontSize(90)).toBe(42);
+    expect(titleFontSize(91)).toBe(36);
+    expect(titleFontSize(110)).toBe(36);
   });
 
   it("is monotonic — a longer title never renders larger", () => {
@@ -175,6 +185,19 @@ describe("titleFontSize (#8489)", () => {
 });
 
 describe("renderCardMarkup (#8489)", () => {
+  it("omits whitespace flex children without removing spaces from visible copy", () => {
+    const markup = renderCardMarkup({
+      title: "Two words",
+      subtitle: "Two more words",
+      eyebrow: "A label",
+      stats: [{ label: "A stat", value: "12 τ" }],
+    });
+    expect(markup).not.toMatch(/>\s+</);
+    expect(markup).toContain(">Two words<");
+    expect(markup).toContain(">Two more words<");
+    expect(markup).toContain(">12 τ<");
+  });
+
   const base = { title: "Chutes", subtitle: "A subnet", eyebrow: "Subnet", stats: [] };
 
   it("sanitizes every interpolated value — this endpoint is crawler-reachable", () => {
@@ -208,14 +231,16 @@ describe("renderCardMarkup (#8489)", () => {
     expect(markup).not.toMatch(/width:1200px;height:630px;padding/);
   });
 
-  it("uses the same flat paper field as the product, without a generated gradient", () => {
+  it("uses the product graphite canvas without a gradient", () => {
     const markup = renderCardMarkup(base);
-    expect(markup).toContain("background:#F8F7F2");
+    expect(markup).toContain(`background:${OG_THEME.canvas}`);
     expect(markup).not.toMatch(/(?:linear|radial)-gradient/);
   });
 
-  it("omits the eyebrow pill entirely when there is none", () => {
-    expect(renderCardMarkup({ ...base, eyebrow: null })).not.toContain("border-radius:999px");
+  it("names a generic card without inventing an entity", () => {
+    const markup = renderCardMarkup({ ...base, eyebrow: null });
+    expect(markup).toContain(">EXPLORER<");
+    expect(markup).not.toContain(">CH<");
   });
 });
 
@@ -264,16 +289,22 @@ describe("normalizeLogoHost (#8489) — /og is unauthenticated, so this gates SS
 });
 
 describe("card font stack (#8489)", () => {
-  it("lists Inter after the display face so tau isn't tofu", () => {
-    // Space Grotesk has no Greek coverage; every TAO value contains τ. Caught
-    // by a real satori render — Chromium substituted a system font and hid it.
+  it("uses the product text and numeric faces with an explicit symbol fallback", () => {
+    // Keep a fallback face at every used weight: a Chromium screenshot can
+    // conceal missing glyphs that the actual Satori rasterizer cannot paint.
     const markup = renderCardMarkup({
       title: "Chutes",
       subtitle: "x",
       eyebrow: null,
       stats: [{ label: "Alpha price", value: "0.0832τ" }],
     });
-    expect(markup).toContain("font-family:'Space Grotesk','Inter'");
+    expect(markup).toContain("font-family:'Geist','Inter'");
+    expect(markup).toContain("font-family:'Geist Mono','Inter'");
+    for (const weight of [400, 500, 700]) {
+      expect(CARD_FONT_FACES).toContainEqual({ name: "Geist", weight });
+      expect(CARD_FONT_FACES).toContainEqual({ name: "Inter", weight });
+    }
+    expect(CARD_FONT_FACES).toContainEqual({ name: "Geist Mono", weight: 500 });
   });
 });
 
@@ -425,7 +456,7 @@ describe("monogram fallback (#8489) — an entity card never shows a blank tile"
       stats: [],
     });
     expect(markup).not.toContain(">AG<");
-    expect(markup).toContain(markDataUri("#5DEBBC"));
+    expect(markup).toContain(markDataUri(OG_THEME.brand));
   });
 
   it("subsets the monogram's glyphs — it is uppercased, like the eyebrow was", () => {
@@ -522,15 +553,12 @@ describe("status dot (#8489)", () => {
       entity: true,
       status: "warn",
     });
-    // The DARK health amber. The light theme's AA text variant (#966800) is
-    // darkened to survive on paper and reads as mud on the ink foot.
-    expect(markup).toContain("#FCB442");
-    expect(markup).not.toContain("#966800");
+    expect(markup).toContain(`background:${OG_THEME.warn};margin-right:12px`);
   });
 
   it("falls back to the brand accent when no status is given", () => {
     const markup = renderCardMarkup({ title: "x", subtitle: "y", eyebrow: null, stats: [] });
-    expect(markup).toContain("background:#5DEBBC;margin-right:14px");
+    expect(markup).toContain(`background:${OG_THEME.brand};margin-right:12px`);
   });
 
   it("never interpolates a prototype property into the card's CSS", () => {
@@ -545,71 +573,88 @@ describe("status dot (#8489)", () => {
       status: "constructor",
     });
     expect(markup).not.toContain("function");
-    expect(markup).toContain("background:#5DEBBC;margin-right:14px");
+    expect(markup).toContain(`background:${OG_THEME.brand};margin-right:12px`);
   });
 });
 
-describe("three-stat rail (#8489)", () => {
-  it("steps the type down at three cells so the rail still fits the band", () => {
-    const three = renderCardMarkup({
-      title: "Chutes",
-      subtitle: "x",
-      eyebrow: "Subnet",
-      entity: true,
+describe("bounded stat rail", () => {
+  const base = { title: "Chutes", subtitle: "x", eyebrow: "Subnet", entity: true };
+
+  it("retains three real values and omits a fourth from the rendered and subset text", () => {
+    const markup = renderCardMarkup({
+      ...base,
       stats: [
         { label: "Netuid", value: "SN64" },
         { label: "Price", value: "0.0832τ" },
         { label: "Emission", value: "3.41%" },
+        { label: "Unshown", value: "FOURTH_VALUE" },
       ],
     });
-    expect(three).toContain("font-size:36px");
-    expect(three).toContain("margin-right:44px");
+    expect(markup).toContain("SN64");
+    expect(markup).toContain("0.0832τ");
+    expect(markup).toContain("3.41%");
+    expect(markup).not.toContain("UNSHOWN");
+    expect(markup).not.toContain("FOURTH_VALUE");
+    expect(glyphsForMarkup(markup)).not.toContain("FOURTH_VALUE");
+  });
 
-    const two = renderCardMarkup({
-      title: "Chutes",
-      subtitle: "x",
-      eyebrow: "Subnet",
-      entity: true,
-      stats: [
-        { label: "Netuid", value: "SN64" },
-        { label: "Price", value: "0.0832τ" },
-      ],
-    });
-    expect(two).toContain("font-size:42px");
-    expect(two).toContain("margin-right:64px");
+  it("preserves long values while giving them a smaller wrapping numeric face", () => {
+    const value = "123456789012345678901234567890";
+    const markup = renderCardMarkup({ ...base, stats: [{ label: "Observed value", value }] });
+    expect(markup).toContain(`>${value}</div>`);
+    expect(markup).toContain("font-size:22px");
+    expect(markup).toContain("word-break:break-all");
   });
 });
 
-describe("ink foot (#8622) — the card ends on the app's dark theme, not a white slab", () => {
+describe("graphite composition", () => {
   const base = { title: "Chutes", subtitle: "x", eyebrow: "Subnet", entity: true };
 
-  it("uses the dark tokens for the whole band, including with no stats", () => {
-    // Unconditional, unlike the old lifted white surface: a panel with nothing
-    // in it read as a mistake, an ink band with just the lockup reads as a base.
+  it("keeps the shared lower band and readable text with and without stats", () => {
     for (const stats of [[], [{ label: "Netuid", value: "SN64" }]]) {
       const markup = renderCardMarkup({ ...base, stats });
-      expect(markup).toContain("background:#08090A;");
-      expect(markup).toContain("#EFF2F6"); // --ink-strong (dark), the lockup
+      expect(markup).toContain(`background:${OG_THEME.layer};`);
+      expect(markup).toContain(`color:${OG_THEME.ink};`);
+      expect(markup).toContain(`color:${OG_THEME.muted};`);
+      expect(markup).toContain("metagraph.sh");
     }
   });
 
-  it("puts the stat rail on the dark tokens, with mint at full strength", () => {
-    const markup = renderCardMarkup({ ...base, stats: [{ label: "Netuid", value: "SN64" }] });
-    expect(markup).toContain("#8A8C8F"); // --ink-muted (dark), stat labels
-    expect(markup).toContain("#5DEBBC"); // --accent (dark), stat values
-    // The dialled-down paper variant belongs on the bone body, never on ink.
-    expect(markup).not.toContain("color:#008156;margin-top:8px");
+  it("uses a quiet monogram tile but protects third-party logo contrast", () => {
+    const monogram = renderCardMarkup({ ...base, stats: [] });
+    expect(monogram).toContain(`background:${OG_THEME.raised};`);
+    expect(monogram).toContain(">CH<");
+    const icon = renderCardMarkup({ ...base, stats: [], icon: "data:image/png;base64,AAAA" });
+    expect(icon).toContain("background:#ffffff;");
+    expect(icon).toContain("object-fit:contain");
+    expect(icon).not.toContain(">CH<");
   });
 
-  it("puts OUR mark on an ink tile, and an entity's logo on a white one", () => {
-    // Our mark is a thin stroke, so mint-on-white had too little area to carry
-    // the contrast. An entity tile stays white because we do not control the
-    // contrast of a third-party logo.
-    const ours = renderCardMarkup({ title: "Agents", subtitle: "x", eyebrow: "Agents", stats: [] });
-    expect(ours).toMatch(/border-radius:22px;margin-right:28px;margin-top:4px;background:#08090A;/);
-
-    const theirs = renderCardMarkup({ ...base, stats: [], icon: "data:image/png;base64,AAAA" });
-    expect(theirs).toMatch(/margin-top:4px;background:#FFFFFF;border:1px solid #E9EAEA;/);
+  it("matches the actual stylesheet dark tokens instead of another literal palette", () => {
+    const css = readFileSync(
+      new URL("../../../../packages/ui-kit/src/styles.css", import.meta.url),
+      "utf8",
+    );
+    const tokens = new Map(
+      parseDesignTokens(css).map((token) => [token.name, token.dark ?? token.light]),
+    );
+    const mapping: Record<keyof typeof OG_THEME, string> = {
+      canvas: "--canvas",
+      layer: "--layer",
+      raised: "--raised",
+      ink: "--ink-strong",
+      muted: "--ink-muted",
+      rule: "--rule",
+      brand: "--brand",
+      accent: "--accent",
+      good: "--good",
+      warn: "--warn",
+      bad: "--bad",
+      unknown: "--ink-subtle",
+    };
+    for (const [key, token] of Object.entries(mapping)) {
+      expect(OG_THEME[key as keyof typeof OG_THEME], token).toBe(tokens.get(token));
+    }
   });
 });
 
@@ -680,8 +725,9 @@ describe("font subset request (#11204) — the bug that painted three tofu boxes
     // glyphsForMarkup keeps them (it reports what the template contains);
     // the subset request must not, or the URL varies for nothing.
     const isControl = (text: string) => [...text].some((c) => (c.codePointAt(0) ?? 0) < 0x20);
-    expect(isControl(glyphsForMarkup(renderCardMarkup(APEX)))).toBe(true);
-    expect(isControl(fontSubsetText(renderCardMarkup(APEX)))).toBe(false);
+    const markup = `<div>\n${renderCardMarkup(APEX)}\n</div>`;
+    expect(isControl(glyphsForMarkup(markup))).toBe(true);
+    expect(isControl(fontSubsetText(markup))).toBe(false);
   });
 });
 
@@ -806,5 +852,267 @@ describe("first-party logo assets (#11204) — read, never fetched", () => {
     expect(assetsBindingFrom(null)).toBeNull();
     expect(assetsBindingFrom(undefined)).toBeNull();
     expect(assetsBindingFrom({ ASSETS: { fetch: "not a function" } })).toBeNull();
+  });
+});
+
+describe("static social-preview recovery", () => {
+  it("reads the branded asset through ASSETS and replaces its long cache with 60 seconds", async () => {
+    const bytes = readFileSync(new URL("../../public/og-fallback.png", import.meta.url));
+    expect([...bytes.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    expect(bytes.readUInt32BE(16)).toBe(1200);
+    expect(bytes.readUInt32BE(20)).toBe(630);
+    const requests: Request[] = [];
+    const response = await fallbackImageResponse(
+      {
+        ASSETS: {
+          fetch: async (request: Request) => {
+            requests.push(request);
+            return new Response(bytes, {
+              headers: {
+                "content-type": "image/png; charset=binary",
+                "cache-control": "public, max-age=31536000",
+              },
+            });
+          },
+        },
+      },
+      "https://metagraph.sh",
+    );
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.url).toBe(`https://metagraph.sh${OG_FALLBACK_PATH}`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/png");
+    expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array(bytes));
+  });
+
+  it.each([
+    ["missing binding", {}],
+    [
+      "lookalike MIME",
+      {
+        ASSETS: {
+          fetch: async () =>
+            new Response("not png", { headers: { "content-type": "image/pngjunk" } }),
+        },
+      },
+    ],
+    ["absent asset", { ASSETS: { fetch: async () => new Response(null, { status: 404 }) } }],
+    [
+      "HTML asset fallback",
+      {
+        ASSETS: {
+          fetch: async () =>
+            new Response("<html>app</html>", { headers: { "content-type": "text/html" } }),
+        },
+      },
+    ],
+    [
+      "binding failure",
+      {
+        ASSETS: {
+          fetch: async () => {
+            throw new Error("Asset binding unavailable");
+          },
+        },
+      },
+    ],
+  ])("returns an uncacheable unavailable result on %s", async (_label, env) => {
+    const response = await fallbackImageResponse(env, "https://metagraph.sh");
+    expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("content-type")).not.toBe("image/png");
+  });
+
+  it("keeps method and query guards ahead of render and fallback work", async () => {
+    expect(await handleOgImage(new Request("https://metagraph.sh/unrelated"))).toBeNull();
+    const method = await handleOgImage(new Request("https://metagraph.sh/og", { method: "POST" }));
+    expect(method?.status).toBe(405);
+    expect(method?.headers.get("allow")).toBe("GET, HEAD");
+    const long = await handleOgImage(
+      new Request(`https://metagraph.sh/og?title=${"x".repeat(3000)}`),
+    );
+    expect(long?.status).toBe(414);
+    const head = await handleOgImage(new Request("https://metagraph.sh/og", { method: "HEAD" }));
+    expect(head?.status).toBe(200);
+    expect(head?.headers.get("content-type")).toBe("image/png");
+    expect(await head?.text()).toBe("");
+  });
+});
+
+describe("edge social-preview recovery", () => {
+  const renderedBytes = new Uint8Array([137, 80, 78, 71, 1]);
+  const fallbackBytes = new Uint8Array([137, 80, 78, 71, 2]);
+  const assetFetch = () =>
+    vi.fn(
+      async () =>
+        new Response(fallbackBytes, {
+          headers: { "content-type": "image/png" },
+        }),
+    );
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.doUnmock("workers-og");
+    vi.resetModules();
+  });
+
+  async function setup(
+    options: {
+      cacheReadFails?: boolean;
+      cacheWriteFails?: boolean;
+      fontsFail?: "all" | "one";
+      renderFails?: boolean;
+    } = {},
+  ) {
+    vi.resetModules();
+    const render = vi.fn();
+    vi.doMock("workers-og", () => ({
+      ImageResponse: class extends Response {
+        constructor(markup: string, config: unknown) {
+          render(markup, config);
+          if (options.renderFails) throw new Error("Rasterizer unavailable");
+          super(renderedBytes, { headers: { "content-type": "image/png" } });
+        }
+      },
+    }));
+    const cache = {
+      match: vi.fn(async (_request: Request): Promise<Response | undefined> => {
+        if (options.cacheReadFails) throw new Error("Cache unavailable");
+        return undefined;
+      }),
+      put: vi.fn(async (_request: Request, _response: Response) => {
+        if (options.cacheWriteFails) throw new Error("Cache write unavailable");
+      }),
+    };
+    const fontFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.hostname === "fonts.googleapis.com") {
+        if (
+          options.fontsFail === "all" ||
+          (options.fontsFail === "one" && url.searchParams.get("family") === "Geist:wght@700")
+        ) {
+          return new Response(null, { status: 503 });
+        }
+        return new Response("src: url(https://fonts.gstatic.com/fixture.ttf) format('truetype')");
+      }
+      if (url.href === "https://fonts.gstatic.com/fixture.ttf")
+        return new Response(new Uint8Array([1, 2, 3]));
+      throw new Error(`Unexpected fixture fetch: ${url.origin}${url.pathname}`);
+    });
+    vi.stubGlobal("caches", { default: cache });
+    vi.stubGlobal("fetch", fontFetch);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const module = await import("./og-image");
+    return { module, cache, render, fontFetch };
+  }
+
+  it("treats failed card and font cache reads as misses and still serves the render", async () => {
+    const { module, render, fontFetch } = await setup({ cacheReadFails: true });
+    const assets = assetFetch();
+    const response = await module.handleOgImage(
+      new Request("https://metagraph.sh/og?title=Chutes"),
+      { ASSETS: { fetch: assets } },
+    );
+    expect(response?.status).toBe(200);
+    expect(new Uint8Array(await response!.arrayBuffer())).toEqual(renderedBytes);
+    expect(response?.headers.get("cache-control")).toContain("max-age=86400");
+    expect(render).toHaveBeenCalledOnce();
+    expect(fontFetch).toHaveBeenCalled();
+    expect(assets).not.toHaveBeenCalled();
+  });
+
+  it("keeps the valid image when cache writes fail instead of serving the fallback", async () => {
+    const { module, cache, render } = await setup({ cacheWriteFails: true });
+    const assets = assetFetch();
+    const response = await module.handleOgImage(new Request("https://metagraph.sh/og"), {
+      ASSETS: { fetch: assets },
+    });
+    expect(new Uint8Array(await response!.arrayBuffer())).toEqual(renderedBytes);
+    expect(render).toHaveBeenCalledOnce();
+    expect(cache.put.mock.calls.some(([request]) => new URL(request.url).pathname === "/og")).toBe(
+      true,
+    );
+    expect(assets).not.toHaveBeenCalled();
+  });
+
+  it("serves a short-cache branded image when every font fails, without caching it as a render", async () => {
+    const { module, cache, render, fontFetch } = await setup({ fontsFail: "all" });
+    const assets = assetFetch();
+    const response = await module.handleOgImage(new Request("https://metagraph.sh/og"), {
+      ASSETS: { fetch: assets },
+    });
+    expect(new Uint8Array(await response!.arrayBuffer())).toEqual(fallbackBytes);
+    expect(response?.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(fontFetch).toHaveBeenCalledTimes(CARD_FONT_FACES.length);
+    expect(assets).toHaveBeenCalledOnce();
+    expect(render).not.toHaveBeenCalled();
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+
+  it("keeps available faces when one font fails", async () => {
+    const { module, render } = await setup({ fontsFail: "one" });
+    const response = await module.handleOgImage(new Request("https://metagraph.sh/og"));
+    expect(new Uint8Array(await response!.arrayBuffer())).toEqual(renderedBytes);
+    expect(render).toHaveBeenCalledOnce();
+    const config = render.mock.calls[0]?.[1] as { fonts: { name: string; weight: number }[] };
+    expect(config.fonts).toHaveLength(CARD_FONT_FACES.length - 1);
+    expect(config.fonts).not.toContainEqual(
+      expect.objectContaining({ name: "Geist", weight: 700 }),
+    );
+    expect(config.fonts).toContainEqual(expect.objectContaining({ name: "Inter", weight: 700 }));
+  });
+
+  it("serves the independent asset after a rasterizer exception", async () => {
+    const { module, cache } = await setup({ renderFails: true });
+    const response = await module.handleOgImage(new Request("https://metagraph.sh/og"), {
+      ASSETS: { fetch: assetFetch() },
+    });
+    expect(new Uint8Array(await response!.arrayBuffer())).toEqual(fallbackBytes);
+    expect(response?.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(cache.put.mock.calls.some(([request]) => new URL(request.url).pathname === "/og")).toBe(
+      false,
+    );
+  });
+
+  it("returns no-store when rendering and the independent asset are both unavailable", async () => {
+    const { module } = await setup({ fontsFail: "all" });
+    const response = await module.handleOgImage(new Request("https://metagraph.sh/og"));
+    expect(response?.status).toBe(503);
+    expect(response?.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("uses the current design version for normalized cache lookup even for an old image URL", async () => {
+    const { module, cache, fontFetch, render } = await setup();
+    cache.match.mockResolvedValue(new Response(renderedBytes));
+    const response = await module.handleOgImage(
+      new Request(
+        "https://metagraph.sh/og?title=%20Chutes%20&v=old&stat1=Netuid&stat1v=SN64&ignored=value",
+        { method: "HEAD" },
+      ),
+    );
+    expect(response?.status).toBe(200);
+    expect(await response?.text()).toBe("");
+    const key = new URL(cache.match.mock.calls[0]![0].url);
+    expect(key.searchParams.get("v")).toBe(OG_CARD_VERSION);
+    expect(key.searchParams.get("title")).toBe("Chutes");
+    expect(key.searchParams.get("stat1v")).toBe("SN64");
+    expect(key.searchParams.has("ignored")).toBe(false);
+    expect(fontFetch).not.toHaveBeenCalled();
+    expect(render).not.toHaveBeenCalled();
+  });
+});
+
+describe("edge logo compatibility", () => {
+  it("declines embedded bitmap SVGs so an unusable local asset can fall through", async () => {
+    const assets = {
+      fetch: async () =>
+        new Response(
+          '<svg xmlns="http://www.w3.org/2000/svg"><image href="data:image/jpeg;base64,AA==" /></svg>',
+          { headers: { "content-type": "image/svg+xml" } },
+        ),
+    };
+    expect(await resolveLocalLogo("/logos/example.svg", assets, "https://metagraph.sh")).toBeNull();
   });
 });

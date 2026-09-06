@@ -1,5 +1,5 @@
 import { SITE_ORIGIN } from "./identity";
-import { OG_LIMITS } from "./og-card-limits";
+import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
 import { clampText } from "./truncate";
 
 // Builds the /og card URL a route puts in its own og:image (#8489).
@@ -23,7 +23,7 @@ import { clampText } from "./truncate";
 // (routeOwnsOgImage below is the single source of truth for which). That keeps
 // exactly one og:image tag on every page.
 
-/** One "LABEL / value" cell in the card's stat rail. Max two are rendered. */
+/** One "LABEL / value" cell in the card's stat rail. Max three are rendered. */
 export interface OgCardStat {
   label: string;
   value: string;
@@ -77,7 +77,10 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   // URL -- and once the first-party logo path joined the query (#11204) that
   // slack was enough to push a legitimate card past the endpoint's own
   // MAX_QUERY_LENGTH, which answers 414 and unfurls with no image at all.
-  const params = new URLSearchParams({ title: clampText(options.title, OG_LIMITS.title) });
+  const params = new URLSearchParams({
+    title: clampText(options.title, OG_LIMITS.title),
+    v: OG_CARD_VERSION,
+  });
   const subtitle = clampText(options.subtitle, OG_LIMITS.subtitle);
   if (subtitle) params.set("subtitle", subtitle);
   const eyebrow = clampText(options.eyebrow, OG_LIMITS.eyebrow);
@@ -184,10 +187,9 @@ export function firstPartyLogoPath(
  * Summarize per-endpoint probe verdicts into the card's one status dot.
  *
  * A SUMMARY of probe-derived counts, never a health judgement of our own: the
- * input is `endpoint_summary.by_status`, which the prober owns, and the rule is
- * the obvious one — all monitored endpoints ok is ok, none ok is down, a mix is
- * warn. Returns null when there is nothing to summarize, so the card falls back
- * to its brand-coloured bullet instead of asserting "unknown".
+ * input is `endpoint_summary.by_status`, which the prober owns. All-ok counts
+ * are ok; warning counts or mixed known verdicts are warn; only failed counts
+ * are down. Missing or unknown evidence returns null and uses the brand dot.
  *
  * Lives here because this is where a route's data becomes card params, next to
  * logoHostFrom and firstPartyLogoPath.
@@ -198,14 +200,17 @@ export function healthFromStatusCounts(
   if (!byStatus) return null;
   let ok = 0;
   let total = 0;
+  let warning = false;
   for (const [status, count] of Object.entries(byStatus)) {
     if (typeof count !== "number" || !Number.isFinite(count) || count <= 0) continue;
+    if (!["ok", "warn", "degraded", "down", "failed"].includes(status)) return null;
     total += count;
     if (status === "ok") ok += count;
+    if (status === "warn" || status === "degraded") warning = true;
   }
   if (total === 0) return null;
   if (ok === total) return "ok";
-  return ok === 0 ? "down" : "warn";
+  return warning || ok > 0 ? "warn" : "down";
 }
 
 /** The og:image + twitter:image meta a route's head() returns. */
