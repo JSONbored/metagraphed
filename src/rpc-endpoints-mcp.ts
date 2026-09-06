@@ -171,14 +171,15 @@ export function rpcEndpointsQueryUrl(
   }
   const status = optionalEnum(args, "status", HEALTH_STATUSES);
   if (status) url.searchParams.set("status", status);
-  if (args?.pool_eligible !== undefined && args?.pool_eligible !== null) {
-    if (typeof args.pool_eligible !== "boolean") {
+  for (const key of ["pool_eligible", "known_status"]) {
+    if (args?.[key] === undefined || args[key] === null) continue;
+    if (typeof args[key] !== "boolean") {
       throw rpcEndpointsMcpError(
         "invalid_params",
-        "pool_eligible must be a boolean when provided.",
+        `${key} must be a boolean when provided.`,
       );
     }
-    url.searchParams.set("pool_eligible", String(args.pool_eligible));
+    url.searchParams.set(key, String(args[key]));
   }
   const sort = optionalEnum(args, "sort", ENDPOINT_SORT_FIELDS);
   if (sort) url.searchParams.set("sort", sort);
@@ -328,7 +329,7 @@ export const LIST_RPC_ENDPOINTS_MCP_TOOL = {
     "Fetch the catalog of monitored Bittensor base-layer RPC endpoints and " +
     "their status (each endpoint's URL, network, and probe-derived " +
     "health/latency). Filter by kind/layer/netuid/provider/" +
-    "publication_state/status/pool_eligible, threshold with min_/" +
+    "publication_state/status/known_status/pool_eligible, threshold with min_/" +
     "max_latency_ms and min_/max_score, sort with sort + order, and page " +
     "with limit / cursor. This is the full-catalog view; use " +
     "get_best_rpc_endpoint instead to pick one live-healthy endpoint. " +

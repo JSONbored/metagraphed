@@ -75,6 +75,7 @@ describe("mirrored sort vocabularies", () => {
     assert.ok(filters && Object.keys(filters).length > 0);
     assert.deepEqual(Object.keys(filters).sort(), [
       "kind",
+      "known_status",
       "layer",
       "netuid",
       "pool_eligible",
