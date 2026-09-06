@@ -598,11 +598,12 @@ async function fetchFontBinary(
   text: string,
   fetchImpl: typeof fetch,
 ): Promise<ArrayBuffer> {
+  // Workers supports manual redirects; the status checks below reject every 3xx.
   const signal = AbortSignal.timeout(5000);
   const cssResponse = await fetchImpl(googleFontUrl(family, weight, text), {
     headers: { "user-agent": FONT_USER_AGENT },
     signal,
-    redirect: "error",
+    redirect: "manual",
   });
   if (!cssResponse.ok) {
     throw new Error(`Google Fonts CSS ${cssResponse.status} for ${family} ${weight}`);
@@ -622,7 +623,7 @@ async function fetchFontBinary(
     parsed.port
   )
     throw new Error("Invalid OG font source");
-  const fontResponse = await fetchImpl(source, { signal, redirect: "error" });
+  const fontResponse = await fetchImpl(source, { signal, redirect: "manual" });
   if (!fontResponse.ok) {
     throw new Error(`Google Fonts binary ${fontResponse.status} for ${family} ${weight}`);
   }

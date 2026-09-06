@@ -844,7 +844,7 @@ describe("loadCardFont (#11204) — we own the two fetches, not workers-og", () 
       "https://fonts.gstatic.com:444/font.ttf",
     ]) {
       const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-        expect(init?.redirect).toBe("error");
+        expect(init?.redirect).toBe("manual");
         expect(init?.signal).toBeInstanceOf(AbortSignal);
         return new Response(`src: url(${source}) format('truetype')`);
       });
@@ -852,6 +852,20 @@ describe("loadCardFont (#11204) — we own the two fetches, not workers-og", () 
         /font source/,
       );
       expect(fetchImpl).toHaveBeenCalledOnce();
+    }
+  });
+  it("rejects CSS and binary redirects without following their location", async () => {
+    for (const at of [1, 2]) {
+      let calls = 0;
+      const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        expect(init?.redirect).toBe("manual");
+        calls++;
+        return calls === at
+          ? new Response(null, { status: 302, headers: { location: "https://example.com/font" } })
+          : new Response("src: url(https://fonts.gstatic.com/font.ttf) format('truetype')");
+      });
+      await expect(loadCardFont("Redirect " + at, 500, "abc", fetchImpl)).rejects.toThrow(/302/);
+      expect(fetchImpl).toHaveBeenCalledTimes(at);
     }
   });
   const truetypeCss = (url: string) =>
