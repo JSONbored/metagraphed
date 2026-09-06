@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OG_WORDMARK_SVG } from "./metagraphed/og-wordmark";
-import { OG_CARD_VERSION } from "./metagraphed/og-card-limits";
+import { buildOgImageUrl } from "./metagraphed/og-card";
+import { OG_CARD_VERSION, OG_LIMITS } from "./metagraphed/og-card-limits";
 import { parseDesignTokens } from "../components/metagraphed/design/parse-design-tokens";
 
 import {
@@ -1066,9 +1067,28 @@ describe("static social-preview recovery", () => {
     expect(method?.status).toBe(405);
     expect(method?.headers.get("allow")).toBe("GET, HEAD");
     const long = await handleOgImage(
-      new Request(`https://metagraph.sh/og?title=${"x".repeat(3000)}`),
+      new Request(`https://metagraph.sh/og?title=${"x".repeat(OG_LIMITS.query)}`),
     );
     expect(long?.status).toBe(414);
+    const maximum = buildOgImageUrl({
+      title: "𠮷".repeat(OG_LIMITS.title),
+      subtitle: "𠮷".repeat(OG_LIMITS.subtitle),
+      eyebrow: "𠮷".repeat(OG_LIMITS.eyebrow),
+      identifier: "𠮷".repeat(OG_LIMITS.identifier),
+      stats: [1, 2, 3].map(() => ({
+        label: "𠮷".repeat(OG_LIMITS.statLabel),
+        value: "𠮷".repeat(OG_LIMITS.statValue),
+      })),
+    });
+    expect(new URL(maximum).search.length).toBeGreaterThan(2048);
+    expect((await handleOgImage(new Request(maximum, { method: "HEAD" })))?.status).toBe(200);
+    const exactlyBounded = `https://metagraph.sh/og?title=${"x".repeat(OG_LIMITS.query - 7)}`;
+    expect((await handleOgImage(new Request(exactlyBounded, { method: "HEAD" })))?.status).toBe(
+      200,
+    );
+    expect(
+      (await handleOgImage(new Request(exactlyBounded + "x", { method: "HEAD" })))?.status,
+    ).toBe(414);
     const head = await handleOgImage(new Request("https://metagraph.sh/og", { method: "HEAD" }));
     expect(head?.status).toBe(200);
     expect(head?.headers.get("content-type")).toBe("image/png");

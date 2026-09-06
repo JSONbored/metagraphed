@@ -195,7 +195,7 @@ describe("buildOgImageUrl", () => {
     expect(url.searchParams.get("stat1v")).toHaveLength(OG_LIMITS.statValue);
   });
 
-  it("fits a wide identifier into the remaining encoded query budget", () => {
+  it("preserves a wide identifier within the encoded query budget", () => {
     const input = {
       title: "界".repeat(110),
       subtitle: "界".repeat(70),
@@ -206,8 +206,7 @@ describe("buildOgImageUrl", () => {
     expect(url.search.length).toBeLessThanOrEqual(OG_LIMITS.query);
     expect(url.searchParams.get("title")).toBe(input.title);
     expect(url.searchParams.get("subtitle")).toBe(input.subtitle);
-    expect(url.searchParams.get("identifier")!.length).toBeLessThan(80);
-    expect(url.searchParams.get("identifier")).toMatch(/…$/);
+    expect(url.searchParams.get("identifier")).toBe(input.identifier);
     expect(url.searchParams.get("identifier")).not.toContain("�");
   });
 
@@ -217,21 +216,25 @@ describe("buildOgImageUrl", () => {
     // worst legitimate card to 548 characters against a 512 cap.
     const url = new URL(
       buildOgImageUrl({
-        title: "t".repeat(OG_LIMITS.title),
-        subtitle: "s".repeat(OG_LIMITS.subtitle),
-        eyebrow: "e".repeat(OG_LIMITS.eyebrow),
-        identifier: "界".repeat(OG_LIMITS.identifier),
-        logoPath: `/logos/cache/${"c".repeat(64)}.png`,
+        title: "𠮷".repeat(OG_LIMITS.title),
+        subtitle: "𠮷".repeat(OG_LIMITS.subtitle),
+        eyebrow: "𠮷".repeat(OG_LIMITS.eyebrow),
+        identifier: "𠮷".repeat(OG_LIMITS.identifier),
+        logoPath: `/logos/cache/${"c".repeat(64)}.webp`,
         logoHost: `${"h".repeat(OG_LIMITS.logoHost - 4)}.com`,
-        status: "unknown",
+        status: "degraded",
+        accent: "agent",
         entity: true,
         stats: [1, 2, 3].map(() => ({
-          label: "l".repeat(OG_LIMITS.statLabel),
-          value: "v".repeat(OG_LIMITS.statValue),
+          label: "𠮷".repeat(OG_LIMITS.statLabel),
+          value: "𠮷".repeat(OG_LIMITS.statValue),
         })),
       }),
     );
+    expect(url.search.length).toBeGreaterThan(5616);
+    expect(url.search.length).toBeLessThan(6000);
     expect(url.search.length).toBeLessThanOrEqual(OG_LIMITS.query);
+    expect(Array.from(url.searchParams.get("identifier")!)).toHaveLength(OG_LIMITS.identifier);
   });
 });
 

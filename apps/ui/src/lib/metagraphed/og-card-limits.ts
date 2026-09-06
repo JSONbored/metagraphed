@@ -25,15 +25,14 @@ export const OG_LIMITS = {
   /**
    * The renderer's guard on total query size.
    *
-   * This bounds PARSE cost on an unauthenticated endpoint; it is not what keeps
-   * the card from overflowing -- the per-field caps above do that, after
-   * parsing. So it has to be generous enough that no legitimate card is ever
-   * refused: the fields sum to ~550 characters once encoded, and a title in a
-   * script that percent-encodes to three bytes a character multiplies part of
-   * that severalfold. 2048 leaves room for both while still refusing input
-   * that could only be someone probing the endpoint.
+   * This bounds parse cost on the public endpoint; the field caps bound
+   * rendering. Text fields total 468 code points, at most 5,616 query bytes
+   * with supplementary Unicode (12 encoded bytes per point). Valid logo
+   * paths, hosts, parameter names and flags keep the complete URL query below
+   * 6,000 bytes. 8 KiB preserves every valid identity without transport-driven
+   * truncation, while oversized or duplicate input still fails before rendering.
    */
-  query: 2048,
+  query: 8192,
 } as const;
 
 /** Shared by emitted image URLs and the renderer cache key. */
