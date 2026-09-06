@@ -301,6 +301,36 @@ describe("bounded conditional font loading", () => {
     await expect(loader.load("漢", good.fetchImpl)).resolves.toHaveLength(2);
     expect(good.requests).toHaveLength(4);
   });
+  it("evicts a malformed later cmap lookup and preserves a newer replacement", async () => {
+    const loader = createCjkFontLoader();
+    const malformed = fetcher({
+      transform: () =>
+        sfnt([{ bytes: format12("字") }, { bytes: new Uint8Array([0, 12]) }]),
+    });
+    await expect(loader.load("字漢", malformed.fetchImpl)).rejects.toThrow(
+      /format 12/,
+    );
+    const good = fetcher();
+    await expect(loader.load("字漢", good.fetchImpl)).resolves.toHaveLength(2);
+    expect(good.requests).toHaveLength(4);
+
+    let release!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const old = fetcher({ transform: () => font("글") });
+    const pending = loader.load("한", (async (input, init) => {
+      await waiting;
+      return old.fetchImpl(input, init);
+    }) as typeof fetch);
+    loader.clear();
+    await loader.load("한", good.fetchImpl);
+    const count = good.requests.length;
+    release();
+    await expect(pending).rejects.toThrow(/glyph unavailable/);
+    await loader.load("한", good.fetchImpl);
+    expect(good.requests).toHaveLength(count);
+  });
   it("retries failed requests and rejects a valid HTTP response with invalid font bytes", async () => {
     const loader = createCjkFontLoader();
     await expect(

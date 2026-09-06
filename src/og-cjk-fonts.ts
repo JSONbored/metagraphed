@@ -289,28 +289,40 @@ export function createCjkFontLoader() {
       fetchImpl: typeof fetch = fetch,
     ): Promise<CjkFont[]> {
       const plan = cjkFontPlan(text);
+      const requests = plan.map((face) => ({
+        face,
+        promise: loadFace(face, fetchImpl),
+      }));
       const fonts = await Promise.all(
-        plan.map(async (face) => ({
+        requests.map(async ({ face, promise }) => ({
           name: face.name,
           weight: face.weight,
           style: "normal" as const,
-          data: await loadFace(face, fetchImpl),
+          data: await promise,
         })),
       );
-      for (const character of new Set(
-        plan.flatMap(({ text: subset }) => [...subset]),
-      )) {
-        if (!fonts.some(({ data }) => fontHasGlyph(data, character))) {
-          for (const face of plan) {
-            const key = `${face.name}:${face.text}`;
-            const entry = cache.get(key);
-            if (entry) cachedBytes -= entry.bytes;
-            cache.delete(key);
+      try {
+        for (const character of new Set(
+          plan.flatMap(({ text: subset }) => [...subset]),
+        )) {
+          if (!fonts.some(({ data }) => fontHasGlyph(data, character))) {
+            throw new Error(
+              `OG script glyph unavailable: U+${character.codePointAt(0)!.toString(16)}`,
+            );
           }
-          throw new Error(
-            `OG script glyph unavailable: U+${character.codePointAt(0)!.toString(16)}`,
-          );
         }
+      } catch (error) {
+        // A later cmap lookup can reject a malformed subtable even when the
+        // initial glyph was valid. Evict only this load's promises: a reset
+        // and successful replacement may have happened while they resolved.
+        for (const { face, promise } of requests) {
+          const key = `${face.name}:${face.text}`;
+          const entry = cache.get(key);
+          if (entry?.promise !== promise) continue;
+          cachedBytes -= entry.bytes;
+          cache.delete(key);
+        }
+        throw error;
       }
       return fonts;
     },
