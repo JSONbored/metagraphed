@@ -56,7 +56,7 @@ export function validatorOgContent(
   return {
     title: data?.name || label,
     identifier: data?.name ? `Hotkey ${label}` : null,
-    subtitle: "Declared validator identity and observed subnet memberships.",
+    subtitle: "Validator identity and subnet memberships.",
     logoPath: data?.logoPath,
     logoHost: data?.logoHost,
     stats: count(data?.subnetCount) ? [{ label: "Subnets", value: String(data.subnetCount) }] : [],
@@ -76,7 +76,7 @@ export function providerOgContent(
 ): OgCardOptions {
   return {
     title: data?.name || slug,
-    subtitle: "Registered endpoints, public interfaces and subnet coverage.",
+    subtitle: "Public interfaces and subnet coverage.",
     logoPath: firstPartyLogoPath(data?.iconUrl),
     logoHost: logoHostFrom(data?.iconUrl, data?.website),
     stats: [
@@ -93,7 +93,7 @@ export function blockOgContent(ref: string, blockNumber?: number | null): OgCard
   return {
     title: `Block ${resolved != null ? `#${blockNumber}` : reference}`,
     identifier: resolved != null && ref.startsWith("0x") ? reference : null,
-    subtitle: "Extrinsics, events and timing for one Bittensor block.",
+    subtitle: "Extrinsics, events and block timing.",
     entity: false,
   };
 }
@@ -114,7 +114,7 @@ export function eventOgContent(block: number, index: string, label?: string | nu
   return {
     title: label || `Event #${index}`,
     identifier: `Block #${block} · Event #${index}`,
-    subtitle: "Decoded Bittensor event, arguments and originating extrinsic.",
+    subtitle: "Event arguments and originating extrinsic.",
     entity: false,
   };
 }

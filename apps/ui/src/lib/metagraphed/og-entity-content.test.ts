@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ogImageMeta } from "./og-card";
+import { cardTitleLayout } from "../og-image";
 import {
   blockOgContent,
   eventOgContent,
@@ -10,6 +11,20 @@ import {
 } from "./og-entity-content";
 
 describe("entity preview content", () => {
+  it("keeps every standard description fully visible in the bounded two-line layout", () => {
+    const cards = [
+      subnetOgContent(1),
+      validatorOgContent("address"),
+      providerOgContent("provider"),
+      blockOgContent("123", 123),
+      extrinsicOgContent("123-0", "Balances.transfer"),
+      eventOgContent(123, "0", "System.Success"),
+    ];
+    for (const card of cards) {
+      const layout = cardTitleLayout(card.title, true, true, card.subtitle!);
+      expect(layout.subtitleLines.join(" ")).toBe(card.subtitle);
+    }
+  });
   it("keeps subnet identity outside supported facts and omits derived voting stake", () => {
     const data = {
       name: "Example subnet",
