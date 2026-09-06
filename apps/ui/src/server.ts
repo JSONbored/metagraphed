@@ -3,7 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleOgImage } from "./lib/og-image";
-import { routeOwnsOgImage } from "./lib/metagraphed/og-card";
+import { buildOgImageUrl, routeOwnsOgImage } from "./lib/metagraphed/og-card";
 import {
   apiRecordUrl,
   breadcrumbListJsonLd,
@@ -947,10 +947,7 @@ function injectAnalytics(response: Response, request: Request): Response {
   // see routeOwnsOgImage's own comment for why ownership moved.
   const routeOwnsCard = routeOwnsOgImage(pathname);
   const ogCopy = ogCardCopy(pathname);
-  const ogImage =
-    `${SITE_ORIGIN}/og?title=${encodeURIComponent(ogCopy.title)}` +
-    (ogCopy.subtitle ? `&subtitle=${encodeURIComponent(ogCopy.subtitle)}` : "") +
-    (ogCopy.eyebrow ? `&eyebrow=${encodeURIComponent(ogCopy.eyebrow)}` : "");
+  const ogImage = buildOgImageUrl({ ...ogCopy, entity: false });
   // #8624: og:image:alt is what a screen reader announces for an unfurl, and
   // several platforms surface it as the image caption. The card's own copy is
   // exactly the right text -- it IS what the image says.

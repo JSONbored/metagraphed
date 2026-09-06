@@ -34,3 +34,6 @@ export const OG_LIMITS = {
    */
   query: 2048,
 } as const;
+
+/** Shared by emitted image URLs and the renderer cache key. */
+export const OG_CARD_VERSION = "6";

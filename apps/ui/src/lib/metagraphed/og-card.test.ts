@@ -7,7 +7,7 @@ import {
   logoHostFrom,
   ogImageMeta,
 } from "./og-card";
-import { OG_LIMITS } from "./og-card-limits";
+import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
 
 // The route → card adapters (#11204). Each one exists because the obvious
 // reduction threw away the better answer; the tests below pin the case that
@@ -78,6 +78,22 @@ describe("healthFromStatusCounts — a summary of probe verdicts, not a judgemen
     expect(healthFromStatusCounts({ down: 3 })).toBe("down");
   });
 
+  it("preserves warning observations instead of relabeling them as failed", () => {
+    expect(healthFromStatusCounts({ degraded: 3 })).toBe("warn");
+    expect(healthFromStatusCounts({ warn: 3 })).toBe("warn");
+    expect(healthFromStatusCounts({ degraded: 1, failed: 2 })).toBe("warn");
+    expect(healthFromStatusCounts({ failed: 3 })).toBe("down");
+    expect(healthFromStatusCounts({ ok: 1, failed: 2 })).toBe("warn");
+  });
+
+  it("declines incomplete or unrecognized positive evidence instead of inventing a verdict", () => {
+    for (const unknown of ["unknown", "not_monitored", "pending", "constructor", "other"]) {
+      expect(healthFromStatusCounts({ [unknown]: 3 }), unknown).toBeNull();
+      expect(healthFromStatusCounts({ ok: 1, [unknown]: 3 }), unknown).toBeNull();
+    }
+    expect(healthFromStatusCounts({ ok: 1, unknown: 0 })).toBe("ok");
+  });
+
   it("declines to answer when there is nothing to summarize", () => {
     // Null, not "unknown": the card falls back to its brand bullet rather than
     // asserting a health state nothing measured.
@@ -95,6 +111,20 @@ describe("healthFromStatusCounts — a summary of probe verdicts, not a judgemen
 });
 
 describe("buildOgImageUrl", () => {
+  it("publishes the renderer version in every externally shared image URL", () => {
+    for (const options of [
+      { title: "Metagraphed", entity: false },
+      { title: "Chutes", stats: [{ label: "Netuid", value: "SN64" }] },
+      { title: "API reference", eyebrow: "Docs", entity: false },
+    ]) {
+      const url = new URL(buildOgImageUrl(options));
+      expect(url.origin).toBe("https://metagraph.sh");
+      expect(url.pathname).toBe("/og");
+      expect(url.searchParams.getAll("v")).toEqual([OG_CARD_VERSION]);
+      expect(url.searchParams.get("title")).toBe(options.title);
+    }
+  });
+
   it("carries the first-party logo path as logop, which the renderer prefers", () => {
     const url = new URL(
       buildOgImageUrl({ title: "404-GEN", logoPath: "/logos/404-gen.png", entity: true }),
@@ -171,5 +201,6 @@ describe("ogImageMeta", () => {
         .filter((content) => content.includes("/og?")),
     );
     expect(urls.size).toBe(1);
+    expect(new URL([...urls][0]!).searchParams.get("v")).toBe(OG_CARD_VERSION);
   });
 });
