@@ -6,8 +6,8 @@ import { OG_SECTIONS, ogCardCopy } from "./server";
 describe("OG card copy coverage (#8489)", () => {
   it("gives the homepage explicit explorer copy while unknown paths stay conservative", () => {
     expect(ogCardCopy("/")).toEqual({
-      title: "Metagraphed",
-      subtitle: "Explore Bittensor. Follow the chain, subnets and public interfaces.",
+      title: "Bittensor, measured.",
+      subtitle: "Explore the chain, subnets and public interfaces.",
       eyebrow: "Explorer",
     });
     expect(ogCardCopy("/not-a-real-route")).toEqual({ title: "Metagraphed" });
@@ -37,9 +37,12 @@ describe("OG card copy coverage (#8489)", () => {
 
   it("gives /agents real copy — the exact route that unfurled as the home page", () => {
     const copy = ogCardCopy("/agents");
-    expect(copy.title).toBe("Agents");
+    expect(copy.title).toBe("Bittensor in a box");
     expect(copy.eyebrow).toBe("Agents");
-    expect(copy.subtitle).toMatch(/agent/i);
+    expect(copy.accent).toBe("agent");
+    expect(copy.subtitle).toBe("Subnets, native APIs and chain data. One MCP.");
+    expect(ogCardCopy("/subnets").accent).toBeUndefined();
+    expect(ogCardCopy("/docs").accent).toBeUndefined();
   });
 
   it("describes the current directory, settings and comparison scope", () => {

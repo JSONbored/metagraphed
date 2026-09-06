@@ -111,6 +111,16 @@ describe("healthFromStatusCounts — a summary of probe verdicts, not a judgemen
 });
 
 describe("buildOgImageUrl", () => {
+  it("carries a named semantic accent without adding it to unrelated page cards", () => {
+    const url = new URL(buildOgImageUrl({ title: "Agents", entity: false, accent: "agent" }));
+    expect(url.searchParams.get("accent")).toBe("agent");
+    expect(
+      new URL(buildOgImageUrl({ title: "API reference", entity: false })).searchParams.has(
+        "accent",
+      ),
+    ).toBe(false);
+  });
+
   it("publishes the renderer version in every externally shared image URL", () => {
     for (const options of [
       { title: "Metagraphed", entity: false },
@@ -145,14 +155,32 @@ describe("buildOgImageUrl", () => {
         title: "t".repeat(500),
         subtitle: "s".repeat(500),
         eyebrow: "e".repeat(500),
+        identifier: "i".repeat(500),
         stats: [{ label: "l".repeat(500), value: "v".repeat(500) }],
       }),
     );
     expect(url.searchParams.get("title")).toHaveLength(OG_LIMITS.title);
     expect(url.searchParams.get("subtitle")).toHaveLength(OG_LIMITS.subtitle);
     expect(url.searchParams.get("eyebrow")).toHaveLength(OG_LIMITS.eyebrow);
+    expect(url.searchParams.get("identifier")).toHaveLength(OG_LIMITS.identifier);
     expect(url.searchParams.get("stat1")).toHaveLength(OG_LIMITS.statLabel);
     expect(url.searchParams.get("stat1v")).toHaveLength(OG_LIMITS.statValue);
+  });
+
+  it("fits a wide identifier into the remaining encoded query budget", () => {
+    const input = {
+      title: "界".repeat(110),
+      subtitle: "界".repeat(70),
+      identifier: "界".repeat(80),
+      entity: true,
+    };
+    const url = new URL(buildOgImageUrl(input));
+    expect(url.search.length).toBeLessThanOrEqual(OG_LIMITS.query);
+    expect(url.searchParams.get("title")).toBe(input.title);
+    expect(url.searchParams.get("subtitle")).toBe(input.subtitle);
+    expect(url.searchParams.get("identifier")!.length).toBeLessThan(80);
+    expect(url.searchParams.get("identifier")).toMatch(/…$/);
+    expect(url.searchParams.get("identifier")).not.toContain("�");
   });
 
   it("cannot build a URL the renderer would refuse, even at every field's cap", () => {
@@ -164,6 +192,7 @@ describe("buildOgImageUrl", () => {
         title: "t".repeat(OG_LIMITS.title),
         subtitle: "s".repeat(OG_LIMITS.subtitle),
         eyebrow: "e".repeat(OG_LIMITS.eyebrow),
+        identifier: "界".repeat(OG_LIMITS.identifier),
         logoPath: `/logos/cache/${"c".repeat(64)}.png`,
         logoHost: `${"h".repeat(OG_LIMITS.logoHost - 4)}.com`,
         status: "unknown",

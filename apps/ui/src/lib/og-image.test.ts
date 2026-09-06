@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { OG_WORDMARK_SVG } from "./metagraphed/og-wordmark";
 import { OG_CARD_VERSION } from "./metagraphed/og-card-limits";
 import { parseDesignTokens } from "../components/metagraphed/design/parse-design-tokens";
 
@@ -15,7 +16,9 @@ import {
   googleFontUrl,
   loadCardFont,
   iconProxyUrl,
-  markDataUri,
+  coverMarkDataUri,
+  cardTitleLayout,
+  wrapCardTitle,
   monogramFor,
   normalizeLogoHost,
   normalizeLogoPath,
@@ -116,6 +119,8 @@ describe("readCardParams (#8489)", () => {
       logoPath: null,
       entity: false,
       status: null,
+      accent: null,
+      identifier: null,
       stats: [
         { label: "Netuid", value: "SN64" },
         { label: "Price", value: "0.0832τ" },
@@ -141,6 +146,28 @@ describe("readCardParams (#8489)", () => {
     expect(readCardParams(p).stats).toEqual([]);
   });
 
+  it("accepts only the existing named page accent, never raw colors or CSS", () => {
+    expect(readCardParams(new URLSearchParams({ accent: "agent" })).accent).toBe("agent");
+    for (const accent of ["Agent", "#b49cff", "red", "constructor", "agent;background:red"])
+      expect(readCardParams(new URLSearchParams({ accent })).accent).toBeNull();
+  });
+
+  it("bounds the separate identifier before rendering it as text", () => {
+    const identifier = readCardParams(
+      new URLSearchParams({ identifier: "x".repeat(500) }),
+    ).identifier!;
+    expect(identifier).toHaveLength(80);
+    const markup = renderCardMarkup({
+      title: "Example",
+      subtitle: "",
+      eyebrow: null,
+      stats: [],
+      identifier: "SN19 <script>",
+    });
+    expect(markup).toContain(">SN19 script<");
+    expect(markup).not.toContain("<script>");
+  });
+
   it("returns null eyebrow and no stats when absent, so the card falls back", () => {
     expect(readCardParams(new URLSearchParams())).toEqual({
       eyebrow: null,
@@ -149,6 +176,8 @@ describe("readCardParams (#8489)", () => {
       logoPath: null,
       entity: false,
       status: null,
+      accent: null,
+      identifier: null,
     });
   });
 
@@ -167,11 +196,11 @@ describe("readCardParams (#8489)", () => {
 
 describe("titleFontSize (#8489)", () => {
   it("steps down so a long title can't push the stat rail off the card", () => {
-    expect(titleFontSize("Chutes".length)).toBe(68);
-    expect(titleFontSize(40)).toBe(54);
-    expect(titleFontSize(90)).toBe(42);
-    expect(titleFontSize(91)).toBe(36);
-    expect(titleFontSize(110)).toBe(36);
+    expect(titleFontSize("Chutes".length)).toBe(96);
+    expect(titleFontSize(40)).toBe(68);
+    expect(titleFontSize(90)).toBe(54);
+    expect(titleFontSize(91)).toBe(42);
+    expect(titleFontSize(110)).toBe(42);
   });
 
   it("is monotonic — a longer title never renders larger", () => {
@@ -239,7 +268,7 @@ describe("renderCardMarkup (#8489)", () => {
 
   it("names a generic card without inventing an entity", () => {
     const markup = renderCardMarkup({ ...base, eyebrow: null });
-    expect(markup).toContain(">EXPLORER<");
+    expect(markup).not.toContain(">EXPLORER<");
     expect(markup).not.toContain(">CH<");
   });
 });
@@ -338,7 +367,7 @@ describe("glyph subsetting (#8489) — every painted character must be subset", 
     return new Set(glyphsForMarkup(markup).replace(/\s/g, ""));
   }
 
-  it("covers the UPPERCASED eyebrow, which the markup transforms", () => {
+  it("subsets the legacy entity context that is actually painted", () => {
     // Regression: eyebrow "Validator" is painted "VALIDATOR". With the old
     // hand-written subset it rendered "V" + 8 tofu boxes whenever the title
     // didn't happen to supply those capitals.
@@ -346,15 +375,16 @@ describe("glyph subsetting (#8489) — every painted character must be subset", 
       title: "chutes",
       subtitle: "a subnet.",
       eyebrow: "Validator",
+      entity: true,
       stats: [],
     });
     const painted = paintedChars(markup);
-    for (const ch of "VALIDATOR") {
+    for (const ch of "Validator") {
       expect(painted.has(ch), `subset is missing "${ch}"`).toBe(true);
     }
   });
 
-  it("covers UPPERCASED stat labels", () => {
+  it("covers sentence-case stat labels", () => {
     const markup = renderCardMarkup({
       title: "x",
       subtitle: "y",
@@ -362,12 +392,12 @@ describe("glyph subsetting (#8489) — every painted character must be subset", 
       stats: [{ label: "Alpha price", value: "0.0832τ" }],
     });
     const painted = paintedChars(markup);
-    for (const ch of "ALPHA PRICE".replace(/\s/g, "")) {
+    for (const ch of "Alpha price".replace(/\s/g, "")) {
       expect(painted.has(ch), `subset is missing "${ch}"`).toBe(true);
     }
   });
 
-  it("covers the wordmark, the footer lockup, and stat values", () => {
+  it("covers the domain and fact values; the owned wordmark uses vector paths", () => {
     const markup = renderCardMarkup({
       title: "x",
       subtitle: "y",
@@ -375,7 +405,7 @@ describe("glyph subsetting (#8489) — every painted character must be subset", 
       stats: [{ label: "Netuid", value: "SN64" }],
     });
     const painted = paintedChars(markup);
-    for (const ch of "Metagraphedmetagraph.shSN64") {
+    for (const ch of "metagraph.shSN64") {
       expect(painted.has(ch), `subset is missing "${ch}"`).toBe(true);
     }
   });
@@ -390,7 +420,7 @@ describe("glyph subsetting (#8489) — every painted character must be subset", 
       eyebrow: null,
       stats: [],
     });
-    expect(markup).toContain("Rock & Roll");
+    expect(markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")).toContain("Rock & Roll");
     expect(markup).not.toContain("&amp;");
     expect(paintedChars(markup).has("&")).toBe(true);
     expect(glyphsForMarkup(markup)).not.toContain("&amp;");
@@ -456,7 +486,7 @@ describe("monogram fallback (#8489) — an entity card never shows a blank tile"
       stats: [],
     });
     expect(markup).not.toContain(">AG<");
-    expect(markup).toContain(markDataUri(OG_THEME.brand));
+    expect(markup).toContain(coverMarkDataUri());
   });
 
   it("subsets the monogram's glyphs — it is uppercased, like the eyebrow was", () => {
@@ -543,37 +573,13 @@ describe("resolveIcon (#8489) — satori has no onerror, so we resolve first", (
   });
 });
 
-describe("status dot (#8489)", () => {
-  it("colours the footer dot with the site's own health colour", () => {
-    const markup = renderCardMarkup({
-      title: "Chutes",
-      subtitle: "x",
-      eyebrow: "Subnet",
-      stats: [],
-      entity: true,
-      status: "warn",
-    });
-    expect(markup).toContain(`background:${OG_THEME.warn};margin-right:12px`);
-  });
-
-  it("falls back to the brand accent when no status is given", () => {
-    const markup = renderCardMarkup({ title: "x", subtitle: "y", eyebrow: null, stats: [] });
-    expect(markup).toContain(`background:${OG_THEME.brand};margin-right:12px`);
-  });
-
-  it("never interpolates a prototype property into the card's CSS", () => {
-    // `key in obj` would let ?status=constructor through and stringify a
-    // function into an inline style. renderCardMarkup re-checks rather than
-    // trusting its caller.
-    const markup = renderCardMarkup({
-      title: "x",
-      subtitle: "y",
-      eyebrow: null,
-      stats: [],
-      status: "constructor",
-    });
-    expect(markup).not.toContain("function");
-    expect(markup).toContain(`background:${OG_THEME.brand};margin-right:12px`);
+describe("health compatibility", () => {
+  it("does not suggest current health without an observation-time contract", () => {
+    const base = { title: "Chutes", subtitle: "x", eyebrow: "Subnet", stats: [], entity: true };
+    const unobserved = renderCardMarkup(base);
+    for (const status of ["ok", "warn", "down", "unknown", "constructor"])
+      expect(renderCardMarkup({ ...base, status })).toBe(unobserved);
+    expect(unobserved).not.toContain("Health:");
   });
 });
 
@@ -610,14 +616,77 @@ describe("bounded stat rail", () => {
 describe("graphite composition", () => {
   const base = { title: "Chutes", subtitle: "x", eyebrow: "Subnet", entity: true };
 
-  it("keeps the shared lower band and readable text with and without stats", () => {
-    for (const stats of [[], [{ label: "Netuid", value: "SN64" }]]) {
-      const markup = renderCardMarkup({ ...base, stats });
-      expect(markup).toContain(`background:${OG_THEME.layer};`);
-      expect(markup).toContain(`color:${OG_THEME.ink};`);
-      expect(markup).toContain(`color:${OG_THEME.muted};`);
-      expect(markup).toContain("metagraph.sh");
+  it("shows one destination title without duplicated page category or framed bands", () => {
+    const markup = renderCardMarkup({
+      title: "Agents",
+      subtitle: "MCP tools",
+      eyebrow: "Agents",
+      stats: [],
+      accent: "agent",
+    });
+    expect(markup.match(/>Agents</g)).toHaveLength(1);
+    expect(markup).not.toContain(">AGENTS<");
+    expect(markup).not.toContain(`background:${OG_THEME.layer};`);
+    expect(markup).not.toContain("border-top:");
+    expect(markup).toContain(coverMarkDataUri(true));
+  });
+
+  it("separates identity from optional facts and omits ungrounded health decoration", () => {
+    const markup = renderCardMarkup({
+      ...base,
+      identifier: "SN19 · block 8,500,000",
+      stats: [{ label: "Price", value: "0.08 τ" }],
+      status: "warn",
+    });
+    expect(markup).toContain(">SN19 · block 8,500,000<");
+    expect(markup).not.toContain(">Subnet<");
+    expect(markup).toContain(">Price<");
+    expect(markup).toContain(">0.08 τ<");
+    expect(markup).not.toContain("Health:");
+    expect(markup).not.toContain(coverMarkDataUri());
+    expect(markup).toContain(">CH<");
+  });
+
+  it("uses the full owned geometry and authentic site wordmark", () => {
+    const svg = atob(coverMarkDataUri(true).split(",")[1]!);
+    expect(svg).toContain('viewBox="-2 -2 752 452"');
+    expect(svg).not.toContain("transform=");
+    expect(svg).toContain(OG_THEME.agent);
+    expect(svg).toContain(OG_THEME.brand);
+    const source = readFileSync(
+      new URL(
+        "../../../../packages/ui-kit/src/components/metagraphed/wordmark.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    const canonical = source
+      .match(/<svg[\s\S]*?<\/svg>/)![0]
+      .replace("className={className}", 'width="1190.44" height="164.29"')
+      .replaceAll("currentColor", OG_THEME.ink)
+      .replace(/>\s+</g, "><");
+    expect(OG_WORDMARK_SVG).toBe(canonical);
+  });
+
+  it("bounds wide text with readable type and visible truncation", () => {
+    for (const title of [
+      "Bittensor in a box",
+      "W".repeat(110),
+      "界".repeat(110),
+      "A long document title with substantial context and an exceptionally descriptive ending",
+    ]) {
+      const layout = cardTitleLayout(title, true, true, "W".repeat(90));
+      expect(layout.fontSize).toBeGreaterThanOrEqual(42);
+      expect(layout.lines.length).toBeLessThanOrEqual(3);
+      expect(layout.subtitleLines.length).toBeLessThanOrEqual(2);
+      expect(
+        layout.lines.length * layout.fontSize * 1.13 + 28 + layout.subtitleHeight,
+      ).toBeLessThanOrEqual(260);
     }
+    expect(cardTitleLayout("界".repeat(110), true, true, "界".repeat(90)).lines.at(-1)).toMatch(
+      /…$/,
+    );
+    expect(wrapCardTitle("Bittensor in a box", 10)).toEqual(["Bittensor", "in a box"]);
   });
 
   it("uses a quiet monogram tile but protects third-party logo contrast", () => {
@@ -647,6 +716,7 @@ describe("graphite composition", () => {
       rule: "--rule",
       brand: "--brand",
       accent: "--accent",
+      agent: "--agent",
       good: "--good",
       warn: "--warn",
       bad: "--bad",
@@ -1101,6 +1171,36 @@ describe("edge social-preview recovery", () => {
     expect(key.searchParams.has("ignored")).toBe(false);
     expect(fontFetch).not.toHaveBeenCalled();
     expect(render).not.toHaveBeenCalled();
+  });
+
+  it("separates the semantic accent cache entry and ignores unsupported accents", async () => {
+    const { module, cache } = await setup();
+    cache.match.mockResolvedValue(new Response(renderedBytes));
+    for (const suffix of ["", "&accent=agent", "&accent=constructor"])
+      await module.handleOgImage(
+        new Request(`https://metagraph.sh/og?title=Agents${suffix}`, { method: "HEAD" }),
+      );
+    const [plain, agent, ignored] = cache.match.mock.calls.map(([request]) => new URL(request.url));
+    expect(agent!.searchParams.get("accent")).toBe("agent");
+    expect(agent!.href).not.toBe(plain!.href);
+    expect(ignored!.href).toBe(plain!.href);
+  });
+
+  it("carries the parsed page accent into the actual image render", async () => {
+    const { module, render } = await setup();
+    await module.handleOgImage(
+      new Request("https://metagraph.sh/og?title=Agents&eyebrow=Agents&accent=agent"),
+    );
+    expect(render.mock.calls[0]![0]).toContain(coverMarkDataUri(true));
+  });
+
+  it("carries identifier text through the render and a distinct cache key", async () => {
+    const { module, render, cache } = await setup();
+    await module.handleOgImage(
+      new Request("https://metagraph.sh/og?title=Example&identifier=SN19"),
+    );
+    expect(render.mock.calls[0]![0]).toContain(">SN19<");
+    expect(new URL(cache.match.mock.calls[0]![0].url).searchParams.get("identifier")).toBe("SN19");
   });
 });
 

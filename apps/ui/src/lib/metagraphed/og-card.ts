@@ -32,8 +32,12 @@ export interface OgCardStat {
 export interface OgCardOptions {
   title: string;
   subtitle?: string | null;
-  /** Small pill next to the wordmark, e.g. "SUBNET" / "VALIDATOR". */
+  /** Legacy context, shown only beside a named entity. */
   eyebrow?: string | null;
+  /** Essential entity or event identity, separate from optional measurements. */
+  identifier?: string | null;
+  /** Existing page identity color; the renderer accepts only this named role. */
+  accent?: "agent" | null;
   stats?: OgCardStat[];
   /** Bare DNS name (use `logoHostFrom`). The card renders it through the
    * SSRF-safe icon proxy; absent, it falls back to a monogram. */
@@ -46,9 +50,8 @@ export interface OgCardOptions {
    */
   logoPath?: string | null;
   /**
-   * Health state ("ok" | "warn" | "down" | "unknown") — colours the card's
-   * footer dot the way the site's health pill colours itself. Anything outside
-   * that vocabulary is dropped by the renderer rather than guessed at.
+   * Legacy health vocabulary, validated for compatibility. The cover does not
+   * paint health without an observation-time contract.
    */
   status?: string | null;
   /**
@@ -85,6 +88,7 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   if (subtitle) params.set("subtitle", subtitle);
   const eyebrow = clampText(options.eyebrow, OG_LIMITS.eyebrow);
   if (eyebrow) params.set("eyebrow", eyebrow);
+  if (options.accent === "agent") params.set("accent", "agent");
   if (options.logoPath) params.set("logop", options.logoPath);
   if (options.logoHost) params.set("logo", options.logoHost.slice(0, OG_LIMITS.logoHost));
   if (options.status) params.set("status", options.status);
@@ -104,6 +108,19 @@ export function buildOgImageUrl(options: OgCardOptions): string {
     params.set(`stat${index + 1}`, label);
     params.set(`stat${index + 1}v`, value);
   });
+  let identifier = clampText(options.identifier, OG_LIMITS.identifier);
+  if (identifier) {
+    const glyphs = Array.from(identifier);
+    params.set("identifier", identifier);
+    // Identity is optional in old URLs; never let the new field make a
+    // previously valid card exceed the edge query guard after percent encoding.
+    while (params.toString().length + 1 > OG_LIMITS.query && identifier) {
+      glyphs.pop();
+      identifier = glyphs.length ? `${glyphs.join("")}…` : "";
+      if (identifier) params.set("identifier", identifier);
+      else params.delete("identifier");
+    }
+  }
   return `${SITE_ORIGIN}/og?${params.toString()}`;
 }
 
