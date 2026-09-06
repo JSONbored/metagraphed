@@ -256,7 +256,9 @@ export function subnetFacts(
   // with no measured readiness must not show "0/100".
   if (
     typeof row.integration_readiness === "number" &&
-    Number.isFinite(row.integration_readiness)
+    Number.isInteger(row.integration_readiness) &&
+    row.integration_readiness >= 0 &&
+    row.integration_readiness <= 100
   ) {
     stats.push({
       label: "Readiness",
@@ -265,7 +267,8 @@ export function subnetFacts(
   }
   if (
     typeof row.surface_count === "number" &&
-    Number.isFinite(row.surface_count)
+    Number.isSafeInteger(row.surface_count) &&
+    row.surface_count >= 0
   ) {
     stats.push({ label: "Surfaces", value: String(row.surface_count) });
   }

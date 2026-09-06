@@ -42,6 +42,9 @@ fact slot. Account cards show one abbreviated address and destination context,
 with no duplicate address statistic or invented account values. Both identifiers
 and context participate in the content digest. The landing retains up to four
 published facts and subnet cards up to three; missing facts reserve no empty row.
+Count facts must be nonnegative safe integers; coverage and readiness scores
+must be integers from 0 through 100. Invalid values are omitted without rounding
+or clamping them into plausible measurements, while known zero remains visible.
 
 Regenerate local synthetic examples and the committed full-size API fallback:
 

@@ -78,6 +78,36 @@ describe("which paths are entity cards", () => {
 });
 
 describe("the facts a card draws", () => {
+  test("rejects invalid count and score domains without hiding other known facts", () => {
+    for (const surface_count of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1]) {
+      const facts = subnetFacts(
+        { subnets: [{ netuid: 19, surface_count, integration_readiness: 0 }] },
+        19,
+      );
+      assert.deepEqual(facts?.stats, [{ label: "Readiness", value: "0/100" }]);
+    }
+    for (const integration_readiness of [-1, 0.5, 101]) {
+      const facts = subnetFacts(
+        { subnets: [{ netuid: 19, integration_readiness, surface_count: 0 }] },
+        19,
+      );
+      assert.deepEqual(facts?.stats, [{ label: "Surfaces", value: "0" }]);
+    }
+    assert.deepEqual(
+      subnetFacts(
+        {
+          subnets: [
+            { netuid: 19, integration_readiness: 100, surface_count: 101 },
+          ],
+        },
+        19,
+      )?.stats,
+      [
+        { label: "Readiness", value: "100/100" },
+        { label: "Surfaces", value: "101" },
+      ],
+    );
+  });
   test("non-finite values remain absent while genuine zero is retained", () => {
     const facts = subnetFacts(
       {
@@ -207,7 +237,7 @@ describe("the markup", () => {
     });
     assert.ok(!markup.includes("<script>"));
     assert.ok(markup.includes("scriptalert"));
-    assert.ok(markup.includes(">&</div>"));
+    assert.ok(markup.includes(">&</p>"));
   });
 
   test("at most three stats are drawn", () => {

@@ -156,7 +156,7 @@ export async function fallbackResponse(
 }
 
 function formatCount(value: unknown): string | null {
-  return typeof value === "number" && Number.isFinite(value)
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
     ? value.toLocaleString("en-US")
     : null;
 }
@@ -181,7 +181,12 @@ export function buildStatParts(
   if (providers) parts.push(`${providers} providers`);
   const coverage = (data.coverage as Record<string, unknown> | undefined)
     ?.average_score;
-  if (typeof coverage === "number" && Number.isFinite(coverage)) {
+  if (
+    typeof coverage === "number" &&
+    Number.isInteger(coverage) &&
+    coverage >= 0 &&
+    coverage <= 100
+  ) {
     parts.push(`${coverage}% coverage`);
   }
   return parts.length ? parts : null;

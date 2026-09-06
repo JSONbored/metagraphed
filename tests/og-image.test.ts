@@ -408,6 +408,43 @@ describe("handleOgImage", () => {
 });
 
 describe("buildStatParts", () => {
+  test("keeps valid zero and boundary scores, omitting invalid numeric domains", () => {
+    assert.deepEqual(
+      buildStatParts({
+        subnet_count: 0,
+        counts: { endpoints: 0, providers: 0 },
+        coverage: { average_score: 0 },
+      }),
+      ["0 subnets", "0 endpoints", "0 providers", "0% coverage"],
+    );
+    assert.deepEqual(buildStatParts({ coverage: { average_score: 100 } }), [
+      "100% coverage",
+    ]);
+    for (const value of [
+      -1,
+      0.5,
+      Number.MAX_SAFE_INTEGER + 1,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+    ]) {
+      assert.equal(
+        buildStatParts({
+          subnet_count: value,
+          counts: { endpoints: value, providers: value },
+        }),
+        null,
+      );
+    }
+    for (const average_score of [
+      -1,
+      0.5,
+      101,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+    ]) {
+      assert.equal(buildStatParts({ coverage: { average_score } }), null);
+    }
+  });
   test("returns null for missing data", () => {
     assert.equal(buildStatParts(null), null);
     assert.equal(buildStatParts(undefined), null);
