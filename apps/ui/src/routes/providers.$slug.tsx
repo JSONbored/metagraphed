@@ -2,12 +2,8 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { EntityRouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
-import {
-  firstPartyLogoPath,
-  healthFromStatusCounts,
-  logoHostFrom,
-  ogImageMeta,
-} from "@/lib/metagraphed/og-card";
+import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { providerOgContent } from "@/lib/metagraphed/og-entity-content";
 import { providerDatasetJsonLd, stringifyJsonLd } from "@/lib/metagraphed/json-ld";
 import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -46,7 +42,6 @@ export const Route = createFileRoute("/providers/$slug")({
         endpoints: data.endpoints_count ?? null,
         surfaces: data.surfaces_count ?? null,
         subnets: typeof data.subnet_count === "number" ? data.subnet_count : null,
-        byStatus: data.endpoint_summary?.by_status ?? null,
       };
     } catch (error) {
       // #8624: only a 404 from our own API means "no such entity". Any other
@@ -63,7 +58,7 @@ export const Route = createFileRoute("/providers/$slug")({
     }
     const name = loaderData?.name ?? params.slug;
     const title = `${name} — Provider — Metagraphed`;
-    const description = `${name}: Bittensor infrastructure provider — public endpoints, operational surfaces, and live health on Metagraphed.`;
+    const description = `${name}: Bittensor infrastructure provider — public endpoints, interfaces and endpoint observations on Metagraphed.`;
     return {
       meta: [
         { title },
@@ -74,28 +69,7 @@ export const Route = createFileRoute("/providers/$slug")({
         // it, so src/server.ts skips its pathname-derived injection). That card
         // said "404-gen" with no logo and no numbers; this one says "404-GEN",
         // shows the registry's curated logo and carries the counts.
-        ...ogImageMeta({
-          title: name,
-          subtitle: description,
-          eyebrow: "Provider",
-          logoPath: firstPartyLogoPath(loaderData?.iconUrl),
-          logoHost: logoHostFrom(loaderData?.iconUrl, loaderData?.website),
-          status: healthFromStatusCounts(loaderData?.byStatus),
-          // The page's own pulse tiles lead with endpoints and surfaces; the
-          // subnet count is what distinguishes a one-subnet team from an
-          // infrastructure provider serving thirty.
-          stats: [
-            ...(loaderData?.endpoints != null
-              ? [{ label: "Endpoints", value: String(loaderData.endpoints) }]
-              : []),
-            ...(loaderData?.surfaces != null
-              ? [{ label: "Surfaces", value: String(loaderData.surfaces) }]
-              : []),
-            ...(loaderData?.subnets != null
-              ? [{ label: "Subnets", value: String(loaderData.subnets) }]
-              : []),
-          ],
-        }),
+        ...ogImageMeta(providerOgContent(params.slug, loaderData)),
       ],
       // #11204: the provider pages carried no node of their own, so 138 registry
       // records were untyped prose. Dataset, matching the subnet treatment --

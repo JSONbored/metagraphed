@@ -244,7 +244,9 @@ export function ogImageMeta(
   const image = new URL(url);
   const title = image.searchParams.get("title") ?? "";
   const subtitle = image.searchParams.get("subtitle");
-  const alt = subtitle ? `${title} — ${subtitle}` : title;
+  const identifier = image.searchParams.get("identifier");
+  const subject = identifier && identifier !== title ? `${title} — ${identifier}` : title;
+  const alt = subtitle ? `${subject} — ${subtitle}` : subject;
   return [
     { property: "og:image", content: url },
     { property: "og:image:width", content: "1200" },
@@ -272,6 +274,8 @@ export function routeOwnsOgImage(pathname: string): boolean {
     /^\/subnets\/[^/]+\/?$/.test(pathname) ||
     /^\/validators\/[^/]+\/?$/.test(pathname) ||
     /^\/accounts\/[^/]+\/?$/.test(pathname) ||
+    /^\/blocks\/[^/]+\/?$/.test(pathname) ||
+    /^\/extrinsics\/[^/]+\/?$/.test(pathname) ||
     /^\/events\/[^/]+\/[^/]+\/?$/.test(pathname) ||
     // #11204: /providers/* too. All 138 provider pages were unfurling the
     // pathname-derived card -- the raw slug as a title ("404-gen"), no logo and

@@ -277,9 +277,9 @@ describe("renderCardMarkup (#8489)", () => {
     // element: the tag inventory has to match a benign render exactly.
     const benign = renderCardMarkup({
       ...base,
-      title: "script alert(1) script",
-      eyebrow: "img",
-      stats: [{ label: "b", value: "div" }],
+      title: "scriptalert(1)/script",
+      eyebrow: '"img',
+      stats: [{ label: "b", value: "/div" }],
     });
     const tags = (m: string) =>
       (m.match(/<\/?[a-zA-Z][^>]*>/g) ?? []).map((t) => t.split(/[ >]/)[0]);
