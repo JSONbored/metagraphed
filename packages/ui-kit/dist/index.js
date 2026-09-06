@@ -1406,12 +1406,12 @@ function useIsActive(key) {
   return useActiveEntity().active?.key === key;
 }
 var MARKS_SELECTOR = "[data-marks]";
-var MARK_SELECTOR = '[data-entity][role="button"]';
+var MARK_SELECTOR = '[data-entity][role="button"], a[data-entity][href], button[data-entity]';
 function siblingsOf(el) {
   const group = el.closest(MARKS_SELECTOR);
   if (!group) return [el];
   return Array.from(group.querySelectorAll(MARK_SELECTOR)).filter(
-    (m) => m.getAttribute("aria-disabled") !== "true"
+    (m) => m.closest(MARKS_SELECTOR) === group && m.getAttribute("aria-disabled") !== "true" && !m.hasAttribute("disabled")
   );
 }
 function useEntityMark(key, opts = {}) {
@@ -1428,10 +1428,8 @@ function useEntityMark(key, opts = {}) {
   useLayoutEffect(() => {
     const el = elRef.current;
     if (!el) return;
-    const group = el.closest(MARKS_SELECTOR);
-    const head = group ? group.querySelector(MARK_SELECTOR) : null;
-    setIsFirst(head === el || head === null);
-  }, [key]);
+    setIsFirst(siblingsOf(el)[0] === el);
+  }, [key, disabled]);
   const entity = useCallback(
     () => ({ key, source, element: elRef.current, data }),
     [key, source, data]
@@ -1463,11 +1461,16 @@ function useEntityMark(key, opts = {}) {
   }, [ctx]);
   const onClick = useCallback(
     (event) => {
+      const control = event.target instanceof Element ? event.target.closest(
+        'a[href], button, input, select, textarea, [role="button"], [role="link"]'
+      ) : null;
+      if (control && control !== event.currentTarget) return;
       if (disabled) {
         event.preventDefault();
         return;
       }
-      if (tapIntent(lastPointerType.current, isPinnedHere) === "pin") {
+      const pointerType = event.detail === 0 ? "keyboard" : lastPointerType.current;
+      if (tapIntent(pointerType, isPinnedHere) === "pin") {
         event.preventDefault();
         ctx.pin(entity());
         return;
@@ -1478,6 +1481,7 @@ function useEntityMark(key, opts = {}) {
   );
   const onKeyDown = useCallback(
     (event) => {
+      if (event.target !== event.currentTarget) return;
       const el = elRef.current;
       if (!el) return;
       if (event.key === "Escape") {
@@ -1486,7 +1490,11 @@ function useEntityMark(key, opts = {}) {
         return;
       }
       if (event.key === "Enter" || event.key === " ") {
-        if (disabled) return;
+        if (disabled) {
+          event.preventDefault();
+          return;
+        }
+        if (el.matches("a[href]")) return;
         event.preventDefault();
         onActivate?.();
         return;
