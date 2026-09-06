@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { gzipSync } from "node:zlib";
 
 import { SUBNET_SLOT_CAP } from "../../src/lib/metagraphed/bittensor";
+import { OG_CARD_VERSION } from "../../src/lib/metagraphed/og-card-limits";
 import { HUB_COPY, HUB_DESCRIPTION_MAX, HUB_TITLE_MAX } from "../../src/lib/metagraphed/hub-copy";
 
 // #11204: a URL we ask Google to index must ANSWER, and a URL we have retired
@@ -891,6 +892,7 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
       const image = new URL(values("og:image")[0]!);
       expect(image.origin).toBe("https://metagraph.sh");
       expect(image.pathname).toBe("/og");
+      expect(image.searchParams.get("v")).toBe(OG_CARD_VERSION);
       expect(values("twitter:card")).toEqual(["summary_large_image"]);
       expect(values("twitter:image")).toEqual(values("og:image"));
       expect(values("og:image:width")).toEqual(["1200"]);
