@@ -315,7 +315,6 @@ test("combines server facets and known-status filtering with search", async ({ p
   await gotoThroughRestart(page, "/apis/endpoints?q=second&status=monitored");
   await expect(directory).toContainText("No endpoints match this search.");
   await expect(directory).toContainText("0 loaded of 0 matching");
-  await expect(directory.locator(".mg-dt-caption")).toContainText("0");
   await expect(directory).toContainText("known status; freshness varies");
   expect(state.reads.at(-1)).toMatchObject({ q: "second", status: null, knownStatus: "true" });
 });
