@@ -87,7 +87,7 @@ function fetcher(
       const url = new URL(String(input));
       requests.push(url);
       expect(init?.signal).toBeInstanceOf(AbortSignal);
-      expect(init?.redirect).toBe("error");
+      expect(init?.redirect).toBe("manual");
       if (url.hostname === "fonts.googleapis.com") {
         expect(new Headers(init?.headers).get("user-agent")).toContain(
           "Safari/533.21.1",
@@ -124,10 +124,7 @@ describe("conditional OG script policy", () => {
   });
   it("loads required faces through the API/native publisher's shared entrypoint", async () => {
     const f = fetcher();
-    vi.stubGlobal("fetch", (async (
-      input: RequestInfo | URL,
-      init?: RequestInit,
-    ) => f.fetchImpl(input, { ...init, redirect: "error" })) as typeof fetch);
+    vi.stubGlobal("fetch", f.fetchImpl);
     const fonts = await loadCardFonts(
       renderCardLayout({
         title: "漢字",
@@ -349,6 +346,11 @@ describe("bounded conditional font loading", () => {
   it("rejects missing/unsafe sources, binary failures and oversized or absent response bodies", async () => {
     for (const response of [
       () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://example.com/font" },
+        }),
+      () =>
         new Response("src: url(https://fonts.gstatic.com/f) format('woff2')"),
       () =>
         new Response("src: url(http://fonts.gstatic.com/f) format('truetype')"),
@@ -379,6 +381,11 @@ describe("bounded conditional font loading", () => {
       ).rejects.toThrow();
     }
     for (const response of [
+      () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://example.com/font" },
+        }),
       () => new Response("no", { status: 502 }),
       () => new Response(new Uint8Array(1_048_577)),
     ]) {
