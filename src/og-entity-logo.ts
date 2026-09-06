@@ -19,13 +19,18 @@ const LOGO_TIMEOUT_MS = 3000;
  * canonical /logos/ assets are direct static files, not redirect endpoints. */
 export async function fetchLogoBytes(url: string): Promise<EntityLogo | null> {
   const parsed = new URL(url);
-  if (parsed.origin !== "https://metagraph.sh") return null;
+  if (
+    parsed.origin !== "https://metagraph.sh" ||
+    parsed.username ||
+    parsed.password
+  )
+    return null;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), LOGO_TIMEOUT_MS);
   try {
     const response = await fetch(parsed.toString(), {
       signal: controller.signal,
-      redirect: "error",
+      redirect: "manual",
     });
     const contentType = (response.headers.get("content-type") ?? "")
       .split(";")[0]

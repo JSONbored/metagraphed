@@ -47,7 +47,7 @@ no-logo cards keep their ordinary long cache and remain compatible with older
 objects. An uncached HEAD request does no image work and uses the short lifetime
 when a logo has not yet been verified. Crawlers control their own recrawl timing.
 
-Logo reads accept only direct HTTPS requests to `metagraph.sh`, with redirects
+Logo reads accept only credential-free direct HTTPS requests to `metagraph.sh`, with redirects
 disabled, a three-second deadline covering headers and body, and the publisher's
 512 KiB byte limit enforced on the stream. PNG, JPEG, GIF and vector SVG retain
 their actual MIME when inlined. Missing/unsupported MIME, mismatched raster

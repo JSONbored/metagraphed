@@ -260,24 +260,29 @@ describe("logo reads are bounded across headers and body", () => {
     }
   });
 
-  test("invalid URLs and nonstandard ports cannot trigger a logo request", async () => {
+  test("invalid URLs, credentials and nonstandard ports cannot trigger a logo request", async () => {
     let fetches = 0;
     vi.stubGlobal("fetch", async () => {
       fetches++;
       return new Response(PNG);
     });
     await assert.rejects(fetchLogoBytes("not a URL"));
-    assert.equal(
-      await fetchLogoBytes("https://metagraph.sh:8443/logos/logo.png"),
-      null,
-    );
+    for (const url of [
+      "https://metagraph.sh:8443/logos/logo.png",
+      "https://fixture@metagraph.sh/logos/logo.png",
+      "https://:fixture@metagraph.sh/logos/logo.png",
+    ])
+      assert.equal(await fetchLogoBytes(url), null);
     assert.equal(fetches, 0);
   });
 
   test("redirect rejection stays retryable at the entity handler", async () => {
     vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
-      assert.equal(init.redirect, "error");
-      throw new TypeError("redirect rejected");
+      assert.equal(init.redirect, "manual");
+      return new Response(null, {
+        status: 302,
+        headers: { location: "https://other.example/logo.png" },
+      });
     });
     const fixture = cacheFixture();
     const response = (await cardRequest({
@@ -306,7 +311,7 @@ describe("logo reads are bounded across headers and body", () => {
               ? new Uint8Array([71, 73, 70, 56, 57, 97])
               : new Uint8Array(PNG);
       vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
-        assert.equal(init.redirect, "error");
+        assert.equal(init.redirect, "manual");
         assert.ok(init.signal);
         return new Response(bytes, {
           headers: { "content-type": `${contentType}; charset=binary` },
