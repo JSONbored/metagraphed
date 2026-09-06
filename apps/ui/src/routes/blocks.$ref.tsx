@@ -1,4 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { blockOgContent } from "@/lib/metagraphed/og-entity-content";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { BlockDetailLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
@@ -71,6 +73,7 @@ export const Route = createFileRoute("/blocks/$ref")({
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
+        ...ogImageMeta(blockOgContent(params.ref, loaderData?.blockNumber)),
       ],
     };
   },

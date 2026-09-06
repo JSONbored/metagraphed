@@ -1,4 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { extrinsicOgContent } from "@/lib/metagraphed/og-entity-content";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -67,6 +69,7 @@ export const Route = createFileRoute("/extrinsics/$hash")({
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
+        ...ogImageMeta(extrinsicOgContent(params.hash, loaderData?.call)),
       ],
     };
   },

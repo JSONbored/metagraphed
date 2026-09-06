@@ -17,7 +17,8 @@ import {
 } from "@/lib/metagraphed/entity-not-found-meta";
 import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 import { stringifyJsonLd, validatorDatasetJsonLd } from "@/lib/metagraphed/json-ld";
-import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
+import { firstPartyLogoPath, logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
+import { validatorOgContent } from "@/lib/metagraphed/og-entity-content";
 import { ValidatorDetailPage } from "./-validators-hotkey-page";
 
 /**
@@ -63,6 +64,7 @@ export const Route = createFileRoute("/validators/$hotkey")({
         dateModified: recordModifiedAt(meta) ?? null,
         name: identity?.name ?? null,
         // Same candidate ladder the site's BrandIcon uses for a validator.
+        logoPath: firstPartyLogoPath(identity?.image),
         logoHost: logoHostFrom(identity?.image, identity?.url, identity?.github),
         subnetCount:
           typeof data.subnet_count === "number" && Number.isFinite(data.subnet_count)
@@ -111,17 +113,7 @@ export const Route = createFileRoute("/validators/$hotkey")({
         // #8489: route-owned card (server.ts skips these paths). Prefers the
         // declared identity name over the truncated hotkey, with the observed
         // subnet count from the existing page query.
-        ...ogImageMeta({
-          title: loaderData?.name || label,
-          subtitle: "Declared validator identity and observed subnet memberships.",
-          eyebrow: "Validator",
-          logoHost: loaderData?.logoHost ?? null,
-          stats: [
-            ...(loaderData?.subnetCount != null
-              ? [{ label: "Subnets", value: String(loaderData.subnetCount) }]
-              : []),
-          ],
-        }),
+        ...ogImageMeta(validatorOgContent(params.hotkey, loaderData)),
       ],
       // #11313: these are 1,023 URLs -- 53% of the sitemap -- and every one of
       // them carried a BreadcrumbList and nothing else. No node saying what the
