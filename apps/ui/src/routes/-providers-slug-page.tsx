@@ -3,9 +3,11 @@ import { useInfiniteQuery, useQuery, useSuspenseQuery } from "@tanstack/react-qu
 import {
   AnalyticsSection,
   BrandIcon,
+  CopyableCode,
   DataTable,
   EntityHero,
   FactSentence,
+  LoadMore,
   RankedRails,
   Raw,
   type DataTableColumn,
@@ -15,9 +17,9 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { ErrorState } from "@/components/metagraphed/states";
-import { useNearViewport } from "@/hooks/use-near-viewport";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
 import {
   providerEndpointsQuery,
@@ -32,6 +34,8 @@ import {
   mergeSurfaceProbes,
   providerDetailFacts,
   providerSurfaces,
+  publishedSurfaceCount,
+  surfaceAuth,
   type ProviderSurfaceRow,
 } from "@/components/metagraphed/providers/providers-logic";
 import { Route } from "./providers.$slug";
@@ -47,36 +51,15 @@ function ApiSources({ slug }: { slug: string }) {
   return null;
 }
 
-/**
- * One provider (#11624) — hero, three sections, `Raw`.
- *
- * What went: a five-section page behind a `TabStrip`, and the tab param with
- * it. The tabs were Endpoints, Surfaces and three panels of the same counts
- * the hero now carries.
- *
- * The issue asked for a 90-day uptime rail and a p50 series over time.
- * Neither is published: /api/v1/providers/{slug}/endpoints carries ONE probe
- * per endpoint -- `latency_ms`, `status`, `last_checked`, `last_ok` -- and no
- * history route exists for either reading. The Latency section ranks that one
- * probe and says which probe it is; the Health section states the status split
- * the summary does publish, next to the endpoints it describes.
- */
+/** Provider identity and usable services, followed by independent probe diagnostics. */
 export function ProviderDetail() {
   const { slug } = Route.useParams();
   const providerResult = useSuspenseQuery(providerQuery(slug));
   const provider = providerResult.data.data;
   const endpoints = useQuery({ ...providerEndpointsQuery(slug), retry: 0 });
-  const { ref: surfacesRef, nearViewport: surfacesNearViewport } = useNearViewport("0px 0px");
-  // The provider's surfaces, server-filtered: /api/v1/surfaces takes
-  // `provider`, so this asks for one provider's rows rather than paging the
-  // 3,391-row catalogue and discarding 99% of it. It is still a potentially
-  // large table, though, and the published provider record already carries
-  // the count the hero needs. Start this evidence only as its section comes
-  // into view, rather than making it compete with the identity and latency
-  // reading on a cold route.
+  // Services are the primary reading and start independently of endpoint health.
   const surfaces = useInfiniteQuery({
     ...surfacesInfiniteQuery({ provider: slug, limit: 500 }),
-    enabled: surfacesNearViewport,
     retry: 0,
   });
 
@@ -93,12 +76,15 @@ export function ProviderDetail() {
     [surfaceList, endpointList],
   );
   const summary = provider?.endpoint_summary;
-  const surfaceCount =
-    surfaceList.length > 0
-      ? surfaceList.length
-      : typeof provider?.surfaces_count === "number"
-        ? provider.surfaces_count
-        : 0;
+  const surfaceCount = publishedSurfaceCount(provider);
+  const pagination = surfaces.data?.pages[0]?.meta?.pagination as { total?: unknown } | undefined;
+  const total =
+    typeof pagination?.total === "number" &&
+    Number.isSafeInteger(pagination.total) &&
+    pagination.total >= 0
+      ? pagination.total
+      : undefined;
+  const cursorInvalid = surfaces.data?.pages.some((page) => page.cursorInvalid) ?? false;
 
   const host =
     (typeof provider?.website === "string" ? provider.website : null) ??
@@ -116,11 +102,19 @@ export function ProviderDetail() {
       key: "name",
       label: "Surface",
       kind: "link",
-      width: 340,
+      width: 280,
+      lead: true,
       value: (row) => row.name ?? hostOf(row.url) ?? null,
       href: (row) => row.url,
     },
     { key: "kind", label: "Kind", kind: "status", width: 140, value: (row) => row.kind ?? null },
+    {
+      key: "auth",
+      label: "Auth",
+      kind: "text",
+      width: 100,
+      value: (row) => surfaceAuth(row.auth_required),
+    },
     {
       key: "subnet",
       label: "Subnet",
@@ -139,17 +133,25 @@ export function ProviderDetail() {
     },
     {
       key: "latency",
-      label: "p50",
+      label: "Latency",
       kind: "number",
       align: "right",
-      width: 100,
+      width: 125,
       value: (row) => row.probeLatencyMs,
       format: (value) => (typeof value === "number" ? `${formatNumber(value)} ms` : "—"),
     },
-    { key: "probed", label: "Last probe", kind: "time", width: 120, value: (row) => row.probedAt },
+    {
+      key: "probed",
+      label: "Last probe",
+      kind: "time",
+      width: 140,
+      demote: true,
+      value: (row) => row.probedAt,
+    },
     {
       key: "authority",
       label: "Authority",
+      demote: true,
       kind: "status",
       width: 150,
       value: (row) => (typeof row.authority === "string" ? row.authority : null),
@@ -157,22 +159,31 @@ export function ProviderDetail() {
   ];
 
   const surfaceDetail = (row: ProviderSurfaceRow) => (
-    <dl>
+    <dl className="[&>.mg-raw-row]:grid-cols-1! [&>.mg-raw-row]:gap-1! sm:[&>.mg-raw-row]:grid-cols-[180px_minmax(0,1fr)]!">
       {row.url ? (
         <div className="mg-raw-row">
           <dt>URL</dt>
-          <dd>{row.url}</dd>
+          <dd className="min-w-0">
+            <CopyableCode
+              value={row.url}
+              label="service URL"
+              truncate={false}
+              className="min-h-11 [&>span:first-child]:sr-only"
+            />
+          </dd>
         </div>
       ) : null}
       <div className="mg-raw-row">
         <dt>Auth</dt>
-        <dd>
-          {row.auth_required == null ? "—" : row.auth_required ? "a key is required" : "open"}
-        </dd>
+        <dd>{surfaceAuth(row.auth_required)}</dd>
       </div>
       <div className="mg-raw-row">
         <dt>Last verified</dt>
-        <dd>{row.last_verified_at ? formatAbsoluteTime(row.last_verified_at) : "not verified"}</dd>
+        <dd>
+          {row.last_verified_at
+            ? formatAbsoluteTime(row.last_verified_at)
+            : "no verification recorded"}
+        </dd>
       </div>
     </dl>
   );
@@ -211,7 +222,7 @@ export function ProviderDetail() {
         }
         action={
           host ? (
-            <a href={host} className="mg-hero-action" rel="noreferrer">
+            <a href={host} className="mg-hero-action min-h-11" rel="noreferrer">
               Open host
             </a>
           ) : undefined
@@ -234,15 +245,97 @@ export function ProviderDetail() {
           ) ?? undefined
         }
         live={{
-          updatedAt: (provider?.generated_at as string | undefined) ?? null,
+          updatedAt: recordModifiedAt(providerResult.data.meta) ?? null,
           source: "registry",
           onRefresh: () => {
-            const reads: Promise<unknown>[] = [providerResult.refetch(), endpoints.refetch()];
-            if (surfacesNearViewport) reads.push(surfaces.refetch());
+            const reads: Promise<unknown>[] = [
+              providerResult.refetch(),
+              endpoints.refetch(),
+              surfaces.refetch(),
+            ];
             void Promise.all(reads);
           },
           refreshing: providerResult.isFetching || endpoints.isFetching || surfaces.isFetching,
         }}
+      />
+
+      <AnalyticsSection
+        id="surfaces"
+        name="Services"
+        question="Registered interfaces, their access requirements and latest probe."
+        visual={
+          <>
+            {providerResult.isRefetchError ? (
+              <ErrorState
+                error={providerResult.error}
+                onRetry={() => void providerResult.refetch()}
+                context="provider registry refresh"
+              />
+            ) : null}
+            {endpoints.isError ? (
+              <ErrorState
+                error={endpoints.error}
+                onRetry={() => void endpoints.refetch()}
+                context="provider endpoint probes"
+              />
+            ) : null}
+            {surfaces.isError && !surfaces.isFetchNextPageError ? (
+              <ErrorState
+                error={surfaces.error}
+                onRetry={() => void surfaces.refetch()}
+                context="provider surfaces"
+              />
+            ) : null}
+            <DataTable
+              id="surfaces"
+              rows={mergedSurfaces}
+              columns={surfaceColumns}
+              rowKey={(row) => row.id}
+              caption={`${name} surfaces`}
+              link={RouterLink}
+              source="provider-surface"
+              storageKey="mg-provider-surfaces-columns"
+              className="max-lg:[&_.mg-dt-expansion>td]:px-4! [&_td[data-mobile-lead=true]]:before:hidden [&_.mg-dt-status]:self-start [&_.mg-dt-disclosure]:min-h-11 [&_.mg-dt-disclosure]:min-w-11 [&_.mg-dt-menu-trigger]:min-h-11 [&_.mg-dt-menu-trigger]:min-w-11"
+              mobile="cards"
+              expand={surfaceDetail}
+              loading={surfaces.isPending}
+              paginate={false}
+              empty={
+                surfaces.isError
+                  ? "Registered services are temporarily unavailable."
+                  : "No surfaces are registered for this provider."
+              }
+            />
+          </>
+        }
+        legend={
+          surfaces.hasNextPage || surfaces.isFetchNextPageError || cursorInvalid ? (
+            <div className="[&_button]:min-h-11">
+              <LoadMore
+                hasMore={surfaces.hasNextPage}
+                isLoading={surfaces.isFetchingNextPage}
+                onLoadMore={() => void surfaces.fetchNextPage()}
+                shown={mergedSurfaces.length}
+                total={total}
+                error={surfaces.isFetchNextPageError ? surfaces.error : null}
+                cursorInvalid={cursorInvalid}
+              />
+            </div>
+          ) : undefined
+        }
+        footnote={
+          surfaces.isPending
+            ? "Loading registered services · registry"
+            : `${formatNumber(mergedSurfaces.length)} services loaded${total == null ? "" : ` of ${formatNumber(total)} catalog results`} · registry` +
+              (surfaces.isError
+                ? " · service read failed; previously loaded rows remain visible"
+                : "") +
+              (endpoints.isPending
+                ? " · probe readings loading"
+                : endpoints.isError
+                  ? " · probe readings unavailable"
+                  : " · latest probes joined only where identity matches")
+        }
       />
 
       <AnalyticsSection
@@ -255,28 +348,35 @@ export function ProviderDetail() {
               items={[]}
               formatValue={(value: number) => `${formatNumber(value)} ms`}
               scale="sqrt"
-              columns={{ value: "p50", name: "Kind · host", track: "Last probe" }}
+              columns={{ value: "Latency", name: "Kind · host", track: "Last probe" }}
               ariaLabel={`${name} endpoint latency`}
               source="provider-latency"
               loading
               loadingRows={10}
-            />
-          ) : endpoints.isError ? (
-            <ErrorState
-              error={endpoints.error}
-              onRetry={() => void endpoints.refetch()}
-              context="endpoint latency"
             />
           ) : rails.length > 0 ? (
             <RankedRails
               items={rails}
               formatValue={(value: number) => `${formatNumber(value)} ms`}
               scale="sqrt"
-              columns={{ value: "p50", name: "Kind · host", track: "Last probe" }}
+              columns={{ value: "Latency", name: "Kind · host", track: "Last probe" }}
               ariaLabel={`${name} endpoint latency`}
               source="provider-latency"
             />
-          ) : null
+          ) : (
+            <p className="text-13 text-ink-muted">
+              No measured latency is available in the loaded probe records.
+            </p>
+          )
+        }
+        legend={
+          endpoints.isError ? (
+            <ErrorState
+              error={endpoints.error}
+              onRetry={() => void endpoints.refetch()}
+              context="endpoint latency"
+            />
+          ) : undefined
         }
         // One probe, not a series: no per-endpoint history route exists, and a
         // "p50 over time" chart drawn from a single reading would be a line
@@ -286,63 +386,7 @@ export function ProviderDetail() {
             ? "Loading endpoint probe readings · probe-derived"
             : endpoints.isError
               ? "Endpoint probe readings are temporarily unavailable · probe-derived"
-              : "most recent probe · measured endpoints only · probe-derived"
-        }
-      />
-
-      <AnalyticsSection
-        id="surfaces"
-        name="Surfaces"
-        question="Everything this provider publishes, and how it answered."
-        visualRef={surfacesRef}
-        visual={
-          surfacesNearViewport && surfaces.isError ? (
-            <ErrorState
-              error={surfaces.error}
-              onRetry={() => void surfaces.refetch()}
-              context="provider surfaces"
-            />
-          ) : (
-            <>
-              {endpoints.isError ? (
-                <ErrorState
-                  error={endpoints.error}
-                  onRetry={() => void endpoints.refetch()}
-                  context="provider endpoint probes"
-                />
-              ) : null}
-              <DataTable
-                id="surfaces"
-                rows={mergedSurfaces}
-                columns={surfaceColumns}
-                rowKey={(row) => row.id}
-                caption={`${name} surfaces`}
-                link={RouterLink}
-                source="provider-surface"
-                expand={surfaceDetail}
-                loading={!surfacesNearViewport || surfaces.isPending || endpoints.isPending}
-                paginate={false}
-                empty="No surfaces are registered for this provider."
-              />
-            </>
-          )
-        }
-        footnote={
-          !surfacesNearViewport
-            ? "published surfaces and most recent endpoint probes · registry"
-            : surfaces.isPending || endpoints.isPending
-              ? "Loading provider surfaces and probe records · registry"
-              : surfaces.isError
-                ? "Provider surfaces are temporarily unavailable · registry"
-                : endpoints.isError
-                  ? "Endpoint probe readings are temporarily unavailable · probe-derived"
-                  : summary?.by_status
-                    ? `${formatNumber(mergedSurfaces.length)} surfaces · ` +
-                      Object.entries(summary.by_status)
-                        .map(([status, n]) => `${formatNumber(n)} ${status}`)
-                        .join(" · ") +
-                      " · probe-derived"
-                    : `${formatNumber(mergedSurfaces.length)} surfaces · registry`
+              : `${formatNumber(endpointList.length)} endpoint records loaded · latest probe per endpoint · up to 20 measured endpoints shown · probe-derived`
         }
       />
 

@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   AnalyticsSection,
   BrandIcon,
+  CopyableCode,
   DataTable,
   EntityHero,
   FactSentence,
@@ -22,6 +23,7 @@ import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { providersQuery, sourceHealthProvidersQuery } from "@/lib/metagraphed/queries";
 import {
@@ -160,11 +162,18 @@ export function ProvidersPage() {
    * in the lead cell already links to its page.
    */
   const providerDetail = (row: ProviderRow) => (
-    <dl>
+    <dl className="[&>.mg-raw-row]:grid-cols-1! [&>.mg-raw-row]:gap-1! sm:[&>.mg-raw-row]:grid-cols-[180px_minmax(0,1fr)]!">
       {row.host ? (
         <div className="mg-raw-row">
           <dt>Host</dt>
-          <dd>{row.host}</dd>
+          <dd className="min-w-0">
+            <CopyableCode
+              value={row.host}
+              label="provider URL"
+              truncate={false}
+              className="min-h-11 [&>span:first-child]:sr-only"
+            />
+          </dd>
         </div>
       ) : null}
       <div className="mg-raw-row">
@@ -200,17 +209,121 @@ export function ProvidersPage() {
           ) ?? undefined
         }
         live={{
-          // The payload's own timestamp, not a row's: /api/v1/providers
-          // publishes `generated_at` once at the envelope and the rows carry
-          // none, so reading `rows[0]` renders "Updated —" on a page that
-          // knows exactly when it was built.
-          updatedAt: health.data?.data.generated_at ?? rows[0]?.updatedAt ?? null,
+          // Registry publication metadata dates this catalog capture.
+          // Source-health observations have their own independent clock.
+          updatedAt: recordModifiedAt(providers.data.meta) ?? null,
           source: "registry",
           onRefresh: () => void Promise.all([providers.refetch(), health.refetch()]),
           refreshing: providers.isFetching || health.isFetching,
         }}
       />
       <ApiNavigation />
+
+      <AnalyticsSection
+        id="directory"
+        name="Directory"
+        question="Every provider, and whether their sources still resolve."
+        visual={
+          <>
+            {providers.isRefetchError ? (
+              <ErrorState
+                error={providers.error}
+                onRetry={() => void providers.refetch()}
+                context="provider registry refresh"
+              />
+            ) : null}
+            {health.isError ? (
+              <ErrorState
+                error={health.error}
+                onRetry={() => void health.refetch()}
+                context="provider source verification"
+              />
+            ) : null}
+            <div className="mb-4 grid grid-cols-2 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+              <label className="col-span-2 grid min-w-0 gap-2 text-11 text-ink-muted lg:col-span-1">
+                Search providers
+                <input
+                  type="search"
+                  placeholder="Name, slug or host"
+                  className="min-h-11 w-full border border-border bg-canvas px-3 text-13 text-ink-strong outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
+                  value={search.q}
+                  onChange={(event) => void setSearch({ q: event.target.value })}
+                />
+              </label>
+              {(
+                [
+                  ["kind", "Kind", kinds],
+                  ["authority", "Authority", authorities],
+                ] as const
+              ).map(([key, label, values]) => (
+                <FilterField
+                  key={key}
+                  label={label}
+                  className="min-w-0 gap-2 [&>span]:not-sr-only [&>span]:text-11 [&>span]:text-ink-muted"
+                >
+                  <FilterSelect
+                    className="min-h-11 w-full min-w-0 appearance-auto!"
+                    value={search[key]}
+                    onChange={(event) => void setSearch({ [key]: event.target.value })}
+                  >
+                    <option value="">Any {label.toLowerCase()}</option>
+                    {search[key] && !values.includes(search[key]) ? (
+                      <option value={search[key]}>{search[key]}</option>
+                    ) : null}
+                    {values.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </FilterSelect>
+                </FilterField>
+              ))}
+            </div>
+            <DataTable
+              id="providers"
+              rows={shown}
+              columns={columns}
+              rowKey={(row) => row.slug}
+              caption="Providers"
+              rowHref={(row) => `/providers/${row.slug}`}
+              link={RouterLink}
+              source="provider"
+              storageKey="mg-providers-columns"
+              expand={providerDetail}
+              loading={false}
+              // Every row, not a first page of fifty: the crawlable-index gate
+              // reads the SERVER-RENDERED HTML and 138 provider pages are
+              // indexable only because this page links to them. The bounded
+              // viewport still keeps the table one screen tall.
+              paginate={false}
+              className="max-lg:[&_.mg-dt-expansion>td]:px-4! [&_td[data-mobile-lead=true]]:before:hidden [&_.mg-dt-status]:self-start [&_.mg-dt-disclosure]:min-h-11 [&_.mg-dt-disclosure]:min-w-11 [&_.mg-dt-menu-trigger]:min-h-11 [&_.mg-dt-menu-trigger]:min-w-11"
+              mobile="cards"
+              compactMobileLabels
+              empty={
+                <span>
+                  No providers match these filters.{" "}
+                  <button
+                    type="button"
+                    className="min-h-11 text-accent underline"
+                    onClick={() => void setSearch({ q: "", kind: "", authority: "" })}
+                  >
+                    Reset filters
+                  </button>
+                </span>
+              }
+            />
+          </>
+        }
+        footnote={
+          health.isPending
+            ? `${formatNumber(shown.length)} matching of ${formatNumber(rows.length)} loaded providers · verifying sources · registry`
+            : health.isError
+              ? `${formatNumber(shown.length)} matching of ${formatNumber(rows.length)} loaded providers · source verification unavailable · registry`
+              : `${formatNumber(shown.length)} matching of ${formatNumber(
+                  rows.length,
+                )} loaded providers · source health from the verification lane · registry`
+        }
+      />
 
       <AnalyticsSection
         id="leaders"
@@ -236,92 +349,12 @@ export function ProvidersPage() {
           ) : (
             <button
               type="button"
-              className="mg-section-more"
+              className="mg-section-more min-h-11"
               onClick={() => setLeadersExpanded(true)}
             >
               Show all {leaders.length}
             </button>
           )
-        }
-      />
-
-      <AnalyticsSection
-        id="directory"
-        name="Directory"
-        question="Every provider, and whether their sources still resolve."
-        visual={
-          <>
-            {health.isError ? (
-              <ErrorState
-                error={health.error}
-                onRetry={() => void health.refetch()}
-                context="provider source verification"
-              />
-            ) : null}
-            <DataTable
-              id="providers"
-              rows={shown}
-              columns={columns}
-              rowKey={(row) => row.slug}
-              caption="Providers"
-              rowHref={(row) => `/providers/${row.slug}`}
-              link={RouterLink}
-              source="provider"
-              storageKey="mg-providers-columns"
-              expand={providerDetail}
-              loading={false}
-              // Every row, not a first page of fifty: the crawlable-index gate
-              // reads the SERVER-RENDERED HTML and 138 provider pages are
-              // indexable only because this page links to them. The bounded
-              // viewport still keeps the table one screen tall.
-              paginate={false}
-              search={{
-                value: search.q,
-                onChange: (q) => setSearch({ q }),
-                placeholder: "Name, slug or host",
-              }}
-              filters={
-                <>
-                  <FilterField label="Kind">
-                    <FilterSelect
-                      value={search.kind}
-                      onChange={(event) => setSearch({ kind: event.target.value })}
-                    >
-                      <option value="">Any kind</option>
-                      {kinds.map((kind) => (
-                        <option key={kind} value={kind}>
-                          {kind}
-                        </option>
-                      ))}
-                    </FilterSelect>
-                  </FilterField>
-                  <FilterField label="Authority">
-                    <FilterSelect
-                      value={search.authority}
-                      onChange={(event) => setSearch({ authority: event.target.value })}
-                    >
-                      <option value="">Any authority</option>
-                      {authorities.map((authority) => (
-                        <option key={authority} value={authority}>
-                          {authority}
-                        </option>
-                      ))}
-                    </FilterSelect>
-                  </FilterField>
-                </>
-              }
-              empty="No providers match these filters."
-            />
-          </>
-        }
-        footnote={
-          health.isPending
-            ? `${formatNumber(shown.length)} of ${formatNumber(rows.length)} · verifying sources · registry`
-            : health.isError
-              ? `${formatNumber(shown.length)} of ${formatNumber(rows.length)} · source verification unavailable · registry`
-              : `${formatNumber(shown.length)} of ${formatNumber(
-                  rows.length,
-                )} · source health from the verification lane · registry`
         }
       />
 

@@ -112,7 +112,7 @@ export function providerFacts(
       value: `${fmt.count(claimed)} (${Math.round((claimed / rows.length) * 100)}%)`,
     },
   ];
-  const endpoints = health?.endpoint_count ?? rows.reduce((sum, row) => sum + row.endpoints, 0);
+  const endpoints = rows.reduce((sum, row) => sum + row.endpoints, 0);
   facts.push({ key: "endpoints", label: "Endpoints", value: fmt.count(endpoints) });
   const counts = health?.status_counts;
   if (counts) {
@@ -238,7 +238,11 @@ export function endpointRails(
       value: num(endpoint.latency_ms)!,
       detail: [
         { key: "status", label: "Status", value: str(endpoint.status) ?? "unknown" },
-        { key: "probe", label: "Last ok", value: str(endpoint.last_ok) ?? "never" },
+        {
+          key: "probe",
+          label: "Last ok",
+          value: str(endpoint.last_ok) ?? "no successful probe recorded",
+        },
       ],
     }));
 }
@@ -250,37 +254,73 @@ export interface ProviderSurfaceRow extends Surface {
   probedAt: string | null;
 }
 
+/** Only explicit booleans establish the registered authentication requirement. */
+export function surfaceAuth(value: unknown): string {
+  return value === true ? "Required" : value === false ? "Open" : "Unknown";
+}
+
+/** Counts remain unavailable when absent; a published zero is still a count. */
+export function publishedSurfaceCount(provider: Provider): number | null {
+  const count = num(provider.surfaces_count) ?? num(provider.surface_count);
+  return count != null && Number.isSafeInteger(count) && count >= 0 ? count : null;
+}
+
+const providerOf = (row: Surface | Endpoint) => str(row.provider_slug) ?? str(row.provider);
+function compatible(surface: Surface, endpoint: Surface | Endpoint): boolean {
+  return (
+    !(
+      providerOf(surface) &&
+      providerOf(endpoint) &&
+      providerOf(surface) !== providerOf(endpoint)
+    ) &&
+    !(surface.netuid != null && endpoint.netuid != null && surface.netuid !== endpoint.netuid) &&
+    !(surface.kind && endpoint.kind && surface.kind !== endpoint.kind)
+  );
+}
+
 /**
- * One list, not two.
- *
- * A provider page rendered an Endpoints table and a Surfaces table, and for a
- * provider whose surfaces are ALL probed endpoints -- which is most of them --
- * that is the same rows twice, 156 and 156, under two identities and two
- * column sets (#11696). Surfaces is the superset: an endpoint is a surface the
- * prober watches, and a docs page is a surface it does not.
- *
- * Joined on the URL rather than the id: `/endpoints` numbers a row
- * `endpoint-srf-<hash>` and `/surfaces` numbers the same thing
- * `sn-51-<provider>-<path>`, so the ids never match, while the URL is the
- * thing both records are ABOUT. A surface with no matching endpoint keeps its
- * three probe fields null, which is the honest answer for something nobody
- * probes.
+ * Match the published surface identity first. URL-only legacy rows can join
+ * only when both sides are unambiguous within provider/subnet/kind scope.
+ * Conflicting or duplicate evidence stays unavailable, independent of row order.
  */
 export function mergeSurfaceProbes(
   surfaces: readonly Surface[],
   endpoints: readonly Endpoint[],
 ): ProviderSurfaceRow[] {
-  const byUrl = new Map<string, Endpoint>();
+  const byUrl = new Map<string, Endpoint[]>();
+  const surfacesByUrl = new Map<string, Surface[]>();
   for (const endpoint of endpoints) {
-    if (typeof endpoint.url === "string" && endpoint.url) byUrl.set(endpoint.url, endpoint);
+    if (endpoint.url) byUrl.set(endpoint.url, [...(byUrl.get(endpoint.url) ?? []), endpoint]);
+  }
+  for (const surface of surfaces) {
+    if (surface.url)
+      surfacesByUrl.set(surface.url, [...(surfacesByUrl.get(surface.url) ?? []), surface]);
   }
   return surfaces.map((surface) => {
-    const probe = typeof surface.url === "string" ? byUrl.get(surface.url) : undefined;
+    const key = str(surface.key) ?? str(surface.surface_key);
+    const candidates = (byUrl.get(surface.url ?? "") ?? []).filter((endpoint) => {
+      if (!compatible(surface, endpoint)) return false;
+      if (key && str(endpoint.surface_key) && key !== endpoint.surface_key) return false;
+      if (str(endpoint.surface_id) && endpoint.surface_id !== surface.id) return false;
+      return true;
+    });
+    const exact = candidates.filter(
+      (endpoint) => (key && endpoint.surface_key === key) || endpoint.surface_id === surface.id,
+    );
+    const legacy = candidates.filter(
+      (endpoint) =>
+        !str(endpoint.surface_key) &&
+        !str(endpoint.surface_id) &&
+        (surfacesByUrl.get(surface.url ?? "") ?? []).filter((other) => compatible(other, endpoint))
+          .length === 1,
+    );
+    const matches = exact.length ? exact : legacy;
+    const probe = matches.length === 1 ? matches[0] : undefined;
     return {
       ...surface,
-      probeStatus: typeof probe?.status === "string" ? probe.status : null,
-      probeLatencyMs: typeof probe?.latency_ms === "number" ? probe.latency_ms : null,
-      probedAt: typeof probe?.last_checked === "string" ? probe.last_checked : null,
+      probeStatus: str(probe?.status),
+      probeLatencyMs: num(probe?.latency_ms),
+      probedAt: str(probe?.last_checked),
     };
   });
 }
@@ -309,7 +349,7 @@ export function providerDetailFacts(
     | { endpoint_count?: number; monitored_count?: number; by_status?: Record<string, number> }
     | null
     | undefined,
-  surfaces: number,
+  surfaces: number | null,
   fmt: { count: (n: number) => string },
 ): Fact[] {
   if (!provider) return [];
@@ -317,7 +357,8 @@ export function providerDetailFacts(
   if (provider.authority) {
     facts.push({ key: "authority", label: "Authority", value: String(provider.authority) });
   }
-  if (surfaces > 0) facts.push({ key: "surfaces", label: "Surfaces", value: fmt.count(surfaces) });
+  if (surfaces != null)
+    facts.push({ key: "surfaces", label: "Published surfaces", value: fmt.count(surfaces) });
   const count = num(summary?.endpoint_count);
   if (count != null) facts.push({ key: "endpoints", label: "Endpoints", value: fmt.count(count) });
   const status = summary?.by_status ?? {};
@@ -334,7 +375,7 @@ export function providerDetailFacts(
   return facts;
 }
 
-/** The surfaces this provider publishes, newest verification first. */
+/** The surfaces this provider publishes, ordered by subnet and name. */
 export function providerSurfaces(surfaces: readonly Surface[] | null | undefined): Surface[] {
   return [...(Array.isArray(surfaces) ? surfaces : [])].sort(
     (a, b) => (a.netuid ?? 0) - (b.netuid ?? 0) || (a.name ?? "").localeCompare(b.name ?? ""),
