@@ -229,28 +229,33 @@ describe("renderCardMarkup (#8489)", () => {
 
   const base = { title: "Chutes", subtitle: "A subnet", eyebrow: "Subnet", stats: [] };
 
-  it("sanitizes every interpolated value — this endpoint is crawler-reachable", () => {
-    const markup = renderCardMarkup({
-      ...base,
-      title: "<script>alert(1)</script>",
-      eyebrow: '"><img>',
-      stats: [{ label: "<b>", value: "</div>" }],
-    });
-    expect(markup).not.toContain("<script");
-    expect(markup).not.toContain("<b>");
-    // The card legitimately contains <div> and <img>, so "no <img>" would be a
-    // false assertion. What actually matters is that hostile input adds NO
-    // element: the tag inventory has to match a benign render exactly.
-    const benign = renderCardMarkup({
-      ...base,
-      title: "script alert(1) script",
-      eyebrow: "img",
-      stats: [{ label: "b", value: "div" }],
-    });
-    const tags = (m: string) =>
-      (m.match(/<\/?[a-zA-Z][^>]*>/g) ?? []).map((t) => t.split(/[ >]/)[0]);
-    expect(tags(markup)).toEqual(tags(benign));
-  });
+  it.each([
+    { field: "title", value: "<script>alert(1)</script>", text: "scriptalert(1)/script" },
+    { field: "subtitle", value: "<iframe>subtitle</iframe>", text: "iframesubtitle/iframe" },
+    { field: "eyebrow", value: '"><img>', text: '"img' },
+    { field: "identifier", value: '<a href="x">record</a>', text: 'a href="x"record/a' },
+    { field: "label", value: "<b>", text: "b" },
+    { field: "value", value: "</div>", text: "/div" },
+  ])(
+    "keeps hostile $field input in text rather than creating elements",
+    ({ field, value, text }) => {
+      const input = {
+        ...base,
+        entity: true,
+        ...(field === "label" || field === "value"
+          ? { stats: [{ label: "Count", value: "12", [field]: value }] }
+          : { [field]: value }),
+      };
+      const markup = renderCardMarkup(input);
+      // Keep each original hostile payload intact. Assert the rendered text
+      // explicitly instead of comparing differently wrapped benign titles.
+      expect(markup).toContain(`>${text}<`);
+      expect(markup).not.toMatch(/<\/?(?:script|iframe|b|a)(?:[\s>])/i);
+      // The owned wordmark is the only image for an entity without a logo.
+      expect(markup.match(/<img\b/g)).toHaveLength(1);
+      expect(markup.match(/<div\b/g)?.length).toBe(markup.match(/<\/div>/g)?.length);
+    },
+  );
 
   it("sizes the root to exactly the canvas, with padding on an inner wrapper", () => {
     // Regression: width/height on the padded element renders 1360x758 under
