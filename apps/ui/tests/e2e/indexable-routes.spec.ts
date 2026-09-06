@@ -913,9 +913,13 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
       expect(imageTitle).toBeTruthy();
       const subtitle = image.searchParams.get("subtitle");
       if (route === "/") {
-        expect(subtitle).toBe(
-          "Explore Bittensor. Follow the chain, subnets and public interfaces.",
-        );
+        expect(imageTitle).toBe("Bittensor, measured.");
+        expect(subtitle).toBe("Explore the chain, subnets and public interfaces.");
+      }
+      if (route === "/agents") {
+        expect(imageTitle).toBe("Bittensor in a box");
+        expect(subtitle).toBe("Subnets, native APIs and chain data. One MCP.");
+        expect(image.searchParams.get("accent")).toBe("agent");
       }
       const identifier = image.searchParams.get("identifier");
       const subject =

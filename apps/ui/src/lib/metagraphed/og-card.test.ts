@@ -179,6 +179,7 @@ describe("buildOgImageUrl", () => {
     expect(url.searchParams.get("title")).toBe(input.title);
     expect(url.searchParams.get("subtitle")).toBe(input.subtitle);
     expect(url.searchParams.get("identifier")!.length).toBeLessThan(80);
+    expect(url.searchParams.get("identifier")).toMatch(/…$/);
     expect(url.searchParams.get("identifier")).not.toContain("�");
   });
 

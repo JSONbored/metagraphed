@@ -110,11 +110,13 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   });
   let identifier = clampText(options.identifier, OG_LIMITS.identifier);
   if (identifier) {
+    const glyphs = Array.from(identifier);
     params.set("identifier", identifier);
     // Identity is optional in old URLs; never let the new field make a
     // previously valid card exceed the edge query guard after percent encoding.
     while (params.toString().length + 1 > OG_LIMITS.query && identifier) {
-      identifier = Array.from(identifier).slice(0, -1).join("");
+      glyphs.pop();
+      identifier = glyphs.length ? `${glyphs.join("")}…` : "";
       if (identifier) params.set("identifier", identifier);
       else params.delete("identifier");
     }
