@@ -17,7 +17,6 @@ import {
 } from "@/lib/metagraphed/entity-not-found-meta";
 import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 import { stringifyJsonLd, validatorDatasetJsonLd } from "@/lib/metagraphed/json-ld";
-import { formatTao } from "@/lib/metagraphed/format";
 import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { ValidatorDetailPage } from "./-validators-hotkey-page";
 
@@ -47,8 +46,8 @@ export const Route = createFileRoute("/validators/$hotkey")({
     return { hotkey };
   },
   // #8489: primes the SAME query the page's own useSuspenseQuery reads
-  // (validatorDetailQuery), so head() can put real stake/subnet-count figures
-  // on the OG card. Shared react-query cache means this is the request moving
+  // (validatorDetailQuery), so head() can share declared identity and observed
+  // subnet membership with the OG card. Shared react-query cache means this is the request moving
   // earlier, not a second one -- the exact pattern subnets.$netuid.tsx already
   // uses. Non-fatal: any failure returns null and the card falls back to the
   // truncated-hotkey form.
@@ -65,10 +64,6 @@ export const Route = createFileRoute("/validators/$hotkey")({
         name: identity?.name ?? null,
         // Same candidate ladder the site's BrandIcon uses for a validator.
         logoHost: logoHostFrom(identity?.image, identity?.url, identity?.github),
-        totalStakeTao:
-          typeof data.total_stake_tao === "number" && Number.isFinite(data.total_stake_tao)
-            ? data.total_stake_tao
-            : null,
         subnetCount:
           typeof data.subnet_count === "number" && Number.isFinite(data.subnet_count)
             ? data.subnet_count
@@ -106,25 +101,22 @@ export const Route = createFileRoute("/validators/$hotkey")({
         { title: `Validator ${label} — Metagraphed` },
         {
           name: "description",
-          content: `Cross-subnet performance, nominators, and staking history for Bittensor validator ${label}.`,
+          content: `Declared identity and observed subnet memberships for Bittensor validator hotkey ${label}.`,
         },
         { property: "og:title", content: `Validator ${label} — Metagraphed` },
         {
           property: "og:description",
-          content: "Cross-subnet validator performance, nominators, and staking history.",
+          content: "Declared validator identity and observed subnet memberships.",
         },
         // #8489: route-owned card (server.ts skips these paths). Prefers the
-        // on-chain identity name over the truncated hotkey, and shows stake +
-        // reach rather than an anonymous address.
+        // declared identity name over the truncated hotkey, with the observed
+        // subnet count from the existing page query.
         ...ogImageMeta({
           title: loaderData?.name || label,
-          subtitle: "Cross-subnet performance, nominators, and staking history.",
+          subtitle: "Declared validator identity and observed subnet memberships.",
           eyebrow: "Validator",
           logoHost: loaderData?.logoHost ?? null,
           stats: [
-            ...(loaderData?.totalStakeTao != null
-              ? [{ label: "Stake value (τ)", value: formatTao(loaderData.totalStakeTao) }]
-              : []),
             ...(loaderData?.subnetCount != null
               ? [{ label: "Subnets", value: String(loaderData.subnetCount) }]
               : []),

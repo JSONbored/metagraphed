@@ -44,3 +44,13 @@ export function repoSlugFrom(repo: string | null | undefined): string | null {
   }
   return `${owner}/${name.replace(/\.git$/i, "")}`;
 }
+
+/** One page's search and social text, with no renderer or data-fetch dependency. */
+export function pageMeta(title: string, description: string) {
+  return [
+    { title },
+    { name: "description", content: description },
+    { property: "og:title", content: title },
+    { property: "og:description", content: description },
+  ];
+}

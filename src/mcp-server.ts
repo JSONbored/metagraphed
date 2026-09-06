@@ -13595,15 +13595,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "list_endpoints",
-    title: "List monitored endpoint resources",
+    title: "List endpoint resources",
     description:
       "Fetch the network-wide catalog of generalized endpoint resources: every " +
-      "monitored public endpoint/surface across providers and subnets, each " +
+      "public endpoint/surface across providers and subnets, each " +
       "with its kind, layer, provider, subnet (netuid), publication state, and " +
-      "probe-derived status/latency/score. Use it to discover live endpoints " +
+      "probe-derived status/latency/score. Use it to discover recorded endpoints " +
       "network-wide. Search the full catalog with q before pagination. " +
       "Optionally filter by kind/layer/netuid/provider/" +
-      "publication_state/status/pool_eligible, bound by min_/max_latency_ms " +
+      "publication_state/status/known_status/pool_eligible, bound by min_/max_latency_ms " +
       "and min_/max_score, sort with sort + order, project a subset of fields " +
       "with fields, and page with limit/cursor — the full catalog can be " +
       "large. Mirrors GET /api/v1/endpoints.",
@@ -13620,6 +13620,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       const status = optionalEnum(args, "status", QUERY_ENUMS.healthStatus);
       const poolEligible = optionalNullableBoolean(args, "pool_eligible");
+      const knownStatus = optionalNullableBoolean(args, "known_status");
       // Inclusive numeric range bounds, the MCP mirror of REST's
       // rangeFilters: ["latency_ms", "score"] on the endpoints collection
       // (contracts.ts) — passed through verbatim as min_/max_ query params
@@ -13677,6 +13678,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       if (status) queryUrl.searchParams.set("status", status);
       if (poolEligible !== null) {
         queryUrl.searchParams.set("pool_eligible", String(poolEligible));
+      }
+      if (knownStatus !== null) {
+        queryUrl.searchParams.set("known_status", String(knownStatus));
       }
       for (const arg of rangeArgs) {
         queryUrl.searchParams.set(
@@ -13763,7 +13767,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_subnet_endpoints",
     title: "Get one subnet's endpoint resources",
     description:
-      "Fetch the monitored endpoint resources for one subnet by netuid: each " +
+      "Fetch endpoint resources for one subnet by netuid: each " +
       "endpoint/surface with its kind, layer, provider, publication state, and " +
       "probe-derived status/latency/score. The per-subnet view of " +
       "list_endpoints (the network-wide catalog). Mirrors " +

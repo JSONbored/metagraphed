@@ -392,6 +392,9 @@ export const API_QUERY_COLLECTIONS = {
   }),
   endpoints: queryCollection("endpoints", {
     filters: {
+      known_status: enumSchema(["true", "false"]).describe(
+        "Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring.",
+      ),
       kind: enumSchema(QUERY_ENUMS.surfaceKind),
       layer: enumSchema(QUERY_ENUMS.endpointLayer),
       netuid: integerSchema,
@@ -424,6 +427,14 @@ export const API_QUERY_COLLECTIONS = {
       "status",
     ],
     rangeFilters: ["latency_ms", "score"],
+    valueSetFilters: {
+      known_status: {
+        field: "status",
+        values: QUERY_ENUMS.healthStatus.filter(
+          (status) => status !== "unknown",
+        ),
+      },
+    },
   }),
   "endpoint-pools": queryCollection("pools", {
     filters: {
@@ -7258,6 +7269,11 @@ interface QueryCollectionOptions<
   rangeFilters?: string[];
   /** Param name -> the row field whose PRESENCE it tests. */
   presenceFilters?: Record<string, string>;
+  /** Boolean param -> whether the row field belongs to the configured values. */
+  valueSetFilters?: Record<
+    string,
+    { field: string; values: readonly string[] }
+  >;
   /** Row fields a free-text `q` searches across. */
   search?: string[];
 }
@@ -7311,6 +7327,7 @@ function queryCollection<
     // range kinds; presence is the one it was missing, and it is the reason
     // /apis had to filter this one client-side over a single page (#9117).
     presence_filters: options.presenceFilters || {},
+    value_set_filters: options.valueSetFilters || {},
     search_keys: options.search || [],
     // Typed as the AUTHORED list for the same reason `filter_schemas` is: a
     // reader that cannot see WHICH columns a collection sorts by has to

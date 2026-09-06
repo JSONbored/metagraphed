@@ -1,3 +1,4 @@
+import { ogImageMeta } from "@/lib/metagraphed/og-card";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EntityRouteLoadingSkeleton } from "@/components/metagraphed/route-loading-skeleton";
@@ -60,6 +61,16 @@ export const Route = createFileRoute("/events/$block/$index")({
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
+        ...ogImageMeta({
+          title: label,
+          subtitle: "Decoded Bittensor event, arguments and originating extrinsic.",
+          eyebrow: "Event",
+          entity: false,
+          stats: [
+            { label: "Block", value: String(block) },
+            { label: "Event index", value: params.index },
+          ],
+        }),
       ],
     };
   },

@@ -301,6 +301,7 @@ async function discoveryFixture(page: Page, waitForFeed?: Promise<void>) {
     }
     const rows = DISCOVERY_ROWS.filter(
       (row) =>
+        (url.searchParams.get("known_status") !== "true" || row.status === "ok") &&
         (url.searchParams.get("q") ?? "")
           .toLowerCase()
           .split(/\s+/)
@@ -526,13 +527,16 @@ test.describe("endpoint discovery", () => {
     expect(new URL(page.url()).hash).toBe("#directory");
   });
 
-  test("scopes an empty monitored view to loaded records", async ({ page }) => {
+  test("uses API matching totals for an empty known-status view", async ({ page }) => {
     const state = await discoveryFixture(page);
     await gotoThroughRestart(page, "/apis/endpoints?provider=fixture-a&status=monitored");
     const directory = page.locator("section#directory");
-    await expect(directory).toContainText("No loaded endpoints match this view.");
-    await expect(directory).toContainText("monitored status matches loaded rows");
+    await expect(directory).toContainText("No endpoints match these filters.");
+    await expect(directory).toContainText("0 loaded of 0 matching");
     expect(state.reads.every((search) => !new URLSearchParams(search).has("status"))).toBe(true);
+    expect(
+      state.reads.some((search) => new URLSearchParams(search).get("known_status") === "true"),
+    ).toBe(true);
   });
 
   test("recovers a failed refresh with retained rows and no next page while supporting reads fail", async ({

@@ -1,3 +1,5 @@
+import { NotFoundComponent } from "./-root-views";
+import { entityNotFoundMeta, isNotFoundMatch } from "@/lib/metagraphed/entity-not-found-meta";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { buildOgImageUrl, ogImageMeta } from "@/lib/metagraphed/og-card";
@@ -19,6 +21,7 @@ import { DocsSplatPage } from "./-docs-splat-page";
 // as every other route) so docs pages keep the real site header/footer;
 // only the content area between them is Fumadocs' sidebar+TOC shell.
 export const Route = createFileRoute("/docs/$")({
+  notFoundComponent: NotFoundComponent,
   component: DocsSplatPage,
   // Deliberately does NOT call clientLoader.preload() here. TanStack
   // Router's automatic code-splitting only extracts the `component` field
@@ -39,68 +42,75 @@ export const Route = createFileRoute("/docs/$")({
     const slugs = params._splat?.split("/") ?? [];
     return serverLoader({ data: slugs });
   },
-  head: ({ loaderData, params }) => ({
-    meta: [
-      { title: loaderData ? `${loaderData.title} — Metagraphed Docs` : "Metagraphed Docs" },
-      { name: "description", content: loaderData?.description ?? "" },
-      {
-        property: "og:title",
-        content: loaderData ? `${loaderData.title} — Metagraphed Docs` : "Metagraphed Docs",
-      },
-      { property: "og:description", content: loaderData?.description ?? "" },
-      // #8624: every /docs/* page unfurled with the same generic
-      // `og?title=Metagraphed` card. src/server.ts injects that card from the
-      // PATHNAME alone and has no page data, so the only place the real title
-      // is available is here -- the same reason the entity routes own their
-      // cards (see routeOwnsOgImage, which now matches /docs/* so exactly one
-      // og:image tag survives). Docs are the most link-worthy pages on the
-      // site and they were the ones sharing a card.
-      ...ogImageMeta({
-        title: loaderData?.title ?? "Documentation",
-        subtitle: loaderData?.description || "API reference and guides for the Bittensor registry",
-        eyebrow: "Docs",
-        // Ours, not an entity's: the avatar slot takes the Metagraphed mark
-        // rather than a monogram of the page title ("EC" for /docs/economics).
-        entity: false,
-      }),
-    ],
-    // #11294: point at this page's markdown twin. Emitted unconditionally --
-    // unlike the JSON-LD below, this claims nothing about the page's content,
-    // only where its machine-readable form lives, and that URL is correct
-    // whether or not the loader resolved.
-    links: [rawMarkdownLink("docs", params._splat)],
-    // #11204: docs are the pages an answer engine quotes, and they carried no
-    // node of their own. TechArticle types the prose and, via `about`, ties it
-    // to the catalog the prose documents -- so a quoted sentence leads back to
-    // the machine-readable record, and from there to the REST and MCP
-    // endpoints. Emitted only when the page actually loaded: a node built from
-    // a missing title would assert a document that isn't there.
-    scripts: loaderData
-      ? [
-          {
-            type: "application/ld+json",
-            children: stringifyJsonLd(
-              techArticleJsonLd({
-                headline: loaderData.title,
-                description: loaderData.description,
-                url: `${SITE_ORIGIN}/docs/${params._splat ?? ""}`.replace(/\/+$/, ""),
-                dateModified: loaderData.lastModified,
-                // The page's own OG card. Article types want an image, and
-                // this is the one that already represents the page everywhere
-                // else it is shared.
-                image: buildOgImageUrl({
-                  title: loaderData.title ?? "Documentation",
-                  subtitle:
-                    loaderData.description || "API reference and guides for the Bittensor registry",
-                  eyebrow: "Docs",
-                  entity: false,
+  head: ({ loaderData, params, match }) => {
+    if (isNotFoundMatch(match)) {
+      return entityNotFoundMeta("Document", "No documentation page matches this path.");
+    }
+    return {
+      meta: [
+        { title: loaderData ? `${loaderData.title} — Metagraphed Docs` : "Metagraphed Docs" },
+        { name: "description", content: loaderData?.description ?? "" },
+        {
+          property: "og:title",
+          content: loaderData ? `${loaderData.title} — Metagraphed Docs` : "Metagraphed Docs",
+        },
+        { property: "og:description", content: loaderData?.description ?? "" },
+        // #8624: every /docs/* page unfurled with the same generic
+        // `og?title=Metagraphed` card. src/server.ts injects that card from the
+        // PATHNAME alone and has no page data, so the only place the real title
+        // is available is here -- the same reason the entity routes own their
+        // cards (see routeOwnsOgImage, which now matches /docs/* so exactly one
+        // og:image tag survives). Docs are the most link-worthy pages on the
+        // site and they were the ones sharing a card.
+        ...ogImageMeta({
+          title: loaderData?.title ?? "Documentation",
+          subtitle:
+            loaderData?.description || "API reference and guides for the Bittensor registry",
+          eyebrow: "Docs",
+          // Ours, not an entity's: the avatar slot takes the Metagraphed mark
+          // rather than a monogram of the page title ("EC" for /docs/economics).
+          entity: false,
+        }),
+      ],
+      // #11294: point at this page's markdown twin. Emitted unconditionally --
+      // unlike the JSON-LD below, this claims nothing about the page's content,
+      // only where its machine-readable form lives, and that URL is correct
+      // whether or not the loader resolved.
+      links: [rawMarkdownLink("docs", params._splat)],
+      // #11204: docs are the pages an answer engine quotes, and they carried no
+      // node of their own. TechArticle types the prose and, via `about`, ties it
+      // to the catalog the prose documents -- so a quoted sentence leads back to
+      // the machine-readable record, and from there to the REST and MCP
+      // endpoints. Emitted only when the page actually loaded: a node built from
+      // a missing title would assert a document that isn't there.
+      scripts: loaderData
+        ? [
+            {
+              type: "application/ld+json",
+              children: stringifyJsonLd(
+                techArticleJsonLd({
+                  headline: loaderData.title,
+                  description: loaderData.description,
+                  url: `${SITE_ORIGIN}/docs/${params._splat ?? ""}`.replace(/\/+$/, ""),
+                  dateModified: loaderData.lastModified,
+                  // The page's own OG card. Article types want an image, and
+                  // this is the one that already represents the page everywhere
+                  // else it is shared.
+                  image: buildOgImageUrl({
+                    title: loaderData.title ?? "Documentation",
+                    subtitle:
+                      loaderData.description ||
+                      "API reference and guides for the Bittensor registry",
+                    eyebrow: "Docs",
+                    entity: false,
+                  }),
                 }),
-              }),
-            ),
-          },
-        ]
-      : [],
-  }),
+              ),
+            },
+          ]
+        : [],
+    };
+  },
 });
 
 // content/docs/api-reference/**/*.mdx pages (scripts/generate-openapi-docs.ts)

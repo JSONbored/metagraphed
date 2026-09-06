@@ -55,6 +55,14 @@ function readArtifact(_env: unknown, path: string) {
   return Promise.resolve({ ok: false, code: "artifact_not_found" });
 }
 
+async function readCurrentHealth(_env: Env, key: string) {
+  assert.equal(key, "health:current");
+  return {
+    last_run_at: new Date().toISOString(),
+    surfaces: SAMPLE_BLOB.endpoints,
+  };
+}
+
 describe("provider-endpoints-mcp", () => {
   test("providerEndpointsArtifactPath builds the per-provider artifact key", () => {
     assert.equal(
@@ -263,7 +271,11 @@ describe("provider-endpoints-mcp", () => {
 
   test("loadProviderEndpointsList sorts and pages the collection", async () => {
     const out = await loadProviderEndpointsList(
-      { env: {}, readArtifact } as unknown as LoadCtx,
+      {
+        env: {},
+        readArtifact,
+        readHealthKv: readCurrentHealth,
+      } as unknown as LoadCtx,
       { slug: "datura", sort: "latency_ms", order: "desc", limit: 1 },
     );
     assert.equal(out.returned, 1);
@@ -384,7 +396,11 @@ describe("provider-endpoints-mcp", () => {
 
   test("loadProviderEndpointsList projects row fields when requested", async () => {
     const out = await loadProviderEndpointsList(
-      { env: {}, readArtifact } as unknown as LoadCtx,
+      {
+        env: {},
+        readArtifact,
+        readHealthKv: readCurrentHealth,
+      } as unknown as LoadCtx,
       { slug: "datura", fields: "surface_id,status", limit: 1 },
     );
     assert.deepEqual(out.endpoints[0], {

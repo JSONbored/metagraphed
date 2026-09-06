@@ -19,6 +19,34 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [2.6.0](https://github.com/JSONbored/metagraphed/compare/platform-v2.5.1...platform-v2.6.0) (2026-09-05)
+
+
+### Features
+
+* **data:** define finalized Root basket observation storage ([#12060](https://github.com/JSONbored/metagraphed/issues/12060)) ([ccbfeaf](https://github.com/JSONbored/metagraphed/commit/ccbfeafdd10745502173796fbfa3dc7942b8c39a))
+
+
+### Bug Fixes
+
+* **alarms:** retain incidents until all conditions recover ([#11995](https://github.com/JSONbored/metagraphed/issues/11995)) ([#11996](https://github.com/JSONbored/metagraphed/issues/11996)) ([1210aad](https://github.com/JSONbored/metagraphed/commit/1210aad81ca551e7a45094d5451b07469f325d18))
+* **analytics:** retire misleading validator realized returns ([#12041](https://github.com/JSONbored/metagraphed/issues/12041)) ([431954a](https://github.com/JSONbored/metagraphed/commit/431954a1dbc4cfd3848924e4b2e7245115e806b8))
+* **api:** group validator operators by observed ownership ([#12056](https://github.com/JSONbored/metagraphed/issues/12056)) ([850b32e](https://github.com/JSONbored/metagraphed/commit/850b32e702565aecbbc51305022b00f7d0cbc2a5))
+* **api:** report legacy Root claim compatibility explicitly ([#12057](https://github.com/JSONbored/metagraphed/issues/12057)) ([bc9da24](https://github.com/JSONbored/metagraphed/commit/bc9da240913eaaa5eee9ac14f27ff4624cb240c9))
+* **neon:** drain arrivals made during a buffer flush ([#12003](https://github.com/JSONbored/metagraphed/issues/12003)) ([d8f6d6a](https://github.com/JSONbored/metagraphed/commit/d8f6d6a72e770bec32e3a27c6679f9f81f1c5ed2))
+* **nominators:** measure completed scan receipts and history ([#12002](https://github.com/JSONbored/metagraphed/issues/12002)) ([64f2ba0](https://github.com/JSONbored/metagraphed/commit/64f2ba0b2abe1ad93236ab82a7709d69322aa8d2))
+* **nominators:** persist full-scan delivery receipts ([#11999](https://github.com/JSONbored/metagraphed/issues/11999)) ([b6f62a3](https://github.com/JSONbored/metagraphed/commit/b6f62a345a144f977f8f6d39cf8c195c3b035642))
+* **probes:** preserve success history across alias displacement ([#12010](https://github.com/JSONbored/metagraphed/issues/12010)) ([22b943d](https://github.com/JSONbored/metagraphed/commit/22b943d3ebf4c171567cfab27b1068944223b678))
+* **probes:** reconcile display aliases by stable identity ([#12007](https://github.com/JSONbored/metagraphed/issues/12007)) ([7c6876b](https://github.com/JSONbored/metagraphed/commit/7c6876b4bc159d9888e09f9bf131a65b49ac051a))
+* **schemas:** accept supported nominator page limits ([#12006](https://github.com/JSONbored/metagraphed/issues/12006)) ([2453590](https://github.com/JSONbored/metagraphed/commit/2453590434d0597f5628abe860ad7616c7f265ef))
+* **ui-kit:** keep compact table labels within card layout ([#12040](https://github.com/JSONbored/metagraphed/issues/12040)) ([#12044](https://github.com/JSONbored/metagraphed/issues/12044)) ([725248e](https://github.com/JSONbored/metagraphed/commit/725248ec4553f2ced53d9cfa5e9ec976e3662819))
+* **ui:** connect wallets directly from API-key and alert settings ([#12045](https://github.com/JSONbored/metagraphed/issues/12045)) ([1757979](https://github.com/JSONbored/metagraphed/commit/1757979a83518fba26f2469071f002b45b408769))
+* **ui:** hydrate browser wallet state consistently ([#12058](https://github.com/JSONbored/metagraphed/issues/12058)) ([7da99ce](https://github.com/JSONbored/metagraphed/commit/7da99cea87fee7764bb6e02fc12583699acfb7a5))
+* **ui:** keep mobile navigation reachable in short viewports ([#12053](https://github.com/JSONbored/metagraphed/issues/12053)) ([8c29208](https://github.com/JSONbored/metagraphed/commit/8c292084ec585230716564bf363747deb8638d37))
+* **ui:** preserve empty comparison mode in shared URLs ([#12036](https://github.com/JSONbored/metagraphed/issues/12036)) ([#12042](https://github.com/JSONbored/metagraphed/issues/12042)) ([fb25469](https://github.com/JSONbored/metagraphed/commit/fb25469dd74415c9e29a84959159045ffad2a4c5))
+* **ui:** preserve operator identity through directory adapters ([#12054](https://github.com/JSONbored/metagraphed/issues/12054)) ([9d56c9a](https://github.com/JSONbored/metagraphed/commit/9d56c9a83dd7cd354a2a36dcbbc36964ff1bb876))
+* **ui:** withhold unsupported subnet stake quantities ([#12037](https://github.com/JSONbored/metagraphed/issues/12037)) ([#12043](https://github.com/JSONbored/metagraphed/issues/12043)) ([886af15](https://github.com/JSONbored/metagraphed/commit/886af158c14357f49b50dcb47874a567fe056846))
+
 ## [2.5.1](https://github.com/JSONbored/metagraphed/compare/platform-v2.5.0...platform-v2.5.1) (2026-09-01)
 
 

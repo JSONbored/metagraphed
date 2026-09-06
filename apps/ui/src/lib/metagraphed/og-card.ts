@@ -1,5 +1,5 @@
 import { SITE_ORIGIN } from "./identity";
-import { OG_LIMITS } from "./og-card-limits";
+import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
 import { clampText } from "./truncate";
 
 // Builds the /og card URL a route puts in its own og:image (#8489).
@@ -23,7 +23,7 @@ import { clampText } from "./truncate";
 // (routeOwnsOgImage below is the single source of truth for which). That keeps
 // exactly one og:image tag on every page.
 
-/** One "LABEL / value" cell in the card's stat rail. Max two are rendered. */
+/** One "LABEL / value" cell in the card's stat rail. Max three are rendered. */
 export interface OgCardStat {
   label: string;
   value: string;
@@ -77,7 +77,10 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   // URL -- and once the first-party logo path joined the query (#11204) that
   // slack was enough to push a legitimate card past the endpoint's own
   // MAX_QUERY_LENGTH, which answers 414 and unfurls with no image at all.
-  const params = new URLSearchParams({ title: clampText(options.title, OG_LIMITS.title) });
+  const params = new URLSearchParams({
+    title: clampText(options.title, OG_LIMITS.title),
+    v: OG_CARD_VERSION,
+  });
   const subtitle = clampText(options.subtitle, OG_LIMITS.subtitle);
   if (subtitle) params.set("subtitle", subtitle);
   const eyebrow = clampText(options.eyebrow, OG_LIMITS.eyebrow);
@@ -184,10 +187,9 @@ export function firstPartyLogoPath(
  * Summarize per-endpoint probe verdicts into the card's one status dot.
  *
  * A SUMMARY of probe-derived counts, never a health judgement of our own: the
- * input is `endpoint_summary.by_status`, which the prober owns, and the rule is
- * the obvious one — all monitored endpoints ok is ok, none ok is down, a mix is
- * warn. Returns null when there is nothing to summarize, so the card falls back
- * to its brand-coloured bullet instead of asserting "unknown".
+ * input is `endpoint_summary.by_status`, which the prober owns. All-ok counts
+ * are ok; warning counts or mixed known verdicts are warn; only failed counts
+ * are down. Missing or unknown evidence returns null and uses the brand dot.
  *
  * Lives here because this is where a route's data becomes card params, next to
  * logoHostFrom and firstPartyLogoPath.
@@ -198,18 +200,23 @@ export function healthFromStatusCounts(
   if (!byStatus) return null;
   let ok = 0;
   let total = 0;
+  let warning = false;
   for (const [status, count] of Object.entries(byStatus)) {
     if (typeof count !== "number" || !Number.isFinite(count) || count <= 0) continue;
+    if (!["ok", "warn", "degraded", "down", "failed"].includes(status)) return null;
     total += count;
     if (status === "ok") ok += count;
+    if (status === "warn" || status === "degraded") warning = true;
   }
   if (total === 0) return null;
   if (ok === total) return "ok";
-  return ok === 0 ? "down" : "warn";
+  return warning || ok > 0 ? "warn" : "down";
 }
 
 /** The og:image + twitter:image meta a route's head() returns. */
-export function ogImageMeta(options: OgCardOptions) {
+export function ogImageMeta(
+  options: OgCardOptions,
+): Array<{ property: string; content: string } | { name: string; content: string }> {
   const url = buildOgImageUrl(options);
   // #11204: og:image:alt was emitted ONLY by the server-injected card, so every
   // page that took ownership of its own card silently lost it -- all 129 subnet
@@ -217,7 +224,10 @@ export function ogImageMeta(options: OgCardOptions) {
   // reader announces for an unfurl and what several platforms show as the
   // caption, and the card's own copy is exactly the right text: it IS what the
   // image says. Built the same way server.ts builds its own.
-  const alt = options.subtitle ? `${options.title} — ${options.subtitle}` : options.title;
+  const image = new URL(url);
+  const title = image.searchParams.get("title") ?? "";
+  const subtitle = image.searchParams.get("subtitle");
+  const alt = subtitle ? `${title} — ${subtitle}` : title;
   return [
     { property: "og:image", content: url },
     { property: "og:image:width", content: "1200" },
@@ -237,31 +247,24 @@ export function ogImageMeta(options: OgCardOptions) {
  * describes, and a route that starts emitting its own card should only have to
  * change one file.
  *
- * Matches the three entity detail routes that have real per-entity data to
- * put on a card. Everything else (home, docs, status, list pages) keeps the
- * server-injected brand-skinned fallback.
+ * Entity detail routes and the documentation/news splats can use resolved
+ * page data. Ordinary static pages and directories use the server-owned card.
  */
 export function routeOwnsOgImage(pathname: string): boolean {
   return (
     /^\/subnets\/[^/]+\/?$/.test(pathname) ||
     /^\/validators\/[^/]+\/?$/.test(pathname) ||
     /^\/accounts\/[^/]+\/?$/.test(pathname) ||
+    /^\/events\/[^/]+\/[^/]+\/?$/.test(pathname) ||
     // #11204: /providers/* too. All 138 provider pages were unfurling the
     // pathname-derived card -- the raw slug as a title ("404-gen"), no logo and
     // no numbers -- because server.ts builds that card from the URL alone. The
     // route has the provider's real name, its curated logo and its endpoint
     // counts in loaderData, and 102 of the 138 have a logo to show.
     /^\/providers\/[^/]+\/?$/.test(pathname) ||
-    // #8624: /docs/* too. The docs splat route has the page's real title and
-    // description in loaderData; server.ts, working from the pathname alone,
-    // gave all 20 doc pages the identical brand card. Note this matches the
-    // splat's CHILDREN only -- /docs itself has an OG_SECTIONS entry and keeps
-    // the server-injected card.
-    /^\/docs\/.+$/.test(pathname) ||
-    // #8705: /news/* for the same reason. A weekly digest's whole value is
-    // that it says something specific ("Subnet 104 - 2026-W29"), and these are
-    // the pages the issue expects search and social to land on -- a shared
-    // brand card would waste exactly the unfurl that matters most.
-    /^\/news\/.+$/.test(pathname)
+    // Both splat routes render their index and descendants, including an
+    // ogImageMeta call on the bare hub. The server must not append a second.
+    /^\/docs(?:\/.*)?$/.test(pathname) ||
+    /^\/news(?:\/.*)?$/.test(pathname)
   );
 }

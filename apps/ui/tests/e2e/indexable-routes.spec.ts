@@ -1,7 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { gzipSync } from "node:zlib";
 
 import { SUBNET_SLOT_CAP } from "../../src/lib/metagraphed/bittensor";
+import { OG_CARD_VERSION } from "../../src/lib/metagraphed/og-card-limits";
 import { HUB_COPY, HUB_DESCRIPTION_MAX, HUB_TITLE_MAX } from "../../src/lib/metagraphed/hub-copy";
 
 // #11204: a URL we ask Google to index must ANSWER, and a URL we have retired
@@ -826,4 +827,162 @@ test.describe("#11613 the sitemap stops advertising the retired routes", () => {
     );
     expect(retired, `the sitemap lists ${retired.length} retired URL(s)`).toStrictEqual([]);
   });
+});
+
+// Parse the raw Worker response in an inert document: no hydration can repair
+// or add the tags seen by a crawler, and no external document resources load.
+async function socialHead(page: Page, html: string) {
+  return page.evaluate((source) => {
+    const head = new DOMParser().parseFromString(source, "text/html").head;
+    return {
+      titles: [...head.querySelectorAll("title")].map((tag) => tag.textContent),
+      meta: [...head.querySelectorAll("meta")].map((tag) => ({
+        key: tag.getAttribute("property") ?? tag.getAttribute("name"),
+        content: tag.getAttribute("content"),
+      })),
+      canonicals: [...head.querySelectorAll('link[rel="canonical"]')].map((tag) =>
+        tag.getAttribute("href"),
+      ),
+      documents: [...head.querySelectorAll('script[type="application/ld+json"]')]
+        .map((tag) => JSON.parse(tag.textContent ?? "{}") as Record<string, unknown>)
+        .filter((value) => value["@type"] === "Article" || value["@type"] === "TechArticle"),
+    };
+  }, html);
+}
+
+test.describe("#12103 one coherent social preview survives Worker HTML rewriting", () => {
+  const routes = [
+    "/",
+    "/validators",
+    "/settings",
+    "/compare?subnets=1,19",
+    "/about",
+    "/privacy",
+    "/terms",
+    "/graphql/explorer",
+    "/docs",
+    "/docs/",
+    "/docs/feeds",
+    "/news",
+    "/news/",
+    "/news/sn38/2026-w25",
+    "/subnets/1",
+    "/validators/5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u",
+    "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
+    "/providers/lium",
+    "/blocks/8713384",
+    "/extrinsics/0x986f1f7da3d93882e8c19bbe3b303ef8ba5454062272446598d17aa599ca4428",
+    "/events/8713384/0",
+    "/events/8713384/320",
+  ];
+  for (const route of routes) {
+    test(`${route} exposes one image, matching alt and canonical metadata`, async ({
+      request,
+      page,
+    }) => {
+      let response = await request.get(route, { maxRedirects: 0 });
+      let finalRoute = route;
+      if (route === "/docs/" || route === "/news/") {
+        expect(response.status()).toBe(307);
+        const location = new URL(response.headers()["location"]!, "https://metagraph.sh");
+        expect(location.pathname).toBe(route.slice(0, -1));
+        finalRoute = location.pathname;
+        response = await request.get(finalRoute, { maxRedirects: 0 });
+      }
+      expect(response.status()).toBe(200);
+      const head = await socialHead(page, await response.text());
+      await test.info().attach("social-metadata", {
+        body: JSON.stringify({ route, finalRoute, status: response.status(), ...head }, null, 2),
+        contentType: "application/json",
+      });
+      const values = (key: string) =>
+        head.meta.filter((tag) => tag.key === key).map((tag) => tag.content);
+      expect(head.titles).toHaveLength(1);
+      expect(values("og:title")).toHaveLength(1);
+      expect(values("og:description")).toHaveLength(1);
+      expect(values("og:image")).toHaveLength(1);
+      const image = new URL(values("og:image")[0]!);
+      expect(image.origin).toBe("https://metagraph.sh");
+      expect(image.pathname).toBe("/og");
+      expect(image.searchParams.get("v")).toBe(OG_CARD_VERSION);
+      expect(values("twitter:card")).toEqual(["summary_large_image"]);
+      expect(values("twitter:image")).toEqual(values("og:image"));
+      expect(values("og:image:width")).toEqual(["1200"]);
+      expect(values("og:image:height")).toEqual(["630"]);
+      const imageTitle = image.searchParams.get("title");
+      expect(imageTitle).toBeTruthy();
+      const subtitle = image.searchParams.get("subtitle");
+      if (route === "/") {
+        expect(subtitle).toBe(
+          "Explore Bittensor. Follow the chain, subnets and public interfaces.",
+        );
+      }
+      const alt = subtitle ? `${imageTitle} — ${subtitle}` : imageTitle;
+      expect(values("og:image:alt")).toEqual([alt]);
+      expect(values("twitter:image:alt")).toEqual([alt]);
+      const canonical = `https://metagraph.sh${new URL(finalRoute, "https://metagraph.sh").pathname}`;
+      expect(head.canonicals).toEqual([canonical]);
+      expect(values("og:url")).toEqual([canonical]);
+      if (/^\/(?:about|privacy|terms|settings|compare|graphql\/explorer)(?:[?/#]|$)/.test(route)) {
+        expect(values("og:title")).toEqual(head.titles);
+        expect(values("og:description")).toEqual(values("description"));
+      }
+      if (/^\/(?:docs|news)(?:\/|$)/.test(route)) {
+        expect(head.documents).toHaveLength(1);
+        expect(head.documents[0]!.image).toBe(image.href);
+      }
+      if (route.startsWith("/events/")) {
+        expect(image.searchParams.get("stat1")).toBe("Block");
+        expect(image.searchParams.get("stat1v")).toBe("8713384");
+        expect(image.searchParams.get("stat2")).toBe("Event index");
+        expect(image.searchParams.get("stat2v")).toBe(route.split("/").at(-1));
+        expect(imageTitle).not.toBe("Metagraphed");
+      }
+      if (
+        route.startsWith("/validators") ||
+        route.startsWith("/compare") ||
+        route === "/settings"
+      ) {
+        expect(values("og:description").join(" ")).not.toMatch(
+          /APY|stake value|staking history|portfolio/i,
+        );
+        expect(image.searchParams.get("subtitle")).not.toMatch(
+          /APY|stake value|staking history|portfolio/i,
+        );
+        expect([...image.searchParams.values()].join(" ")).not.toContain("Stake value");
+      }
+    });
+  }
+  for (const route of [
+    "/events/8713384/999999",
+    "/events/bad/0",
+    "/docs/not-a-real-page",
+    "/news/not-a-real-page",
+    "/validators/bad",
+  ]) {
+    test(`${route} keeps a missing-page title and noindex without claiming a resolved image`, async ({
+      request,
+      page,
+    }) => {
+      const response = await request.get(route, { maxRedirects: 0 });
+      expect(response.status()).toBe(404);
+      const head = await socialHead(page, await response.text());
+      await test.info().attach("social-metadata", {
+        body: JSON.stringify({ route, status: response.status(), ...head }, null, 2),
+        contentType: "application/json",
+      });
+      expect(head.titles).toHaveLength(1);
+      expect(head.titles[0]).toContain("not found");
+      // The explicit noindex remains authoritative alongside the global
+      // preview defaults; do not infer absence from a generic 404 body alone.
+      expect(head.meta.filter((tag) => tag.key === "robots")).toContainEqual({
+        key: "robots",
+        content: "noindex",
+      });
+      expect(
+        head.meta.filter((tag) => tag.key === "og:image" || tag.key === "twitter:image"),
+      ).toEqual([]);
+      expect(head.documents).toEqual([]);
+    });
+  }
 });

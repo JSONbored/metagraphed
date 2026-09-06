@@ -3,7 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleOgImage } from "./lib/og-image";
-import { routeOwnsOgImage } from "./lib/metagraphed/og-card";
+import { ogImageMeta, routeOwnsOgImage } from "./lib/metagraphed/og-card";
 import {
   apiRecordUrl,
   breadcrumbListJsonLd,
@@ -625,6 +625,11 @@ interface OgCopy {
 }
 
 export const OG_SECTIONS: Record<string, OgCopy> = {
+  "/": {
+    title: "Metagraphed",
+    subtitle: "Explore Bittensor. Follow the chain, subnets and public interfaces.",
+    eyebrow: "Explorer",
+  },
   // Registry
   "/subnets": {
     title: "Subnets",
@@ -633,7 +638,7 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
   },
   "/validators": {
     title: "Validators",
-    subtitle: "Stake, take and cross-subnet performance for every validator",
+    subtitle: "Validator hotkeys, declared identities, observed take and subnet memberships",
     eyebrow: "Registry",
   },
   "/accounts": {
@@ -643,7 +648,7 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
   },
   "/compare": {
     title: "Compare",
-    subtitle: "Two or three subnets or validators, side by side",
+    subtitle: "Compare selected subnets or individual validator hotkeys, side by side",
     eyebrow: "Registry",
   },
 
@@ -782,9 +787,9 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
     eyebrow: "Developers",
   },
   "/settings": {
-    title: "Developer settings",
-    subtitle: "API keys, alert triggers and webhook subscriptions",
-    eyebrow: "Developers",
+    title: "Settings",
+    subtitle: "Appearance, watchlists, alerts and developer access",
+    eyebrow: "Preferences",
   },
 
   // Product
@@ -840,7 +845,7 @@ export function ogCardCopy(pathname: string): OgCopy {
   if (validator) {
     return {
       title: shortKey(safeDecodePathSegment(validator[1])),
-      subtitle: "Validator — stake, take and subnet memberships",
+      subtitle: "Declared validator identity and observed subnet memberships",
       eyebrow: "Validator",
     };
   }
@@ -941,27 +946,19 @@ function injectAnalytics(response: Response, request: Request): Response {
   const apiAlternateTag = apiRecord
     ? `<link rel="alternate" type="application/json" href="${escapeHtmlAttr(apiRecord)}" title="Metagraphed API record for this page">`
     : "";
-  // #8489: the three entity detail routes emit their own og:image in head(),
+  // Entity details and document routes emit their own og:image in head(),
   // where loaderData is available and the card can carry real per-entity data.
   // Skipping them here is what keeps exactly ONE og:image tag on the page --
   // see routeOwnsOgImage's own comment for why ownership moved.
   const routeOwnsCard = routeOwnsOgImage(pathname);
   const ogCopy = ogCardCopy(pathname);
-  const ogImage =
-    `${SITE_ORIGIN}/og?title=${encodeURIComponent(ogCopy.title)}` +
-    (ogCopy.subtitle ? `&subtitle=${encodeURIComponent(ogCopy.subtitle)}` : "") +
-    (ogCopy.eyebrow ? `&eyebrow=${encodeURIComponent(ogCopy.eyebrow)}` : "");
-  // #8624: og:image:alt is what a screen reader announces for an unfurl, and
-  // several platforms surface it as the image caption. The card's own copy is
-  // exactly the right text -- it IS what the image says.
-  const ogImageAlt = ogCopy.subtitle ? `${ogCopy.title} — ${ogCopy.subtitle}` : ogCopy.title;
-  const ogImageTags =
-    `<meta property="og:image" content="${escapeHtmlAttr(ogImage)}">` +
-    `<meta property="og:image:width" content="1200">` +
-    `<meta property="og:image:height" content="630">` +
-    `<meta property="og:image:alt" content="${escapeHtmlAttr(ogImageAlt)}">` +
-    `<meta name="twitter:image" content="${escapeHtmlAttr(ogImage)}">` +
-    `<meta name="twitter:image:alt" content="${escapeHtmlAttr(ogImageAlt)}">`;
+  const ogImageTags = ogImageMeta({ ...ogCopy, entity: false })
+    .map((tag) => {
+      const attribute = "property" in tag ? "property" : "name";
+      const key = "property" in tag ? tag.property : tag.name;
+      return `<meta ${attribute}="${escapeHtmlAttr(key)}" content="${escapeHtmlAttr(tag.content)}">`;
+    })
+    .join("");
   // HTMLRewriter is a Cloudflare Workers runtime global; under local `vite dev`
   // (Node) it's absent. Skip the streaming <head> injection there — these meta
   // tags are a production SEO/unfurl concern — and pass the rendered HTML through

@@ -1,3 +1,5 @@
+import { NotFoundComponent } from "./-root-views";
+import { entityNotFoundMeta, isNotFoundMatch } from "@/lib/metagraphed/entity-not-found-meta";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { buildOgImageUrl, ogImageMeta } from "@/lib/metagraphed/og-card";
@@ -18,69 +20,75 @@ import { NewsSplatPage } from "./-news-splat-page";
 const NEWS_META_DESCRIPTION_MAX = 160;
 
 export const Route = createFileRoute("/news/$")({
+  notFoundComponent: NotFoundComponent,
   component: NewsSplatPage,
   loader: async ({ params }) => {
     const slugs = params._splat?.split("/").filter(Boolean) ?? [];
     return serverLoader({ data: slugs });
   },
-  head: ({ loaderData, params }) => ({
-    meta: [
-      { title: loaderData ? `${loaderData.title} — Metagraphed` : "Metagraphed" },
-      { name: "description", content: loaderData?.description ?? "" },
-      {
-        property: "og:title",
-        content: loaderData ? `${loaderData.title} — Metagraphed` : "Metagraphed",
-      },
-      { property: "og:description", content: loaderData?.description ?? "" },
-      // #8624's discipline, same as /docs/*: server.ts builds its card from the
-      // pathname alone, which would give every digest the identical brand card.
-      // routeOwnsOgImage matches /news/.+ so exactly one og:image survives.
-      ...ogImageMeta({
-        title: loaderData?.title ?? "Weekly digests",
-        subtitle:
-          loaderData?.description || "What changed, week by week, for each Bittensor subnet",
-        eyebrow: "Digest",
-        // Ours, not an entity's — the avatar slot takes the Metagraphed mark
-        // rather than a monogram of "Subnet 104 — 2026-W29".
-        entity: false,
-      }),
-    ],
-    // #11294: this digest as plain markdown. These are the pages whose value is
-    // a specific quotable claim, so they are exactly the ones worth handing to
-    // an answer engine without HTML around it.
-    links: [rawMarkdownLink("news", params._splat)],
-    // #11279: a digest is editorial prose about a subnet's week, so Article --
-    // not the TechArticle the reference docs use, which would claim these
-    // document an interface. `about` points at the catalog, so a quoted
-    // sentence leads back to the records the digest was written from.
-    scripts: loaderData
-      ? [
-          {
-            type: "application/ld+json",
-            children: stringifyJsonLd(
-              techArticleJsonLd({
-                type: "Article",
-                headline: loaderData.title,
-                description: loaderData.description,
-                url: `${SITE_ORIGIN}/news/${params._splat ?? ""}`.replace(/\/+$/, ""),
-                // The week the digest COVERS. There is no honest publication
-                // timestamp -- the store records the week, not the run -- so
-                // none is claimed. See generate-digest-pages.ts's weekInterval.
-                temporalCoverage: loaderData.temporalCoverage,
-                image: buildOgImageUrl({
-                  title: loaderData.title ?? "Weekly digests",
-                  subtitle:
-                    loaderData.description ||
-                    "What changed, week by week, for each Bittensor subnet",
-                  eyebrow: "Digest",
-                  entity: false,
+  head: ({ loaderData, params, match }) => {
+    if (isNotFoundMatch(match)) {
+      return entityNotFoundMeta("Digest", "No news page matches this path.");
+    }
+    return {
+      meta: [
+        { title: loaderData ? `${loaderData.title} — Metagraphed` : "Metagraphed" },
+        { name: "description", content: loaderData?.description ?? "" },
+        {
+          property: "og:title",
+          content: loaderData ? `${loaderData.title} — Metagraphed` : "Metagraphed",
+        },
+        { property: "og:description", content: loaderData?.description ?? "" },
+        // #8624's discipline, same as /docs/*: server.ts builds its card from the
+        // pathname alone, which would give every digest the identical brand card.
+        // routeOwnsOgImage matches /news/.+ so exactly one og:image survives.
+        ...ogImageMeta({
+          title: loaderData?.title ?? "Weekly digests",
+          subtitle:
+            loaderData?.description || "What changed, week by week, for each Bittensor subnet",
+          eyebrow: "Digest",
+          // Ours, not an entity's — the avatar slot takes the Metagraphed mark
+          // rather than a monogram of "Subnet 104 — 2026-W29".
+          entity: false,
+        }),
+      ],
+      // #11294: this digest as plain markdown. These are the pages whose value is
+      // a specific quotable claim, so they are exactly the ones worth handing to
+      // an answer engine without HTML around it.
+      links: [rawMarkdownLink("news", params._splat)],
+      // #11279: a digest is editorial prose about a subnet's week, so Article --
+      // not the TechArticle the reference docs use, which would claim these
+      // document an interface. `about` points at the catalog, so a quoted
+      // sentence leads back to the records the digest was written from.
+      scripts: loaderData
+        ? [
+            {
+              type: "application/ld+json",
+              children: stringifyJsonLd(
+                techArticleJsonLd({
+                  type: "Article",
+                  headline: loaderData.title,
+                  description: loaderData.description,
+                  url: `${SITE_ORIGIN}/news/${params._splat ?? ""}`.replace(/\/+$/, ""),
+                  // The week the digest COVERS. There is no honest publication
+                  // timestamp -- the store records the week, not the run -- so
+                  // none is claimed. See generate-digest-pages.ts's weekInterval.
+                  temporalCoverage: loaderData.temporalCoverage,
+                  image: buildOgImageUrl({
+                    title: loaderData.title ?? "Weekly digests",
+                    subtitle:
+                      loaderData.description ||
+                      "What changed, week by week, for each Bittensor subnet",
+                    eyebrow: "Digest",
+                    entity: false,
+                  }),
                 }),
-              }),
-            ),
-          },
-        ]
-      : [],
-  }),
+              ),
+            },
+          ]
+        : [],
+    };
+  },
 });
 
 const serverLoader = createServerFn({ method: "GET" })

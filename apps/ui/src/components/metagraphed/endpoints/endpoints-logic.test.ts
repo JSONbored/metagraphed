@@ -4,7 +4,6 @@ import {
   endpointFacts,
   endpointRows,
   facet,
-  filterMonitoredEndpoints,
   endpointMatchCount,
   incidentRows,
   latencyRails,
@@ -314,16 +313,6 @@ describe("endpointFacts", () => {
 
   it("is empty with no summary", () => {
     expect(endpointFacts(null, 3, 1, fmt)).toEqual([]);
-  });
-});
-
-describe("filterMonitoredEndpoints", () => {
-  it("preserves the existing nonempty, non-unknown status interpretation", () => {
-    expect(
-      filterMonitoredEndpoints(
-        endpointRows([...raw, { id: "missing" }, { id: "unrecognized", status: "other" }]),
-      ).map((row) => row.id),
-    ).toEqual(["e1", "e2", "e4", "unrecognized"]);
   });
 });
 

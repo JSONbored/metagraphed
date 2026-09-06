@@ -23,6 +23,7 @@ async function searchFixture(page: Page) {
       cursor: string | null;
       provider: string | null;
       status: string | null;
+      knownStatus: string | null;
     }[],
     failed: new Set<string>(),
     releaseSlow,
@@ -40,6 +41,7 @@ async function searchFixture(page: Page) {
         cursor,
         provider: params.get("provider"),
         status: params.get("status"),
+        knownStatus: params.get("known_status"),
       });
       if (q === "slow") await slow;
       if (state.failed.has(q)) {
@@ -69,7 +71,8 @@ async function searchFixture(page: Page) {
     matched = matched.filter(
       (row) =>
         (!params.get("provider") || params.get("provider") === row.provider) &&
-        (!params.get("status") || params.get("status") === row.status),
+        (!params.get("status") || params.get("status") === row.status) &&
+        (params.get("known_status") !== "true" || row.status !== "unknown"),
     );
     const offset = Number(cursor ?? 0);
     const limit = Number(params.get("limit") ?? 200);
@@ -300,9 +303,7 @@ test("preserves raw typed-looking search links through aliases, reload and histo
   expect(state.reads.length).toBe(beforeInvalid);
 });
 
-test("combines server facets with search and keeps the monitored observation scope explicit", async ({
-  page,
-}) => {
+test("combines server facets and known-status filtering with search", async ({ page }) => {
   const state = await searchFixture(page);
   await gotoThroughRestart(
     page,
@@ -312,10 +313,10 @@ test("combines server facets with search and keeps the monitored observation sco
   await expect(directory).toContainText("124 loaded of 124 matching");
   expect(state.reads.at(-1)).toMatchObject({ q: QUERY, provider: "fixture-b", status: "ok" });
   await gotoThroughRestart(page, "/apis/endpoints?q=second&status=monitored");
-  await expect(directory).toContainText("No loaded endpoints match this view.");
-  await expect(directory).toContainText("0 observed in 1 loaded of 1 matching");
-  await expect(directory).toContainText("monitored status matches loaded rows");
-  expect(state.reads.at(-1)).toMatchObject({ q: "second", status: null });
+  await expect(directory).toContainText("No endpoints match this search.");
+  await expect(directory).toContainText("0 loaded of 0 matching");
+  await expect(directory).toContainText("known status; freshness varies");
+  expect(state.reads.at(-1)).toMatchObject({ q: "second", status: null, knownStatus: "true" });
 });
 
 test("retains only the current query on refresh failure and retries its first page", async ({
@@ -352,4 +353,121 @@ test("does not substitute fleet totals when result metadata is unavailable", asy
   await expect(directory).toContainText("1 loaded · match count unavailable");
   await expect(directory).toContainText("450 tracked across the fleet");
   await expect(directory.locator(".mg-dt-caption")).not.toContainText("450");
+});
+
+test.describe("catalog-wide known status", () => {
+  test.use({ serviceWorkers: "block" });
+
+  for (const width of [375, 768, 1280]) {
+    test(`keeps legacy filter intent across pagination, search, history and mobile controls (${width}px)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 812 });
+      const unknown = Array.from({ length: 200 }, (_, i) => ({
+        id: `unobserved-${i}`,
+        url: `https://unobserved${i}.example/rpc`,
+        kind: "rpc",
+        provider: "fixture",
+        status: i % 3 === 0 ? undefined : i % 3 === 1 ? "unknown" : "unrecognized",
+        last_checked: null,
+      }));
+      const known = Array.from({ length: 250 }, (_, i) => ({
+        id: `known-${i}`,
+        url: `https://known${i}.example/rpc`,
+        kind: "rpc",
+        provider: "fixture",
+        status: ["ok", "degraded", "failed"][i % 3],
+        last_checked: "2020-01-01T00:00:00Z",
+      }));
+      const reads: URLSearchParams[] = [];
+      await page.route("**/api/v1/endpoints?*", async (route) => {
+        const p = new URL(route.request().url()).searchParams;
+        const summary = p.get("limit") === "1";
+        if (!summary) reads.push(p);
+        // Explicit responses model the deployed API contract. Matching rows
+        // start beyond the entire first unfiltered page, and include old
+        // successful, degraded and failed observations.
+        const matches =
+          p.get("q") === "late known"
+            ? known.slice(-2)
+            : p.get("known_status") === "true"
+              ? known
+              : [...unknown, ...known];
+        const offset = Number(p.get("cursor") ?? 0);
+        const limit = Number(p.get("limit") ?? 200);
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            ok: true,
+            data: {
+              endpoints: matches.slice(offset, offset + limit),
+              summary: {
+                endpoint_count: 450,
+                monitored_count: 400,
+                by_status: { ok: 84, degraded: 83, failed: 83, unknown: 200 },
+              },
+            },
+            meta: {
+              pagination: {
+                total: matches.length,
+                next_cursor: offset + limit < matches.length ? offset + limit : null,
+              },
+            },
+          }),
+        });
+      });
+      await gotoThroughRestart(page, "/endpoints?status=monitored#directory");
+      const directory = page.locator("section#directory");
+      await expect(
+        directory.getByRole("link", { name: "known0.example", exact: true }),
+      ).toBeVisible();
+      await expect(directory).toContainText("200 loaded of 250 matching");
+      await expect(directory.locator(".mg-dt-caption")).toContainText("250");
+      await expect(directory).toContainText("known status; freshness varies");
+      expect(reads.at(-1)?.get("known_status")).toBe("true");
+      expect(reads.at(-1)?.has("status")).toBe(false);
+      await directory.getByRole("button", { name: "Load more", exact: true }).click();
+      await expect(directory).toContainText("250 loaded of 250 matching");
+      expect(reads.at(-1)?.get("cursor")).toBe("200");
+      expect(reads.at(-1)?.get("known_status")).toBe("true");
+      const search = page.getByRole("searchbox", { name: "Search endpoints", exact: true });
+      await search.fill("late known");
+      await expect(
+        directory.getByRole("link", { name: "known248.example", exact: true }),
+      ).toBeVisible();
+      await expect(directory).toContainText("2 loaded of 2 matching");
+      expect(reads.at(-1)?.get("q")).toBe("late known");
+      expect(reads.at(-1)?.get("known_status")).toBe("true");
+      expect(reads.at(-1)?.has("cursor")).toBe(false);
+      await page.goBack();
+      await expect(search).toHaveValue("");
+      await expect(directory).toContainText("250 loaded of 250 matching");
+      await page.goForward();
+      await expect(search).toHaveValue("late known");
+      await expect(directory).toContainText("2 loaded of 2 matching");
+      await search.fill("");
+      await expect(directory).toContainText("250 loaded of 250 matching");
+      if (width < 1024) {
+        await directory.getByRole("button", { name: /Filter endpoints/ }).click();
+      }
+      const controls = width < 1024 ? page.getByRole("dialog") : directory;
+      const status = controls.getByRole("combobox", { name: "Status", exact: true });
+      await expect(status.locator("option:checked")).toHaveText("Known status");
+      await status.selectOption("");
+      if (width < 1024) await controls.getByRole("button", { name: "Show endpoints" }).click();
+      await expect(
+        directory.getByRole("link", { name: "unobserved0.example", exact: true }),
+      ).toBeVisible();
+      await expect(directory).toContainText("200 loaded of 450 matching");
+      expect(reads.at(-1)?.has("known_status")).toBe(false);
+      await page.goBack();
+      await expect(directory).toContainText("250 loaded of 250 matching");
+      expect(new URL(page.url()).searchParams.get("status")).toBe("monitored");
+      expect(new URL(page.url()).hash).toBe("#directory");
+      await page.reload();
+      await expect(directory).toContainText("200 loaded of 250 matching");
+      expect(reads.at(-1)?.get("known_status")).toBe("true");
+    });
+  }
 });
