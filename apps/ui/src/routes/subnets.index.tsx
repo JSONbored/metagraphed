@@ -9,6 +9,7 @@ import {
   type SearchOutput,
 } from "@/lib/metagraphed/url-state";
 import { SubnetsPage } from "./-subnets-index-page";
+import { directoryHealthFilter } from "@/lib/metagraphed/subnet-health-filter";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
 /**
@@ -27,7 +28,7 @@ import { hubMeta } from "@/lib/metagraphed/hub-copy";
 export const subnetsSearchSchema = defineSearchSchema({
   q: stringSearch(),
   domain: stringSearch(),
-  health: stringSearch(),
+  health: { defaultValue: "", parse: directoryHealthFilter },
   // A boolean, not the string "1". TanStack's search serialiser quotes a
   // string that would parse back as a number, so `api: "1"` reached the URL
   // as `api=%221%22` -- which the retired route's redirect then produced and

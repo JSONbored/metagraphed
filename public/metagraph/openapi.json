@@ -86723,6 +86723,19 @@
         "operationId": "endpoints",
         "parameters": [
           {
+            "description": "Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring.",
+            "in": "query",
+            "name": "known_status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "kind",
             "required": false,
@@ -93778,6 +93791,19 @@
             }
           },
           {
+            "description": "Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring.",
+            "in": "query",
+            "name": "known_status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "kind",
             "required": false,
@@ -96303,6 +96329,19 @@
         "description": "Fetch Bittensor RPC endpoint status.",
         "operationId": "rpcEndpoints",
         "parameters": [
+          {
+            "description": "Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring.",
+            "in": "query",
+            "name": "known_status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
           {
             "in": "query",
             "name": "kind",
@@ -100381,6 +100420,19 @@
             "schema": {
               "minimum": 0,
               "type": "integer"
+            }
+          },
+          {
+            "description": "Select endpoints with a known served status (ok, degraded or failed), or without one. This does not assert freshness or configured monitoring.",
+            "in": "query",
+            "name": "known_status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
             }
           },
           {

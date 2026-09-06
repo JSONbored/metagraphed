@@ -3601,7 +3601,7 @@ export type Query = {
   endpoint_incidents: IncidentList;
   /** Generalized endpoint pool scores -- each pool's kind, eligible/total endpoint count, and probe-derived routing score. Filter by id/kind, threshold with min_/max_eligible_count and min_/max_endpoint_count, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-pools. */
   endpoint_pools: EndpointPoolList;
-  /** Endpoint/resource registry with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/layer/provider/publication_state/status/pool_eligible, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error (matching endpoint_pools/rpc_pools/rpc_endpoints), not a silently substituted default. Mirrors GET /api/v1/endpoints. */
+  /** Endpoint/resource registry with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/layer/provider/publication_state/status/known_status/pool_eligible, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error (matching endpoint_pools/rpc_pools/rpc_endpoints), not a silently substituted default. Mirrors GET /api/v1/endpoints. */
   endpoints: EndpointList;
   /** Network-wide public evidence ledger -- the append-only provenance record behind registry surfaces. Search with q across subject/claim/source_url/support_summary, sort with sort/order, project with fields, and page with limit (1-100)/cursor. An invalid sort/limit/cursor is a GraphQL error, not a silently substituted default. Distinct from subnet_evidence(netuid) (one subnet's claims). Mirrors GET /api/v1/evidence. */
   evidence: EvidenceList;
@@ -3653,7 +3653,7 @@ export type Query = {
   profiles: ProfileList;
   /** One provider with its subnets. The id argument is the route's slug path parameter under the name the rest of this surface uses. Mirrors GET /api/v1/providers/{slug}. */
   provider?: Maybe<Provider>;
-  /** One provider's endpoint rows with full REST filter parity: filter by netuid/kind/layer/publication_state/status/pool_eligible, latency and score ranges, sort + order, and page with limit/cursor. Composed live from the baked /metagraph/providers/{slug}/endpoints.json artifact. An unsupported filter/sort or an unknown provider is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_provider_endpoints MCP/REST shape. Mirrors GET /api/v1/providers/{slug}/endpoints. */
+  /** One provider's endpoint rows with full REST filter parity: filter by netuid/kind/layer/publication_state/status/known_status/pool_eligible, latency and score ranges, sort + order, and page with limit/cursor. Composed live from the baked /metagraph/providers/{slug}/endpoints.json artifact. An unsupported filter/sort or an unknown provider is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_provider_endpoints MCP/REST shape. Mirrors GET /api/v1/providers/{slug}/endpoints. */
   provider_endpoints?: Maybe<Scalars['JSON']['output']>;
   /** Paginated provider/source registry -- filter by id/kind/authority, sort with sort/order, project with fields, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Cursor remains the pre-existing opaque string id-keyset (not REST's integer offset), and a cold/absent artifact still resolves to an empty list. Filter/sort reuse loadProvidersList (same logic as GET /api/v1/providers / list_providers). Mirrors GET /api/v1/providers. */
   providers: ProviderList;
@@ -3675,7 +3675,7 @@ export type Query = {
   review_gaps: ReviewGapPriorityList;
   /** Contributor review queue of subnet profile-completeness gaps -- identity, native name, confidence, and promotion signals. Filter by netuid/profile_level/confidence/identity_level/identity_promotion_kinds/native_name_quality, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/review/profile-completeness. */
   review_profile_completeness: ReviewProfileCompletenessList;
-  /** The full catalog of monitored Bittensor base-layer RPC endpoints and their status (each endpoint's URL, network, and probe-derived health/latency), with the same live 15-minute cron RPC-pool overlay REST and MCP apply before serving. Filter by kind/layer/netuid/pool_eligible/provider/publication_state/status, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default; a cold/absent catalog is likewise a GraphQL error (matching endpoint_pools / rpc_pools). Opaque JSON passed through verbatim, matching the list_rpc_endpoints MCP/REST shape. Mirrors GET /api/v1/rpc/endpoints. */
+  /** The full catalog of monitored Bittensor base-layer RPC endpoints and their status (each endpoint's URL, network, and probe-derived health/latency), with the same live 15-minute cron RPC-pool overlay REST and MCP apply before serving. Filter by kind/layer/netuid/pool_eligible/provider/publication_state/status/known_status, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default; a cold/absent catalog is likewise a GraphQL error (matching endpoint_pools / rpc_pools). Opaque JSON passed through verbatim, matching the list_rpc_endpoints MCP/REST shape. Mirrors GET /api/v1/rpc/endpoints. */
   rpc_endpoints?: Maybe<Scalars['JSON']['output']>;
   /** The load-balanced Bittensor RPC pool scores -- the RPC-specific predecessor of endpoint_pools (#6570): same pools[] row shape and filter/sort/page surface, with a live 15-minute cron eligibility overlay applied before filtering/sorting. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/rpc/pools. */
   rpc_pools: PoolList;
@@ -3721,7 +3721,7 @@ export type Query = {
   subnet_emission_pipeline_history: SubnetPipelineHistory;
   /** Per-subnet per-day emission split by recipient class from the neuron_daily rollup over a 7d/30d/90d window (default 30d): the owner, validator and miner legs, the exact measured validator/miner ratio, and how many UIDs of each class actually earned, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. The owner leg and every absolute figure are reconstructed — the owner cut is paid outside the UID set. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history. */
   subnet_emission_split_history: SubnetEmissionSplitHistory;
-  /** One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, and pool_eligible; threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints. */
+  /** One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, known_status, and pool_eligible; threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints. */
   subnet_endpoints?: Maybe<Scalars['JSON']['output']>;
   /** One subnet's chain-event activity summary over a 7d/30d/90d window (default 30d): total events, the per-kind and per-category breakdowns with hotkey/coldkey participation and TAO/alpha amounts, and a bounded newest-first recent-event list (limit 1-50, default 10). A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/event-summary. */
   subnet_event_summary: SubnetEventSummary;
@@ -4395,6 +4395,7 @@ export type QueryEndpoint_PoolsArgs = {
 export type QueryEndpointsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
+  known_status?: InputMaybe<Scalars['Boolean']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   max_latency_ms?: InputMaybe<Scalars['Float']['input']>;
@@ -4595,6 +4596,7 @@ export type QueryProvider_EndpointsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
   fields?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
+  known_status?: InputMaybe<Scalars['Boolean']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   max_latency_ms?: InputMaybe<Scalars['Float']['input']>;
@@ -4734,6 +4736,7 @@ export type QueryRpc_EndpointsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
   fields?: InputMaybe<Array<Scalars['String']['input']>>;
   kind?: InputMaybe<Scalars['String']['input']>;
+  known_status?: InputMaybe<Scalars['Boolean']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   max_latency_ms?: InputMaybe<Scalars['Float']['input']>;
@@ -4890,6 +4893,7 @@ export type QuerySubnet_EndpointsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
   fields?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
+  known_status?: InputMaybe<Scalars['Boolean']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   max_latency_ms?: InputMaybe<Scalars['Float']['input']>;
@@ -6144,6 +6148,7 @@ export type Subnet = {
 export type SubnetEndpointsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
+  known_status?: InputMaybe<Scalars['Boolean']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   max_latency_ms?: InputMaybe<Scalars['Int']['input']>;

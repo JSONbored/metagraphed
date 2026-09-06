@@ -59,6 +59,13 @@ const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
  */
 export const ENDPOINT_LIST_FILTERS = {
   q: querySchema().optional(),
+  known_status: z
+    .boolean()
+    .optional()
+    .describe(
+      API_QUERY_COLLECTIONS.endpoints.filter_schemas.known_status.description!,
+    )
+    .meta({ examples: [true] }),
   kind: kindSchema(SURFACE_KINDS).optional(),
   layer: z
     .enum(ENDPOINT_LAYERS)

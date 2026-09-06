@@ -1,8 +1,10 @@
-import { useMemo } from "react";
-import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { AnalyticsPage, EntityHero, Raw, type FactCells, type RawRow } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ErrorState } from "@/components/metagraphed/states";
+import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RankingsSection } from "@/components/metagraphed/subnets-index/rankings";
 import { DirectorySection } from "@/components/metagraphed/subnets-index/directory";
@@ -10,6 +12,7 @@ import { RevenueCoverageSection } from "@/components/metagraphed/subnets-index/r
 import { DomainsSection } from "@/components/metagraphed/subnets-index/domains";
 import { ChurnSection } from "@/components/metagraphed/subnets-index/churn";
 import {
+  apiSpecStatus,
   directoryRows,
   filterDirectory,
   specSubnets,
@@ -92,8 +95,9 @@ export function SubnetsPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
 
-  const { data: listed } = useSuspenseQuery(
+  const registry = useSuspenseQuery(
     subnetsQuery({ limit: SUBNETS_ALL_LIMIT, fields: SUBNET_DIRECTORY_FIELDS }),
   );
   const economics = useQuery({ ...economicsQuery({ fields: "directory" }), retry: 0 });
@@ -101,6 +105,7 @@ export function SubnetsPage() {
   const health = useQuery({ ...subnetHealthMapQuery(), retry: 0 });
   const catalog = useQuery({ ...agentCatalogMapQuery(), retry: 0 });
 
+  const listed = registry.data;
   const subnets = listed.data;
   const econRows = useMemo(() => economics.data?.data ?? [], [economics.data]);
 
@@ -124,10 +129,17 @@ export function SubnetsPage() {
     // Probe health is an overlay on the registry row, keyed by netuid; the
     // list's own `health` is chain lifecycle and means something else.
     const probed = health.data?.data ?? {};
-    return joined.map((row) => ({ ...row, health: probed[row.netuid]?.health ?? row.health }));
-  }, [subnets, econRows, domainOf, health.data]);
+    return joined.map((row) => ({
+      ...row,
+      health: probed[row.netuid]?.health ?? "unknown",
+      api_spec: apiSpecStatus(catalog.data?.data[row.netuid]),
+    }));
+  }, [subnets, econRows, domainOf, health.data, catalog.data]);
 
-  const withApi = useMemo(() => specSubnets(catalog.data?.data ?? {}), [catalog.data]);
+  const withApi = useMemo(
+    () => (catalog.data ? specSubnets(catalog.data.data) : null),
+    [catalog.data],
+  );
 
   const filtered = useMemo(
     () =>
@@ -136,10 +148,29 @@ export function SubnetsPage() {
         health: search.health,
         api: search.api,
         q: search.q,
-        withApi,
+        withApi: withApi ?? undefined,
       }),
     [rows, search.domain, search.health, search.api, search.q, withApi],
   );
+
+  const missingFilterReads = [
+    ...(search.domain && !domains.data ? [domains] : []),
+    ...(search.health && !health.data ? [health] : []),
+    ...(search.api && !catalog.data ? [catalog] : []),
+  ];
+  const filterState =
+    missingFilterReads.length === 0
+      ? "ready"
+      : missingFilterReads.some((read) => read.isPending)
+        ? "pending"
+        : "unavailable";
+  const secondaryReads = [
+    { label: "subnet registry refresh", query: registry },
+    { label: "subnet economics", query: economics },
+    { label: "subnet domains", query: domains },
+    { label: "subnet surface health", query: health },
+    { label: "subnet API specifications", query: catalog },
+  ];
 
   const domainNames = useMemo(
     () => (domains.data?.data ?? []).map((row) => row.domain).sort(),
@@ -199,10 +230,15 @@ export function SubnetsPage() {
             name="Subnets"
             cells={cells}
             live={{
-              updatedAt: listed.meta?.generated_at ?? null,
+              updatedAt: recordModifiedAt(listed.meta) ?? null,
               source: "registry + chain",
-              onRefresh: () =>
-                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
+              onRefresh: () => {
+                setRefreshing(true);
+                void queryClient
+                  .invalidateQueries(metagraphedQueryInvalidationTarget())
+                  .finally(() => setRefreshing(false));
+              },
+              refreshing: refreshing || secondaryReads.some(({ query }) => query.isFetching),
             }}
           />
         }
@@ -218,7 +254,31 @@ export function SubnetsPage() {
             q: search.q,
           }}
           onFilter={setSearch}
-          withApi={withApi}
+          unknownApiCount={
+            catalog.data ? rows.filter((row) => row.api_spec === "unknown").length : 0
+          }
+          filterState={filterState}
+          status={
+            secondaryReads.some(({ query }) => query.isError) ? (
+              <div className="mb-4 grid gap-3">
+                {secondaryReads
+                  .filter(({ query }) => query.isError)
+                  .map(({ label, query }) => (
+                    <ErrorState
+                      key={label}
+                      context={label}
+                      error={query.error}
+                      onRetry={() => void query.refetch()}
+                    />
+                  ))}
+                {secondaryReads.some(({ query }) => query.isError && query.data != null) ? (
+                  <p className="text-13 text-ink-muted">
+                    Previously loaded readings remain visible while their source is unavailable.
+                  </p>
+                ) : null}
+              </div>
+            ) : undefined
+          }
         />
         <RankingsSection
           metric={search.metric as RankMetric}

@@ -43,6 +43,11 @@ export interface QueryCollectionConfig {
   range_filters?: string[];
   /** Param name -> the row field whose PRESENCE it tests. */
   presence_filters?: Record<string, string>;
+  /** Boolean param -> membership of a row field in a canonical value set. */
+  value_set_filters?: Record<
+    string,
+    { field: string; values: readonly string[] }
+  >;
   search_keys?: string[];
   sort_fields?: string[];
 }
@@ -333,6 +338,10 @@ function filterRows(
   csvFilters: Record<string, string> = {},
   arrayFilters: Record<string, string[]> = {},
   presenceFilters: Record<string, string> = {},
+  valueSetFilters: Record<
+    string,
+    { field: string; values: readonly string[] }
+  > = {},
 ): Row[] {
   const csvWantedByKey = new Map(
     Object.keys(csvFilters)
@@ -357,6 +366,13 @@ function filterRows(
       // restores parity with the MCP list_subnets tool (?domain=Inference,
       // ?status=Active) without touching the stored row value.
       const expectedCi = expected.toLowerCase();
+      const valueSet = valueSetFilters[key];
+      if (valueSet) {
+        const value = row[valueSet.field];
+        const matches =
+          typeof value === "string" && valueSet.values.includes(value);
+        return matches === (expectedCi === "true");
+      }
       // Array-membership filter over the UNION of one or more array fields
       // (e.g. ?domain=inference -> match row.categories or row.derived_categories).
       const arrayFields = arrayFilters[key];
@@ -474,6 +490,7 @@ function applyListTransform(
       config.csv_filters,
       config.array_filters,
       config.presence_filters,
+      config.value_set_filters,
     ),
     params,
     config.range_filters,

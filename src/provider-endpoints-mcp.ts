@@ -13,6 +13,10 @@ import {
   ListProviderEndpointsOutputSchema,
 } from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import {
+  overlayArtifactEndpoints,
+  resolveLiveHealth,
+} from "./health-serving.ts";
 
 export const PROVIDER_SLUG_PATTERN = /^[a-z0-9-]+$/;
 
@@ -146,14 +150,16 @@ export function providerEndpointsQueryUrl(
   }
   const status = optionalEnum(args, "status", HEALTH_STATUSES);
   if (status) url.searchParams.set("status", status);
-  if (args?.pool_eligible !== undefined) {
-    if (typeof args.pool_eligible !== "boolean") {
+  for (const key of ["pool_eligible", "known_status"]) {
+    if (args?.[key] === undefined) continue;
+    if (key === "known_status" && args[key] === null) continue;
+    if (typeof args[key] !== "boolean") {
       throw providerEndpointsMcpError(
         "invalid_params",
-        "pool_eligible must be a boolean when provided.",
+        `${key} must be a boolean when provided.`,
       );
     }
-    url.searchParams.set("pool_eligible", String(args.pool_eligible));
+    url.searchParams.set(key, String(args[key]));
   }
   const sort = optionalEnum(args, "sort", ENDPOINT_SORT_FIELDS);
   if (sort) url.searchParams.set("sort", sort);
@@ -210,12 +216,16 @@ export async function loadProviderEndpointsList(
   ctx: {
     env: Env;
     readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+    readHealthKv?: (env: Env, key: string) => Promise<unknown>;
   },
   args: Record<string, unknown> | null | undefined,
   {
     readArtifact,
+    loadHealth,
   }: {
     readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+    // GraphQL shares its existing request-memoized health resolution.
+    loadHealth?: () => ReturnType<typeof resolveLiveHealth>;
   } = {},
 ): Promise<ProviderEndpointsListResult> {
   const slug = parseProviderSlug(args);
@@ -244,8 +254,20 @@ export async function loadProviderEndpointsList(
       `No endpoint catalog exists for provider '${slug}'.`,
     );
   }
+  let dataToFilter = blob as Record<string, unknown>;
+  // Match the generalized REST/inline MCP overlay before status filtering.
+  // Legacy rows without surface identities retain their existing behavior.
+  if (
+    Array.isArray(dataToFilter.endpoints) &&
+    dataToFilter.endpoints.some((endpoint: Row) => endpoint?.surface_id)
+  ) {
+    dataToFilter = overlayArtifactEndpoints(
+      dataToFilter,
+      await (loadHealth ? loadHealth() : resolveLiveHealth(ctx)),
+    )!;
+  }
   const transformed = applyMcpQueryFilters(
-    blob as Record<string, unknown>,
+    dataToFilter,
     queryUrl,
     "endpoints",
     [],
@@ -284,10 +306,10 @@ export const LIST_PROVIDER_ENDPOINTS_MCP_TOOL = {
   name: "list_provider_endpoints",
   title: "List one provider's endpoint resources",
   description:
-    "Fetch the monitored endpoint resources for one provider by slug: each " +
+    "Fetch endpoint resources for one provider by slug: each " +
     "endpoint/surface with its kind, layer, subnet (netuid), publication state, " +
     "and probe-derived status/latency/score. Filter by kind/layer/netuid/" +
-    "publication_state/status/pool_eligible, threshold with min_/max_latency_ms " +
+    "publication_state/status/known_status/pool_eligible, threshold with min_/max_latency_ms " +
     "and min_/max_score, sort with sort + order, and page with limit (1-100) / " +
     "cursor. The per-provider view of list_endpoints (the network-wide catalog). " +
     "Complements get_provider_detail (identity + optional endpoints attachment). " +

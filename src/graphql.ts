@@ -338,6 +338,7 @@ import {
   overlayCatalogIndex,
   emptySubnetHealthSummary,
   overlaySubnetHealth,
+  overlayArtifactEndpoints,
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
@@ -1108,7 +1109,10 @@ interface SubnetNodeParent extends Row {
     // per-netuid artifact load), which the default field resolver would have
     // invoked. Do the same here so adding arguments does not turn the lazy path
     // into an empty list.
-    const endpoints = (await parent.endpoints(args, context, info)) as Row[];
+    const endpoints = await currentEndpointRows(
+      context,
+      (await parent.endpoints(args, context, info)) as Row[],
+    );
     const queryUrl = new URL("https://graphql.internal/subnets/endpoints");
     for (const [name, value] of [
       ["q", args?.q],
@@ -1117,6 +1121,7 @@ interface SubnetNodeParent extends Row {
       ["provider", args?.provider],
       ["publication_state", args?.publication_state],
       ["status", args?.status],
+      ["known_status", args?.known_status],
       ["pool_eligible", args?.pool_eligible],
       ["min_latency_ms", args?.min_latency_ms],
       ["max_latency_ms", args?.max_latency_ms],
@@ -1928,7 +1933,7 @@ async function loadProviderEndpoints(context: GqlContext, slug: string) {
     const result = await loadProviderEndpointsList(
       context,
       { slug },
-      { readArtifact },
+      { readArtifact, loadHealth: () => loadLiveHealth(context) },
     );
     return result.endpoints;
   } catch {
@@ -2153,6 +2158,7 @@ function endpointsListQueryUrl(args: Row): URL {
   set("provider", args.provider);
   set("publication_state", args.publication_state);
   set("status", args.status);
+  set("known_status", args.known_status ?? undefined);
   set("pool_eligible", args.pool_eligible);
   set("min_latency_ms", args.min_latency_ms);
   set("max_latency_ms", args.max_latency_ms);
@@ -2164,9 +2170,18 @@ function endpointsListQueryUrl(args: Row): URL {
   return url;
 }
 
+async function currentEndpointRows(context: GqlContext, endpoints: Row[]) {
+  if (!endpoints.some((endpoint) => endpoint?.surface_id)) return endpoints;
+  return overlayArtifactEndpoints({ endpoints }, await loadLiveHealth(context))!
+    .endpoints as Row[];
+}
+
 async function loadEndpointsPage(context: GqlContext, args: Row) {
   const blob = await loadArtifact(context, ARTIFACT.endpoints);
-  const rows = Array.isArray(blob?.endpoints) ? (blob.endpoints as Row[]) : [];
+  const rows = await currentEndpointRows(
+    context,
+    Array.isArray(blob?.endpoints) ? (blob.endpoints as Row[]) : [],
+  );
   const transformed = applyQueryFilters(
     { endpoints: rows },
     endpointsListQueryUrl(args),
@@ -4192,7 +4207,10 @@ const rootValue = {
   // unsupported filter/sort is a GraphQL error, not a silently substituted
   // default" convention.
   provider_endpoints(args: QueryProvider_EndpointsArgs, context: GqlContext) {
-    return loadProviderEndpointsList(context, args, { readArtifact });
+    return loadProviderEndpointsList(context, args, {
+      readArtifact,
+      loadHealth: () => loadLiveHealth(context),
+    });
   },
 
   // #6985: reuse list_endpoint_pools's/list_rpc_pools's/list_endpoint_incidents's
@@ -5225,6 +5243,7 @@ const rootValue = {
     try {
       return await loadSubnetEndpointsList(context, args, {
         readArtifact,
+        loadHealth: () => loadLiveHealth(context),
       });
     } catch (rawErr) {
       const err = rowOf(rawErr);
