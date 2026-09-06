@@ -43,8 +43,19 @@ describe("docs pages own their OG card (#8624)", () => {
     // #11204: providers joined them. Their 138 pages were unfurling the raw
     // slug with no logo and no counts, from the pathname alone.
     expect(routeOwnsOgImage("/providers/latent")).toBe(true);
+    expect(routeOwnsOgImage("/blocks/123")).toBe(true);
+    expect(routeOwnsOgImage("/blocks/0xabc/")).toBe(true);
+    expect(routeOwnsOgImage("/extrinsics/123-0")).toBe(true);
     // The hub is not a detail page and keeps its section copy.
-    for (const p of ["/", "/subnets", "/agents", "/blocks/123", "/providers", "/apis/providers"]) {
+    for (const p of [
+      "/",
+      "/subnets",
+      "/agents",
+      "/blocks",
+      "/extrinsics",
+      "/providers",
+      "/apis/providers",
+    ]) {
       expect(routeOwnsOgImage(p), p).toBe(false);
     }
   });

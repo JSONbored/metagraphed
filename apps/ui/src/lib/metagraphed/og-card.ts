@@ -242,7 +242,9 @@ export function ogImageMeta(
   const image = new URL(url);
   const title = image.searchParams.get("title") ?? "";
   const subtitle = image.searchParams.get("subtitle");
-  const alt = subtitle ? `${title} — ${subtitle}` : title;
+  const identifier = image.searchParams.get("identifier");
+  const subject = identifier && identifier !== title ? `${title} — ${identifier}` : title;
+  const alt = subtitle ? `${subject} — ${subtitle}` : subject;
   return [
     { property: "og:image", content: url },
     { property: "og:image:width", content: "1200" },

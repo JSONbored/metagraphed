@@ -58,7 +58,7 @@ export const Route = createFileRoute("/providers/$slug")({
     }
     const name = loaderData?.name ?? params.slug;
     const title = `${name} — Provider — Metagraphed`;
-    const description = `${name}: Bittensor infrastructure provider — public endpoints, operational surfaces, and live health on Metagraphed.`;
+    const description = `${name}: Bittensor infrastructure provider — public endpoints, interfaces and endpoint observations on Metagraphed.`;
     return {
       meta: [
         { title },

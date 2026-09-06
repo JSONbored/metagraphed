@@ -917,7 +917,10 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
           "Explore Bittensor. Follow the chain, subnets and public interfaces.",
         );
       }
-      const alt = subtitle ? `${imageTitle} — ${subtitle}` : imageTitle;
+      const identifier = image.searchParams.get("identifier");
+      const subject =
+        identifier && identifier !== imageTitle ? `${imageTitle} — ${identifier}` : imageTitle;
+      const alt = subtitle ? `${subject} — ${subtitle}` : subject;
       expect(values("og:image:alt")).toEqual([alt]);
       expect(values("twitter:image:alt")).toEqual([alt]);
       const canonical = `https://metagraph.sh${new URL(finalRoute, "https://metagraph.sh").pathname}`;

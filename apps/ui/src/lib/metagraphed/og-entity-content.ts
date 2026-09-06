@@ -62,9 +62,7 @@ export function validatorOgContent(
     subtitle: "Declared validator identity and observed subnet memberships.",
     logoPath: data?.logoPath,
     logoHost: data?.logoHost,
-    stats: count(data?.subnetCount)
-      ? [{ label: "Subnets", value: String(data.subnetCount) }]
-      : [],
+    stats: count(data?.subnetCount) ? [{ label: "Subnets", value: String(data.subnetCount) }] : [],
   };
 }
 
