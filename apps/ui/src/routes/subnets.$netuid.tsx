@@ -8,8 +8,8 @@ import {
 } from "@/lib/metagraphed/url-state";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
-import { formatPct, formatTao } from "@/lib/metagraphed/format";
-import { firstPartyLogoPath, logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
+import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { subnetOgContent } from "@/lib/metagraphed/og-entity-content";
 import {
   entityNotFoundMeta,
   isMissingEntityError,
@@ -21,7 +21,6 @@ import { subnetFeedLinks } from "@/lib/metagraphed/feed-links";
 import { stringifyJsonLd, subnetDatasetJsonLd } from "@/lib/metagraphed/json-ld";
 import { repoSlugFrom, SITE_ORIGIN } from "@/lib/metagraphed/seo-meta";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { taoCompact } from "@/components/metagraphed/neuron-format";
 
 /**
  * The page has one control -- the momentum window -- and one URL key for it.
@@ -48,7 +47,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
   },
   stringifyParams: ({ netuid }) => ({ netuid: String(netuid) }),
   // Prime the same query the page uses (shared cache → no double fetch) so head()
-  // can build a richer OG/social card from the live subnet name + health. Non-
+  // can build a richer OG/social card from the subnet identity. Non-
   // fatal: any failure returns null, head() falls back to the netuid-only copy,
   // and the page's own useSuspenseQuery still drives the error/notFound path.
   loader: async ({ context, params }) => {
@@ -75,7 +74,6 @@ export const Route = createFileRoute("/subnets/$netuid")({
         // <lastmod>. NOT operational_observed_at -- see recordModifiedAt.
         dateModified: recordModifiedAt(meta) ?? null,
         name: data.name ?? null,
-        health: data.health ?? null,
         // #11204: the subnet's own words, for the Dataset description and the
         // meta description. Falls back inside the builder rather than here, so
         // a subnet with no description still gets a valid, honest node.
@@ -132,16 +130,13 @@ export const Route = createFileRoute("/subnets/$netuid")({
     const title = loaderData?.name
       ? `${alias} · ${loaderData.name} — API, health & economics | Metagraphed`
       : `${alias} — Bittensor subnet API, health & economics | Metagraphed`;
-    const health = loaderData?.health && loaderData.health !== "unknown" ? loaderData.health : null;
     // The repo slug (`owner/name`) is carried in the description because a
     // pasted-repo-URL query is matched against it, and because it is the one
     // fact that disambiguates two subnets with similar names. Appended only
     // when the registry actually holds one.
     const repoSlug = repoSlugFrom(loaderData?.repo);
     const description = loaderData?.name
-      ? `${loaderData.name} (${alias}): Bittensor subnet ${params.netuid} — interfaces, endpoints, schemas${
-          health ? ` and live health (${health})` : ""
-        }, machine-readable on Metagraphed.${repoSlug ? ` Source: ${repoSlug}.` : ""}`
+      ? `${loaderData.name} (${alias}): Bittensor subnet ${params.netuid} — interfaces, endpoints, schemas and endpoint observations, machine-readable on Metagraphed.${repoSlug ? ` Source: ${repoSlug}.` : ""}`
       : `Public-interface registry for Bittensor subnet ${params.netuid} (${alias}): surfaces, endpoints, schemas, health.`;
     return {
       meta: [
@@ -151,41 +146,8 @@ export const Route = createFileRoute("/subnets/$netuid")({
         { property: "og:description", content: description },
         // #8489: this route owns its own og:image (src/server.ts skips the
         // paths routeOwnsOgImage matches) so the card can carry the subnet's
-        // real name, price and health rather than just its netuid.
-        ...ogImageMeta({
-          title: loaderData?.name || `Subnet ${params.netuid}`,
-          subtitle: description,
-          eyebrow: "Subnet",
-          // The registry's curated logo first (a first-party cached asset the
-          // card reads from the ASSETS binding), then the subnet's own website
-          // as a favicon lookup, then the monogram.
-          logoPath: firstPartyLogoPath(loaderData?.iconUrl),
-          logoHost: logoHostFrom(loaderData?.iconUrl, loaderData?.website),
-          // The health state colours the card's footer dot instead of
-          // spending a whole stat cell on a one-word string.
-          status: loaderData?.health ?? null,
-          // Netuid always leads (it is the subnet's identity, and the one fact
-          // that is never missing), then price, emission share and total stake
-          // in the KPI band's own order -- capped at three by the renderer, so
-          // whichever of the three resolve fill the rail left to right.
-          stats: [
-            { label: "Netuid", value: `SN${params.netuid}` },
-            ...(loaderData?.alphaPriceTao != null
-              ? [{ label: "Price", value: formatTao(loaderData.alphaPriceTao) }]
-              : []),
-            ...(loaderData?.emissionShare != null
-              ? [
-                  {
-                    label: "Emission",
-                    value: `${formatPct(loaderData.emissionShare, 2)}`,
-                  },
-                ]
-              : []),
-            ...(loaderData?.totalStakeAlpha != null
-              ? [{ label: "Alpha stake", value: `${taoCompact(loaderData.totalStakeAlpha)} α` }]
-              : []),
-          ],
-        }),
+        // identity and supported economics from its existing queries.
+        ...ogImageMeta(subnetOgContent(params.netuid, loaderData)),
       ],
       // #8703: this subnet's own feed, so pasting the page URL into a reader
       // resolves it. Deliberately only on the resolved path -- both

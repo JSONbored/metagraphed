@@ -921,7 +921,10 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
         expect(subtitle).toBe("Subnets, native APIs and chain data. One MCP.");
         expect(image.searchParams.get("accent")).toBe("agent");
       }
-      const alt = subtitle ? `${imageTitle} — ${subtitle}` : imageTitle;
+      const identifier = image.searchParams.get("identifier");
+      const subject =
+        identifier && identifier !== imageTitle ? `${imageTitle} — ${identifier}` : imageTitle;
+      const alt = subtitle ? `${subject} — ${subtitle}` : subject;
       expect(values("og:image:alt")).toEqual([alt]);
       expect(values("twitter:image:alt")).toEqual([alt]);
       const canonical = `https://metagraph.sh${new URL(finalRoute, "https://metagraph.sh").pathname}`;
@@ -936,11 +939,24 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
         expect(head.documents[0]!.image).toBe(image.href);
       }
       if (route.startsWith("/events/")) {
-        expect(image.searchParams.get("stat1")).toBe("Block");
-        expect(image.searchParams.get("stat1v")).toBe("8713384");
-        expect(image.searchParams.get("stat2")).toBe("Event index");
-        expect(image.searchParams.get("stat2v")).toBe(route.split("/").at(-1));
+        expect(image.searchParams.get("identifier")).toBe(
+          `Block #8713384 · Event #${route.split("/").at(-1)}`,
+        );
+        expect(image.searchParams.has("stat1")).toBe(false);
         expect(imageTitle).not.toBe("Metagraphed");
+      }
+      if (route === "/blocks/8713384") {
+        expect(imageTitle).toBe("Block #8713384");
+      }
+      if (route.startsWith("/extrinsics/")) {
+        expect(imageTitle).not.toBe("Metagraphed");
+        expect(image.searchParams.get("subtitle")).toBe(
+          "Call data, signer, result and emitted events.",
+        );
+      }
+      if (route.startsWith("/subnets/") || route.startsWith("/providers/")) {
+        expect(image.searchParams.has("status")).toBe(false);
+        expect(image.searchParams.get("subtitle")).not.toMatch(/live|healthy|failed/);
       }
       if (
         route.startsWith("/validators") ||
