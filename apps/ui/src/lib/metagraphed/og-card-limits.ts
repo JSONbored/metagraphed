@@ -10,7 +10,7 @@
 //
 // Constants only, no imports, so both sides can take it without either one
 // dragging the other's dependencies in. The truncation RULE itself lives in
-// ./truncate.ts — every surface that has to fit a budget shares it.
+// ./og-display-text.ts and preserves complete Unicode code points.
 
 /** Per-field caps. Every one is enforced on BOTH sides. */
 export const OG_LIMITS = {
@@ -37,4 +37,4 @@ export const OG_LIMITS = {
 } as const;
 
 /** Shared by emitted image URLs and the renderer cache key. */
-export const OG_CARD_VERSION = "8";
+export const OG_CARD_VERSION = "9";
