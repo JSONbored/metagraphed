@@ -1,3 +1,5 @@
+import { OG_IMAGE_FILE_NAMES } from "./og-card-version.ts";
+
 export type ArtifactStorageTier = "dual" | "git" | "r2";
 
 export const ARTIFACT_STORAGE_TIERS: Record<
@@ -569,7 +571,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // (scripts/refresh-og-image.ts, Node context) from the same live stats as
   // registry-summary.json above, so it's R2-only too -- served by the live
   // Worker's /og.png route via a plain binary R2 read (src/og-image.ts).
-  /^og-image\.png$/,
+  ...OG_IMAGE_FILE_NAMES.map(
+    (name) => new RegExp(`^${name.replaceAll(".", "\\.")}$`),
+  ),
 ];
 
 // Committed to git (and mirrored to R2): the low-churn, consumer-facing API

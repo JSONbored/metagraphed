@@ -2,12 +2,21 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
-import { buildStatParts, handleOgImage } from "../src/og-image.ts";
+import {
+  buildStatParts,
+  CARD_VERSION,
+  handleOgImage,
+} from "../src/og-image.ts";
 import { mockEnv, type Row } from "./row-type.ts";
+import { OG_IMAGE_ARTIFACT_PATH } from "../src/og-card-version.ts";
 
 // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
 // not a `globalThis` property -- so stubbing/restoring it for a test needs
 // this cast (matches workers/request-handlers/analytics.ts's own precedent).
+const FALLBACK_PNG = readFileSync(
+  new URL("../public/brand/og-fallback.png", import.meta.url),
+);
+
 const globalWithCaches = globalThis as unknown as { caches: Row };
 
 // handleOgImage's own deps interface isn't exported -- pull it structurally
@@ -59,7 +68,7 @@ function fakeAssets({ found = true } = {}) {
       fetch: async (request: Request) => {
         requested.push(new URL(request.url).pathname);
         return found
-          ? new Response("BRANDED-FALLBACK-CARD-1200x630", {
+          ? new Response(FALLBACK_PNG, {
               status: 200,
               headers: { "content-type": "image/png" },
             })
@@ -75,6 +84,87 @@ function req(method: string, path = "/og.png") {
 const urlFor = (path = "/og.png") => new URL(`https://api.metagraph.sh${path}`);
 
 describe("handleOgImage", () => {
+  test("a legacy artifact cannot warm the new artwork cache before a matching publish", async () => {
+    const artifacts = new Map([["/metagraph/og-image.png", "OLD-MINT-PNG"]]);
+    const darkFallback = readFileSync(
+      new URL("../public/brand/og-fallback.png", import.meta.url),
+    );
+    const { cache, puts } = fakeCache();
+    const paths: string[] = [];
+    const readR2Object = (async (_env: Env, path: string) => {
+      paths.push(path);
+      return artifacts.has(path)
+        ? {
+            ok: true,
+            object: { body: artifacts.get(path)! },
+            source: "r2",
+            storage_tier: "r2",
+          }
+        : { ok: false, status: 404, code: "artifact_not_found" };
+    }) as unknown as OgImageDeps["readR2Object"];
+    const assets = {
+      fetch: async () =>
+        new Response(darkFallback, {
+          headers: { "content-type": "image/png" },
+        }),
+    } as unknown as OgImageDeps["assets"];
+    const response = await handleOgImage(req("GET"), mockEnv(), urlFor(), {
+      cache,
+      readR2Object,
+      assets,
+    });
+    assert.deepEqual(Buffer.from(await response!.arrayBuffer()), darkFallback);
+    assert.equal(response!.headers.get("cache-control"), "public, max-age=60");
+    assert.deepEqual(paths, [OG_IMAGE_ARTIFACT_PATH]);
+    assert.equal(puts.length, 0);
+    artifacts.set(OG_IMAGE_ARTIFACT_PATH, "NEW-DARK-PNG");
+    const published = await handleOgImage(req("GET"), mockEnv(), urlFor(), {
+      cache,
+      readR2Object,
+      assets,
+    });
+    assert.equal(await published!.text(), "NEW-DARK-PNG");
+    assert.match(published!.headers.get("cache-control")!, /max-age=3600/);
+    assert.equal(puts.length, 1);
+  });
+  test("the current renderer version isolates both aliases from legacy edge artwork", async () => {
+    const keys: string[] = [];
+    const { readR2Object } = fakeReadR2Object();
+    for (const path of ["/og", "/og.png?v=2"]) {
+      await handleOgImage(req("GET", path), mockEnv(), urlFor(path), {
+        readR2Object,
+        cache: {
+          match: async (request: Request) => {
+            keys.push(request.url);
+            return undefined;
+          },
+          put: async () => {},
+        } as unknown as Cache,
+      });
+    }
+    assert.deepEqual(
+      keys,
+      Array(2).fill(`https://api.metagraph.sh/og.png?v=${CARD_VERSION}`),
+    );
+  });
+
+  test("edge cache failures preserve a successful artifact response", async () => {
+    const { readR2Object } = fakeReadR2Object({ body: "GOOD-PNG" });
+    const response = await handleOgImage(req("GET"), mockEnv(), urlFor(), {
+      readR2Object,
+      cache: {
+        match: async () => {
+          throw new Error("cache unavailable");
+        },
+        put: async () => {
+          throw new Error("cache unavailable");
+        },
+      } as unknown as Cache,
+    });
+    assert.equal(response!.status, 200);
+    assert.equal(await response!.text(), "GOOD-PNG");
+    assert.match(response!.headers.get("cache-control")!, /max-age=3600/);
+  });
   test("returns null for a non-OG path so routing falls through", async () => {
     const result = await handleOgImage(
       req("GET", "/foo"),
@@ -114,7 +204,7 @@ describe("handleOgImage", () => {
     assert.match(res!.headers.get("cache-control")!, /stale-while-revalidate/);
     assert.equal(await res!.text(), "PNG-BODY");
     assert.equal(calls.length, 1);
-    assert.equal(calls[0].artifactPath, "/metagraph/og-image.png");
+    assert.equal(calls[0].artifactPath, OG_IMAGE_ARTIFACT_PATH);
     // successful reads are cached
     assert.equal(puts.length, 1);
   });
@@ -158,7 +248,7 @@ describe("handleOgImage", () => {
     });
     assert.equal(res!.status, 200);
     assert.equal(res!.headers.get("content-type"), "image/png");
-    assert.equal(await res!.text(), "BRANDED-FALLBACK-CARD-1200x630");
+    assert.deepEqual(Buffer.from(await res!.arrayBuffer()), FALLBACK_PNG);
     assert.deepEqual(requested, ["/brand/og-fallback.png"]);
     // short cache, not the long success window, and never edge-cached
     const cc = res!.headers.get("cache-control")!;
@@ -178,7 +268,7 @@ describe("handleOgImage", () => {
     });
     assert.equal(res!.status, 200);
     assert.equal(res!.headers.get("content-type"), "image/png");
-    assert.equal(await res!.text(), "BRANDED-FALLBACK-CARD-1200x630");
+    assert.deepEqual(Buffer.from(await res!.arrayBuffer()), FALLBACK_PNG);
     assert.match(res!.headers.get("cache-control")!, /max-age=60/);
   });
 
@@ -190,7 +280,7 @@ describe("handleOgImage", () => {
       assets,
     });
     assert.equal(res!.status, 200);
-    assert.equal(await res!.text(), "BRANDED-FALLBACK-CARD-1200x630");
+    assert.deepEqual(Buffer.from(await res!.arrayBuffer()), FALLBACK_PNG);
     assert.deepEqual(requested, ["/brand/og-fallback.png"]);
   });
 
@@ -318,6 +408,43 @@ describe("handleOgImage", () => {
 });
 
 describe("buildStatParts", () => {
+  test("keeps valid zero and boundary scores, omitting invalid numeric domains", () => {
+    assert.deepEqual(
+      buildStatParts({
+        subnet_count: 0,
+        counts: { endpoints: 0, providers: 0 },
+        coverage: { average_score: 0 },
+      }),
+      ["0 subnets", "0 endpoints", "0 providers", "0% coverage"],
+    );
+    assert.deepEqual(buildStatParts({ coverage: { average_score: 100 } }), [
+      "100% coverage",
+    ]);
+    for (const value of [
+      -1,
+      0.5,
+      Number.MAX_SAFE_INTEGER + 1,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+    ]) {
+      assert.equal(
+        buildStatParts({
+          subnet_count: value,
+          counts: { endpoints: value, providers: value },
+        }),
+        null,
+      );
+    }
+    for (const average_score of [
+      -1,
+      0.5,
+      101,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+    ]) {
+      assert.equal(buildStatParts({ coverage: { average_score } }), null);
+    }
+  });
   test("returns null for missing data", () => {
     assert.equal(buildStatParts(null), null);
     assert.equal(buildStatParts(undefined), null);

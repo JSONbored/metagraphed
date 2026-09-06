@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { mockEnv } from "./row-type.ts";
+import { CARD_VERSION } from "../src/og-card-style.ts";
 import {
   accountFacts,
   fetchLogoBytes,
@@ -14,6 +16,10 @@ import {
   renderEntityMarkup,
   subnetFacts,
 } from "../src/og-entity-card.ts";
+
+const FALLBACK_PNG = readFileSync(
+  new URL("../public/brand/og-fallback.png", import.meta.url),
+);
 
 const INDEX = {
   subnets: [
@@ -72,6 +78,63 @@ describe("which paths are entity cards", () => {
 });
 
 describe("the facts a card draws", () => {
+  test("rejects invalid count and score domains without hiding other known facts", () => {
+    for (const surface_count of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1]) {
+      const facts = subnetFacts(
+        { subnets: [{ netuid: 19, surface_count, integration_readiness: 0 }] },
+        19,
+      );
+      assert.deepEqual(facts?.stats, [{ label: "Readiness", value: "0/100" }]);
+    }
+    for (const integration_readiness of [-1, 0.5, 101]) {
+      const facts = subnetFacts(
+        { subnets: [{ netuid: 19, integration_readiness, surface_count: 0 }] },
+        19,
+      );
+      assert.deepEqual(facts?.stats, [{ label: "Surfaces", value: "0" }]);
+    }
+    assert.deepEqual(
+      subnetFacts(
+        {
+          subnets: [
+            { netuid: 19, integration_readiness: 100, surface_count: 101 },
+          ],
+        },
+        19,
+      )?.stats,
+      [
+        { label: "Readiness", value: "100/100" },
+        { label: "Surfaces", value: "101" },
+      ],
+    );
+  });
+  test("non-finite values remain absent while genuine zero is retained", () => {
+    const facts = subnetFacts(
+      {
+        subnets: [
+          {
+            netuid: 0,
+            integration_readiness: Number.NaN,
+            surface_count: Number.POSITIVE_INFINITY,
+          },
+        ],
+      },
+      0,
+    );
+    assert.deepEqual(facts?.stats, []);
+    assert.deepEqual(
+      subnetFacts(
+        {
+          subnets: [{ netuid: 0, integration_readiness: 0, surface_count: 0 }],
+        },
+        0,
+      )?.stats,
+      [
+        { label: "Readiness", value: "0/100" },
+        { label: "Surfaces", value: "0" },
+      ],
+    );
+  });
   test("the subnet's own logo and a netuid mark are carried", () => {
     const facts = subnetFacts(INDEX, 64)!;
     assert.equal(facts.logoUrl, "https://metagraph.sh/logos/cache/x.png");
@@ -84,6 +147,7 @@ describe("the facts a card draws", () => {
     const facts = subnetFacts(INDEX, 64);
     assert.equal(facts?.title, "Chutes");
     assert.equal(facts?.kind, "Bittensor subnet 64");
+    assert.equal(facts?.identifier, "Subnet 64");
     assert.deepEqual(
       facts?.stats.map((s) => s.label),
       ["Readiness", "Surfaces", "Coverage"],
@@ -110,6 +174,8 @@ describe("the facts a card draws", () => {
   test("an account card names the address it can stand behind", () => {
     const ss58 = "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3";
     const facts = accountFacts(ss58);
+    assert.deepEqual(facts.stats, []);
+    assert.equal(facts.subtitle, "Account activity on Bittensor");
     assert.ok(facts.title.startsWith("5F4tQy"));
     assert.ok(facts.title.endsWith("uyHbZAc3".slice(-6)));
   });
@@ -123,6 +189,14 @@ describe("the cache key", () => {
       64,
     );
     assert.notEqual(factsDigest(a!), factsDigest(b!));
+    assert.notEqual(
+      factsDigest(a!),
+      factsDigest({ ...a!, identifier: "Subnet 65" }),
+    );
+    assert.notEqual(
+      factsDigest(a!),
+      factsDigest({ ...a!, subtitle: "Context" }),
+    );
   });
 
   test("the digest is stable when nothing drawn changed", () => {
@@ -141,7 +215,12 @@ describe("the cache key", () => {
     // what it finds against what it built; a render this Worker wrote would
     // look like drift to it.
     const key = cardKey("subnets", "64", "abcd1234");
-    assert.ok(key.startsWith("cache/og/"));
+    assert.ok(key.startsWith(`cache/og/v${CARD_VERSION}/`));
+    assert.notEqual(
+      key,
+      "cache/og/subnets/64-abcd1234.png",
+      "unchanged facts must not reuse the old artwork",
+    );
     assert.ok(!key.includes("metagraph/"));
     assert.ok(key.includes("abcd1234"), "the digest is in the key");
   });
@@ -157,8 +236,8 @@ describe("the markup", () => {
       stats: [{ label: "<b>", value: "&" }],
     });
     assert.ok(!markup.includes("<script>"));
-    assert.ok(markup.includes("&lt;script&gt;"));
-    assert.ok(markup.includes("&amp;"));
+    assert.ok(markup.includes("scriptalert"));
+    assert.ok(markup.includes(">&</p>"));
   });
 
   test("at most three stats are drawn", () => {
@@ -175,8 +254,42 @@ describe("the markup", () => {
 describe("the handler never fails a crawler", () => {
   const url = (p: string) => new URL(`https://api.metagraph.sh${p}`);
   const assets = {
-    fetch: async () => new Response("png", { status: 200 }),
+    fetch: async () =>
+      new Response(FALLBACK_PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      }),
   };
+
+  test("unchanged facts skip legacy artwork and then reuse the versioned render", async () => {
+    const facts = subnetFacts(INDEX, 64)!;
+    const oldKey = `cache/og/subnets/64-${factsDigest(facts)}.png`;
+    const cache = new Map([[oldKey, new Uint8Array([1]).buffer]]);
+    let renders = 0;
+    for (let request = 0; request < 2; request++) {
+      const response = await handleEntityOgImage(
+        new Request(url("/og/subnets/64.png")),
+        {},
+        url("/og/subnets/64.png"),
+        {
+          assets,
+          readArtifact: OK_ARTIFACT,
+          fetchLogo: NO_LOGO,
+          readCard: async (key) => cache.get(key) ?? null,
+          writeCard: async (key, bytes) => {
+            cache.set(key, bytes);
+          },
+          render: async () => {
+            renders++;
+            return PNG;
+          },
+        },
+      );
+      assert.deepEqual(await response!.arrayBuffer(), PNG);
+    }
+    assert.equal(renders, 1);
+    assert.equal(cache.size, 2, "legacy cache objects need no purge");
+  });
 
   test("a path that is not a card returns null so dispatch continues", async () => {
     const res = await handleEntityOgImage(
@@ -301,7 +414,7 @@ describe("the handler never fails a crawler", () => {
       },
     );
     assert.equal(written.length, 1);
-    assert.ok(written[0].startsWith("cache/og/subnets/64-"));
+    assert.ok(written[0].startsWith(`cache/og/v${CARD_VERSION}/subnets/64-`));
   });
 
   test("a non-GET method is rejected before any work", async () => {
@@ -372,7 +485,10 @@ describe("the route, through the worker's own dispatch", () => {
     const env = mockEnv({
       ASSETS: {
         fetch: async () =>
-          new Response(new Uint8Array([137, 80, 78, 71]), { status: 200 }),
+          new Response(FALLBACK_PNG, {
+            status: 200,
+            headers: { "content-type": "image/png" },
+          }),
       },
     });
     const res = await handleRequest(
@@ -410,14 +526,21 @@ describe("the font subset", () => {
     for (const glyph of "Chutes96/100") {
       assert.ok(text.includes(glyph), `missing glyph: ${glyph}`);
     }
-    // The card draws labels uppercased, so the subset must carry that form.
-    assert.ok(text.includes("READINESS"));
+    // The subset must carry sentence-case labels exactly as painted.
+    assert.ok(text.includes("Readiness"));
+    assert.ok(text.includes("api.metagraph.sh"));
   });
 });
 
 describe("the logo is inlined, and only from our own cache", () => {
   const url = (p: string) => new URL(`https://api.metagraph.sh${p}`);
-  const assets = { fetch: async () => new Response("png", { status: 200 }) };
+  const assets = {
+    fetch: async () =>
+      new Response(FALLBACK_PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      }),
+  };
   const artifact = async () => ({ ok: true, data: INDEX });
 
   test("a logo on our cache is fetched and inlined", async () => {
@@ -487,13 +610,13 @@ describe("the font subset", () => {
     assert.ok(cardText(facts).includes("7"), "the netuid badge glyph");
   });
 
-  test("covers the UPPERCASED labels the card actually draws", () => {
-    // The card uppercases kind and labels. A subset built from the lowercase
-    // form leaves every label a row of blank boxes.
+  test("covers the identifier and sentence-case labels the card draws", () => {
+    // The explicit identifier stays beside the subject after the generic
+    // category badge is removed.
     const facts = subnetFacts(INDEX, 64)!;
     const text = cardText(facts);
-    assert.ok(text.includes("BITTENSOR"));
-    assert.ok(text.includes("READINESS"));
+    assert.ok(text.includes("Subnet 64"));
+    assert.ok(text.includes("Readiness"));
   });
 });
 
@@ -564,12 +687,12 @@ describe("the logo fetch is allowlisted", () => {
 });
 
 describe("the badge", () => {
-  test("a wide netuid gets the smaller face so it fits the square", () => {
-    const three = renderEntityMarkup({
+  test("a wide netuid gets the smaller face so it fits the identity area", () => {
+    const wide = renderEntityMarkup({
       kind: "k",
       title: "t",
       stats: [],
-      mark: "128",
+      mark: "65535",
     });
     const one = renderEntityMarkup({
       kind: "k",
@@ -577,13 +700,13 @@ describe("the badge", () => {
       stats: [],
       mark: "1",
     });
-    assert.ok(three.includes("font-size:56px"));
-    assert.ok(one.includes("font-size:72px"));
+    assert.ok(wide.includes("font-size:58px"));
+    assert.ok(one.includes("font-size:108px"));
   });
 
   test("no logo and no mark draws no badge rather than an empty square", () => {
     const markup = renderEntityMarkup({ kind: "k", title: "t", stats: [] });
-    assert.ok(!markup.includes("border-radius:30px"));
+    assert.ok(!markup.includes("width:88px;height:88px"));
   });
 });
 
@@ -613,7 +736,13 @@ describe("the remaining defaults", () => {
         {},
         new URL("https://api.metagraph.sh/og/subnets/64.png"),
         {
-          assets: { fetch: async () => new Response("png", { status: 200 }) },
+          assets: {
+            fetch: async () =>
+              new Response(FALLBACK_PNG, {
+                status: 200,
+                headers: { "content-type": "image/png" },
+              }),
+          },
           readArtifact: async () => ({
             ok: true,
             data: {
@@ -653,7 +782,13 @@ describe("account cards", () => {
       {},
       new URL(`https://api.metagraph.sh/og/accounts/${ss58}.png`),
       {
-        assets: { fetch: async () => new Response("png", { status: 200 }) },
+        assets: {
+          fetch: async () =>
+            new Response(FALLBACK_PNG, {
+              status: 200,
+              headers: { "content-type": "image/png" },
+            }),
+        },
         fetchLogo: async () => {
           logoAsked = true;
           return null;

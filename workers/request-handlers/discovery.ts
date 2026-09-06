@@ -1,3 +1,4 @@
+import { CARD_VERSION } from "../../src/og-card-version.ts";
 import {
   CACHE_SECONDS,
   PRIMARY_DOMAIN,
@@ -197,12 +198,12 @@ const HOMEPAGE_HTML = `<!doctype html>
 <meta property="og:title" content="metagraphed API — Bittensor subnet operational registry">
 <meta property="og:description" content="Machine-readable operational + integration registry for Bittensor subnets: what each subnet exposes, whether it's healthy, and how to call it.">
 <meta property="og:url" content="https://${PRIMARY_DOMAIN}/">
-<meta property="og:image" content="https://${PRIMARY_DOMAIN}/og.png">
+<meta property="og:image" content="https://${PRIMARY_DOMAIN}/og.png?v=${CARD_VERSION}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Metagraphed — Bittensor subnet operational layer · data hub · API">
+<meta property="og:image:alt" content="Metagraphed API — The Bittensor subnet integration registry">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://${PRIMARY_DOMAIN}/og.png">
+<meta name="twitter:image" content="https://${PRIMARY_DOMAIN}/og.png?v=${CARD_VERSION}">
 <link rel="api-catalog" href="/.well-known/api-catalog" type="application/linkset+json">
 <link rel="service-desc" href="/metagraph/openapi.json" type="application/json">
 <link rel="service-doc" href="/llms.txt" type="text/plain">

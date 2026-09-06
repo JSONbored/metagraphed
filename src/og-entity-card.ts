@@ -1,5 +1,5 @@
 // Per-entity Open Graph cards (#11075): GET /og/subnets/{netuid}.png and
-// GET /og/accounts/{ss58}.png, rendered from live registry data.
+// GET /og/accounts/{ss58}.png, rendered from published registry data or address.
 //
 // WHY THIS CAN LIVE IN THE WORKER NOW. The render left the Worker in #6502 on a
 // bundle-budget argument: workers-og's wasm is ~545 KiB gzipped and the bundler
@@ -25,12 +25,12 @@
 // rather than of this import.
 //
 // CACHED PER ENTITY IN R2, not rendered per request. The key carries a digest
-// of the exact facts drawn on the card, so a data change is a NEW key rather
+// of the facts and renderer version, so a data or artwork change is a NEW key rather
 // than an invalidation -- there is no moment where a stale card and a fresh one
 // share a name. That is the difference from the landing card, which re-rendered
 // an unchanged image on every cache miss because its key was constant.
 //
-// A RENDER FAILURE IS NEVER A 5xx. Social crawlers do not retry, and a 5xx to
+// A RENDER FAILURE USES THE STATIC FALLBACK. Social crawlers do not retry, and a 5xx to
 // one is a link that unfurls blank for as long as the crawler caches it. Every
 // failure path falls back to the same branded static card the landing route
 // uses, which lives in ASSETS -- a different subsystem, so it survives the
@@ -40,19 +40,18 @@ import {
   type AssetFetcher,
   fallbackResponse,
   imageHeaders,
-  INK,
-  INK_TEXT,
-  LOGO_DATA_URI,
-  MINT,
 } from "./og-image.ts";
+import {
+  CARD_VERSION,
+  CARD_WIDTH as WIDTH,
+  CARD_HEIGHT as HEIGHT,
+  cardGlyphs,
+  renderCardLayout,
+} from "./og-card-style.ts";
+import { loadCardFonts } from "./og-card-fonts.ts";
 
-/** 1200x630 is the size every major unfurler crops to; anything else is cropped
- * for us and usually badly. */
-const WIDTH = 1200;
-const HEIGHT = 630;
-
-/** Cards are immutable under their digest, so they may be cached hard. A new
- * digest is a new URL; nothing has to expire for a card to change. */
+/** The R2 object is versioned. Public entity URLs remain stable, so social
+ * platforms may retain their own image for this bounded response lifetime. */
 const CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
 
 const SUBNET_PATH = /^\/og\/subnets\/(\d{1,5})\.png$/;
@@ -61,8 +60,12 @@ const ACCOUNT_PATH = /^\/og\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\.png$/;
 export interface EntityCardFacts {
   /** The line a reader identifies the entity by. */
   title: string;
-  /** What kind of thing this is, shown small above the title. */
+  /** What kind of record this is, retained in the content cache identity. */
   kind: string;
+  /** Essential identifier when the subject is a declared name. */
+  identifier?: string;
+  /** Short destination context, separate from the entity's name. */
+  subtitle?: string;
   /** Up to three `label -> value` pairs. Fewer is fine; a card with one real
    * fact reads better than one padded with nulls. */
   stats: { label: string; value: string }[];
@@ -81,7 +84,7 @@ export interface EntityCardFacts {
    *
    * THE NETUID, not the alpha symbol. The symbol is the subnet's on-chain
    * identity and was the obvious choice, but those symbols are Greek, Cyrillic
-   * and Arabic letters and Space Grotesk is Latin-only: rendered, subnet 1's
+   * and Arabic letters; an earlier Latin-only font rendered these incorrectly: rendered, subnet 1's
    * `α` came out as `?`. Loading a font per subnet to cover one glyph is not a
    * trade worth making for a link preview, and a `?` on the cards belonging to
    * the subnets with the LEAST identity is the worst possible place for it.
@@ -89,61 +92,17 @@ export interface EntityCardFacts {
   mark?: string | null;
 }
 
-/**
- * The card markup. Kept separate from the render so it can be asserted on in a
- * test without instantiating wasm, the same split `renderMarkup` uses for the
- * landing card.
- *
- * ESCAPED, because every value here is registry data and one of them is a
- * subnet name a third party controls. satori parses this as markup, so an
- * unescaped `<` is a rendering bug at best.
- */
+/** Registry strings are bounded text nodes; logo bytes are inlined by the handler. */
 export function renderEntityMarkup(facts: EntityCardFacts): string {
-  const stats = facts.stats
-    .slice(0, 3)
-    .map(
-      (stat) =>
-        `<div style="display:flex;flex-direction:column;margin-right:72px;">
-           <div style="display:flex;font-size:24px;font-weight:500;color:${INK};opacity:0.6;letter-spacing:1px;">${escapeMarkup(stat.label.toUpperCase())}</div>
-           <div style="display:flex;font-size:56px;font-weight:700;color:${INK_TEXT};margin-top:4px;">${escapeMarkup(stat.value)}</div>
-         </div>`,
-    )
-    .join("");
-
-  // The subnet's own mark, and every subnet has one: its logo when we hold a
-  // cached copy, otherwise its alpha symbol -- which is the identity the chain
-  // itself uses for it. A card with neither is a name on an empty field, which
-  // is what the first cut looked like.
-  const badge = facts.logo
-    ? `<img src="${facts.logo}" style="width:132px;height:132px;border-radius:30px;" />`
-    : facts.mark
-      ? `<div style="display:flex;align-items:center;justify-content:center;width:132px;height:132px;border-radius:30px;background:${INK};color:${MINT};font-size:${facts.mark.length > 2 ? "56" : "72"}px;font-weight:700;">${escapeMarkup(facts.mark)}</div>`
-      : "";
-
-  return `
-    <div style="position:relative;display:flex;flex-direction:column;justify-content:space-between;width:${WIDTH}px;height:${HEIGHT}px;background:${MINT};color:${INK_TEXT};font-family:'Space Grotesk';padding:76px 90px;overflow:hidden;">
-      <div style="position:absolute;top:-250px;right:-210px;width:740px;height:740px;background:#5BFFD2;opacity:0.5;transform:rotate(34deg);display:flex;"></div>
-      <div style="display:flex;align-items:center;">
-        ${badge}
-        <div style="display:flex;flex-direction:column;margin-left:${badge ? "38px" : "0"};">
-          <div style="display:flex;font-size:28px;font-weight:500;color:${INK};opacity:0.66;letter-spacing:1px;">${escapeMarkup(facts.kind.toUpperCase())}</div>
-          <div style="display:flex;font-size:84px;font-weight:700;letter-spacing:-2px;margin-top:6px;">${escapeMarkup(facts.title)}</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;width:100%;">
-        <div style="display:flex;">${stats}</div>
-        <img src="${LOGO_DATA_URI}" style="width:72px;height:72px;" />
-      </div>
-    </div>`;
-}
-
-/** satori reads this as markup, and subnet names are third-party strings. */
-function escapeMarkup(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  return renderCardLayout({
+    title: facts.title,
+    identifier: facts.identifier,
+    subtitle: facts.subtitle,
+    stats: facts.stats.slice(0, 3),
+    logo: facts.logo,
+    mark: facts.mark,
+    entity: true,
+  });
 }
 
 /**
@@ -160,6 +119,8 @@ export function factsDigest(facts: EntityCardFacts): string {
   // every request to learn the same thing would be absurd.
   const canonical = JSON.stringify([
     facts.kind,
+    facts.identifier ?? null,
+    facts.subtitle ?? null,
     facts.title,
     facts.stats.map((s) => [s.label, s.value]),
     facts.logoUrl ?? null,
@@ -174,7 +135,7 @@ export function factsDigest(facts: EntityCardFacts): string {
 }
 
 /**
- * `cache/og/subnets/64-a1b2c3d4.png` -- the digest is IN the key, so a
+ * `cache/og/v4/subnets/64-a1b2c3d4.png` -- the digest is IN the key, so a
  * regenerate writes a new object rather than overwriting a live one.
  *
  * UNDER `cache/`, deliberately outside `metagraph/`. Objects under the
@@ -184,7 +145,7 @@ export function factsDigest(facts: EntityCardFacts): string {
  * it costs one re-render per card.
  */
 export function cardKey(kind: string, subject: string, digest: string): string {
-  return `cache/og/${kind}/${subject}-${digest}.png`;
+  return `cache/og/v${CARD_VERSION}/${kind}/${subject}-${digest}.png`;
 }
 
 /**
@@ -293,13 +254,22 @@ export function subnetFacts(
   // Only facts that are actually present. `absent is null, never zero` is the
   // contract everywhere else in this API, and a card is not exempt: a subnet
   // with no measured readiness must not show "0/100".
-  if (typeof row.integration_readiness === "number") {
+  if (
+    typeof row.integration_readiness === "number" &&
+    Number.isInteger(row.integration_readiness) &&
+    row.integration_readiness >= 0 &&
+    row.integration_readiness <= 100
+  ) {
     stats.push({
       label: "Readiness",
       value: `${row.integration_readiness}/100`,
     });
   }
-  if (typeof row.surface_count === "number") {
+  if (
+    typeof row.surface_count === "number" &&
+    Number.isSafeInteger(row.surface_count) &&
+    row.surface_count >= 0
+  ) {
     stats.push({ label: "Surfaces", value: String(row.surface_count) });
   }
   if (typeof row.coverage_level === "string" && row.coverage_level) {
@@ -307,6 +277,7 @@ export function subnetFacts(
   }
   return {
     kind: `Bittensor subnet ${netuid}`,
+    identifier: `Subnet ${netuid}`,
     title: name ?? `Subnet ${netuid}`,
     stats,
     // Held for the render to inline; a URL alone is not something satori can
@@ -323,7 +294,8 @@ export function accountFacts(ss58: string): EntityCardFacts {
   return {
     kind: "Bittensor account",
     title: `${ss58.slice(0, 6)}…${ss58.slice(-6)}`,
-    stats: [{ label: "Address", value: `${ss58.slice(0, 12)}…` }],
+    subtitle: "Account activity on Bittensor",
+    stats: [],
     // An account has no logo and nothing short enough to badge. The card
     // carries the truncated address and our own mark, which is the honest
     // amount of identity we hold for one.
@@ -335,7 +307,7 @@ export function accountFacts(ss58: string): EntityCardFacts {
  * GET /og/subnets/{netuid}.png and /og/accounts/{ss58}.png.
  *
  * Returns null when the path is not an entity card, so the caller's dispatch
- * continues. Never throws and never 5xxes: every failure lands on the branded
+ * continues. Render failures land on the branded
  * fallback, because the caller is a social crawler that will cache whatever it
  * gets and will not come back to check.
  */
@@ -417,7 +389,7 @@ export async function handleEntityOgImage(
   try {
     png = deps.render
       ? await deps.render(renderEntityMarkup(facts))
-      : await renderPng(renderEntityMarkup(facts), cardText(facts));
+      : await renderPng(renderEntityMarkup(facts));
   } catch (error) {
     console.error("og-entity: render failed", error);
     return fallbackResponse(assets, url);
@@ -448,27 +420,12 @@ export async function handleEntityOgImage(
    rasterised through the same satori+resvg pipeline in development, and the
    deployed route is checked end to end after release. Covering it here would
    mean asserting on a stub of the thing under test. */
-async function renderPng(markup: string, text: string): Promise<ArrayBuffer> {
-  const { ImageResponse, loadGoogleFont } = await import("workers-og");
-  // THE BRAND FONT, LOADED. Without `fonts` the renderer falls back to its own
-  // default -- the first card shipped in a serif, which is not the wordmark's
-  // typeface and read as a different product. The Node path never showed this
-  // because scripts/refresh-og-image.ts passes satori the fonts explicitly.
-  //
-  // Subset to the glyphs this card actually draws (`text`), which is what
-  // loadGoogleFont's parameter is for: a card is a handful of words, and
-  // fetching a full Latin face per render would be most of the render's time.
-  const [medium, bold] = await Promise.all([
-    loadGoogleFont({ family: "Space Grotesk", weight: 500, text }),
-    loadGoogleFont({ family: "Space Grotesk", weight: 700, text }),
-  ]);
+async function renderPng(markup: string): Promise<ArrayBuffer> {
+  const { ImageResponse } = await import("workers-og");
   const response = new ImageResponse(markup, {
     width: WIDTH,
     height: HEIGHT,
-    fonts: [
-      { name: "Space Grotesk", data: medium, weight: 500, style: "normal" },
-      { name: "Space Grotesk", data: bold, weight: 700, style: "normal" },
-    ],
+    fonts: await loadCardFonts(markup),
   });
   return await response.arrayBuffer();
 }
@@ -498,16 +455,5 @@ function toDataUri(bytes: ArrayBuffer): string {
 
 /** Every glyph the card draws, for the font subset. */
 export function cardText(facts: EntityCardFacts): string {
-  return [
-    // Uppercased because that is how the card draws them, and a subset built
-    // from the lowercase form would leave every label a row of blank boxes.
-    facts.kind.toUpperCase(),
-    facts.title,
-    // THE MARK TOO. It is only drawn when there is no logo, but that is 69 of
-    // 129 subnets -- and the alpha symbols are Greek, Cyrillic and Arabic
-    // letters that no Latin subset contains. Omitting it renders exactly the
-    // subnets with the least identity as a blank box.
-    facts.mark ?? "",
-    ...facts.stats.flatMap((stat) => [stat.label.toUpperCase(), stat.value]),
-  ].join("");
+  return cardGlyphs(renderEntityMarkup(facts));
 }

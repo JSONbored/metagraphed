@@ -1,4 +1,5 @@
 import path from "node:path";
+import { OG_IMAGE_FILE_NAMES } from "../src/og-card-version.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
@@ -51,11 +52,8 @@ interface CompactManifest extends FullManifest {
   storage_tier_size_bytes: Record<string, number>;
 }
 
-// og-image.png (#6502) is the one binary exception to this otherwise
-// JSON/.d.ts-only manifest -- named exactly, not a general ".png" allowance,
-// so a stray image dropped anywhere under these roots is never accidentally
-// picked up.
-const OG_IMAGE_FILE_NAME = "og-image.png";
+// Only the legacy/current landing artwork may be published as PNG, at the
+// artifact root. Temporary files or other image versions are not publications.
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
@@ -307,7 +305,10 @@ async function listManifestArtifactFiles({
   });
 }
 
-async function listArtifactFiles(dirPath: string): Promise<string[]> {
+async function listArtifactFiles(
+  dirPath: string,
+  rootPath = dirPath,
+): Promise<string[]> {
   let entries;
   try {
     entries = await readdir(dirPath, { withFileTypes: true });
@@ -322,8 +323,13 @@ async function listArtifactFiles(dirPath: string): Promise<string[]> {
   for (const entry of entries) {
     const entryPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
-      files.push(...(await listArtifactFiles(entryPath)));
-    } else if (entry.isFile() && isManifestedArtifact(entry.name)) {
+      files.push(...(await listArtifactFiles(entryPath, rootPath)));
+    } else if (
+      entry.isFile() &&
+      isManifestedArtifact(
+        path.relative(rootPath, entryPath).replace(/\\/g, "/"),
+      )
+    ) {
       files.push(entryPath);
     }
   }
@@ -334,7 +340,7 @@ function isManifestedArtifact(fileName: string): boolean {
   return (
     fileName.endsWith(".json") ||
     fileName.endsWith(".d.ts") ||
-    fileName === OG_IMAGE_FILE_NAME
+    OG_IMAGE_FILE_NAMES.includes(fileName)
   );
 }
 
@@ -342,7 +348,7 @@ function contentTypeFor(relativePath: string): string {
   if (relativePath.endsWith(".d.ts")) {
     return "text/plain; charset=utf-8";
   }
-  if (relativePath === OG_IMAGE_FILE_NAME) {
+  if (OG_IMAGE_FILE_NAMES.includes(relativePath)) {
     return "image/png";
   }
   return "application/json";
