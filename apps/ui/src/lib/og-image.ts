@@ -589,8 +589,11 @@ async function fetchFontBinary(
   text: string,
   fetchImpl: typeof fetch,
 ): Promise<ArrayBuffer> {
+  const signal = AbortSignal.timeout(5000);
   const cssResponse = await fetchImpl(googleFontUrl(family, weight, text), {
     headers: { "user-agent": FONT_USER_AGENT },
+    signal,
+    redirect: "error",
   });
   if (!cssResponse.ok) {
     throw new Error(`Google Fonts CSS ${cssResponse.status} for ${family} ${weight}`);
@@ -601,7 +604,16 @@ async function fetchFontBinary(
     /src:\s*url\(([^)]+)\)\s*format\('(?:opentype|truetype)'\)/,
   )?.[1];
   if (!source) throw new Error(`No TrueType face in Google Fonts CSS for ${family} ${weight}`);
-  const fontResponse = await fetchImpl(source);
+  const parsed = new URL(source);
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.hostname !== "fonts.gstatic.com" ||
+    parsed.username ||
+    parsed.password ||
+    parsed.port
+  )
+    throw new Error("Invalid OG font source");
+  const fontResponse = await fetchImpl(source, { signal, redirect: "error" });
   if (!fontResponse.ok) {
     throw new Error(`Google Fonts binary ${fontResponse.status} for ${family} ${weight}`);
   }

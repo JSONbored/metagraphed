@@ -836,6 +836,24 @@ describe("font subset request (#11204) — the bug that painted three tofu boxes
 });
 
 describe("loadCardFont (#11204) — we own the two fetches, not workers-og", () => {
+  it("rejects unsafe font sources and redirects before following them", async () => {
+    for (const source of [
+      "http://fonts.gstatic.com/font.ttf",
+      "https://example.com/font.ttf",
+      "https://user@fonts.gstatic.com/font.ttf",
+      "https://fonts.gstatic.com:444/font.ttf",
+    ]) {
+      const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        expect(init?.redirect).toBe("error");
+        expect(init?.signal).toBeInstanceOf(AbortSignal);
+        return new Response(`src: url(${source}) format('truetype')`);
+      });
+      await expect(loadCardFont("Unsafe source " + source, 500, "abc", fetchImpl)).rejects.toThrow(
+        /font source/,
+      );
+      expect(fetchImpl).toHaveBeenCalledOnce();
+    }
+  });
   const truetypeCss = (url: string) =>
     `@font-face {\n  font-family: 'X';\n  src: url(${url}) format('truetype');\n}`;
 
