@@ -8,8 +8,8 @@ import {
 } from "@/lib/metagraphed/url-state";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
-import { formatPct, formatTao } from "@/lib/metagraphed/format";
-import { firstPartyLogoPath, logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
+import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { subnetOgContent } from "@/lib/metagraphed/og-entity-content";
 import {
   entityNotFoundMeta,
   isMissingEntityError,
@@ -21,7 +21,6 @@ import { subnetFeedLinks } from "@/lib/metagraphed/feed-links";
 import { stringifyJsonLd, subnetDatasetJsonLd } from "@/lib/metagraphed/json-ld";
 import { repoSlugFrom, SITE_ORIGIN } from "@/lib/metagraphed/seo-meta";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { taoCompact } from "@/components/metagraphed/neuron-format";
 
 /**
  * The page has one control -- the momentum window -- and one URL key for it.
@@ -152,40 +151,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
         // #8489: this route owns its own og:image (src/server.ts skips the
         // paths routeOwnsOgImage matches) so the card can carry the subnet's
         // real name, price and health rather than just its netuid.
-        ...ogImageMeta({
-          title: loaderData?.name || `Subnet ${params.netuid}`,
-          subtitle: description,
-          eyebrow: "Subnet",
-          // The registry's curated logo first (a first-party cached asset the
-          // card reads from the ASSETS binding), then the subnet's own website
-          // as a favicon lookup, then the monogram.
-          logoPath: firstPartyLogoPath(loaderData?.iconUrl),
-          logoHost: logoHostFrom(loaderData?.iconUrl, loaderData?.website),
-          // The health state colours the card's footer dot instead of
-          // spending a whole stat cell on a one-word string.
-          status: loaderData?.health ?? null,
-          // Netuid always leads (it is the subnet's identity, and the one fact
-          // that is never missing), then price, emission share and total stake
-          // in the KPI band's own order -- capped at three by the renderer, so
-          // whichever of the three resolve fill the rail left to right.
-          stats: [
-            { label: "Netuid", value: `SN${params.netuid}` },
-            ...(loaderData?.alphaPriceTao != null
-              ? [{ label: "Price", value: formatTao(loaderData.alphaPriceTao) }]
-              : []),
-            ...(loaderData?.emissionShare != null
-              ? [
-                  {
-                    label: "Emission",
-                    value: `${formatPct(loaderData.emissionShare, 2)}`,
-                  },
-                ]
-              : []),
-            ...(loaderData?.totalStakeAlpha != null
-              ? [{ label: "Alpha stake", value: `${taoCompact(loaderData.totalStakeAlpha)} α` }]
-              : []),
-          ],
-        }),
+        ...ogImageMeta(subnetOgContent(params.netuid, loaderData)),
       ],
       // #8703: this subnet's own feed, so pasting the page URL into a reader
       // resolves it. Deliberately only on the resolved path -- both

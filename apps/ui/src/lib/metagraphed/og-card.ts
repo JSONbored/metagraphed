@@ -255,6 +255,8 @@ export function routeOwnsOgImage(pathname: string): boolean {
     /^\/subnets\/[^/]+\/?$/.test(pathname) ||
     /^\/validators\/[^/]+\/?$/.test(pathname) ||
     /^\/accounts\/[^/]+\/?$/.test(pathname) ||
+    /^\/blocks\/[^/]+\/?$/.test(pathname) ||
+    /^\/extrinsics\/[^/]+\/?$/.test(pathname) ||
     /^\/events\/[^/]+\/[^/]+\/?$/.test(pathname) ||
     // #11204: /providers/* too. All 138 provider pages were unfurling the
     // pathname-derived card -- the raw slug as a title ("404-gen"), no logo and
