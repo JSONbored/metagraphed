@@ -1,6 +1,6 @@
 import { SITE_ORIGIN } from "./identity";
 import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
-import { clampText } from "./truncate";
+import { clampOgText } from "./og-display-text";
 
 // Builds the /og card URL a route puts in its own og:image (#8489).
 //
@@ -81,12 +81,12 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   // slack was enough to push a legitimate card past the endpoint's own
   // MAX_QUERY_LENGTH, which answers 414 and unfurls with no image at all.
   const params = new URLSearchParams({
-    title: clampText(options.title, OG_LIMITS.title),
+    title: clampOgText(options.title, OG_LIMITS.title),
     v: OG_CARD_VERSION,
   });
-  const subtitle = clampText(options.subtitle, OG_LIMITS.subtitle);
+  const subtitle = clampOgText(options.subtitle, OG_LIMITS.subtitle);
   if (subtitle) params.set("subtitle", subtitle);
-  const eyebrow = clampText(options.eyebrow, OG_LIMITS.eyebrow);
+  const eyebrow = clampOgText(options.eyebrow, OG_LIMITS.eyebrow);
   if (eyebrow) params.set("eyebrow", eyebrow);
   if (options.accent === "agent") params.set("accent", "agent");
   if (options.logoPath) params.set("logop", options.logoPath);
@@ -100,15 +100,15 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   // Only the first three stats are rendered; sending more would just push the
   // URL toward the length cap for content the card ignores.
   (options.stats ?? []).slice(0, 3).forEach((stat, index) => {
-    const label = clampText(stat.label, OG_LIMITS.statLabel);
-    const value = clampText(stat.value, OG_LIMITS.statValue);
+    const label = clampOgText(stat.label, OG_LIMITS.statLabel);
+    const value = clampOgText(stat.value, OG_LIMITS.statValue);
     // Both halves required, matching readCardParams: a value with no label is
     // unreadable, and a label with no value is an empty promise.
     if (!label || !value) return;
     params.set(`stat${index + 1}`, label);
     params.set(`stat${index + 1}v`, value);
   });
-  let identifier = clampText(options.identifier, OG_LIMITS.identifier);
+  let identifier = clampOgText(options.identifier, OG_LIMITS.identifier);
   if (identifier) {
     const glyphs = Array.from(identifier);
     params.set("identifier", identifier);

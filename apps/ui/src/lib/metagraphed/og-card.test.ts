@@ -8,6 +8,34 @@ import {
   ogImageMeta,
 } from "./og-card";
 import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
+import { clampOgText } from "./og-display-text";
+
+describe("OG display text boundaries", () => {
+  it("preserves ordinary word cuts while normalizing and keeping supplementary characters intact", () => {
+    expect(clampOgText(null, 10)).toBe("");
+    expect(clampOgText("  A normal title  ", 20)).toBe("A normal title");
+    expect(clampOgText("A normal title is longer", 18)).toBe("A normal title…");
+    expect(clampOgText("A𠮷字漢", 3)).toBe("A𠮷…");
+    expect(clampOgText("한글", 2)).toBe("한글");
+    expect(clampOgText("界".repeat(80), 80)).toBe("界".repeat(80));
+  });
+  it("normalizes all metadata image fields before a budget can split their identity", () => {
+    const url = new URL(
+      buildOgImageUrl({
+        title: "A".repeat(108) + "𠮷漢字",
+        subtitle: "한글",
+        identifier: "A".repeat(78) + "𠮷漢字",
+        stats: [{ label: "한", value: "글" }],
+      }),
+    );
+    expect(url.searchParams.get("subtitle")).toBe("한글");
+    expect(url.searchParams.get("stat1")).toBe("한");
+    expect(url.searchParams.get("stat1v")).toBe("글");
+    expect(url.searchParams.get("title")).toBe("A".repeat(108) + "𠮷…");
+    expect(url.searchParams.get("identifier")).toBe("A".repeat(78) + "𠮷…");
+    for (const value of url.searchParams.values()) expect(value).not.toMatch(/[\uD800-\uDFFF]/u);
+  });
+});
 
 // The route → card adapters (#11204). Each one exists because the obvious
 // reduction threw away the better answer; the tests below pin the case that

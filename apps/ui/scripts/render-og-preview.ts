@@ -8,9 +8,7 @@ import type { ReactNode } from "react";
 import satori from "satori";
 import { html } from "satori-html";
 import {
-  CARD_FONT_FACES,
-  fontSubsetText,
-  loadCardFont,
+  loadCardFonts,
   markDataUri,
   normalizeSubtitle,
   normalizeTitle,
@@ -125,16 +123,9 @@ const outDir = process.argv[2] ?? "/tmp/og-preview";
 fs.mkdirSync(outDir, { recursive: true });
 for (const [name, variant] of Object.entries(variants)) {
   const markup = renderCardMarkup(variant);
-  const text = fontSubsetText(markup);
-  const fonts = await Promise.all(
-    CARD_FONT_FACES.map(async (face) => ({
-      ...face,
-      data: await loadCardFont(face.name, face.weight, text),
-      style: "normal" as const,
-    })),
-  );
+  const fonts = await loadCardFonts(markup);
   const svg = await satori(html(markup) as ReactNode, { width: 1200, height: 630, fonts });
-  const rendered = new Resvg(svg).render();
+  const rendered = new Resvg(svg, { font: { loadSystemFonts: false } }).render();
   if (rendered.width !== 1200 || rendered.height !== 630)
     throw new Error(`${name}: invalid canvas`);
   fs.writeFileSync(path.join(outDir, `${name}.png`), rendered.asPng());

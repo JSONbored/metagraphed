@@ -3,7 +3,13 @@
 // workers-og remains lazy so its WASM never enters the client/SSR route graph.
 import { OG_CARD_VERSION, OG_LIMITS } from "./metagraphed/og-card-limits.ts";
 import { OG_WORDMARK_SVG } from "./metagraphed/og-wordmark.ts";
-import { clampText } from "./metagraphed/truncate.ts";
+import { clampOgText } from "./metagraphed/og-display-text.ts";
+import {
+  cardFontFamily,
+  cjkFontPlan,
+  createCjkFontLoader,
+  normalizeCardDisplayText,
+} from "../../../../src/og-cjk-fonts.ts";
 
 type WorkersOg = typeof import("workers-og");
 
@@ -112,11 +118,11 @@ const cacheStorage = (globalThis as { caches?: { default?: EdgeCache } }).caches
  * data URI this module builds itself (see resolveIcon). Keep it that way.
  */
 export function sanitizeText(value: string): string {
-  return value.replace(/[<>]/g, "");
+  return normalizeCardDisplayText(value).replace(/[<>]/g, "");
 }
 
 export function normalizeTitle(value: string | null): string {
-  return clampText((value || "").trim() || DEFAULT_TITLE, OG_LIMITS.title);
+  return clampOgText((value || "").trim() || DEFAULT_TITLE, OG_LIMITS.title);
 }
 
 /**
@@ -126,7 +132,7 @@ export function normalizeTitle(value: string | null): string {
  * bounded like the title so a long one can't overflow the card.
  */
 export function normalizeSubtitle(value: string | null): string {
-  return clampText((value || "").trim() || SUBTITLE, OG_LIMITS.subtitle);
+  return clampOgText((value || "").trim() || SUBTITLE, OG_LIMITS.subtitle);
 }
 
 /**
@@ -137,7 +143,7 @@ export function normalizeSubtitle(value: string | null): string {
  * `?:` rather than scattered emptiness checks.
  */
 export function normalizeParam(value: string | null, max: number): string | null {
-  return clampText(value, max) || null;
+  return clampOgText(value, max) || null;
 }
 
 /** One "LABEL / value" cell in the card's stat rail. */
@@ -352,7 +358,7 @@ export function cardTitleLayout(title: string, entity: boolean, facts: boolean, 
 /**
  * Two-character monogram for an entity with no resolvable logo.
  *
- * Byte-for-byte the same rule as ui-kit's `monogramFor` (BrandIcon): two or
+ * Same word-selection rule as ui-kit's `monogramFor` (BrandIcon): two or
  * more words -> first letter of each; otherwise the first two characters;
  * uppercased. Copied rather than imported because this module is Worker-side
  * and must not pull the React component graph in.
@@ -364,11 +370,12 @@ export function cardTitleLayout(title: string, entity: boolean, facts: boolean, 
  * the same entity on the site.
  */
 export function monogramFor(title: string): string {
-  const source = title.trim();
+  const source = normalizeCardDisplayText(title).trim();
   if (!source) return "··";
   const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
-  return source.slice(0, 2).toUpperCase();
+  if (parts.length >= 2)
+    return (Array.from(parts[0]!)[0]! + Array.from(parts[1]!)[0]!).toUpperCase();
+  return Array.from(source).slice(0, 2).join("").toUpperCase();
 }
 
 /** Continuous editorial cover. All coordinates stay inside the 1200×630 canvas. */
@@ -396,8 +403,21 @@ export function renderCardMarkup(opts: {
     Math.round((stats.length ? 570 : 690) / 2 - bodyHeight / 2),
   );
   const context = sanitizeText(opts.identifier || (entity ? opts.eyebrow || "" : ""));
+  const monogram = sanitizeText(monogramFor(title));
+  const plan = cjkFontPlan(
+    [
+      ...layout.lines,
+      ...layout.subtitleLines,
+      context,
+      ...(entity && !opts.icon ? [monogram] : []),
+      ...stats.flatMap(({ label, value }) => [sanitizeText(label), sanitizeText(value)]),
+    ].join(""),
+  );
+  const textFont = cardFontFamily("'Geist','Inter'", plan);
+  const monoFont = cardFontFamily("'Geist Mono','Inter'", plan);
+  const monoOnlyFont = cardFontFamily("'Geist Mono'", plan);
   const identity = entity
-    ? `<div style="display:flex;position:absolute;left:972px;top:210px;align-items:center;justify-content:center;width:148px;height:148px;background:${opts.icon ? "#ffffff" : OG_THEME.raised};border:1px solid ${OG_THEME.rule};border-radius:4px;">${opts.icon ? `<img src="${opts.icon}" style="width:112px;height:112px;object-fit:contain;"/>` : `<div style="display:flex;font-family:'Geist Mono';font-size:50px;font-weight:500;color:${OG_THEME.accent};">${sanitizeText(monogramFor(opts.title))}</div>`}</div>`
+    ? `<div style="display:flex;position:absolute;left:972px;top:210px;align-items:center;justify-content:center;width:148px;height:148px;background:${opts.icon ? "#ffffff" : OG_THEME.raised};border:1px solid ${OG_THEME.rule};border-radius:4px;">${opts.icon ? `<img src="${opts.icon}" style="width:112px;height:112px;object-fit:contain;"/>` : `<div style="display:flex;font-family:${monoOnlyFont};font-size:50px;font-weight:500;color:${OG_THEME.accent};">${monogram}</div>`}</div>`
     : layout.graphic
       ? `<img src="${coverMarkDataUri(opts.accent === "agent")}" style="position:absolute;left:864px;top:248px;width:270px;height:162px;"/>`
       : "";
@@ -405,21 +425,21 @@ export function renderCardMarkup(opts: {
     ? `<div style="display:flex;position:absolute;left:64px;right:64px;top:450px;padding-top:25px;border-top:1px solid ${OG_THEME.rule};">${stats
         .map((stat, index) => {
           const valueSize = stat.value.length > 18 ? 22 : stat.value.length > 11 ? 28 : 36;
-          return `<div style="display:flex;flex-direction:column;width:${Math.floor(1072 / stats.length)}px;padding-right:24px;${index ? "padding-left:24px;" : ""}"><div style="display:flex;font-size:20px;line-height:1.2;color:${OG_THEME.muted};word-break:break-word;">${sanitizeText(stat.label)}</div><div style="display:flex;font-family:'Geist Mono','Inter';font-size:${valueSize}px;font-weight:500;color:${OG_THEME.accent};line-height:1.2;margin-top:10px;word-break:break-all;">${sanitizeText(stat.value)}</div></div>`;
+          return `<div style="display:flex;flex-direction:column;width:${Math.floor(1072 / stats.length)}px;padding-right:24px;${index ? "padding-left:24px;" : ""}"><div style="display:flex;font-size:20px;line-height:1.2;color:${OG_THEME.muted};word-break:break-word;">${sanitizeText(stat.label)}</div><div style="display:flex;font-family:${monoFont};font-size:${valueSize}px;font-weight:500;color:${OG_THEME.accent};line-height:1.2;margin-top:10px;word-break:break-all;">${sanitizeText(stat.value)}</div></div>`;
         })
         .join("")}</div>`
     : "";
   // workers-og treats inter-tag whitespace as flex children; native previews do not.
-  return `<div style="display:flex;position:relative;width:1200px;height:630px;background:${OG_THEME.canvas};color:${OG_THEME.ink};font-family:'Geist','Inter';overflow:hidden;">
+  return `<div style="display:flex;position:relative;width:1200px;height:630px;background:${OG_THEME.canvas};color:${OG_THEME.ink};font-family:${textFont};overflow:hidden;">
     <img src="${WORDMARK_DATA_URI}" style="position:absolute;left:64px;top:52px;width:244px;height:34px;"/>
     ${context ? `<div style="display:flex;position:absolute;left:64px;top:118px;max-width:852px;font-size:18px;line-height:1.2;color:${OG_THEME.muted};word-break:break-word;">${context}</div>` : ""}
     <div style="display:flex;position:absolute;left:64px;top:${titleTop}px;width:${layout.width}px;flex-direction:column;">
-      ${layout.lines.map((line) => `<div style="display:flex;font-family:'Geist Mono','Inter';font-size:${layout.fontSize}px;font-weight:500;line-height:1.13;letter-spacing:${title.length <= 24 ? -4 : -2}px;color:${OG_THEME.ink};">${line}</div>`).join("")}
+      ${layout.lines.map((line) => `<div style="display:flex;font-family:${monoFont};font-size:${layout.fontSize}px;font-weight:500;line-height:1.13;letter-spacing:${title.length <= 24 ? -4 : -2}px;color:${OG_THEME.ink};">${line}</div>`).join("")}
       <div style="display:flex;flex-direction:column;max-width:${Math.min(layout.width, 800)}px;margin-top:28px;">${layout.subtitleLines.map((line) => `<div style="display:flex;font-size:${subtitleSize}px;line-height:1.4;color:${OG_THEME.muted};">${line}</div>`).join("")}</div>
     </div>
     ${identity}
     ${facts}
-    <div style="display:flex;position:absolute;${stats.length ? "right:64px;top:58px;" : "left:64px;bottom:46px;"}font-family:'Geist Mono';font-size:21px;color:${OG_THEME.muted};">metagraph.sh</div>
+    <div style="display:flex;position:absolute;${stats.length ? "right:64px;top:58px;" : "left:64px;bottom:46px;"}font-family:${monoOnlyFont};font-size:21px;color:${OG_THEME.muted};">metagraph.sh</div>
   </div>`.replace(/>\s+</g, "><");
 }
 
@@ -632,9 +652,14 @@ export async function loadCardFont(
   })();
 
   fontMemo.set(cssUrl, pending);
+  // The usual seven fixed subsets stay hot. Bound unusual Latin/Greek subsets
+  // too, so public title variation cannot grow this isolate's memo forever.
+  if (fontMemo.size > 32) fontMemo.delete(fontMemo.keys().next().value!);
   // Never memoize a rejection: one Google Fonts hiccup would otherwise blank
   // every card this isolate goes on to render.
-  pending.catch(() => fontMemo.delete(cssUrl));
+  pending.catch(() => {
+    if (fontMemo.get(cssUrl) === pending) fontMemo.delete(cssUrl);
+  });
   return await pending;
 }
 
@@ -649,6 +674,29 @@ export const CARD_FONT_FACES = [
   { name: "Inter", weight: 500 },
   { name: "Inter", weight: 400 },
 ] as const;
+
+const cjkFonts = createCjkFontLoader();
+
+/** The Worker and native publisher use the same required-script font policy. */
+export async function loadCardFonts(markup: string, fetchImpl: typeof fetch = fetch) {
+  const subsetText = fontSubsetText(markup);
+  const [loaded, fallback] = await Promise.all([
+    Promise.allSettled(
+      CARD_FONT_FACES.map((face) => loadCardFont(face.name, face.weight, subsetText, fetchImpl)),
+    ),
+    cjkFonts.load(glyphsForMarkup(markup), fetchImpl),
+  ]);
+  const fonts = CARD_FONT_FACES.flatMap((face, index) => {
+    const result = loaded[index];
+    if (result?.status !== "fulfilled") {
+      console.error(`OG font unavailable: ${face.name} ${face.weight}`, result?.reason);
+      return [];
+    }
+    return [{ ...face, data: result.value, style: "normal" as const }];
+  });
+  if (!fonts.length) throw new Error("Failed to load any OG image font");
+  return [...fonts, ...fallback];
+}
 
 function makeCacheKey(url: URL, title: string, subtitle: string): Request {
   const cacheUrl = new URL(url);
@@ -918,26 +966,13 @@ export async function handleOgImage(request: Request, env?: unknown): Promise<Re
     accent,
     identifier,
   });
-  // One subset request per face, covering the fixed repertoire plus anything
-  // exotic this particular card paints -- see fontSubsetText and googleFontUrl.
-  const subsetText = fontSubsetText(markup);
-  const loaded = await Promise.allSettled(
-    CARD_FONT_FACES.map((face) => loadCardFont(face.name, face.weight, subsetText)),
-  );
-  // allSettled, not all: a card missing one weight still reads correctly, where
-  // one failed request rejecting the whole batch serves a generic fallback for every
-  // unfurl until the cache turns over. Only a total failure is unrenderable --
-  // satori needs at least one face.
-  const fonts = CARD_FONT_FACES.flatMap((face, index) => {
-    const result = loaded[index];
-    if (result?.status !== "fulfilled") {
-      console.error(`OG font unavailable: ${face.name} ${face.weight}`, result?.reason);
-      return [];
-    }
-    return [{ name: face.name, data: result.value, weight: face.weight, style: "normal" as const }];
-  });
-  if (fonts.length === 0) {
-    console.error("Failed to load any OG image font");
+  let fonts: Awaited<ReturnType<typeof loadCardFonts>>;
+  try {
+    fonts = await loadCardFonts(markup);
+  } catch (error) {
+    // A surviving Latin face cannot stand in for a required script. Preserve
+    // the designed recovery asset, and never cache a missing-glyph success.
+    console.error("Failed to load required OG image fonts", error);
     return fallbackImageResponse(env, url.origin);
   }
 

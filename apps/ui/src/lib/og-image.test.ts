@@ -59,6 +59,18 @@ describe("sanitizeText", () => {
 });
 
 describe("normalizeTitle", () => {
+  it("normalizes display Jamo and never splits supplementary Han at a text boundary", () => {
+    expect(normalizeTitle("한글")).toBe("한글");
+    for (const text of ["A".repeat(108) + "𠮷漢字", "𠮷".repeat(111)]) {
+      const title = normalizeTitle(text);
+      expect(Array.from(title)).toHaveLength(110);
+      expect(title).not.toMatch(/[\uD800-\uDFFF]/u);
+      expect(title.endsWith("…")).toBe(true);
+    }
+    expect(monogramFor("A𠮷")).toBe("A𠮷");
+    expect(monogramFor("𠮷 字")).toBe("𠮷字");
+    expect(monogramFor("한글")).toBe("한글");
+  });
   it("falls back to the default title when the param is absent or blank", () => {
     expect(normalizeTitle(null)).toBe("Metagraphed");
     expect(normalizeTitle("")).toBe("Metagraphed");
@@ -214,6 +226,28 @@ describe("titleFontSize (#8489)", () => {
 });
 
 describe("renderCardMarkup (#8489)", () => {
+  it("adds the same required families to every explicit font role, including monograms", () => {
+    const markup = renderCardMarkup({
+      title: "A𠮷",
+      subtitle: "かなカナー",
+      eyebrow: null,
+      identifier: "漢字",
+      entity: true,
+      stats: [{ label: "한", value: "글" }],
+    });
+    for (const [, family] of markup.matchAll(/font-family:([^;]+);/g))
+      expect(family).toContain("'Noto Sans JP','Noto Sans SC','Noto Sans KR'");
+    expect(glyphsForMarkup(markup)).toContain("한");
+    expect(glyphsForMarkup(markup)).not.toContain("ᄒ");
+    expect(markup).toContain(">A𠮷<");
+    const ordinary = renderCardMarkup({
+      title: "Latin · τ",
+      subtitle: "Data",
+      eyebrow: null,
+      stats: [],
+    });
+    expect(ordinary).not.toContain("Noto Sans");
+  });
   it("omits whitespace flex children without removing spaces from visible copy", () => {
     const markup = renderCardMarkup({
       title: "Two words",
@@ -1132,6 +1166,19 @@ describe("edge social-preview recovery", () => {
       expect.objectContaining({ name: "Geist", weight: 700 }),
     );
     expect(config.fonts).toContainEqual(expect.objectContaining({ name: "Inter", weight: 700 }));
+  });
+
+  it("does not render or cache a CJK card when only the Latin faces are usable", async () => {
+    const { module, render, cache } = await setup();
+    const response = await module.handleOgImage(new Request("https://metagraph.sh/og?title=漢字"), {
+      ASSETS: { fetch: assetFetch() },
+    });
+    expect(new Uint8Array(await response!.arrayBuffer())).toEqual(fallbackBytes);
+    expect(response?.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(render).not.toHaveBeenCalled();
+    expect(cache.put.mock.calls.some(([request]) => new URL(request.url).pathname === "/og")).toBe(
+      false,
+    );
   });
 
   it("serves the independent asset after a rasterizer exception", async () => {
