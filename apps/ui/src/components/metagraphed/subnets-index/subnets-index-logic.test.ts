@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { directoryHealthFilter } from "@/lib/metagraphed/subnet-health-filter";
 import type {
   Subnet,
   SubnetEconomics,
@@ -10,7 +11,6 @@ import {
   churnWindow,
   directoryRows,
   apiSpecStatus,
-  directoryHealthFilter,
   filterDirectory,
   fmtAlpha,
   fmtPct,

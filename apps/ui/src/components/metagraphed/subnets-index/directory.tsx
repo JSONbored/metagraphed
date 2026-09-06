@@ -201,7 +201,7 @@ export function DirectorySection({
               storageKey="subnets-directory-columns"
               mobile="cards"
               compactMobileLabels
-              className="[&_td[data-mobile-lead=true]]:before:hidden [&_.mg-dt-status]:self-start [&_.mg-dt-menu-trigger]:min-h-11 [&_.mg-dt-menu-trigger]:min-w-11"
+              className="max-lg:[&_td[data-mobile-lead=true]]:before:hidden [&_.mg-dt-status]:self-start [&_.mg-dt-menu-trigger]:min-h-11 [&_.mg-dt-menu-trigger]:min-w-11"
               empty="No subnets match these filters."
             />
           )}

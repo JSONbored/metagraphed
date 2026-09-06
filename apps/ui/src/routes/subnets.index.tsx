@@ -9,7 +9,7 @@ import {
   type SearchOutput,
 } from "@/lib/metagraphed/url-state";
 import { SubnetsPage } from "./-subnets-index-page";
-import { directoryHealthFilter } from "@/components/metagraphed/subnets-index/subnets-index-logic";
+import { directoryHealthFilter } from "@/lib/metagraphed/subnet-health-filter";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
 /**

@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
-import { useIsFetching, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { AnalyticsPage, EntityHero, Raw, type FactCells, type RawRow } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ErrorState } from "@/components/metagraphed/states";
@@ -95,7 +95,7 @@ export function SubnetsPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
-  const refreshing = useIsFetching(metagraphedQueryInvalidationTarget()) > 0;
+  const [refreshing, setRefreshing] = useState(false);
 
   const registry = useSuspenseQuery(
     subnetsQuery({ limit: SUBNETS_ALL_LIMIT, fields: SUBNET_DIRECTORY_FIELDS }),
@@ -232,9 +232,13 @@ export function SubnetsPage() {
             live={{
               updatedAt: recordModifiedAt(listed.meta) ?? null,
               source: "registry + chain",
-              onRefresh: () =>
-                void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
-              refreshing,
+              onRefresh: () => {
+                setRefreshing(true);
+                void queryClient
+                  .invalidateQueries(metagraphedQueryInvalidationTarget())
+                  .finally(() => setRefreshing(false));
+              },
+              refreshing: refreshing || secondaryReads.some(({ query }) => query.isFetching),
             }}
           />
         }
