@@ -10009,6 +10009,133 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 76,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn76:hyperparam:9004073:min_burn_tao",
+            "chain:sn76:hyperparam:9004073:immunity_period",
+            "chain:sn76:hyperparam:9004073:liquid_alpha_enabled",
+            "chain:sn76:hyperparam:9004073:target_regs_per_interval",
+            "chain:sn76:hyperparam:9004073:yuma_version",
+            "chain:sn76:hyperparam:9004073:subnet_is_active",
+            "chain:sn76:hyperparam:9002580:min_burn_tao"
+          ],
+          "text": "Subnet 76 recorded seven hyperparameter changes on 5 September."
+        },
+        {
+          "citations": [
+            "registry:subnet:76:renamed:2026-09-06T11:40:57.194Z"
+          ],
+          "text": "Subnet 76 recorded one registry change on 6 September."
+        }
+      ],
+      "slug": "2026-w36",
+      "sources": [
+        {
+          "id": "registry:subnet:76:renamed:2026-09-06T11:40:57.194Z",
+          "summary": "Subnet 76 renamed from Phylax to nun in the registry.",
+          "tags": [
+            "registry",
+            "subnet",
+            "renamed"
+          ],
+          "timestamp": "2026-09-06T11:40:57.194Z",
+          "title": "Subnet 76 renamed — Phylax → nun",
+          "url": "https://metagraph.sh/subnets/76"
+        },
+        {
+          "id": "chain:sn76:hyperparam:9004073:min_burn_tao",
+          "summary": "Minimum burn changed from 0.00005 to 0.0005 at block #9004073.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn76"
+          ],
+          "timestamp": "2026-09-05T22:06:32.220Z",
+          "title": "Subnet 76: Minimum burn 0.00005 → 0.0005",
+          "url": "https://metagraph.sh/blocks/9004073"
+        },
+        {
+          "id": "chain:sn76:hyperparam:9004073:immunity_period",
+          "summary": "Immunity period changed from 100 to 5000 at block #9004073.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn76"
+          ],
+          "timestamp": "2026-09-05T22:06:32.220Z",
+          "title": "Subnet 76: Immunity period 100 → 5000",
+          "url": "https://metagraph.sh/blocks/9004073"
+        },
+        {
+          "id": "chain:sn76:hyperparam:9004073:liquid_alpha_enabled",
+          "summary": "Liquid alpha changed from enabled to disabled at block #9004073.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn76"
+          ],
+          "timestamp": "2026-09-05T22:06:32.220Z",
+          "title": "Subnet 76: Liquid alpha enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9004073"
+        },
+        {
+          "id": "chain:sn76:hyperparam:9004073:target_regs_per_interval",
+          "summary": "Target registrations per interval changed from 1 to 2 at block #9004073.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn76"
+          ],
+          "timestamp": "2026-09-05T22:06:32.220Z",
+          "title": "Subnet 76: Target registrations per interval 1 → 2",
+          "url": "https://metagraph.sh/blocks/9004073"
+        },
+        {
+          "id": "chain:sn76:hyperparam:9004073:yuma_version",
+          "summary": "Yuma version changed from 2 to 3 at block #9004073.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn76"
+          ],
+          "timestamp": "2026-09-05T22:06:32.220Z",
+          "title": "Subnet 76: Yuma version 2 → 3",
+          "url": "https://metagraph.sh/blocks/9004073"
+        },
+        {
+          "id": "chain:sn76:hyperparam:9004073:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9004073.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn76"
+          ],
+          "timestamp": "2026-09-05T22:06:32.220Z",
+          "title": "Subnet 76: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9004073"
+        },
+        {
+          "id": "chain:sn76:hyperparam:9002580:min_burn_tao",
+          "summary": "Minimum burn changed from 0.1 to 0.00005 at block #9002580.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn76"
+          ],
+          "timestamp": "2026-09-05T17:06:37.236Z",
+          "title": "Subnet 76: Minimum burn 0.1 → 0.00005",
+          "url": "https://metagraph.sh/blocks/9002580"
+        }
+      ],
+      "substantive_count": 8,
+      "week": 36,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 77,
       "schema_version": 1,
       "sentences": [
