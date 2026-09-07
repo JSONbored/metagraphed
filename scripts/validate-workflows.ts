@@ -362,10 +362,17 @@ for (const workflow of workflows) {
       workflow,
       "publish workflow must expose an explicit validation-only dry-run mode",
     );
+    const publishingSecretsGuard = stepBlock(
+      content,
+      "Check Cloudflare publishing secrets",
+    );
     check(
-      content.includes(
-        "CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required for main publish runs",
-      ),
+      [
+        "CLOUDFLARE_API_TOKEN",
+        "CLOUDFLARE_ACCOUNT_ID",
+        "METAGRAPH_KV_NAMESPACE_ID",
+      ].every((name) => publishingSecretsGuard.includes(`[ -z "$${name}" ]`)) &&
+        publishingSecretsGuard.includes("exit 1"),
       workflow,
       "publish workflow must fail closed when Cloudflare publishing secrets are missing",
     );
