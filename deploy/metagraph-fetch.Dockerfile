@@ -48,7 +48,7 @@
 # multi-stage COPY (their documented, recommended pattern for Dockerfiles) --
 # NOT curl|sh, which a security scan correctly flagged as an unverified
 # remote-installer execution (2026-07-13).
-FROM ghcr.io/astral-sh/uv:0.12.9@sha256:8b940d3a9d65bed080436972241af2e21c84b5e8c9193f7014ed71479ee795ff AS uv
+FROM ghcr.io/astral-sh/uv:0.12.13@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6 AS uv
 # Pin both the semantic Python/Debian version and the OCI index digest so the
 # fetch image has no mutable base-image input. When bumping Python, update the
 # tag and digest together (Docker Hub lists this index digest for
