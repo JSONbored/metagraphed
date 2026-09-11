@@ -19,6 +19,24 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [2.7.0](https://github.com/JSONbored/metagraphed/compare/platform-v2.6.0...platform-v2.7.0) (2026-09-11)
+
+
+### Features
+
+* **api:** align dynamic sharing images with the current visual system ([#12118](https://github.com/JSONbored/metagraphed/issues/12118)) ([fe3cf19](https://github.com/JSONbored/metagraphed/commit/fe3cf1959793f82c293f26ba5a46f81ec87092d6))
+* **og:** redesign website previews around the current visual system ([#12117](https://github.com/JSONbored/metagraphed/issues/12117)) ([3fbda1a](https://github.com/JSONbored/metagraphed/commit/3fbda1aef69232c37b82e0e91d0f2f762e7e8ec0))
+
+
+### Bug Fixes
+
+* **og:** preserve readable entity identity in shared previews ([#12120](https://github.com/JSONbored/metagraphed/issues/12120)) ([6c4abe8](https://github.com/JSONbored/metagraphed/commit/6c4abe836c83708b4b82481cdbbeeda60b5c8bce))
+* **og:** recover entity artwork after transient logo failures ([#12122](https://github.com/JSONbored/metagraphed/issues/12122)) ([13b0dca](https://github.com/JSONbored/metagraphed/commit/13b0dca6b40aa12795fed9a72c7916122c42056d))
+* **og:** render supported multilingual identities in API previews ([#12123](https://github.com/JSONbored/metagraphed/issues/12123)) ([080ac01](https://github.com/JSONbored/metagraphed/commit/080ac01279180c948ee2965781e934cca97313a9))
+* **ui:** apply known-status filtering across the endpoint catalog ([#12108](https://github.com/JSONbored/metagraphed/issues/12108)) ([2d3eaad](https://github.com/JSONbored/metagraphed/commit/2d3eaadb8ddf5a8dddc69fda38913e2aee3b9b2c))
+* **ui:** preserve multilingual identities in shared previews ([#12124](https://github.com/JSONbored/metagraphed/issues/12124)) ([33c422f](https://github.com/JSONbored/metagraphed/commit/33c422f8754dc8c719cb2dc037e352d246408757))
+* **ui:** preserve native chart link keyboard navigation ([#12114](https://github.com/JSONbored/metagraphed/issues/12114)) ([68d1603](https://github.com/JSONbored/metagraphed/commit/68d1603c7c8687969a9aaeb297797e016e61177f))
+
 ## [2.6.0](https://github.com/JSONbored/metagraphed/compare/platform-v2.5.1...platform-v2.6.0) (2026-09-05)
 
 

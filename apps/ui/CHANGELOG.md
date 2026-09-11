@@ -9,6 +9,21 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [1.5.0](https://github.com/JSONbored/metagraphed/compare/ui-v1.4.2...ui-v1.5.0) (2026-09-11)
+
+
+### Features
+
+* **og:** redesign website previews around the current visual system ([#12117](https://github.com/JSONbored/metagraphed/issues/12117)) ([3fbda1a](https://github.com/JSONbored/metagraphed/commit/3fbda1aef69232c37b82e0e91d0f2f762e7e8ec0))
+
+
+### Bug Fixes
+
+* **og:** preserve readable entity identity in shared previews ([#12120](https://github.com/JSONbored/metagraphed/issues/12120)) ([6c4abe8](https://github.com/JSONbored/metagraphed/commit/6c4abe836c83708b4b82481cdbbeeda60b5c8bce))
+* **ui:** apply known-status filtering across the endpoint catalog ([#12108](https://github.com/JSONbored/metagraphed/issues/12108)) ([2d3eaad](https://github.com/JSONbored/metagraphed/commit/2d3eaadb8ddf5a8dddc69fda38913e2aee3b9b2c))
+* **ui:** preserve multilingual identities in shared previews ([#12124](https://github.com/JSONbored/metagraphed/issues/12124)) ([33c422f](https://github.com/JSONbored/metagraphed/commit/33c422f8754dc8c719cb2dc037e352d246408757))
+* **ui:** preserve native chart link keyboard navigation ([#12114](https://github.com/JSONbored/metagraphed/issues/12114)) ([68d1603](https://github.com/JSONbored/metagraphed/commit/68d1603c7c8687969a9aaeb297797e016e61177f))
+
 ## [1.4.2](https://github.com/JSONbored/metagraphed/compare/ui-v1.4.1...ui-v1.4.2) (2026-09-05)
 
 
