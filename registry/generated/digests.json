@@ -5282,6 +5282,128 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 35,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn35:hyperparam:9050491:min_burn_tao",
+            "chain:sn35:hyperparam:9048995:subnet_is_active",
+            "chain:sn35:hyperparam:9048695:min_burn_tao",
+            "chain:sn35:hyperparam:9046898:min_burn_tao",
+            "chain:sn35:hyperparam:9046898:immunity_period",
+            "chain:sn35:hyperparam:9046898:liquid_alpha_enabled",
+            "chain:sn35:hyperparam:9046898:target_regs_per_interval",
+            "chain:sn35:hyperparam:9046898:subnet_is_active"
+          ],
+          "text": "Subnet 35 recorded eight hyperparameter changes between 11 September and 12 September."
+        }
+      ],
+      "slug": "2026-w37",
+      "sources": [
+        {
+          "id": "chain:sn35:hyperparam:9050491:min_burn_tao",
+          "summary": "Minimum burn changed from 0.00005 to 0.999999 at block #9050491.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn35"
+          ],
+          "timestamp": "2026-09-12T09:06:30.206Z",
+          "title": "Subnet 35: Minimum burn 0.00005 → 0.999999",
+          "url": "https://metagraph.sh/blocks/9050491"
+        },
+        {
+          "id": "chain:sn35:hyperparam:9048995:subnet_is_active",
+          "summary": "Subnet active changed from disabled to enabled at block #9048995.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn35"
+          ],
+          "timestamp": "2026-09-12T04:06:30.596Z",
+          "title": "Subnet 35: Subnet active disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9048995"
+        },
+        {
+          "id": "chain:sn35:hyperparam:9048695:min_burn_tao",
+          "summary": "Minimum burn changed from 0.1 to 0.00005 at block #9048695.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn35"
+          ],
+          "timestamp": "2026-09-12T03:06:36.760Z",
+          "title": "Subnet 35: Minimum burn 0.1 → 0.00005",
+          "url": "https://metagraph.sh/blocks/9048695"
+        },
+        {
+          "id": "chain:sn35:hyperparam:9046898:min_burn_tao",
+          "summary": "Minimum burn changed from 0.1 to 0.1 at block #9046898.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn35"
+          ],
+          "timestamp": "2026-09-11T21:06:38.745Z",
+          "title": "Subnet 35: Minimum burn 0.1 → 0.1",
+          "url": "https://metagraph.sh/blocks/9046898"
+        },
+        {
+          "id": "chain:sn35:hyperparam:9046898:immunity_period",
+          "summary": "Immunity period changed from 7200 to 5000 at block #9046898.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn35"
+          ],
+          "timestamp": "2026-09-11T21:06:38.745Z",
+          "title": "Subnet 35: Immunity period 7200 → 5000",
+          "url": "https://metagraph.sh/blocks/9046898"
+        },
+        {
+          "id": "chain:sn35:hyperparam:9046898:liquid_alpha_enabled",
+          "summary": "Liquid alpha changed from enabled to disabled at block #9046898.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn35"
+          ],
+          "timestamp": "2026-09-11T21:06:38.745Z",
+          "title": "Subnet 35: Liquid alpha enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9046898"
+        },
+        {
+          "id": "chain:sn35:hyperparam:9046898:target_regs_per_interval",
+          "summary": "Target registrations per interval changed from 1 to 2 at block #9046898.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn35"
+          ],
+          "timestamp": "2026-09-11T21:06:38.745Z",
+          "title": "Subnet 35: Target registrations per interval 1 → 2",
+          "url": "https://metagraph.sh/blocks/9046898"
+        },
+        {
+          "id": "chain:sn35:hyperparam:9046898:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9046898.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn35"
+          ],
+          "timestamp": "2026-09-11T21:06:38.745Z",
+          "title": "Subnet 35: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9046898"
+        }
+      ],
+      "substantive_count": 8,
+      "week": 37,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 36,
       "schema_version": 1,
       "sentences": [
