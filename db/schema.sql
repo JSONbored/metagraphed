@@ -20,6 +20,201 @@ SET row_security = off;
 
 CREATE SCHEMA public;
 
+--
+-- Name: root_basket_hash32; Type: DOMAIN; Schema: public; Owner: -
+--
+
+CREATE DOMAIN public.root_basket_hash32 AS text
+	CONSTRAINT root_basket_hash32_check CHECK ((VALUE ~ '^0x[0-9a-f]{64}$'::text));
+
+--
+-- Name: root_basket_i128; Type: DOMAIN; Schema: public; Owner: -
+--
+
+CREATE DOMAIN public.root_basket_i128 AS numeric
+	CONSTRAINT root_basket_i128_check CHECK (((VALUE = trunc(VALUE)) AND (VALUE >= '-170141183460469231731687303715884105728'::numeric) AND (VALUE <= '170141183460469231731687303715884105727'::numeric)));
+
+--
+-- Name: root_basket_u128; Type: DOMAIN; Schema: public; Owner: -
+--
+
+CREATE DOMAIN public.root_basket_u128 AS numeric
+	CONSTRAINT root_basket_u128_check CHECK (((VALUE = trunc(VALUE)) AND (VALUE >= (0)::numeric) AND (VALUE <= '340282366920938463463374607431768211455'::numeric)));
+
+--
+-- Name: root_basket_u16; Type: DOMAIN; Schema: public; Owner: -
+--
+
+CREATE DOMAIN public.root_basket_u16 AS numeric
+	CONSTRAINT root_basket_u16_check CHECK (((VALUE = trunc(VALUE)) AND (VALUE >= (0)::numeric) AND (VALUE <= (65535)::numeric)));
+
+--
+-- Name: root_basket_u32; Type: DOMAIN; Schema: public; Owner: -
+--
+
+CREATE DOMAIN public.root_basket_u32 AS numeric
+	CONSTRAINT root_basket_u32_check CHECK (((VALUE = trunc(VALUE)) AND (VALUE >= (0)::numeric) AND (VALUE <= ('4294967295'::bigint)::numeric)));
+
+--
+-- Name: root_basket_u64; Type: DOMAIN; Schema: public; Owner: -
+--
+
+CREATE DOMAIN public.root_basket_u64 AS numeric
+	CONSTRAINT root_basket_u64_check CHECK (((VALUE = trunc(VALUE)) AND (VALUE >= (0)::numeric) AND (VALUE <= '18446744073709551615'::numeric)));
+
+--
+-- Name: root_basket_check_current(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.root_basket_check_current() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE candidate root_basket_captures%ROWTYPE; previous_height NUMERIC;
+BEGIN
+  SELECT * INTO STRICT candidate FROM root_basket_captures WHERE capture_id = NEW.capture_id;
+  IF candidate.network_genesis_hash <> NEW.network_genesis_hash OR candidate.decoder_version <> NEW.decoder_version THEN
+    RAISE EXCEPTION 'root basket current scope mismatch' USING ERRCODE = '23514';
+  END IF;
+  IF TG_OP = 'UPDATE' THEN
+    SELECT finalized_block INTO STRICT previous_height FROM root_basket_captures WHERE capture_id = OLD.capture_id;
+    IF NEW.network_genesis_hash <> OLD.network_genesis_hash OR NEW.decoder_version <> OLD.decoder_version
+      OR candidate.finalized_block < previous_height
+      OR (candidate.finalized_block = previous_height AND NEW.capture_id <> OLD.capture_id) THEN
+      RAISE EXCEPTION 'root basket current source order cannot regress' USING ERRCODE = '23514';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+--
+-- Name: root_basket_check_replay(jsonb, public.root_basket_hash32); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.root_basket_check_replay(payload jsonb, digest public.root_basket_hash32) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE existing root_basket_captures%ROWTYPE; receipt root_basket_capture_completions%ROWTYPE;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    (payload->>'network_genesis_hash') || ':' || (payload->>'decoder_version'), 0));
+  IF EXISTS (SELECT 1 FROM root_basket_captures
+    WHERE capture_id = (payload->>'capture_id')::uuid
+      AND (network_genesis_hash <> payload->>'network_genesis_hash'
+        OR finalized_block_hash <> payload->>'finalized_block_hash'
+        OR decoder_version <> payload->>'decoder_version')) THEN
+    RAISE EXCEPTION 'ROOT_BASKET_CAPTURE_CONFLICT: attempt ID already belongs to another observation';
+  END IF;
+  IF EXISTS (SELECT 1 FROM root_basket_captures
+    WHERE network_genesis_hash = payload->>'network_genesis_hash'
+      AND decoder_version = payload->>'decoder_version'
+      AND finalized_block = (payload->>'finalized_block')::numeric
+      AND finalized_block_hash <> payload->>'finalized_block_hash') THEN
+    RAISE EXCEPTION 'ROOT_BASKET_CAPTURE_CONFLICT: finalized height has a different hash';
+  END IF;
+  SELECT * INTO existing FROM root_basket_captures
+    WHERE network_genesis_hash = payload->>'network_genesis_hash'
+      AND finalized_block_hash = payload->>'finalized_block_hash'
+      AND decoder_version = payload->>'decoder_version';
+  IF FOUND THEN
+    SELECT * INTO receipt FROM root_basket_capture_completions WHERE capture_id = existing.capture_id;
+    IF NOT FOUND OR receipt.content_sha256 <> digest THEN
+      RAISE EXCEPTION 'ROOT_BASKET_CAPTURE_CONFLICT: observation is incomplete or content differs';
+    END IF;
+  END IF;
+END;
+$$;
+
+--
+-- Name: root_basket_complete_capture(uuid, public.root_basket_hash32, public.root_basket_u64); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.root_basket_complete_capture(id uuid, digest public.root_basket_hash32, accepted public.root_basket_u64) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE manifest root_basket_captures%ROWTYPE;
+BEGIN
+  SELECT * INTO STRICT manifest FROM root_basket_captures WHERE capture_id = id FOR UPDATE;
+  IF EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id = id AND content_sha256 = digest) THEN
+    RETURN;
+  END IF;
+  IF (SELECT count(*) FROM root_basket_capture_pages WHERE capture_id = id) <> manifest.expected_pages
+    OR (SELECT count(*) FROM root_basket_fund_snapshots WHERE capture_id = id) <> manifest.expected_funds
+    OR EXISTS (SELECT 1 FROM root_basket_capture_pages p
+      LEFT JOIN root_basket_capture_pages previous ON previous.capture_id = p.capture_id AND previous.page_index = p.page_index - 1
+      WHERE p.capture_id = id AND (p.page_index >= manifest.expected_pages
+        OR (p.page_index = manifest.expected_pages - 1) <> (p.next_after IS NULL)
+        OR (p.page_index > 0 AND (previous.page_index IS NULL OR p.start_after IS DISTINCT FROM previous.next_after))
+        OR p.fund_count <> (SELECT count(*) FROM root_basket_fund_snapshots f WHERE f.capture_id = id AND f.page_index = p.page_index)))
+    OR EXISTS (SELECT 1 FROM root_basket_fund_snapshots f WHERE f.capture_id = id AND (
+      f.first_block > manifest.finalized_block
+      OR f.holdings_count <> (SELECT count(*) FROM root_basket_holdings h WHERE h.capture_id = id AND h.hotkey = f.hotkey)
+      OR f.targets_count <> (SELECT count(*) FROM root_basket_targets t WHERE t.capture_id = id AND t.hotkey = f.hotkey))) THEN
+    RAISE EXCEPTION 'root basket persisted capture is incomplete' USING ERRCODE = '23514';
+  END IF;
+  INSERT INTO root_basket_capture_completions VALUES (id, digest, accepted);
+  INSERT INTO root_basket_current VALUES (manifest.network_genesis_hash, manifest.decoder_version, id)
+    ON CONFLICT (network_genesis_hash, decoder_version) DO UPDATE SET capture_id = EXCLUDED.capture_id
+    WHERE (SELECT finalized_block FROM root_basket_captures WHERE capture_id = root_basket_current.capture_id) < manifest.finalized_block;
+END;
+$$;
+
+--
+-- Name: root_basket_preserve_completed_observation(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.root_basket_preserve_completed_observation() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE id UUID; next_id UUID;
+BEGIN
+  id := CASE WHEN TG_OP = 'INSERT' THEN NEW.capture_id ELSE OLD.capture_id END;
+  next_id := CASE WHEN TG_OP = 'UPDATE' THEN NEW.capture_id ELSE id END;
+  -- Row mutation already locks a manifest itself. Child writes must take the
+  -- same parent lock as completion BEFORE checking the receipt, including both
+  -- parents in deterministic order when moving a child between captures.
+  IF TG_TABLE_NAME <> 'root_basket_captures' THEN
+    PERFORM capture_id FROM root_basket_captures
+      WHERE capture_id IN (id, next_id) ORDER BY capture_id FOR UPDATE;
+  END IF;
+  IF EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (id, next_id)) THEN
+    RAISE EXCEPTION 'completed root basket observation is immutable' USING ERRCODE = '23514';
+  END IF;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
+END;
+$$;
+
+--
+-- Name: root_basket_preserve_completion(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.root_basket_preserve_completion() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'DELETE' OR NEW IS DISTINCT FROM OLD THEN
+    RAISE EXCEPTION 'root basket completion is immutable' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+--
+-- Name: root_basket_preserve_receipt(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.root_basket_preserve_receipt() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW IS DISTINCT FROM OLD THEN
+    RAISE EXCEPTION 'root basket receipt is immutable' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -178,7 +373,8 @@ CREATE TABLE public.api_keys (
     revoked_at bigint,
     last_used_at bigint,
     account_id integer,
-    unkey_key_id text
+    unkey_key_id text,
+    revocation_requested_at bigint
 );
 
 --
@@ -729,6 +925,130 @@ CREATE TABLE public.revenue_probe_failures (
     reason text NOT NULL,
     observed_at bigint NOT NULL,
     CONSTRAINT revenue_probe_failures_observed_at_is_millis CHECK ((observed_at >= '1000000000000'::bigint))
+);
+
+--
+-- Name: root_basket_capture_completions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.root_basket_capture_completions (
+    capture_id uuid NOT NULL,
+    content_sha256 public.root_basket_hash32 NOT NULL,
+    accepted_at_ms public.root_basket_u64 NOT NULL
+);
+
+--
+-- Name: root_basket_capture_pages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.root_basket_capture_pages (
+    capture_id uuid NOT NULL,
+    page_index public.root_basket_u32 NOT NULL,
+    start_after public.root_basket_hash32,
+    next_after public.root_basket_hash32,
+    response_sha256 public.root_basket_hash32 NOT NULL,
+    fund_count public.root_basket_u16 NOT NULL,
+    CONSTRAINT root_basket_capture_pages_check CHECK ((((page_index)::numeric = (0)::numeric) = (start_after IS NULL))),
+    CONSTRAINT root_basket_capture_pages_check1 CHECK (((start_after IS NULL) OR (next_after IS NULL) OR ((start_after)::text <> (next_after)::text))),
+    CONSTRAINT root_basket_capture_pages_fund_count_check CHECK (((fund_count)::numeric <= (256)::numeric))
+);
+
+--
+-- Name: root_basket_captures; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.root_basket_captures (
+    capture_id uuid NOT NULL,
+    network text NOT NULL,
+    network_genesis_hash public.root_basket_hash32 NOT NULL,
+    finalized_block_hash public.root_basket_hash32 NOT NULL,
+    finalized_block public.root_basket_u64 NOT NULL,
+    runtime_spec_version public.root_basket_u32 NOT NULL,
+    runtime_api_version public.root_basket_u16 NOT NULL,
+    decoder_version text NOT NULL,
+    metadata_sha256 public.root_basket_hash32 NOT NULL,
+    started_at_ms public.root_basket_u64 NOT NULL,
+    finished_at_ms public.root_basket_u64 NOT NULL,
+    expected_pages public.root_basket_u32 NOT NULL,
+    expected_funds public.root_basket_u32 NOT NULL,
+    index_status text NOT NULL,
+    index_completed_block public.root_basket_u64,
+    bag_index_q64_bits public.root_basket_u128 NOT NULL,
+    stake_index_q64_bits public.root_basket_u128 NOT NULL,
+    CONSTRAINT root_basket_captures_check CHECK (((finished_at_ms)::numeric >= (started_at_ms)::numeric)),
+    CONSTRAINT root_basket_captures_check1 CHECK ((((index_status = 'published'::text) AND (index_completed_block IS NOT NULL) AND ((index_completed_block)::numeric <= (finalized_block)::numeric)) OR ((index_status = 'not_published'::text) AND (index_completed_block IS NULL) AND ((bag_index_q64_bits)::numeric = '18446744073709551616'::numeric) AND ((stake_index_q64_bits)::numeric = '18446744073709551616'::numeric)))),
+    CONSTRAINT root_basket_captures_decoder_version_check CHECK ((decoder_version = 'subtensor-v454-14cde641-v1'::text)),
+    CONSTRAINT root_basket_captures_expected_pages_check CHECK (((expected_pages)::numeric > (0)::numeric)),
+    CONSTRAINT root_basket_captures_index_status_check CHECK ((index_status = ANY (ARRAY['published'::text, 'not_published'::text]))),
+    CONSTRAINT root_basket_captures_network_check CHECK ((network = ANY (ARRAY['finney'::text, 'test'::text, 'local'::text]))),
+    CONSTRAINT root_basket_captures_runtime_api_version_check CHECK (((runtime_api_version)::numeric = (3)::numeric)),
+    CONSTRAINT root_basket_captures_runtime_spec_version_check CHECK (((runtime_spec_version)::numeric = (454)::numeric))
+);
+
+--
+-- Name: root_basket_current; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.root_basket_current (
+    network_genesis_hash public.root_basket_hash32 NOT NULL,
+    decoder_version text NOT NULL,
+    capture_id uuid NOT NULL
+);
+
+--
+-- Name: root_basket_fund_snapshots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.root_basket_fund_snapshots (
+    capture_id uuid NOT NULL,
+    hotkey public.root_basket_hash32 NOT NULL,
+    page_index public.root_basket_u32 NOT NULL,
+    shares_atomic public.root_basket_u64 NOT NULL,
+    spot_nav_rao public.root_basket_u64 NOT NULL,
+    realizable_nav_rao public.root_basket_u64 NOT NULL,
+    deposited_rao public.root_basket_u64 NOT NULL,
+    redeemed_rao public.root_basket_u64 NOT NULL,
+    raw_spot_price_q64_bits public.root_basket_u128 NOT NULL,
+    display_price_q64_bits public.root_basket_u128 NOT NULL,
+    display_shares_q64_bits public.root_basket_u128 NOT NULL,
+    stake_price_q64_bits public.root_basket_u128 NOT NULL,
+    staker_twr_q64_bits public.root_basket_u128 NOT NULL,
+    pending_entitlement_q64_bits public.root_basket_u128 CONSTRAINT root_basket_fund_snapshots_pending_entitlement_q64_bit_not_null NOT NULL,
+    provisional boolean NOT NULL,
+    first_block public.root_basket_u64 NOT NULL,
+    price_divisor_q64_bits public.root_basket_u128,
+    rate0_q32_bits public.root_basket_i128,
+    tr_splice_q64_bits public.root_basket_u128,
+    holdings_count public.root_basket_u32 NOT NULL,
+    targets_count public.root_basket_u32 NOT NULL,
+    CONSTRAINT root_basket_fund_snapshots_check CHECK (((provisional AND ((first_block)::numeric = (0)::numeric) AND (price_divisor_q64_bits IS NULL) AND (rate0_q32_bits IS NULL) AND (tr_splice_q64_bits IS NULL)) OR ((NOT provisional) AND ((first_block)::numeric > (0)::numeric) AND (price_divisor_q64_bits IS NOT NULL) AND ((price_divisor_q64_bits)::numeric > (0)::numeric) AND (rate0_q32_bits IS NOT NULL) AND (tr_splice_q64_bits IS NOT NULL) AND ((tr_splice_q64_bits)::numeric > (0)::numeric)))),
+    CONSTRAINT root_basket_fund_snapshots_shares_atomic_check CHECK (((shares_atomic)::numeric > (0)::numeric))
+);
+
+--
+-- Name: root_basket_holdings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.root_basket_holdings (
+    capture_id uuid NOT NULL,
+    hotkey public.root_basket_hash32 NOT NULL,
+    netuid public.root_basket_u16 NOT NULL,
+    quantity_atomic public.root_basket_u64 NOT NULL,
+    quantity_unit text NOT NULL,
+    spot_value_rao public.root_basket_u64 NOT NULL,
+    realizable_value_rao public.root_basket_u64 NOT NULL,
+    CONSTRAINT root_basket_holdings_check CHECK (((((netuid)::numeric = (0)::numeric) AND (quantity_unit = 'rao'::text)) OR (((netuid)::numeric > (0)::numeric) AND (quantity_unit = 'alpha_atomic'::text))))
+);
+
+--
+-- Name: root_basket_targets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.root_basket_targets (
+    capture_id uuid NOT NULL,
+    hotkey public.root_basket_hash32 NOT NULL,
+    netuid public.root_basket_u16 NOT NULL,
+    weight public.root_basket_u16 NOT NULL
 );
 
 --
@@ -1632,6 +1952,62 @@ ALTER TABLE ONLY public.revenue_probe_failures
     ADD CONSTRAINT revenue_probe_failures_pkey PRIMARY KEY (surface_id, observed_at);
 
 --
+-- Name: root_basket_capture_completions root_basket_capture_completions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_capture_completions
+    ADD CONSTRAINT root_basket_capture_completions_pkey PRIMARY KEY (capture_id);
+
+--
+-- Name: root_basket_capture_pages root_basket_capture_pages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_capture_pages
+    ADD CONSTRAINT root_basket_capture_pages_pkey PRIMARY KEY (capture_id, page_index);
+
+--
+-- Name: root_basket_captures root_basket_captures_network_genesis_hash_finalized_block_h_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_captures
+    ADD CONSTRAINT root_basket_captures_network_genesis_hash_finalized_block_h_key UNIQUE (network_genesis_hash, finalized_block_hash, decoder_version);
+
+--
+-- Name: root_basket_captures root_basket_captures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_captures
+    ADD CONSTRAINT root_basket_captures_pkey PRIMARY KEY (capture_id);
+
+--
+-- Name: root_basket_current root_basket_current_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_current
+    ADD CONSTRAINT root_basket_current_pkey PRIMARY KEY (network_genesis_hash, decoder_version);
+
+--
+-- Name: root_basket_fund_snapshots root_basket_fund_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_fund_snapshots
+    ADD CONSTRAINT root_basket_fund_snapshots_pkey PRIMARY KEY (capture_id, hotkey);
+
+--
+-- Name: root_basket_holdings root_basket_holdings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_holdings
+    ADD CONSTRAINT root_basket_holdings_pkey PRIMARY KEY (capture_id, hotkey, netuid);
+
+--
+-- Name: root_basket_targets root_basket_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_targets
+    ADD CONSTRAINT root_basket_targets_pkey PRIMARY KEY (capture_id, hotkey, netuid);
+
+--
 -- Name: rpc_accounts rpc_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2300,6 +2676,30 @@ CREATE INDEX nominator_positions_hotkey_netuid_idx ON public.nominator_positions
 CREATE INDEX origin_reachability_by_verdict ON public.origin_reachability USING btree (verdict, checked_at DESC);
 
 --
+-- Name: root_basket_capture_page_cursors; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX root_basket_capture_page_cursors ON public.root_basket_capture_pages USING btree (capture_id, start_after) NULLS NOT DISTINCT;
+
+--
+-- Name: root_basket_capture_terminal_page; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX root_basket_capture_terminal_page ON public.root_basket_capture_pages USING btree (capture_id) WHERE (next_after IS NULL);
+
+--
+-- Name: root_basket_captures_history; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX root_basket_captures_history ON public.root_basket_captures USING btree (network_genesis_hash, finalized_block DESC);
+
+--
+-- Name: root_basket_fund_address_history; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX root_basket_fund_address_history ON public.root_basket_fund_snapshots USING btree (hotkey, capture_id);
+
+--
 -- Name: subnet_emission_enabled_history_netuid_observed_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2354,11 +2754,101 @@ CREATE UNIQUE INDEX subnet_ownership_history_netuid_owner_idx ON public.subnet_o
 CREATE UNIQUE INDEX ux_surface_failure_daily_key ON public.surface_failure_daily USING btree (day, netuid, kind, classification) NULLS NOT DISTINCT;
 
 --
+-- Name: root_basket_capture_pages root_basket_completed_immutable; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER root_basket_completed_immutable BEFORE INSERT OR DELETE OR UPDATE ON public.root_basket_capture_pages FOR EACH ROW EXECUTE FUNCTION public.root_basket_preserve_completed_observation();
+
+--
+-- Name: root_basket_captures root_basket_completed_immutable; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER root_basket_completed_immutable BEFORE INSERT OR DELETE OR UPDATE ON public.root_basket_captures FOR EACH ROW EXECUTE FUNCTION public.root_basket_preserve_completed_observation();
+
+--
+-- Name: root_basket_fund_snapshots root_basket_completed_immutable; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER root_basket_completed_immutable BEFORE INSERT OR DELETE OR UPDATE ON public.root_basket_fund_snapshots FOR EACH ROW EXECUTE FUNCTION public.root_basket_preserve_completed_observation();
+
+--
+-- Name: root_basket_holdings root_basket_completed_immutable; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER root_basket_completed_immutable BEFORE INSERT OR DELETE OR UPDATE ON public.root_basket_holdings FOR EACH ROW EXECUTE FUNCTION public.root_basket_preserve_completed_observation();
+
+--
+-- Name: root_basket_targets root_basket_completed_immutable; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER root_basket_completed_immutable BEFORE INSERT OR DELETE OR UPDATE ON public.root_basket_targets FOR EACH ROW EXECUTE FUNCTION public.root_basket_preserve_completed_observation();
+
+--
+-- Name: root_basket_capture_completions root_basket_completion_immutable; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER root_basket_completion_immutable BEFORE DELETE OR UPDATE ON public.root_basket_capture_completions FOR EACH ROW EXECUTE FUNCTION public.root_basket_preserve_completion();
+
+--
+-- Name: root_basket_current root_basket_current_ordered; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER root_basket_current_ordered BEFORE INSERT OR UPDATE ON public.root_basket_current FOR EACH ROW EXECUTE FUNCTION public.root_basket_check_current();
+
+--
+-- Name: root_basket_capture_pages root_basket_receipt_immutable; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER root_basket_receipt_immutable BEFORE UPDATE ON public.root_basket_capture_pages FOR EACH ROW EXECUTE FUNCTION public.root_basket_preserve_receipt();
+
+--
 -- Name: chain_alert_deliveries chain_alert_deliveries_trigger_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chain_alert_deliveries
     ADD CONSTRAINT chain_alert_deliveries_trigger_id_fkey FOREIGN KEY (trigger_id) REFERENCES public.chain_alert_triggers(id) ON DELETE CASCADE;
+
+--
+-- Name: root_basket_capture_completions root_basket_capture_completions_capture_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_capture_completions
+    ADD CONSTRAINT root_basket_capture_completions_capture_id_fkey FOREIGN KEY (capture_id) REFERENCES public.root_basket_captures(capture_id);
+
+--
+-- Name: root_basket_capture_pages root_basket_capture_pages_capture_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_capture_pages
+    ADD CONSTRAINT root_basket_capture_pages_capture_id_fkey FOREIGN KEY (capture_id) REFERENCES public.root_basket_captures(capture_id);
+
+--
+-- Name: root_basket_current root_basket_current_capture_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_current
+    ADD CONSTRAINT root_basket_current_capture_id_fkey FOREIGN KEY (capture_id) REFERENCES public.root_basket_capture_completions(capture_id);
+
+--
+-- Name: root_basket_fund_snapshots root_basket_fund_snapshots_capture_id_page_index_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_fund_snapshots
+    ADD CONSTRAINT root_basket_fund_snapshots_capture_id_page_index_fkey FOREIGN KEY (capture_id, page_index) REFERENCES public.root_basket_capture_pages(capture_id, page_index);
+
+--
+-- Name: root_basket_holdings root_basket_holdings_capture_id_hotkey_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_holdings
+    ADD CONSTRAINT root_basket_holdings_capture_id_hotkey_fkey FOREIGN KEY (capture_id, hotkey) REFERENCES public.root_basket_fund_snapshots(capture_id, hotkey);
+
+--
+-- Name: root_basket_targets root_basket_targets_capture_id_hotkey_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.root_basket_targets
+    ADD CONSTRAINT root_basket_targets_capture_id_hotkey_fkey FOREIGN KEY (capture_id, hotkey) REFERENCES public.root_basket_fund_snapshots(capture_id, hotkey);
 
 --
 -- PostgreSQL database dump complete
