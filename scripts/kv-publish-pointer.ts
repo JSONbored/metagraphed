@@ -1,4 +1,10 @@
-import { spawnSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import {
+  commitArtifactRelease,
+  readReleaseJournal,
+  releaseJournalActive,
+} from "./artifact-release-commit.ts";
+import { createReleaseStore } from "./artifact-release-store.ts";
 import path from "node:path";
 import {
   artifactFilePath,
@@ -114,42 +120,59 @@ if (process.env.METAGRAPH_ALLOW_KV_WRITE !== "1") {
 
 await assertPointerPrefixServes();
 
-for (const [key, value] of kvEntries) {
-  putKv(key, value);
-}
-
-console.log(`Published ${kvEntries.length} KV control record(s).`);
-
-function putKv(key: string, value: unknown): void {
-  const wranglerBin = path.join(
-    repoRoot,
-    "node_modules",
-    ".bin",
-    process.platform === "win32" ? "wrangler.cmd" : "wrangler",
-  );
-  const result = spawnSync(
-    wranglerBin,
-    [
-      "kv",
-      "key",
-      "put",
-      key,
-      JSON.stringify(value),
-      "--namespace-id",
-      process.env.METAGRAPH_KV_NAMESPACE_ID as string,
-      "--remote",
-    ],
+const store = createReleaseStore(true);
+if (
+  await releaseJournalActive(
+    store,
+    process.env.METAGRAPH_RELEASE_MIGRATION === "pending",
+  )
+) {
+  const journal = await readReleaseJournal(store);
+  if (journal.state !== "committed")
+    throw new Error(
+      "Pending release must be resumed before a new data pointer is prepared.",
+    );
+  const controls = [
+    { name: "r2-manifest.json", local: artifactFilePath("r2-manifest.json") },
     {
-      encoding: "utf8",
-      stdio: "pipe",
+      name: "r2-manifest.compact.json",
+      local: path.join(repoRoot, "public/metagraph/r2-manifest.json"),
     },
+    {
+      name: "build-summary.json",
+      local: artifactFilePath("build-summary.json"),
+    },
+  ];
+  const objects = [];
+  for (const control of controls)
+    objects.push({
+      key: `${manifest.run_prefix}${control.name}`,
+      bytes: await readFile(control.local),
+      contentType: "application/json; charset=utf-8",
+    });
+  const result = await commitArtifactRelease(store, {
+    id: hashJson({
+      kind: "data",
+      base: journal.head_hash,
+      target: hashJson(pointer),
+    }),
+    kind: "data",
+    base: journal.head,
+    target: pointer,
+    objects,
+  });
+  console.log(stableStringify(result));
+  if (result.status !== "release-bound") process.exitCode = 2;
+} else {
+  // Explicit, temporary migration compatibility. Once either durable journal
+  // or activation marker exists this branch can never bypass enforcement.
+  await store.putPointer(pointer);
+  console.log(
+    stableStringify({
+      status: "migration-pending",
+      published_keys: ["metagraph:latest"],
+    }),
   );
-
-  if (result.status !== 0) {
-    console.error(result.stdout);
-    console.error(result.stderr);
-    process.exit(result.status || 1);
-  }
 }
 
 /**

@@ -44,21 +44,39 @@ on:
       publish_mode:
         description: "Use publish for real R2/KV publish; use dry-run for validation only."
         required: true
-        default: publish
+        default: dry-run
         type: choice
         options:
           - publish
           - dry-run
 
+      publication_scope:
+        description: "Data refresh, image-only release, or explicit journal migration/recovery."
+        required: true
+        default: data
+        type: choice
+        options: [data, images, bootstrap, resume]
+      expected_pointer_hash:
+        description: "Bootstrap only: reviewed SHA-256 of the settled active pointer."
+        required: false
+        type: string
+
 permissions:
   contents: read
 
+env:
+  METAGRAPH_RELEASE_OWNER: publish-cloudflare
+  # Temporary migration window. Durable activation permanently disables the
+  # compatibility path even while this value remains in an older queued run.
+  METAGRAPH_RELEASE_MIGRATION: pending
+
 concurrency:
-  group: publish-cloudflare-${{ github.ref }}
+  group: publish-cloudflare-release
   cancel-in-progress: false
 
 jobs:
   refresh:
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.publication_scope == 'data')
     runs-on: ubuntu-latest
     timeout-minutes: 45 # full production build: chain snapshot + live probes + adapter re-snapshot
     permissions:
@@ -357,8 +375,8 @@ jobs:
 
           echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
 
-          if [ "$dry_run" != "true" ] && { [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; }; then
-            echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required for main publish runs. Use workflow_dispatch publish_mode=dry-run for validation-only runs."
+          if [ "$dry_run" != "true" ] && { [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$METAGRAPH_KV_NAMESPACE_ID" ]; }; then
+            echo "::error::CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and METAGRAPH_KV_NAMESPACE_ID are required for main publish runs. Use workflow_dispatch publish_mode=dry-run for validation-only runs."
             exit 1
           fi
         env:
@@ -366,6 +384,17 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           PUBLISH_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_mode || 'publish' }}
+
+      - name: Reconcile release journal and retain approved images
+        id: prepare-release
+        if: steps.cloudflare-secrets.outputs.kv_publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: node scripts/prepare-data-release.ts
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+          METAGRAPH_ALLOW_R2_UPLOAD: "1"
+          METAGRAPH_ALLOW_KV_WRITE: "1"
 
       # Compute the real "what changed since last publish" changelog by diffing
       # the staged build against the previous R2 publish — BEFORE r2:upload
@@ -398,7 +427,7 @@ jobs:
         run: npm run r2:manifest
 
       - name: Upload artifact history to R2
-        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        if: steps.cloudflare-secrets.outputs.kv_publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true' && steps.prepare-release.outcome == 'success'
         run: npm run r2:upload
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -410,6 +439,7 @@ jobs:
         if: steps.cloudflare-secrets.outputs.kv_publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
         run: npm run kv:publish
         env:
+          METAGRAPH_ALLOW_R2_UPLOAD: "1"
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
@@ -465,3 +495,86 @@ jobs:
           curl -fsS -m 15 -X POST "$ALERT_WEBHOOK_URL" \
             -H 'content-type: application/json' \
             -d "{\"content\":\"🔴 metagraphed production publish FAILED (deploy job) — R2/KV may go stale — ${RUN_URL}\"}" || true
+
+  image-release:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publication_scope == 'images'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Install
+        run: npm ci
+      - name: Capture identified active source
+        run: node scripts/publish-og-image.ts capture "$RUNNER_TEMP/og-release"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+      - name: Render only approved images
+        run: node scripts/publish-og-image.ts render "$RUNNER_TEMP/og-release"
+      - name: Plan immutable image overlay
+        run: node scripts/publish-og-image.ts plan "$RUNNER_TEMP/og-release"
+      - name: Publish reviewed image release
+        if: inputs.publish_mode == 'publish'
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(git ls-remote origin refs/heads/main | cut -f1)"
+          node scripts/publish-og-image.ts publish "$RUNNER_TEMP/og-release"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+          METAGRAPH_ALLOW_R2_UPLOAD: "1"
+          METAGRAPH_ALLOW_KV_WRITE: "1"
+      - name: Retain source, render and publication receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: og-image-release
+          path: ${{ runner.temp }}/og-release
+          if-no-files-found: warn
+          retention-days: 30
+
+  release-control:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (inputs.publication_scope == 'bootstrap' || inputs.publication_scope == 'resume')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Install
+        run: npm ci
+      - name: Describe journal operation
+        run: |
+          echo "Scope: $RELEASE_SCOPE; mode: $PUBLISH_MODE"
+          echo "Bootstrap requires a previously reviewed settled pointer digest."
+        env:
+          RELEASE_SCOPE: ${{ inputs.publication_scope }}
+          PUBLISH_MODE: ${{ inputs.publish_mode }}
+      - name: Initialize or resume the governed release journal
+        if: inputs.publish_mode == 'publish'
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(git ls-remote origin refs/heads/main | cut -f1)"
+          node scripts/publish-og-image.ts "$RELEASE_SCOPE" "$EXPECTED_POINTER_HASH"
+        env:
+          RELEASE_SCOPE: ${{ inputs.publication_scope }}
+          EXPECTED_POINTER_HASH: ${{ inputs.expected_pointer_hash }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+          METAGRAPH_ALLOW_R2_UPLOAD: "1"
+          METAGRAPH_ALLOW_KV_WRITE: "1"
