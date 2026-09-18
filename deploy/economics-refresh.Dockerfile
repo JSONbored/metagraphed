@@ -54,7 +54,7 @@
 # directly: `error: linker \`cc\` not found` compiling bittensor-drand's
 # pyo3 extension under node:22-alpine). Debian's glibc gets the prebuilt
 # wheel, no compiler needed, matching the already-proven fetch image.
-FROM ghcr.io/astral-sh/uv:0.12.9@sha256:8b940d3a9d65bed080436972241af2e21c84b5e8c9193f7014ed71479ee795ff AS uv
+FROM ghcr.io/astral-sh/uv:0.12.17@sha256:10787c682e4184e4f290de1171fd4703dc63de99221f10fe1c99002ce7fa9acc AS uv
 FROM node:22.23.1-slim
 RUN apt-get update && apt-get install -y --no-install-recommends python3 git ca-certificates \
   && rm -rf /var/lib/apt/lists/*
