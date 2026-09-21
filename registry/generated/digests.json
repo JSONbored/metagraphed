@@ -1208,6 +1208,128 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 108,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn108:hyperparam:9111322:min_burn_tao",
+            "chain:sn108:hyperparam:9111322:activity_cutoff",
+            "chain:sn108:hyperparam:9111322:commit_reveal_enabled",
+            "chain:sn108:hyperparam:9111322:commit_reveal_period",
+            "chain:sn108:hyperparam:9111322:liquid_alpha_enabled",
+            "chain:sn108:hyperparam:9111322:target_regs_per_interval",
+            "chain:sn108:hyperparam:9111322:yuma_version",
+            "chain:sn108:hyperparam:9111322:subnet_is_active"
+          ],
+          "text": "Subnet 108 recorded eight hyperparameter changes on 20 September."
+        }
+      ],
+      "slug": "2026-w38",
+      "sources": [
+        {
+          "id": "chain:sn108:hyperparam:9111322:min_burn_tao",
+          "summary": "Minimum burn changed from 0.05 to 0.0005 at block #9111322.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-09-20T21:06:32.708Z",
+          "title": "Subnet 108: Minimum burn 0.05 → 0.0005",
+          "url": "https://metagraph.sh/blocks/9111322"
+        },
+        {
+          "id": "chain:sn108:hyperparam:9111322:activity_cutoff",
+          "summary": "Activity cutoff changed from 720 to 5000 at block #9111322.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-09-20T21:06:32.708Z",
+          "title": "Subnet 108: Activity cutoff 720 → 5000",
+          "url": "https://metagraph.sh/blocks/9111322"
+        },
+        {
+          "id": "chain:sn108:hyperparam:9111322:commit_reveal_enabled",
+          "summary": "Commit-reveal changed from disabled to enabled at block #9111322.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-09-20T21:06:32.708Z",
+          "title": "Subnet 108: Commit-reveal disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9111322"
+        },
+        {
+          "id": "chain:sn108:hyperparam:9111322:commit_reveal_period",
+          "summary": "Commit-reveal period changed from 4 to 1 at block #9111322.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-09-20T21:06:32.708Z",
+          "title": "Subnet 108: Commit-reveal period 4 → 1",
+          "url": "https://metagraph.sh/blocks/9111322"
+        },
+        {
+          "id": "chain:sn108:hyperparam:9111322:liquid_alpha_enabled",
+          "summary": "Liquid alpha changed from enabled to disabled at block #9111322.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-09-20T21:06:32.708Z",
+          "title": "Subnet 108: Liquid alpha enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9111322"
+        },
+        {
+          "id": "chain:sn108:hyperparam:9111322:target_regs_per_interval",
+          "summary": "Target registrations per interval changed from 1 to 2 at block #9111322.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-09-20T21:06:32.708Z",
+          "title": "Subnet 108: Target registrations per interval 1 → 2",
+          "url": "https://metagraph.sh/blocks/9111322"
+        },
+        {
+          "id": "chain:sn108:hyperparam:9111322:yuma_version",
+          "summary": "Yuma version changed from 2 to 3 at block #9111322.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-09-20T21:06:32.708Z",
+          "title": "Subnet 108: Yuma version 2 → 3",
+          "url": "https://metagraph.sh/blocks/9111322"
+        },
+        {
+          "id": "chain:sn108:hyperparam:9111322:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9111322.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-09-20T21:06:32.708Z",
+          "title": "Subnet 108: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9111322"
+        }
+      ],
+      "substantive_count": 8,
+      "week": 38,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 109,
       "schema_version": 1,
       "sentences": [
@@ -9611,6 +9733,63 @@
       ],
       "substantive_count": 8,
       "week": 33,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 70,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn70:hyperparam:9096801:min_burn_tao",
+            "chain:sn70:hyperparam:9073524:min_burn_tao",
+            "chain:sn70:hyperparam:9071733:min_burn_tao"
+          ],
+          "text": "Subnet 70 recorded three hyperparameter changes between 15 September and 18 September."
+        }
+      ],
+      "slug": "2026-w38",
+      "sources": [
+        {
+          "id": "chain:sn70:hyperparam:9096801:min_burn_tao",
+          "summary": "Minimum burn changed from 1 to 0.5 at block #9096801.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn70"
+          ],
+          "timestamp": "2026-09-18T20:06:39.004Z",
+          "title": "Subnet 70: Minimum burn 1 → 0.5",
+          "url": "https://metagraph.sh/blocks/9096801"
+        },
+        {
+          "id": "chain:sn70:hyperparam:9073524:min_burn_tao",
+          "summary": "Minimum burn changed from 0.00005 to 1 at block #9073524.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn70"
+          ],
+          "timestamp": "2026-09-15T14:06:32.162Z",
+          "title": "Subnet 70: Minimum burn 0.00005 → 1",
+          "url": "https://metagraph.sh/blocks/9073524"
+        },
+        {
+          "id": "chain:sn70:hyperparam:9071733:min_burn_tao",
+          "summary": "Minimum burn changed from 1 to 0.00005 at block #9071733.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn70"
+          ],
+          "timestamp": "2026-09-15T08:06:29.605Z",
+          "title": "Subnet 70: Minimum burn 1 → 0.00005",
+          "url": "https://metagraph.sh/blocks/9071733"
+        }
+      ],
+      "substantive_count": 3,
+      "week": 38,
       "year": 2026
     },
     {
