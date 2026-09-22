@@ -211,3 +211,30 @@ history, identity and health reads, and directory publication with no Hyperdrive
 binding. This slice keeps production ownership unchanged while retained copies
 and source drains finish; serving ownership must move with the corresponding
 writers after live read parity and broad-query costs have been checked.
+
+## Registry mutations and self-health
+
+Migration `0013_registry_self_health.sql` retains provider, subnet and surface
+metadata, the full surface audit history, individual self-health observations,
+and daily health summaries. Registry ownership selects all four registry tables
+together; self-health selects its two tables together across the producer, REST,
+GraphQL and MCP. The registry Worker also binds D1 and selects the already-moved
+`lane_health` family, so its scheduled probe reports to the same watchdog store.
+
+Native registry writes preserve stable surface IDs, unchanged provenance, scoped
+prunes, and every changed overlay in delivery order, including duplicate-key
+reversions within a payload. Audit rows and mutations commit atomically. JSON
+chunks contain at most 100 rows and 512 KiB; oversized rows or transactions above
+900 statements fail before writing. Self-health commits an immutable tick and its
+daily contribution together; retrying a tick does not count it twice. A failed
+tick rolls back its daily increment and remains visible as stale capture. Latest
+component reads use indexed maxima and normalize SQLite boolean values before
+building the shared response.
+
+Retained copies and native transaction tests do not select production ownership.
+Before activating these families, reserve generated history IDs above the live
+source sequence, reconcile mutable registry cards, and record source daily-health
+baselines. After old invocations drain, import immutable tick tails and add only
+the source daily deltas to the destination; replacing a destination daily summary
+after its own probes begin would erase observations. Verify the registry Worker's
+lane-health records as well as the API and Data API before retiring the source.

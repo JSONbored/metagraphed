@@ -14,6 +14,7 @@
 import { utcWindowCutoffDay } from "./health-serving.ts";
 import {
   buildSelfHealth,
+  SELF_HEALTH_COMPONENTS,
   type SelfHealthDailyRow,
   type SelfHealthLatestRow,
 } from "./self-health.ts";
@@ -42,26 +43,33 @@ export async function loadSelfHealthNeon(
     // `Record<string, unknown>`; a post-hoc `as unknown as` was invisible to
     // that ratchet while making exactly the claim it exists to measure.
     const daily = await sql.unsafe<SelfHealthDailyRow>(
-      `SELECT day::text AS day, component, checks, ok_count
+      `SELECT CAST(day AS TEXT) AS day, component, checks, ok_count
          FROM self_health_daily
-        WHERE day >= $1::date
+        WHERE day >= $1
         ORDER BY day ASC`,
       [cutoff],
     );
     if (!Array.isArray(daily) || daily.length === 0) return null;
 
-    // DISTINCT ON is the newest tick per component -- the reading the route
-    // publishes as `current`. A plain MAX(checked_at_ms) would give the
-    // timestamp without the ok/status/latency that go with it.
-    const latest = await sql.unsafe<SelfHealthLatestRow>(
-      `SELECT DISTINCT ON (component)
-              component, ok, http_status, latency_ms, checked_at_ms
-         FROM self_health_checks
-        ORDER BY component, checked_at_ms DESC`,
-      [],
+    // Seek the latest primary key for each published component. This reads a
+    // few indexed rows rather than ranking the entire retained tick history.
+    const latest = await sql.unsafe<
+      Omit<SelfHealthLatestRow, "ok"> & { ok: boolean | number }
+    >(
+      `WITH components(component) AS (VALUES ${SELF_HEALTH_COMPONENTS.map(() => "(?)").join(",")})
+       SELECT c.component,c.ok,c.http_status,c.latency_ms,c.checked_at_ms
+       FROM components p JOIN self_health_checks c ON c.component=p.component
+         AND c.checked_at_ms=(SELECT MAX(checked_at_ms) FROM self_health_checks WHERE component=p.component)
+       ORDER BY c.component`,
+      [...SELF_HEALTH_COMPONENTS],
     );
 
-    return buildSelfHealth(daily, Array.isArray(latest) ? latest : []);
+    return buildSelfHealth(
+      daily,
+      Array.isArray(latest)
+        ? latest.map((row) => ({ ...row, ok: row.ok === true || row.ok === 1 }))
+        : [],
+    );
   } catch (err) {
     // A failed read falls through to the lakehouse rather than failing the
     // route: stale history is a better answer than none, and the tier that

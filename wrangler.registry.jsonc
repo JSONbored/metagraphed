@@ -51,6 +51,7 @@
   // uncapped. Same value as the main Worker and wrangler.data.jsonc: one
   // capture per fingerprint per 5 minutes per isolate.
   "vars": {
+    "D1_STATE_TABLES": "lane_health",
     // #10659: lanes whose Neon writes are deferred through the write-behind
     // buffer and flushed every ten minutes, so the compute does fewer, larger
     // writes and autoscaling sits nearer the 0.25 CU floor.
@@ -137,31 +138,17 @@
       "head_sampling_rate": 1,
     },
   },
-  // NO D1 BINDING (#10101). The registry lived on D1 for exactly as long as it
-  // took Neon to arrive: this Worker has written Neon and nothing else since
-  // #10068, and the four tables were verified at EXACT parity before the
-  // binding came out -- subnets 129, surfaces 3,444, surface_history 8,892,
-  // providers 136, identical on both stores.
-  //
-  // Removing it is the point rather than tidying. While both bindings existed
-  // the handler fell back to D1 whenever Hyperdrive was unbound, so a
-  // misconfiguration wrote a database nothing reads and answered 200 -- a
-  // successful-looking sync into a dead store. It now 503s instead, which is
-  // the truth.
-  //
-  // Schema: migrations/neon/. The D1 copies are frozen and slated for DROP.
-  // AND BACK AGAIN (#10060). The paragraph above removed Hyperdrive when this
-  // Worker left the self-hosted Postgres box for D1, on the reasoning that a
-  // dead connection string in config is a hazard. That reasoning was right and
-  // is why this entry is only landing now that it points somewhere live: Neon,
-  // the same Hyperdrive config the data-api Worker uses.
-  //
-  // With this bound, applyRegistrySyncToNeon takes the write path and D1 is not
-  // written at all -- no mirror, no dual-write. This family is the one place
-  // that is safe: nothing outside this Worker reads these four tables (the
-  // public registry serves from R2 artifacts), and all four are rebuildable by
-  // re-running the sync from registry/subnets/*.json. Rollback is removing this
-  //
+  // Explicit ownership sends watchdog verdicts to their live D1 owner.
+  // Registry and self-health data remain on Neon until their retained copies
+  // and readers are qualified; provisioning this binding alone moves no data.
+  "d1_databases": [
+    {
+      "binding": "D1_STATE",
+      "database_name": "metagraphed-state",
+      "database_id": "8fde78ea-438f-4d91-9aef-b377ae43fd4a",
+      "migrations_dir": "migrations/d1",
+    },
+  ],
   // QUERY CACHING IS DISABLED on this config (metagraphed-infra#493). The
   // setting lives on the Hyperdrive RESOURCE, not on the binding -- there is no
   // caching key in wrangler -- so this comment is the only place the effective

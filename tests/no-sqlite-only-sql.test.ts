@@ -152,6 +152,7 @@ describe("store-neutral SQL", () => {
           "src/observations-d1.ts",
           "src/capture-family-d1.ts",
           "src/ledger-d1.ts",
+          "src/registry-sync-d1.ts",
         ].includes(file)
       )
         continue;

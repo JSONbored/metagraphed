@@ -42,6 +42,11 @@ import {
   applyRegistrySyncToNeon,
   type RegistrySyncNeonDeps,
 } from "../src/registry-sync-neon.ts";
+import { selectedD1Store } from "../src/d1-store.ts";
+import {
+  applyRegistrySyncToD1,
+  REGISTRY_D1_TABLES,
+} from "../src/registry-sync-d1.ts";
 
 const TOKEN_HEADER = "x-registry-sync-token";
 const MAX_BODY_BYTES = 4_194_304; // 4 MiB -- the full registry is ~1.5k surfaces, comfortably under this
@@ -191,11 +196,10 @@ async function dispatchRegistrySyncRequest(
         );
       }
     }
-    // Neon is the registry's only store (#10101). The D1 fallback is gone
-    // along with the binding: while both existed, an unbound Hyperdrive
-    // silently wrote the D1 copy instead of failing, so a misconfiguration
-    // looked like a successful sync into a database nothing reads.
-    if (!env.HYPERDRIVE?.connectionString) {
+    // Provisioning D1 does not select it. The full registry family moves
+    // together, and a selected but unavailable store never falls back.
+    const d1 = selectedD1Store(env, REGISTRY_D1_TABLES);
+    if (!d1 && !env.HYPERDRIVE?.connectionString) {
       return json({ error: "registry database binding unavailable" }, 503);
     }
 
@@ -261,21 +265,9 @@ async function dispatchRegistrySyncRequest(
     }
 
     try {
-      // ONE atomic batch, via applyRegistrySyncToStore -- see that function's
-      // header for why the reads have to happen before it and what that costs.
-      // The old `SET statement_timeout` has no D1 equivalent and is dropped:
-      // D1 enforces its own query limits, and a bare SET was only ever needed
-      // because Hyperdrive could hand the follow-up query a different physical
-      // connection.
-      // NEON WHEN IT IS BOUND, and then D1 is not written at all (#10060).
-      //
-      // No dual-write here, unlike every producer lane. Those mirror because a
-      // probe or a metagraph pass not stored is gone forever, so the second
-      // copy has to prove itself before the first is dropped. These four tables
-      // are re-derived from registry/subnets/*.json on every sync, so the proof
-      // is just running the lane again -- and a second copy nothing reads is
-      // the exact hazard the binding comment in wrangler.registry.jsonc
-      // describes.
+      // Both implementations commit the registry and its provenance together.
+      // Native D1 derives history inside its batch, including repeated keys;
+      // there is no read-before-write window outside the transaction.
       const payload = {
         providers,
         subnets,
@@ -283,12 +275,14 @@ async function dispatchRegistrySyncRequest(
         pruneSurfaces,
         deleteSubnets,
       };
-      const summary = await applyRegistrySyncToNeon(
-        env.HYPERDRIVE.connectionString,
-        payload,
-        registrySyncDeps,
-      );
-      return json({ ok: true, store: "neon", ...summary });
+      const summary = d1
+        ? await applyRegistrySyncToD1(d1, payload, registrySyncDeps)
+        : await applyRegistrySyncToNeon(
+            env.HYPERDRIVE.connectionString,
+            payload,
+            registrySyncDeps,
+          );
+      return json({ ok: true, store: d1 ? "d1" : "neon", ...summary });
     } catch (err) {
       console.error("registry-sync-api write failed:", err);
       await captureRegistrySyncError(err, env);
