@@ -3728,6 +3728,8 @@ export const NEURONS_SNAPSHOT_TABLES = [
  * once Neon is the store, a pass that did not reach it did not happen.
  */
 export function neonOwnsNeuronsSnapshot(env: DataApiEnv): boolean {
+  if (selectedD1Store(env, [...NEURONS_SNAPSHOT_TABLES, "neurons_passes"]))
+    return true;
   // the ownership term collapsed with the flag (#10051): Neon is the only
   // store, so durability is the binding question alone.
   return Boolean(env.HYPERDRIVE?.connectionString);

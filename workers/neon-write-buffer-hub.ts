@@ -575,6 +575,18 @@ export class NeonWriteBufferHub implements DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    // Namespace-only readback for retirement: the counter alone can drift,
+    // so inspect one stored chunk before disconnecting the backing database.
+    // This Durable Object has no public HTTP route.
+    if (url.pathname === "/status" && request.method === "GET") {
+      const storage = this.state.storage;
+      return Response.json({
+        pending: (await storage.get<number>(PENDING_KEY)) ?? 0,
+        hasStoredStatements:
+          (await storage.list({ prefix: STATEMENT_PREFIX, limit: 1 })).size > 0,
+        alarmAt: await storage.getAlarm(),
+      });
+    }
     if (url.pathname !== "/enqueue" || request.method !== "POST") {
       return new Response("not found", { status: 404 });
     }

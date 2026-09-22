@@ -333,3 +333,22 @@ final capture census and export qualification.
 Migration `0017_root_basket_export.sql` provides the scoped capture-ID index for
 ceiling and discovery reads, including empty scopes. Apply it before enabling
 the archive consumer; native query-plan tests reject table scans and temp sorts.
+
+## Complete application ownership
+
+The final ownership configuration selects all 71 application tables on the API
+and Data API, and the registry plus self-health families on the registry Worker.
+Neuron ingestion and backfill require the complete native family, including its
+pass ledger. Analytics cache eligibility and the health heartbeat recognize the
+selected D1 store even after Hyperdrive is removed.
+
+Before applying this configuration, complete retained/current reconciliation and
+reserve generated history IDs above the source sequences. Record the current
+pass and daily-health baselines, then reconcile late source writes after the old
+invocations and buffer drain. Preserve newer D1 captures and add only source
+counter deltas to daily health; an old-source overwrite would erase new data.
+
+Hyperdrive remains available for this final drain. Archive consumers switch only
+after their required tables are owned and migration writes stop, so revision
+checks describe every concurrent mutation. Removing the credentials follows live
+read/write and archive qualification; ownership alone is not proof of retirement.

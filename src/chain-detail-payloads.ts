@@ -53,12 +53,18 @@ export async function storeChainDetailPayloads(
       const bytes = compressed ? zipped : raw;
       const archive = bucket(env);
       const key = objectKey(hash, compressed);
-      const object =
-        (await archive.put(key, bytes, {
+      // Captures and retries often repeat the same large call. Reuse an
+      // immutable object before sending its body again; the conditional put
+      // still handles a competing writer between this head and the upload.
+      let object = await archive.head(key);
+      if (!object) {
+        object = await archive.put(key, bytes, {
           onlyIf: { etagDoesNotMatch: "*" },
           customMetadata: { sha256: hash, rawBytes: String(raw.byteLength) },
           httpMetadata: { contentType: "application/octet-stream" },
-        })) ?? (await archive.head(key));
+        });
+        if (!object) object = await archive.head(key);
+      }
       if (
         !object ||
         object.size !== bytes.byteLength ||

@@ -46,6 +46,7 @@ import {
 } from "../../src/subnet-deregistration-ranking.ts";
 import { economicsCurrentKvReader, type EdgeCacheCtx } from "./analytics.ts";
 import { observationsReadDb } from "../../src/observations-read-runner.ts";
+import { OBSERVATION_TABLES } from "../../src/observations-neon.ts";
 import {
   COMPARE_DIMENSIONS,
   COMPARE_VALIDATORS_MAX,
@@ -292,7 +293,7 @@ export async function handleTrajectory(
     db: observationsReadDb(env, ctx),
   })) as ReturnType<typeof formatTrajectory>;
   const isFallback =
-    !env.HYPERDRIVE?.connectionString ||
+    !readStore(env, OBSERVATION_TABLES) ||
     currentStoreReadFailureGeneration() !== readFailureGeneration;
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
@@ -345,7 +346,7 @@ export async function handleEconomicsTrends(
   // `let`, not `const`: the USD overlay below reassigns it (#10382).
   let data = loaded.data;
   const isFallback =
-    !env.HYPERDRIVE?.connectionString ||
+    !readStore(env, OBSERVATION_TABLES) ||
     currentStoreReadFailureGeneration() !== readFailureGeneration;
   // USD per day (#10382), overlaid BEFORE the CSV branch so both formats carry
   // the same answer. Each day is priced by a reading from inside that UTC day;
@@ -425,7 +426,7 @@ export async function handleUptime(
     db: observationsReadDb(env, ctx),
   })) as ReturnType<typeof formatUptime>;
   const isFallback =
-    !env.HYPERDRIVE?.connectionString ||
+    !readStore(env, OBSERVATION_TABLES) ||
     currentStoreReadFailureGeneration() !== storeGeneration;
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
@@ -657,7 +658,7 @@ export async function composeLeaderboardsData(
     // generation, so a truthiness check would call an empty payload fresh and
     // cache it.
     isFallback:
-      !env.HYPERDRIVE?.connectionString ||
+      !readStore(env, LEADERBOARD_TABLES) ||
       currentStoreReadFailureGeneration() !== storeGeneration,
   };
 }
