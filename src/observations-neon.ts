@@ -39,10 +39,19 @@
 // targeted, and neither could run against the other.
 import { OK_LATENCY } from "./health-sql.ts";
 import { hyperdriveConnectionString } from "./read-store.ts";
+import type { ProducerStore } from "./producer-store.ts";
+import {
+  persistProbesD1,
+  rollupUptimeD1,
+  rollupFailuresD1,
+  pruneChecksD1,
+  upsertSnapshotsD1,
+} from "./observations-d1.ts";
 
 /** The runner shape createPgSql hands out. Declared here rather than imported
  * so this module depends on the SHAPE and not on another lane's file. */
 export interface ObservationsSql {
+  nativeD1?: ProducerStore;
   unsafe(text: string, values?: unknown[]): Promise<unknown>;
 }
 
@@ -155,6 +164,7 @@ export async function persistProbesToNeon(
   runAt: number,
 ): Promise<ObservationWrite> {
   if (!probed.length) return { ok: false, reason: "no_rows" };
+  if (sql.nativeD1) return persistProbesD1(sql.nativeD1, probed, runAt);
   return attempt(
     sql,
     async () => {
@@ -270,6 +280,7 @@ export async function rollupFailureReasonsToNeon(
   days: { date: string; start: number; end: number }[],
   runAt: number,
 ): Promise<ObservationWrite> {
+  if (sql.nativeD1) return rollupFailuresD1(sql.nativeD1, days, runAt);
   return attempt(
     sql,
     async () => {
@@ -305,6 +316,7 @@ export async function rollupUptimeDailyToNeon(
   days: { date: string; start: number; end: number }[],
   runAt: number,
 ): Promise<ObservationWrite> {
+  if (sql.nativeD1) return rollupUptimeD1(sql.nativeD1, days, runAt);
   return attempt(
     sql,
     async () => {
@@ -361,6 +373,7 @@ export async function pruneChecksNeon(
   sql: ObservationsSql,
   cutoff: number,
 ): Promise<ObservationWrite> {
+  if (sql.nativeD1) return pruneChecksD1(sql.nativeD1, cutoff);
   return attempt(
     sql,
     () =>
@@ -381,6 +394,7 @@ export async function upsertSubnetSnapshotsToNeon(
   rows: Row[],
 ): Promise<ObservationWrite> {
   if (!rows.length) return { ok: false, reason: "no_rows" };
+  if (sql.nativeD1) return upsertSnapshotsD1(sql.nativeD1, rows);
   const toBool = (v: unknown) => (v == null ? null : Boolean(v));
   return attempt(
     sql,
