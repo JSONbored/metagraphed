@@ -1,0 +1,68 @@
+# D1 operational-state migration
+
+Tracked by #12151; the first destination is watchdog history (#12152).
+
+`D1_STATE_TABLES` selects the owner of explicitly qualified tables. A D1 binding
+alone does not move a reader. Selected tables require the binding and do not fall
+back to Neon if it is unavailable. A query that joins different owners is refused;
+estate-wide freshness checks partition tables before constructing their queries.
+
+## Watchdog history
+
+Both the API Worker and Data API select `lane_health` in the same deployment.
+All existing watchdog writers continue through `laneHealthStore`. The public
+self-health response and alarm decisions retain their existing contracts.
+
+The source history is retained. D1 also maintains these internal indexes in the
+same transaction as each history mutation:
+
+- `lane_health_current`: newest verdict per lane, with the existing worst-verdict
+  rule for equal timestamps. Unknown verdicts rank between `ok` and `stale`.
+- `lane_health_clocks`: distinct timestamps, duplicate counts and the preceding
+  timestamp. Late arrivals split an interval; deletion rejoins it. Cadence reads
+  exclude intervals that cross the requested cutoff and retain the three-sample
+  minimum without counting the entire history.
+- `lane_health_verdict_latest`: last timestamp per lane and verdict, allowing
+  current finding runs to use indexed ranges rather than correlated full scans.
+
+The native D1 adapter submits an entire transaction as one `batch`. It never
+splits a failed capture into committed prefixes. SQL remains native SQLite SQL;
+PostgreSQL-specific statements must be ported by their owners before selecting
+another table. Wide integer binds are strings, and structured values require
+explicit serialization. A statement may bind at most 100 parameters.
+
+## Qualification and cutover
+
+1. Apply `migrations/d1` to the destination with Wrangler. Keep ownership unset
+   until both schema and data are ready.
+2. Export `lane_health` through a read-only repeatable-read source transaction.
+   Stream bounded batches into D1. `_source_tid` identifies imported source rows
+   within this migration window; native destination writes leave it null.
+3. Compare retained records by lane and verdict, including counts, timestamp
+   ranges/sums, age sums and detail lengths. These are aggregate parity checks,
+   not a cryptographic proof of every byte. Preserve the source for recovery.
+4. Immediately before deploying the ownership switch, copy every latest source
+   timestamp, including ties. Deploy both Workers, then repeat the latest copy
+   and full idempotent catch-up after old invocations drain. Do not select deltas
+   only by `checked_at`: producers can write backdated capture timestamps.
+5. Verify live destination writes from API watchdogs and the Data API's poller
+   receiver, current health responses, alarm-history query parity, and freshness
+   census behavior. Record deployed version identities and query row-read counts.
+
+Native Miniflare tests exercise the actual D1 migrations, transaction rollback,
+retention, duplicate clocks, updates, deletes, unknown verdicts and comparisons
+against the original history queries. Before cutover, a live seven-day cadence
+comparison returned identical results for 77 lanes while reading 1,355 rows
+instead of 809,183. The current-status query read 83 rows. These are measurements
+of the qualification dataset, not fixed limits or account billing guarantees.
+
+## Recovery
+
+Prefer rolling forward with D1 ownership preserved. Changing the flag back to
+Neon after destination writes begin would expose a stale source: first copy the
+destination-only records back and verify the source's current status. Keep both
+source history and migration evidence until the complete retirement is verified.
+
+This slice does not retire the other Neon tables or any R2 SQL reader. Those
+dependencies remain tracked by #12151; neither subscription nor credentials may
+be removed on the strength of this watchdog cutover alone.

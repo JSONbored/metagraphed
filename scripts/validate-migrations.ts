@@ -77,23 +77,22 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // they go on BY HAND, so a duplicate or skipped prefix is not caught by an apply
   // step that would otherwise have noticed. The rule is unchanged; only the
   // directory moved, again.
-  const migrationsRoot = path.join(repoRoot, "migrations", "neon");
-  const files = (await fs.readdir(migrationsRoot)).filter((name) =>
-    name.endsWith(".sql"),
-  );
-  const errors = migrationSequenceErrors(files);
-
-  if (errors.length > 0) {
-    console.error(
-      `Migration validation failed with ${errors.length} issue(s):`,
+  for (const store of ["neon", "d1"]) {
+    const migrationsRoot = path.join(repoRoot, "migrations", store);
+    const files = (await fs.readdir(migrationsRoot)).filter((name) =>
+      name.endsWith(".sql"),
     );
-    for (const error of errors) {
-      console.error(`- ${error}`);
+    const errors = migrationSequenceErrors(files);
+    if (errors.length > 0) {
+      console.error(
+        `${store} migration validation failed with ${errors.length} issue(s):`,
+      );
+      for (const error of errors) console.error(`- ${error}`);
+      process.exitCode = 1;
+    } else {
+      console.log(
+        `Validated ${files.length} ${store} migration file(s) — prefixes unique and sequential.`,
+      );
     }
-    process.exit(1);
   }
-
-  console.log(
-    `Validated ${files.length} migration file(s) — prefixes unique and sequential.`,
-  );
 }

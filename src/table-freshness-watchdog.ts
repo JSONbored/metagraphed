@@ -33,6 +33,7 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
+import { partitionStoreTables } from "./d1-store.ts";
 import { missedTicksMs, type ProducerLane } from "./producer-cadence.ts";
 // DERIVED, not quoted. This read "RAW_CAPTURE_CRON every 5 min" until #11402
 // moved the lane to */1 and left the prose behind -- the drift
@@ -1130,11 +1131,9 @@ export async function runTableFreshnessWatchdog(
   // halves keep the same batch size: D1 caps a compound SELECT at 5 terms, and
   // matching it on the Neon side keeps one number to reason about rather than
   // two that happen to differ.
-  // The owned/unowned partition collapsed with the flag (#10051): every
-  // table lives in the one store, so the census reads as one set -- which
-  // also brings the two live-but-undeclared names (schema_migrations,
-  // subnet_deregistration_daily) under the same read as everything else.
-  const partitions: string[][] = [tables];
+  // The D1 retirement reversed that split (#10051). Restore it for the
+  // explicitly selected destinations so a mixed-store census remains readable.
+  const partitions = partitionStoreTables(env, tables);
 
   const newest = new Map<string, number>();
   const readBatch = async (
@@ -1158,8 +1157,14 @@ export async function runTableFreshnessWatchdog(
   // ("7 of 12 batches unreadable" names nothing to go and fix).
   const unreadable: string[] = [];
   for (const partition of partitions) {
-    const db =
-      deps.db ?? (readStore(env, partition) as FreshnessDb | undefined);
+    let db = deps.db;
+    try {
+      db ??= readStore(env, partition) as FreshnessDb | undefined;
+    } catch {
+      // A selected but missing binding is unreadable, never a source fallback.
+      unreadable.push(...partition);
+      continue;
+    }
     for (let i = 0; i < partition.length; i += FRESHNESS_BATCH) {
       const batch = partition.slice(i, i + FRESHNESS_BATCH);
       if (await readBatch(batch, db)) continue;
