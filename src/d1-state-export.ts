@@ -156,7 +156,8 @@ export async function handleD1StateExport(
     if (
       (input.cursor &&
         (input.cursor.length !== plan.keys.length ||
-          input.revision === undefined)) ||
+          input.revision === undefined ||
+          (input.day !== undefined && input.cursor[0] !== input.day))) ||
       (input.day && !plan.daily)
     )
       return fail(400, "invalid export cursor or day");
@@ -179,10 +180,12 @@ export async function handleD1StateExport(
       values.push(...input.since);
     }
     if (input.cursor) {
-      where.push(
-        `(${plan.keys.join(",")}) > (${input.cursor.map(() => "?").join(",")})`,
-      );
-      values.push(...input.cursor);
+      // Remove the already-fixed day from the comparison. Keeping it in a
+      // tuple makes SQLite restart at the day's first member on every page.
+      const keys = input.day ? plan.keys.slice(1) : plan.keys;
+      const cursor = input.day ? input.cursor.slice(1) : input.cursor;
+      where.push(`(${keys.join(",")}) > (${cursor.map(() => "?").join(",")})`);
+      values.push(...cursor);
     }
     const statement = db
       .prepare(

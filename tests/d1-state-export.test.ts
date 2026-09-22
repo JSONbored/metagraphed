@@ -245,6 +245,36 @@ test("daily neuron views and composite history watermarks preserve rows without 
       day,
     });
     assert.deepEqual(result.rows, [[7, 2, 1, 2]]);
+    const key = table === "neuron_daily" ? 0 : "";
+    assert.deepEqual(
+      (
+        await get({
+          table,
+          kind: "rows",
+          columns: ["netuid"],
+          day,
+          cursor: [day, 6, key],
+          revision: result.revision,
+        })
+      ).rows,
+      [[7]],
+    );
+    assert.equal(
+      (
+        await handleD1StateExport(
+          req({
+            table,
+            kind: "rows",
+            columns: ["netuid"],
+            day,
+            cursor: ["2000-01-01", 6, key],
+            revision: result.revision,
+          }),
+          env(),
+        )
+      ).status,
+      400,
+    );
   }
   assert.deepEqual(
     (await get({ table: "subnet_snapshots", kind: "days" })).days,
