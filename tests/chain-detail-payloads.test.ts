@@ -74,6 +74,7 @@ function fixture() {
 
 test("inline values pass unchanged; large UTF-8 payloads compress, deduplicate, and replay", async () => {
   const f = fixture();
+  const put = vi.spyOn(f.archive, "put");
   const value = "\uFEFF" + JSON.stringify({ text: "界".repeat(60_000) });
   const rows = [
     { call_args: value, args: null },
@@ -87,6 +88,7 @@ test("inline values pass unchanged; large UTF-8 payloads compress, deduplicate, 
   assert.deepEqual(await restoreChainDetailPayloads(f.env, stored), rows);
   assert.equal(f.reads(), 1);
   assert.deepEqual(await storeChainDetailPayloads(f.env, rows), stored);
+  assert.equal(put.mock.calls.length, 1);
   assert.deepEqual(
     await restoreChainDetailPayloads(undefined, [
       { call_args: 1 },
@@ -94,6 +96,18 @@ test("inline values pass unchanged; large UTF-8 payloads compress, deduplicate, 
     ]),
     [{ call_args: 1 }, { call_args: "[]" }],
   );
+});
+
+test("a concurrent immutable upload is verified after a head misses", async () => {
+  const f = fixture();
+  const rows = [{ args: "race".repeat(40_000) }];
+  const stored = await storeChainDetailPayloads(f.env, rows);
+  const head = vi.spyOn(f.archive, "head").mockResolvedValueOnce(null);
+  const put = vi.spyOn(f.archive, "put");
+  assert.deepEqual(await storeChainDetailPayloads(f.env, rows), stored);
+  assert.equal(put.mock.calls.length, 1);
+  assert.equal(head.mock.calls.length, 2);
+  assert.deepEqual(await restoreChainDetailPayloads(f.env, stored), rows);
 });
 
 test("a codec with no size benefit keeps raw bytes, and legacy raw references stay readable", async () => {
