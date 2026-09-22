@@ -463,7 +463,10 @@ import {
   CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
   parseChainDetailSync,
 } from "../src/chain-detail-sync-payload.ts";
-import { chainDetailHead } from "../src/chain-detail-hot-tier.ts";
+import {
+  chainDetailHead,
+  CHAIN_DETAIL_HOT_TIER_TABLES,
+} from "../src/chain-detail-hot-tier.ts";
 import { buildAccountPositionHistory } from "../src/account-position-history.ts";
 import {
   createUnkeyKey,
@@ -1116,7 +1119,9 @@ async function handleChainDetailSync(
     chain_events_written: batch.rows.chainEventRows.length,
     account_events_written: batch.rows.accountEventRows.length,
     head: batch.rows.head,
-    stores: ["neon"],
+    stores: [
+      selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES) ? "d1" : "neon",
+    ],
   });
 }
 
@@ -1138,8 +1143,20 @@ async function handleChainDetailSyncHead(request: Request, env: DataApiEnv) {
   // `head: null` is a documented real answer that tells the producer to start
   // from the current finalized head. A 503 makes it retry; a wrong null makes
   // it skip, and leaves a hole nothing will ever fill.
-  if (!env.HYPERDRIVE?.connectionString) {
+  if (!neonOwnsChainDetail(env)) {
     return writeJson({ error: "no store bound for this route" }, 503);
+  }
+  const d1 = selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES);
+  if (d1) {
+    try {
+      const row = await d1.first<{ head: number | null }>(
+        "SELECT MAX(block_number) AS head FROM chain_detail_blocks",
+      );
+      if (!row) throw new Error("Missing chain detail resume result");
+      return writeJson({ head: row.head });
+    } catch {
+      return writeJson({ error: "chain detail resume read failed" }, 503);
+    }
   }
   return writeJson({ head: await chainDetailHead(env) });
 }
@@ -3777,8 +3794,7 @@ export function neonOwnsNominatorPositions(env: DataApiEnv): boolean {
  * lane's writers -- #9728 is the precedent for why covering one of two is worse
  * than covering neither: the row count looks nearly right. */
 export function neonOwnsChainDetail(env: DataApiEnv): boolean {
-  // the ownership term collapsed with the flag (#10051): Neon is the only
-  // store, so durability is the binding question alone.
+  if (selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)) return true;
   return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
@@ -9759,11 +9775,21 @@ export default {
           chainEventRows: families.chainEventRows ?? [],
           accountEventRows: families.accountEventRows ?? [],
         };
-        const result = { statements: 0 };
         // THE LANE'S OTHER WRITER, mirrored here as well as on the HTTP
         // path.
-        await mirrorChainDetailToNeon(env, ctx, rows);
-        return result;
+        const outcome = await mirrorChainDetailToNeon(env, ctx, rows);
+        const results = Object.values(outcome.results);
+        const failed = results.find((result) => !result.ok);
+        // The writer reports failure in-band. Returning here would ACK a
+        // block whose data never landed, so surface it to the queue retry.
+        if (failed)
+          throw new Error(`chain-detail store write failed: ${failed.reason}`);
+        return {
+          statements: results.reduce(
+            (sum, result) => sum + result.statements,
+            0,
+          ),
+        };
       },
     };
     const writers: SyncBatchWriters = {

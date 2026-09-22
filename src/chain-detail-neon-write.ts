@@ -25,6 +25,8 @@ import {
 } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
+import { selectedD1Store } from "./d1-store.ts";
+import { writeChainDetailD1 } from "./chain-detail-d1-write.ts";
 
 // ---------------------------------------------------------------------------
 // Moved here when D1 was deleted (#10179). These describe the TABLE -- its
@@ -203,6 +205,24 @@ export async function mirrorChainDetailToNeon(
   input: ChainDetailMirrorInput,
   deps: ChainDetailMirrorDeps = {},
 ): Promise<ChainDetailMirrorOutcome> {
+  const d1 = deps.sql ? null : selectedD1Store(env, chainDetailTables());
+  if (d1) {
+    const results = await writeChainDetailD1(d1, env, input);
+    const all = Object.values(results);
+    const failed = all.find((result) => !result.ok);
+    await recordNeonWriteVerdict(
+      laneHealthStore(env, deps.laneHealthDb),
+      CHAIN_DETAIL_NEON_LANE,
+      {
+        ok: !failed,
+        rows: all.reduce((sum, result) => sum + result.rows, 0),
+        statements: all.reduce((sum, result) => sum + result.statements, 0),
+        ...(failed ? { reason: failed.reason } : {}),
+      },
+      (deps.now ?? Date.now)(),
+    );
+    return { attempted: true, results };
+  }
   // The dual-write gate stood here until #10051: with D1 deleted this is the
   // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
   // no-arm means "do not persist" is not a cutover control any more, it is an

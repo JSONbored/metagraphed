@@ -56,6 +56,8 @@ import { resolveDecodeWatermark } from "./decode-watermark.ts";
 import { safeBlockNumber } from "./r2-sql.ts";
 import { readStore, type OptionalRowQuerier } from "./read-store.ts";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
+import { selectedD1Store } from "./d1-store.ts";
+import { restoreChainDetailPayloads } from "./chain-detail-payloads.ts";
 
 type Row = Record<string, unknown>;
 
@@ -85,7 +87,10 @@ async function query(
   const binding = db(env);
   if (!binding?.query) return null;
   try {
-    return (await binding.query(sql, params)) as Row[];
+    const rows = (await binding.query(sql, params)) as Row[];
+    return selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)
+      ? await restoreChainDetailPayloads(env, rows)
+      : rows;
   } catch {
     return null;
   }

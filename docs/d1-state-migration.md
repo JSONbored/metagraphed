@@ -238,3 +238,32 @@ baselines. After old invocations drain, import immutable tick tails and add only
 the source daily deltas to the destination; replacing a destination daily summary
 after its own probes begin would erase observations. Verify the registry Worker's
 lane-health records as well as the API and Data API before retiring the source.
+
+## Recent block detail and large payloads
+
+Migration `0014_recent_chain_state.sql` provisions recent block headers and all
+four chain-detail tables. Select `blocks_head` and the complete chain-detail
+family together after copying and catching up retained rows: block-list readers
+join headers to the detail coverage register. This migration does not select
+ownership or change the existing retention policy.
+
+The HTTP sync and queue consumer share one native D1 transaction. Detail rows
+and their coverage register either all commit or all roll back. A failed queue
+write requests retry; it must never acknowledge the message merely because the
+writer returned an error result instead of throwing. A failed D1 resume query
+returns 503, keeping it distinct from a verified empty register.
+
+Decoded argument JSON above 128 KiB is stored in immutable R2 objects before the
+D1 transaction. Gzip is used when it reduces size. D1 retains an opaque reference;
+readers restore the original UTF-8 bytes and verify their SHA-256 digest. This
+keeps valid multi-megabyte calls readable without exceeding D1's row limit.
+Both serving Workers require the `METAGRAPH_ARCHIVE` binding. Missing objects,
+invalid references, corruption, and expansion beyond the declared size fail the
+read rather than returning truncated arguments. Values are bounded at 16 MiB
+and hydration at 32 MiB per query. The reader also supports the uncompressed
+references used by the initial retained-history copy.
+
+Keep the source history and immutable objects until copy receipts, reader
+qualification, final catch-up, and ownership readback complete. Never prune a
+history interval solely because its source rows were copied: its indexed archive
+must be readable before the recent tier can release that interval.
