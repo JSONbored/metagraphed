@@ -1,3 +1,5 @@
+import { createD1Sql, selectedD1Store } from "./d1-store.ts";
+import { OBSERVATION_TABLES } from "./observations-neon.ts";
 // Live operational-health cron prober.
 //
 // Runs in the Worker on a 15-minute Cron Trigger (workers/api.ts `scheduled()`):
@@ -536,6 +538,8 @@ function observationsRunner(
   env: Env,
   ctx?: ExecutionContext,
 ): ObservationsSql | null {
+  const d1 = selectedD1Store(env, OBSERVATION_TABLES);
+  if (d1) return { nativeD1: d1, ...createD1Sql(d1) };
   if (!ctx) return null;
   // ONE check, not two. `neonOwnsObservations` is now literally
   // `hyperdriveConnectionString(env) !== null`, so asking both left the

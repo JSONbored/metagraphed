@@ -143,10 +143,11 @@ describe("store-neutral SQL", () => {
       ...walk("workers"),
       ...walk("scripts"),
     ]) {
-      // This native implementation is selected only after the four-table D1
-      // ownership check. Its atomic JSONB writes are exercised against D1 in
-      // neuron-documents.test.ts; shared readers remain dialect-neutral.
-      if (file === "src/neuron-documents.ts") continue;
+      // Native implementations require complete-family D1 ownership. Their
+      // atomic writes are exercised against D1 in the corresponding native
+      // tests; shared readers remain dialect-neutral.
+      if (["src/neuron-documents.ts", "src/observations-d1.ts"].includes(file))
+        continue;
       const sql = sqlLiterals(readFileSync(file, "utf8"));
       for (const [pattern, why] of SQLITE_ONLY) {
         const hit = pattern.exec(sql);

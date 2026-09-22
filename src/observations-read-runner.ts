@@ -1,3 +1,4 @@
+import { selectedD1Store } from "./d1-store.ts";
 // Which store answers an observation READ (#10086).
 //
 // ## Why an adapter rather than a second set of loaders
@@ -32,7 +33,10 @@
 // back to the store silently, which is NOT true of the write path in
 // src/observations-neon.ts -- a probe not stored is gone.
 import type { ObservationsReadDb } from "./analytics-live.ts";
-import { neonOwnsObservations } from "./observations-neon.ts";
+import {
+  neonOwnsObservations,
+  OBSERVATION_TABLES,
+} from "./observations-neon.ts";
 import {
   createPgSql,
   type HyperdriveLike,
@@ -87,6 +91,8 @@ export function observationsReadDb(
   ctx?: Partial<WaitUntilLike> | null,
   deps: ObservationsReadDeps = {},
 ): ObservationsReadDb | undefined {
+  const d1 = selectedD1Store(env, OBSERVATION_TABLES);
+  if (d1) return d1;
   if (!neonOwnsObservations(env)) return undefined;
   const injected = deps.sql;
   if (injected) return pgObservationsReadDb(injected);

@@ -105,3 +105,32 @@ merged-size limits, and rollback when the final pass statement fails. Copy
 retained source rows in bounded keyset pages and compare full normalized content
 hashes. Measure broad aggregation queries separately before activation: indexed
 point lookup performance does not establish the cost of history-wide rankings.
+
+## Probe observations
+
+Migration `0008_observations.sql` and the native observation writer cover
+`surface_checks`, `surface_status`, `surface_uptime_daily`,
+`surface_failure_daily`, and `subnet_snapshots` as one ownership group.
+This implementation leaves ownership unset until retained data and joined
+readers have been qualified. Read and write selectors both require the entire
+family, and selected D1 operation does not require Hyperdrive.
+
+A sweep commits its raw checks and latest statuses in one atomic batch. The
+status insert trigger preserves displaced stable identities under history
+aliases, rejects stale alias displacement, and retains measured `last_ok` as a
+high-water mark. Retries do not duplicate raw checks. Oversized captures fail
+before writing. Failures remain visible in the observation writer's verdict and
+error log.
+
+Daily uptime replacement deletes and rebuilds each requested day in the same
+transaction. Native window functions preserve the latest identity, nullable
+subnet metadata, success-only latency samples and nearest-rank percentiles.
+Nullable subnet failure groups have an expression unique index so repeated
+rollups update the same group. Snapshot flags preserve unknown, false and true.
+The prober's existing successful-rollup requirement still gates raw retention.
+
+Native Miniflare tests exercise alias changes, delayed probes, unknown success
+timestamps, raw retry deduplication, percentiles, nullable failure groups,
+snapshot provenance and rollback after an injected mid-batch failure. Copy
+pages compare hashes of every normalized source column before accepting a
+receipt; production ownership requires a final catch-up and live readback.
