@@ -87,6 +87,8 @@ export async function handleRootBasketCaptureSync(
     return fail(413, "root basket capture exceeds row limits");
   let store: ProducerStore | undefined;
   try {
+    // Partial ownership or a missing selected binding THROWS here. Only a
+    // family with zero D1-selected tables can reach the legacy fallback.
     const native = selectedD1Store(env, ROOT_BASKET_D1_TABLES);
     store =
       deps.store ??

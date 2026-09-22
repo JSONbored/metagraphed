@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { afterAll, beforeAll, test } from "vitest";
+import { afterAll, beforeAll, test, vi } from "vitest";
+import { Client } from "pg";
 import { Miniflare } from "miniflare";
 import { createD1Store } from "../src/d1-store.ts";
 import {
@@ -407,4 +408,35 @@ test("database constraints reject incomplete replays, malformed integers, cursor
     ).length,
     0,
   );
+});
+
+test("partial or unbound D1 selection never opens an available Hyperdrive connection", async () => {
+  const connect = vi
+    .spyOn(Client.prototype, "connect")
+    .mockImplementation(() => {
+      throw new Error("Postgres must not be opened");
+    });
+  try {
+    for (const selection of [
+      { D1_STATE: db, D1_STATE_TABLES: "root_basket_captures" },
+      { D1_STATE: undefined, D1_STATE_TABLES: ROOT_BASKET_D1_TABLES.join(",") },
+    ]) {
+      const request = new Request("https://example.com/sync", {
+        method: "POST",
+        headers: { "x-root-basket-capture-sync-token": "secret" },
+        body: JSON.stringify(capture()),
+      });
+      const response = await handleRootBasketCaptureSync(request, {
+        ...selection,
+        ROOT_BASKET_CAPTURE_SYNC_SECRET: "secret",
+        HYPERDRIVE: {
+          connectionString: "postgresql://user:password@example.com/db",
+        },
+      });
+      assert.equal(response.status, 503);
+      assert.equal(connect.mock.calls.length, 0);
+    }
+  } finally {
+    connect.mockRestore();
+  }
 });
