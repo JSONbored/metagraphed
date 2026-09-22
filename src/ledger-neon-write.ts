@@ -26,6 +26,8 @@
 // retried chunk arriving after a newer pass must be a no-op rather than a
 // silent regression -- both writes would otherwise succeed.
 
+import { selectedD1Store } from "./d1-store.ts";
+import { writeLedgerD1 } from "./ledger-d1.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
   PASS_TABLES,
@@ -218,6 +220,27 @@ export async function mirrorLedgerToNeon(
   // no-arm means "do not persist" is not a cutover control any more, it is an
   // off switch nothing should be holding.
 
+  const d1 = selectedD1Store(env, [
+    plan.table,
+    PASS_TABLES[lane],
+    ...(lane === "hotkey-alpha" ? ["nominator_positions"] : []),
+  ]);
+  if (d1) {
+    const result = await writeLedgerD1(d1, lane, rows, pass);
+    const laneDb = laneHealthStore(env, deps.laneHealthDb);
+    const now = deps.now ?? Date.now;
+    await recordNeonWriteVerdict(laneDb, lane, result, now(), false);
+    if (pass)
+      await recordNeonWriteVerdict(
+        laneDb,
+        `${lane}-pass`,
+        result,
+        now(),
+        false,
+        true,
+      );
+    return { attempted: true, result };
+  }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
