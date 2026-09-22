@@ -181,3 +181,33 @@ The migration does not select these tables. Copy every retained row and receipt,
 qualify the joined readers and final source drain, and then select each complete
 group through `D1_STATE_TABLES`. The hotkey alpha writer also requires nominator
 positions to belong to D1; mixing owners fails explicitly.
+
+## Shared serving readers and economic references
+
+The Data API's neuron routes and directory materializer select the entire joined
+family together: neuron documents and passes, subnet snapshots, ownership,
+hyperparameters, nominator counts and positions, TAO/USD observations, and treasury
+readings. Identity and hyperparameter routes select their latest/history pairs;
+the health continuity route selects surface status. Independently loaded compute
+declarations and cached identity cards retain their own selectors. An incomplete
+ownership group is an error, never permission to read a stale Neon copy.
+
+Migration `0011_economic_reference_state.sql` preserves price observations,
+treasury readings, daily concentration cards, and revenue observations/failures.
+The price producer writes directly to selected D1 with the same immutable
+observation key. Shared queries use a native window function for the latest subnet snapshot
+and bounded indexed lookups for the last priced sample per UTC day. An unpriced sample does not
+erase a measured price from that day.
+
+`0012_neuron_daily_join_index.sql` indexes stable membership by subnet, day and
+document shard. This prevents a daily-document join from rescanning the subnet's
+entire membership history once per document. On the qualification copy, the
+price-query and join-index changes reduced one subnet's 30-day emission-history
+request from 787,730 to 24,029 D1 rows read. Completed-day response values matched
+the source exactly. These are dataset measurements, not billing guarantees.
+
+Populated native D1 tests exercise the same public handlers, joined economics,
+history, identity and health reads, and directory publication with no Hyperdrive
+binding. This slice keeps production ownership unchanged while retained copies
+and source drains finish; serving ownership must move with the corresponding
+writers after live read parity and broad-query costs have been checked.

@@ -6904,32 +6904,39 @@ async function loadNominatorCountFromStore(
 // every non-neurons-family route, which then flows on to the dispatcher's
 // remaining tiers unchanged). Split from execution so the caller can check
 // the binding exactly once, after a route has actually matched.
-/**
- * The runner every route in the three blocks below uses.
- *
- * This used to be `routeStore`, which asked NEON_READ_LANES whether the route
- * was allowed on Neon yet and returned undefined -- a 503 -- when it was not.
- * That question had an answer while D1 was the other side of it. It has none
- * now: Neon is the only store these handlers can reach, so the flag could not
- * send a read anywhere else, only refuse it.
- *
- * A GATE THAT CAN ONLY FAIL CLOSED IS NOT A SAFETY PROPERTY, it is an outage
- * waiting on a typo. All 32 routes the three matchers accept were named in
- * NEON_READ_ROUTE_TABLES and every table they declared was named in
- * NEON_READ_LANES in all three configs, so the gate answered yes 32 times out
- * of 32 -- while dropping any single table from the flag would have 503'd up to
- * 19 routes at once. The flag's own doc said a typo in it "does not fail, warn,
- * or degrade", which was survivable when the fallback was another store.
- *
- * What remains is the question that still has two answers: is a store bound at
- * all. The callers keep the 503 for that, which is why this returns undefined
- * rather than throwing (#10162 -- a runner over an absent binding was worse).
- */
+// These routes compose one SQL connection across their shared neuron families.
+// The independently routed compute declarations and account-identity cache keep
+// their own selectors. An incomplete SQL group must never fall back to Neon.
+const NEURON_ROUTE_TABLES = [
+  "neurons",
+  "neurons_passes",
+  "neuron_daily",
+  "account_position_daily",
+  "subnet_snapshots",
+  "subnet_ownership",
+  "subnet_hyperparams",
+  "validator_nominator_counts",
+  "nominator_positions",
+  "tao_usd_index",
+  "treasury_readings",
+] as const;
+const IDENTITY_ROUTE_TABLES = [
+  "subnet_hyperparams",
+  "subnet_hyperparams_history",
+  "account_identity",
+  "account_identity_history",
+] as const;
 function routeRunner(
   env: DataApiEnv,
   ctx: ExecutionContext,
+  tables: readonly string[],
 ): PgSql | undefined {
-  return env.HYPERDRIVE ? createPgSql(env.HYPERDRIVE, ctx) : undefined;
+  const d1 = selectedD1Store(env, tables);
+  return d1
+    ? createD1Sql(d1)
+    : env.HYPERDRIVE
+      ? createPgSql(env.HYPERDRIVE, ctx)
+      : undefined;
 }
 
 /**
@@ -7145,7 +7152,7 @@ export async function refreshExplorerDirectoryMaterialization(
         return true;
       }
     }
-    const sql = routeRunner(env, ctx);
+    const sql = routeRunner(env, ctx, NEURON_ROUTE_TABLES);
     if (!sql) return false;
     const latest = await latestCompletedNeuronSnapshot(sql);
     const newestRows = await sql<{ captured_at: number | string | null }>`
@@ -7784,16 +7791,18 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       // discipline the per-subnet routes do. A netuid missing from either
       // half simply has no map entry -- no exclusion invented.
       const owners = await sql<{ netuid: number; owner_hotkey: string | null }>`
-        SELECT DISTINCT ON (netuid) netuid, owner_hotkey
+        SELECT netuid, owner_hotkey
         FROM subnet_ownership
         ORDER BY netuid, captured_at DESC`;
       const fractions = await sql<{
         netuid: number;
         miner_burned_fraction: number | null;
       }>`
-        SELECT DISTINCT ON (netuid) netuid, miner_burned_fraction
-        FROM subnet_snapshots
-        ORDER BY netuid, snapshot_date DESC`;
+        SELECT netuid, miner_burned_fraction FROM (
+          SELECT netuid, miner_burned_fraction,
+            ROW_NUMBER() OVER (PARTITION BY netuid ORDER BY snapshot_date DESC) AS rank
+          FROM subnet_snapshots
+        ) latest WHERE rank=1 ORDER BY netuid`;
       const burnHotkeyByNetuid = new Map<number, string>();
       const fractionByNetuid = new Map(
         fractions.map((row) => [row.netuid, Number(row.miner_burned_fraction)]),
@@ -7921,22 +7930,37 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       // Aggregated in SQL -- the raw series is ~1 row/minute and a 90d window
       // would be ~130k rows read for 90 scalars. Days before the series began
       // (2026-08-02) simply have no row, and the USD legs stay null there.
-      // `observed_at` is BIGINT epoch-ms (migration 0003), so the day key is
-      // derived through to_timestamp and the cutoff compared in the same unit.
+      // One indexed last-priced lookup per UTC day avoids scanning every
+      // minute observation for every subnet. The bounded day spine works in
+      // both stores; days before ingestion remain unpriced.
       const cutoffMs = Date.parse(`${cutoff}T00:00:00Z`);
-      const usdRows = await sql<{ day: string; usd_per_tao: number | null }>`
-        SELECT to_char(to_timestamp(observed_at / 1000.0), 'YYYY-MM-DD') AS day,
-               (array_agg(usd_per_tao ORDER BY observed_at DESC))[1] AS usd_per_tao
-        FROM tao_usd_index
-        WHERE usd_per_tao IS NOT NULL
-          AND observed_at >= ${cutoffMs}
-        GROUP BY 1`;
-      // No guard: the WHERE clause already excludes null prices, to_char
-      // cannot emit a null day, and a hypothetical driver NaN would only
-      // flow into legs that serialize to null -- the same answer as an
-      // unpriced day.
+      const lastDayMs = Math.floor(Date.now() / 86400000) * 86400000;
+      const usdRows = await sql<{
+        observed_at: number | string | null;
+        usd_per_tao: number | null;
+      }>`
+        WITH RECURSIVE days(start) AS (
+          SELECT CAST(${cutoffMs} AS BIGINT)
+          UNION ALL SELECT start+86400000 FROM days
+          WHERE start+86400000 <= CAST(${lastDayMs} AS BIGINT)
+        )
+        SELECT
+          (SELECT observed_at FROM tao_usd_index
+           WHERE observed_at >= days.start AND observed_at < days.start+86400000
+             AND usd_per_tao IS NOT NULL
+           ORDER BY observed_at DESC,block_number DESC LIMIT 1) AS observed_at,
+          (SELECT usd_per_tao FROM tao_usd_index
+           WHERE observed_at >= days.start AND observed_at < days.start+86400000
+             AND usd_per_tao IS NOT NULL
+           ORDER BY observed_at DESC,block_number DESC LIMIT 1) AS usd_per_tao
+        FROM days`;
       const usdPerTaoByDay = new Map<string, number>(
-        usdRows.map((row) => [row.day, Number(row.usd_per_tao)]),
+        usdRows
+          .filter((row) => row.usd_per_tao !== null)
+          .map((row) => [
+            new Date(Number(row.observed_at)).toISOString().slice(0, 10),
+            Number(row.usd_per_tao),
+          ]),
       );
       return json(
         buildSubnetEmissionSplitHistory(rows, netuid, {
@@ -9199,7 +9223,7 @@ async function dispatchDataApiRequest(
     // capture + an opaque 502 that never leaks DB detail.
     const neuronsStoreHandler = matchNeuronsStoreRoute(url);
     if (neuronsStoreHandler) {
-      const store = routeRunner(env, ctx);
+      const store = routeRunner(env, ctx, NEURON_ROUTE_TABLES);
       if (!store) {
         return json({ error: "no store bound for this route" }, 503);
       }
@@ -9218,7 +9242,7 @@ async function dispatchDataApiRequest(
     {
       const healthStatusStoreHandler = matchHealthStatusStoreRoute(url);
       if (healthStatusStoreHandler) {
-        const store = routeRunner(env, ctx);
+        const store = routeRunner(env, ctx, ["surface_status"]);
         if (!store) {
           return json({ error: "no store bound for this route" }, 503);
         }
@@ -9241,7 +9265,7 @@ async function dispatchDataApiRequest(
       const hyperparamsIdentityStoreHandler =
         matchHyperparamsIdentityStoreRoute(url);
       if (hyperparamsIdentityStoreHandler) {
-        const store = routeRunner(env, ctx);
+        const store = routeRunner(env, ctx, IDENTITY_ROUTE_TABLES);
         if (!store) {
           return json({ error: "no store bound for this route" }, 503);
         }
@@ -9376,15 +9400,17 @@ export async function writeTaoUsdIndexRow(
   // one height a genuine no-op. Whether heights are actually landing is
   // measured where it belongs -- src/tao-usd-index-watchdog.ts reads the table.
   //
-  // `ctx` is required because createPgSql returns the pooled connection
-  // through waitUntil; without one this would leak a connection per tick, so
-  // it declines rather than writing.
-  const sql = neonWriteRunner(
-    env,
-    ctx ?? null,
-    TAO_USD_INDEX_NEON_LANE,
-    env.HYPERDRIVE,
-  );
+  // PostgreSQL requires ctx to return its pooled connection through waitUntil.
+  // Selected D1 uses its native binding and needs no deferred connection work.
+  const d1 = selectedD1Store(env, ["tao_usd_index"]);
+  const sql = d1
+    ? createD1Sql(d1)
+    : neonWriteRunner(
+        env,
+        ctx ?? null,
+        TAO_USD_INDEX_NEON_LANE,
+        env.HYPERDRIVE,
+      );
   if (!sql) {
     return { written: false, skipped: true, reason: "no store bound" };
   }

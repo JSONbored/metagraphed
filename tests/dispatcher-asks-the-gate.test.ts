@@ -71,7 +71,12 @@ describe("the read dispatcher", () => {
       `${dispatches.length} dispatcher blocks but ${bindings.length} store bindings`,
     );
     assert.deepEqual(
-      bindings.filter((expr) => expr !== "routeRunner(env, ctx)"),
+      bindings.filter(
+        (expr) =>
+          !/^routeRunner\(env, ctx, (NEURON_ROUTE_TABLES|IDENTITY_ROUTE_TABLES|\["surface_status"\])\)$/.test(
+            expr,
+          ),
+      ),
       [],
       "a `store` local was filled from something other than routeRunner; " +
         "its route's NEON_READ_ROUTE_TABLES entry would be read by nothing",
