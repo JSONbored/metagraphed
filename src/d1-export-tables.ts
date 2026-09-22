@@ -1,5 +1,9 @@
 // Fixed archive shapes. Keys follow primary/covering indexes, including the
 // nullable failure-group expression. No request supplies an SQL identifier.
+import {
+  NEURON_DAILY_KEYS,
+  ACCOUNT_POSITION_DAILY_KEYS,
+} from "./neuron-storage-keys.ts";
 export const D1_EXPORT_TABLES: Record<
   string,
   { keys: string[]; watermark?: string[]; daily?: boolean }
@@ -7,9 +11,16 @@ export const D1_EXPORT_TABLES: Record<
   account_balances: { keys: ["ss58"] },
   account_identity: { keys: ["account"] },
   neurons: { keys: ["netuid", "uid"] },
-  neuron_daily: { keys: ["snapshot_date", "netuid", "uid"], daily: true },
+  neuron_daily: {
+    keys: [NEURON_DAILY_KEYS[2], NEURON_DAILY_KEYS[0], NEURON_DAILY_KEYS[1]],
+    daily: true,
+  },
   account_position_daily: {
-    keys: ["snapshot_date", "netuid", "account"],
+    keys: [
+      ACCOUNT_POSITION_DAILY_KEYS[2],
+      ACCOUNT_POSITION_DAILY_KEYS[1],
+      ACCOUNT_POSITION_DAILY_KEYS[0],
+    ],
     daily: true,
   },
   subnet_snapshots: { keys: ["snapshot_date", "netuid"], daily: true },

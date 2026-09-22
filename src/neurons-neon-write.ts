@@ -254,6 +254,11 @@ interface MirrorPlan {
   guard?: string;
 }
 
+import {
+  NEURON_DAILY_KEYS,
+  ACCOUNT_POSITION_DAILY_KEYS,
+} from "./neuron-storage-keys.ts";
+
 export const NEURON_MIRROR_PLANS: Readonly<Record<string, MirrorPlan>> = {
   neurons: {
     table: "neurons",
@@ -280,13 +285,13 @@ export const NEURON_MIRROR_PLANS: Readonly<Record<string, MirrorPlan>> = {
   neuron_daily: {
     table: "neuron_daily",
     columns: NEURON_DAILY_COLUMNS,
-    conflict: ["netuid", "uid", "snapshot_date"],
+    conflict: NEURON_DAILY_KEYS,
     guard: "neuron_daily.captured_at < EXCLUDED.captured_at",
   },
   account_position_daily: {
     table: "account_position_daily",
     columns: ACCOUNT_POSITION_DAILY_COLUMNS,
-    conflict: ["account", "netuid", "snapshot_date"],
+    conflict: ACCOUNT_POSITION_DAILY_KEYS,
     guard: "account_position_daily.captured_at < EXCLUDED.captured_at",
   },
 };
