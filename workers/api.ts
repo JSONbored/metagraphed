@@ -10019,7 +10019,10 @@ async function handleHealthRequest(request: Request, env: Env) {
     r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
     kv: Boolean(env.METAGRAPH_CONTROL?.get),
     data_api: Boolean(env.DATA_API?.fetch),
-    health_db: Boolean(env.HYPERDRIVE?.connectionString),
+    health_db: Boolean(
+      selectedD1Store(env, ["chain_detail_blocks"]) ||
+      env.HYPERDRIVE?.connectionString,
+    ),
   };
 
   // Data freshness — the event-driven data publish (ADR 0007) advances the KV

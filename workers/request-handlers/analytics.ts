@@ -40,6 +40,7 @@ export {
 // is imported directly from leaf modules, so this file never imports api.ts.
 
 import { observationsReadDb } from "../../src/observations-read-runner.ts";
+import { OBSERVATION_TABLES } from "../../src/observations-neon.ts";
 import { withChainAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
 import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
 import { readStore } from "../../src/read-store.ts";
@@ -341,7 +342,7 @@ export async function handleBulkHealthTrends(
       });
       const data = result.data;
       const isFallback =
-        !env.HYPERDRIVE?.connectionString ||
+        !readStore(env, OBSERVATION_TABLES) ||
         currentStoreReadFailureGeneration() !== storeGeneration;
       const response = await envelopeResponse(
         cacheRequest,
@@ -403,7 +404,7 @@ export async function handleHealthTrends(
       db: observationsReadDb(env, ctx),
     });
     const usedFallback =
-      !env.HYPERDRIVE?.connectionString ||
+      !readStore(env, OBSERVATION_TABLES) ||
       currentStoreReadFailureGeneration() !== storeGeneration;
     const response = await envelopeResponse(
       cacheRequest,
@@ -459,7 +460,7 @@ export async function handleHealthPercentiles(
         db: observationsReadDb(env, ctx),
       });
       const usedFallback =
-        !env.HYPERDRIVE?.connectionString ||
+        !readStore(env, OBSERVATION_TABLES) ||
         currentStoreReadFailureGeneration() !== storeGeneration;
       const response = await envelopeResponse(
         cacheRequest,
@@ -513,7 +514,7 @@ export async function handleHealthIncidents(
         db: observationsReadDb(env, ctx),
       });
       const usedFallback =
-        !env.HYPERDRIVE?.connectionString ||
+        !readStore(env, OBSERVATION_TABLES) ||
         currentStoreReadFailureGeneration() !== storeGeneration;
       const response = await envelopeResponse(
         cacheRequest,
@@ -607,7 +608,7 @@ export async function resolveGlobalIncidents(
     // store bound, or a read failure mid-load. A store-served ledger carries
     // real rows.
     isFallback:
-      !env.HYPERDRIVE?.connectionString ||
+      !readStore(env, HEALTH_CHECK_TABLES) ||
       currentStoreReadFailureGeneration() !== storeGeneration,
   };
 }
