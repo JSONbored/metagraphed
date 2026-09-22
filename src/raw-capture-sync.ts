@@ -25,6 +25,7 @@ import {
 import { RAW_CAPTURE_CRON } from "../workers/config.ts";
 import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 import { mirrorRawCaptureStateToNeon } from "./capture-state-neon-write.ts";
+import { selectedD1Store } from "./d1-store.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
 import type { WaitUntilLike } from "./pg-sql.ts";
 import {
@@ -338,6 +339,8 @@ function neonWatermarkRead(
   waitUntil: WaitUntilLike | undefined,
   network: string,
 ): (() => Promise<number | null>) | null {
+  const d1 = selectedD1Store(env, ["raw_capture_state"]);
+  if (d1) return watermarkRead(d1, network as ChainNetworkId);
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   if (!hyperdrive?.connectionString || !waitUntil) return null;
   return async () => {
@@ -468,10 +471,13 @@ export async function runRawCaptureSync(
   // A watermark this tick can READ AND WRITE (#10158). The refusal stays even
   // though there is only one store left: without a durable watermark the next
   // tick cannot know where to resume, which is exactly how a gap forms.
-  // the ownership check collapsed with the flag (#10051): Neon is the only
-  // store, so durability is the BINDING question alone
-  const captureStateOnNeon = Boolean(env?.HYPERDRIVE?.connectionString);
-  if (!captureStateOnNeon) {
+  // The selected owner must hold both halves of this cursor. A validation-only
+  // D1 binding does not move the lane; explicit ownership does.
+  const hasCaptureState = Boolean(
+    selectedD1Store(env, ["raw_capture_state"]) ||
+    env?.HYPERDRIVE?.connectionString,
+  );
+  if (!hasCaptureState) {
     return loud(
       "watermark_unavailable",
       "no store holds raw_capture_state; refusing to run. Without a durable watermark the next tick cannot know where to resume, which is exactly how a gap forms.",

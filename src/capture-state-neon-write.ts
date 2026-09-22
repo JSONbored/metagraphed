@@ -19,6 +19,7 @@
 // erase one an earlier tick already stored. Rebuilding these as a generic
 // upsert would silently drop that and replace a known value with NULL -- the
 // same shape as #9634's last_ok, one table over.
+import { createD1Sql, selectedD1Store } from "./d1-store.ts";
 import type { BlocksHead } from "../generated/db/types.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
@@ -66,7 +67,14 @@ async function runner(
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
-  const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
+  const d1 = deps.sql
+    ? null
+    : selectedD1Store(env, [
+        lane === BLOCKS_HEAD_NEON_LANE ? "blocks_head" : "raw_capture_state",
+      ]);
+  const sql =
+    deps.sql ??
+    (d1 ? createD1Sql(d1) : neonWriteRunner(env, ctx, lane, hyperdrive));
   if (!sql) {
     // Enabled but unbound is a MISCONFIGURATION, not a quiet no-op.
     //
@@ -83,7 +91,7 @@ async function runner(
   // Only a runner we BUILT can be buffered: an injected deps.sql is whatever
   // the caller handed us, and calling it buffered would suppress its verdict on
   // a write that went straight to a test double or a real connection.
-  const buffered = !deps.sql && neonWriteBufferEnabled(env, lane);
+  const buffered = !deps.sql && !d1 && neonWriteBufferEnabled(env, lane);
   return { sql, laneDb, now, attempted: true, buffered };
 }
 

@@ -5114,7 +5114,10 @@ async function handleEmissionGateSync(
       401,
     );
   }
-  if (!env.HYPERDRIVE?.connectionString) {
+  if (
+    !selectedD1Store(env, EMISSION_GATE_TABLES) &&
+    !env.HYPERDRIVE?.connectionString
+  ) {
     return errorResponse(
       "emission_gate_sync_unavailable",
       "No store is bound to this deployment.",
