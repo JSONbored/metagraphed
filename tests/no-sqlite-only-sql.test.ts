@@ -146,7 +146,13 @@ describe("store-neutral SQL", () => {
       // Native implementations require complete-family D1 ownership. Their
       // atomic writes are exercised against D1 in the corresponding native
       // tests; shared readers remain dialect-neutral.
-      if (["src/neuron-documents.ts", "src/observations-d1.ts"].includes(file))
+      if (
+        [
+          "src/neuron-documents.ts",
+          "src/observations-d1.ts",
+          "src/capture-family-d1.ts",
+        ].includes(file)
+      )
         continue;
       const sql = sqlLiterals(readFileSync(file, "utf8"));
       for (const [pattern, why] of SQLITE_ONLY) {

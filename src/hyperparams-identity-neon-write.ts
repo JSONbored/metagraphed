@@ -39,6 +39,8 @@ import {
   type NeonWriteResult,
 } from "./neon-write.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
+import { selectedD1Store } from "./d1-store.ts";
+import { writeCaptureFamilyD1 } from "./capture-family-d1.ts";
 
 // ---------------------------------------------------------------------------
 // Moved here when D1 was deleted (#10179). These describe the TABLE -- its
@@ -153,7 +155,7 @@ type Row = Record<string, unknown>;
  * (a backfill) still moves the row back, because that is a better first-seen.
  * Only a later one is refused.
  */
-interface FamilyPlan {
+export interface FamilyPlan {
   lane: string;
   latest: { table: string; columns: readonly string[]; conflict: string[] };
   history: {
@@ -308,6 +310,18 @@ export async function mirrorFamilyToNeon(
   // code now (#10051 deleted the free-text flag), and a name this table lacks
   // is a config defect for lane_health to surface, not a crash.
   if (!plan) return { attempted: false, results: {} };
+  const d1 = selectedD1Store(env, [plan.latest.table, plan.history.table]);
+  if (d1) {
+    const results = await writeCaptureFamilyD1(d1, plan, input);
+    await recordNeonWriteVerdict(
+      laneHealthStore(env, deps.laneHealthDb),
+      lane,
+      summarise(results),
+      (deps.now ?? Date.now)(),
+      false,
+    );
+    return { attempted: true, results };
+  }
   // The dual-write gate stood here until #10051: with D1 deleted this is the
   // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
   // no-arm means "do not persist" is not a cutover control any more, it is an

@@ -44,6 +44,7 @@ import {
   NEURONS_PASS_WINDOW_MS,
 } from "./neurons-staleness-watchdog.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
+import { createD1Sql, selectedD1Store } from "./d1-store.ts";
 
 export const SUBNET_LIFECYCLE_LANE = "subnet-lifecycle";
 
@@ -207,8 +208,9 @@ export async function runSubnetLifecycleLane(
     // What the table currently believes: netuids whose NEWEST event is a
     // registration. DISTINCT ON is the same shape loadLatestLaneHealth uses.
     const knownRows = await db.query(
-      "SELECT DISTINCT ON (netuid) netuid, event FROM subnet_lifecycle " +
-        "ORDER BY netuid, observed_at DESC, id DESC",
+      "SELECT netuid,event FROM (SELECT netuid,event,ROW_NUMBER() OVER " +
+        "(PARTITION BY netuid ORDER BY observed_at DESC,id DESC) AS rank FROM subnet_lifecycle) " +
+        "WHERE rank=1 ORDER BY netuid",
     );
     const known = new Set<number>();
     for (const row of knownRows) {
@@ -220,26 +222,14 @@ export async function runSubnetLifecycleLane(
     const diff = diffSubnetSets(known, observed, blockNumber);
     if (diff.events.length > 0) {
       const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
+      const d1 = selectedD1Store(env, ["neurons", "subnet_lifecycle"]);
       const sql =
         deps.sql ??
-        (hyperdrive?.connectionString && deps.ctx
-          ? createPgSql(hyperdrive, deps.ctx)
-          : hyperdrive?.connectionString
-            ? createPgSql(hyperdrive, { waitUntil: () => {} })
-            : null);
-      if (!sql) {
-        // Events to write and nowhere to write them is a FAILURE, not a quiet
-        // pass: reporting `ok` here would claim the diff had been recorded.
-        await record(
-          "stale",
-          `${diff.events.length} event(s) unwritten: no write runner`,
-        );
-        return {
-          ok: false,
-          reason: "no write runner",
-          events: diff.events.length,
-        };
-      }
+        (d1
+          ? createD1Sql(d1)
+          : // readStore above already proved either complete D1 ownership or
+            // a Hyperdrive connection in this invocation's immutable bindings.
+            createPgSql(hyperdrive!, deps.ctx ?? { waitUntil: () => {} }));
       for (const event of diff.events) {
         await sql.unsafe(
           "INSERT INTO subnet_lifecycle (netuid, event, block_number, observed_at, predates_capture)" +

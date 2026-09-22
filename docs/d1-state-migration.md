@@ -134,3 +134,29 @@ timestamps, raw retry deduplication, percentiles, nullable failure groups,
 snapshot provenance and rollback after an injected mid-batch failure. Copy
 pages compare hashes of every normalized source column before accepting a
 receipt; production ownership requires a final catch-up and live readback.
+
+## Subnet and identity captures
+
+Migration `0009_subnet_identity_state.sql` retains the latest/history pairs for
+subnet hyperparameters, subnet identity, subnet ownership and account identity,
+plus burn history and lifecycle. The wide raw hyperparameter integers use
+decimal TEXT; timestamps, block numbers and generated IDs use integer columns.
+Copy source IDs before activation and reserve space above the source sequence
+for destination appends while the final source writes drain.
+
+Each latest/history pair selects D1 together. Native captures submit every
+bounded payload chunk and optional ownership-card prune as one transaction.
+Latest cards retain the newest capture, content-keyed history retains the
+earliest observation, and an empty ownership key set never deletes the card.
+Oversized rows, unsupported values and oversized transactions report failure
+without committing a prefix. The existing lane verdict remains the record of
+whether the capture landed.
+
+The Data API's history-diff and historical-backfill paths select the same store
+as the family writer. Lifecycle's latest-event query uses a portable window
+function; burn capture already uses portable atomic statements. Native tests
+exercise real schema constraints, wide/null values, chronological guards,
+ownership pruning, injected history failures, multiple payload chunks and
+authenticated capture/backfill routes without Hyperdrive. This implementation
+does not select production ownership; shared serving readers must also be
+qualified before moving these families.
