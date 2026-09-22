@@ -77,6 +77,9 @@
     "not_found_handling": "404-page",
   },
   "vars": {
+    // Retained history copied and qualified before this ownership switch.
+    // Writers and readers move together; other tables keep their existing owner.
+    "D1_STATE_TABLES": "lane_health",
     // infra#629: where x402 payments settle, and on which chain.
     //
     // IN VERSION CONTROL, NOT A SECRET. The address is public by nature -- a
@@ -763,6 +766,14 @@
     {
       "binding": "HYPERDRIVE",
       "id": "8a09dc673733497f987434f59689287e",
+    },
+  ],
+  "d1_databases": [
+    {
+      "binding": "D1_STATE",
+      "database_name": "metagraphed-state",
+      "database_id": "8fde78ea-438f-4d91-9aef-b377ae43fd4a",
+      "migrations_dir": "migrations/d1",
     },
   ],
   // RPC reverse-proxy usage telemetry (#9228). Both proxy entry points --

@@ -37,6 +37,7 @@
 import { Client } from "pg";
 import { timed, TIMING_NEON } from "./request-timing.ts";
 import { toPositionalPlaceholders } from "./pg-sql.ts";
+import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
 
 /** The minimal pg client this needs, so a test can hand it a fake. */
 export interface ReadStoreClient {
@@ -362,6 +363,8 @@ export function pgReadStore(
  */
 export interface StoreEnv {
   HYPERDRIVE?: { connectionString?: string };
+  D1_STATE?: D1StoreBinding;
+  D1_STATE_TABLES?: string;
 }
 
 /**
@@ -398,6 +401,8 @@ export function readStore(
   deps: ReadStoreDeps = {},
 ): ReadStoreDb | undefined {
   if (injected) return injected;
+  const d1 = selectedD1Store(env, tables);
+  if (d1) return d1;
   const connectionString = hyperdriveConnectionString(env);
   if (!connectionString) return undefined;
   // Empty `tables` must never read as "Neon owns them all" -- that would send a

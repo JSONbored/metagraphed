@@ -515,10 +515,11 @@ export async function loadLaneMaxGap(
 ): Promise<Record<string, number | null>> {
   if (!db?.query) return {};
   try {
-    const rows = (await db.query(LANE_MAX_GAP_SQL, [sinceMs])) as Record<
-      string,
-      unknown
-    >[];
+    const rows = (
+      db.maxGaps
+        ? await db.maxGaps(sinceMs, LANE_ALARM_MIN_CADENCE_SAMPLES)
+        : await db.query(LANE_MAX_GAP_SQL, [sinceMs])
+    ) as Record<string, unknown>[];
     const out: Record<string, number | null> = {};
     for (const row of rows) {
       const lane = row.lane == null ? "" : String(row.lane);
@@ -1094,22 +1095,25 @@ export function laneAlarmRecoveryComment(
 export async function loadLaneUnknownRuns(
   db: LaneHealthDb | null | undefined,
 ): Promise<LaneVerdictRuns> {
-  return loadLaneRuns(db, LANE_UNKNOWN_RUN_SQL);
+  return loadLaneRuns(db, LANE_UNKNOWN_RUN_SQL, "unknown");
 }
 
 export async function loadLaneStaleRuns(
   db: LaneHealthDb | null | undefined,
 ): Promise<LaneVerdictRuns> {
-  return loadLaneRuns(db, LANE_STALE_RUN_SQL);
+  return loadLaneRuns(db, LANE_STALE_RUN_SQL, "stale");
 }
 
 async function loadLaneRuns(
   db: LaneHealthDb | null | undefined,
   sql: string,
+  verdict: LaneFindingVerdict,
 ): Promise<LaneVerdictRuns> {
   if (!db?.query) return {};
   try {
-    const rows = (await db.query(sql)) as Record<string, unknown>[];
+    const rows = (
+      db.verdictRuns ? await db.verdictRuns(verdict) : await db.query(sql)
+    ) as Record<string, unknown>[];
     const out: LaneVerdictRuns = {};
     for (const row of rows) {
       const lane = row.lane == null ? "" : String(row.lane);

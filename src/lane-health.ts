@@ -182,6 +182,11 @@ export function isRetiredLane(lane: string): boolean {
  * counts, no D1 envelope. Structural so every watchdog test keeps handing in
  * a plain object. */
 export interface LaneHealthDb {
+  /** A materialized latest-per-lane read, maintained atomically by the store. */
+  latest?(): Promise<unknown[]>;
+  /** Indexed equivalents of the history queries, when the store maintains them. */
+  maxGaps?(sinceMs: number, minimumSamples: number): Promise<unknown[]>;
+  verdictRuns?(verdict: string): Promise<unknown[]>;
   query(text: string, values?: unknown[]): Promise<unknown[]>;
   run(text: string, values?: unknown[]): Promise<{ changes: number }>;
 }
@@ -257,11 +262,13 @@ export async function loadLatestLaneHealth(
     // One row per lane via a correlated MAX, rather than pulling the whole table and
     // reducing in the Worker: the table grows by one row per lane per tick forever, so
     // a full scan here would get slower every day this runs.
-    const rows = (await db.query(
-      "SELECT lane, verdict, age_ms, detail, checked_at FROM lane_health " +
-        "WHERE (lane, checked_at) IN " +
-        "(SELECT lane, MAX(checked_at) FROM lane_health GROUP BY lane)",
-    )) as Record<string, unknown>[];
+    const rows = (await (db.latest
+      ? db.latest()
+      : db.query(
+          "SELECT lane, verdict, age_ms, detail, checked_at FROM lane_health " +
+            "WHERE (lane, checked_at) IN " +
+            "(SELECT lane, MAX(checked_at) FROM lane_health GROUP BY lane)",
+        ))) as Record<string, unknown>[];
     const out: Record<string, LaneHealthRecord> = {};
     for (const row of rows) {
       const lane = row.lane == null ? "" : String(row.lane);

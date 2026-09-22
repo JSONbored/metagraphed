@@ -1,12 +1,9 @@
 // Which store holds lane_health (#10126).
 //
-// ## Why this one is different from every other table
-//
-// lane_health is where all 27 watchdogs and mirror lanes record their verdicts,
-// and it is the LAST table to move for exactly that reason: if it goes silent,
-// every check goes silent with it, and an absent verdict reads as health. So
-// this moves after everything it watches, and it must not need those 27 callers
-// to change shape.
+// Watchdogs share this seam so their writer and reader always select the same
+// destination. D1 ownership is enabled only after copying and comparing the
+// retained verdicts; its small current-state projection preserves the full
+// history without making every health read scan it (#12151).
 //
 // ## Why it does not need a ctx, when everything else does
 //
@@ -35,6 +32,7 @@ import { Client } from "pg";
 import { toPositionalPlaceholders } from "./pg-sql.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 import { hyperdriveConnectionString } from "./read-store.ts";
+import { selectedD1Store } from "./d1-store.ts";
 
 /** The minimal pg client this needs, so a test can hand it a fake. */
 export interface LaneHealthPgClient {
@@ -90,7 +88,7 @@ export function pgLaneHealthDb(
  * The store lane_health verdicts should be written to and read from.
  *
  * `injected` wins outright so tests keep handing in their own fake. Otherwise
- * Neon, once it is declared to own the table and Hyperdrive is bound --
+ * Explicit D1 ownership wins next; otherwise Hyperdrive remains the owner --
  * `undefined` when it is not, which recordLaneVerdict already treats as "no
  * store" rather than as an error.
  */
@@ -104,6 +102,38 @@ export function laneHealthStore(
   deps: LaneHealthStoreDeps = {},
 ): LaneHealthDb | undefined {
   if (injected) return injected;
+  const d1 = selectedD1Store(env, ["lane_health"]);
+  if (d1)
+    return {
+      ...d1,
+      latest: () =>
+        d1.query(
+          "SELECT lane, verdict, age_ms, detail, checked_at FROM lane_health_current",
+        ),
+      maxGaps: (sinceMs, minimumSamples) =>
+        d1.query(
+          `SELECT lane, sampled - 1 AS n, max_gap FROM (
+            SELECT c.lane,
+              (SELECT COUNT(*) FROM (SELECT 1 FROM lane_health h
+                WHERE h.lane = c.lane AND h.checked_at > ? LIMIT ?)) AS sampled,
+              (SELECT gap FROM lane_health_clocks g WHERE g.lane = c.lane
+                AND g.previous_at > ? ORDER BY gap DESC, checked_at DESC LIMIT 1) AS max_gap
+            FROM lane_health_current c
+          ) WHERE sampled > 1`,
+          [sinceMs, minimumSamples, sinceMs],
+        ),
+      verdictRuns: (verdict) =>
+        d1.query(
+          `SELECT h.lane, MIN(h.checked_at) AS since, COUNT(*) AS ticks
+            FROM lane_health_verdict_latest c CROSS JOIN lane_health h INDEXED BY idx_lane_health_verdict
+              ON h.lane = c.lane AND h.verdict = c.verdict
+              AND h.checked_at > COALESCE((SELECT MAX(x.checked_at)
+                FROM lane_health_verdict_latest x
+                WHERE x.lane = c.lane AND x.verdict <> c.verdict), 0)
+            WHERE c.verdict = ? GROUP BY h.lane`,
+          [verdict],
+        ),
+    };
   const connectionString = hyperdriveConnectionString(env);
   return connectionString ? pgLaneHealthDb(connectionString, deps) : undefined;
 }
