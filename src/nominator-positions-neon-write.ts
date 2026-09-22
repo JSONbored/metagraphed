@@ -24,6 +24,8 @@
 // worst a failure can do in that order is leave a stale position until the next
 // tick -- never delete a position without having written its replacement first.
 
+import { selectedD1Store } from "./d1-store.ts";
+import { writeNominatorPositionsD1 } from "./ledger-d1.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { normalizeShareFractionsInNeon } from "./neon-write.ts";
 import {
@@ -99,6 +101,28 @@ export interface NominatorPositionsMirrorDeps {
   now?: () => number;
 }
 
+export type NominatorPositionsInput = {
+  rows: Row[];
+  coldkeyMaxCapturedAt: ReadonlyMap<string, number>;
+  /** This chunk's completeness tally (#10056). Written last, and only when
+   * both the upsert and the prune succeeded -- see below. */
+  pass?: PassTallyInput | null;
+  /**
+   * Which producer wrote these rows, and therefore which rows the prune may
+   * delete (#10845). Defaults to the Alpha scan, so every existing caller is
+   * unchanged and every existing row -- all 123,057 of them, defaulted by
+   * 0027 -- keeps matching.
+   */
+  source?: string;
+  /**
+   * The lane these rows report under. `self-stake` is a DIFFERENT lane from
+   * `nominator-positions` even though both write this table: they run on
+   * different cadences (weekly vs daily) and a shared verdict would let one
+   * lane's silence hide behind the other's success.
+   */
+  lane?: string;
+};
+
 /**
  * Mirror one nominator-positions batch into Neon. Never throws.
  *
@@ -109,27 +133,7 @@ export interface NominatorPositionsMirrorDeps {
 export async function mirrorNominatorPositionsToNeon(
   env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike | null | undefined,
-  input: {
-    rows: Row[];
-    coldkeyMaxCapturedAt: ReadonlyMap<string, number>;
-    /** This chunk's completeness tally (#10056). Written last, and only when
-     * both the upsert and the prune succeeded -- see below. */
-    pass?: PassTallyInput | null;
-    /**
-     * Which producer wrote these rows, and therefore which rows the prune may
-     * delete (#10845). Defaults to the Alpha scan, so every existing caller is
-     * unchanged and every existing row -- all 123,057 of them, defaulted by
-     * 0027 -- keeps matching.
-     */
-    source?: string;
-    /**
-     * The lane these rows report under. `self-stake` is a DIFFERENT lane from
-     * `nominator-positions` even though both write this table: they run on
-     * different cadences (weekly vs daily) and a shared verdict would let one
-     * lane's silence hide behind the other's success.
-     */
-    lane?: string;
-  },
+  input: NominatorPositionsInput,
   deps: NominatorPositionsMirrorDeps = {},
 ): Promise<NominatorPositionsMirrorOutcome> {
   const lane = input.lane ?? NOMINATOR_POSITIONS_NEON_LANE;
@@ -138,6 +142,38 @@ export async function mirrorNominatorPositionsToNeon(
   // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
   // no-arm means "do not persist" is not a cutover control any more, it is an
   // off switch nothing should be holding.
+  const d1 = selectedD1Store(env, [
+    "nominator_positions",
+    "nominator_positions_passes",
+    "nominator_scan_receipts",
+  ]);
+  if (d1) {
+    const outcome = await writeNominatorPositionsD1(d1, input);
+    const laneDb = laneHealthStore(env, deps.laneHealthDb);
+    const now = deps.now ?? Date.now;
+    for (const [key, result] of Object.entries(outcome)) {
+      if (key === "attempted") continue;
+      const name = key === "write" ? lane : `${lane}-${key}`;
+      await recordNeonWriteVerdict(
+        laneDb,
+        name,
+        result as NeonWriteResult,
+        now(),
+        false,
+        key !== "write",
+      );
+    }
+    if (input.pass)
+      await recordNeonWriteVerdict(
+        laneDb,
+        `${NOMINATOR_POSITIONS_NEON_LANE}-normalize`,
+        outcome.pass!,
+        now(),
+        false,
+        true,
+      );
+    return outcome;
+  }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.

@@ -17,14 +17,19 @@ function cell(value: unknown): string | number | null {
   );
 }
 
-function upserts(
-  plan: FamilyPlan["latest"],
+export function captureUpsertStatements(
+  plan: {
+    table: string;
+    columns: readonly string[];
+    conflict: readonly string[];
+  },
   rows: Record<string, unknown>[],
   guard?: string,
+  filter = "true",
 ): ProducerStatement[] {
   const { table, columns, conflict } = plan;
   const updates = columns.filter((column) => !conflict.includes(column));
-  const text = `INSERT INTO ${table}(${columns.join(",")}) SELECT ${columns.map((_, i) => `json_extract(value,'$[${i}]')`).join(",")} FROM json_each(?) WHERE true
+  const text = `INSERT INTO ${table}(${columns.join(",")}) SELECT ${columns.map((_, i) => `json_extract(value,'$[${i}]')`).join(",")} FROM json_each(?) WHERE ${filter}
     ON CONFLICT(${conflict.join(",")}) DO UPDATE SET ${updates.map((column) => `${column}=excluded.${column}`).join(",")}${guard ? ` WHERE ${guard}` : ""}`;
   const statements: ProducerStatement[] = [];
   let batch: string[] = [],
@@ -72,7 +77,11 @@ export async function writeCaptureFamilyD1(
     const statements: ProducerStatement[] = [];
     for (const group of groups) {
       if (!group.rows.length) continue;
-      const prepared = upserts(group.plan, group.rows, group.guard);
+      const prepared = captureUpsertStatements(
+        group.plan,
+        group.rows,
+        group.guard,
+      );
       statements.push(...prepared);
       results[group.name] = {
         ok: true,

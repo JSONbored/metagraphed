@@ -160,3 +160,24 @@ ownership pruning, injected history failures, multiple payload chunks and
 authenticated capture/backfill routes without Hyperdrive. This implementation
 does not select production ownership; shared serving readers must also be
 qualified before moving these families.
+
+### Ledger captures and completeness
+
+`0010_ledger_state.sql` retains the account balance, hotkey alpha, validator
+nominator count, and nominator position schemas, their pass tables, and full-scan
+receipts. Nominator shares remain decimal TEXT; only the derived share fraction
+uses floating point, matching the served contract.
+
+Selected writers send native SQLite transactions directly to D1. Each transaction
+includes all data chunks, source-scoped pruning, scan receipts, and the pass tally.
+A failure in any member rolls back the entire delivery. Hotkey alpha still stores
+only pools referenced by nominator positions. Capture guards prevent delayed
+readings from replacing newer values, and replayed scan receipts replace their
+payload count instead of adding it. Pass tallies retain the existing at-least-once
+accounting contract. Fraction normalization only visits pools affected by a chunk,
+while including earlier chunks of that capture in each pool's denominator.
+
+The migration does not select these tables. Copy every retained row and receipt,
+qualify the joined readers and final source drain, and then select each complete
+group through `D1_STATE_TABLES`. The hotkey alpha writer also requires nominator
+positions to belong to D1; mixing owners fails explicitly.

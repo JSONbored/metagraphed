@@ -3747,12 +3747,27 @@ export function neonOwnsLedger(env: DataApiEnv, lane: string): boolean {
     (t): t is string => Boolean(t),
   );
   if (!tables.length) return false;
+  if (
+    selectedD1Store(env, [
+      ...tables,
+      ...(lane === "hotkey-alpha" ? ["nominator_positions"] : []),
+    ])
+  )
+    return true;
   // the ownership term collapsed with the flag (#10051): Neon is the only
   // store, so durability is the binding question alone.
   return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
 export function neonOwnsNominatorPositions(env: DataApiEnv): boolean {
+  if (
+    selectedD1Store(env, [
+      "nominator_positions",
+      "nominator_positions_passes",
+      "nominator_scan_receipts",
+    ])
+  )
+    return true;
   // the ownership term collapsed with the flag (#10051): Neon is the only
   // store, so durability is the binding question alone.
   return Boolean(env.HYPERDRIVE?.connectionString);
