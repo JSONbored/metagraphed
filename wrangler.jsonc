@@ -79,7 +79,7 @@
   "vars": {
     // Retained history copied and qualified before this ownership switch.
     // Writers and readers move together; other tables keep their existing owner.
-    "D1_STATE_TABLES": "lane_health",
+    "D1_STATE_TABLES": "lane_health,attribution_candidates,attribution_sweeps,origin_reachability,compute_declarations",
     // infra#629: where x402 payments settle, and on which chain.
     //
     // IN VERSION CONTROL, NOT A SECRET. The address is public by nature -- a

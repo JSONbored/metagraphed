@@ -14,6 +14,8 @@
 // query on the way.
 import assert from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
+import { Miniflare } from "miniflare";
+import { createD1Store } from "../src/d1-store.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, test, vi } from "vitest";
@@ -1868,6 +1870,70 @@ test("miner-fairness counts a registered UID that earns nothing", async () => {
 // composer, which tests/validator-economics covers -- so what this exercises is
 // the half the store owns, plus the constraints that keep a private extractor
 // from publishing a contradiction.
+test("cost-to-participate reads selected D1 declarations and retains its separate history leg", async () => {
+  const runtime = new Miniflare({
+    modules: true,
+    script: "export default { fetch() { return new Response('test'); } }",
+    compatibilityDate: "2026-06-06",
+    d1Databases: ["DB"],
+  });
+  try {
+    const d1 = await runtime.getD1Database("DB");
+    const migration = fs.readFileSync(
+      "migrations/d1/0004_probe_metadata.sql",
+      "utf8",
+    );
+    for (const statement of migration.split("-- statement-breakpoint"))
+      await d1.prepare(statement).run();
+    await persistComputeDeclaration(createD1Store(d1), {
+      netuid: 7,
+      source_url: "https://example.com/min_compute.yml",
+      read_at_sha: "d1-capture",
+      observed_at: 1790000000000,
+      found: true,
+      spec_version: "1",
+      miner: { cpu: { min_cores: 4 } },
+      validator: null,
+      unscoped: null,
+    });
+    // Removing the old table proves the selected read cannot fall back there.
+    await db.exec("DROP TABLE compute_declarations");
+    const selected = env({
+      D1_STATE: d1,
+      D1_STATE_TABLES: "compute_declarations",
+    });
+    const response = await call(
+      req("/api/v1/subnets/7/cost-to-participate"),
+      selected,
+    );
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as Row;
+    assert.equal(body.declarations_read, 1);
+    assert.equal(
+      ((body.declarations as Row[])[0].evidence as Row).read_at_sha,
+      "d1-capture",
+    );
+    assert.equal((body.earnings as Row).days_covered, 0);
+    await d1.exec("DROP TABLE compute_declarations");
+    assert.equal(
+      (await call(req("/api/v1/subnets/7/cost-to-participate"), selected))
+        .status,
+      502,
+    );
+    assert.equal(
+      (
+        await call(
+          req("/api/v1/subnets/7/cost-to-participate"),
+          env({ D1_STATE_TABLES: "compute_declarations" }),
+        )
+      ).status,
+      502,
+    );
+  } finally {
+    await runtime.dispose();
+  }
+});
+
 test("GET /api/v1/subnets/:netuid/cost-to-participate reads the declaration", async () => {
   await seed(
     `INSERT INTO compute_declarations (netuid, source_url, read_at_sha,

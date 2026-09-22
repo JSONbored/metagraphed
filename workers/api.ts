@@ -29,6 +29,7 @@ import {
   rollupChainConcentration,
 } from "../src/chain-concentration-rollup.ts";
 import { createProducerStore, storeBoolean } from "../src/producer-store.ts";
+import { selectedD1Store } from "../src/d1-store.ts";
 import {
   API_ROUTES,
   PUBLIC_ARTIFACTS,
@@ -2382,19 +2383,17 @@ export function cronLabel(cron: string): string {
  * connection per tick, which is why this returns the closer rather than hiding
  * it.
  */
-function producerStore(
+export function producerStore(
   // Only waitUntil is used, so the parameter is the CAPABILITY rather than the
   // full ExecutionContext -- api.ts's own request `Ctx` carries just that, and
   // widening here beats casting at each call site (a cast would let a ctx with
   // no waitUntil through, and the connection would leak per tick).
   env: Env,
   ctx: { waitUntil?: (promise: Promise<unknown>) => void } | undefined,
-  // Kept for call-site clarity about which tables ride the store; the
-  // per-table ownership question collapsed with the flag (#10051).
-  _tables: readonly string[],
+  tables: readonly string[],
 ): { db: unknown; close: () => void } {
-  // the per-table ownership term collapsed with the flag (#10051): Neon is
-  // the only store, so the binding is the whole question.
+  const d1 = selectedD1Store(env, tables);
+  if (d1) return { db: d1, close: () => undefined };
   if (!env.HYPERDRIVE?.connectionString) {
     return { db: undefined, close: () => undefined };
   }
