@@ -8,9 +8,13 @@ import {
   type ParquetReadBudget,
 } from "./indexed-parquet.ts";
 
-type Scope = Pick<HistoryBlockIndex, "generation" | "network" | "table"> & {
+// Read options combine manifest identity with the separately verified file census.
+interface Scope {
+  generation: HistoryBlockIndex["generation"];
+  network: HistoryBlockIndex["network"];
+  table: HistoryBlockIndex["table"];
   fileRows: readonly number[];
-};
+}
 export interface HistoryBlockRun {
   fileId: number;
   rowStart: number;
