@@ -66,6 +66,7 @@ import type { StorageReadResult } from "../workers/storage.ts";
 import { loadSelfHealthColdTier } from "./self-health-cold-tier.ts";
 import { loadSelfHealthNeon } from "./self-health-neon.ts";
 import { canWaitUntil, createPgSql } from "./pg-sql.ts";
+import { selfHealthSql } from "./self-health-store.ts";
 import { loadLatestLaneHealth } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { withLaneHealth, type SelfHealth } from "./self-health.ts";
@@ -121,8 +122,7 @@ function selfHealthNeonSql(
     : canWaitUntil(ctx.ctx)
       ? ctx.ctx
       : null;
-  if (!ctx.env?.HYPERDRIVE || !waiter) return null;
-  return createPgSql(ctx.env.HYPERDRIVE, waiter);
+  return selfHealthSql(ctx.env, waiter);
 }
 
 /**

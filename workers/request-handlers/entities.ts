@@ -539,7 +539,7 @@ import {
   VALIDATOR_ECONOMICS_TABLES,
 } from "../../src/read-store-tables.ts";
 import { loadSelfHealthNeon } from "../../src/self-health-neon.ts";
-import { canWaitUntil, createPgSql } from "../../src/pg-sql.ts";
+import { selfHealthSql } from "../../src/self-health-store.ts";
 import type {
   HistoryCapRow,
   HistoryEmissionRow,
@@ -2158,11 +2158,7 @@ export async function handleSelfHealth(
     // Neon, where the prober writes now (#9836). Asked BEFORE the lakehouse:
     // the cold tier can only ever answer current_ok:null, and once the probe
     // lane is running there is a current reading to give.
-    (await loadSelfHealthNeon(
-      env.HYPERDRIVE && canWaitUntil(ctx)
-        ? createPgSql(env.HYPERDRIVE, ctx)
-        : null,
-    )) ??
+    (await loadSelfHealthNeon(selfHealthSql(env, ctx))) ??
     // Lakehouse cold tier (src/self-health-cold-tier.ts): the preserved daily
     // rollup, ending 2026-08-02, with NO current readings. Kept because those
     // 90 days are real history nothing else holds -- but second, because it

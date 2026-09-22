@@ -34,15 +34,13 @@
 // response"). Writing nothing on failure is how an outage becomes an absence,
 // and absence in this table means "not measured" -- the one claim that must
 // stay honest, because the whole endpoint turns on it.
-import {
-  createPgSql,
-  type HyperdriveLike,
-  type WaitUntilLike,
-} from "./pg-sql.ts";
+import { type WaitUntilLike } from "./pg-sql.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { SELF_HEALTH_COMPONENTS } from "./self-health.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
+import { selectedD1Store } from "./d1-store.ts";
+import { SELF_HEALTH_TABLES, selfHealthSql } from "./self-health-store.ts";
 
 export const SELF_HEALTH_PROBE_LANE = "self-health-probe";
 
@@ -151,14 +149,10 @@ export async function runSelfHealthProbe(
 ): Promise<SelfHealthProbeOutcome> {
   const now = deps.now ?? Date.now;
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
-  const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
-  const sql =
-    deps.sql ??
-    (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
+  const d1 = deps.sql ? null : selectedD1Store(env, SELF_HEALTH_TABLES);
+  const sql = deps.sql ?? selfHealthSql(env, ctx);
 
-  // The both-tables-or-neither ownership check collapsed with the flag
-  // (#10051): Neon is the only store, so a half-owned family cannot exist and
-  // the runner is the whole question.
+  // Both retained ticks and their daily counts use the same selected owner.
   if (!sql) {
     const reason = "no postgres runner";
     await recordLaneVerdict(laneDb, {
@@ -183,6 +177,38 @@ export async function runSelfHealthProbe(
   let written = 0;
   for (const result of results) {
     try {
+      if (d1) {
+        // Insert the daily contribution only for a new immutable tick. Both
+        // statements commit together, so retries cannot double its count and
+        // a failed tick cannot leave a successful daily contribution behind.
+        await d1.transaction([
+          {
+            text: `INSERT INTO self_health_daily(day,component,checks,ok_count)
+              SELECT ?,?,1,? WHERE NOT EXISTS(SELECT 1 FROM self_health_checks WHERE component=? AND checked_at_ms=?)
+              ON CONFLICT(day,component) DO UPDATE SET checks=self_health_daily.checks+1,ok_count=self_health_daily.ok_count+excluded.ok_count`,
+            values: [
+              day,
+              result.component,
+              Number(result.ok),
+              result.component,
+              checkedAt,
+            ],
+          },
+          {
+            text: `INSERT INTO self_health_checks(component,checked_at_ms,ok,http_status,latency_ms)
+              VALUES(?,?,?,?,?) ON CONFLICT(component,checked_at_ms) DO NOTHING`,
+            values: [
+              result.component,
+              checkedAt,
+              result.ok,
+              result.http_status,
+              result.latency_ms,
+            ],
+          },
+        ]);
+        written += 1;
+        continue;
+      }
       await sql.unsafe(
         `INSERT INTO self_health_checks
            (component, checked_at_ms, ok, http_status, latency_ms)
