@@ -260,18 +260,26 @@ test("the first upstream that handshakes is used, and the client gets a 101", as
   assert.equal(res.headers.get("x-metagraphed-upstream"), "good.example");
 });
 
-test("dialUpstream rewrites wss:// to https:// for the upgrade fetch", async () => {
+test("dialUpstream offers compression and still accepts an uncompressed peer", async () => {
   let seen = "";
-  const capture = (async (input: string | Request) => {
+  let headers = new Headers();
+  const socket = new FakeSocket();
+  const capture = (async (input: string | Request, init: RequestInit) => {
     seen = typeof input === "string" ? input : input.url;
+    headers = new Headers(init.headers);
     return {
       ok: true,
       status: 101,
-      webSocket: new FakeSocket(),
+      webSocket: socket,
     } as unknown as Response;
   }) as unknown as typeof fetch;
-  await dialUpstream("wss://node.example/path", 1000, capture);
+  assert.equal(
+    await dialUpstream("wss://node.example/path", 1000, capture),
+    socket,
+  );
   assert.equal(seen, "https://node.example/path");
+  assert.equal(headers.get("upgrade"), "websocket");
+  assert.equal(headers.get("sec-websocket-extensions"), "permessage-deflate");
 });
 
 // The Node service got this cap from `new WebSocketServer({ maxPayload })`,
