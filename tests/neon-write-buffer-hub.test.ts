@@ -498,7 +498,7 @@ describe("NeonWriteBufferHub", () => {
     assert.equal(await countPending(h.storage), 1);
   });
 
-  test("anything but POST /enqueue is a 404", async () => {
+  test("unrecognised paths and methods are a 404", async () => {
     const h = hub();
     assert.equal(
       (await h.do.fetch(new Request("https://x/other", { method: "POST" })))
@@ -508,6 +508,39 @@ describe("NeonWriteBufferHub", () => {
     assert.equal(
       (await h.do.fetch(new Request("https://x/enqueue"))).status,
       404,
+    );
+    assert.equal(
+      (await h.do.fetch(new Request("https://x/status", { method: "POST" })))
+        .status,
+      404,
+    );
+  });
+
+  test("retirement status checks stored work even when its counter drifted", async () => {
+    const h = hub();
+    const status = () => h.do.fetch(new Request("https://x/status"));
+    assert.deepEqual(await (await status()).json(), {
+      pending: 0,
+      hasStoredStatements: false,
+      alarmAt: null,
+    });
+    await enqueueStatement(h.storage, stmt("neurons", "retained"), NOW);
+    assert.deepEqual(await (await status()).json(), {
+      pending: 1,
+      hasStoredStatements: true,
+      alarmAt: NOW + FLUSH_INTERVAL_MS,
+    });
+    h.storage.map.set("pending", 0);
+    const before = new Map(h.storage.map);
+    assert.deepEqual(await (await status()).json(), {
+      pending: 0,
+      hasStoredStatements: true,
+      alarmAt: NOW + FLUSH_INTERVAL_MS,
+    });
+    assert.deepEqual(
+      h.storage.map,
+      before,
+      "readback cannot drain or erase work",
     );
   });
 
