@@ -44,6 +44,7 @@ import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { HISTORY_RETENTION_MS } from "./health-prober.ts";
 import { BURN_HISTORY_RETENTION_MS } from "./subnet-burn-history.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
+import { selectedD1Store } from "./d1-store.ts";
 
 export const NEON_PRUNE_LANE = "neon-prune";
 
@@ -209,17 +210,26 @@ export async function runNeonPrune(
   ctx: WaitUntilLike,
   deps: PruneDeps = {},
 ): Promise<PruneOutcome> {
+  // D1 owners prune in their capture/prober lanes. Validate their binding
+  // before skipping them so configuration drift cannot revive a Neon copy.
+  const plans = Object.values(NEON_PRUNE_PLANS).filter(
+    (plan) => !selectedD1Store(env, [plan.table]),
+  );
+  if (plans.length === 0) {
+    await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+      lane: NEON_PRUNE_LANE,
+      verdict: "ok",
+      age_ms: null,
+      detail: "retention owned by D1 capture lanes",
+      checked_at: (deps.now ?? Date.now)(),
+    });
+    return { attempted: false, outcomes: [] };
+  }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   const sql = deps.sql ?? (hyperdrive ? createPgSql(hyperdrive, ctx) : null);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
   if (!sql?.unsafe) return { attempted: false };
-
-  // Only tables Neon actually owns. See NEON_PRUNE_PLANS' header for why this
-  // is ownership and no longer the backfill flag.
-  const plans = Object.entries(NEON_PRUNE_PLANS)
-    // the ownership check collapsed with the flag (#10051): Neon is the only store, so the question answered itself.
-    .map(([, plan]) => plan);
 
   const outcomes: PruneTableOutcome[] = [];
   const at = now();
