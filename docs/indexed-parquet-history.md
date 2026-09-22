@@ -15,3 +15,26 @@ Publish every source object, index, and lookup shard before atomically changing 
 Some retained files have very large pages. A small logical result does not guarantee a small decompression allocation. Qualify retained files against the reader's limits and rewrite oversized pages into smaller row groups before selecting them for serving; increasing limits without measuring Worker memory is insufficient.
 
 The synthetic fixtures exercise both data page versions, ZSTD and Snappy, dictionary encoding, nulls, multiple row groups, and integers above JavaScript's safe range. Miniflare exercises actual conditional R2 range reads. Source migration qualification additionally compares normalized record digests against the original decoder at the first, middle, and last rows of retained files.
+
+Hash lookups use immutable, generation-scoped shards under
+`metagraph/indexed-history/v1/<network>/<table>/generations/<generation>/hash/<prefix>.bin`.
+The prefix is the first three hexadecimal hash digits. Each sorted 40-byte record
+contains the raw 32-byte hash, then a little-endian uint32 source-file ordinal and
+physical row position. Sorting includes the pointer bytes, making duplicate hashes
+deterministic without dropping their other source records.
+
+`findHistoryHash` validates the network, table, generation, shard prefix, object
+identity, and physical pointer bounds. It searches with cached 1,024-record range
+reads; large duplicate-heavy shards are never fetched wholesale. Publication must
+verify every shard's sorting, checksum, row count, and source identity before its
+complete generation is selected. A selected row must also match the requested
+logical hash when the table-specific serving adapter decodes it. A missing or
+changed object throws; only a valid complete index can establish absence.
+
+For groups of at most 512 rows, the Parquet reader coalesces selected column spans
+up to 1 MiB into one conditional GET. It retains page pruning for larger spans and
+legacy row groups, and still applies the shared transfer and decoded-memory budgets.
+On the verified retained-file middle row, this exchanges 11 reads totaling 54,688
+bytes for one 151,135-byte read, with the same 221,317 decoded bytes and exact row
+digest. Both avoid the original 7,988,142-byte read and 32,402,230-byte decompression.
+No serving route is selected by these primitives alone.
