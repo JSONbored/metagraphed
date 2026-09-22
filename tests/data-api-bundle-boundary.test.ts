@@ -114,16 +114,16 @@ describe("data-api's bundle boundary", () => {
     //   after            3280 KiB
     //
     // The graph measured 4,496 KiB in 2026-08 after ordinary feature growth;
-    // Native D1 capture persistence (#12183) adds a 6,548-byte leaf module;
-    // the measured graph is now 4,705,214 bytes, with no forbidden edges.
-    // 4,725,000 bytes leaves a narrow backstop for another large edge while
+    // Native D1 capture export (#12191) adds a 6,204-byte leaf module;
+    // the measured graph is now 4,731,030 bytes, with no forbidden edges.
+    // 4,740,000 bytes leaves a narrow backstop for another large edge while
     // the named checks above continue to reject every module from the original
     // regression directly.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_725_000,
+      firstParty < 4_740_000,
       `first-party source in data-api's bundle is ${(firstParty / 1024).toFixed(0)} KiB; ` +
         `something large was re-imported. See the named checks above.`,
     );

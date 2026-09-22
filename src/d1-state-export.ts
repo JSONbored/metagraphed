@@ -5,6 +5,7 @@ import { z } from "zod";
 import { timingSafeEqual } from "./webhooks.ts";
 import { D1_EXPORT_TABLES } from "./d1-export-tables.ts";
 import { D1_EXPORT_COLUMNS } from "./d1-export-columns.ts";
+import { handleRootBasketExport } from "./root-basket-export.ts";
 import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
 const scalar = z.union([z.string().max(2048), z.number().safe()]);
 const RequestSchema = z
@@ -94,7 +95,14 @@ export async function handleD1StateExport(
   )
     return fail(401, "invalid state export credential");
   if (request.method !== "POST") return fail(405, "state export requires POST");
-  const parsed = RequestSchema.safeParse(await body(request).catch(() => null));
+  const inputBody = await body(request).catch(() => null);
+  if (
+    inputBody &&
+    typeof inputBody === "object" &&
+    (inputBody as { kind?: unknown }).kind === "basket"
+  )
+    return handleRootBasketExport(inputBody, env);
+  const parsed = RequestSchema.safeParse(inputBody);
   if (!parsed.success || !Object.hasOwn(D1_EXPORT_TABLES, parsed.data.table))
     return fail(400, "invalid export request");
   const input = parsed.data,
