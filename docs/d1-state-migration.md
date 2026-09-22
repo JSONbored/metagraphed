@@ -66,3 +66,42 @@ source history and migration evidence until the complete retirement is verified.
 This slice does not retire the other Neon tables or any R2 SQL reader. Those
 dependencies remain tracked by #12151; neither subscription nor credentials may
 be removed on the strength of this watchdog cutover alone.
+
+## Neuron capture documents
+
+The neuron writer has a native D1 implementation, gated as one ownership group:
+`neurons`, `neuron_daily`, `account_position_daily`, and `neurons_passes`.
+This implementation does not select that group in deployment configuration.
+All retained history and the additional tables used by joined readers must be
+qualified before selecting it.
+
+Migration `0007_neuron_documents.sql` exposes the existing relational columns as
+views over JSONB documents and stable membership indexes. Neuron documents are
+partitioned by subnet, day, and groups of 256 UIDs. Account position documents
+use four deterministic account buckets per subnet/day; their history is separate
+because replacing a UID must not erase the previous account's position.
+Account document keys encode UTF-8 bytes, preserving strings with quotes and
+Unicode without interpreting them as JSON paths.
+
+Each member retains its own capture timestamp. A newer member replaces the old
+record; equal or older captures leave it intact. A delayed previously unseen
+member is retained even when other members in the document are newer. The
+membership indexes are derived from accepted records and only update when
+indexed identities change. Current-neuron pruning uses each subnet's cutoff and
+never prunes either daily family. All document writes, membership changes,
+pruning and the pass tally share one D1 transaction. The existing pass/prune
+health verdicts remain observable.
+
+Both SQL parameter batches and retained documents are bounded at 512 KiB.
+Oversized input, oversized merged history, and an atomic batch exceeding 900
+statements fail without committing a prefix. Producers must retry at their
+existing explicit capture boundary; a failed capture must not be acknowledged
+as complete. Initial membership/index construction has a one-time write cost.
+Repeated metric updates write documents instead of rewriting every row/index.
+
+Native Miniflare tests cover column/null fidelity, exact account history, late
+and partial updates, equal-timestamp retries, pruning, multi-day partitions,
+merged-size limits, and rollback when the final pass statement fails. Copy
+retained source rows in bounded keyset pages and compare full normalized content
+hashes. Measure broad aggregation queries separately before activation: indexed
+point lookup performance does not establish the cost of history-wide rankings.
