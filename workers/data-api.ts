@@ -21,6 +21,7 @@ import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import { COMPUTE_DECLARATIONS_TABLES } from "../src/read-store-tables.ts";
 import { handleRootBasketCaptureSync } from "../src/root-basket-capture-sync.ts";
+import { handleD1StateExport } from "../src/d1-state-export.ts";
 import {
   accountBalanceSyncRowSchema,
   accountIdentitySyncRowSchema,
@@ -9050,6 +9051,12 @@ async function dispatchDataApiRequest(
     }
     if (
       request.method === "POST" &&
+      url.pathname === "/api/v1/internal/state-export"
+    ) {
+      return handleD1StateExport(request, env);
+    }
+    if (
+      request.method === "POST" &&
       url.pathname === "/api/v1/internal/root-basket-capture-sync"
     ) {
       return handleRootBasketCaptureSync(request, env, {
@@ -9420,7 +9427,7 @@ export async function writeTaoUsdIndexRow(
   // Selected D1 uses its native binding and needs no deferred connection work.
   const d1 = selectedD1Store(env, ["tao_usd_index"]);
   const sql = d1
-    ? createD1Sql(d1)
+    ? { unsafe: d1.run }
     : neonWriteRunner(
         env,
         ctx ?? null,

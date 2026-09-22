@@ -77,6 +77,7 @@
     "not_found_handling": "404-page",
   },
   "vars": {
+    "D1_EXPORT_REVISIONS": "enabled",
     // Retained history copied and qualified before this ownership switch.
     // Writers and readers move together; other tables keep their existing owner.
     "D1_STATE_TABLES": "lane_health,attribution_candidates,attribution_sweeps,origin_reachability,compute_declarations,rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,raw_capture_state,emission_gate_param_history,subnet_emission_enabled_history,emission_flow_watch,subnet_deregistration_daily",

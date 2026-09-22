@@ -7,6 +7,7 @@
 // casts, arrays, JSON operators, or interactive transactions with regexes.
 import type { PgSql } from "./pg-sql.ts";
 import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
+import { D1_EXPORT_TABLES } from "./d1-export-tables.ts";
 
 export type D1StoreBinding = Pick<D1Database, "prepare" | "batch">;
 
@@ -48,7 +49,10 @@ function bindValue(value: unknown): string | number | null | ArrayBuffer {
   );
 }
 
-export function createD1Store(db: D1StoreBinding): ProducerStore {
+export function createD1Store(
+  db: D1StoreBinding,
+  revisions: readonly string[] = [],
+): ProducerStore {
   const prepare = ({ text, values = [] }: ProducerStatement) => {
     if (values.length > 100)
       throw new RangeError("D1 statement exceeds 100 bindings");
@@ -62,6 +66,20 @@ export function createD1Store(db: D1StoreBinding): ProducerStore {
     const result = await prepare({ text, values }).all<Row>();
     return result.results;
   };
+  const batch = async (statements: readonly ProducerStatement[]) => {
+    const prepared = statements.map(prepare);
+    if (revisions.length)
+      prepared.push(
+        prepare({
+          text: `INSERT INTO archive_export_revisions(table_name,revision)
+        SELECT value,1 FROM json_each(?) WHERE true
+        ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1`,
+          values: [JSON.stringify(revisions)],
+        }),
+      );
+    const result = await db.batch(prepared);
+    return result.slice(0, statements.length);
+  };
   return {
     query,
     async first<Row = Record<string, unknown>>(
@@ -71,14 +89,16 @@ export function createD1Store(db: D1StoreBinding): ProducerStore {
       return (await query<Row>(text, values))[0] ?? null;
     },
     async run(text: string, values: unknown[] = []) {
-      const result = await prepare({ text, values }).run();
+      const result = revisions.length
+        ? (await batch([{ text, values }]))[0]!
+        : await prepare({ text, values }).run();
       return { changes: result.meta.changes };
     },
     async transaction(statements: readonly ProducerStatement[]) {
       if (statements.length === 0) return [];
       // Prepare every statement before submitting anything. Invalid bindings
       // must not allow earlier statements in the same transaction to execute.
-      const result = await db.batch(statements.map(prepare));
+      const result = await batch(statements);
       return result.map((item) => ({ changes: item.meta.changes }));
     },
     async close() {
@@ -99,7 +119,11 @@ export function selectedD1Store(
   tables: readonly string[],
 ): ProducerStore | null {
   if (!env || typeof env !== "object" || tables.length === 0) return null;
-  const bag = env as { D1_STATE_TABLES?: unknown; D1_STATE?: D1StoreBinding };
+  const bag = env as {
+    D1_STATE_TABLES?: unknown;
+    D1_STATE?: D1StoreBinding;
+    D1_EXPORT_REVISIONS?: string;
+  };
   if (typeof bag.D1_STATE_TABLES !== "string") return null;
   const owners = d1TableOwners(env);
   const selected = tables.filter((name) => owners.has(name));
@@ -112,7 +136,16 @@ export function selectedD1Store(
     typeof bag.D1_STATE.batch !== "function"
   )
     throw new Error("Selected D1 store is unbound");
-  return createD1Store(bag.D1_STATE);
+  return createD1Store(
+    bag.D1_STATE,
+    bag.D1_EXPORT_REVISIONS === "enabled"
+      ? [
+          ...new Set(
+            tables.filter((table) => Object.hasOwn(D1_EXPORT_TABLES, table)),
+          ),
+        ]
+      : [],
+  );
 }
 
 /** The existing tagged SQL contract over native SQLite, without dialect rewriting. */

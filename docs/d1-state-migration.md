@@ -267,3 +267,36 @@ Keep the source history and immutable objects until copy receipts, reader
 qualification, final catch-up, and ownership readback complete. Never prune a
 history interval solely because its source rows were copied: its indexed archive
 must be readable before the recent tier can release that interval.
+
+## Archive export source
+
+Migration `0016_archive_export_revisions.sql` supports the existing state mirror
+and daily rollup jobs through `POST /api/v1/internal/state-export`. Provision a
+dedicated `STATE_EXPORT_SECRET` in the Data API and the archive producer. Requests
+send it in `x-state-export-token`; public API keys do not grant export access.
+The endpoint accepts fixed table names and operations, never SQL. All 31 state
+mirror tables and three daily families have explicit keyset plans.
+
+Apply the migration before enabling `D1_EXPORT_REVISIONS` on every writer Worker.
+The selected store increments each affected export table's revision once per
+transaction, atomically with its data. Price and lifecycle writes use that same
+mutation path. Deploy and drain older writer versions before enabling a consumer;
+an untracked writer or migration copy invalidates the revision guarantee.
+
+The client reads at most 2,000 rows per page, with a 2 MiB row payload budget.
+Rows and their revision share one D1 batch. A cursor requires the expected
+revision, and the producer checks that revision again before publishing a whole
+snapshot. Concurrent changes return 409 so the producer discards partial data and
+retries within its bounded budget. Repeated changes fail the export explicitly;
+they must not publish a mixed snapshot or advance its history watermark.
+
+Schema responses retain logical booleans, JSON, dates and decimal values. Daily
+counts use membership indexes; row exports retain the original column shape.
+Missing ownership, credentials, revision tracking or D1 availability fail closed.
+The endpoint never opens Neon or queries R2 SQL.
+
+This route does not activate any additional table owner. Complete the final
+source copies, select each qualified family, and measure full exports under live
+writer traffic before switching the existing archive jobs to the D1 endpoint.
+Keep the previous immutable archive and its version/day receipts throughout the
+cutover. This change adds no database or compute service.
