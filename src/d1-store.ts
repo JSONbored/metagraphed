@@ -5,6 +5,7 @@
 // must be chunked by its producer at an explicit receipt boundary instead.
 // SQL stays SQLite SQL: this adapter never attempts to translate PostgreSQL's
 // casts, arrays, JSON operators, or interactive transactions with regexes.
+import type { PgSql } from "./pg-sql.ts";
 import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
 
 export type D1StoreBinding = Pick<D1Database, "prepare" | "batch">;
@@ -112,4 +113,13 @@ export function selectedD1Store(
   )
     throw new Error("Selected D1 store is unbound");
   return createD1Store(bag.D1_STATE);
+}
+
+/** The existing tagged SQL contract over native SQLite, without dialect rewriting. */
+export function createD1Sql(store: ProducerStore): PgSql {
+  const sql = (<Row>(strings: TemplateStringsArray, ...values: unknown[]) =>
+    store.query<Row>(strings.join("?"), values)) as PgSql;
+  sql.unsafe = <Row>(text: string, values: unknown[] = []) =>
+    store.query<Row>(text, values);
+  return sql;
 }

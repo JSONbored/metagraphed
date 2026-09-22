@@ -18,7 +18,7 @@
 // they answered before the deletion -- see dispatchDataApiRequest's own note
 // for why that matters to the forward gate.
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
-import { selectedD1Store } from "../src/d1-store.ts";
+import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import { COMPUTE_DECLARATIONS_TABLES } from "../src/read-store-tables.ts";
 import { handleRootBasketCaptureSync } from "../src/root-basket-capture-sync.ts";
 import {
@@ -3810,11 +3810,10 @@ export const ACCOUNT_STATE_TABLES = [
 export function userStateRunner(
   env: DataApiEnv,
   ctx: ExecutionContext,
-  // Kept for call-site clarity about which tables ride the runner; the
-  // per-table ownership question collapsed with the flag (#10051).
-  _tables: readonly string[],
+  tables: readonly string[],
 ): PgSql | null {
-  // the ownership term collapsed with the flag (#10051).
+  const d1 = selectedD1Store(env, tables);
+  if (d1) return createD1Sql(d1);
   if (env.HYPERDRIVE?.connectionString) {
     return createPgSql(env.HYPERDRIVE, ctx);
   }
