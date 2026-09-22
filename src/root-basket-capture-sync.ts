@@ -1,6 +1,11 @@
 import { RootBasketCaptureSchema } from "../schemas-src/root-basket-capture.ts";
 import { createProducerStore, type ProducerStore } from "./producer-store.ts";
 import { timingSafeEqual } from "./webhooks.ts";
+import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
+import {
+  ROOT_BASKET_D1_TABLES,
+  writeRootBasketCaptureD1,
+} from "./root-basket-capture-d1.ts";
 import {
   rootBasketCaptureFits,
   writeRootBasketCapture,
@@ -14,6 +19,8 @@ const TOKEN_HEADER = "x-root-basket-capture-sync-token";
 interface SyncEnv {
   ROOT_BASKET_CAPTURE_SYNC_SECRET?: string;
   HYPERDRIVE?: { connectionString: string };
+  D1_STATE?: D1StoreBinding;
+  D1_STATE_TABLES?: string;
 }
 
 export async function handleRootBasketCaptureSync(
@@ -78,21 +85,26 @@ export async function handleRootBasketCaptureSync(
     return fail(400, "body must be a complete root basket capture");
   if (!rootBasketCaptureFits(parsed.data))
     return fail(413, "root basket capture exceeds row limits");
-  if (!deps.store && !env.HYPERDRIVE?.connectionString)
-    return fail(503, "root basket capture store is unavailable");
-  const store =
-    deps.store ?? createProducerStore(env.HYPERDRIVE!.connectionString);
+  let store: ProducerStore | undefined;
   try {
-    const receipt = await writeRootBasketCapture(
-      store,
-      parsed.data,
-      (deps.now ?? Date.now)(),
-    );
+    // Partial ownership or a missing selected binding THROWS here. Only a
+    // family with zero D1-selected tables can reach the legacy fallback.
+    const native = selectedD1Store(env, ROOT_BASKET_D1_TABLES);
+    store =
+      deps.store ??
+      native ??
+      (env.HYPERDRIVE?.connectionString
+        ? createProducerStore(env.HYPERDRIVE.connectionString)
+        : undefined);
+    if (!store) return fail(503, "root basket capture store is unavailable");
+    const receipt = await (
+      native ? writeRootBasketCaptureD1 : writeRootBasketCapture
+    )(store, parsed.data, (deps.now ?? Date.now)());
     return Response.json({ ok: true, ...receipt });
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message.startsWith("ROOT_BASKET_CAPTURE_CONFLICT:")
+      error.message.includes("ROOT_BASKET_CAPTURE_CONFLICT:")
     ) {
       return fail(
         409,
@@ -105,6 +117,6 @@ export async function handleRootBasketCaptureSync(
       "root basket capture was not acknowledged; retry the same observation",
     );
   } finally {
-    await store.close();
+    await store?.close();
   }
 }

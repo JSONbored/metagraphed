@@ -93,3 +93,23 @@ late/newer captures, a failed first writer, and concurrent child mutations are
 covered. The cluster is
 removed after the tests. Hosts without server tools explicitly skip these eleven
 cases; they still run the portable transaction and receiver suites.
+
+## Native D1 ownership
+
+Migration `migrations/d1/0015_root_basket.sql` retains the seven-table capture
+family in D1. Select all seven names from `ROOT_BASKET_D1_TABLES` together in
+`D1_STATE_TABLES` after verifying the source is empty or copying and qualifying
+its existing observations. Selecting only part of the family, or selecting an
+unbound D1 database, fails the sync request without falling back to Neon.
+
+A single native D1 batch commits the manifest, cursor receipts, fund/child rows,
+completion and current pointer. Database triggers verify persisted completeness,
+reject conflicting attempts or finalized hashes, and protect accepted rows from
+mutation. Identical retries retain the first accepted ID and timestamps. Wide
+unsigned and signed values use canonical decimal TEXT with checked ranges;
+ordering compares digit counts and then text, without floating-point conversion.
+The D1 manifest also holds the expected content digest for atomic replay checks.
+
+The existing request and row ceilings apply. This storage migration does not
+start a producer or add a public read route. Existing completed observations must
+be retained if this family is populated before cutover.
