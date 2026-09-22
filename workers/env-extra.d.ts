@@ -215,6 +215,8 @@ interface RuntimeSecretEnv {
   NOMINATOR_POSITIONS_SYNC_SECRET?: string;
   /** Optional authentication for the bounded internal capture receiver. */
   ROOT_BASKET_CAPTURE_SYNC_SECRET?: string;
+  /** Authentication for the fixed-table native D1 archive export. */
+  STATE_EXPORT_SECRET?: string;
   POSTHOG_EXCEPTION_STORM_WINDOW_MS?: string;
   POSTHOG_HOST?: string;
   POSTHOG_PROJECT_TOKEN?: string;

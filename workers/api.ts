@@ -5952,6 +5952,14 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   if (url.pathname === "/api/v1/internal/root-basket-capture-sync") {
     return handleRootBasketCaptureSyncProxy(request, env);
   }
+  if (url.pathname === "/api/v1/internal/state-export") {
+    return proxyToDataApi(request, env, {
+      code: "state_export_unavailable",
+      notBoundMessage: "The state export tier is not bound.",
+      unreadableMessage:
+        "The state export tier returned an unreadable response.",
+    });
+  }
   // The poller's own tick outcomes (#9599) -- the diagnostic channel, not a
   // data lane. Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/poller-lane-health-sync") {

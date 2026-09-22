@@ -154,6 +154,8 @@ describe("store-neutral SQL", () => {
           "src/ledger-d1.ts",
           "src/registry-sync-d1.ts",
           "src/root-basket-capture-d1.ts",
+          "src/d1-state-export.ts",
+          "src/d1-store.ts",
         ].includes(file)
       )
         continue;

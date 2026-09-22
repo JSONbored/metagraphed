@@ -51,6 +51,7 @@
   // uncapped. Same value as the main Worker and wrangler.data.jsonc: one
   // capture per fingerprint per 5 minutes per isolate.
   "vars": {
+    "D1_EXPORT_REVISIONS": "enabled",
     "D1_STATE_TABLES": "lane_health",
     // #10659: lanes whose Neon writes are deferred through the write-behind
     // buffer and flushed every ten minutes, so the compute does fewer, larger

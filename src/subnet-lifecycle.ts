@@ -44,7 +44,7 @@ import {
   NEURONS_PASS_WINDOW_MS,
 } from "./neurons-staleness-watchdog.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
-import { createD1Sql, selectedD1Store } from "./d1-store.ts";
+import { selectedD1Store } from "./d1-store.ts";
 
 export const SUBNET_LIFECYCLE_LANE = "subnet-lifecycle";
 
@@ -226,7 +226,7 @@ export async function runSubnetLifecycleLane(
       const sql =
         deps.sql ??
         (d1
-          ? createD1Sql(d1)
+          ? { unsafe: d1.run }
           : // readStore above already proved either complete D1 ownership or
             // a Hyperdrive connection in this invocation's immutable bindings.
             createPgSql(hyperdrive!, deps.ctx ?? { waitUntil: () => {} }));
