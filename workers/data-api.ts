@@ -18,6 +18,8 @@
 // they answered before the deletion -- see dispatchDataApiRequest's own note
 // for why that matters to the forward gate.
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
+import { selectedD1Store } from "../src/d1-store.ts";
+import { COMPUTE_DECLARATIONS_TABLES } from "../src/read-store-tables.ts";
 import { handleRootBasketCaptureSync } from "../src/root-basket-capture-sync.ts";
 import {
   accountBalanceSyncRowSchema,
@@ -8003,14 +8005,18 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     /^\/api\/v1\/subnets\/(\d+)\/cost-to-participate$/,
   );
   if (costToParticipateMatch) {
-    return async (sql) => {
+    return async (sql, env) => {
       const netuid = Number(costToParticipateMatch[1]);
-      const rows = await sql<ComputeDeclarationRow>`
+      const declarations = selectedD1Store(env, COMPUTE_DECLARATIONS_TABLES);
+      const query = `
         SELECT netuid, source_url, read_at_sha, observed_at, first_seen,
                found, spec_version, miner, validator, unscoped
         FROM compute_declarations
-        WHERE netuid = ${netuid}
+        WHERE netuid = ?
         ORDER BY source_url ASC`;
+      const rows = declarations
+        ? await declarations.query<ComputeDeclarationRow>(query, [netuid])
+        : await sql.unsafe<ComputeDeclarationRow>(query, [netuid]);
       const cutoff = new Date(
         Date.now() -
           SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS[
