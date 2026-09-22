@@ -63,6 +63,7 @@ import {
 } from "./pg-sql.ts";
 import { readStore, type ReadStoreDb, safeIntOrNull } from "./read-store.ts";
 import { CHAIN_DETAIL_HOT_TIER_TABLES } from "./chain-detail-hot-tier.ts";
+import { selectedD1Store } from "./d1-store.ts";
 
 /** ~6h at the chain's 12s cadence: 3x the hourly decode lane's worst-case lag. */
 export const CHAIN_DETAIL_MIN_RETAINED_BLOCKS = 1_800;
@@ -221,6 +222,8 @@ export interface ChainDetailPruneResult {
    * runner. */
   neon_pruned?: boolean;
   neon_detail?: string;
+  /** The selected D1 owner committed all four deletes atomically. */
+  d1_pruned?: boolean;
 }
 
 /**
@@ -287,20 +290,41 @@ export async function pruneChainDetail(
       window.accountEventsKeepFrom,
       floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
     );
-    const neon = await pruneChainDetailNeon(
-      env,
-      ctx,
-      deletedBelow,
-      deps,
-      accountEventsDeletedBelow,
-    );
+    const d1 = selectedD1Store(env, PRUNE_TABLES);
+    let outcome: Pick<
+      ChainDetailPruneResult,
+      "d1_pruned" | "neon_pruned" | "neon_detail"
+    >;
+    if (d1) {
+      // Coverage and detail disappear in one transaction. A failed delete
+      // must preserve the previous window and report a failed prune.
+      await d1.transaction(
+        PRUNE_TABLES.map((table) => ({
+          text: `DELETE FROM ${table} WHERE block_number < ?`,
+          values: [
+            table === "chain_detail_account_events"
+              ? accountEventsDeletedBelow
+              : deletedBelow,
+          ],
+        })),
+      );
+      outcome = { d1_pruned: true };
+    } else {
+      outcome = await pruneChainDetailNeon(
+        env,
+        ctx,
+        deletedBelow,
+        deps,
+        accountEventsDeletedBelow,
+      );
+    }
     return {
       ok: true,
       keep_from: window.keepFrom,
       retained_blocks: window.retainedBlocks,
       deleted_below: deletedBelow,
       blocks_pruned: deletedBelow - floor,
-      ...neon,
+      ...outcome,
     };
   } catch (err) {
     return {
