@@ -114,20 +114,17 @@ CREATE UNIQUE INDEX root_basket_capture_page_cursors ON root_basket_capture_page
 CREATE UNIQUE INDEX root_basket_capture_terminal_page ON root_basket_capture_pages (capture_id) WHERE next_after IS NULL;
 -- statement-breakpoint
 CREATE TRIGGER root_basket_check_replay BEFORE INSERT ON root_basket_captures BEGIN
- SELECT CASE WHEN EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id
-   AND (network_genesis_hash <> NEW.network_genesis_hash OR finalized_block_hash <> NEW.finalized_block_hash OR decoder_version <> NEW.decoder_version))
- THEN RAISE(ABORT,'ROOT_BASKET_CAPTURE_CONFLICT: attempt ID already belongs to another observation') END;
- SELECT CASE WHEN EXISTS (SELECT 1 FROM root_basket_captures WHERE network_genesis_hash = NEW.network_genesis_hash
-   AND decoder_version = NEW.decoder_version AND finalized_block = NEW.finalized_block AND finalized_block_hash <> NEW.finalized_block_hash)
- THEN RAISE(ABORT,'ROOT_BASKET_CAPTURE_CONFLICT: finalized height has a different hash') END;
- SELECT CASE WHEN EXISTS (SELECT 1 FROM root_basket_captures c LEFT JOIN root_basket_capture_completions r ON r.capture_id = c.capture_id
+ SELECT RAISE(ABORT,'ROOT_BASKET_CAPTURE_CONFLICT: attempt ID already belongs to another observation') WHERE EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id
+   AND (network_genesis_hash <> NEW.network_genesis_hash OR finalized_block_hash <> NEW.finalized_block_hash OR decoder_version <> NEW.decoder_version));
+ SELECT RAISE(ABORT,'ROOT_BASKET_CAPTURE_CONFLICT: finalized height has a different hash') WHERE EXISTS (SELECT 1 FROM root_basket_captures WHERE network_genesis_hash = NEW.network_genesis_hash
+   AND decoder_version = NEW.decoder_version AND finalized_block = NEW.finalized_block AND finalized_block_hash <> NEW.finalized_block_hash);
+ SELECT RAISE(ABORT,'ROOT_BASKET_CAPTURE_CONFLICT: observation is incomplete or content differs') WHERE EXISTS (SELECT 1 FROM root_basket_captures c LEFT JOIN root_basket_capture_completions r ON r.capture_id = c.capture_id
    WHERE c.network_genesis_hash = NEW.network_genesis_hash AND c.finalized_block_hash = NEW.finalized_block_hash AND c.decoder_version = NEW.decoder_version
-   AND (r.capture_id IS NULL OR r.content_sha256 <> NEW.content_sha256))
- THEN RAISE(ABORT,'ROOT_BASKET_CAPTURE_CONFLICT: observation is incomplete or content differs') END;
+   AND (r.capture_id IS NULL OR r.content_sha256 <> NEW.content_sha256));
 END;
 -- statement-breakpoint
 CREATE TRIGGER root_basket_check_completion BEFORE INSERT ON root_basket_capture_completions BEGIN
- SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id AND content_sha256 = NEW.content_sha256)
+ SELECT RAISE(ABORT,'root basket persisted capture is incomplete') WHERE NOT EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id AND content_sha256 = NEW.content_sha256)
  OR EXISTS (SELECT 1 FROM root_basket_captures m WHERE m.capture_id = NEW.capture_id AND (
    (SELECT count(*) FROM root_basket_capture_pages WHERE capture_id = m.capture_id) <> m.expected_pages
    OR (SELECT count(*) FROM root_basket_fund_snapshots WHERE capture_id = m.capture_id) <> m.expected_funds
@@ -139,8 +136,7 @@ CREATE TRIGGER root_basket_check_completion BEFORE INSERT ON root_basket_capture
    OR EXISTS (SELECT 1 FROM root_basket_fund_snapshots f WHERE f.capture_id = m.capture_id AND (
      (length(f.first_block), f.first_block) > (length(m.finalized_block), m.finalized_block)
      OR f.holdings_count <> (SELECT count(*) FROM root_basket_holdings h WHERE h.capture_id = m.capture_id AND h.hotkey = f.hotkey)
-     OR f.targets_count <> (SELECT count(*) FROM root_basket_targets t WHERE t.capture_id = m.capture_id AND t.hotkey = f.hotkey)))))
- THEN RAISE(ABORT,'root basket persisted capture is incomplete') END;
+     OR f.targets_count <> (SELECT count(*) FROM root_basket_targets t WHERE t.capture_id = m.capture_id AND t.hotkey = f.hotkey)))));
 END;
 -- statement-breakpoint
 CREATE TRIGGER root_basket_captures_immutable_update BEFORE UPDATE ON root_basket_captures
@@ -206,16 +202,13 @@ CREATE TRIGGER root_basket_completion_immutable_delete BEFORE DELETE ON root_bas
 CREATE TRIGGER root_basket_receipt_immutable BEFORE UPDATE ON root_basket_capture_pages BEGIN SELECT RAISE(ABORT,'root basket receipt is immutable'); END;
 -- statement-breakpoint
 CREATE TRIGGER root_basket_current_ordered_insert BEFORE INSERT ON root_basket_current BEGIN
- SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id AND network_genesis_hash = NEW.network_genesis_hash AND decoder_version = NEW.decoder_version)
- THEN RAISE(ABORT,'root basket current scope mismatch') END;
+ SELECT RAISE(ABORT,'root basket current scope mismatch') WHERE NOT EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id AND network_genesis_hash = NEW.network_genesis_hash AND decoder_version = NEW.decoder_version);
 END;
 -- statement-breakpoint
 CREATE TRIGGER root_basket_current_ordered_update BEFORE UPDATE ON root_basket_current BEGIN
- SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id AND network_genesis_hash = NEW.network_genesis_hash AND decoder_version = NEW.decoder_version)
- THEN RAISE(ABORT,'root basket current scope mismatch') END;
- SELECT CASE WHEN NEW.network_genesis_hash <> OLD.network_genesis_hash OR NEW.decoder_version <> OLD.decoder_version
+ SELECT RAISE(ABORT,'root basket current scope mismatch') WHERE NOT EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id AND network_genesis_hash = NEW.network_genesis_hash AND decoder_version = NEW.decoder_version);
+ SELECT RAISE(ABORT,'root basket current source order cannot regress') WHERE NEW.network_genesis_hash <> OLD.network_genesis_hash OR NEW.decoder_version <> OLD.decoder_version
   OR (SELECT length(finalized_block),finalized_block FROM root_basket_captures WHERE capture_id = NEW.capture_id)
    < (SELECT length(finalized_block),finalized_block FROM root_basket_captures WHERE capture_id = OLD.capture_id)
-  OR (NEW.capture_id <> OLD.capture_id AND (SELECT finalized_block FROM root_basket_captures WHERE capture_id = NEW.capture_id) = (SELECT finalized_block FROM root_basket_captures WHERE capture_id = OLD.capture_id))
- THEN RAISE(ABORT,'root basket current source order cannot regress') END;
+  OR (NEW.capture_id <> OLD.capture_id AND (SELECT finalized_block FROM root_basket_captures WHERE capture_id = NEW.capture_id) = (SELECT finalized_block FROM root_basket_captures WHERE capture_id = OLD.capture_id));
 END;
