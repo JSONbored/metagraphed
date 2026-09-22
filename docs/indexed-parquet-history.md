@@ -38,3 +38,20 @@ On the verified retained-file middle row, this exchanges 11 reads totaling 54,68
 bytes for one 151,135-byte read, with the same 221,317 decoded bytes and exact row
 digest. Both avoid the original 7,988,142-byte read and 32,402,230-byte decompression.
 No serving route is selected by these primitives alone.
+
+Block-number indexes use a separate complete manifest and 16-bit block prefixes
+under `generations/<generation>/blocks/<prefix>.bin`. Each sorted 24-byte record
+contains four little-endian uint32 values (block, source-file ordinal, first row,
+row count), followed by the uint64 observation timestamp. Every physical row is
+covered by exactly one run during publication. Repeated observations remain
+separate runs, preserving the serving adapter's existing deduplication choices.
+
+`validateHistoryBlockIndex` requires a complete source-row census, scoped and
+ordered shard descriptors, matching run counts, and valid block ranges before
+even a missing shard may answer a lookup. `findHistoryBlockRuns` uses cached
+1,024-run range reads and shares the caller's transfer/request budget. It rejects
+invalid physical ranges, timestamps that cannot be represented exactly, and
+results over 4,096 runs or 65,536 physical rows. It never returns a partial result
+after a budget failure. The table adapter must decode each returned range and
+verify its logical block before serving it; this primitive does not select a
+production generation or change any REST, GraphQL or MCP route.
