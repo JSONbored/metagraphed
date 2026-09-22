@@ -183,6 +183,59 @@ test("compressed pages cannot exceed decoded allocation limits", async () => {
     parse.mockRestore();
   }
 });
+
+test("compact groups coalesce columns but a wide column span retains page pruning", async () => {
+  const { index, bytes } = await indexed();
+  const source = r2ParquetSource(bucket);
+  const budget = parquetReadBudget();
+  await readIndexedParquet(
+    source,
+    index,
+    1999,
+    2000,
+    ["id", "label", "enabled", "amount"],
+    budget,
+  );
+  assert.equal(budget.requests, 1);
+
+  // Model a compact group with a large unselected payload between columns.
+  // The real fixture still supplies the selected id page; only the planning
+  // metadata and decoder request are replaced for this layout boundary.
+  const metadata = validateParquetPageIndex(index).metadata;
+  const last = index.groups.at(-1)!;
+  const size = 2 * 1024 * 1024;
+  metadata.row_groups
+    .at(-1)!
+    .columns.at(-1)!.meta_data!.total_compressed_size += BigInt(size);
+  last.columns.amount.at(-1)!.bytes += size;
+  index.bytes += size;
+  const footer = vi.spyOn(parquet, "parquetMetadata").mockReturnValue(metadata);
+  const page = last.columns.id[0];
+  const decode = vi
+    .spyOn(parquet, "parquetReadObjects")
+    .mockImplementation(async (options) => {
+      assert.deepEqual(
+        await options.file.slice(page.offset, page.offset + page.bytes),
+        bytes.slice(page.offset, page.offset + page.bytes),
+      );
+      return [{ id: 1n }];
+    });
+  try {
+    const bounded = parquetReadBudget();
+    await readIndexedParquet(
+      source,
+      index,
+      1999,
+      2000,
+      ["id", "amount"],
+      bounded,
+    );
+    assert.equal(bounded.bytes, page.bytes);
+  } finally {
+    footer.mockRestore();
+    decode.mockRestore();
+  }
+});
 let bucket: R2Bucket;
 beforeAll(async () => {
   // Miniflare's bridge uses undici Headers in unused metadata methods.

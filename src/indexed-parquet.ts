@@ -179,10 +179,52 @@ export async function readIndexedParquet(
     throw new Error("Invalid indexed Parquet selection");
   }
   const bounded = boundedParquetBuffer(source, index, budget);
+  // Repacked history uses small row groups. Fetch their selected columns in
+  // one range, while retaining page pruning for legacy, large row groups.
+  let groupStart = 0;
+  const compactRanges = metadata.row_groups.flatMap((group) => {
+    const startRow = groupStart;
+    groupStart += Number(group.num_rows);
+    if (
+      groupStart <= rowStart ||
+      startRow >= rowEnd ||
+      Number(group.num_rows) > 512
+    )
+      return [];
+    const chunks = group.columns.filter((c) =>
+      columns.includes(c.meta_data!.path_in_schema[0]),
+    );
+    const starts = chunks.map((c) =>
+      Number(
+        c.meta_data!.dictionary_page_offset ?? c.meta_data!.data_page_offset,
+      ),
+    );
+    const start = Math.min(...starts);
+    const end = Math.max(
+      ...chunks.map(
+        (c, i) => starts[i] + Number(c.meta_data!.total_compressed_size),
+      ),
+    );
+    return end - start <= 1024 * 1024
+      ? [{ start, end, bytes: undefined as Promise<ArrayBuffer> | undefined }]
+      : [];
+  });
   const file: AsyncBuffer = {
     byteLength: bounded.byteLength,
     async slice(start, end) {
-      const bytes = await bounded.slice(start, end);
+      const range = compactRanges.find(
+        (r) => start >= r.start && end !== undefined && end <= r.end,
+      );
+      let bytes: ArrayBuffer;
+      if (range) {
+        range.bytes ??= Promise.resolve(bounded.slice(range.start, range.end));
+        bytes = (await range.bytes).slice(
+          start - range.start,
+          end! - range.start,
+        );
+      } else {
+        bytes = await bounded.slice(start, end);
+      }
       reserveParquetPageMemory(bytes, budget);
       return bytes;
     },
@@ -264,7 +306,7 @@ export function reserveParquetPageMemory(
 
 export function boundedParquetBuffer(
   source: ParquetRangeSource,
-  index: ParquetPageIndex,
+  index: Pick<ParquetPageIndex, "key" | "etag" | "bytes">,
   budget: ParquetReadBudget,
 ): AsyncBuffer {
   return {
