@@ -632,6 +632,12 @@
       "id": "8a09dc673733497f987434f59689287e",
     },
   ],
+  "r2_buckets": [
+    {
+      "binding": "METAGRAPH_ARCHIVE",
+      "bucket_name": "metagraphed-artifacts",
+    },
+  ],
   "d1_databases": [
     {
       "binding": "D1_STATE",
