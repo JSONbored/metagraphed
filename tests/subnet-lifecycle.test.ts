@@ -244,6 +244,23 @@ describe("the lane tick", () => {
   test("the lane name is stable", () => {
     assert.equal(SUBNET_LIFECYCLE_LANE, "subnet-lifecycle");
   });
+  test("a Postgres capture defers connection cleanup through the supplied context", async () => {
+    answer([1]);
+    const pending: Promise<unknown>[] = [];
+    const result = await runSubnetLifecycleLane(env(), {
+      coverageFloor: 1,
+      now: () => 1_800_000_000_000,
+      ctx: {
+        waitUntil(promise) {
+          pending.push(promise);
+        },
+      },
+    });
+    await Promise.all(pending);
+    assert.equal(result.ok, true);
+    assert.equal(inserts().length, 1);
+    assert.ok(pending.length > 0);
+  });
 });
 
 describe("the lane runs on an existing tick, not a new cron", () => {

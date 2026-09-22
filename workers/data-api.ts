@@ -1571,7 +1571,11 @@ async function handleSubnetHyperparamsSync(
   // one derivation, so the table and its history cannot disagree about which
   // revisions exist.
   let neonHistoryRows: Row[];
-  const historySql = createPgSql(env.HYPERDRIVE, ctx);
+  const historySql = captureFamilyRunner(
+    env,
+    ctx,
+    SUBNET_HYPERPARAMS_NEON_LANE,
+  )!;
   try {
     // Latest hash per netuid.
     const latest = await historySql<{
@@ -1703,7 +1707,7 @@ async function handleSubnetHyperparamsBackfill(
     return writeJson({ error: "no store bound for this route" }, 503);
   }
 
-  const sql = createPgSql(env.HYPERDRIVE, ctx);
+  const sql = captureFamilyRunner(env, ctx, SUBNET_HYPERPARAMS_NEON_LANE)!;
   try {
     const result = await writeHistoricalHyperparams(
       sql,
@@ -1906,7 +1910,7 @@ async function handleAccountIdentitySync(
   let historyAppended: number;
   // Hoisted so the write below sees the SAME diff the history read produced.
   let neonHistoryRows: Row[];
-  const historySql = createPgSql(env.HYPERDRIVE, ctx);
+  const historySql = captureFamilyRunner(env, ctx, ACCOUNT_IDENTITY_NEON_LANE)!;
   try {
     // Latest hash per account.
     const latest = await historySql<{
@@ -3766,9 +3770,22 @@ export function neonOwnsChainDetail(env: DataApiEnv): boolean {
 export function neonOwnsFamily(env: DataApiEnv, lane: string): boolean {
   const plan = FAMILY_MIRROR_PLANS[lane];
   if (!plan) return false;
+  if (selectedD1Store(env, [plan.latest.table, plan.history.table]))
+    return true;
   // the ownership term collapsed with the flag (#10051): Neon is the only
   // store, so durability is the binding question alone.
   return Boolean(env.HYPERDRIVE?.connectionString);
+}
+
+/** The diff read and its capture writer must select the same complete family. */
+function captureFamilyRunner(
+  env: DataApiEnv,
+  ctx: ExecutionContext,
+  lane: string,
+): PgSql {
+  const plan = FAMILY_MIRROR_PLANS[lane];
+  const d1 = selectedD1Store(env, [plan.latest.table, plan.history.table]);
+  return d1 ? createD1Sql(d1) : createPgSql(env.HYPERDRIVE, ctx);
 }
 
 export const ALERT_TRIGGER_TABLES = [
