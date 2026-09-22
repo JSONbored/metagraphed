@@ -30,6 +30,8 @@
 // subnet that genuinely had no price. Both guards below exist for that: the
 // blob must project at all, and it must cover a plausible number of subnets.
 
+import { selectedD1Store } from "./d1-store.ts";
+import type { ProducerStatement } from "./producer-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { createPgSql } from "./pg-sql.ts";
@@ -165,11 +167,14 @@ const COLUMNS = [
 ] as const;
 
 /** `INSERT … VALUES ($1,…), ($9,…) … ON CONFLICT …` for `rowCount` rows. */
-export function deregistrationDailyUpsertSql(rowCount: number): string {
+export function deregistrationDailyUpsertSql(
+  rowCount: number,
+  dialect: "postgres" | "sqlite" = "postgres",
+): string {
   const groups: string[] = [];
   for (let row = 0; row < rowCount; row += 1) {
-    const params = COLUMNS.map(
-      (_, col) => `$${row * COLUMNS.length + col + 1}`,
+    const params = COLUMNS.map((_, col) =>
+      dialect === "sqlite" ? "?" : `$${row * COLUMNS.length + col + 1}`,
     );
     groups.push(`(${params.join(", ")})`);
   }
@@ -236,12 +241,15 @@ export async function runSubnetDeregistrationDailyLane(
   // bookkeeping would be worse than the connection outliving the tick.
   const hyperdrive = env?.HYPERDRIVE as
     { connectionString: string } | undefined;
+  const d1 = deps.sql
+    ? null
+    : selectedD1Store(env, [SUBNET_DEREGISTRATION_DAILY_TABLE]);
   const sql =
     deps.sql ??
-    (hyperdrive?.connectionString
+    (!d1 && hyperdrive?.connectionString
       ? createPgSql(hyperdrive, deps.ctx ?? { waitUntil: () => {} })
       : null);
-  if (!sql?.unsafe) {
+  if (!d1 && !sql?.unsafe) {
     await record("stale", "no store bound");
     return { ok: false, reason: "no_store_bound" };
   }
@@ -266,10 +274,23 @@ export async function runSubnetDeregistrationDailyLane(
       return { ok: false, reason: "partial_coverage", captured: rows.length };
     }
 
-    await sql.unsafe(
-      deregistrationDailyUpsertSql(rows.length),
-      deregistrationDailyBinds(rows),
-    );
+    if (d1) {
+      const statements: ProducerStatement[] = [];
+      const chunkSize = Math.floor(100 / COLUMNS.length);
+      for (let i = 0; i < rows.length; i += chunkSize) {
+        const chunk = rows.slice(i, i + chunkSize);
+        statements.push({
+          text: deregistrationDailyUpsertSql(chunk.length, "sqlite"),
+          values: deregistrationDailyBinds(chunk),
+        });
+      }
+      await d1.transaction(statements);
+    } else {
+      await sql!.unsafe(
+        deregistrationDailyUpsertSql(rows.length),
+        deregistrationDailyBinds(rows),
+      );
+    }
     const block = rows[0]?.pinned_block ?? null;
     await record(
       "ok",
