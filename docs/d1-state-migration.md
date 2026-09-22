@@ -306,3 +306,30 @@ source copies, select each qualified family, and measure full exports under live
 writer traffic before switching the existing archive jobs to the D1 endpoint.
 Keep the previous immutable archive and its version/day receipts throughout the
 cutover. This change adds no database or compute service.
+
+### Completed root-basket captures
+
+The same authenticated endpoint accepts `kind: "basket"` with `ceiling`,
+`discover`, and `rows` operations. Every request names the exact network,
+genesis hash, and decoder. Discovery returns at most 64 completed capture IDs;
+row reads are limited to 500 rows and 2 MiB per page. Only fixed tables and
+explicitly approved fields can be exported. No caller supplies SQL or columns.
+
+Each page joins the capture to its immutable completion receipt and scope.
+Uncompleted or foreign captures expose no rows. All seven native capture tables
+must be owned by D1. Integers cross the boundary as decimal strings, including
+small counts; the archive client validates their ranges while reconstructing
+the original canonical bundle. It verifies page/fund/child counts and the stored
+observation digest before publication. This protocol relies on completed-row
+immutability, so unrelated new captures do not invalidate an existing export.
+
+Native tests exercise scoped discovery, exact numeric extremes, replay
+provenance, multi-page children, unapproved columns, and failures. A local HTTP
+interoperability check also runs the Python archive client against the native
+D1 writer/exporter; all four canonical receiver vectors produce byte-identical
+archive bundles. Production ownership and source retirement still require the
+final capture census and export qualification.
+
+Migration `0017_root_basket_export.sql` provides the scoped capture-ID index for
+ceiling and discovery reads, including empty scopes. Apply it before enabling
+the archive consumer; native query-plan tests reject table scans and temp sorts.
