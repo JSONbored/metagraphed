@@ -277,6 +277,12 @@ send it in `x-state-export-token`; public API keys do not grant export access.
 The endpoint accepts fixed table names and operations, never SQL. All 31 state
 mirror tables and three daily families have explicit keyset plans.
 
+`src/d1-export-columns.ts` independently approves every exportable column.
+A storage migration adding a public column stops that table's export until its
+disclosure policy is reviewed; private underscore-prefixed columns are never
+exposed. Neither schema discovery nor possession of the export credential can
+expand this list automatically.
+
 Apply the migration before enabling `D1_EXPORT_REVISIONS` on every writer Worker.
 The selected store increments each affected export table's revision once per
 transaction, atomically with its data. Price and lifecycle writes use that same

@@ -4,6 +4,7 @@
 import { z } from "zod";
 import { timingSafeEqual } from "./webhooks.ts";
 import { D1_EXPORT_TABLES } from "./d1-export-tables.ts";
+import { D1_EXPORT_COLUMNS } from "./d1-export-columns.ts";
 import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
 const scalar = z.union([z.string().max(2048), z.number().safe()]);
 const RequestSchema = z
@@ -110,8 +111,15 @@ export async function handleD1StateExport(
         .prepare(`PRAGMA table_info(${quote(table)})`)
         .all<{ name: string; type: string }>()
     ).results;
+    // Storage migrations do not implicitly grant archive disclosure access.
+    // Unexpected public columns require an explicit policy review first.
+    const approved = new Set(D1_EXPORT_COLUMNS[table]!.split(" "));
+    if (
+      schema.some((row) => !row.name.startsWith("_") && !approved.has(row.name))
+    )
+      return fail(503, "export schema requires approval");
     const columns = schema
-      .filter((row) => !row.name.startsWith("_"))
+      .filter((row) => approved.has(row.name))
       .map((row) => ({
         name: row.name,
         type: logicalType(table, row.name, row.type),

@@ -4,6 +4,7 @@ import { beforeAll, afterAll, test } from "vitest";
 import { Miniflare } from "miniflare";
 import { handleD1StateExport } from "../src/d1-state-export.ts";
 import { D1_EXPORT_TABLES } from "../src/d1-export-tables.ts";
+import { D1_EXPORT_COLUMNS } from "../src/d1-export-columns.ts";
 import { selectedD1Store, createD1Store } from "../src/d1-store.ts";
 import { writeNeuronDocuments } from "../src/neuron-documents.ts";
 import { neuronSnapshotWrite } from "../src/neurons-neon-write.ts";
@@ -60,10 +61,18 @@ afterAll(async () => runtime.dispose());
 
 test("all 34 archive schemas and empty exports use native D1 with logical types", async () => {
   assert.equal(Object.keys(D1_EXPORT_TABLES).length, 34);
+  assert.deepEqual(
+    Object.keys(D1_EXPORT_COLUMNS).sort(),
+    Object.keys(D1_EXPORT_TABLES).sort(),
+  );
   for (const table of Object.keys(D1_EXPORT_TABLES)) {
     const schema = await get({ table, kind: "schema" });
     assert.ok(schema.columns.length > 0);
     const names = schema.columns.map((c) => c.name);
+    assert.deepEqual(
+      [...names].sort(),
+      D1_EXPORT_COLUMNS[table]!.split(" ").sort(),
+    );
     assert.ok(names.every((name: string) => !name.startsWith("_")));
     const rows = await get({ table, kind: "rows", columns: names });
     assert.deepEqual(rows.rows, []);
@@ -92,6 +101,59 @@ test("all 34 archive schemas and empty exports use native D1 with logical types"
       (c) => c.name === "weights_version" && c.type === "int8",
     ),
   );
+});
+
+test("a later storage migration cannot authorize an unapproved archive column", async () => {
+  await db
+    .prepare("ALTER TABLE account_balances ADD COLUMN internal_credential TEXT")
+    .run();
+  try {
+    for (const input of [
+      { table: "account_balances", kind: "schema" },
+      {
+        table: "account_balances",
+        kind: "rows",
+        columns: ["internal_credential"],
+      },
+      { table: "account_balances", kind: "rows", columns: ["ss58"] },
+    ]) {
+      const response = await handleD1StateExport(req(input), env());
+      assert.equal(response.status, 503);
+      assert.deepEqual(await response.json(), {
+        error: "export schema requires approval",
+      });
+    }
+  } finally {
+    await db
+      .prepare("ALTER TABLE account_balances DROP COLUMN internal_credential")
+      .run();
+  }
+  await db
+    .prepare("ALTER TABLE account_balances ADD COLUMN _private_state TEXT")
+    .run();
+  try {
+    const schema = await get({ table: "account_balances", kind: "schema" });
+    assert.ok(
+      !schema.columns.some((column) => column.name === "_private_state"),
+    );
+    assert.equal(
+      (
+        await handleD1StateExport(
+          req({
+            table: "account_balances",
+            kind: "rows",
+            columns: ["_private_state"],
+          }),
+          env(),
+        )
+      ).status,
+      400,
+    );
+  } finally {
+    await db
+      .prepare("ALTER TABLE account_balances DROP COLUMN _private_state")
+      .run();
+  }
 });
 
 test("family revisions commit atomically once per transaction and preserve return counts", async () => {
