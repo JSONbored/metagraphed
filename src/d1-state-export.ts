@@ -34,6 +34,11 @@ interface ExportEnv {
   D1_STATE?: D1StoreBinding;
   D1_STATE_TABLES?: string;
 }
+// The fixed export tables expose SQLite scalar columns, including JSON and
+// exact decimal values as TEXT. No blob column is part of this protocol.
+interface ExportRow {
+  [column: string]: string | number | null;
+}
 function logicalType(table: string, name: string, type: string): string {
   if (BOOLEANS.has(name)) return "bool";
   if (
@@ -184,10 +189,7 @@ export async function handleD1StateExport(
         `SELECT ${fields.map(quote).join(",")},json_array(${plan.keys.join(",")}) AS _cursor FROM ${quote(table)} ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY ${plan.keys.join(",")} LIMIT 2001`,
       )
       .bind(...values);
-    const results = await db.batch<Record<string, unknown>>([
-      revisionStatement,
-      statement,
-    ]);
+    const results = await db.batch<ExportRow>([revisionStatement, statement]);
     const revision = (results[0]!.results[0] as { revision: number }).revision;
     if (input.revision !== undefined && revision !== input.revision)
       return fail(409, "export source changed");
