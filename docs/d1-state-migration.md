@@ -199,6 +199,13 @@ observation key. Shared queries use a native window function for the latest subn
 and bounded indexed lookups for the last priced sample per UTC day. An unpriced sample does not
 erase a measured price from that day.
 
+`0012_neuron_daily_join_index.sql` indexes stable membership by subnet, day and
+document shard. This prevents a daily-document join from rescanning the subnet's
+entire membership history once per document. On the qualification copy, the
+price-query and join-index changes reduced one subnet's 30-day emission-history
+request from 787,730 to 24,029 D1 rows read. Completed-day response values matched
+the source exactly. These are dataset measurements, not billing guarantees.
+
 Populated native D1 tests exercise the same public handlers, joined economics,
 history, identity and health reads, and directory publication with no Hyperdrive
 binding. This slice keeps production ownership unchanged while retained copies

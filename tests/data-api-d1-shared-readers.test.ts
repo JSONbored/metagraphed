@@ -217,6 +217,17 @@ test("native TAO price writes preserve duplicate and unpriced observations", asy
 });
 
 test("native shared readers return captured neurons, joined subnet and identity state", async () => {
+  const plan = await db
+    .prepare(
+      "EXPLAIN QUERY PLAN SELECT nd.snapshot_date,nd.uid,nd.hotkey,nd.emission_tao FROM neuron_daily nd WHERE nd.netuid=7 AND nd.snapshot_date>=? ORDER BY nd.snapshot_date DESC LIMIT 20000",
+    )
+    .bind(day)
+    .all<{ detail: string }>();
+  assert.ok(
+    plan.results.some((row) =>
+      row.detail.includes("neuron_daily_members_subnet_day_shard_idx"),
+    ),
+  );
   const metagraph = await get("subnets/7/metagraph");
   const neurons = metagraph.neurons as Record<string, unknown>[];
   assert.equal(neurons.length, 1);
