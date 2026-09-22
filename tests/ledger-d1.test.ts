@@ -378,6 +378,12 @@ test("receipt or pass failure rolls back positions, pruning and delivery evidenc
   assert.equal(failure.pass, undefined);
 });
 test("native ownership works without Hyperdrive and refuses incomplete selection", async () => {
+  assert.equal(
+    neonOwnsNominatorPositions(
+      dataApiEnv({ D1_STATE_TABLES: "", HYPERDRIVE: undefined }),
+    ),
+    false,
+  );
   await assert.rejects(
     () =>
       mirrorLedgerToNeon(
