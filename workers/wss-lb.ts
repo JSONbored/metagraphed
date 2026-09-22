@@ -279,7 +279,12 @@ export async function dialUpstream(
   const timer = setTimeout(() => abort.abort(), timeoutMs);
   try {
     const res = await fetchImpl(httpsUrl, {
-      headers: { Upgrade: "websocket" },
+      // fetch() requires an explicit compression offer. The runtime negotiates
+      // permessage-deflate and still accepts peers that decline the extension.
+      headers: {
+        Upgrade: "websocket",
+        "Sec-WebSocket-Extensions": "permessage-deflate",
+      },
       signal: abort.signal,
     } as RequestInit);
     const socket = res.webSocket;
