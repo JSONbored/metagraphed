@@ -44,6 +44,8 @@ import {
   type PassTallyInput,
 } from "./pass-completeness.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
+import { selectedD1Store } from "./d1-store.ts";
+import { writeNeuronDocuments } from "./neuron-documents.ts";
 
 // ---------------------------------------------------------------------------
 // Moved here when D1 was deleted (#10179). These describe the TABLE -- its
@@ -395,6 +397,72 @@ export async function mirrorNeuronSnapshotToNeon(
   // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
   // no-arm means "do not persist" is not a cutover control any more, it is an
   // off switch nothing should be holding.
+  const d1 = selectedD1Store(env, [
+    "neurons",
+    "neuron_daily",
+    "account_position_daily",
+    "neurons_passes",
+  ]);
+  if (d1) {
+    let statements = 0;
+    let reason: string | undefined;
+    try {
+      statements = await writeNeuronDocuments(d1, input);
+    } catch (error) {
+      reason = String(error);
+    }
+    const results: Record<string, NeonWriteResult> = {};
+    const counts = {
+      neurons: input.rows.length,
+      neuron_daily: input.dailyRows.length,
+      account_position_daily: input.positionRows.length,
+    };
+    for (const [name, rows] of Object.entries(counts)) {
+      const result = {
+        ok: reason === undefined,
+        rows,
+        statements,
+        ...(reason === undefined ? {} : { reason }),
+      };
+      results[name] = result;
+      await recordNeonWriteVerdict(
+        laneHealthStore(env, deps.laneHealthDb),
+        name,
+        result,
+        (deps.now ?? Date.now)(),
+      );
+    }
+    const laneDb = laneHealthStore(env, deps.laneHealthDb);
+    const now = deps.now ?? Date.now;
+    let prune: NeonWriteResult | undefined;
+    if (input.netuidMaxCapturedAt?.size) {
+      prune = { ...results.neurons, rows: 0 };
+      await recordNeonWriteVerdict(
+        laneDb,
+        `${NEURONS_NEON_LANE}-prune`,
+        prune,
+        now(),
+        false,
+        true,
+      );
+    }
+    if (input.pass) {
+      const verdict = {
+        ...results.neurons,
+        rows: reason === undefined ? 1 : 0,
+      };
+      results.neurons_passes = verdict;
+      await recordNeonWriteVerdict(
+        laneDb,
+        `${NEURONS_NEON_LANE}-pass`,
+        verdict,
+        now(),
+        false,
+        true,
+      );
+    }
+    return { attempted: true, results, ...(prune ? { prune } : {}) };
+  }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
