@@ -11,21 +11,53 @@ import {
   mergeAccountFeedPage,
   validateAccountFeed,
   type AccountFeedSelector,
+  type IndexedAccountFeedEntry,
 } from "./history-account-feed.ts";
+import {
+  accountFeedReadAhead,
+  foldAccountFeedGroups,
+  type AccountFeedGroup,
+} from "./history-account-feed-groups.ts";
 
 type Bucket = Pick<R2Bucket, "get">;
 
 /** Missing qualification preserves the migration path. A corrupt selected
  * index fails closed, and must never turn into either an empty page or SQL. */
-export async function loadIndexedAccountFeedPage(
+export function loadIndexedAccountFeedPage(
   env: unknown,
   selectors: readonly AccountFeedSelector[],
   limit: number,
   offset = 0,
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<AccountEventsRow[] | null | undefined> {
+  return loadSelectedAccountFeed(env, selectors, network, false, (streams) =>
+    mergeAccountFeedPage(streams, limit, offset),
+  );
+}
+
+export function loadIndexedAccountFeedGroups(
+  env: unknown,
+  selectors: readonly AccountFeedSelector[],
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): Promise<AccountFeedGroup[] | null | undefined> {
+  return loadSelectedAccountFeed(
+    env,
+    selectors,
+    network,
+    true,
+    foldAccountFeedGroups,
+  );
+}
+
+async function loadSelectedAccountFeed<T>(
+  env: unknown,
+  selectors: readonly AccountFeedSelector[],
+  network: ChainNetworkId,
+  aggregate: boolean,
+  consume: (streams: AsyncGenerator<IndexedAccountFeedEntry>[]) => Promise<T>,
+): Promise<T | null | undefined> {
   try {
-    if (selectors.length < 1 || selectors.length > 2)
+    if (selectors.length < 1 || selectors.length > (aggregate ? 4 : 2))
       throw new Error("Account feed selector count exceeds budget");
     const segments = await readSelectedHistorySegments(
       env,
@@ -60,7 +92,12 @@ export async function loadIndexedAccountFeedPage(
     if (segments[segments.length - 1].lastBlock < requestedEnd)
       return undefined;
     const source = r2ParquetSource(bucket);
-    const budget = parquetReadBudget(24 * 1024 * 1024, 128);
+    const budget = aggregate
+      ? parquetReadBudget(128 * 1024 * 1024, 1024)
+      : parquetReadBudget(24 * 1024 * 1024, 128);
+    const readPage = aggregate
+      ? accountFeedReadAhead(source, budget)
+      : undefined;
     const streams = [];
     for (const segment of segments) {
       const object = await bucket.get(
@@ -87,9 +124,11 @@ export async function loadIndexedAccountFeedPage(
           "Account feed source census differs from its generation",
         );
       for (const selector of selectors)
-        streams.push(iterateAccountFeed(source, feed, selector, budget));
+        streams.push(
+          iterateAccountFeed(source, feed, selector, budget, readPage),
+        );
     }
-    const rows = await mergeAccountFeedPage(streams, limit, offset);
+    const rows = await consume(streams);
     const after = await bucket.get(ceilingKey);
     return after !== null && after.etag === before.etag ? rows : undefined;
   } catch {

@@ -23,6 +23,8 @@ export interface AccountFeedSelector {
   netuid?: number | null;
   blockStart?: number;
   blockEnd?: number;
+  observedStart?: number;
+  observedEnd?: number;
   cursor?: [number, number, number] | null;
 }
 export interface IndexedAccountFeedEntry {
@@ -181,12 +183,27 @@ export async function* iterateAccountFeed(
   feed: HistoryAccountFeed,
   selector: AccountFeedSelector,
   budget: ParquetReadBudget,
+  readPage?: (
+    node: Extract<HistoryFeedNode, { height: 0 }>,
+  ) => Promise<ArrayBuffer>,
 ): AsyncGenerator<IndexedAccountFeedEntry> {
   const key = await queryKey(selector);
   const after = selector.cursor ? order(...selector.cursor) : null;
-  const lower =
+  const cursorLower =
     key + (after === null ? "0".repeat(102) : after + "f".repeat(72));
-  const upper = key + "f".repeat(102);
+  const timeLower =
+    key +
+    inverse(
+      selector.observedEnd ?? Number.MAX_SAFE_INTEGER,
+      Number.MAX_SAFE_INTEGER,
+      14,
+    ) +
+    "0".repeat(88);
+  const lower = cursorLower > timeLower ? cursorLower : timeLower;
+  const upper =
+    key +
+    inverse(selector.observedStart ?? 0, Number.MAX_SAFE_INTEGER, 14) +
+    "f".repeat(88);
   const firstBlock = selector.blockStart ?? feed.selection.firstBlock;
   const lastBlock = selector.blockEnd ?? feed.selection.lastBlock;
   inverse(firstBlock, 0xffffffff, 8);
@@ -225,7 +242,9 @@ export async function* iterateAccountFeed(
       for (const child of children) yield* walk(child);
       return;
     }
-    const raw = await file.slice(node.offset, node.offset + node.length);
+    const raw = readPage
+      ? await readPage(node)
+      : await file.slice(node.offset, node.offset + node.length);
     const decoded = text.decode(await inflate(raw, node.decodedBytes, budget));
     if (!decoded.endsWith("\n"))
       throw new Error("Truncated account feed record");
@@ -279,12 +298,48 @@ export async function* iterateAccountFeed(
       if (
         row.block_number! >= firstBlock &&
         row.block_number! <= lastBlock &&
+        row.observed_at! >= (selector.observedStart ?? 0) &&
+        row.observed_at! <= (selector.observedEnd ?? Number.MAX_SAFE_INTEGER) &&
         (after === null || entry.token.slice(64, 94) > after)
       )
         yield entry;
     }
   }
   if (feed.root && firstBlock <= lastBlock) yield* walk(feed.root);
+}
+
+/** Equal physical captures have the same complete sort suffix and are adjacent
+ * in this merge. Keep only that suffix, rather than a lifetime-sized seen set. */
+export async function* mergeAccountFeedEntries(
+  streams: AsyncGenerator<IndexedAccountFeedEntry>[],
+): AsyncGenerator<AccountEventsRow> {
+  if (streams.length > 16)
+    throw new Error("Account feed page exceeds its budget");
+  let previous: string | undefined;
+  try {
+    const heads = await Promise.all(streams.map((stream) => stream.next()));
+    while (true) {
+      let index = -1;
+      heads.forEach((head, i) => {
+        if (
+          !head.done &&
+          (index < 0 ||
+            head.value.token.slice(64) < heads[index].value!.token.slice(64))
+        )
+          index = i;
+      });
+      if (index < 0) break;
+      const entry = heads[index].value!;
+      const identity = entry.token.slice(64);
+      if (identity !== previous) {
+        previous = identity;
+        yield entry.row;
+      }
+      heads[index] = await streams[index].next();
+    }
+  } finally {
+    await Promise.all(streams.map((stream) => stream.return(undefined)));
+  }
 }
 
 /** OR unions deduplicate physical captures, preserving separate retained rows. */
@@ -303,32 +358,10 @@ export async function mergeAccountFeedPage(
     streams.length > 8
   )
     throw new Error("Account feed page exceeds its budget");
-  const seen = new Set<string>(),
-    rows: AccountEventsRow[] = [];
-  try {
-    const heads = await Promise.all(streams.map((stream) => stream.next()));
-    while (rows.length < limit + offset) {
-      let index = -1;
-      heads.forEach((head, i) => {
-        if (
-          !head.done &&
-          (index < 0 ||
-            head.value.token.slice(64) < heads[index].value!.token.slice(64))
-        )
-          index = i;
-      });
-      if (index < 0) break;
-      const entry = heads[index].value!;
-      const identity = entry.token.slice(94);
-      if (!seen.has(identity)) {
-        seen.add(identity);
-        rows.push(entry.row);
-      }
-      if (rows.length < limit + offset)
-        heads[index] = await streams[index].next();
-    }
-    return rows.slice(offset);
-  } finally {
-    await Promise.all(streams.map((stream) => stream.return(undefined)));
+  const rows: AccountEventsRow[] = [];
+  for await (const row of mergeAccountFeedEntries(streams)) {
+    rows.push(row);
+    if (rows.length === limit + offset) break;
   }
+  return rows.slice(offset);
 }
