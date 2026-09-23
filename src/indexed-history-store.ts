@@ -16,6 +16,7 @@ import {
   type ParquetReadBudget,
 } from "./indexed-parquet.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
 
 type Bucket = Pick<R2Bucket, "get">;
 interface HistoryEnv {
@@ -120,6 +121,7 @@ export async function readSelectedHistoryBlock(
       await readHistoryBlock(source, generation, selected, block, budget)
     ).map(catalogRow);
   } catch {
+    recordIndexedHistoryFailure();
     return null;
   }
 }
@@ -165,6 +167,7 @@ export async function readSelectedHistoryHash(
     }
     return undefined;
   } catch {
+    recordIndexedHistoryFailure();
     return null;
   }
 }

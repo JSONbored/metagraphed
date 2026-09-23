@@ -18,6 +18,7 @@ import {
 } from "../src/indexed-history-store.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
 import { parquetReadBudget } from "../src/indexed-parquet.ts";
+import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
 import { loadBlockChainEventsColdTier } from "../src/events-cold-tier.ts";
 beforeEach(() => {
   resetModuleState();
@@ -275,6 +276,7 @@ test("selected block reads cache the pointer, enforce coverage, and preserve num
     await readSelectedHistoryBlock(missing.env, "chain_events", 7),
     undefined,
   );
+  assert.equal(currentIndexedHistoryFailureGeneration(), 0);
 });
 test("unreadable, invalid and mismatched selected generations fail without a legacy fallback", async () => {
   for (const change of [
@@ -339,6 +341,7 @@ test("hash lookups distinguish a base miss and uncovered rows from an index fail
       undefined,
     );
   }
+  assert.equal(currentIndexedHistoryFailureGeneration(), 0);
   readers.hash.mockRejectedValue(new Error("bad pointer"));
   assert.equal(await readSelectedHistoryHash(env, "blocks", "hash"), null);
   const testnet = fixture("extrinsics", "testnet");
