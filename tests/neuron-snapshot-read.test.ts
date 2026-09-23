@@ -5,7 +5,10 @@ import { Miniflare } from "miniflare";
 import { createD1Sql, createD1Store } from "../src/d1-store.ts";
 import { writeNeuronDocuments } from "../src/neuron-documents.ts";
 import { neuronSnapshotWrite } from "../src/neurons-neon-write.ts";
-import { readNeuronDirectoryRows } from "../src/neuron-snapshot-read.ts";
+import {
+  readNeuronDirectoryRows,
+  readDirectoryNominatorCounts,
+} from "../src/neuron-snapshot-read.ts";
 import type { PgSql } from "../src/pg-sql.ts";
 
 const runtime = new Miniflare({
@@ -28,6 +31,17 @@ beforeAll(async () => {
     "utf8",
   ).split("-- statement-breakpoint"))
     if (sql.trim()) await db.prepare(sql).run();
+  for (const sql of readFileSync(
+    new URL("../migrations/d1/0010_ledger_state.sql", import.meta.url),
+    "utf8",
+  ).split("-- statement-breakpoint"))
+    if (sql.trim()) await db.prepare(sql).run();
+  await db
+    .prepare(
+      "INSERT INTO validator_nominator_counts(hotkey,nominator_count,captured_at) VALUES ('5Changed',5,?),('5Unregistered',7,?)",
+    )
+    .bind(stamp, stamp + 2000)
+    .run();
   const rows = [0, 7, 128].flatMap((netuid) =>
     Array.from({ length: 258 }, (_, uid) => ({
       netuid,
@@ -115,6 +129,67 @@ test("the default reads all accounts and absent selected storage cannot fall bac
   await assert.rejects(
     readNeuronDirectoryRows(unexpectedSql, {}),
     /Must not read the old store/,
+  );
+});
+
+test("nominator enrichment preserves distinct permitted keys, nulls and the whole-scan stamp without rescanning neurons", async () => {
+  const environment = {
+    D1_STATE: db,
+    D1_STATE_TABLES: "neurons,validator_nominator_counts",
+  };
+  const memberships = await readNeuronDirectoryRows(
+    unexpectedSql,
+    environment,
+    true,
+  );
+  const keys = memberships.map((row) => row.hotkey);
+  assert.ok(keys.length > new Set(keys).size);
+  const expected = await readDirectoryNominatorCounts(
+    createD1Sql(createD1Store(db)),
+    {},
+    [],
+  );
+  const statements: string[] = [];
+  const actual = await readDirectoryNominatorCounts(
+    unexpectedSql,
+    {
+      ...environment,
+      D1_STATE: {
+        prepare(sql: string) {
+          statements.push(sql);
+          return db.prepare(sql);
+        },
+        batch: db.batch.bind(db),
+      },
+    },
+    keys,
+  );
+  const sorted = (rows: { hotkey: string }[]) =>
+    rows.sort((a, b) => a.hotkey.localeCompare(b.hotkey));
+  assert.deepEqual(sorted(actual), sorted(expected));
+  assert.ok(actual.some((r) => r.nominator_count === null));
+  assert.ok(actual.some((r) => r.nominator_count === 5));
+  assert.ok(actual.every((r) => r.scan_at === stamp + 2000));
+  assert.ok(actual.every((r) => r.hotkey !== "5Unregistered"));
+  assert.equal(statements.length, 1);
+  assert.doesNotMatch(statements[0], /FROM neurons/);
+  assert.deepEqual(
+    await readDirectoryNominatorCounts(unexpectedSql, environment, []),
+    [],
+  );
+  await db.prepare("DELETE FROM validator_nominator_counts").run();
+  assert.ok(
+    (
+      await readDirectoryNominatorCounts(unexpectedSql, environment, keys)
+    ).every((r) => r.nominator_count === null && r.scan_at === null),
+  );
+  await assert.rejects(
+    readDirectoryNominatorCounts(
+      unexpectedSql,
+      { D1_STATE_TABLES: environment.D1_STATE_TABLES },
+      keys,
+    ),
+    /Selected D1 store is unbound/,
   );
 });
 

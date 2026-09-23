@@ -416,3 +416,28 @@ test("an oversized atomic capture is refused before submitting a database transa
   assert.equal(submitted, false);
   assert.equal((await read()).length, 0);
 });
+
+test("pruning materializes stale document keys once instead of correlating every member", async () => {
+  const input = capture();
+  await writeNeuronDocuments(store(), input);
+  const statements = neuronDocumentStatements({
+    ...empty(),
+    netuidMaxCapturedAt: new Map([[1, stamp + 1]]),
+  });
+  const statement = statements.find((s) =>
+    s.text.startsWith("DELETE FROM neurons_members"),
+  )!;
+  const plan = (
+    await db
+      .prepare("EXPLAIN QUERY PLAN " + statement.text)
+      .bind(...(statement.values ?? []))
+      .all<{ detail: string }>()
+  ).results.map((r) => r.detail);
+  assert.ok(plan.some((s) => s.includes("SCAN i VIRTUAL TABLE")));
+  assert.ok(
+    plan.every((s) => !s.includes("CORRELATED")),
+    plan.join("\n"),
+  );
+  await store().transaction(statements);
+  assert.deepEqual(await read(), []);
+});

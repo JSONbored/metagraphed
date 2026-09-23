@@ -6,11 +6,16 @@
 import { selectedD1Store } from "./d1-store.ts";
 import type { PgSql } from "./pg-sql.ts";
 
+interface NeuronDirectoryRow extends Record<string, unknown> {
+  // Both statements exclude NULL hotkeys before returning rows.
+  hotkey: string;
+}
+
 export async function readNeuronDirectoryRows(
   sql: PgSql,
   env: unknown,
   validatorsOnly = false,
-): Promise<Record<string, unknown>[]> {
+): Promise<NeuronDirectoryRow[]> {
   const metrics = validatorsOnly
     ? [
         "validator_trust",
@@ -43,4 +48,39 @@ export async function readNeuronDirectoryRows(
   return sql.unsafe(`SELECT netuid, uid, hotkey, coldkey, ${metrics.join(", ")}
     FROM neurons WHERE ${validatorsOnly ? "validator_permit = TRUE AND " : ""}hotkey IS NOT NULL
     ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`);
+}
+
+interface DirectoryNominatorRow extends Record<string, unknown> {
+  hotkey: string;
+  nominator_count: number | null;
+  scan_at: number | null;
+}
+
+// The D1 caller has already read the permitted validator memberships. Bind
+// their keys as one JSON value instead of scanning the neurons view again.
+// LEFT JOIN and the whole-table scan stamp preserve confirmed-zero semantics.
+export async function readDirectoryNominatorCounts(
+  sql: PgSql,
+  env: unknown,
+  hotkeys: readonly string[],
+): Promise<DirectoryNominatorRow[]> {
+  const store = selectedD1Store(env, ["neurons", "validator_nominator_counts"]);
+  if (store) {
+    return store.query(
+      `SELECT k.value AS hotkey, c.nominator_count AS nominator_count,
+        (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at
+       FROM json_each(?) k
+       LEFT JOIN validator_nominator_counts c ON c.hotkey = k.value`,
+      [JSON.stringify([...new Set(hotkeys)])],
+    );
+  }
+  return sql<DirectoryNominatorRow>`
+    SELECT n.hotkey AS hotkey,
+           c.nominator_count AS nominator_count,
+           (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at
+    FROM (
+      SELECT DISTINCT hotkey FROM neurons
+      WHERE validator_permit = TRUE AND hotkey IS NOT NULL
+    ) n
+    LEFT JOIN validator_nominator_counts c ON c.hotkey = n.hotkey`;
 }
