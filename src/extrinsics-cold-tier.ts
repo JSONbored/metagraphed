@@ -199,26 +199,10 @@ async function feedRows(
   // prior pages -- mirroring data-api's `OFFSET only when no cursor`.
   const paged = decodeCursor(query.cursor, CURSOR_ARITY) ? 0 : offset;
 
-  // THE HOT STORE FIRST. Measured live 2026-08-17, `?limit=11` spent 7,637ms in
-  // the lakehouse (`server-timing: r2sql;dur=7637`) for a page that is one
-  // index scan in Neon -- 0.088ms, off the `observed_at` index migration 0017
-  // added for the freshness probe, which already presorts this feed's leading
-  // key. The answer is also NEWER: that store tracks the chain head while the
-  // lakehouse ends at the decode seam, ~50 minutes back.
-  //
-  // A SHORT PAGE FALLS THROUGH, exactly as the chain-events feed does: the hot
-  // store is contiguous from its floor to the head, so a FULL page is provably
-  // the newest `limit + paged`; a short one means the rest is below that floor.
-  // Serving it would truncate the feed and strand the walk, since the cursor a
-  // full page emits is the same token the lakehouse leg seeks on.
-  //
-  // NO OFFSET PAGES. `paged > 0` means the caller is deep in an offset walk,
-  // and over-fetching `limit + paged` rows to slice them is a trade the
-  // lakehouse leg makes because R2 SQL has no OFFSET. Repeating it here would
-  // pull the same rows through a second store for no gain.
-  //
-  // Only the DEFAULT NETWORK: `chain_detail_*` is mainnet's and carries no
-  // network column.
+  // A full hot-store page answers the complete filtered question. A short
+  // page may cross the retained-history seam, so the indexed tier gets it.
+  // Offset walks go directly to the historical reader. The hot store is
+  // mainnet-only and must seek the same complete cursor tuple as that reader.
   if (
     paged === 0 &&
     extraWhere.length === 0 &&
@@ -227,15 +211,18 @@ async function feedRows(
     const cursorToken = decodeCursor(query.cursor, CURSOR_ARITY);
     const hot = await loadExtrinsicsHeadHotTier(env, {
       limit,
-      ceilingObservedAt: cursorToken ? (cursorToken[0] as number) : null,
+      ceilingObservedAt: query.to == null ? null : safeBlockNumber(query.to),
+      floorObservedAt: query.from == null ? null : safeBlockNumber(query.from),
+      block: query.block == null ? null : safeBlockNumber(query.block),
+      cursor: cursorToken as [number, number, number] | null,
       signer: typeof query.signer === "string" ? query.signer : null,
       module: typeof query.module === "string" ? query.module : null,
       callFunction:
         typeof query.callFunction === "string" ? query.callFunction : null,
       success: typeof query.success === "boolean" ? query.success : null,
       blockStart:
-        typeof query.blockStart === "number" ? query.blockStart : null,
-      blockEnd: typeof query.blockEnd === "number" ? query.blockEnd : null,
+        query.blockStart == null ? null : safeBlockNumber(query.blockStart),
+      blockEnd: query.blockEnd == null ? null : safeBlockNumber(query.blockEnd),
     });
     if (hot !== null && hot.length === limit) {
       const page = hot as ExtrinsicsRow[];
