@@ -186,16 +186,18 @@ export async function readSubnetDailyHistory(
   netuid: number,
   cutoff: string | null,
   limit: number,
+  before: string | null = null,
 ): Promise<NeuronDailyRollup[]> {
   const store = selectedD1Store(env, ["neuron_daily"]);
   if (store)
     return store.query<NeuronDailyRollup>(
       `SELECT m.snapshot_date,${DAILY_DOCUMENT_TOTALS}
      ${DAILY_DOCUMENT_MEMBERS}
-     WHERE d.netuid=? ${cutoff ? "AND d.day>=?" : ""} AND ${DAILY_DOCUMENT_MATCH}
+     WHERE d.netuid=? ${cutoff ? "AND d.day>=?" : ""} ${before ? "AND d.day<?" : ""} AND ${DAILY_DOCUMENT_MATCH}
      GROUP BY m.snapshot_date ORDER BY m.snapshot_date DESC LIMIT ?`,
-      cutoff ? [netuid, cutoff, limit] : [netuid, limit],
+      [netuid, ...(cutoff ? [cutoff] : []), ...(before ? [before] : []), limit],
     );
+  if (before) throw new Error("Daily history ceiling requires its D1 owner");
   return cutoff
     ? sql<NeuronDailyRollup>`SELECT snapshot_date,COUNT(*) AS neuron_count,
         SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,

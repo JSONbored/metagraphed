@@ -1,45 +1,10 @@
-// The daily rollups' history, for days Neon no longer keeps.
-//
-// A DATE SEAM, and the same argument blocks-cold-tier.ts makes for its height
-// one: each day must come from EXACTLY ONE source.
-//
-//   snapshot_date >= seam  -> Neon      (hot)
-//   snapshot_date <  seam  -> lakehouse (cold)
-//
-// The two stores overlap today -- the lakehouse was seeded 2026-07-10..08-02
-// while Neon holds 07-10 onward -- so "merge whatever both have" would double
-// every overlapping day. Routing on a single date makes each day's provenance
-// reproducible instead of depending on what each store happens to retain.
-//
-// THE SEAM IS RESOLVED, NOT PINNED, and it is Neon's own `MIN(snapshot_date)`.
-// blocks-cold-tier.ts records what a pinned constant costs: the decode lane
-// extended the lakehouse hourly while the Worker kept routing against a number
-// from the last deploy, so every recently-decoded block served reduced columns
-// forever. A configured date here would rot the same way, and worse -- the
-// retention job that moves Neon's floor would leave a window in which a pruned
-// day is served by NEITHER side.
-//
-// Taking the seam from Neon's floor closes that by construction: the hot store
-// cannot drop a day without the seam moving with it, in the same transaction's
-// worth of truth, with nothing to deploy and no constant to bump.
-//
-// COLUMN COVERAGE IS UNIFORM HERE, unlike the blocks seam. Both stores carry
-// the same 22 (neuron_daily) and 15 (account_position_daily) columns -- the
-// producer copies Postgres rather than deriving a narrower projection -- so
-// there is no `storeCanServe` equivalent, no filter that has to be declined, and
-// no reduced-column arm to explain. That is a property of the producer, and it
-// is worth stating because it is what makes this seam simpler than the other.
-//
-// SELECTIVE, SO REQUEST-TIME. The predicate is `netuid = N` (plus `uid = U`),
-// against a table holding ~30,000 rows per day. subnet-ohlc-cold-tier.ts's
-// header states the rule this follows: selective predicates stay request-time,
-// chain-wide aggregates move to a cron. One subnet's slice of a day is ~256
-// rows, so even an `all` window over a year is a five-figure row count, not a
-// scan.
-//
-// AGGREGATION HAPPENS IN SQL for the subnet series, matching what the hot tier
-// does and for the same reason: the payload is one row per day, so grouping at
-// the engine bounds the response by DAY count rather than by neuron count.
+import { createD1Sql, selectedD1Store } from "./d1-store.ts";
+import { readSubnetDailyHistory } from "./neuron-snapshot-read.ts";
+import type { ProducerStore } from "./producer-store.ts";
+// Daily history selects its retained D1 owner before the archived SQL path.
+// Strict date seams keep each day in exactly one side of the composed series.
+// Subnet totals expand each bounded metric document once; UID, account and
+// validator timelines seek the native membership indexes before metric reads.
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -64,6 +29,34 @@ import {
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildValidatorHistory } from "./validator-history.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+
+/** Selected D1 failures cannot revive archive scans. */
+async function readOwnedDaily<Row>(
+  env: unknown,
+  tables: string[],
+  load: (store: ProducerStore) => Promise<Row[]>,
+): Promise<Row[] | null | undefined> {
+  try {
+    const store = selectedD1Store(env, tables);
+    return store ? await load(store) : undefined;
+  } catch {
+    return null;
+  }
+}
+function nativeDates(
+  range: { lo: string | null; hi: string | null },
+  column = "snapshot_date",
+) {
+  return {
+    text:
+      (range.lo === null ? "" : ` AND ${column}>=?`) +
+      (range.hi === null ? "" : ` AND ${column}<?`),
+    values: [
+      ...(range.lo === null ? [] : [range.lo]),
+      ...(range.hi === null ? [] : [range.hi]),
+    ],
+  };
+}
 
 /** The lakehouse namespace holding the decoded/copied chain tables. */
 const NAMESPACE = "chain";
@@ -195,6 +188,26 @@ export async function loadSubnetHistoryColdTier(
   if (id == null) return null;
   const range = coldDateRange(start, seam);
   if (range == null) return null;
+  const native = await readOwnedDaily(env, ["neuron_daily"], (store) =>
+    readSubnetDailyHistory(
+      createD1Sql(store),
+      env,
+      id,
+      range.lo,
+      Math.max(1, Math.trunc(limit)),
+      range.hi,
+    ),
+  );
+  if (native !== undefined)
+    return native === null
+      ? null
+      : native.map((row) => ({
+          ...row,
+          neuron_count: numeric(row.neuron_count),
+          validator_count: numeric(row.validator_count),
+          total_stake_tao: numeric(row.total_stake_tao),
+          total_emission_tao: numeric(row.total_emission_tao),
+        }));
   const rows = await r2SqlQuery<{
     snapshot_date: string | null;
     neuron_count: number | string | null;
@@ -255,6 +268,14 @@ export async function loadNeuronHistoryColdTier(
   if (id == null || slot == null) return null;
   const range = coldDateRange(start, seam);
   if (range == null) return null;
+  const dates = nativeDates(range);
+  const native = await readOwnedDaily(env, ["neuron_daily"], (store) =>
+    store.query<ColdNeuronHistoryRow>(
+      `SELECT ${NEURON_HISTORY_FIELDS.join(", ")} FROM neuron_daily WHERE netuid=? AND uid=?${dates.text} ORDER BY snapshot_date DESC LIMIT ?`,
+      [id, slot, ...dates.values, Math.max(1, Math.trunc(limit))],
+    ),
+  );
+  if (native !== undefined) return native;
   const rows = await r2SqlQuery<ColdNeuronHistoryRow>(
     env,
     `SELECT ${NEURON_HISTORY_FIELDS.join(", ")}
@@ -498,6 +519,17 @@ export async function loadAccountPositionHistoryColdTier(
   if (account == null || id == null) return null;
   const range = coldDateRange(start, seam);
   if (range == null) return null;
+  const dates = nativeDates(range);
+  const native = await readOwnedDaily(
+    env,
+    ["account_position_daily"],
+    (store) =>
+      store.query<ColdAccountPositionRow>(
+        `SELECT ${ACCOUNT_POSITION_FIELDS.join(", ")} FROM account_position_daily WHERE account=? AND netuid=?${dates.text} ORDER BY snapshot_date DESC LIMIT ?`,
+        [account, id, ...dates.values, Math.max(1, Math.trunc(limit))],
+      ),
+  );
+  if (native !== undefined) return native;
   const rows = await r2SqlQuery<ColdAccountPositionRow>(
     env,
     `SELECT ${ACCOUNT_POSITION_FIELDS.join(", ")}
@@ -632,6 +664,29 @@ export async function loadValidatorHistoryColdTier(
     "snapshot_date",
     "nd.snapshot_date",
   );
+  const nativeRange = nativeDates(range, "nd.snapshot_date");
+  const native = await readOwnedDaily(
+    env,
+    ["neuron_daily", "subnet_snapshots"],
+    (store) =>
+      store.query<ColdValidatorHistoryRow>(
+        `SELECT nd.snapshot_date AS snapshot_date,1 AS subnet_count,nd.netuid,nd.uid,
+      nd.stake_tao AS stake_alpha,nd.emission_tao AS emission_alpha,
+      nd.validator_trust,nd.consensus,nd.dividends,nd.take,nd.validator_permit,
+      s.total_stake_tao AS subnet_total_stake,
+      nd.stake_tao * CASE WHEN nd.netuid=0 THEN 1 ELSE s.tao_in_pool_tao/s.alpha_in_pool END AS total_stake_tao,
+      nd.emission_tao * CASE WHEN nd.netuid=0 THEN 1 ELSE s.tao_in_pool_tao/s.alpha_in_pool END AS total_emission_tao
+    FROM neuron_daily nd LEFT JOIN subnet_snapshots s ON s.netuid=nd.netuid AND s.snapshot_date=nd.snapshot_date
+    WHERE nd.hotkey=?${scoped === null ? "" : " AND nd.netuid=?"}${nativeRange.text} ORDER BY nd.snapshot_date DESC LIMIT ?`,
+        [
+          key,
+          ...(scoped === null ? [] : [scoped]),
+          ...nativeRange.values,
+          Math.max(1, Math.trunc(limit)),
+        ],
+      ),
+  );
+  if (native !== undefined) return native;
   const rows = await r2SqlQuery<ColdValidatorHistoryRow>(
     env,
     `SELECT nd.snapshot_date AS snapshot_date, 1 AS subnet_count,
