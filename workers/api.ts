@@ -319,6 +319,12 @@ import {
 } from "./account-edge-cache.ts";
 import { parseRouteQuery, routeQuery, routeText } from "../src/route-query.ts";
 import { readExplorerDirectoryCacheStamp } from "./data-api-tier.ts";
+import {
+  DEGRADED_HEADER,
+  degradedSince,
+  degradedSnapshot,
+  labelDegradedResponse,
+} from "./edge-cache.ts";
 
 import {
   handleSubnetMetagraph,
@@ -3875,7 +3881,9 @@ export async function withChainDetailEdgeCache(
     return withCacheStatus(hit, "hit");
   }
 
+  const before = degradedSnapshot();
   const response = await produce();
+  labelDegradedResponse(response, before);
   const profile = response.headers.get("x-metagraph-cache-profile");
   const settledShort =
     profile === "short" &&
@@ -3887,7 +3895,12 @@ export async function withChainDetailEdgeCache(
       : settledShort
         ? CHAIN_DETAIL_SETTLED_SHORT_CACHE_TTL_SECONDS
         : null;
-  if (response.status === 200 && cacheTtl !== null) {
+  if (
+    response.status === 200 &&
+    cacheTtl !== null &&
+    !degradedSince(before).transient &&
+    !response.headers.has(DEGRADED_HEADER)
+  ) {
     // Stored with OUR ttl, not the client-facing one. Built explicitly rather
     // than by passing the Response as an init so the headers are copied into a
     // fresh Headers and mutating them cannot reach the response we return.

@@ -9,6 +9,7 @@ import { contractVersion } from "./responses.ts";
 import { currentDataApiTierFallbackGeneration } from "./data-api-tier.ts";
 import { currentR2SqlFailureGeneration } from "../src/r2-sql.ts";
 import { currentOffsetCapDeclineGeneration } from "../src/cold-tier-offset.ts";
+import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
 const DATA_API_TIER_FALLBACK_RESPONSES = new WeakSet<Response>();
 
 /**
@@ -129,6 +130,7 @@ export function markDataApiTierFallbackResponse(response: Response): Response {
 export interface DegradedSnapshot {
   postgresTier: number;
   r2Sql: number;
+  indexedHistory: number;
   unmeasured: number;
   /**
    * Reads that declined a too-deep offset WITHOUT issuing a query (#11142).
@@ -150,6 +152,7 @@ export function degradedSnapshot(): DegradedSnapshot {
   return {
     postgresTier: currentDataApiTierFallbackGeneration(),
     r2Sql: currentR2SqlFailureGeneration(),
+    indexedHistory: currentIndexedHistoryFailureGeneration(),
     unmeasured: unmeasuredGeneration,
     offsetCapDeclined: currentOffsetCapDeclineGeneration(),
   };
@@ -176,7 +179,9 @@ export function degradedSince(before: DegradedSnapshot): {
   const now = degradedSnapshot();
   return {
     transient:
-      now.postgresTier !== before.postgresTier || now.r2Sql !== before.r2Sql,
+      now.postgresTier !== before.postgresTier ||
+      now.r2Sql !== before.r2Sql ||
+      now.indexedHistory !== before.indexedHistory,
     // An offset-cap decline is UNMEASURED, not transient: the same offset
     // declines identically for the whole TTL, so the answer stays cacheable and
     // merely stops claiming to be measured. Barring it from the cache would
