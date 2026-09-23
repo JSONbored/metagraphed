@@ -8,9 +8,8 @@
 // LIMIT-ed-fetch row set (shares themselves divide by the stored full-window
 // total, so they are limit-independent either way).
 //
-// The optional call_module scope is NOT precomputed (its value space is
-// unbounded), so a filtered call declines to the schema-stable empty rather
-// than serving unfiltered numbers under a filtered label.
+// Native artifacts include exact module-scoped windows and a complete module
+// census. Older global-only artifacts continue to decline scoped requests.
 
 import { z } from "zod";
 
@@ -66,7 +65,7 @@ function newestObservedIso(value: unknown): string | null {
  * The projected chain-calls breakdown for one window/group_by, or null when
  * the artifact store cannot answer FAITHFULLY (unbound, missing object,
  * unrecognized body, a window or group_by the lane did not precompute, or a
- * call_module scope — which is never precomputed) so the caller keeps its
+ * missing call_module coverage) so the caller keeps its
  * schema-stable empty. Decline, never approximate.
  */
 export async function loadChainCallsFromArtifact(
@@ -80,15 +79,12 @@ export async function loadChainCallsFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainCalls> | null> {
-  // A pallet-scoped call has no precomputed answer; serving the unfiltered
-  // rows under a filtered label would be a wrong answer, not a degraded one.
-  if (typeof query.callModule === "string" && query.callModule.length > 0)
-    return null;
   const groupBy = query.groupBy ?? "module";
   if (!CHAIN_CALLS_GROUP_BYS.includes(groupBy)) return null;
   const read = await readProjectionWindow(env, {
     key: CHAIN_CALLS_PROJECTION_KEY,
     network,
+    callModule: query.callModule,
     window: query.window,
     defaultWindow: DEFAULT_ANALYTICS_WINDOW,
     windows: ANALYTICS_WINDOW_DAYS,

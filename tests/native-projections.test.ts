@@ -12,6 +12,7 @@ import {
   projectionComputeEnv,
   projectionNow,
   projectionQuery,
+  projectionModulePredicate,
 } from "../src/projection-compute-context.ts";
 import { PROJECTION_LANES } from "../src/projection-lanes.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
@@ -82,7 +83,19 @@ test("native invocation context is isolated and cannot leak into normal Worker c
       () => projectionComputeEnv(env, { query: native, now }),
       /capture time/,
     );
+  assert.equal(projectionModulePredicate(env), "");
+  assert.equal(projectionModulePredicate(first), "");
+  const scoped = projectionComputeEnv(env, {
+    query: native,
+    now: 7,
+    callModule: "Quote'Module",
+  });
+  assert.equal(
+    projectionModulePredicate(scoped),
+    " AND call_module = 'Quote''Module'",
+  );
   resetModuleState();
+  assert.equal(projectionModulePredicate(scoped), "");
   assert.equal(projectionQuery(first), undefined);
 });
 
@@ -144,4 +157,144 @@ test("protocol rejects mispaired or malformed rows and oversized frames", async 
     () => parseProtocolLine("x".repeat(MAX_PROTOCOL_BYTES + 1)),
     /budget/,
   );
+});
+
+test("module-specific readers preserve exact canonical windows, limits and absent-module answers", async () => {
+  const { loadChainCallsFromArtifact } =
+    await import("../src/chain-calls-artifact.ts");
+  const { loadChainFeesFromArtifact } =
+    await import("../src/chain-fees-artifact.ts");
+  const { loadChainSignersFromArtifact } =
+    await import("../src/chain-signers-artifact.ts");
+  const readers = [
+    {
+      file: "chain-calls.json",
+      load: loadChainCallsFromArtifact,
+      variants: [{ groupBy: "module" }, { groupBy: "module_function" }],
+    },
+    {
+      file: "chain-fees.json",
+      load: loadChainFeesFromArtifact,
+      variants: [{}],
+    },
+    {
+      file: "chain-signers.json",
+      load: loadChainSignersFromArtifact,
+      variants: [{ sort: "tx_count" }, { sort: "total_fee_tao" }],
+    },
+  ];
+  const bucketEnv = (body: Record<string, unknown>) =>
+    ({
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            async json() {
+              return body;
+            },
+          };
+        },
+      },
+    }) as unknown as Env;
+  for (const network of ["mainnet", "testnet"] as const) {
+    for (const reader of readers) {
+      const body = fixture.artifacts[network].find((item) =>
+        item.key.endsWith("/" + reader.file),
+      )!.body;
+      const moduleWindows = Object.fromEntries(
+        (
+          body.module_windows as {
+            module: string;
+            windows: Record<string, unknown>;
+          }[]
+        ).map((entry) => [entry.module, entry.windows]),
+      );
+      const empty = body.empty_module_windows as Record<string, unknown>;
+      assert.ok(Object.hasOwn(moduleWindows, "Quote'Module"));
+      assert.ok(Object.hasOwn(moduleWindows, "__proto__"));
+      for (const callModule of [
+        ...Object.keys(moduleWindows),
+        "constructor",
+        "never-seen",
+      ]) {
+        const windows = Object.hasOwn(moduleWindows, callModule)
+          ? moduleWindows[callModule]
+          : empty;
+        for (const window of Object.keys(windows))
+          for (const variant of reader.variants)
+            for (const limit of [1, 100]) {
+              const query = { window, limit, ...variant };
+              const expected = await reader.load(
+                bucketEnv({ ...body, windows }),
+                query,
+                network,
+              );
+              assert.ok(expected);
+              assert.deepEqual(
+                await reader.load(
+                  bucketEnv(body),
+                  { ...query, callModule },
+                  network,
+                ),
+                expected,
+              );
+            }
+      }
+      const window = Object.keys(body.windows as object)[0];
+      for (const change of [
+        { module_windows: undefined },
+        { empty_module_windows: undefined },
+        { module_windows: [{ module: "Balances", windows: {} }] },
+        {
+          module_windows: [{ module: "Balances", windows: { [window]: null } }],
+        },
+      ])
+        assert.equal(
+          await reader.load(
+            bucketEnv({ ...body, ...change }),
+            { callModule: "Balances", window },
+            network,
+          ),
+          null,
+        );
+    }
+  }
+});
+
+test("native module census and each canonical computation must complete before publication", async () => {
+  for (const census of [
+    null,
+    Array.from({ length: 1025 }, () => ({ call_module: "x" })),
+    [{ call_module: 7 }],
+    [{ call_module: "x".repeat(1025) }],
+  ]) {
+    await assert.rejects(
+      computeNativeProjections("mainnet", fixture.now, async (env, sql) =>
+        sql.startsWith("SELECT DISTINCT call_module")
+          ? census
+          : native(env, sql),
+      ),
+      /module census/,
+    );
+  }
+  const lane = PROJECTION_LANES.find((item) => item.name === "chain-calls")!;
+  const original = lane.compute;
+  const failModule = vi
+    .spyOn(lane, "compute")
+    .mockImplementationOnce(original)
+    .mockResolvedValueOnce(null);
+  await assert.rejects(
+    computeNativeProjections("mainnet", fixture.now, native),
+    /Module projection declined/,
+  );
+  failModule.mockRestore();
+  const failEmpty = vi
+    .spyOn(lane, "compute")
+    .mockImplementation(async (env, network) =>
+      projectionQuery(env) === native ? original(env, network) : null,
+    );
+  await assert.rejects(
+    computeNativeProjections("mainnet", fixture.now, native),
+    /Empty module projection declined/,
+  );
+  failEmpty.mockRestore();
 });

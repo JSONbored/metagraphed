@@ -110,7 +110,7 @@ describe("loadChainSignersFromArtifact", () => {
     assert.equal(capped!.signer_count, 100);
   });
 
-  test("a call_module scope declines — it is never precomputed", async () => {
+  test("a legacy artifact without module coverage declines a scoped request", async () => {
     const { env, gets } = bucketWith(artifact());
     assert.equal(
       await loadChainSignersFromArtifact(env, {
@@ -119,7 +119,7 @@ describe("loadChainSignersFromArtifact", () => {
       }),
       null,
     );
-    assert.equal(gets.length, 0);
+    assert.equal(gets.length, 1);
     // An empty scope is the unfiltered route shape, not a filter.
     const data = await loadChainSignersFromArtifact(env, {
       limit: 50,

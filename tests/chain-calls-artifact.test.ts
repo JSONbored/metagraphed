@@ -114,7 +114,7 @@ describe("loadChainCallsFromArtifact", () => {
     assert.equal(capped!.call_count, 100);
   });
 
-  test("a call_module scope declines — it is never precomputed", async () => {
+  test("a legacy artifact without module coverage declines a scoped request", async () => {
     const { env, gets } = bucketWith(artifact());
     assert.equal(
       await loadChainCallsFromArtifact(env, {
@@ -123,8 +123,8 @@ describe("loadChainCallsFromArtifact", () => {
       }),
       null,
     );
-    // Declined before the store is even read.
-    assert.equal(gets.length, 0);
+    // Legacy artifacts must not substitute global rows for a module scope.
+    assert.equal(gets.length, 1);
     // An empty scope is the unfiltered route shape, not a filter.
     const data = await loadChainCallsFromArtifact(env, {
       limit: 50,

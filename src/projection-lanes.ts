@@ -20,6 +20,7 @@
 import {
   projectionNow,
   projectionQuery,
+  projectionModulePredicate,
 } from "./projection-compute-context.ts";
 
 import {
@@ -500,13 +501,13 @@ async function computeChainActivity(
  * grouped rows for BOTH group_by variants (each at the route's maximum limit
  * so every smaller ?limit= is a prefix slice of the same total order), and
  * the unfiltered full-window share denominator. The optional call_module
- * scope is NOT precomputed — its value space is unbounded, so the reader
- * declines filtered calls instead of approximating them. */
+ * scope is supplied only for native module-specific windows. */
 function chainCallsWindowSql(
   cutoff: number,
   network: ChainNetworkId,
+  modulePredicate: string,
 ): string[] {
-  const scope = `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}`;
+  const scope = `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}${modulePredicate}`;
   return [
     `SELECT MAX(observed_at) AS newest_observed ${scope}`,
     `SELECT call_module, COUNT(*) AS count ${scope} ` +
@@ -532,7 +533,11 @@ async function computeChainCalls(
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
     const [freshSql, moduleSql, moduleFunctionSql, totalSql] =
-      chainCallsWindowSql(generatedAt - days * DAY_MS, network);
+      chainCallsWindowSql(
+        generatedAt - days * DAY_MS,
+        network,
+        projectionModulePredicate(env),
+      );
     const fresh = await laneQuery(env, freshSql!);
     if (fresh === null) return null;
     const moduleRows = await laneQuery(env, moduleSql!);
@@ -570,12 +575,13 @@ function chainFeesMedianSql(
   cutoff: number,
   column: string,
   network: ChainNetworkId,
+  modulePredicate: string,
 ): string {
   return (
     `WITH ranked AS (SELECT ${EPOCH_DAY_EXPR} AS day_index, ${column}, ` +
     `ROW_NUMBER() OVER (PARTITION BY ${EPOCH_DAY_EXPR} ORDER BY ${column}) AS rn, ` +
     `COUNT(*) OVER (PARTITION BY ${EPOCH_DAY_EXPR}) AS cnt ` +
-    `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff} ` +
+    `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}${modulePredicate} ` +
     `AND signer IS NOT NULL AND ${column} IS NOT NULL) ` +
     `SELECT day_index, AVG(${column}) AS median_value FROM ranked ` +
     `WHERE rn * 2 = cnt OR rn * 2 = cnt + 1 OR rn * 2 = cnt + 2 ` +
@@ -584,8 +590,12 @@ function chainFeesMedianSql(
 }
 
 /** GET /api/v1/chain/fees' non-median statements for one window cutoff. */
-function chainFeesWindowSql(cutoff: number, network: ChainNetworkId): string[] {
-  const scope = `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}`;
+function chainFeesWindowSql(
+  cutoff: number,
+  network: ChainNetworkId,
+  modulePredicate: string,
+): string[] {
+  const scope = `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}${modulePredicate}`;
   return [
     `SELECT ${EPOCH_DAY_EXPR} AS day_index, COUNT(*) AS extrinsic_count, ` +
       `${SIGNED_COUNT_EXPR} AS signed_extrinsic_count, ` +
@@ -605,8 +615,7 @@ function chainFeesWindowSql(cutoff: number, network: ChainNetworkId): string[] {
  * series, the top-fee-payer leaderboard at the route's maximum limit, and the
  * exact per-day medians, merged into data-api's medianRows shape (a day
  * absent from a median column means every value was NULL, which is exactly
- * the NULL median PERCENTILE_CONT reports). The call_module scope is not
- * precomputed — the reader declines filtered calls. */
+ * the NULL median PERCENTILE_CONT reports). Native module scopes use these same queries and builders. */
 async function computeChainFees(
   env: Env,
   network: ChainNetworkId,
@@ -616,19 +625,33 @@ async function computeChainFees(
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
     const cutoff = generatedAt - days * DAY_MS;
-    const [dailySql, payersSql, freshSql] = chainFeesWindowSql(cutoff, network);
+    const [dailySql, payersSql, freshSql] = chainFeesWindowSql(
+      cutoff,
+      network,
+      projectionModulePredicate(env),
+    );
     const daily = await laneQuery(env, dailySql!);
     if (daily === null) return null;
     const payers = await laneQuery(env, payersSql!);
     if (payers === null) return null;
     const feeMedians = await laneQuery(
       env,
-      chainFeesMedianSql(cutoff, "fee_tao", network),
+      chainFeesMedianSql(
+        cutoff,
+        "fee_tao",
+        network,
+        projectionModulePredicate(env),
+      ),
     );
     if (feeMedians === null) return null;
     const tipMedians = await laneQuery(
       env,
-      chainFeesMedianSql(cutoff, "tip_tao", network),
+      chainFeesMedianSql(
+        cutoff,
+        "tip_tao",
+        network,
+        projectionModulePredicate(env),
+      ),
     );
     if (tipMedians === null) return null;
     const fresh = await laneQuery(env, freshSql!);
@@ -677,13 +700,13 @@ async function computeChainFees(
 /** GET /api/v1/chain/signers' statements for one window cutoff: the separate
  * freshness read data-api needs (grouped rows carry last_tx_block, not a
  * network observed_at), then the leaderboard in BOTH supported sort orders at
- * the route's maximum limit. call_module is not precomputed — the reader
- * declines filtered calls. */
+ * the route's maximum limit. Native module windows apply the same predicates to every statement. */
 function chainSignersWindowSql(
   cutoff: number,
   network: ChainNetworkId,
+  modulePredicate: string,
 ): string[] {
-  const scope = `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}`;
+  const scope = `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}${modulePredicate}`;
   const leaderboard = (orderBy: string) =>
     `SELECT signer, COUNT(*) AS tx_count, ` +
     `SUM(COALESCE(fee_tao, 0)) AS total_fee_tao, ` +
@@ -710,6 +733,7 @@ async function computeChainSigners(
     const [freshSql, txCountSql, feeSql] = chainSignersWindowSql(
       generatedAt - days * DAY_MS,
       network,
+      projectionModulePredicate(env),
     );
     const fresh = await laneQuery(env, freshSql!);
     if (fresh === null) return null;

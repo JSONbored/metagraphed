@@ -8,9 +8,8 @@
 // The handlers' own #8242 window trim applies AFTER this tier resolves,
 // exactly as it applies to a live Postgres answer.
 //
-// The optional call_module scope is NOT precomputed (its value space is
-// unbounded), so a filtered call declines to the schema-stable empty rather
-// than serving unfiltered numbers under a filtered label.
+// Native artifacts include exact module-scoped windows and a complete module
+// census. Older global-only artifacts continue to decline scoped requests.
 
 import { z } from "zod";
 
@@ -65,8 +64,8 @@ function newestObservedIso(value: unknown): string | null {
 /**
  * The projected chain-fees market card for one window, or null when the
  * artifact store cannot answer FAITHFULLY (unbound, missing object,
- * unrecognized body, a window the lane did not precompute, or a call_module
- * scope — which is never precomputed) so the caller keeps its schema-stable
+ * unrecognized body, a window the lane did not precompute, or missing module
+ * coverage) so the caller keeps its schema-stable
  * empty. Decline, never approximate.
  */
 export async function loadChainFeesFromArtifact(
@@ -79,13 +78,10 @@ export async function loadChainFeesFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainFees> | null> {
-  // A pallet-scoped call has no precomputed answer; serving the unfiltered
-  // series under a filtered label would be a wrong answer, not a degraded one.
-  if (typeof query.callModule === "string" && query.callModule.length > 0)
-    return null;
   const read = await readProjectionWindow(env, {
     key: CHAIN_FEES_PROJECTION_KEY,
     network,
+    callModule: query.callModule,
     window: query.window,
     defaultWindow: DEFAULT_ANALYTICS_WINDOW,
     windows: ANALYTICS_WINDOW_DAYS,
