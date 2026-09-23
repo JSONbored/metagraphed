@@ -17,6 +17,7 @@ import {
 } from "./indexed-parquet.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
+import { historyHashAbsentFromHotBridge } from "./history-hash-hot-bridge.ts";
 
 type Bucket = Pick<R2Bucket, "get">;
 interface HistoryEnv {
@@ -137,15 +138,15 @@ export async function readSelectedHistoryBlock(
 }
 
 /** Search newest segments first without resetting the operation's budget.
- * A miss still does not prove absence beyond the published segments; keep that
- * distinction until incremental coverage and the hot bridge are qualified. */
+ * [] proves absence only with every historical hash index and a qualified hot
+ * bridge. undefined keeps the migration fallback outside that coverage. */
 export async function readSelectedHistoryHash(
   env: unknown,
   table: "blocks" | "extrinsics",
   hash: string,
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
   budget: ParquetReadBudget = parquetReadBudget(),
-): Promise<Record<string, unknown> | null | undefined> {
+): Promise<Record<string, unknown> | [] | null | undefined> {
   const bucket = (env as HistoryEnv | null)?.METAGRAPH_ARCHIVE;
   if (!bucket) return undefined;
   try {
@@ -175,6 +176,18 @@ export async function readSelectedHistoryHash(
       if (block >= selected.firstBlock && block <= selected.lastBlock)
         return normalized;
     }
+    if (
+      segments[0].firstBlock === 0 &&
+      segments.every((segment) => segment.hashManifest) &&
+      (await historyHashAbsentFromHotBridge(
+        env,
+        table,
+        hash,
+        segments[segments.length - 1].lastBlock,
+        network,
+      ))
+    )
+      return [];
     return undefined;
   } catch {
     recordIndexedHistoryFailure();

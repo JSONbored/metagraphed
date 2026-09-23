@@ -560,7 +560,9 @@ async function resolveBlockHeight(
     budget,
   );
   if (indexed !== undefined)
-    return indexed === null ? null : safeBlockNumber(indexed.block_number);
+    return indexed === null || Array.isArray(indexed)
+      ? null
+      : safeBlockNumber(indexed.block_number);
   const rows = await r2SqlQuery(
     env,
     `SELECT block_number FROM ${chainTable("blocks", network)} WHERE block_hash = '${asHash}' LIMIT 1`,
