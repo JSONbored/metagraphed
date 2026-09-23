@@ -118,6 +118,7 @@ import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { readStore } from "./read-store.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { loadIndexedValidatorNominators } from "./validator-nominators-indexed.ts";
 import {
   loadIndexedAccountFeedPage,
   loadIndexedAccountFeedGroups,
@@ -877,17 +878,26 @@ export async function loadValidatorNominatorsColdTier(
   );
   where.push(`observed_at >= ${cutoff}`);
 
-  const rows = await r2SqlQuery(
-    env,
-    `SELECT coldkey,` +
-      ` SUM(CASE WHEN event_kind = '${STAKE_ADDED_KIND}' THEN amount_tao ELSE 0 END) AS staked_tao,` +
-      ` SUM(CASE WHEN event_kind = '${STAKE_REMOVED_KIND}' THEN amount_tao ELSE 0 END) AS unstaked_tao,` +
-      ` COUNT(*) AS event_count, MAX(observed_at) AS last_observed,` +
-      ` SUM(CASE WHEN event_kind = '${STAKE_ADDED_KIND}' THEN amount_tao ELSE -amount_tao END) AS net_staked_tao,` +
-      ` SUM(amount_tao) AS gross_staked_tao` +
-      ` FROM chain.account_events WHERE ${where.join(" AND ")}` +
-      ` GROUP BY coldkey ORDER BY ${NOMINATOR_ORDER[sort]} LIMIT ${limit + offset}`,
-  );
+  const indexed = await loadIndexedValidatorNominators(env, addr, cutoff, {
+    coldkey: query.coldkey == null ? null : String(query.coldkey),
+    sort,
+    limit,
+    offset,
+  });
+  if (indexed === null) return null;
+  const rows =
+    indexed?.rows ??
+    (await r2SqlQuery(
+      env,
+      `SELECT coldkey,` +
+        ` SUM(CASE WHEN event_kind = '${STAKE_ADDED_KIND}' THEN amount_tao ELSE 0 END) AS staked_tao,` +
+        ` SUM(CASE WHEN event_kind = '${STAKE_REMOVED_KIND}' THEN amount_tao ELSE 0 END) AS unstaked_tao,` +
+        ` COUNT(*) AS event_count, MAX(observed_at) AS last_observed,` +
+        ` SUM(CASE WHEN event_kind = '${STAKE_ADDED_KIND}' THEN amount_tao ELSE -amount_tao END) AS net_staked_tao,` +
+        ` SUM(amount_tao) AS gross_staked_tao` +
+        ` FROM chain.account_events WHERE ${where.join(" AND ")}` +
+        ` GROUP BY coldkey ORDER BY ${NOMINATOR_ORDER[sort]} LIMIT ${limit + offset}`,
+    ));
   if (rows === null) return null;
 
   // #9393: the TRUE distinct-coldkey count, which the scan above cannot know -- it is
@@ -899,11 +909,14 @@ export async function loadValidatorNominatorsColdTier(
   // ungrouped form outright with `40015: scan budget exceeded: scanning too much data
   // for count(DISTINCT) without GROUP BY`, and a rejected query would decline the whole
   // reader. Same idiom, and same reason, as loadAccountSummaryColdTier.
-  const countRows = await r2SqlQuery(
-    env,
-    `SELECT count(*) AS c FROM (SELECT coldkey FROM chain.account_events` +
-      ` WHERE ${where.join(" AND ")} GROUP BY coldkey)`,
-  );
+  const countRows =
+    indexed === undefined
+      ? await r2SqlQuery(
+          env,
+          `SELECT count(*) AS c FROM (SELECT coldkey FROM chain.account_events` +
+            ` WHERE ${where.join(" AND ")} GROUP BY coldkey)`,
+        )
+      : [{ c: indexed.totalCount }];
   // A failed count leaves the total UNKNOWN rather than falling back to the page size.
   // Null is a real state; a page size dressed as a total is not.
   const counted = Number(countRows?.[0]?.c);

@@ -29,6 +29,7 @@ import {
 } from "../src/account-history-indexed.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { loadValidatorNominatorsColdTier } from "../src/account-feeds-cold-tier.ts";
 const fixture = JSON.parse(
   gunzipSync(
     readFileSync(
@@ -182,6 +183,57 @@ const sql = async (_env: unknown, text: string) =>
         ),
     )
     .all();
+
+it("validator nominators preserve every window, ordering, page and total without SQL", async () => {
+  const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    const text = JSON.parse(String(init?.body)).query.replace(
+      /ORDER BY ([a-z_]+) DESC, coldkey ASC/,
+      "ORDER BY $1 DESC NULLS FIRST, coldkey ASC NULLS LAST",
+    );
+    return new Response(
+      JSON.stringify({
+        success: true,
+        result: { rows: await sql(undefined, text) },
+      }),
+    );
+  });
+  vi.stubGlobal("fetch", fetch);
+  for (const window of ["7d", "30d", "90d"]) {
+    for (const sort of ["net_staked", "gross_staked", "last_activity"]) {
+      for (const offset of [0, 1, 10]) {
+        const query = { window, sort, limit: 2, offset };
+        const expected = await loadValidatorNominatorsColdTier(
+          { [R2_SQL_TOKEN_ENV]: "cfut_sql_fixture" },
+          ACCOUNT,
+          query,
+        );
+        fetch.mockClear();
+        expect(
+          await loadValidatorNominatorsColdTier(archive().env, ACCOUNT, query),
+        ).toEqual(expected);
+        expect(fetch).not.toHaveBeenCalled();
+      }
+    }
+  }
+  expect(
+    (await loadValidatorNominatorsColdTier(archive().env, ACCOUNT, {
+      limit: 5,
+      coldkey: ACCOUNT,
+    }))!.data.nominator_count,
+  ).toBe(0);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it("a corrupt selected nominator feed declines without a paid fallback", async () => {
+  const a = archive();
+  a.put(a.manifest, {});
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  expect(
+    await loadValidatorNominatorsColdTier(a.env, ACCOUNT, { limit: 20 }),
+  ).toBeNull();
+  expect(fetch).not.toHaveBeenCalled();
+});
 
 it("native OHLC candles match SQLite at every supported window boundary", async () => {
   const fetch = vi.fn(
