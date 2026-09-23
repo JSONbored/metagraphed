@@ -169,6 +169,43 @@ beforeEach(() => {
 });
 
 describe("topHoldersHoldingsSql", () => {
+  test("materializes latest prices before joining positions without changing rankings", () => {
+    for (let n = 0; n < 200; n++) {
+      balance(`account-${n}`, n);
+      position(`account-${n}`, "delegate", 1, (200 - n) / 20_100);
+    }
+    pool("delegate", 1, 20_100);
+    for (let n = 0; n < 100; n++)
+      price(
+        1,
+        n + 1,
+        new Date(Date.UTC(2026, 0, n + 1)).toISOString().slice(0, 10),
+      );
+    const sql = topHoldersHoldingsSql(
+      { free: true, delegated: true, alphaCapturedAt: ALPHA_AT },
+      10,
+    );
+    const legacy = sql.replace("price AS MATERIALIZED (", "price AS (");
+    const sorted = (query: string) =>
+      db
+        .prepare(query)
+        .all()
+        .sort((a, b) => String(a.ss58).localeCompare(String(b.ss58)));
+    assert.deepEqual(sorted(sql), sorted(legacy));
+    const plan = db
+      .prepare(`EXPLAIN QUERY PLAN ${sql}`)
+      .all()
+      .map((row) => String(row.detail));
+    assert.ok(plan.some((detail) => detail === "MATERIALIZE price"));
+    assert.ok(
+      plan.some(
+        (detail) =>
+          detail.includes("SEARCH s") && detail.includes("snapshot_date=?"),
+      ),
+    );
+    assert.ok(plan.some((detail) => detail.includes("SEARCH price")));
+  });
+
   test("selects only the proven columns, and total_tao only when both are", () => {
     const both = topHoldersHoldingsSql({
       free: true,

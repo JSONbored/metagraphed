@@ -123,7 +123,7 @@ export interface HoldingsLeg {
  * for a reason that has nothing to do with their price being unusable.
  */
 const PRICE_CTE =
-  "price AS (" +
+  "price AS MATERIALIZED (" +
   "SELECT s.netuid AS netuid, s.alpha_price_tao AS alpha_price_tao" +
   " FROM subnet_snapshots s" +
   " JOIN (SELECT netuid, MAX(snapshot_date) AS d FROM subnet_snapshots" +
