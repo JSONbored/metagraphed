@@ -154,21 +154,23 @@ export async function writeNominatorPositionsD1(
       // Only pools affected by this chunk need recalculation. Their earlier
       // chunks participate in the denominator. Raw shares remain decimal TEXT;
       // only the served, double-precision fraction is evaluated as REAL.
+      // Materialize pool keys once and keep them outside both index lookups;
+      // a capture-first plan scans every pool again for each incoming chunk.
       statements.push(
         {
-          text: `WITH pools AS (SELECT DISTINCT json_extract(value,'$.hotkey') AS hotkey,json_extract(value,'$.netuid') AS netuid FROM json_each(?)),
-          totals AS (SELECT p.hotkey,p.netuid,SUM(CAST(p.shares AS REAL)) AS total
-          FROM nominator_positions p JOIN pools USING(hotkey,netuid)
-          WHERE captured_at=? AND shares IS NOT NULL GROUP BY p.hotkey,p.netuid)
+          text: `WITH pools AS MATERIALIZED (SELECT DISTINCT json_extract(value,'$.hotkey') AS hotkey,json_extract(value,'$.netuid') AS netuid FROM json_each(?)),
+          totals AS MATERIALIZED (SELECT p.captured_at,pool.hotkey,pool.netuid,SUM(CAST(p.shares AS REAL)) AS total
+          FROM pools pool CROSS JOIN nominator_positions p
+          WHERE p.hotkey=pool.hotkey AND p.netuid=pool.netuid AND p.captured_at=? AND p.shares IS NOT NULL
+          GROUP BY p.captured_at,pool.hotkey,pool.netuid)
           UPDATE nominator_positions AS p SET share_fraction=CAST(p.shares AS REAL)/t.total
-          FROM totals t WHERE p.hotkey=t.hotkey AND p.netuid=t.netuid AND p.captured_at=?
+          FROM totals t WHERE p.hotkey=t.hotkey AND p.netuid=t.netuid AND p.captured_at=t.captured_at
           AND p.shares IS NOT NULL AND t.total>0
           AND p.share_fraction IS NOT CAST(p.shares AS REAL)/t.total`,
           values: [
             JSON.stringify(
               rows.map(({ hotkey, netuid }) => ({ hotkey, netuid })),
             ),
-            input.pass.capturedAt,
             input.pass.capturedAt,
           ],
         },

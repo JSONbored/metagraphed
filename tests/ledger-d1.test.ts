@@ -15,6 +15,7 @@ import {
 } from "../src/nominator-positions-neon-write.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
+import type { ProducerStatement } from "../src/producer-store.ts";
 import worker, {
   neonOwnsLedger,
   neonOwnsNominatorPositions,
@@ -341,6 +342,59 @@ test("normalization recomputes affected pools including previous chunks without 
       .first("share_fraction"),
     0.2,
   );
+});
+test("pool normalization uses complete compound lookups and preserves the prior full-ledger result", async () => {
+  const seed = Array.from({ length: 4096 }, (_, i) => ({
+    ...row(`c${i}`, `h${i % 32}`, i % 2, i % 11 ? stamp : stamp - 1),
+    shares: i % 10 ? String(i + 1) : null,
+  }));
+  await positions(seed);
+  const selected = seed
+    .filter(
+      (r) => ["h1", "h5", "h13"].includes(r.hotkey) && r.captured_at === stamp,
+    )
+    .slice(0, 80);
+  const native = store();
+  const transaction = native.transaction;
+  let normalization: ProducerStatement | undefined;
+  native.transaction = async (statements) => {
+    normalization = statements.find((s) => s.text.startsWith("WITH pools"));
+    return transaction(statements);
+  };
+  const outcome = await writeNominatorPositionsD1(native, {
+    rows: selected,
+    coldkeyMaxCapturedAt: new Map(),
+    pass: pass(selected.length, seed.length),
+  });
+  assert.equal(outcome.write?.ok, true);
+  assert.ok(normalization);
+  const plan = await native.query<{ detail: string }>(
+    "EXPLAIN QUERY PLAN " + normalization.text,
+    normalization.values,
+  );
+  const lookups = plan.filter((p) => p.detail.includes("SEARCH p USING INDEX"));
+  assert.equal(lookups.length, 2);
+  for (const lookup of lookups)
+    assert.match(
+      lookup.detail,
+      /idx_nominator_positions_capture_pool \(captured_at=\? AND hotkey=\? AND netuid=\?\)/,
+    );
+  const read =
+    "SELECT * FROM nominator_positions ORDER BY coldkey,hotkey,netuid";
+  const actual = await native.query(read);
+  await native.run("UPDATE nominator_positions SET share_fraction=0.5");
+  await native.run(
+    `WITH pools AS (SELECT DISTINCT json_extract(value,'$.hotkey') AS hotkey,json_extract(value,'$.netuid') AS netuid FROM json_each(?)),
+    totals AS (SELECT p.hotkey,p.netuid,SUM(CAST(p.shares AS REAL)) AS total
+    FROM nominator_positions p JOIN pools USING(hotkey,netuid)
+    WHERE captured_at=? AND shares IS NOT NULL GROUP BY p.hotkey,p.netuid)
+    UPDATE nominator_positions AS p SET share_fraction=CAST(p.shares AS REAL)/t.total
+    FROM totals t WHERE p.hotkey=t.hotkey AND p.netuid=t.netuid AND p.captured_at=?
+    AND p.shares IS NOT NULL AND t.total>0
+    AND p.share_fraction IS NOT CAST(p.shares AS REAL)/t.total`,
+    [normalization.values![0], stamp, stamp],
+  );
+  assert.deepEqual(actual, await native.query(read));
 });
 test("receipt or pass failure rolls back positions, pruning and delivery evidence together", async () => {
   await positions([row("c", "old", 1, stamp - 1)]);
