@@ -21,9 +21,10 @@ type Bucket = Pick<R2Bucket, "get">;
 interface HistoryEnv {
   METAGRAPH_ARCHIVE?: Bucket;
 }
+type Segment = Omit<Extract<HistorySelection, { version: 1 }>, "version">;
 let selections = new WeakMap<
   Bucket,
-  Map<string, { expires: number; value: Promise<HistorySelection | undefined> }>
+  Map<string, { expires: number; value: Promise<Segment[] | undefined> }>
 >();
 registerModuleStateReset("src/indexed-history-store.ts", () => {
   selections = new WeakMap();
@@ -34,7 +35,7 @@ async function selection(
   bucket: Bucket,
   table: ChainFirehoseTopic,
   network: ChainNetworkId,
-): Promise<HistorySelection | undefined> {
+): Promise<Segment[] | undefined> {
   const key = `metagraph/indexed-history/v1/${network}/${table}/current.json`;
   let entries = selections.get(bucket);
   if (!entries) {
@@ -49,17 +50,27 @@ async function selection(
     if (object.size > 16 * 1024)
       throw new Error("History selection exceeds size budget");
     const selected = HistorySelectionSchema.parse(await object.json());
-    const root = `metagraph/indexed-history/v1/${network}/${table}/generations/${selected.generation}`;
-    if (
-      selected.network !== network ||
-      selected.table !== table ||
-      selected.firstBlock > selected.lastBlock ||
-      selected.blockManifest.key !== `${root}/block-manifest.json` ||
-      (selected.hashManifest &&
-        selected.hashManifest.key !== `${root}/manifest.json`)
-    )
+    if (selected.network !== network || selected.table !== table)
       throw new Error("History selection scope mismatch");
-    return selected;
+    const segments = selected.version === 1 ? [selected] : selected.segments;
+    const seen = new Set<string>();
+    for (const [index, segment] of segments.entries()) {
+      const root = `metagraph/indexed-history/v1/${network}/${table}/generations/${segment.generation}`;
+      if (
+        segment.network !== network ||
+        segment.table !== table ||
+        segment.firstBlock > segment.lastBlock ||
+        (index > 0 &&
+          segment.firstBlock !== segments[index - 1].lastBlock + 1) ||
+        seen.has(segment.generation) ||
+        segment.blockManifest.key !== `${root}/block-manifest.json` ||
+        (segment.hashManifest &&
+          segment.hashManifest.key !== `${root}/manifest.json`)
+      )
+        throw new Error("History segment scope or coverage mismatch");
+      seen.add(segment.generation);
+    }
+    return segments;
   })();
   entries.set(key, { expires: Date.now() + TTL_MS, value });
   return value;
@@ -93,9 +104,11 @@ export async function readSelectedHistoryBlock(
   const bucket = (env as HistoryEnv | null)?.METAGRAPH_ARCHIVE;
   if (!bucket) return undefined;
   try {
-    const selected = await selection(bucket, table, network);
-    if (!selected || block < selected.firstBlock || block > selected.lastBlock)
-      return undefined;
+    const segments = await selection(bucket, table, network);
+    const selected = segments?.find(
+      (segment) => block >= segment.firstBlock && block <= segment.lastBlock,
+    );
+    if (!selected) return undefined;
     const source = r2ParquetSource(bucket);
     const generation = await loadHistoryBlockGeneration(
       source,
@@ -111,8 +124,9 @@ export async function readSelectedHistoryBlock(
   }
 }
 
-/** A missing hash in a base does not prove absence from newer segments. Keep
- * that distinction until incremental coverage and the hot bridge are selected. */
+/** Search newest segments first without resetting the operation's budget.
+ * A miss still does not prove absence beyond the published segments; keep that
+ * distinction until incremental coverage and the hot bridge are qualified. */
 export async function readSelectedHistoryHash(
   env: unknown,
   table: "blocks" | "extrinsics",
@@ -123,28 +137,33 @@ export async function readSelectedHistoryHash(
   const bucket = (env as HistoryEnv | null)?.METAGRAPH_ARCHIVE;
   if (!bucket) return undefined;
   try {
-    const selected = await selection(bucket, table, network);
-    if (!selected?.hashManifest) return undefined;
+    const segments = await selection(bucket, table, network);
+    if (!segments) return undefined;
     const source = r2ParquetSource(bucket);
-    const generation = await loadHistoryGeneration(
-      source,
-      selected.hashManifest,
-      selected,
-      budget,
-    );
-    const row = await readHistoryHash(
-      source,
-      generation,
-      selected,
-      hash,
-      budget,
-    );
-    if (!row) return undefined;
-    const normalized = catalogRow(row),
-      block = Number(normalized.block_number);
-    if (block < selected.firstBlock || block > selected.lastBlock)
-      return undefined;
-    return normalized;
+    for (const selected of [...segments].reverse()) {
+      if (!selected.hashManifest) continue;
+      const generation = await loadHistoryGeneration(
+        source,
+        selected.hashManifest,
+        selected,
+        budget,
+      );
+      const row = await readHistoryHash(
+        source,
+        generation,
+        selected,
+        hash,
+        budget,
+      );
+      if (!row) continue;
+      const normalized = catalogRow(row),
+        block = normalized.block_number;
+      if (typeof block !== "number" || !Number.isSafeInteger(block))
+        throw new Error("History hash row has an invalid block number");
+      if (block >= selected.firstBlock && block <= selected.lastBlock)
+        return normalized;
+    }
+    return undefined;
   } catch {
     return null;
   }
