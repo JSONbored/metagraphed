@@ -121,11 +121,15 @@ describe("data-api's bundle boundary", () => {
     // eager ingestion dependency, so the compiled bundle grows only 300 bytes
     // (101 gzip bytes) from main. Keep a narrow source-growth backstop; the
     // named checks still reject every module from the original regression.
+    // Native account-history folds add the packed-feed reader graph (28,801
+    // source bytes versus the qualified module-analytics base). esbuild emits
+    // only 1,695 additional bytes / 300 gzip bytes; no router, ingestion cron,
+    // GraphQL or MCP module enters this graph. Keep the named boundaries above.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_770_000,
+      firstParty < 4_800_000,
       `first-party source in data-api's bundle is ${(firstParty / 1024).toFixed(0)} KiB; ` +
         `something large was re-imported. See the named checks above.`,
     );

@@ -1,37 +1,6 @@
-// One account's per-day activity series, computed live from the lakehouse.
-//
-// `/api/v1/accounts/{ss58}/history` returned `day_count: 0` for every account,
-// including hotkeys whose own `/events` feed is busy. It ran
-// `tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ?? buildAccountHistory([], …)`
-// and the Postgres tier that owned `account_events_daily` is gone.
-//
-// COMPUTED, NOT READ FROM THE ROLLUP -- deliberately, and the choice matters.
-// `chain.account_events_daily` DOES exist in the lakehouse (115,568 rows), so
-// porting the deleted query verbatim would have been a smaller diff. But that
-// table is a frozen export: it spans 2026-06-22 to 2026-07-15 and nothing
-// advances it, so the route would answer "this account did nothing after
-// 2026-07-15" -- a wrong answer rather than a stale one, because the payload
-// carries no marker distinguishing the two. `chain.account_events` is current
-// to the head, and the rollup the retired writer performed nightly is a plain
-// GROUP BY this can do at request time. A live answer beats a smaller diff.
-//
-// THE DAY BUCKET IS THE ENGINE'S OWN. `date_trunc('day', to_timestamp(
-// observed_at / 1000))` is UTC, matching the retired writer's `utcDayBounds`.
-// It yields a full timestamp (`2026-08-03T00:00:00.000000000Z`), which is
-// sliced to `YYYY-MM-DD` here rather than in SQL so the published `day` keeps
-// the exact string form the cursor encodes and `?from` / `?to` compare against.
-//
-// EVENT KINDS COME FROM A SECOND QUERY. The writer used
-// `string_agg(DISTINCT event_kind, ',')`, and R2 SQL rejects that at this
-// scale for the same reason it rejects `count(DISTINCT)`:
-//
-//   40015: scan budget exceeded: scanning too much data for
-//   string_agg(DISTINCT) with GROUP BY
-//
-// So the kinds are grouped to `(day, netuid, event_kind)` in their own read and
-// joined onto the page here. That read is bounded to the PAGE's own day range,
-// never the account's whole history -- a busy validator has ~216,000
-// (day, netuid, kind) groups all-time but only a few hundred within one page.
+// Account daily history folds qualified native events by UTC day and subnet.
+// Hotkey attribution, complete cursor boundary days, distinct kinds and the
+// retained history floor match the original rollup contract.
 import {
   buildAccountHistory,
   type AccountHistoryResult,
@@ -41,6 +10,7 @@ import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { loadIndexedAccountHistoryRows } from "./account-history-indexed.ts";
 
 type Row = Record<string, unknown>;
 
@@ -126,6 +96,9 @@ export async function loadAccountHistoryColdTier(
   // No `network` argument: this loader takes none and reads the mainnet
   // tables, which is exactly the case the helper floors.
   const historyFloorMs = await accountHistoryFloorMs(env, ss58);
+  let observedStart = historyFloorMs ?? 0;
+  let observedEnd: number | undefined;
+  let nativeNetuid: number | undefined;
   if (historyFloorMs !== null) {
     where.push(`observed_at >= ${Math.trunc(historyFloorMs)}`);
   }
@@ -133,17 +106,20 @@ export async function loadAccountHistoryColdTier(
   if (query.netuid != null) {
     const netuid = safeBlockNumber(query.netuid);
     if (netuid === null) return null;
+    nativeNetuid = netuid;
     where.push(`netuid = ${netuid}`);
   }
   if (query.from != null) {
     const ms = dayStartMs(query.from);
     if (ms === null) return null;
+    observedStart = Math.max(observedStart, ms);
     where.push(`observed_at >= ${ms}`);
   }
   if (query.to != null) {
     // `?to` is INCLUSIVE of its day, so the bound is that day's END.
     const ms = dayStartMs(query.to);
     if (ms === null) return null;
+    observedEnd = ms + MS_PER_DAY - 1;
     where.push(`observed_at < ${ms + MS_PER_DAY}`);
   }
 
@@ -158,6 +134,10 @@ export async function loadAccountHistoryColdTier(
   // data-api's never-throw contract, and it means page 1.
   const cursorStart = cursorDay === null ? null : dayStartMs(cursorDay);
   if (cursorStart !== null) {
+    observedEnd = Math.min(
+      observedEnd ?? Infinity,
+      cursorStart + MS_PER_DAY - 1,
+    );
     where.push(`observed_at < ${cursorStart + MS_PER_DAY}`);
   }
 
@@ -165,13 +145,22 @@ export async function loadAccountHistoryColdTier(
   const paged = cursorStart !== null ? 0 : offset;
   const want = limit + paged + (cursorStart !== null ? CURSOR_DAY_SLACK : 0);
 
-  const rows = await queryFn(
+  const indexed = await loadIndexedAccountHistoryRows(
     env,
-    `SELECT ${DAY} AS day, netuid, count(*) AS event_count,` +
-      ` min(block_number) AS first_block, max(block_number) AS last_block` +
-      ` FROM chain.account_events WHERE ${where.join(" AND ")}` +
-      ` GROUP BY ${DAY}, netuid ORDER BY day DESC, netuid DESC LIMIT ${want}`,
+    addr,
+    { netuid: nativeNetuid, observedStart, observedEnd },
+    want,
   );
+  const rows =
+    indexed !== undefined
+      ? indexed
+      : await queryFn(
+          env,
+          `SELECT ${DAY} AS day, netuid, count(*) AS event_count,` +
+            ` min(block_number) AS first_block, max(block_number) AS last_block` +
+            ` FROM chain.account_events WHERE ${where.join(" AND ")}` +
+            ` GROUP BY ${DAY}, netuid ORDER BY day DESC, netuid DESC LIMIT ${want}`,
+        );
   if (rows === null) return null;
 
   // Normalise the day to its published string form before anything compares it.
@@ -191,7 +180,15 @@ export async function loadAccountHistoryColdTier(
       : dated;
 
   const page = (paged > 0 ? seeked.slice(paged) : seeked).slice(0, limit);
-  const kinds = await loadKindsForPage(env, where, page, queryFn);
+  const kinds =
+    indexed !== undefined
+      ? new Map(
+          page.map((row) => [
+            `${row.day}|${row.netuid}`,
+            String(row.event_kinds),
+          ]),
+        )
+      : await loadKindsForPage(env, where, page, queryFn);
   if (kinds === null) return null;
 
   const withKinds: Array<Row & { day: string }> = page.map((row) => ({

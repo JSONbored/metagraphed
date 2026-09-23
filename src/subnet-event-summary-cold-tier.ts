@@ -1,36 +1,6 @@
-// One subnet's event-kind summary, read from the lakehouse.
-//
-// `/api/v1/subnets/{netuid}/event-summary` reported `total_events: 0` for
-// EVERY netuid -- 1, 8, 19, 64 all answered zero -- while
-// `/subnets/{netuid}/events` served real rows off the same stream. Like the
-// sibling feed (#9260, see loadSubnetEventsColdTier), the handler ran
-// `tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ?? buildSubnetEventSummary([], [], …)`
-// and nothing Cloudflare-native ever replaced the deleted Postgres tier.
-//
-// THE OBVIOUS QUERY IS REJECTED. The natural port is one grouped rollup:
-//
-//   SELECT event_kind, count(*), count(DISTINCT hotkey), count(DISTINCT coldkey), …
-//   FROM chain.account_events WHERE netuid = ? AND observed_at >= ? GROUP BY event_kind
-//
-// R2 SQL refuses it at this route's own default window:
-//
-//   40015: scan budget exceeded: scanning too much data for count(DISTINCT),
-//   count(DISTINCT) with GROUP BY
-//
-// Note "with GROUP BY" -- adding the GROUP BY is NOT the fix here, unlike the
-// ungrouped cases in the event rollups and the account summary card. Two
-// distincts in one grouped scan exceed the budget on their own, and this route
-// also offers a 90d window, three times the span that already fails.
-//
-// So each distinct is DISTRIBUTED into its own nested aggregation: group to the
-// (kind, key) pairs first, then count the pairs per kind. `hotkey IS NOT NULL`
-// is load-bearing rather than tidy -- `COUNT(DISTINCT col)` ignores NULLs while
-// `GROUP BY col` yields a NULL group, so without it every kind whose rows carry
-// no hotkey (WeightsSet, and every Balances kind for coldkey) would report one
-// phantom participant.
-//
-// The plain aggregates stay in one read: count(*), the block/time bounds and
-// the amount sums contain no distinct, so none of the above applies to them.
+// Subnet event summaries fold complete native account-event indexes, including
+// hotkey-or-UID actors and distinct coldkeys. The archived SQL path remains
+// available only while the native selection is not yet qualified.
 import {
   buildSubnetEventSummary,
   SUBNET_EVENT_SUMMARY_WINDOWS,
@@ -40,6 +10,7 @@ import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { loadIndexedSubnetEventSummaryRows } from "./subnet-indexed-aggregates.ts";
 
 type Row = Record<string, unknown>;
 
@@ -160,6 +131,20 @@ export async function loadSubnetEventSummaryColdTier(
   const days = SUBNET_EVENT_SUMMARY_WINDOWS[window];
   if (!Number.isFinite(days) || days <= 0) return null;
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+
+  const indexed = await loadIndexedSubnetEventSummaryRows(
+    env,
+    subnet,
+    cutoff,
+    cap,
+  );
+  if (indexed !== undefined)
+    return indexed === null
+      ? null
+      : buildSubnetEventSummary(indexed.kinds, indexed.recent, subnet, {
+          window,
+          limit: cap,
+        });
 
   // The two key columns are literals below, never caller input -- the only
   // interpolated values are `subnet` and `cutoff`, both already narrowed to
