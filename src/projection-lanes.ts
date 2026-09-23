@@ -22,6 +22,12 @@ import {
   projectionQuery,
 } from "./projection-compute-context.ts";
 
+import {
+  loadNativeProjectionManifest,
+  nativeProjectionsEnabled,
+  NATIVE_PROJECTION_STALE_MS,
+} from "./native-projection-store.ts";
+
 import { CHAIN_OWNERSHIP_PROJECTION_KEY } from "./subnet-ownership-artifact.ts";
 import { fetchOwnershipChangeRows } from "./subnet-ownership-cold-tier.ts";
 
@@ -1748,6 +1754,39 @@ export async function runProjectionLanes(
   reason?: string;
   lanes: Record<string, number | null>;
 }> {
+  if (nativeProjectionsEnabled(env)) {
+    const lanes: Record<string, number | null> = {};
+    let ok = true;
+    for (const network of PROJECTION_NETWORKS) {
+      const manifest = await loadNativeProjectionManifest(env, network, true);
+      const current =
+        manifest !== null &&
+        manifest.generatedAt <= Date.now() &&
+        Date.now() - manifest.generatedAt <= NATIVE_PROJECTION_STALE_MS;
+      for (const lane of PROJECTION_LANES) {
+        const name =
+          network === DEFAULT_CHAIN_NETWORK
+            ? lane.name
+            : `${lane.name}:${network}`;
+        lanes[name] = current
+          ? manifest.artifacts.find(
+              (item) =>
+                item.artifactKey === projectionKey(lane.artifactKey, network),
+            )!.rowCount
+          : null;
+      }
+      if (!current) {
+        await (deps.recordException ?? recordExceptionEvent)(env, {
+          error: new Error(
+            `Native projections unavailable or stale: ${network}`,
+          ),
+          route: `projection:native:${network}`,
+        });
+      }
+      if (network === DEFAULT_CHAIN_NETWORK) ok = current;
+    }
+    return { ok, lanes };
+  }
   if (!isR2SqlConfigured(env)) {
     // Unconfigured is a deliberate deployment state (local/CI/self-hosters
     // have no lakehouse), not a fault: skip quietly, the same contract as the
