@@ -10,6 +10,10 @@ import worker, {
   refreshExplorerDirectoryMaterialization,
 } from "../workers/data-api.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
+import {
+  buildChainTurnover,
+  CHAIN_TURNOVER_LIMIT_DEFAULT,
+} from "../src/chain-turnover.ts";
 
 const runtime = new Miniflare({
   modules: true,
@@ -310,4 +314,81 @@ test("directory publication runs against native completed neuron captures", asyn
       1,
     );
   }
+});
+
+test("D1 turnover expands boundary documents once and preserves membership and full payloads", async () => {
+  const earlier = stamp - 7 * 86400000;
+  const startDate = new Date(earlier).toISOString().slice(0, 10);
+  const capture = neuronSnapshotWrite(
+    [7, 8].flatMap((netuid) =>
+      Array.from({ length: 258 }, (_, uid) => ({
+        netuid,
+        uid,
+        hotkey: uid === 0 ? account : `hk${netuid}-${uid}`,
+        coldkey: account,
+        validator_permit: uid % 3 === 0,
+        captured_at: earlier,
+      })),
+    ),
+    earlier,
+  );
+  const store = createD1Store(db);
+  await writeNeuronDocuments(store, { ...capture, rows: [], positionRows: [] });
+  await store.run(
+    "DELETE FROM neuron_daily_members WHERE snapshot_date=? AND uid=3",
+    [startDate],
+  );
+  await store.run(
+    "UPDATE neuron_daily_members SET shard=99 WHERE snapshot_date=? AND uid=6",
+    [startDate],
+  );
+  const before = await store.query(
+    "SELECT snapshot_date,netuid,hotkey,validator_permit FROM neuron_daily WHERE validator_permit=TRUE AND snapshot_date IN (?,?)",
+    [startDate, day],
+  );
+  const statements: string[] = [];
+  const bound = env();
+  bound.D1_STATE = new Proxy(db, {
+    get(target, name) {
+      if (name === "prepare")
+        return (sql: string) => {
+          statements.push(sql);
+          return target.prepare(sql);
+        };
+      const value = Reflect.get(target, name);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const response = await worker.fetch(
+    new Request("https://example.com/api/v1/chain/turnover?window=30d"),
+    bound,
+    ctx,
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    await response.json(),
+    buildChainTurnover(before, {
+      window: "30d",
+      startDate,
+      endDate: day,
+      limit: CHAIN_TURNOVER_LIMIT_DEFAULT,
+    }),
+  );
+  const statement = statements.find((sql) =>
+    sql.includes("CROSS JOIN json_each"),
+  );
+  assert.ok(statement);
+  const rows = await store.query(statement, [startDate, day]);
+  const ordered = (input: unknown[]) =>
+    input.map((row) => JSON.stringify(row)).sort();
+  assert.deepEqual(ordered(rows), ordered(before));
+  const plan = await store.query("EXPLAIN QUERY PLAN " + statement, [
+    startDate,
+    day,
+  ]);
+  assert.match(JSON.stringify(plan), /neuron_daily_documents_day_idx/);
+  assert.match(
+    JSON.stringify(plan),
+    /SEARCH m .*netuid=\? AND snapshot_date=\?/,
+  );
 });

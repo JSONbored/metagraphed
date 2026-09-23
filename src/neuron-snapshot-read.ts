@@ -115,3 +115,27 @@ export async function readDirectoryNominatorCounts(
     ) n
     LEFT JOIN validator_nominator_counts c ON c.hotkey = n.hotkey`;
 }
+
+/** Boundary snapshots expand each stored document once, as directory reads do. */
+export async function readNeuronDailyValidators(
+  sql: PgSql,
+  env: unknown,
+  startDate: string,
+  endDate: string,
+): Promise<Record<string, unknown>[]> {
+  const store = selectedD1Store(env, ["neuron_daily"]);
+  if (store)
+    return store.query(
+      `SELECT m.snapshot_date,m.netuid,m.hotkey,
+        json_extract(j.value,'$.validator_permit') AS validator_permit
+       FROM neuron_daily_documents d CROSS JOIN json_each(d.payload) j
+       CROSS JOIN neuron_daily_members m
+       WHERE d.day IN (?,?) AND m.netuid=d.netuid AND m.snapshot_date=d.day
+         AND m.uid=CAST(j.key AS INTEGER) AND m.shard=d.shard
+         AND json_extract(j.value,'$.validator_permit')=TRUE`,
+      [startDate, endDate],
+    );
+  return sql`SELECT snapshot_date,netuid,hotkey,validator_permit
+    FROM neuron_daily WHERE validator_permit=TRUE
+      AND snapshot_date IN (${startDate},${endDate})`;
+}

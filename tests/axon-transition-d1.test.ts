@@ -518,3 +518,51 @@ test("projection triggers cover both insertion orders, sparse membership moves, 
     42,
   );
 });
+
+test("network removals yield between subnet partitions and preserve the complete derivation", async () => {
+  const statements: { sql: string; values: unknown[] }[] = [];
+  const binding = new Proxy(db, {
+    get(target, name) {
+      if (name === "prepare")
+        return (sql: string) => {
+          const prepared = target.prepare(sql);
+          return new Proxy(prepared, {
+            get(statement, key) {
+              if (key === "bind")
+                return (...values: unknown[]) => {
+                  statements.push({ sql, values });
+                  return statement.bind(...values);
+                };
+              const value = Reflect.get(statement, key);
+              return typeof value === "function"
+                ? value.bind(statement)
+                : value;
+            },
+          });
+        };
+      const value = Reflect.get(target, name);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const bound = { ...env(), D1_STATE: binding };
+  assert.equal(
+    (await loadAxonRemovals(bound, { now: () => now }))?.removals.length,
+    0,
+  );
+  await seed(rows);
+  statements.length = 0;
+  const actual = await loadAxonRemovals(bound, { now: () => now });
+  assert.deepEqual(
+    actual,
+    await loadAxonRemovals({}, { query, now: () => now }),
+  );
+  const partitions = statements.filter(({ sql }) =>
+    sql.includes("WITH windowed"),
+  );
+  assert.equal(partitions.length, 2);
+  assert.deepEqual(
+    partitions.map(({ values }) => values[1]),
+    [7, 8],
+  );
+  assert.ok(partitions.every(({ sql }) => sql.includes("AND d.netuid=?")));
+});
