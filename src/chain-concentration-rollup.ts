@@ -27,6 +27,7 @@
 import { buildChainConcentration } from "./concentration.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { selectedD1Store } from "./d1-store.ts";
 
 type Row = Record<string, unknown>;
 
@@ -66,7 +67,14 @@ export interface RollupDb {
  * partial network and then never revisit it -- a point that looks like a real
  * measurement of a much smaller network. Only complete days are rolled.
  */
-export function pendingDaysSql(): string {
+export function pendingDaysSql(indexed = false): string {
+  if (indexed)
+    return `SELECT d.day FROM neuron_daily_documents d
+      LEFT JOIN ${CHAIN_CONCENTRATION_DAILY_TABLE} c ON c.day=d.day
+      WHERE c.day IS NULL AND d.day < ? AND EXISTS (
+        SELECT 1 FROM neuron_daily_members m WHERE m.netuid=d.netuid
+          AND m.snapshot_date=d.day AND m.shard=d.shard)
+      GROUP BY d.day ORDER BY d.day DESC LIMIT ?`;
   return (
     "SELECT DISTINCT nd.snapshot_date AS day" +
     " FROM neuron_daily nd" +
@@ -95,8 +103,13 @@ export async function rollupChainConcentration(
   if (!db?.query || !db?.run) return { rolled: false, reason: "unavailable" };
 
   let pending: string[];
+  let indexed: boolean;
   try {
-    const res = await db.query<Row>(pendingDaysSql(), [utcDay(nowMs), maxDays]);
+    indexed = selectedD1Store(env, ["neuron_daily"]) !== null;
+    const res = await db.query<Row>(pendingDaysSql(indexed), [
+      utcDay(nowMs),
+      maxDays,
+    ]);
     pending = res
       .map((r) => r?.day)
       .filter((d): d is string => typeof d === "string" && d.length > 0);
@@ -113,8 +126,17 @@ export async function rollupChainConcentration(
   for (const day of pending) {
     try {
       const rows = await db.query<Row>(
-        `SELECT ${CHAIN_CONCENTRATION_DAILY_READ_COLUMNS}` +
-          " FROM neuron_daily WHERE snapshot_date = ?",
+        indexed
+          ? `SELECT json_extract(j.value,'$.stake_tao') AS stake_tao,
+              json_extract(j.value,'$.emission_tao') AS emission_tao,
+              m.coldkey, json_extract(j.value,'$.validator_permit') AS validator_permit,
+              m.netuid, json_extract(j.value,'$.captured_at') AS captured_at
+            FROM neuron_daily_documents d CROSS JOIN json_each(d.payload) j
+            CROSS JOIN neuron_daily_members m
+            WHERE d.day=? AND m.netuid=d.netuid AND m.snapshot_date=d.day
+              AND m.uid=CAST(j.key AS INTEGER) AND m.shard=d.shard`
+          : `SELECT ${CHAIN_CONCENTRATION_DAILY_READ_COLUMNS}` +
+              " FROM neuron_daily WHERE snapshot_date = ?",
         [day],
       );
       // A day with no rows is not a day of zero concentration -- it is a day
