@@ -116,6 +116,8 @@ function documentStatements(
     ? "DO NOTHING"
     : `DO UPDATE SET hotkey=excluded.hotkey,coldkey=excluded.coldkey WHERE ${members}.hotkey IS NOT excluded.hotkey OR ${members}.coldkey IS NOT excluded.coldkey`;
   const path = `'$."'||i.key||'".captured_at'`;
+  // A wholly newer batch can merge directly. Mixed or delayed timestamps still
+  // compare each member, including previously unseen members in an older batch.
   const newer = `json_extract(${table}.payload,${path}) IS NULL OR json_extract(${table}.payload,${path}) < json_extract(i.value,'$.captured_at')`;
   const out: ProducerStatement[] = [];
   let batch: Document[] = [],
@@ -128,7 +130,10 @@ function documentStatements(
       SELECT json_extract(value,'$.netuid'),json_extract(value,'$.day'),json_extract(value,'$.shard'),json_extract(value,'$.stamp'),jsonb_extract(value,'$.payload')
       FROM json_each(?) WHERE true
       ON CONFLICT(netuid,day,shard) DO UPDATE SET
-        payload=jsonb_patch(${table}.payload,(SELECT jsonb_group_object(i.key,json(i.value)) FROM json_each(excluded.payload) i WHERE ${newer})),
+        payload=jsonb_patch(${table}.payload,CASE
+          WHEN (SELECT MIN(json_extract(i.value,'$.captured_at')) FROM json_each(excluded.payload) i) > ${table}.stamp
+          THEN excluded.payload
+          ELSE (SELECT jsonb_group_object(i.key,json(i.value)) FROM json_each(excluded.payload) i WHERE ${newer}) END),
         stamp=MAX(${table}.stamp,excluded.stamp)
       WHERE EXISTS(SELECT 1 FROM json_each(excluded.payload) i WHERE ${newer})`,
       values: [value],

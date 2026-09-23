@@ -21,6 +21,8 @@ import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import {
   readNeuronDailyValidators,
+  readNeuronDailyTotals,
+  readSubnetDailyHistory,
   readNeuronDirectoryRows,
   readDirectoryNominatorCounts,
 } from "../src/neuron-snapshot-read.ts";
@@ -534,21 +536,6 @@ type NeuronDailyPoint = {
   total_emission_tao: number | null;
 };
 
-/**
- * One `neuron_daily` rollup row, per (netuid,) snapshot_date.
- *
- * The scalar members come from the generated table interface, so a column that
- * changes type in Neon changes here. The COUNT/SUM members do NOT: an
- * aggregate over BIGINT returns NUMERIC, which postgres.js hands back as a
- * STRING (#8607), and the column's own type would understate that.
- */
-type NeuronDailyRollup = {
-  snapshot_date: NeuronDaily["snapshot_date"];
-  neuron_count: string | number;
-  validator_count: string | number;
-  total_stake_tao: string | number | null;
-  total_emission_tao: string | number | null;
-};
 import { recordLaneVerdict } from "../src/lane-health.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import {
@@ -8433,30 +8420,20 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     /^\/api\/v1\/subnets\/(\d+)\/history$/,
   );
   if (subnetHistoryMatch) {
-    return async (sql) => {
+    return async (sql, env) => {
       const netuid = Number(subnetHistoryMatch[1]);
       const cutoff = windowCutoffDate(
         url,
         HISTORY_WINDOW_DAYS,
         DEFAULT_HISTORY_WINDOW,
       );
-      // validator_permit is already INTEGER 0/1 here, so the Postgres
-      // branch's ::int cast simply disappears.
-      const rows = cutoff
-        ? await sql<NeuronDailyRollup>`
-          SELECT snapshot_date, COUNT(*) AS neuron_count,
-            SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
-            SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
-          FROM neuron_daily
-          WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
-          GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
-        : await sql<NeuronDailyRollup>`
-          SELECT snapshot_date, COUNT(*) AS neuron_count,
-            SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
-            SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
-          FROM neuron_daily
-          WHERE netuid = ${netuid}
-          GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+      const rows = await readSubnetDailyHistory(
+        sql,
+        env,
+        netuid,
+        cutoff,
+        MAX_HISTORY_POINTS,
+      );
       return json(
         buildSubnetHistory(rows, netuid, {
           window: windowLabelFor(
@@ -8558,7 +8535,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
 
   // GET /api/v1/subnets/movers?window=&sort=&limit=
   if (url.pathname === "/api/v1/subnets/movers") {
-    return async (sql) => {
+    return async (sql, env) => {
       const windowParam =
         url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
       const windowLabel = Object.hasOwn(MOVERS_WINDOWS, windowParam)
@@ -8575,15 +8552,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       let startRows: Row[] = [];
       let endRows: Row[] = [];
       if (startDate != null && endDate != null && startDate !== endDate) {
-        const rows = await sql<
-          NeuronDailyRollup & { netuid: NeuronDaily["netuid"] }
-        >`
-          SELECT netuid, snapshot_date, COUNT(*) AS neuron_count,
-            SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
-            SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
-          FROM neuron_daily
-          WHERE snapshot_date IN (${startDate}, ${endDate})
-          GROUP BY netuid, snapshot_date`;
+        const rows = await readNeuronDailyTotals(sql, env, startDate, endDate);
         startRows = rows.filter((row) => row.snapshot_date === startDate);
         endRows = rows.filter((row) => row.snapshot_date === endDate);
       }
