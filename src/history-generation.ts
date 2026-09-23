@@ -1,12 +1,15 @@
 import {
   HistoryFileSchema,
+  HistoryBlockGenerationSchema,
   HistoryGenerationSchema,
   HistoryObjectSchema,
   type HistoryGeneration,
+  type HistoryBlockGeneration,
   type HistoryObject,
 } from "../schemas-src/artifacts/history-generation.ts";
 import { ParquetPageIndexSchema } from "../schemas-src/artifacts/parquet-page-index.ts";
 import { findHistoryHash } from "./history-hash-index.ts";
+import { findHistoryBlockRuns } from "./history-block-index.ts";
 import {
   boundedParquetBuffer,
   readIndexedParquet,
@@ -14,7 +17,8 @@ import {
   type ParquetReadBudget,
 } from "./indexed-parquet.ts";
 
-type Scope = Pick<HistoryGeneration, "generation" | "network" | "table">;
+type Scope = Pick<HistoryBlockGeneration, "generation" | "network" | "table">;
+type Generation = HistoryGeneration | HistoryBlockGeneration;
 const generationRoot = (scope: Scope) =>
   `metagraph/indexed-history/v1/${scope.network}/${scope.table}/generations/${scope.generation}`;
 const fileKey = (scope: Scope, fileId: number) =>
@@ -44,18 +48,7 @@ export function validateHistoryGeneration(
   scope: Scope,
 ): HistoryGeneration {
   const generation = HistoryGenerationSchema.parse(input);
-  if (
-    generation.generation !== scope.generation ||
-    generation.network !== scope.network ||
-    generation.table !== scope.table
-  )
-    throw new Error("History generation scope mismatch");
-  let rows = 0;
-  for (const [fileId, file] of generation.files.entries()) {
-    if (file.key !== fileKey(scope, fileId))
-      throw new Error("History file descriptor scope mismatch");
-    rows += file.rows;
-  }
+  validateGenerationFiles(generation, scope);
   let hashRows = 0;
   for (const [ordinal, shard] of generation.shards.entries()) {
     const prefix = ordinal.toString(16).padStart(3, "0");
@@ -70,8 +63,38 @@ export function validateHistoryGeneration(
       throw new Error("History generation hash shard mismatch");
     hashRows += shard.rows;
   }
-  if (rows !== generation.rows || hashRows !== rows)
+  if (hashRows !== generation.rows)
     throw new Error("History generation row count mismatch");
+  return generation;
+}
+
+function validateGenerationFiles(generation: Generation, scope: Scope): void {
+  if (
+    generation.generation !== scope.generation ||
+    generation.network !== scope.network ||
+    generation.table !== scope.table
+  )
+    throw new Error("History generation scope mismatch");
+  let rows = 0;
+  for (const [fileId, file] of generation.files.entries()) {
+    if (file.key !== fileKey(scope, fileId))
+      throw new Error("History file descriptor scope mismatch");
+    rows += file.rows;
+  }
+  if (rows !== generation.rows || !Number.isSafeInteger(rows))
+    throw new Error("History generation row count mismatch");
+}
+
+export function validateHistoryBlockGeneration(
+  input: unknown,
+  scope: Scope,
+): HistoryBlockGeneration {
+  const generation = HistoryBlockGenerationSchema.parse(input);
+  validateGenerationFiles(generation, scope);
+  if (
+    generation.blockIndex.key !== `${generationRoot(scope)}/blocks/index.json`
+  )
+    throw new Error("History generation block index scope mismatch");
   return generation;
 }
 
@@ -89,6 +112,20 @@ export async function loadHistoryGeneration(
   );
 }
 
+export async function loadHistoryBlockGeneration(
+  source: ParquetRangeSource,
+  descriptor: HistoryObject,
+  scope: Scope,
+  budget: ParquetReadBudget,
+): Promise<HistoryBlockGeneration> {
+  if (descriptor.key !== `${generationRoot(scope)}/block-manifest.json`)
+    throw new Error("History generation pointer scope mismatch");
+  return validateHistoryBlockGeneration(
+    await readJson(source, descriptor, budget, 8 * 1024 * 1024),
+    scope,
+  );
+}
+
 /** Translate a physical source row through its verified repacking manifest.
  * The same budget covers manifests, page indexes, and compressed column data. */
 export async function readHistoryRow(
@@ -100,13 +137,39 @@ export async function readHistoryRow(
   budget: ParquetReadBudget,
 ): Promise<Record<string, unknown>> {
   const generation = validateHistoryGeneration(input, scope);
+  const rows = await readFileRanges(
+    source,
+    generation,
+    scope,
+    fileId,
+    [{ start: row, end: row + 1 }],
+    budget,
+  );
+  return rows[0];
+}
+
+/** Read every physical run with one file-manifest read and shared page indexes.
+ * No partial result escapes if any run fails identity or budget checks. */
+async function readFileRanges(
+  source: ParquetRangeSource,
+  generation: Generation,
+  scope: Scope,
+  fileId: number,
+  ranges: { start: number; end: number }[],
+  budget: ParquetReadBudget,
+): Promise<Record<string, unknown>[]> {
   if (
     !Number.isSafeInteger(fileId) ||
     fileId < 0 ||
     fileId >= generation.files.length ||
-    !Number.isSafeInteger(row) ||
-    row < 0 ||
-    row >= generation.files[fileId].rows
+    ranges.some(
+      ({ start, end }) =>
+        !Number.isSafeInteger(start) ||
+        !Number.isSafeInteger(end) ||
+        start < 0 ||
+        end <= start ||
+        end > generation.files[fileId].rows,
+    )
   )
     throw new Error("History row pointer outside generation");
   const descriptor = generation.files[fileId];
@@ -136,31 +199,104 @@ export async function readHistoryRow(
     next += part.rows;
   }
   if (next !== file.rows) throw new Error("History parts are incomplete");
-  // The preceding contiguity proof guarantees exactly one containing part.
-  const part = file.parts.find(
-    (item) => row >= item.rowStart && row < item.rowStart + item.rows,
-  )!;
-  const index = ParquetPageIndexSchema.parse(
-    await readJson(source, part.index, budget, 8 * 1024 * 1024),
+  const indexes = new Map<
+    string,
+    ReturnType<typeof ParquetPageIndexSchema.parse>
+  >();
+  const rows: Record<string, unknown>[] = [];
+  for (const range of ranges)
+    for (const part of file.parts) {
+      const start = Math.max(range.start, part.rowStart),
+        end = Math.min(range.end, part.rowStart + part.rows);
+      if (start >= end) continue;
+      let index = indexes.get(part.key);
+      if (!index) {
+        index = ParquetPageIndexSchema.parse(
+          await readJson(source, part.index, budget, 8 * 1024 * 1024),
+        );
+        if (
+          index.key !== part.key ||
+          index.etag !== part.etag ||
+          index.bytes !== part.bytes ||
+          index.rows !== part.rows ||
+          index.groups.some((group) => group.rows > 512)
+        )
+          throw new Error(
+            "History page index does not identify its bounded part",
+          );
+        indexes.set(part.key, index);
+      }
+      rows.push(
+        ...(await readIndexedParquet(
+          source,
+          index,
+          start - part.rowStart,
+          end - part.rowStart,
+          Object.keys(index.groups[0].columns),
+          budget,
+        )),
+      );
+    }
+  return rows;
+}
+
+/** Block indexes retain all captures; route-specific logical deduplication
+ * happens after this complete, verified physical read. */
+export async function readHistoryBlock(
+  source: ParquetRangeSource,
+  input: unknown,
+  scope: Scope,
+  block: number,
+  budget: ParquetReadBudget,
+): Promise<Record<string, unknown>[]> {
+  const generation = validateHistoryBlockGeneration(input, scope);
+  const index = await readJson(
+    source,
+    generation.blockIndex,
+    budget,
+    8 * 1024 * 1024,
   );
-  if (
-    index.key !== part.key ||
-    index.etag !== part.etag ||
-    index.bytes !== part.bytes ||
-    index.rows !== part.rows ||
-    index.groups.some((group) => group.rows > 512)
-  )
-    throw new Error("History page index does not identify its bounded part");
-  const local = row - part.rowStart;
-  const rows = await readIndexedParquet(
+  const runs = await findHistoryBlockRuns(
     source,
     index,
-    local,
-    local + 1,
-    Object.keys(index.groups[0].columns),
+    { ...scope, fileRows: generation.files.map((file) => file.rows) },
+    block,
     budget,
   );
-  return rows[0];
+  const files = new Map<number, typeof runs>();
+  for (const run of runs) {
+    const group = files.get(run.fileId) ?? [];
+    group.push(run);
+    files.set(run.fileId, group);
+  }
+  const result: Record<string, unknown>[] = [];
+  for (const [fileId, group] of files) {
+    const rows = await readFileRanges(
+      source,
+      generation,
+      scope,
+      fileId,
+      group.map((run) => ({
+        start: run.rowStart,
+        end: run.rowStart + run.rows,
+      })),
+      budget,
+    );
+    let offset = 0;
+    for (const run of group)
+      for (let i = 0; i < run.rows; i++) {
+        const row = rows[offset++];
+        if (
+          String(row.block_number) !== String(block) ||
+          String(row.observed_at) !== String(run.observedAt)
+        )
+          throw new Error(
+            "History block pointer identifies a different logical record",
+          );
+        result.push(row);
+      }
+  }
+  return result;
 }
 
 /** A valid physical pointer is insufficient: verify the decoded logical key. */
@@ -179,7 +315,11 @@ export async function readHistoryHash(
     source,
     shard,
     hash,
-    { ...scope, fileRows: generation.files.map((file) => file.rows) },
+    {
+      ...scope,
+      table: generation.table,
+      fileRows: generation.files.map((file) => file.rows),
+    },
     budget,
   );
   if (!pointer) return null;
