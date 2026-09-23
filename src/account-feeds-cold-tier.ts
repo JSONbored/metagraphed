@@ -113,7 +113,7 @@ import {
 } from "./account-summary-projection.ts";
 import { loadAccountEventsAboveFloorHotTier } from "./chain-detail-hot-tier.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
-import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
+import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { readStore } from "./read-store.ts";

@@ -52,7 +52,15 @@ import {
   safeNameLiteral,
   safeSs58Literal,
 } from "./r2-sql.ts";
-import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
+import {
+  readSelectedHistoryBlock,
+  readSelectedHistoryHash,
+} from "./indexed-history-store.ts";
+import {
+  parquetReadBudget,
+  type ParquetReadBudget,
+} from "./indexed-parquet.ts";
+import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
 import {
   ACCOUNT_EVENTS_COLUMNS,
   EXTRINSICS_COLUMNS,
@@ -295,8 +303,41 @@ export async function loadBlockExtrinsicsColdTier(
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildBlockExtrinsics> | null> {
-  const height = await resolveBlockHeight(env, ref, network);
+  const limit = safeBlockNumber(page.limit),
+    offset = safeBlockNumber(page.offset ?? 0);
+  if (
+    limit === null ||
+    offset === null ||
+    limit <= 0 ||
+    offsetBeyondEmulationCap(offset)
+  )
+    return null;
+  const budget = parquetReadBudget();
+  const height = await resolveBlockHeight(env, ref, network, budget);
   if (height === null) return null;
+  const selected = await readSelectedHistoryBlock(
+    env,
+    "extrinsics",
+    height,
+    network,
+    budget,
+  );
+  if (selected !== undefined) {
+    if (selected === null) return null;
+    const parsed = ExtrinsicsRowSchema.array().safeParse(selected);
+    if (!parsed.success) return null;
+    const rows = parsed.data.sort(
+      (a, b) =>
+        Number(b.observed_at) - Number(a.observed_at) ||
+        Number(b.extrinsic_index) - Number(a.extrinsic_index),
+    );
+    return buildBlockExtrinsics(
+      rows.slice(offset, offset + limit),
+      ref,
+      height,
+      { limit, offset },
+    );
+  }
   const rows = await feedRows(
     env,
     { limit: page.limit, offset: page.offset ?? 0 },
@@ -384,11 +425,21 @@ async function resolveBlockHeight(
   ref: string,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
+  budget: ParquetReadBudget = parquetReadBudget(),
 ): Promise<number | null> {
   const asNumber = safeBlockNumber(ref);
   if (asNumber !== null) return asNumber;
   const asHash = safeHexLiteral(ref);
   if (asHash === null) return null;
+  const selected = await readSelectedHistoryHash(
+    env,
+    "blocks",
+    asHash,
+    network,
+    budget,
+  );
+  if (selected !== undefined)
+    return selected === null ? null : safeBlockNumber(selected.block_number);
   const rows = await r2SqlQuery(
     env,
     `SELECT block_number FROM ${chainTable("blocks", network)} WHERE block_hash = '${asHash}' LIMIT 1`,
@@ -411,6 +462,8 @@ export async function loadExtrinsicColdTier(
   network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildExtrinsic> | null> {
   let predicate: string;
+  let hashRef: string | null = null;
+  const budget = parquetReadBudget();
   // Hoisted out of the branch because the events read below uses them when the
   // ref is composite -- they are the key it would otherwise wait to learn.
   let compositeBlock: number | null = null;
@@ -425,14 +478,47 @@ export async function loadExtrinsicColdTier(
   } else {
     const hash = safeHexLiteral(ref);
     if (hash === null) return null;
+    hashRef = hash;
     predicate = `extrinsic_hash = '${hash}'`;
   }
 
-  const extrinsicQuery = r2SqlQuery<ExtrinsicsRow>(
-    env,
-    `SELECT ${EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)} WHERE ${predicate} LIMIT 1`,
-    { rowSchema: ExtrinsicsRowSchema },
+  const selected =
+    compositeBlock !== null
+      ? await readSelectedHistoryBlock(
+          env,
+          "extrinsics",
+          compositeBlock,
+          network,
+          budget,
+        )
+      : await readSelectedHistoryHash(
+          env,
+          "extrinsics",
+          hashRef!,
+          network,
+          budget,
+        );
+  if (selected === null) return null;
+  const parsed =
+    selected === undefined
+      ? undefined
+      : ExtrinsicsRowSchema.array().safeParse(
+          Array.isArray(selected) ? selected : [selected],
+        );
+  if (parsed && !parsed.success) return null;
+  const selectedRows = parsed?.data?.filter(
+    (row) =>
+      compositeIndex === null ||
+      safeBlockNumber(row.extrinsic_index) === compositeIndex,
   );
+  const extrinsicQuery =
+    selectedRows === undefined
+      ? r2SqlQuery<ExtrinsicsRow>(
+          env,
+          `SELECT ${EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)} WHERE ${predicate} LIMIT 1`,
+          { rowSchema: ExtrinsicsRowSchema },
+        )
+      : selectedRows;
 
   // A COMPOSITE ref already names the events' key, so the second read does not
   // depend on the first and the two go together (#11420). Measured against
@@ -459,7 +545,7 @@ export async function loadExtrinsicColdTier(
   // was caught.
   const eventsQuery =
     composite && compositeBlock !== null && compositeIndex !== null
-      ? embeddedEvents(env, compositeBlock, compositeIndex, network)
+      ? embeddedEvents(env, compositeBlock, compositeIndex, network, budget)
       : null;
 
   const rows = await extrinsicQuery;
@@ -474,7 +560,7 @@ export async function loadExtrinsicColdTier(
   const events =
     eventsQuery ??
     (block !== null && index !== null
-      ? embeddedEvents(env, block, index, network)
+      ? embeddedEvents(env, block, index, network, budget)
       : Promise.resolve([]));
   return buildExtrinsic(row, ref, await events);
 }
@@ -491,8 +577,26 @@ async function embeddedEvents(
   env: R2SqlEnv | null | undefined,
   block: number,
   index: number,
-  network?: ChainNetworkId,
+  network: ChainNetworkId | undefined,
+  budget: ParquetReadBudget,
 ): Promise<unknown[]> {
+  const selected = await readSelectedHistoryBlock(
+    env,
+    "account_events",
+    block,
+    network,
+    budget,
+  );
+  if (selected !== undefined) {
+    const parsed = AccountEventsRowSchema.array().safeParse(selected);
+    if (!parsed.success) return [];
+    return parsed.data
+      .filter((row) => safeBlockNumber(row.extrinsic_index) === index)
+      .sort((a, b) => Number(a.event_index) - Number(b.event_index))
+      .slice(0, MAX_EMBEDDED_EVENTS)
+      .map(formatAccountEvent)
+      .filter(Boolean);
+  }
   const found = await r2SqlQuery<AccountEventsRow>(
     env,
     `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +

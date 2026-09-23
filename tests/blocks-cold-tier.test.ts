@@ -114,7 +114,7 @@ function archive(body: unknown, reads?: string[]) {
   return {
     METAGRAPH_ARCHIVE: {
       async get(key: string) {
-        reads?.push(key);
+        if (key === DECODE_WATERMARK_KEY) reads?.push(key);
         if (key !== DECODE_WATERMARK_KEY || body === undefined) return null;
         return {
           async text() {

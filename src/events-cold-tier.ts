@@ -62,7 +62,7 @@ import {
   safeNameLiteral,
   safeSs58Literal,
 } from "./r2-sql.ts";
-import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
+import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
 import { windowedRowRead } from "./account-events-window.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
@@ -71,7 +71,14 @@ import {
   readSelectedHistoryBlock,
   readSelectedHistoryHash,
 } from "./indexed-history-store.ts";
-import { ChainEventsRowSchema } from "../schemas-src/lakehouse.ts";
+import {
+  AccountEventsRowSchema,
+  ChainEventsRowSchema,
+} from "../schemas-src/lakehouse.ts";
+import {
+  parquetReadBudget,
+  type ParquetReadBudget,
+} from "./indexed-parquet.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -497,15 +504,32 @@ export async function loadBlockEventsColdTier(
   if (limit === null || offset === null || limit <= 0) return null;
   if (offsetBeyondEmulationCap(offset)) return null;
 
-  const height = await resolveBlockHeight(env, ref, network);
+  const budget = parquetReadBudget();
+  const height = await resolveBlockHeight(env, ref, network, budget);
   if (height === null) return null;
-
-  const rows = await r2SqlQuery<AccountEventsRow>(
+  const selected = await readSelectedHistoryBlock(
     env,
-    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
-      `WHERE block_number = ${height} ` +
-      `ORDER BY event_index ASC LIMIT ${limit + offset}`,
+    "account_events",
+    height,
+    network,
+    budget,
   );
+  if (selected === null) return null;
+  const parsed =
+    selected === undefined
+      ? undefined
+      : AccountEventsRowSchema.array().safeParse(selected);
+  if (parsed && !parsed.success) return null;
+  const rows = parsed
+    ? parsed.data
+        .sort((a, b) => Number(a.event_index) - Number(b.event_index))
+        .slice(0, limit + offset)
+    : await r2SqlQuery<AccountEventsRow>(
+        env,
+        `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
+          `WHERE block_number = ${height} ` +
+          `ORDER BY event_index ASC LIMIT ${limit + offset}`,
+      );
   if (rows === null) return null;
   const window = offset > 0 ? rows.slice(offset) : rows;
   // A short read PROVES the end of the block was reached, so `rows.length` is
@@ -522,12 +546,19 @@ async function resolveBlockHeight(
   ref: string,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
+  budget: ParquetReadBudget = parquetReadBudget(),
 ): Promise<number | null> {
   const asNumber = safeBlockNumber(ref);
   if (asNumber !== null) return asNumber;
   const asHash = safeHexLiteral(ref);
   if (asHash === null) return null;
-  const indexed = await readSelectedHistoryHash(env, "blocks", asHash, network);
+  const indexed = await readSelectedHistoryHash(
+    env,
+    "blocks",
+    asHash,
+    network,
+    budget,
+  );
   if (indexed !== undefined)
     return indexed === null ? null : safeBlockNumber(indexed.block_number);
   const rows = await r2SqlQuery(
@@ -577,7 +608,8 @@ export async function loadBlockChainEventsColdTier(
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
 ): Promise<BlockChainEventsColdResult | null> {
-  const height = await resolveBlockHeight(env, ref, network);
+  const budget = parquetReadBudget();
+  const height = await resolveBlockHeight(env, ref, network, budget);
   if (height === null) return null;
 
   const indexed = await readSelectedHistoryBlock(
@@ -585,6 +617,7 @@ export async function loadBlockChainEventsColdTier(
     "chain_events",
     height,
     network,
+    budget,
   );
   const rows =
     indexed === undefined

@@ -12,7 +12,7 @@
 
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
-import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
+import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
 import {
   buildSubnetHyperparams,
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,

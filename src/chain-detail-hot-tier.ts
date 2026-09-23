@@ -49,7 +49,7 @@
 import { buildBlockExtrinsics, buildExtrinsic } from "./extrinsics.ts";
 import { buildBlockEvents, formatAccountEvent } from "./account-events.ts";
 import { decodeChainEventArgs } from "./chain-event-args.ts";
-import { resolveBlocksSeam } from "./blocks-cold-tier.ts";
+import { resolveBlocksSeam } from "./blocks-seam.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { type ChainFirehoseTopic } from "./chain-firehose-topics.ts";
 import { resolveDecodeWatermark } from "./decode-watermark.ts";

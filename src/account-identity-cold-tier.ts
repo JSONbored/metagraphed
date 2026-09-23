@@ -17,7 +17,7 @@ import type {
 } from "../generated/lakehouse/types.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
-import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
+import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 
 // Both SELECT lists are derived from the same exported field set data-api's
