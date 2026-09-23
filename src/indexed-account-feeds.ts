@@ -9,6 +9,7 @@ import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
 import {
   iterateAccountFeed,
   mergeAccountFeedPage,
+  mergeAccountFeedEntries,
   validateAccountFeed,
   type AccountFeedSelector,
   type IndexedAccountFeedEntry,
@@ -46,6 +47,21 @@ export function loadIndexedAccountFeedGroups(
     network,
     true,
     foldAccountFeedGroups,
+  );
+}
+
+/** Stream one complete qualified selection into a bounded route aggregate. */
+export function loadIndexedAccountFeedAggregate<T>(
+  env: unknown,
+  selectors: readonly AccountFeedSelector[],
+  consume: (rows: AsyncGenerator<AccountEventsRow>) => Promise<T>,
+): Promise<T | null | undefined> {
+  return loadSelectedAccountFeed(
+    env,
+    selectors,
+    DEFAULT_CHAIN_NETWORK,
+    true,
+    (streams) => consume(mergeAccountFeedEntries(streams)),
   );
 }
 
