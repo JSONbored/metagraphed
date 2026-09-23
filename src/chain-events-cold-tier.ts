@@ -33,8 +33,8 @@
 // pallet/method filter would look exhausted after one window when matches
 // exist deeper. Paging stops only at block 0.
 //
-// `block=` needs no window at all: it is a single-block lookup and already
-// cheap, so it is passed straight through and stays exact.
+// `block=` needs no window: selected history reads its block index and applies
+// the same filters and cursor before handing rows to the shared formatter.
 
 import {
   formatChainEvent,
@@ -50,6 +50,8 @@ import { r2SqlQuery, safeBlockNumber, safeNameLiteral } from "./r2-sql.ts";
 import { CHAIN_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { ChainEventsRow } from "../generated/lakehouse/types.ts";
 import { lakehouseHeadBlock } from "./blocks-seam.ts";
+import { readSelectedHistoryBlock } from "./indexed-history-store.ts";
+import { ChainEventsRowSchema } from "../schemas-src/lakehouse.ts";
 import {
   SUBNET_LEASE_CREATED_KIND,
   SUBNET_LEASE_TERMINATED_KIND,
@@ -193,7 +195,7 @@ export async function loadChainEventsColdTier(
 
   let floor = 0;
   if (block !== null) {
-    // Single-block lookup: exact, already cheap, no window needed.
+    // Single-block lookup: exact, no window needed.
     where.push(`block_number = ${block}`);
     if (extrinsic !== null) where.push(`extrinsic_index = ${extrinsic}`);
     // A block can contain more than the feed's page limit. Its event indexes
@@ -280,11 +282,39 @@ export async function loadChainEventsColdTier(
     }
   }
 
-  const rows = await r2SqlQuery<ChainEventsRow>(
-    env,
-    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("chain_events", network)} WHERE ${where.join(" AND ")}` +
-      ` ORDER BY block_number DESC, event_index DESC LIMIT ${limit}`,
-  );
+  const selected =
+    block === null
+      ? undefined
+      : await readSelectedHistoryBlock(env, "chain_events", block, network);
+  if (selected === null) return null;
+  const parsed =
+    selected === undefined
+      ? undefined
+      : ChainEventsRowSchema.array().safeParse(selected);
+  if (parsed && !parsed.success) return null;
+  const rows = parsed
+    ? parsed.data
+        .filter((row) => {
+          const index = safeBlockNumber(row.event_index);
+          return (
+            (query.pallet == null || row.pallet === query.pallet) &&
+            (query.method == null || row.method === query.method) &&
+            (extrinsic === null ||
+              safeBlockNumber(row.extrinsic_index) === extrinsic) &&
+            (!cursor || (index !== null && index < (cursor[2] as number)))
+          );
+        })
+        .sort(
+          (a, b) =>
+            (safeBlockNumber(b.event_index) ?? -1) -
+            (safeBlockNumber(a.event_index) ?? -1),
+        )
+        .slice(0, limit)
+    : await r2SqlQuery<ChainEventsRow>(
+        env,
+        `SELECT ${EVENT_COLUMNS} FROM ${chainTable("chain_events", network)} WHERE ${where.join(" AND ")}` +
+          ` ORDER BY block_number DESC, event_index DESC LIMIT ${limit}`,
+      );
   if (rows === null) return null;
 
   const last = rows.length === limit ? rows[rows.length - 1] : null;
