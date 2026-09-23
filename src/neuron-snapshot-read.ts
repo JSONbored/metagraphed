@@ -139,3 +139,72 @@ export async function readNeuronDailyValidators(
     FROM neuron_daily WHERE validator_permit=TRUE
       AND snapshot_date IN (${startDate},${endDate})`;
 }
+
+interface NeuronDailyRollup extends Record<string, unknown> {
+  snapshot_date: string;
+  neuron_count: string | number;
+  validator_count: string | number;
+  total_stake_tao: string | number | null;
+  total_emission_tao: string | number | null;
+}
+
+const DAILY_DOCUMENT_TOTALS = `COUNT(*) AS neuron_count,
+  SUM(CASE WHEN json_extract(j.value,'$.validator_permit') THEN 1 ELSE 0 END) AS validator_count,
+  SUM(json_extract(j.value,'$.stake_tao')) AS total_stake_tao,
+  SUM(json_extract(j.value,'$.emission_tao')) AS total_emission_tao`;
+const DAILY_DOCUMENT_MEMBERS = `FROM neuron_daily_documents d
+  CROSS JOIN json_each(d.payload) j CROSS JOIN neuron_daily_members m`;
+const DAILY_DOCUMENT_MATCH = `m.netuid=d.netuid AND m.snapshot_date=d.day
+  AND m.uid=CAST(j.key AS INTEGER) AND m.shard=d.shard`;
+
+/** Expand each boundary document once before grouping its accepted members. */
+export async function readNeuronDailyTotals(
+  sql: PgSql,
+  env: unknown,
+  startDate: string,
+  endDate: string,
+): Promise<NeuronDailyRollup[]> {
+  const store = selectedD1Store(env, ["neuron_daily"]);
+  if (store)
+    return store.query<NeuronDailyRollup>(
+      `SELECT m.netuid,m.snapshot_date,${DAILY_DOCUMENT_TOTALS}
+     ${DAILY_DOCUMENT_MEMBERS}
+     WHERE d.day IN (?,?) AND ${DAILY_DOCUMENT_MATCH}
+     GROUP BY m.netuid,m.snapshot_date`,
+      [startDate, endDate],
+    );
+  return sql<NeuronDailyRollup>`SELECT netuid,snapshot_date,COUNT(*) AS neuron_count,
+    SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
+    SUM(stake_tao) AS total_stake_tao,SUM(emission_tao) AS total_emission_tao
+    FROM neuron_daily WHERE snapshot_date IN (${startDate},${endDate})
+    GROUP BY netuid,snapshot_date`;
+}
+
+export async function readSubnetDailyHistory(
+  sql: PgSql,
+  env: unknown,
+  netuid: number,
+  cutoff: string | null,
+  limit: number,
+): Promise<NeuronDailyRollup[]> {
+  const store = selectedD1Store(env, ["neuron_daily"]);
+  if (store)
+    return store.query<NeuronDailyRollup>(
+      `SELECT m.snapshot_date,${DAILY_DOCUMENT_TOTALS}
+     ${DAILY_DOCUMENT_MEMBERS}
+     WHERE d.netuid=? ${cutoff ? "AND d.day>=?" : ""} AND ${DAILY_DOCUMENT_MATCH}
+     GROUP BY m.snapshot_date ORDER BY m.snapshot_date DESC LIMIT ?`,
+      cutoff ? [netuid, cutoff, limit] : [netuid, limit],
+    );
+  return cutoff
+    ? sql<NeuronDailyRollup>`SELECT snapshot_date,COUNT(*) AS neuron_count,
+        SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
+        SUM(stake_tao) AS total_stake_tao,SUM(emission_tao) AS total_emission_tao
+        FROM neuron_daily WHERE netuid=${netuid} AND snapshot_date>=${cutoff}
+        GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${limit}`
+    : sql<NeuronDailyRollup>`SELECT snapshot_date,COUNT(*) AS neuron_count,
+        SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
+        SUM(stake_tao) AS total_stake_tao,SUM(emission_tao) AS total_emission_tao
+        FROM neuron_daily WHERE netuid=${netuid}
+        GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${limit}`;
+}

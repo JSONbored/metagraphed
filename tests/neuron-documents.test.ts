@@ -441,3 +441,50 @@ test("pruning materializes stale document keys once instead of correlating every
   await store().transaction(statements);
   assert.deepEqual(await read(), []);
 });
+
+test("mixed timestamps cannot take the whole-document newer fast path", async () => {
+  const base = Array.from({ length: 256 }, (_, uid) => ({
+    ...rows()[0],
+    uid,
+    hotkey: `5Key${uid}`,
+    captured_at: stamp + (uid === 0 ? 5000 : 0),
+  }));
+  await writeNeuronDocuments(store(), { ...empty(), rows: base });
+  const incoming = [
+    { ...base[0], hotkey: "5Stale", captured_at: stamp + 1000 },
+    { ...base[1], hotkey: "5Newer", captured_at: stamp + 6000 },
+    { ...base[2], hotkey: "5Middle", captured_at: stamp + 1000 },
+  ];
+  await writeNeuronDocuments(store(), { ...empty(), rows: incoming });
+  let actual = await read();
+  assert.equal(actual.length, 256);
+  assert.deepEqual(
+    actual.slice(0, 3).map((r) => [r.hotkey, r.captured_at]),
+    [
+      ["5Key0", stamp + 5000],
+      ["5Newer", stamp + 6000],
+      ["5Middle", stamp + 1000],
+    ],
+  );
+  // Every incoming timestamp now exceeds the retained maximum. Sparse updates
+  // must retain untouched members, null values, and their accepted identities.
+  await writeNeuronDocuments(store(), {
+    ...empty(),
+    rows: [
+      {
+        ...base[0],
+        captured_at: stamp + 7000,
+        hotkey: "5Fresh",
+        stake_tao: null,
+      },
+      { ...base[2], captured_at: stamp + 8000, hotkey: null },
+    ],
+  });
+  actual = await read();
+  assert.equal(actual.length, 256);
+  assert.equal(actual[0].hotkey, "5Fresh");
+  assert.equal(actual[0].stake_tao, null);
+  assert.equal(actual[1].hotkey, "5Newer");
+  assert.equal(actual[2].hotkey, null);
+  assert.equal(actual[3].captured_at, stamp);
+});
