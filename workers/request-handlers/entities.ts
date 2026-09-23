@@ -906,6 +906,22 @@ function csvCacheVariant(
   const separator = canonicalPath.includes("?") ? "&" : "?";
   return `${canonicalPath}${separator}format=csv`;
 }
+
+function neuronProjectionCacheVariant(
+  url: URL,
+  request: Request | null,
+  canonicalPath: string,
+  subject: string,
+) {
+  const projection = parseNeuronFields(url.searchParams, subject);
+  if (projection.error) return `${url.pathname}${url.search}`;
+  const variant = csvCacheVariant(url, request, canonicalPath);
+  // CSV uses fixed columns. JSON echoes the parsed field order in meta, so
+  // preserve that order while sharing whitespace/duplicate-field spellings.
+  if (!projection.fields || variant !== canonicalPath) return variant;
+  const separator = canonicalPath.includes("?") ? "&" : "?";
+  return `${canonicalPath}${separator}fields=${encodeURIComponent(projection.fields.join(","))}`;
+}
 /**
  * A strict boolean query parameter (#9720).
  *
@@ -2483,9 +2499,8 @@ export async function handleChainTurnover(
   );
 }
 
-// Canonical edge-cache key for the subnet-metagraph route. Only
-// ?validator_permit=true changes the response; omission and =false both serve
-// the full metagraph and must share one cache slot.
+// Canonical edge-cache key for the subnet-metagraph route. The validator
+// filter, JSON field projection and CSV representation each change the body.
 export function canonicalSubnetMetagraphCachePath(
   url: URL,
   request: Request | null = null,
@@ -2497,11 +2512,12 @@ export function canonicalSubnetMetagraphCachePath(
   const canonicalPath = validatorsOnly
     ? `${url.pathname}?validator_permit=true`
     : url.pathname;
-  return csvCacheVariant(url, request, canonicalPath);
+  return neuronProjectionCacheVariant(url, request, canonicalPath, "neurons");
 }
 
 // Canonical edge-cache key for the subnet validators route. The default JSON
-// envelope and explicit ?format=json share one cache slot; CSV receives its own.
+// envelope and explicit ?format=json share one cache slot per field projection;
+// CSV receives its own fixed-column variant.
 export function canonicalSubnetValidatorsCachePath(
   url: URL,
   request: Request | null = null,
@@ -2509,7 +2525,7 @@ export function canonicalSubnetValidatorsCachePath(
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
-  return csvCacheVariant(url, request, url.pathname);
+  return neuronProjectionCacheVariant(url, request, url.pathname, "validators");
 }
 
 export function canonicalSubnetYieldCachePath(
