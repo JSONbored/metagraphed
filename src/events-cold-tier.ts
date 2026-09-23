@@ -67,6 +67,11 @@ import { windowedRowRead } from "./account-events-window.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import {
+  readSelectedHistoryBlock,
+  readSelectedHistoryHash,
+} from "./indexed-history-store.ts";
+import { ChainEventsRowSchema } from "../schemas-src/lakehouse.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -522,6 +527,9 @@ async function resolveBlockHeight(
   if (asNumber !== null) return asNumber;
   const asHash = safeHexLiteral(ref);
   if (asHash === null) return null;
+  const indexed = await readSelectedHistoryHash(env, "blocks", asHash, network);
+  if (indexed !== undefined)
+    return indexed === null ? null : safeBlockNumber(indexed.block_number);
   const rows = await r2SqlQuery(
     env,
     `SELECT block_number FROM ${chainTable("blocks", network)} WHERE block_hash = '${asHash}' LIMIT 1`,
@@ -572,13 +580,25 @@ export async function loadBlockChainEventsColdTier(
   const height = await resolveBlockHeight(env, ref, network);
   if (height === null) return null;
 
-  const rows = await r2SqlQuery(
+  const indexed = await readSelectedHistoryBlock(
     env,
-    `SELECT ${CHAIN_EVENT_COLUMNS} FROM ${chainTable("chain_events", network)} ` +
-      `WHERE block_number = ${height} ORDER BY event_index ASC`,
+    "chain_events",
+    height,
+    network,
   );
+  const rows =
+    indexed === undefined
+      ? await r2SqlQuery(
+          env,
+          `SELECT ${CHAIN_EVENT_COLUMNS} FROM ${chainTable("chain_events", network)} ` +
+            `WHERE block_number = ${height} ORDER BY event_index ASC`,
+        )
+      : indexed;
   if (rows === null) return null;
-  const events = rows
+  const parsed = ChainEventsRowSchema.array().safeParse(rows);
+  if (!parsed.success) return null;
+  const events = parsed.data
+    .sort((a, b) => Number(a.event_index) - Number(b.event_index))
     .map(formatChainEvent)
     .filter((event): event is ChainEventApi => Boolean(event));
   return { block_number: height, count: events.length, events };
