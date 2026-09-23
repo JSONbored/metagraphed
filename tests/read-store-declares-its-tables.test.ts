@@ -72,17 +72,19 @@ function tablesInSql(source: string): Set<string> {
   return found;
 }
 
-/** Every table name appearing in a readStore(...) call in the module. */
+/** Every table named by the shared reader or an explicit D1 ownership check. */
 function tablesDeclared(source: string): Set<string> {
   const declared = new Set<string>();
   // Inline array: readStore(env, ["neurons"])
-  for (const [, list] of source.matchAll(/readStore\([^,]+,\s*\[([^\]]*)\]/g)) {
+  for (const [, list] of source.matchAll(
+    /(?:readStore|selectedD1Store)\([^,]+,\s*\[([^\]]*)\]/g,
+  )) {
     for (const [, name] of list.matchAll(/"([a-z_][a-z0-9_]*)"/gi))
       declared.add(name.toLowerCase());
   }
   // Named constant: readStore(env, BLOCKS_SEAM_TABLES) -> read the constant.
   for (const [, ident] of source.matchAll(
-    /readStore\([^,]+,\s*([A-Z][A-Z0-9_]*)\s*\)/g,
+    /(?:readStore|selectedD1Store)\([^,]+,\s*([A-Z][A-Z0-9_]*)\s*\)/g,
   )) {
     const decl = source.match(
       new RegExp(`${ident}\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*as const`),
@@ -95,6 +97,28 @@ function tablesDeclared(source: string): Set<string> {
 }
 
 describe("every ported reader declares the tables it reads", () => {
+  test("native and shared owners both declare tables without accepting bare binding reads", () => {
+    assert.deepEqual(
+      [
+        ...tablesDeclared(
+          'selectedD1Store(env, ["nominator_positions"]); readStore(env, ["neurons"])',
+        ),
+      ].sort(),
+      ["neurons", "nominator_positions"],
+    );
+    assert.deepEqual(
+      [
+        ...tablesDeclared(
+          'const TABLES = ["neurons"] as const; selectedD1Store(env, TABLES)',
+        ),
+      ],
+      ["neurons"],
+    );
+    assert.deepEqual(
+      [...tablesDeclared('env.D1_STATE.prepare("SELECT * FROM neurons")')],
+      [],
+    );
+  });
   for (const file of PORTED) {
     test(file, () => {
       const source = readFileSync(file, "utf8");
