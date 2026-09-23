@@ -23,8 +23,17 @@
  * exists to watch: a subnet could lose every real endpoint and read as
  * perfectly healthy while its placeholder count held steady.
  */
-export const UNROUTABLE_AXON_PATTERN =
-  "^(0\\.|10\\.|127\\.|192\\.168\\.|192\\.0\\.2\\.|198\\.51\\.100\\.|203\\.0\\.113\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.)";
+export const UNROUTABLE_AXON_V4_PREFIXES = [
+  "0.",
+  "10.",
+  "127.",
+  "192.168.",
+  "192.0.2.",
+  "198.51.100.",
+  "203.0.113.",
+  ...Array.from({ length: 16 }, (_, i) => `172.${i + 16}.`),
+];
+export const UNROUTABLE_AXON_PATTERN = `^(${UNROUTABLE_AXON_V4_PREFIXES.map((prefix) => prefix.replaceAll(".", "\\.")).join("|")})`;
 
 /**
  * IPv6 ranges nobody can route to: unspecified `::`, loopback `::1`,
@@ -34,8 +43,16 @@ export const UNROUTABLE_AXON_PATTERN =
  * families, not different spellings -- `10.` and `10::` share a prefix and
  * mean unrelated things.
  */
-export const UNROUTABLE_AXON_V6_PATTERN =
-  "^(::$|::1$|[fF][cCdD]|[fF][eE][89aAbB])";
+export const UNROUTABLE_AXON_V6_PREFIXES = [
+  "fc",
+  "fd",
+  "fe8",
+  "fe9",
+  "fea",
+  "feb",
+];
+export const UNROUTABLE_AXON_V6_EXACT = ["::", "::1"];
+export const UNROUTABLE_AXON_V6_PATTERN = `^(${[...UNROUTABLE_AXON_V6_EXACT.map((value) => `${value}$`), ...UNROUTABLE_AXON_V6_PREFIXES.map((prefix) => prefix.replace(/[a-f]/g, (letter) => `[${letter}${letter.toUpperCase()}]`))].join("|")})`;
 
 /**
  * SQL fragment: everything before the LAST colon of `column`.

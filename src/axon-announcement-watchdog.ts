@@ -56,6 +56,11 @@
 
 import { readStore, type StoreEnv } from "./read-store.ts";
 import { ROUTABLE_AXON_SQL } from "./axon-routable.ts";
+import { selectedD1Store } from "./d1-store.ts";
+import {
+  axonSequenceD1Sql,
+  AXON_DAY_COUNTS_D1_SQL,
+} from "./axon-transition-d1.ts";
 import {
   AXON_LOSS_SQL,
   AXON_MOVED_SQL,
@@ -385,6 +390,7 @@ export async function loadAxonLossMechanisms(
     | undefined,
   netuids: readonly number[],
   sinceDate: string,
+  nativeD1 = false,
 ): Promise<
   Record<
     number,
@@ -410,7 +416,7 @@ export async function loadAxonLossMechanisms(
   try {
     const sameHotkeyLoss = `${AXON_LOSS_SQL} AND ${AXON_SAME_HOTKEY_SQL}`;
     const rows = (await db.query(
-      `WITH seq AS (${axonSequenceSql(`netuid IN (${ids.map(() => "?").join(",")})`)}) ` +
+      `WITH seq AS (${nativeD1 ? axonSequenceD1Sql(`AND d.netuid IN (${ids.map(() => "?").join(",")})`) : axonSequenceSql(`netuid IN (${ids.map(() => "?").join(",")})`)}) ` +
         "SELECT netuid, " +
         `COUNT(*) FILTER (WHERE ${AXON_LOSS_SQL} AND ${AXON_VIA_REUSE_SQL}) AS via_reuse, ` +
         `COUNT(*) FILTER (WHERE ${sameHotkeyLoss}) AS same_hotkey, ` +
@@ -463,7 +469,8 @@ export async function runAxonAnnouncementWatchdog(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  const db = readStore(env, ["neuron_daily"]);
+  const native = selectedD1Store(env, ["neuron_daily"]);
+  const db = native ?? readStore(env, ["neuron_daily"]);
   if (!db?.query) return { ok: false, reason: "no store bound" };
 
   let bySubnet: Map<number, AxonDay[]>;
@@ -471,11 +478,13 @@ export async function runAxonAnnouncementWatchdog(
     // Aggregated in the store: the raw window is ~129 subnets x 256 neurons x 8
     // days, and the answer is two integers per subnet-day.
     const rows = await db.query(
-      "SELECT netuid, snapshot_date AS date, " +
-        `COUNT(*) FILTER (WHERE ${ROUTABLE_AXON_SQL}) AS with_axon, ` +
-        "COUNT(*) AS neurons FROM neuron_daily " +
-        "WHERE snapshot_date >= ? GROUP BY netuid, snapshot_date " +
-        "ORDER BY netuid, snapshot_date",
+      native
+        ? AXON_DAY_COUNTS_D1_SQL
+        : "SELECT netuid, snapshot_date AS date, " +
+            `COUNT(*) FILTER (WHERE ${ROUTABLE_AXON_SQL}) AS with_axon, ` +
+            "COUNT(*) AS neurons FROM neuron_daily " +
+            "WHERE snapshot_date >= ? GROUP BY netuid, snapshot_date " +
+            "ORDER BY netuid, snapshot_date",
       [isoDaysAgo(now(), AXON_BASELINE_DAYS + 1)],
     );
     bySubnet = groupAxonDays(rows);
@@ -498,6 +507,7 @@ export async function runAxonAnnouncementWatchdog(
     db,
     findings.map((f) => f.netuid),
     isoDaysAgo(now(), AXON_BASELINE_DAYS + 1),
+    native !== null,
   );
   for (const finding of findings) {
     const counts = mechanisms[finding.netuid];

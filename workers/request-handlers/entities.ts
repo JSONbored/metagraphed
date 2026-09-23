@@ -3387,7 +3387,7 @@ export async function handleSubnetAxonRemovals(
     DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
   );
   // DERIVED FROM STATE (#10805), the same rollup MCP and GraphQL read.
-  const removalsRollup = await loadAxonRemovals(env);
+  const removalsRollup = await loadAxonRemovals(env, { netuid });
   const data = buildSubnetAxonRemovals(
     subnetAxonRemovalRow(removalsRollup, netuid),
     netuid,

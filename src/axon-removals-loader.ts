@@ -41,6 +41,8 @@ import {
 } from "./axon-removal-derivation.ts";
 import { readStore } from "./read-store.ts";
 import { AXON_LOSS_SQL, axonSequenceSql } from "./axon-transition.ts";
+import { axonSequenceD1Sql } from "./axon-transition-d1.ts";
+import { selectedD1Store } from "./d1-store.ts";
 
 /** Days of `neuron_daily` to pull. The widest window any route offers. */
 export const AXON_REMOVALS_LOOKBACK_DAYS = 30;
@@ -77,18 +79,24 @@ export interface AxonRemovalsRollup {
  * the predicate's benefit, and re-deciding reachability in the derivation from
  * the raw `axon` keeps `isRoutableAxon` the one place that answers it.
  */
-const CANDIDATE_SLOTS_SQL =
-  `WITH windowed AS (${axonSequenceSql()}), dropped AS (` +
-  ` SELECT DISTINCT netuid, uid FROM windowed WHERE ${AXON_LOSS_SQL}` +
-  ")" +
-  " SELECT w.netuid, w.uid, w.snapshot_date, w.hotkey, w.axon" +
-  " FROM windowed w JOIN dropped d ON d.netuid = w.netuid AND d.uid = w.uid" +
-  " ORDER BY w.netuid, w.uid, w.snapshot_date";
+function candidateSlotsSql(sequence: string): string {
+  return (
+    `WITH windowed AS MATERIALIZED (${sequence}), dropped AS (` +
+    ` SELECT DISTINCT netuid, uid FROM windowed WHERE ${AXON_LOSS_SQL}` +
+    ")" +
+    " SELECT w.netuid, w.uid, w.snapshot_date, w.hotkey, w.axon" +
+    " FROM windowed w JOIN dropped d ON d.netuid = w.netuid AND d.uid = w.uid" +
+    " ORDER BY w.netuid, w.uid, w.snapshot_date"
+  );
+}
+const CANDIDATE_SLOTS_SQL = candidateSlotsSql(axonSequenceSql());
 
 export interface AxonRemovalsLoadDeps {
   /** Injectable for tests; production reads Neon through `readStore`. */
   query?: (sql: string, params: unknown[]) => Promise<unknown>;
   now?: () => number;
+  /** Subnet cards consume only this subnet, so D1 need not scan the network. */
+  netuid?: number;
 }
 
 /** `YYYY-MM-DD`, `days` before `nowMs`. */
@@ -115,11 +123,19 @@ export async function loadAxonRemovals(
       isoDaysAgo(now(), AXON_REMOVALS_LOOKBACK_DAYS),
     ]);
   } else {
-    const db = readStore(env, ["neuron_daily"]);
+    const native = selectedD1Store(env, ["neuron_daily"]);
+    const db = native ?? readStore(env, ["neuron_daily"]);
     if (!db) return null;
-    rows = await db.query(CANDIDATE_SLOTS_SQL, [
-      isoDaysAgo(now(), AXON_REMOVALS_LOOKBACK_DAYS),
-    ]);
+    const scoped = native !== null && deps.netuid !== undefined;
+    rows = await db.query(
+      native
+        ? candidateSlotsSql(axonSequenceD1Sql(scoped ? "AND d.netuid=?" : ""))
+        : CANDIDATE_SLOTS_SQL,
+      [
+        isoDaysAgo(now(), AXON_REMOVALS_LOOKBACK_DAYS),
+        ...(scoped ? [deps.netuid] : []),
+      ],
+    );
   }
 
   const derived = deriveAxonRemovals(rows as NeuronAxonDayRow[] | null, {
