@@ -5,6 +5,10 @@ const readers = vi.hoisted(() => ({
   hash: vi.fn(),
   loadBlock: vi.fn(),
   loadHash: vi.fn(),
+  absent: vi.fn(),
+}));
+vi.mock("../src/history-hash-hot-bridge.ts", () => ({
+  historyHashAbsentFromHotBridge: readers.absent,
 }));
 vi.mock("../src/history-generation.ts", () => ({
   readHistoryBlock: readers.block,
@@ -19,13 +23,22 @@ import {
 import { resetModuleState } from "../src/module-state-registry.ts";
 import { parquetReadBudget } from "../src/indexed-parquet.ts";
 import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
-import { loadBlockChainEventsColdTier } from "../src/events-cold-tier.ts";
+import {
+  loadBlockChainEventsColdTier,
+  loadBlockEventsColdTier,
+} from "../src/events-cold-tier.ts";
+import {
+  loadBlockExtrinsicsColdTier,
+  loadExtrinsicColdTier,
+} from "../src/extrinsics-cold-tier.ts";
+import { loadBlockFromR2Sql } from "../src/r2-sql-blocks.ts";
 beforeEach(() => {
   resetModuleState();
   readers.block.mockReset().mockResolvedValue([]);
   readers.hash.mockReset().mockResolvedValue(null);
   readers.loadBlock.mockReset().mockResolvedValue({});
   readers.loadHash.mockReset().mockResolvedValue({});
+  readers.absent.mockReset().mockResolvedValue(false);
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -71,6 +84,48 @@ function segmentedFixture(table = "blocks", network = "mainnet") {
   get.mockResolvedValue({ size: 1000, json: async () => selected });
   return { selected, get, env };
 }
+test("qualified absence requires all historical hashes and preserves empty detail payloads without SQL", async () => {
+  const hash = `0x${"ab".repeat(32)}`;
+  const f = segmentedFixture();
+  f.selected.segments[0].firstBlock = 0;
+  readers.absent.mockResolvedValue(true);
+  const fetcher = vi.fn().mockRejectedValue(new Error("SQL must not run"));
+  vi.stubGlobal("fetch", fetcher);
+  assert.deepEqual(await readSelectedHistoryHash(f.env, "blocks", hash), []);
+  assert.deepEqual(readers.absent.mock.lastCall, [
+    f.env,
+    "blocks",
+    hash,
+    20,
+    "mainnet",
+  ]);
+  assert.equal((await loadBlockFromR2Sql(f.env, hash))?.block, null);
+  const extrinsics = await loadBlockExtrinsicsColdTier(f.env, hash, {
+    limit: 20,
+  });
+  assert.equal(extrinsics, null);
+  const events = await loadBlockEventsColdTier(f.env, hash, { limit: 20 });
+  assert.equal(events, null);
+  const x = fixture("extrinsics");
+  x.selected.firstBlock = 0;
+  assert.equal((await loadExtrinsicColdTier(x.env, hash))?.extrinsic, null);
+  assert.equal(fetcher.mock.calls.length, 0);
+  readers.absent.mockResolvedValue(false);
+  assert.equal(await readSelectedHistoryHash(f.env, "blocks", hash), undefined);
+  readers.absent.mockClear().mockResolvedValue(true);
+  delete (f.selected.segments[1] as { hashManifest?: unknown }).hashManifest;
+  resetModuleState();
+  assert.equal(await readSelectedHistoryHash(f.env, "blocks", hash), undefined);
+  assert.equal(readers.absent.mock.calls.length, 0);
+  const corrupt = fixture("blocks");
+  corrupt.selected.firstBlock = 0;
+  readers.absent.mockRejectedValue(new Error("hot store unavailable"));
+  assert.equal(
+    await readSelectedHistoryHash(corrupt.env, "blocks", hash),
+    null,
+  );
+  assert.equal(currentIndexedHistoryFailureGeneration(), 1);
+});
 test("segmented block reads select exactly one contiguous range and share the pointer cache", async () => {
   const { selected, env, get } = segmentedFixture("chain_events", "testnet");
   const budget = parquetReadBudget();
