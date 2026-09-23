@@ -5,6 +5,7 @@ import { Miniflare } from "miniflare";
 import { createD1Store } from "../src/d1-store.ts";
 import { writeNeuronDocuments } from "../src/neuron-documents.ts";
 import { neuronSnapshotWrite } from "../src/neurons-neon-write.ts";
+import type { R2SqlEnv } from "../src/r2-sql.ts";
 import {
   pendingDaysSql,
   rollupChainConcentration,
@@ -97,7 +98,10 @@ test("native D1 document rollup preserves dates, membership rows and full cards"
   );
   await store.run("DELETE FROM chain_concentration_daily");
   statements.length = 0;
-  const env = { D1_STATE: db, D1_STATE_TABLES: "neuron_daily" };
+  const env: R2SqlEnv & {
+    D1_STATE: D1Database;
+    D1_STATE_TABLES: string;
+  } = { D1_STATE: db, D1_STATE_TABLES: "neuron_daily" };
   const actual = await rollupChainConcentration(store, { nowMs: now, env });
   assert.deepEqual(actual, old);
   assert.deepEqual(
