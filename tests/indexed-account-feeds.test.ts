@@ -1,0 +1,309 @@
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { describe, expect, it, vi } from "vitest";
+import { loadIndexedAccountFeedPage } from "../src/indexed-account-feeds.ts";
+import type { HistoryAccountFeed } from "../schemas-src/artifacts/history-account-feed.ts";
+import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
+import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
+
+const fixture = JSON.parse(
+  readFileSync(
+    new URL("./fixtures/account-feeds/native-tree.json", import.meta.url),
+    "utf8",
+  ),
+) as {
+  manifest: HistoryAccountFeed;
+  selection: HistoryAccountFeed["selection"];
+  rows: AccountEventsRow[];
+  objects: Record<string, { etag: string; base64: string }>;
+};
+const selectors = ["hotkey", "coldkey"].map((side) => ({
+  side: side as "hotkey" | "coldkey",
+  account: "account-0",
+}));
+
+function archive(network: "mainnet" | "testnet" = "mainnet") {
+  const feed = structuredClone(fixture.manifest);
+  const selected = structuredClone(fixture.selection);
+  const base = `metagraph/indexed-history/v1/${network}/account_events`;
+  const root = `${base}/generations/${selected.generation}`;
+  selected.network = feed.network = network;
+  selected.blockManifest.key = `${root}/block-manifest.json`;
+  feed.plan.key = `${root}/accounts/v1/plan.json`;
+  if (network === "testnet") {
+    selected.firstBlock = 7700000;
+    selected.lastBlock = 7700084;
+    feed.rows = feed.entries = 0;
+    feed.root = null;
+  }
+  const objects = new Map(
+    Object.entries(fixture.objects).map(([key, value]) => [
+      key,
+      {
+        raw: Buffer.from(value.base64, "base64"),
+        etag: value.etag,
+      },
+    ]),
+  );
+  const put = (key: string, value: unknown) => {
+    const raw = Buffer.from(JSON.stringify(value));
+    const etag = createHash("md5").update(raw).digest("hex");
+    objects.set(key, { raw, etag });
+    return { key, etag, bytes: raw.length };
+  };
+  selected.blockManifest = put(selected.blockManifest.key, {
+    version: 1,
+    network,
+    table: "account_events",
+    generation: selected.generation,
+    state: "complete",
+    sourceSnapshot: feed.sourceSnapshot,
+    rows: feed.rows,
+    files: feed.rows
+      ? [
+          {
+            key: `${root}/files/00000.json`,
+            etag: "source",
+            bytes: 1,
+            rows: feed.rows,
+          },
+        ]
+      : [],
+    blockIndex: { key: `${root}/blocks/index.json`, etag: "index", bytes: 1 },
+  });
+  feed.selection = selected;
+  const pointer = `${base}/current.json`,
+    manifest = `${root}/accounts/v1/manifest.json`;
+  const ceilingKey = `${base}/source-ceiling.json`;
+  const ceiling = {
+    version: 1,
+    network,
+    table: "account_events",
+    through: selected.lastBlock,
+    revision: "a".repeat(32),
+  };
+  const save = () => {
+    put(pointer, { version: 1, ...selected });
+    put(manifest, feed);
+    put(ceilingKey, ceiling);
+  };
+  save();
+  const sizes = new Map<string, number>();
+  const counts = new Map<string, number>();
+  let onGet: ((key: string, count: number) => void) | undefined;
+  const get = vi.fn(async (key: string, options?: R2GetOptions) => {
+    const count = (counts.get(key) ?? 0) + 1;
+    counts.set(key, count);
+    onGet?.(key, count);
+    const object = objects.get(key);
+    if (!object) return null;
+    const range =
+      options?.range && "offset" in options.range ? options.range : undefined;
+    const offset = range?.offset ?? 0,
+      length = range?.length ?? object.raw.length;
+    return {
+      etag: object.etag,
+      size: sizes.get(key) ?? object.raw.length,
+      range: { offset, length },
+      body: new Response(object.raw.subarray(offset, offset + length)).body,
+      json: async () => JSON.parse(object.raw.toString()),
+    };
+  });
+  return {
+    env: { METAGRAPH_ARCHIVE: { get } },
+    get,
+    objects,
+    put,
+    sizes,
+    feed,
+    selected,
+    ceiling,
+    pointer,
+    manifest,
+    ceilingKey,
+    save,
+    intercept(fn: (key: string, count: number) => void) {
+      onGet = fn;
+    },
+  };
+}
+
+describe("selected account feed serving", () => {
+  it("serves native physical rows, filters, offsets and cursors through conditional R2 ranges", async () => {
+    const a = archive();
+    const expected = fixture.rows
+      .filter((r) => r.hotkey === "account-0" || r.coldkey === "account-0")
+      .sort(
+        (a, b) =>
+          b.observed_at! - a.observed_at! ||
+          b.block_number! - a.block_number! ||
+          b.event_index! - a.event_index!,
+      );
+    expect(await loadIndexedAccountFeedPage(a.env, selectors, 5001)).toEqual(
+      expected,
+    );
+    expect(await loadIndexedAccountFeedPage(a.env, selectors, 4, 3)).toEqual(
+      expected.slice(3, 7),
+    );
+    const row = expected[4];
+    const filtered = selectors.map((s) => ({
+      ...s,
+      kind: "Transfer",
+      netuid: 0,
+      blockStart: 2,
+      blockEnd: 83,
+      cursor: [row.observed_at!, row.block_number!, row.event_index!] as [
+        number,
+        number,
+        number,
+      ],
+    }));
+    expect(await loadIndexedAccountFeedPage(a.env, filtered, 5001)).toEqual(
+      expected.filter(
+        (r) =>
+          r.event_kind === "Transfer" &&
+          r.netuid === 0 &&
+          r.block_number! >= 2 &&
+          r.block_number! <= 83 &&
+          (r.observed_at! < row.observed_at! ||
+            (r.observed_at === row.observed_at &&
+              (r.block_number! < row.block_number! ||
+                (r.block_number === row.block_number &&
+                  r.event_index! < row.event_index!)))),
+      ),
+    );
+    expect(
+      a.get.mock.calls.some(
+        ([, options]) => options?.onlyIf && "etagMatches" in options.onlyIf,
+      ),
+    ).toBe(true);
+    expect(
+      await loadIndexedAccountFeedPage(
+        a.env,
+        [{ side: "all", account: "*", netuid: 0 }],
+        5001,
+      ),
+    ).toEqual(
+      fixture.rows
+        .filter((r) => r.netuid === 0)
+        .sort(
+          (a, b) =>
+            b.observed_at! - a.observed_at! ||
+            b.block_number! - a.block_number! ||
+            b.event_index! - a.event_index!,
+        ),
+    );
+  });
+
+  it("qualifies only the requested retained range and scopes testnet separately", async () => {
+    expect(
+      await loadIndexedAccountFeedPage(undefined, selectors, 5),
+    ).toBeUndefined();
+    const gap = archive("testnet");
+    gap.selected.firstBlock = 7700001;
+    gap.save();
+    expect(
+      await loadIndexedAccountFeedPage(gap.env, selectors, 5, 0, "testnet"),
+    ).toBeUndefined();
+    expect(
+      await loadIndexedAccountFeedPage(
+        gap.env,
+        selectors.map((s) => ({ ...s, blockStart: 7700001 })),
+        5,
+        0,
+        "testnet",
+      ),
+    ).toEqual([]);
+    const tail = archive();
+    tail.ceiling.through++;
+    tail.save();
+    expect(
+      await loadIndexedAccountFeedPage(tail.env, selectors, 5),
+    ).toBeUndefined();
+    expect(
+      await loadIndexedAccountFeedPage(
+        tail.env,
+        selectors.map((s) => ({ ...s, blockEnd: 84 })),
+        5,
+      ),
+    ).toHaveLength(5);
+    const testnet = archive("testnet");
+    expect(
+      await loadIndexedAccountFeedPage(testnet.env, selectors, 5, 0, "testnet"),
+    ).toEqual([]);
+    expect(
+      testnet.get.mock.calls.every(([key]) => key.includes("/testnet/")),
+    ).toBe(true);
+  });
+
+  it("keeps a missing producer or moving source unqualified rather than claiming empty history", async () => {
+    for (const key of ["pointer", "ceilingKey", "manifest"] as const) {
+      const a = archive();
+      a.objects.delete(a[key]);
+      expect(
+        await loadIndexedAccountFeedPage(a.env, selectors, 5),
+      ).toBeUndefined();
+    }
+    for (const remove of [false, true]) {
+      const a = archive();
+      a.intercept((key, count) => {
+        if (key === a.ceilingKey && count === 2) {
+          if (remove) a.objects.delete(key);
+          else a.put(key, { ...a.ceiling, revision: "b".repeat(32) });
+        }
+      });
+      expect(
+        await loadIndexedAccountFeedPage(a.env, selectors, 5),
+      ).toBeUndefined();
+    }
+  });
+
+  it("fails closed on corrupt selected data or budgets without a scan fallback", async () => {
+    const corruptions: ((a: ReturnType<typeof archive>) => void)[] = [
+      (a) => {
+        a.sizes.set(a.ceilingKey, 8193);
+      },
+      (a) => {
+        a.put(a.ceilingKey, { ...a.ceiling, network: "testnet" });
+      },
+      (a) => {
+        a.put(a.ceilingKey, { ...a.ceiling, table: "blocks" });
+      },
+      (a) => {
+        a.objects.get(a.ceilingKey)!.etag = "";
+      },
+      (a) => {
+        a.sizes.set(a.manifest, 16385);
+      },
+      (a) => {
+        a.feed.rows--;
+        a.save();
+      },
+      (a) => {
+        a.feed.sourceSnapshot = "2";
+        a.save();
+      },
+      (a) => {
+        a.objects.delete(a.selected.blockManifest.key);
+      },
+      (a) => {
+        a.feed.state = "incomplete" as "complete";
+        a.save();
+      },
+    ];
+    for (const corrupt of corruptions) {
+      const a = archive();
+      corrupt(a);
+      const before = currentIndexedHistoryFailureGeneration();
+      expect(await loadIndexedAccountFeedPage(a.env, selectors, 5)).toBeNull();
+      expect(currentIndexedHistoryFailureGeneration()).toBe(before + 1);
+    }
+    for (const selection of [[], [...selectors, selectors[0]]])
+      expect(
+        await loadIndexedAccountFeedPage(archive().env, selection, 5),
+      ).toBeNull();
+    expect(
+      await loadIndexedAccountFeedPage(archive().env, selectors, 5002),
+    ).toBeNull();
+  });
+});

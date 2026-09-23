@@ -118,6 +118,8 @@ import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { readStore } from "./read-store.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { loadIndexedAccountFeedPage } from "./indexed-account-feeds.ts";
+import type { AccountFeedSelector } from "./history-account-feed.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -207,14 +209,6 @@ export async function loadAccountTransfersColdTier(
     return null;
   }
   const where = ["event_kind = 'Transfer'"];
-  // The projection's lower bound, pushed in beside the direction predicate.
-  // This feed walked with no floor at all: the two probes cover 8 days, and an
-  // account whose newest transfer is older than that reached the unbounded
-  // third read.
-  const transferFloorMs = await accountHistoryFloorMs(env, ss58);
-  if (transferFloorMs !== null) {
-    where.push(`observed_at >= ${Math.trunc(transferFloorMs)}`);
-  }
   // data-api's exact direction semantics: sent matches the from side (hotkey),
   // received the to side (coldkey), and "all"/omitted reads both -- the single
   // OR standing in for its two-scan merge (see the module header).
@@ -243,27 +237,54 @@ export async function loadAccountTransfersColdTier(
 
   // Cursor pages never carry an offset, mirroring data-api.
   const paged = cursor ? 0 : offset;
+  const sides: AccountFeedSelector["side"][] =
+    direction === "sent"
+      ? ["hotkey"]
+      : direction === "received"
+        ? ["coldkey"]
+        : ["hotkey", "coldkey"];
+  const indexed = await loadIndexedAccountFeedPage(
+    env,
+    sides.map((side) => ({
+      side,
+      account: ss58,
+      kind: "Transfer",
+      blockStart:
+        query.blockStart == null ? undefined : Number(query.blockStart),
+      blockEnd: query.blockEnd == null ? undefined : Number(query.blockEnd),
+      cursor: cursor ? [cursor[0], cursor[1], cursor[2]] : null,
+    })),
+    limit,
+    paged,
+  );
+  const transferFloorMs =
+    indexed === undefined ? await accountHistoryFloorMs(env, ss58) : null;
+  if (transferFloorMs !== null)
+    where.push(`observed_at >= ${Math.trunc(transferFloorMs)}`);
   // BOUNDED (#11131). `(hotkey = X OR coldkey = X)` is a scattered-key filter,
   // so without a block bound the engine opens all 51 files: 577.5 MB and 3,480
   // R2 requests, measured, against 0.1 MB and 9 with one. This feed was one of
   // the reads timing out at the 15s r2-sql ceiling and failing the deploy's
   // smoke step. The walk returns the identical rows -- see the module.
-  const rows = await windowedRowRead<AccountEventsRow>(env, {
-    table: "chain.account_events",
-    columns: EVENT_COLUMNS,
-    where,
-    order: ` ${FEED_ORDER}`,
-    need: limit + paged,
-    // A cursor page resumes from its own `observed_at` -- cursor[0] of the
-    // 3-part token -- rather than from now.
-    ceiling: cursor ? safeBlockNumber(cursor[0]) : null,
-    // The same floor already pushed into `where`, so the walk stops when it
-    // reaches it rather than reading a range its own predicate excludes.
-    floorMs: transferFloorMs,
-  });
+  const rows =
+    indexed !== undefined
+      ? indexed
+      : await windowedRowRead<AccountEventsRow>(env, {
+          table: "chain.account_events",
+          columns: EVENT_COLUMNS,
+          where,
+          order: ` ${FEED_ORDER}`,
+          need: limit + paged,
+          // A cursor page resumes from its own `observed_at` -- cursor[0] of the
+          // 3-part token -- rather than from now.
+          ceiling: cursor ? safeBlockNumber(cursor[0]) : null,
+          // The same floor already pushed into `where`, so the walk stops when it
+          // reaches it rather than reading a range its own predicate excludes.
+          floorMs: transferFloorMs,
+        });
   if (rows === null) return null;
 
-  const page = paged > 0 ? rows.slice(paged) : rows;
+  const page = indexed === undefined && paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
   const nextCursor = last
     ? encodeCursor([
@@ -919,13 +940,24 @@ export async function loadAccountCounterpartiesColdTier(
 ): Promise<ReturnType<typeof buildCounterparties> | null> {
   const addr = safeSs58Literal(ss58);
   if (addr === null) return null;
+  const indexed = await loadIndexedAccountFeedPage(
+    env,
+    [
+      { side: "hotkey", account: ss58, kind: "Transfer" },
+      { side: "coldkey", account: ss58, kind: "Transfer" },
+    ],
+    COUNTERPARTIES_SCAN_CAP,
+  );
   // `need` here is COUNTERPARTIES_SCAN_CAP (5,000), so the walk's two probes
   // essentially never fill and every request reached its unbounded third read.
-  const rows = await counterpartyScan(
-    env,
-    `(hotkey = '${addr}' OR coldkey = '${addr}')`,
-    await accountHistoryFloorMs(env, ss58),
-  );
+  const rows =
+    indexed !== undefined
+      ? indexed
+      : await counterpartyScan(
+          env,
+          `(hotkey = '${addr}' OR coldkey = '${addr}')`,
+          await accountHistoryFloorMs(env, ss58),
+        );
   if (rows === null) return null;
   return buildCounterparties(rows, ss58, { limit: query.limit });
 }
@@ -965,16 +997,27 @@ export async function loadCounterpartyRelationshipColdTier(
   const addr = safeSs58Literal(ss58);
   const other = safeSs58Literal(counterparty);
   if (addr === null || other === null) return null;
-  const rows = await counterpartyScan(
+  const indexed = await loadIndexedAccountFeedPage(
     env,
-    `((hotkey = '${addr}' AND coldkey = '${other}') OR ` +
-      `(hotkey = '${other}' AND coldkey = '${addr}'))`,
-    // THE PAIR'S floor is the EARLIER of the two, and null if either is
-    // unknown: a relationship row needs only ONE side to exist, so flooring at
-    // the later account's first event would drop everything the earlier one did
-    // before it.
-    await pairHistoryFloorMs(env, ss58, counterparty),
+    [
+      { side: "hotkey", account: ss58, counterparty, kind: "Transfer" },
+      { side: "coldkey", account: ss58, counterparty, kind: "Transfer" },
+    ],
+    COUNTERPARTIES_SCAN_CAP,
   );
+  const rows =
+    indexed !== undefined
+      ? indexed
+      : await counterpartyScan(
+          env,
+          `((hotkey = '${addr}' AND coldkey = '${other}') OR ` +
+            `(hotkey = '${other}' AND coldkey = '${addr}'))`,
+          // THE PAIR'S floor is the EARLIER of the two, and null if either is
+          // unknown: a relationship row needs only ONE side to exist, so flooring at
+          // the later account's first event would drop everything the earlier one did
+          // before it.
+          await pairHistoryFloorMs(env, ss58, counterparty),
+        );
   if (rows === null) return null;
   const relationship = buildCounterpartyRelationship(rows, ss58, counterparty, {
     limit: query.limit,
