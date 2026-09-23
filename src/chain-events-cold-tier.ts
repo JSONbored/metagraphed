@@ -49,7 +49,7 @@ import {
 import { r2SqlQuery, safeBlockNumber, safeNameLiteral } from "./r2-sql.ts";
 import { CHAIN_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { ChainEventsRow } from "../generated/lakehouse/types.ts";
-import { lakehouseHeadBlock } from "./blocks-cold-tier.ts";
+import { lakehouseHeadBlock } from "./blocks-seam.ts";
 import {
   SUBNET_LEASE_CREATED_KIND,
   SUBNET_LEASE_TERMINATED_KIND,

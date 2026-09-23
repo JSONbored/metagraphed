@@ -11,7 +11,7 @@
 
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
-import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
+import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
 import { buildSubnetIdentityHistory } from "./subnet-identity-history.ts";
 import {
   buildChainIdentityHistory,

@@ -10,7 +10,11 @@ import {
   readHistoryBlock,
   readHistoryHash,
 } from "./history-generation.ts";
-import { parquetReadBudget, r2ParquetSource } from "./indexed-parquet.ts";
+import {
+  parquetReadBudget,
+  r2ParquetSource,
+  type ParquetReadBudget,
+} from "./indexed-parquet.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 
 type Bucket = Pick<R2Bucket, "get">;
@@ -84,6 +88,7 @@ export async function readSelectedHistoryBlock(
   table: ChainFirehoseTopic,
   block: number,
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+  budget: ParquetReadBudget = parquetReadBudget(),
 ): Promise<Record<string, unknown>[] | null | undefined> {
   const bucket = (env as HistoryEnv | null)?.METAGRAPH_ARCHIVE;
   if (!bucket) return undefined;
@@ -91,8 +96,7 @@ export async function readSelectedHistoryBlock(
     const selected = await selection(bucket, table, network);
     if (!selected || block < selected.firstBlock || block > selected.lastBlock)
       return undefined;
-    const source = r2ParquetSource(bucket),
-      budget = parquetReadBudget();
+    const source = r2ParquetSource(bucket);
     const generation = await loadHistoryBlockGeneration(
       source,
       selected.blockManifest,
@@ -114,14 +118,14 @@ export async function readSelectedHistoryHash(
   table: "blocks" | "extrinsics",
   hash: string,
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+  budget: ParquetReadBudget = parquetReadBudget(),
 ): Promise<Record<string, unknown> | null | undefined> {
   const bucket = (env as HistoryEnv | null)?.METAGRAPH_ARCHIVE;
   if (!bucket) return undefined;
   try {
     const selected = await selection(bucket, table, network);
     if (!selected?.hashManifest) return undefined;
-    const source = r2ParquetSource(bucket),
-      budget = parquetReadBudget();
+    const source = r2ParquetSource(bucket);
     const generation = await loadHistoryGeneration(
       source,
       selected.hashManifest,

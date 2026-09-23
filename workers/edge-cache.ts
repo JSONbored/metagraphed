@@ -8,7 +8,7 @@ import { ifNoneMatchSatisfied, withCacheStatus } from "./http.ts";
 import { contractVersion } from "./responses.ts";
 import { currentDataApiTierFallbackGeneration } from "./data-api-tier.ts";
 import { currentR2SqlFailureGeneration } from "../src/r2-sql.ts";
-import { currentOffsetCapDeclineGeneration } from "../src/r2-sql-blocks.ts";
+import { currentOffsetCapDeclineGeneration } from "../src/cold-tier-offset.ts";
 const DATA_API_TIER_FALLBACK_RESPONSES = new WeakSet<Response>();
 
 /**
