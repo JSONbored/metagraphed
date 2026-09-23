@@ -1,81 +1,18 @@
-/**
- * Load recent subnet_snapshots alpha prices for #7227's change fields.
- * Used by refresh-economics / build-artifacts. Returns null when the store is
- * unreachable so the bake stays graceful (null change fields, never a failure).
- *
- * NEON, over a plain `pg` connection (#10179's follow-up). The history has
- * moved twice: the box's Postgres, then D1 over the Cloudflare HTTP door, and
- * now Neon -- `subnet_snapshots` is in NEON_SOLE_STORE_TABLES and D1 is being
- * dropped, so the HTTP door is about to answer 404 for a database that no
- * longer exists.
- *
- * THE GRACEFUL FAILURE IS THE DANGEROUS PART, which is the whole history of
- * this file. Between the box wipe and 2026-08-03 every `alpha_price_change_*`
- * field served null: the loader was asking a destroyed database, failing
- * gracefully, and a graceful failure looks exactly like "no change data
- * exists". Leaving it on D1 through the drop would repeat that verbatim.
- *
- * It matters more than the R2/KV shadowing suggests. `resolveLiveEconomics`
- * REJECTS a KV blob older than ECONOMICS_FRESHNESS_MAX_AGE_MS and falls back to
- * this artifact, so the baked fields are exactly what serves when the live
- * refresh is wedged -- the case where they are least likely to be noticed and
- * most likely to be needed.
- *
- * A CONNECTION, not the Workers binding: this runs in the publish pipeline
- * (node), where there is no Hyperdrive binding. `DATABASE_URL` is resolved from
- * NEON_API_KEY in the workflow, the same way scripts/neon-migrate.ts gets it.
+/** Recent alpha-price history for the artifact bake, read from the same
+ * protected D1 export protocol as the archive producers (#12199). Missing
+ * credentials are the ordinary local-build case; failed or mixed snapshots
+ * decline as a whole. No database URL or Cloudflare management token is used.
  */
-import pg from "pg";
-
+import { z } from "zod";
 import { indexAlphaPriceHistoryByNetuid } from "../../src/alpha-price-change.ts";
 
-/** Days of history needed for the 1m window, plus a few days of slack. */
 export const ALPHA_PRICE_HISTORY_LOOKBACK_DAYS = 40;
-
-/** The `pg` surface this needs, so a test can hand in a fake. */
-export interface PgLike {
-  /** `Promise<unknown>`, because a real `pg.Client.connect()` resolves to the
-   *  client and this module awaits it for the side effect. Declaring
-   *  `Promise<void>` did not make anything safer -- it made `pg.Client` fail
-   *  to match, and the assertion that papered over it also stopped the
-   *  compiler checking `query` and `end` at the same call. */
-  connect(): Promise<unknown>;
-  end(): Promise<void>;
-  query(text: string): Promise<{ rows?: unknown[] } | undefined>;
-}
-
 export interface AlphaPriceHistoryEnv {
-  DATABASE_URL?: string | undefined;
-  /** `process.env` is the production caller; the index signature keeps it
-   * assignable without widening what this module actually reads. */
+  STATE_EXPORT_URL?: string;
+  STATE_EXPORT_SECRET?: string;
   [key: string]: string | undefined;
 }
 
-/**
- * The cutoff as a DATE LITERAL, computed here rather than by the database.
- *
- * THIS QUERY HAS TWO ENGINES BEHIND IT, which is the whole reason the cutoff
- * moved out of the SQL. `loadAlphaPriceHistoryByNetuid` below sends it to D1
- * over HTTP at build time; `src/live-economics-refresh.ts` sends the same text
- * through `readStore`, which is Postgres. It used to read
- * `date('now','-40 days')` -- SQLite's spelling, and `function date(unknown,
- * unknown) does not exist` on Postgres, verified against the live database.
- *
- * The failure was total rather than partial: the read sits inside
- * refreshLiveEconomics's own try, so the throw took the WHOLE tick and KV
- * `economics:current` simply stopped advancing -- with the last good blob still
- * being served, which is what made it look like nothing was wrong.
- *
- * Computing the date in JS is the same move #9798 made for the neuron_daily
- * window, and for the same reason: it removes the dialect from the question
- * instead of translating it. A quoted `YYYY-MM-DD` literal compares correctly
- * against `snapshot_date` on both engines, and there is no date function left
- * for two dialects to disagree about.
- *
- * Inlined rather than bound because one of the two callers is an HTTP door with
- * no bind slot, and the value is generated from a number rather than accepted
- * from one.
- */
 export function alphaPriceHistoryCutoff(
   lookbackDays: number = ALPHA_PRICE_HISTORY_LOOKBACK_DAYS,
   now: () => number = Date.now,
@@ -100,35 +37,154 @@ export function alphaPriceHistoryQuery(
   );
 }
 
+const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const keySchema = z.tuple([daySchema, z.number().int().safe()]);
+const revisionSchema = z.object({
+  version: z.literal(1),
+  revision: z.number().int().nonnegative().safe(),
+});
+const pageSchema = revisionSchema.extend({
+  rows: z
+    .array(
+      z.tuple([
+        z.number().int().nonnegative().safe(),
+        daySchema,
+        z.number().finite().nullable(),
+        z.number().int().nonnegative().safe().nullable(),
+      ]),
+    )
+    .max(2000),
+  next_cursor: keySchema.nullable(),
+});
+const MAX_PAGE_BYTES = 512 * 1024;
+const MAX_ROWS = 20000;
+class SnapshotChanged extends Error {}
+
+async function exportReply(response: Response): Promise<unknown> {
+  if (!response.ok) {
+    await response.body?.cancel();
+    if (response.status === 409) throw new SnapshotChanged();
+    throw new Error("Export request failed");
+  }
+  if (!response.body) throw new Error("Export body absent");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+  let bytes = 0,
+    text = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > MAX_PAGE_BYTES) {
+        await reader.cancel();
+        throw new Error("Export page exceeds byte budget");
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    return JSON.parse(text + decoder.decode());
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export async function loadAlphaPriceHistoryByNetuid(
   env: AlphaPriceHistoryEnv = process.env,
-  clientFactory: (connectionString: string) => PgLike = (connectionString) =>
-    new pg.Client({ connectionString }),
+  fetchImpl: typeof fetch = fetch,
+  now: () => number = Date.now,
 ): Promise<ReturnType<typeof indexAlphaPriceHistoryByNetuid> | null> {
-  const connectionString = env.DATABASE_URL;
-  // No connection string is the ordinary local/PR case: bake with null change
-  // fields rather than failing a build that has no business talking to
-  // production.
-  if (!connectionString) return null;
-
-  const client = clientFactory(connectionString);
+  if (!env.STATE_EXPORT_URL || !env.STATE_EXPORT_SECRET) return null;
   try {
-    await client.connect();
-    const result = await client.query(alphaPriceHistoryQuery());
-    const rows = result?.rows;
-    // An empty result is a real answer (no history yet), but a MISSING rows
-    // array is a shape we do not understand -- decline rather than bake a
-    // confident "no changes" from it.
-    if (!Array.isArray(rows)) throw new Error("no rows array in the response");
-    return indexAlphaPriceHistoryByNetuid(rows as Record<string, unknown>[]);
-  } catch (err) {
+    const url = new URL(env.STATE_EXPORT_URL);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    )
+      throw new Error("Invalid export URL");
+    const signal = AbortSignal.timeout(30000);
+    const request = async (payload: Record<string, unknown>) =>
+      exportReply(
+        await fetchImpl(url, {
+          method: "POST",
+          redirect: "error",
+          signal,
+          headers: {
+            "content-type": "application/json",
+            "accept-encoding": "gzip",
+            "x-state-export-token": env.STATE_EXPORT_SECRET!,
+          },
+          body: JSON.stringify({ table: "subnet_snapshots", ...payload }),
+        }),
+      );
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const { revision } = revisionSchema.parse(
+          await request({ kind: "revision" }),
+        );
+        let cursor: [string, number] = [
+          alphaPriceHistoryCutoff(undefined, now),
+          -1,
+        ];
+        const rows: Record<string, unknown>[] = [];
+        for (let page = 0; page < 11; page++) {
+          const result = pageSchema.parse(
+            await request({
+              kind: "rows",
+              columns: [
+                "netuid",
+                "snapshot_date",
+                "alpha_price_tao",
+                "captured_at",
+              ],
+              cursor,
+              revision,
+            }),
+          );
+          if (result.revision !== revision) throw new SnapshotChanged();
+          let last = cursor;
+          for (const [
+            netuid,
+            snapshot_date,
+            alpha_price_tao,
+            captured_at,
+          ] of result.rows) {
+            if (
+              snapshot_date < last[0] ||
+              (snapshot_date === last[0] && netuid <= last[1])
+            )
+              throw new Error("Export keys did not advance");
+            rows.push({ netuid, snapshot_date, alpha_price_tao, captured_at });
+            last = [snapshot_date, netuid];
+          }
+          if (rows.length > MAX_ROWS)
+            throw new Error("Export row budget exceeded");
+          if (result.next_cursor === null) {
+            const end = revisionSchema.parse(
+              await request({ kind: "revision", revision }),
+            );
+            if (end.revision !== revision) throw new SnapshotChanged();
+            return indexAlphaPriceHistoryByNetuid(rows);
+          }
+          if (
+            !result.rows.length ||
+            JSON.stringify(result.next_cursor) !== JSON.stringify(last)
+          )
+            throw new Error("Export cursor does not match its page");
+          cursor = result.next_cursor;
+        }
+        throw new Error("Export page budget exceeded");
+      } catch (error) {
+        if (!(error instanceof SnapshotChanged) || attempt === 2) throw error;
+      }
+    }
+  } catch {
+    // Do not log response bodies or credential-bearing transport exceptions.
     console.warn(
-      `::warning::alpha-price history load failed (${(err as Error)?.message || err}); economics bake continues with null change fields.`,
+      "::warning::D1 alpha-price history unavailable; economics bake continues with null change fields.",
     );
-    return null;
-  } finally {
-    // Awaited, and its own failure swallowed: a publish run is a short-lived
-    // process, but leaving the socket open holds the job open behind it.
-    await client.end().catch(() => undefined);
   }
+  return null;
 }
