@@ -158,7 +158,7 @@ describe("retired lanes (#10222)", () => {
     assert.equal(isRetiredLane("probe-jobs-dlq"), false);
   });
 
-  test("a buffered lane's bare spelling is retired EXACTLY when no producer writes it", () => {
+  test("retiring the buffer preserves historical alias classification and live producer alerts", () => {
     // THE RULE THE LIST ABOVE WAS MISSING, and the reason #11268/#11269 were
     // filed three days after the fossils they name were created.
     //
@@ -187,7 +187,20 @@ describe("retired lanes (#10222)", () => {
     // affected producer happens to run at.
     const fossils: string[] = [];
     const live: string[] = [];
-    for (const lane of bufferedLanes()) {
+    assert.deepEqual(bufferedLanes(), []);
+    // Keep the measured legacy aliases covered after production stops
+    // buffering; removing a connection must not silently mute producer alerts.
+    for (const lane of [
+      "account-balances",
+      "account-identity",
+      "hotkey-alpha",
+      "neurons",
+      "nominator-positions",
+      "subnet-hyperparams",
+      "subnet-identity",
+      "tao-usd-index",
+      "validator-nominator-counts",
+    ]) {
       const hasProducer = lane.replaceAll("-", "_") in PRODUCER_CADENCE_SECS;
       (hasProducer ? live : fossils).push(lane);
       assert.equal(

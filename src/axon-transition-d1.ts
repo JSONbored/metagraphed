@@ -21,7 +21,7 @@ function classified(extraWhere: string, indexed: boolean): string {
   return `WITH readings AS MATERIALIZED(
  SELECT d.netuid,m.uid,d.day AS snapshot_date,m.hotkey,${indexed ? "m.axon_index" : "json_extract(j.value,'$.axon')"} AS axon
  FROM neuron_daily_documents d ${indexed ? "" : "CROSS JOIN json_each(d.payload) j"}
- CROSS JOIN neuron_daily_members m ON m.netuid=d.netuid AND m.snapshot_date=+d.day
+ CROSS JOIN neuron_daily_members m ${indexed ? "INDEXED BY neuron_daily_members_subnet_day_shard_idx" : ""} ON m.netuid=d.netuid AND m.snapshot_date=+d.day
  AND m.shard=d.shard ${indexed ? "" : "AND m.uid=CAST(j.key AS INTEGER)"}
  WHERE d.day>=? ${extraWhere}
  ), addresses AS MATERIALIZED(SELECT axon,${address} AS address FROM (SELECT DISTINCT axon FROM readings)),

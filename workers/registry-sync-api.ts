@@ -278,7 +278,7 @@ async function dispatchRegistrySyncRequest(
       const summary = d1
         ? await applyRegistrySyncToD1(d1, payload, registrySyncDeps)
         : await applyRegistrySyncToNeon(
-            env.HYPERDRIVE.connectionString,
+            env.HYPERDRIVE!.connectionString,
             payload,
             registrySyncDeps,
           );

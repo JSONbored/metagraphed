@@ -21,6 +21,7 @@ import {
 } from "../src/axon-announcement-watchdog.ts";
 import { toPositionalPlaceholders } from "../src/pg-sql.ts";
 import { apiEnv } from "./helpers/worker-env.ts";
+import { jsonBody } from "./row-type.ts";
 import { handleAccountAxonRemovals } from "../workers/request-handlers/entities.ts";
 import { buildAccountAxonRemovals } from "../src/account-axon-removals.ts";
 import { accountAxonRemovalRows } from "../src/axon-removals-loader.ts";
@@ -141,7 +142,7 @@ test("REST account removals use the same native state derivation as GraphQL and 
       "hk1",
       url,
     );
-    const body = await response.json();
+    const body = await jsonBody(response);
     assert.equal(response.status, 200);
     assert.deepEqual(
       body.data,
@@ -156,7 +157,7 @@ test("REST account removals use the same native state derivation as GraphQL and 
       "hk1",
       url,
     );
-    assert.equal((await unbound.json()).data.total_removals, 0);
+    assert.equal((await jsonBody(unbound)).data.total_removals, 0);
   } finally {
     clock.mockRestore();
   }
@@ -391,6 +392,17 @@ test("partial projection backfills remain on document reads, then switch with id
   );
   assert.equal(
     indexedPlan.some((row) => row.detail.includes("VIRTUAL TABLE")),
+    false,
+  );
+  assert.ok(
+    indexedPlan.some((row) =>
+      /SEARCH m .*snapshot_date=\? AND shard=\?/.test(row.detail),
+    ),
+  );
+  assert.equal(
+    indexedPlan.some(
+      (row) => row.detail === "SEARCH m USING PRIMARY KEY (netuid=?)",
+    ),
     false,
   );
 });

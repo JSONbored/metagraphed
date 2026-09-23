@@ -465,7 +465,7 @@ describe("blocks-head can never be buffered", () => {
     );
   });
 
-  test("the shipped config never names a lane the code refuses", () => {
+  test("the retired production configs cannot enable buffer lanes", () => {
     // THE DRIFT THIS CLASS OF BUG COMES BACK THROUGH. `raw-capture-state` was
     // the first lane added to the flag, as an obvious low-frequency write, and
     // nothing at the write site says its reader is one tick away. The code set
@@ -492,9 +492,10 @@ describe("blocks-head can never be buffered", () => {
         .split(",")
         .map((lane) => lane.trim())
         .filter(Boolean);
-      assert.ok(
-        declared.length > 0,
-        `${file}: premise: some lanes are buffered`,
+      assert.equal(
+        declared.length,
+        0,
+        `${file}: retired buffers must remain disabled`,
       );
       checked += 1;
       const contradictions = declared.filter((lane) =>

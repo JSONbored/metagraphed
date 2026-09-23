@@ -53,47 +53,6 @@
   "vars": {
     "D1_EXPORT_REVISIONS": "enabled",
     "D1_STATE_TABLES": "lane_health,providers,subnets,surfaces,surface_history,self_health_checks,self_health_daily",
-    // #10659: lanes whose Neon writes are deferred through the write-behind
-    // buffer and flushed every ten minutes, so the compute does fewer, larger
-    // writes and autoscaling sits nearer the 0.25 CU floor.
-    //
-    // THE SAME VALUE IN EVERY GATED CONFIG (the dual-write flag that sat beside
-    // it followed D1 out in #10051). Each Worker ignores the lanes it does
-    // not run, and
-    // tests/neon-flag-config-parity.test.ts enforces the agreement -- a per-
-    // config subset would be exactly the drift that made two Neon gates fail
-    // silently (#10152, #10164), because a flag absent from the Worker actually
-    // running the code reads as "no" rather than as a mistake.
-    //
-    // WHAT IS ABSENT IS THE POINT. `blocks-head` and `chain-detail` are the
-    // block explorer's live read path -- blocks_head for headers above the
-    // decode seam, chain_detail_* for a recent block's detail -- so deferring
-    // either would lag the explorer. NEVER_BUFFER_LANES in
-    // src/neon-write-buffer.ts makes naming them a no-op regardless; they are
-    // left out so this list reads as what it is.
-    //
-    // Every lane below is held to `2 * HOUR` by src/table-freshness-watchdog.ts,
-    // so a ten-minute flush is twelve ticks inside a bound that already exists.
-    // `raw-capture-state` was the first lane named here and is now removed:
-    // the capture lane reads that watermark back one minute later, so
-    // deferring the write made it resume from a stale value and re-capture the
-    // same range until the flush landed. NEVER_BUFFER_LANES refuses it in code
-    // as well -- this line is kept honest so the config does not advertise
-    // buffering that cannot happen.
-    "NEON_WRITE_BUFFER_LANES": "neurons,subnet-hyperparams,subnet-identity,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
-    // THE NEON FLAGS, and this Worker needs them because it now runs a gated
-    // path (#10194's self-health probe). `vars` are per-config with no
-    // inheritance, so their absence here did not read as "no opinion" -- it
-    // read as "Neon owns nothing", and every gate in this codebase SKIPS on
-    // undefined rather than throwing.
-    //
-    // The failure was silent twice over: runSelfHealthProbe found
-    // self_health_checks unowned and tried to record a `stale` lane verdict,
-    // and that write needs the same flag for lane_health, so the explanation
-    // was dropped too. No probe rows, no verdict, nothing to notice.
-    //
-    // Kept byte-identical to the other two configs and gated by
-    // tests/neon-flag-config-parity, which now compares all three.
     "POSTHOG_EXCEPTION_STORM_WINDOW_MS": "300000",
     // #9466: trace sampling at 1.0 -- every request, unsampled.
     //
@@ -140,8 +99,7 @@
     },
   },
   // Explicit ownership sends watchdog verdicts to their live D1 owner.
-  // Registry and self-health data remain on Neon until their retained copies
-  // and readers are qualified; provisioning this binding alone moves no data.
+  // Registry, probe and watchdog state share this qualified native D1 owner.
   "d1_databases": [
     {
       "binding": "D1_STATE",
@@ -150,25 +108,7 @@
       "migrations_dir": "migrations/d1",
     },
   ],
-  // QUERY CACHING IS DISABLED on this config (metagraphed-infra#493). The
-  // setting lives on the Hyperdrive RESOURCE, not on the binding -- there is no
-  // caching key in wrangler -- so this comment is the only place the effective
-  // staleness bound can be read from the repo:
-  //
-  //   caching: { disabled: true }   verified live 2026-08-15
-  //
-  // The defaults it replaces were max_age 60s + stale_while_revalidate 15s,
-  // against a poller that bulk-rewrites its tables every 15 minutes and a
-  // Hyperdrive that does not invalidate on write. Disabled wholesale because
-  // Cloudflare documents no per-query control, and the measured hit rate on
-  // cacheable reads was 9.3% -- too little to justify a second config and a
-  // per-read routing decision. Full reasoning in wrangler.jsonc.
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "8a09dc673733497f987434f59689287e",
-    },
-  ],
+  // Operational state is served and written through the explicitly owned D1 binding.
   // Per-caller abuse control for this Worker's only route (#5548) -- the
   // shared-secret check above authenticates the CALLER, not the REQUEST
   // VOLUME, so anyone holding REGISTRY_SYNC_SECRET could otherwise script
