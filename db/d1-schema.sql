@@ -74,6 +74,9 @@ CREATE INDEX idx_chain_detail_account_events_observed ON chain_detail_account_ev
 
 CREATE INDEX idx_chain_detail_blocks_hash ON chain_detail_blocks (block_hash);
 
+CREATE INDEX idx_chain_detail_blocks_hash_lower
+ ON chain_detail_blocks(lower(block_hash));
+
 CREATE INDEX idx_chain_detail_chain_events_extrinsic ON chain_detail_chain_events (block_number, extrinsic_index);
 
 CREATE INDEX idx_chain_detail_chain_events_observed ON chain_detail_chain_events (observed_at);
@@ -84,6 +87,8 @@ CREATE INDEX idx_chain_detail_extrinsics_module_observed
  ON chain_detail_extrinsics(call_module, observed_at DESC, block_number DESC, extrinsic_index DESC);
 
 CREATE INDEX idx_chain_detail_extrinsics_observed ON chain_detail_extrinsics (observed_at);
+
+CREATE INDEX idx_chain_detail_extrinsics_signer_feed ON chain_detail_extrinsics (signer, observed_at DESC, block_number DESC, extrinsic_index DESC) WHERE signer IS NOT NULL;
 
 CREATE INDEX idx_compute_declarations_observed_at ON compute_declarations (observed_at DESC);
 
@@ -174,6 +179,8 @@ CREATE INDEX idx_wps_address
   ON watch_push_subscriptions (address, created_at DESC);
 
 CREATE INDEX neuron_daily_axon_pending_idx ON neuron_daily_members(netuid,uid,snapshot_date) WHERE axon_indexed=0;
+
+CREATE INDEX neuron_daily_documents_day_idx ON neuron_daily_documents(day,netuid,shard);
 
 CREATE INDEX neuron_daily_members_coldkey_idx ON neuron_daily_members(coldkey);
 

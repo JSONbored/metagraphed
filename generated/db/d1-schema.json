@@ -193,6 +193,12 @@
   },
   {
     "type": "index",
+    "name": "idx_chain_detail_blocks_hash_lower",
+    "tbl_name": "chain_detail_blocks",
+    "sql": "CREATE INDEX idx_chain_detail_blocks_hash_lower\n ON chain_detail_blocks(lower(block_hash))"
+  },
+  {
+    "type": "index",
     "name": "idx_chain_detail_chain_events_extrinsic",
     "tbl_name": "chain_detail_chain_events",
     "sql": "CREATE INDEX idx_chain_detail_chain_events_extrinsic ON chain_detail_chain_events (block_number, extrinsic_index)"
@@ -220,6 +226,12 @@
     "name": "idx_chain_detail_extrinsics_observed",
     "tbl_name": "chain_detail_extrinsics",
     "sql": "CREATE INDEX idx_chain_detail_extrinsics_observed ON chain_detail_extrinsics (observed_at)"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_extrinsics_signer_feed",
+    "tbl_name": "chain_detail_extrinsics",
+    "sql": "CREATE INDEX idx_chain_detail_extrinsics_signer_feed ON chain_detail_extrinsics (signer, observed_at DESC, block_number DESC, extrinsic_index DESC) WHERE signer IS NOT NULL"
   },
   {
     "type": "index",
@@ -484,6 +496,12 @@
     "name": "neuron_daily_axon_pending_idx",
     "tbl_name": "neuron_daily_members",
     "sql": "CREATE INDEX neuron_daily_axon_pending_idx ON neuron_daily_members(netuid,uid,snapshot_date) WHERE axon_indexed=0"
+  },
+  {
+    "type": "index",
+    "name": "neuron_daily_documents_day_idx",
+    "tbl_name": "neuron_daily_documents",
+    "sql": "CREATE INDEX neuron_daily_documents_day_idx ON neuron_daily_documents(day,netuid,shard)"
   },
   {
     "type": "index",
