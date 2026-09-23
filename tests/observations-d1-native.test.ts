@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { beforeAll, beforeEach, afterAll, test } from "vitest";
 import { Miniflare } from "miniflare";
 import { createD1Store } from "../src/d1-store.ts";
+import { rollupUptimeD1 } from "../src/observations-d1.ts";
+import type { ProducerStatement } from "../src/producer-store.ts";
 import {
   persistProbesToNeon,
   rollupUptimeDailyToNeon,
@@ -389,4 +391,77 @@ test("rollups retain displaced aliases and use the latest subnet identity", asyn
   assert.equal(current?.status, "failed");
   assert.equal(current?.latency_samples, 0);
   assert.equal(current?.p95_latency_ms, null);
+});
+
+test("bounded day and identity materialization preserves scaled rollup rows and avoids recomputation", async () => {
+  await db
+    .prepare(
+      `INSERT INTO surface_checks(surface_id,surface_key,netuid,kind,classification,ok,latency_ms,checked_at)
+  SELECT 'alias-'||(value%120),'stable-'||(value%120),1,'http',
+  CASE WHEN CAST(value/120 AS INTEGER)%5=0 THEN 'timeout' ELSE 'ok' END,
+  CASE WHEN CAST(value/120 AS INTEGER)%5=0 THEN 0 ELSE 1 END,
+  CASE WHEN CAST(value/120 AS INTEGER)%5=0 THEN 99999 ELSE CAST(value/120 AS INTEGER) END,?+value
+  FROM json_each(?)`,
+    )
+    .bind(day.start, JSON.stringify(Array.from({ length: 12000 }, (_, i) => i)))
+    .run();
+  const statements: ProducerStatement[] = [];
+  const native = store();
+  assert.equal(
+    (
+      await rollupUptimeD1(
+        {
+          ...native,
+          transaction: async (rows) => {
+            statements.push(...rows);
+            return native.transaction(rows);
+          },
+        },
+        [day],
+        now,
+      )
+    ).ok,
+    true,
+  );
+  const query = statements[1]!;
+  const plan = (
+    await db
+      .prepare("EXPLAIN QUERY PLAN " + query.text)
+      .bind(...query.values!)
+      .all<{ detail: string }>()
+  ).results
+    .map((r) => r.detail)
+    .join("\n");
+  assert.match(plan, /MATERIALIZE windowed/);
+  assert.match(plan, /MATERIALIZE identities/);
+  const actual = (
+    await db
+      .prepare("SELECT * FROM surface_uptime_daily ORDER BY surface_id")
+      .all()
+  ).results;
+  assert.equal(actual.length, 120);
+  for (const row of actual) {
+    assert.equal(row.samples, 100);
+    assert.equal(row.ok_count, 80);
+    assert.equal(row.latency_samples, 80);
+    assert.equal(row.uptime_ratio, 0.8);
+    assert.equal(row.avg_latency_ms, 50);
+    assert.equal(row.p50_latency_ms, 49);
+    assert.equal(row.p95_latency_ms, 94);
+    assert.equal(row.p99_latency_ms, 99);
+  }
+  await native.transaction(
+    statements.map((s) => ({
+      ...s,
+      text: s.text.replaceAll(" AS MATERIALIZED(", " AS("),
+    })),
+  );
+  assert.deepEqual(
+    (
+      await db
+        .prepare("SELECT * FROM surface_uptime_daily ORDER BY surface_id")
+        .all()
+    ).results,
+    actual,
+  );
 });
