@@ -105,13 +105,16 @@ export function persistProbesD1(
   return execute(store, statements);
 }
 function ranked(): string {
-  return `WITH windowed AS(
+  // The day window is reused by identity resolution and latency ranking.
+  // Explicit materialization prevents a repeated scan/CTE plan from exceeding
+  // D1's CPU budget while preserving stable-key alias selection.
+  return `WITH windowed AS MATERIALIZED(
  SELECT surface_id,COALESCE(surface_key,surface_id) AS surface_key,netuid,ok,latency_ms,checked_at FROM surface_checks WHERE checked_at>=? AND checked_at<?
  ), latest_candidates AS(
  SELECT c.surface_key,c.netuid,COALESCE(s.surface_id,c.surface_id) AS alias,s.surface_id IS NOT NULL AS current_alias,c.checked_at,
  ROW_NUMBER() OVER(PARTITION BY c.surface_key ORDER BY c.checked_at DESC,c.surface_id DESC) AS latest_rank
  FROM windowed c LEFT JOIN surface_status s ON s.surface_key=c.surface_key
- ), identities AS(
+ ), identities AS MATERIALIZED(
  SELECT surface_key,netuid,CASE WHEN ROW_NUMBER() OVER(PARTITION BY alias ORDER BY current_alias DESC,checked_at DESC,surface_key)=1 THEN alias ELSE 'history:'||surface_key END AS surface_id
  FROM latest_candidates WHERE latest_rank=1
  ), ranked AS(
