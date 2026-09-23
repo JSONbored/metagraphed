@@ -103,6 +103,44 @@ test("all 34 archive schemas and empty exports use native D1 with logical types"
   );
 });
 
+test("lifecycle export excludes invalidated derived events without disclosing correction metadata or deleting originals", async () => {
+  const at = 1790090000000;
+  await db.batch([
+    db
+      .prepare(
+        "INSERT INTO subnet_lifecycle(id,netuid,event,observed_at) VALUES(900,1,'registered',?)",
+      )
+      .bind(at),
+    db
+      .prepare(
+        "INSERT INTO subnet_lifecycle(id,netuid,event,observed_at,_invalidated_at,_invalidation_reason) VALUES(901,1,'deregistered',?,?,?)",
+      )
+      .bind(at + 1, at + 2, "incomplete capture"),
+  ]);
+  try {
+    const schema = await get({ table: "subnet_lifecycle", kind: "schema" });
+    assert.ok(schema.columns.every((c) => !c.name.startsWith("_")));
+    const exported = await get({
+      table: "subnet_lifecycle",
+      kind: "rows",
+      columns: ["id", "event"],
+      watermark: ["id"],
+      since: [899],
+    });
+    assert.deepEqual(exported.rows, [[900, "registered"]]);
+    assert.equal(
+      await db
+        .prepare("SELECT count(*) n FROM subnet_lifecycle WHERE id>=900")
+        .first("n"),
+      2,
+    );
+  } finally {
+    await db
+      .prepare("DELETE FROM subnet_lifecycle WHERE id IN (900,901)")
+      .run();
+  }
+});
+
 test("a later storage migration cannot authorize an unapproved archive column", async () => {
   await db
     .prepare("ALTER TABLE account_balances ADD COLUMN internal_credential TEXT")

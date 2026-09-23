@@ -185,6 +185,7 @@ export async function handleD1StateExport(
       return fail(400, "invalid export watermark");
     const where: string[] = [],
       values: (string | number)[] = [];
+    if (table === "subnet_lifecycle") where.push("_invalidated_at IS NULL");
     if (input.day) {
       where.push("snapshot_date = ?");
       values.push(input.day);

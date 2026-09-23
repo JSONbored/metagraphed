@@ -18,6 +18,15 @@ import type {
   SubnetLifecycleEntry,
 } from "../schemas-src/routes/subnet-lifecycle.ts";
 import { readStore, type ReadStoreDb } from "./read-store.ts";
+import { selectedD1Store } from "./d1-store.ts";
+
+// Corrections retain the original event, timestamp and attribution. Only the
+// D1 owner has the internal invalidation columns; legacy reads stay portable.
+export function lifecycleValidityPredicate(env: unknown): string {
+  return selectedD1Store(env, ["subnet_lifecycle"])
+    ? "_invalidated_at IS NULL"
+    : "1=1";
+}
 
 /** The columns every read here selects, in one place. */
 const COLUMNS = "netuid, event, block_number, observed_at, predates_capture";
@@ -93,7 +102,7 @@ export async function loadSubnetLifecycle(
   const db = readStore(env, ["subnet_lifecycle"], injected);
   if (!db) return null;
   const results = await db.query(
-    `SELECT ${COLUMNS} FROM subnet_lifecycle WHERE netuid = ? ` +
+    `SELECT ${COLUMNS} FROM subnet_lifecycle WHERE netuid = ? AND ${lifecycleValidityPredicate(env)} ` +
       "ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
     [netuid, limit, offset],
   );
@@ -115,8 +124,9 @@ export async function loadChainSubnetLifecycle(
   const windowed =
     Number.isFinite(sinceMs as number) && (sinceMs as number) > 0;
   const results = await db.query(
-    `SELECT ${COLUMNS} FROM subnet_lifecycle ` +
-      (windowed ? "WHERE observed_at >= ? " : "") +
+    `SELECT ${COLUMNS} FROM subnet_lifecycle WHERE ` +
+      (windowed ? "observed_at >= ? AND " : "") +
+      `${lifecycleValidityPredicate(env)} ` +
       "ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
     windowed ? [sinceMs, limit, offset] : [limit, offset],
   );
