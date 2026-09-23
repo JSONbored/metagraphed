@@ -1,3 +1,4 @@
+import { loadIndexedExtrinsicFeedPage } from "./indexed-extrinsic-feeds.ts";
 // Extrinsic reads served from the lakehouse when the Postgres tier misses.
 //
 // Same posture as src/blocks-cold-tier.ts, and the same reason: with the
@@ -248,6 +249,52 @@ async function feedRows(
           safeBlockNumber(tail.block_number),
           safeBlockNumber(tail.extrinsic_index),
         ]),
+      };
+    }
+  }
+
+  if (extraWhere.length === 0) {
+    const block =
+      query.block == null ? undefined : safeBlockNumber(query.block)!;
+    const lower =
+      query.blockStart == null ? undefined : safeBlockNumber(query.blockStart)!;
+    const upper =
+      query.blockEnd == null ? undefined : safeBlockNumber(query.blockEnd)!;
+    const indexed = await loadIndexedExtrinsicFeedPage(
+      env,
+      {
+        signer: query.signer == null ? undefined : String(query.signer),
+        module: query.module == null ? undefined : String(query.module),
+        callFunction:
+          query.callFunction == null ? undefined : String(query.callFunction),
+        success: query.success == null ? undefined : (query.success as boolean),
+        blockStart:
+          block === undefined ? lower : Math.max(block, lower ?? block),
+        blockEnd: block === undefined ? upper : Math.min(block, upper ?? block),
+        observedStart:
+          query.from == null ? undefined : safeBlockNumber(query.from)!,
+        observedEnd: query.to == null ? undefined : safeBlockNumber(query.to)!,
+        cursor: decodeCursor(query.cursor, CURSOR_ARITY) as
+          [number, number, number] | null,
+      },
+      limit,
+      paged,
+      network,
+    );
+    if (indexed !== undefined) {
+      if (indexed === null) return null;
+      const tail = indexed.length === limit ? indexed.at(-1)! : null;
+      return {
+        rows: indexed,
+        limit,
+        offset,
+        nextCursor: tail
+          ? encodeCursor([
+              safeBlockNumber(tail.observed_at),
+              safeBlockNumber(tail.block_number),
+              safeBlockNumber(tail.extrinsic_index),
+            ])
+          : null,
       };
     }
   }

@@ -397,7 +397,7 @@ describe("native Python account feed tree", () => {
     const truncated = single([line()], {}, false);
     await expect(
       readAll(truncated.feed, selector, truncated.source),
-    ).rejects.toThrow("Truncated account feed record");
+    ).rejects.toThrow("Truncated history feed record");
   });
 
   it("seeks exact transfer relationships in both directions without scanning unrelated accounts", async () => {

@@ -1,0 +1,129 @@
+import { HistorySourceCeilingSchema } from "../schemas-src/artifacts/history-source-ceiling.ts";
+import type { HistoryBlockGeneration } from "../schemas-src/artifacts/history-generation.ts";
+import { ExtrinsicsRowSchema } from "../schemas-src/lakehouse.ts";
+import type { ExtrinsicsRow } from "../generated/lakehouse/types.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-sync.ts";
+import {
+  catalogRow,
+  readSelectedHistorySegments,
+} from "./indexed-history-store.ts";
+import {
+  loadHistoryBlockGeneration,
+  readHistoryPointers,
+} from "./history-generation.ts";
+import { parquetReadBudget, r2ParquetSource } from "./indexed-parquet.ts";
+import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
+import {
+  iterateExtrinsicFeed,
+  extrinsicFeedPage,
+  validateExtrinsicFeed,
+  type ExtrinsicFeedSelector,
+} from "./history-extrinsic-feed.ts";
+
+type Bucket = Pick<R2Bucket, "get">;
+
+/** Only a full, source-fenced selected generation may replace SQL, including
+ * empty results. Invalid indexes fail closed instead of starting another scan. */
+export async function loadIndexedExtrinsicFeedPage(
+  env: unknown,
+  selector: ExtrinsicFeedSelector,
+  limit: number,
+  offset = 0,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): Promise<ExtrinsicsRow[] | null | undefined> {
+  try {
+    const segments = await readSelectedHistorySegments(
+      env,
+      "extrinsics",
+      network,
+    );
+    if (!segments) return undefined;
+    const floor = network === "mainnet" ? 0 : TESTNET_RAW_CAPTURE_GENESIS_FLOOR;
+    if (segments[0].firstBlock > Math.max(floor, selector.blockStart ?? floor))
+      return undefined;
+    const bucket = (env as { METAGRAPH_ARCHIVE: Bucket }).METAGRAPH_ARCHIVE;
+    const base = `metagraph/indexed-history/v1/${network}/extrinsics`;
+    const ceilingKey = `${base}/source-ceiling.json`;
+    const before = await bucket.get(ceilingKey);
+    if (!before) return undefined;
+    if (before.size > 8192)
+      throw new Error("Extrinsic feed source ceiling exceeds budget");
+    const ceiling = HistorySourceCeilingSchema.parse(await before.json());
+    if (
+      ceiling.network !== network ||
+      ceiling.table !== "extrinsics" ||
+      !before.etag
+    )
+      throw new Error("Extrinsic feed source ceiling scope mismatch");
+    if (
+      segments.at(-1)!.lastBlock <
+      Math.min(ceiling.through, selector.blockEnd ?? ceiling.through)
+    )
+      return undefined;
+    const source = r2ParquetSource(bucket),
+      budget = parquetReadBudget(128 * 1024 * 1024, 1024);
+    const generations = new Map<string, HistoryBlockGeneration>(),
+      streams = [];
+    for (const segment of segments) {
+      const object = await bucket.get(
+        `${base}/generations/${segment.generation}/feeds/v1/manifest.json`,
+      );
+      if (!object) return undefined;
+      if (object.size > 16 * 1024)
+        throw new Error("Extrinsic feed manifest exceeds budget");
+      const feed = validateExtrinsicFeed(await object.json(), {
+        ...segment,
+        table: "extrinsics",
+      });
+      const generation = await loadHistoryBlockGeneration(
+        source,
+        segment.blockManifest,
+        segment,
+        budget,
+      );
+      if (
+        feed.rows !== generation.rows ||
+        feed.sourceSnapshot !== generation.sourceSnapshot
+      )
+        throw new Error(
+          "Extrinsic feed source census differs from its generation",
+        );
+      generations.set(segment.generation, generation);
+      streams.push(iterateExtrinsicFeed(source, feed, selector, budget));
+    }
+    const page = await extrinsicFeedPage(streams, limit, offset);
+    const output = new Map<string, ExtrinsicsRow>();
+    for (const [identity, generation] of generations) {
+      const pointers = page.filter(
+        (pointer) => pointer.generation === identity,
+      );
+      const records = await readHistoryPointers(
+        source,
+        generation,
+        generation,
+        pointers,
+        budget,
+      );
+      records.forEach((record, index) => {
+        const pointer = pointers[index],
+          row = ExtrinsicsRowSchema.required().parse(catalogRow(record));
+        for (const key of Object.keys(
+          pointer.filter,
+        ) as (keyof typeof pointer.filter)[])
+          if (row[key] !== pointer.filter[key])
+            throw new Error(
+              "Extrinsic feed pointer differs from its retained row",
+            );
+        output.set(pointer.token.slice(64), row);
+      });
+    }
+    const after = await bucket.get(ceilingKey);
+    return after !== null && after.etag === before.etag
+      ? page.map((pointer) => output.get(pointer.token.slice(64))!)
+      : undefined;
+  } catch {
+    recordIndexedHistoryFailure();
+    return null;
+  }
+}
