@@ -4,6 +4,7 @@ import { registerModuleStateReset } from "./module-state-registry.ts";
 interface ProjectionComputeContext {
   query: R2SqlReader;
   now: number;
+  callModule?: string;
 }
 
 // A native producer supplies its pinned query engine and one capture time.
@@ -30,4 +31,12 @@ export function projectionQuery(env: Env): R2SqlReader | undefined {
 
 export function projectionNow(env: Env): number {
   return contexts.get(env)?.now ?? Date.now();
+}
+
+/** Only the native producer supplies this scope; SQL string values are escaped. */
+export function projectionModulePredicate(env: Env): string {
+  const module = contexts.get(env)?.callModule;
+  return module === undefined
+    ? ""
+    : ` AND call_module = '${module.replace(/'/g, "''")}'`;
 }

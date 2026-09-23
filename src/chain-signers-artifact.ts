@@ -7,9 +7,8 @@
 // plus the separate freshness read the live tier needs (grouped rows carry
 // last_tx_block, not a network observed_at).
 //
-// The optional call_module scope is NOT precomputed (its value space is
-// unbounded), so a filtered call declines to the schema-stable empty rather
-// than serving unfiltered numbers under a filtered label.
+// Native artifacts include exact module-scoped windows and a complete module
+// census. Older global-only artifacts continue to decline scoped requests.
 
 import { z } from "zod";
 
@@ -60,7 +59,7 @@ function newestObservedIso(value: unknown): string | null {
  * The projected chain-signers leaderboard for one window/sort, or null when
  * the artifact store cannot answer FAITHFULLY (unbound, missing object,
  * unrecognized body, a window or sort the lane did not precompute, or a
- * call_module scope — which is never precomputed) so the caller keeps its
+ * missing call_module coverage) so the caller keeps its
  * schema-stable empty. Decline, never approximate.
  */
 export async function loadChainSignersFromArtifact(
@@ -74,11 +73,6 @@ export async function loadChainSignersFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainSigners> | null> {
-  // A pallet-scoped call has no precomputed answer; serving the unfiltered
-  // leaderboard under a filtered label would be a wrong answer, not a
-  // degraded one.
-  if (typeof query.callModule === "string" && query.callModule.length > 0)
-    return null;
   const sort = query.sort ?? "tx_count";
   // Only the two precomputed orders exist; an unknown sort must never be
   // answered with a DIFFERENT order's rows.
@@ -86,6 +80,7 @@ export async function loadChainSignersFromArtifact(
   const read = await readProjectionWindow(env, {
     key: CHAIN_SIGNERS_PROJECTION_KEY,
     network,
+    callModule: query.callModule,
     window: query.window,
     defaultWindow: DEFAULT_ANALYTICS_WINDOW,
     windows: ANALYTICS_WINDOW_DAYS,

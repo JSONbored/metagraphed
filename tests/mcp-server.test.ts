@@ -6241,12 +6241,8 @@ describe("MCP get_chain_fees", () => {
     assert.ok(!out.daily.some((x: Row) => x.day === "2026-07-19"));
   });
 
-  test("a call_module scope declines rather than serving the unfiltered series", async () => {
-    // WAS an assertion on the `call_module=Balances` query param the tier
-    // request carried. The lane precomputes NO pallet scope, so the reader
-    // refuses the scope before it reads the bucket -- asserted as the absence of
-    // the read, because an in-memory filter over the unfiltered series would
-    // still produce a plausible-looking card.
+  test("a call_module scope declines when the fees artifact lacks module coverage", async () => {
+    // Legacy artifacts must not lend their global totals to a module scope.
     const archive = archiveEnv({
       schema_version: 1,
       windows: {
@@ -6272,7 +6268,7 @@ describe("MCP get_chain_fees", () => {
       { env: archive as unknown as Row },
     );
     const out = res.body.result.structuredContent;
-    assert.deepEqual(archive.keys, [], "the scope must decline before reading");
+    assert.deepEqual(archive.keys, ["metagraph/projections/chain-fees.json"]);
     assert.equal(out.window, "30d", "the label is still the caller's");
     assert.equal(out.day_count, 0);
     assert.deepEqual(out.daily, []);
@@ -14578,6 +14574,37 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.calls[0].share, 0.5);
   });
 
+  test("get_chain_calls uses the certified module denominator and known-empty module coverage", async () => {
+    const groups = {
+      module: [{ call_module: "Balances", count: 3 }],
+      module_function: [
+        { call_module: "Balances", call_function: "transfer", count: 3 },
+      ],
+    };
+    const artifact = {
+      schema_version: 1,
+      windows: { "7d": { total: 80, groups } },
+      module_windows: [
+        { module: "Balances", windows: { "7d": { total: 3, groups } } },
+      ],
+      empty_module_windows: {
+        "7d": { total: 0, groups: { module: [], module_function: [] } },
+      },
+    };
+    for (const call_module of ["Balances", "UnknownModule"]) {
+      const res = await callTool(
+        "get_chain_calls",
+        { window: "7d", group_by: "module_function", call_module, limit: 3 },
+        { env: archiveEnv(artifact) as unknown as Row },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.total_extrinsics, call_module === "Balances" ? 3 : 0);
+      assert.equal(out.calls.length, call_module === "Balances" ? 1 : 0);
+      assert.equal(out.degraded, undefined);
+      if (out.calls.length) assert.equal(out.calls[0].share, 1);
+    }
+  });
+
   test("get_chain_calls rejects an over-long call_module", async () => {
     const res = await callTool(
       "get_chain_calls",
@@ -14588,20 +14615,8 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /call_module/i);
   });
 
-  test("a call_module scope never touches the unscoped projection", async () => {
-    // WAS "scopes grouped rows and totals by call_module", asserting that
-    // `call_module=SubtensorModule` reached the tier as a query param over a
-    // payload the mocked tier built from the caller's own rows.
-    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and forwards nothing, so that
-    // request was never made -- and the lane behind it precomputes NO pallet
-    // scope, which is the thing worth proving instead.
-    //
-    // The failure mode a filtered read invites is serving the unfiltered rows
-    // under a filtered label: 80 extrinsics network-wide reported as 80 in one
-    // pallet. loadChainCallsFromArtifact refuses the scope BEFORE it reads the
-    // bucket, so the assertion is that the bucket was never asked -- an
-    // in-memory filter over the projection would still produce a plausible
-    // number, and only the absence of the read rules it out.
+  test("a call_module scope declines when the calls artifact lacks module coverage", async () => {
+    // Read the envelope to establish scope coverage before selecting a cell.
     const archive = archiveEnv({
       schema_version: 1,
       windows: {
@@ -14631,7 +14646,7 @@ describe("MCP economics + metagraph data tools", () => {
       { env: archive as unknown as Row },
     );
     const out = res.body.result.structuredContent;
-    assert.deepEqual(archive.keys, [], "the scope must decline before reading");
+    assert.deepEqual(archive.keys, ["metagraph/projections/chain-calls.json"]);
     assert.equal(out.total_extrinsics, 0, "no unscoped total under a scope");
     assert.deepEqual(out.calls, []);
     assert.equal(out.degraded?.reason, "call_module_scope_not_precomputed");

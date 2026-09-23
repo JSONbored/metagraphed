@@ -82,6 +82,17 @@ export const ProjectionEnvelopeSchema = z.object({
   schema_version: z.literal(1),
   generated_at: z.string().optional(),
   windows: z.record(z.string(), z.unknown()),
+  /** Complete native module census; absent on older global-only artifacts. */
+  module_windows: z
+    .array(
+      z.object({
+        module: z.string(),
+        windows: z.record(z.string(), z.unknown()),
+      }),
+    )
+    .max(1024)
+    .optional(),
+  empty_module_windows: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**

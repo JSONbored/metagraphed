@@ -124,7 +124,7 @@ describe("loadChainFeesFromArtifact", () => {
     assert.equal(capped!.top_fee_payers.length, 100);
   });
 
-  test("a call_module scope declines — it is never precomputed", async () => {
+  test("a legacy artifact without module coverage declines a scoped request", async () => {
     const { env, gets } = bucketWith(artifact());
     assert.equal(
       await loadChainFeesFromArtifact(env, {
@@ -133,7 +133,7 @@ describe("loadChainFeesFromArtifact", () => {
       }),
       null,
     );
-    assert.equal(gets.length, 0);
+    assert.equal(gets.length, 1);
     // An empty scope is the unfiltered route shape, not a filter.
     const data = await loadChainFeesFromArtifact(env, {
       limit: 25,

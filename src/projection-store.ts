@@ -170,6 +170,8 @@ export interface ProjectionWindowRead<T> {
 }
 
 export interface ProjectionWindowQuery<T> {
+  /** Exact native module scope, selected before parsing the window cell. */
+  callModule?: string | null;
   /** Unprefixed R2 key; `projectionKey` applies the network prefix. */
   key: string;
   network: ChainNetworkId;
@@ -209,8 +211,15 @@ export async function readProjectionWindow<T>(
     ProjectionEnvelopeSchema,
   );
   if (!envelope) return null;
-  if (!Object.hasOwn(envelope.windows, label)) return null;
-  const cell = query.cell.safeParse(envelope.windows[label]);
+  let windows = envelope.windows;
+  if (typeof query.callModule === "string" && query.callModule.length > 0) {
+    if (!envelope.module_windows || !envelope.empty_module_windows) return null;
+    windows =
+      envelope.module_windows.find((entry) => entry.module === query.callModule)
+        ?.windows ?? envelope.empty_module_windows;
+  }
+  if (!Object.hasOwn(windows, label)) return null;
+  const cell = query.cell.safeParse(windows[label]);
   if (!cell.success) return null;
   return { label, cell: cell.data, generatedAt: envelope.generated_at ?? null };
 }

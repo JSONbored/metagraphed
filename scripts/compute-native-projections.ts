@@ -6,6 +6,7 @@ import {
   projectionKey,
 } from "../src/projection-lanes.ts";
 import { projectionComputeEnv } from "../src/projection-compute-context.ts";
+import { chainTable } from "../src/chain-network.ts";
 import type { ChainNetworkId } from "../src/chain-network.ts";
 import type { R2SqlReader } from "../src/r2-sql.ts";
 
@@ -22,9 +23,49 @@ export async function computeNativeProjections(
     throw new Error("Unknown projection network");
   const env = projectionComputeEnv({} as Env, { query, now });
   const artifacts: { key: string; body: Record<string, unknown> }[] = [];
+  let modules: string[] | undefined;
   for (const lane of PROJECTION_LANES) {
     const body = await lane.compute(env, network);
     if (body === null) throw new Error(`Projection declined: ${lane.name}`);
+    if (["chain-calls", "chain-fees", "chain-signers"].includes(lane.name)) {
+      if (modules === undefined) {
+        const census = await query(
+          env,
+          `SELECT DISTINCT call_module FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${now - 90 * 86_400_000} AND call_module IS NOT NULL ORDER BY call_module LIMIT 1025`,
+        );
+        if (
+          census === null ||
+          census.length > 1024 ||
+          census.some(
+            (row) =>
+              typeof row.call_module !== "string" ||
+              row.call_module.length > 1024,
+          )
+        )
+          throw new Error(
+            "Native module census is incomplete or exceeds budget",
+          );
+        modules = census.map((row) => row.call_module as string);
+      }
+      const moduleWindows: { module: string; windows: unknown }[] = [];
+      for (const callModule of modules) {
+        const scoped = await lane.compute(
+          projectionComputeEnv({} as Env, { query, now, callModule }),
+          network,
+        );
+        if (scoped === null)
+          throw new Error(`Module projection declined: ${lane.name}`);
+        moduleWindows.push({ module: callModule, windows: scoped.windows });
+      }
+      const empty = await lane.compute(
+        projectionComputeEnv({} as Env, { query: async () => [], now }),
+        network,
+      );
+      if (empty === null)
+        throw new Error(`Empty module projection declined: ${lane.name}`);
+      body.module_windows = moduleWindows;
+      body.empty_module_windows = empty.windows;
+    }
     const outputs = lane.split?.(body) ?? { [lane.artifactKey]: body };
     for (const [key, value] of Object.entries(outputs))
       artifacts.push({
