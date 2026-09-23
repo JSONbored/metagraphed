@@ -33,6 +33,11 @@ import type { z } from "zod";
 
 import { ProjectionEnvelopeSchema } from "../schemas-src/projection-artifact.ts";
 import { type ChainNetworkId, projectionKey } from "./chain-network.ts";
+import {
+  isNativeProjectionKey,
+  nativeProjectionsEnabled,
+  readNativeProjectionObject,
+} from "./native-projection-store.ts";
 
 /**
  * The narrow slice of `R2Bucket` a projection read uses.
@@ -42,7 +47,9 @@ import { type ChainNetworkId, projectionKey } from "./chain-network.ts";
  * suite having to fake an entire bucket.
  */
 export interface ArtifactObjectStore {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
+  get(
+    key: string,
+  ): Promise<{ json(): Promise<unknown>; etag?: string; size?: number } | null>;
 }
 
 /**
@@ -65,6 +72,7 @@ export interface ArtifactObjectStore {
  * turns "maybe" into "yes" rather than an assertion (#11339's spelling).
  */
 export interface ArtifactStoreEnv {
+  NATIVE_PROJECTIONS?: string;
   METAGRAPH_ARCHIVE?: Partial<ArtifactObjectStore>;
 }
 
@@ -127,6 +135,11 @@ export async function readArtifactObject<T>(
   const bucket = artifactBucket(env);
   if (!bucket) return null;
   try {
+    if (nativeProjectionsEnabled(env) && isNativeProjectionKey(key)) {
+      const body = await readNativeProjectionObject(env!, key, network);
+      const parsed = schema.safeParse(body);
+      return parsed.success ? parsed.data : null;
+    }
     const object = await bucket.get(projectionKey(key, network));
     if (!object) return null;
     const parsed = schema.safeParse(await object.json());
