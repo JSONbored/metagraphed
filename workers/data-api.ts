@@ -19,6 +19,7 @@
 // for why that matters to the forward gate.
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
+import { readNeuronDirectoryRows } from "../src/neuron-snapshot-read.ts";
 import { COMPUTE_DECLARATIONS_TABLES } from "../src/read-store-tables.ts";
 import { handleRootBasketCaptureSync } from "../src/root-basket-capture-sync.ts";
 import { handleD1StateExport } from "../src/d1-state-export.ts";
@@ -7079,21 +7080,7 @@ async function loadGlobalValidatorsFromStore(
 ) {
   const [rows, priceByNetuid, nominatorCounts, tempos, identityByColdkey] =
     await Promise.all([
-      sql<{
-        netuid: Neurons["netuid"];
-        uid: Neurons["uid"];
-        hotkey: Neurons["hotkey"];
-        coldkey: Neurons["coldkey"];
-        validator_trust: Neurons["validator_trust"];
-        emission_tao: Neurons["emission_tao"];
-        stake_tao: Neurons["stake_tao"];
-        block_number: Neurons["block_number"];
-        captured_at: Neurons["captured_at"];
-        take: Neurons["take"];
-      }>`
-      SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
-      FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
-      ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+      readNeuronDirectoryRows(sql, env, true),
       loadStoreAlphaPricesByNetuid(sql, env),
       loadNominatorCountsFromStore(sql, env),
       loadSubnetTemposFromStore(sql, env),
@@ -7186,20 +7173,7 @@ export async function refreshExplorerDirectoryMaterialization(
     }
 
     const [accountRows, priceByNetuid, globalValidators] = await Promise.all([
-      sql<{
-        netuid: Neurons["netuid"];
-        uid: Neurons["uid"];
-        hotkey: Neurons["hotkey"];
-        coldkey: Neurons["coldkey"];
-        validator_permit: Neurons["validator_permit"];
-        emission_tao: Neurons["emission_tao"];
-        stake_tao: Neurons["stake_tao"];
-        block_number: Neurons["block_number"];
-        captured_at: Neurons["captured_at"];
-      }>`
-        SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
-        FROM neurons WHERE hotkey IS NOT NULL
-        ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+      readNeuronDirectoryRows(sql, env),
       loadStoreAlphaPricesByNetuid(sql, env),
       loadGlobalValidatorsFromStore(
         sql,
@@ -8416,20 +8390,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
           ? ACCOUNTS_LIST_LIMIT_DEFAULT
           : Number(limitRaw);
       const [rows, priceByNetuid] = await Promise.all([
-        sql<{
-          netuid: Neurons["netuid"];
-          uid: Neurons["uid"];
-          hotkey: Neurons["hotkey"];
-          coldkey: Neurons["coldkey"];
-          validator_permit: Neurons["validator_permit"];
-          emission_tao: Neurons["emission_tao"];
-          stake_tao: Neurons["stake_tao"];
-          block_number: Neurons["block_number"];
-          captured_at: Neurons["captured_at"];
-        }>`
-          SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
-          FROM neurons WHERE hotkey IS NOT NULL
-          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+        readNeuronDirectoryRows(sql, env),
         loadStoreAlphaPricesByNetuid(sql, env),
       ]);
       return json(
@@ -8460,20 +8421,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         return json(materialized.accounts);
       }
       const [rows, priceByNetuid] = await Promise.all([
-        sql<{
-          netuid: Neurons["netuid"];
-          uid: Neurons["uid"];
-          hotkey: Neurons["hotkey"];
-          coldkey: Neurons["coldkey"];
-          validator_permit: Neurons["validator_permit"];
-          emission_tao: Neurons["emission_tao"];
-          stake_tao: Neurons["stake_tao"];
-          block_number: Neurons["block_number"];
-          captured_at: Neurons["captured_at"];
-        }>`
-          SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
-          FROM neurons WHERE hotkey IS NOT NULL
-          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+        readNeuronDirectoryRows(sql, env),
         loadStoreAlphaPricesByNetuid(sql, env),
       ]);
       return json(buildAccountHolderDirectory(rows, { priceByNetuid }));
