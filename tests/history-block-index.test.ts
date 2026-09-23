@@ -3,6 +3,7 @@ import { beforeAll, afterAll, test } from "vitest";
 import { Miniflare } from "miniflare";
 import {
   findHistoryBlockRuns,
+  findHistoryBlockRangeRuns,
   validateHistoryBlockIndex,
 } from "../src/history-block-index.ts";
 import { parquetReadBudget, r2ParquetSource } from "../src/indexed-parquet.ts";
@@ -266,5 +267,34 @@ test("foreign keys, invalid physical pointers and excessive results fail without
       parquetReadBudget(),
     ),
     /missing or changed/,
+  );
+});
+
+test("block windows enforce inclusive width and physical run budgets", async () => {
+  const { index, scope } = await fixture(40);
+  assert.throws(
+    () =>
+      findHistoryBlockRangeRuns(
+        r2ParquetSource(bucket),
+        index,
+        scope,
+        65536,
+        70537,
+        parquetReadBudget(),
+      ),
+    /window exceeds/,
+  );
+  const rows = await findHistoryBlockRangeRuns(
+    r2ParquetSource(bucket),
+    index,
+    scope,
+    65537,
+    65539,
+    parquetReadBudget(),
+  );
+  assert.equal(rows.length, 12);
+  assert.deepEqual(
+    [...new Set(rows.map((row) => row.block))],
+    [65537, 65538, 65539],
   );
 });

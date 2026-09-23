@@ -1,7 +1,7 @@
 import { HistorySourceCeilingSchema } from "../schemas-src/artifacts/history-source-ceiling.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
-import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-sync.ts";
+import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
 import { readSelectedHistorySegments } from "./indexed-history-store.ts";
 import { loadHistoryBlockGeneration } from "./history-generation.ts";
 import { parquetReadBudget, r2ParquetSource } from "./indexed-parquet.ts";

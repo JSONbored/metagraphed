@@ -51,6 +51,10 @@ import { CHAIN_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { ChainEventsRow } from "../generated/lakehouse/types.ts";
 import { lakehouseHeadBlock } from "./blocks-seam.ts";
 import { readSelectedHistoryBlock } from "./indexed-history-store.ts";
+import {
+  loadIndexedChainWindow,
+  loadIndexedChainWindowStats,
+} from "./indexed-chain-windows.ts";
 import { ChainEventsRowSchema } from "../schemas-src/lakehouse.ts";
 import {
   SUBNET_LEASE_CREATED_KIND,
@@ -193,7 +197,8 @@ export async function loadChainEventsColdTier(
       : safeBlockNumber(query.before);
   if (query.before != null && !cursor && before === null) return null;
 
-  let floor = 0;
+  let floor = 0,
+    ceiling = block ?? 0;
   if (block !== null) {
     // Single-block lookup: exact, no window needed.
     where.push(`block_number = ${block}`);
@@ -215,12 +220,13 @@ export async function loadChainEventsColdTier(
     // which would have anchored testnet at 0. A network whose head is not
     // knowable DECLINES: no ceiling can be justified, and guessing one scans
     // the wrong window while looking perfectly healthy.
-    const ceiling = cursor
+    const head = cursor
       ? (cursor[1] as number)
       : before !== null
         ? before - 1
         : await lakehouseHeadBlock(env, {}, network);
-    if (ceiling === null) return null;
+    if (head === null) return null;
+    ceiling = head;
     if (!Number.isFinite(ceiling) || ceiling < 0) {
       return { count: 0, next_before: null, next_cursor: null, events: [] };
     }
@@ -263,6 +269,8 @@ export async function loadChainEventsColdTier(
         : before !== null
           ? before - 1
           : null,
+      floor,
+      cursorEventIndex: cursor ? (cursor[2] as number) : null,
       pallet: typeof query.pallet === "string" ? query.pallet : null,
       method: typeof query.method === "string" ? query.method : null,
     });
@@ -292,29 +300,47 @@ export async function loadChainEventsColdTier(
       ? undefined
       : ChainEventsRowSchema.array().safeParse(selected);
   if (parsed && !parsed.success) return null;
-  const rows = parsed
-    ? parsed.data
-        .filter((row) => {
-          const index = safeBlockNumber(row.event_index);
-          return (
-            (query.pallet == null || row.pallet === query.pallet) &&
-            (query.method == null || row.method === query.method) &&
-            (extrinsic === null ||
-              safeBlockNumber(row.extrinsic_index) === extrinsic) &&
-            (!cursor || (index !== null && index < (cursor[2] as number)))
-          );
-        })
-        .sort(
-          (a, b) =>
-            (safeBlockNumber(b.event_index) ?? -1) -
-            (safeBlockNumber(a.event_index) ?? -1),
+  const indexed =
+    block === null
+      ? await loadIndexedChainWindow(
+          env,
+          {
+            first: floor,
+            last: ceiling,
+            limit,
+            pallet: typeof query.pallet === "string" ? query.pallet : undefined,
+            method: typeof query.method === "string" ? query.method : undefined,
+            cursor: cursor as number[] | undefined,
+          },
+          network,
         )
-        .slice(0, limit)
-    : await r2SqlQuery<ChainEventsRow>(
-        env,
-        `SELECT ${EVENT_COLUMNS} FROM ${chainTable("chain_events", network)} WHERE ${where.join(" AND ")}` +
-          ` ORDER BY block_number DESC, event_index DESC LIMIT ${limit}`,
-      );
+      : undefined;
+  if (indexed === null) return null;
+  const rows =
+    indexed ??
+    (parsed
+      ? parsed.data
+          .filter((row) => {
+            const index = safeBlockNumber(row.event_index);
+            return (
+              (query.pallet == null || row.pallet === query.pallet) &&
+              (query.method == null || row.method === query.method) &&
+              (extrinsic === null ||
+                safeBlockNumber(row.extrinsic_index) === extrinsic) &&
+              (!cursor || (index !== null && index < (cursor[2] as number)))
+            );
+          })
+          .sort(
+            (a, b) =>
+              (safeBlockNumber(b.event_index) ?? -1) -
+              (safeBlockNumber(a.event_index) ?? -1),
+          )
+          .slice(0, limit)
+      : await r2SqlQuery<ChainEventsRow>(
+          env,
+          `SELECT ${EVENT_COLUMNS} FROM ${chainTable("chain_events", network)} WHERE ${where.join(" AND ")}` +
+            ` ORDER BY block_number DESC, event_index DESC LIMIT ${limit}`,
+        ));
   if (rows === null) return null;
 
   const last = rows.length === limit ? rows[rows.length - 1] : null;
@@ -394,16 +420,25 @@ export async function loadChainEventsStatsColdTier(
   // history every day while still being published as recent.
   const head = await lakehouseHeadBlock(env, {}, network);
   if (head === null) return null;
-  const rows = await r2SqlQuery(
+  const indexed = await loadIndexedChainWindowStats(
     env,
-    `SELECT pallet, method, COUNT(*) AS count FROM ${chainTable("chain_events", network)} ` +
-      `WHERE block_number > ${head - window} ` +
-      // Tie-break on the GROUP BY keys: `count` alone is non-unique, so equal
-      // counts could reshuffle between requests and flip which groups survive
-      // the LIMIT at the boundary.
-      `GROUP BY pallet, method ORDER BY count DESC, pallet ASC, method ASC ` +
-      `LIMIT ${STATS_GROUP_LIMIT}`,
+    Math.max(0, head - window + 1),
+    head,
+    network,
   );
+  if (indexed === null) return null;
+  const rows =
+    indexed ??
+    (await r2SqlQuery(
+      env,
+      `SELECT pallet, method, COUNT(*) AS count FROM ${chainTable("chain_events", network)} ` +
+        `WHERE block_number > ${head - window} ` +
+        // Tie-break on the GROUP BY keys: `count` alone is non-unique, so equal
+        // counts could reshuffle between requests and flip which groups survive
+        // the LIMIT at the boundary.
+        `GROUP BY pallet, method ORDER BY count DESC, pallet ASC, method ASC ` +
+        `LIMIT ${STATS_GROUP_LIMIT}`,
+    ));
   if (rows === null) return null;
   return { window_blocks: window, groups: rows.length, activity: rows };
 }

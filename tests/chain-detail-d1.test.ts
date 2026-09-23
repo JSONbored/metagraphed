@@ -13,8 +13,10 @@ import { mirrorBlocksHeadToNeon } from "../src/capture-state-neon-write.ts";
 import {
   loadBlockExtrinsicsHotTier,
   loadBlockChainEventsHotTier,
+  loadChainEventsHeadHotTier,
   loadExtrinsicHotTier,
 } from "../src/chain-detail-hot-tier.ts";
+import { loadChainEventsColdTier } from "../src/chain-events-cold-tier.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import worker, { neonOwnsChainDetail } from "../workers/data-api.ts";
 
@@ -333,4 +335,69 @@ test("compressed queue batches acknowledge only a durable atomic block", async (
       .prepare("ALTER TABLE held_extrinsics RENAME TO chain_detail_extrinsics")
       .run();
   }
+});
+
+test("native D1 chain-event cursors cross blocks without repeating the cursor block", async () => {
+  for (let block = 100; block <= 102; block++)
+    for (let index = 0; index < 4; index++)
+      await db
+        .prepare(
+          "INSERT INTO chain_detail_chain_events(block_number,event_index,pallet,method,args,observed_at,phase) VALUES(?,?,?,?,?,?,?)",
+        )
+        .bind(
+          block,
+          index,
+          "Balances",
+          "Transfer",
+          null,
+          stamp,
+          "ApplyExtrinsic",
+        )
+        .run();
+  const page = await loadChainEventsHeadHotTier(env(), {
+    limit: 3,
+    ceiling: 102,
+    floor: 101,
+    cursorEventIndex: 2,
+    pallet: "Balances",
+    method: "Transfer",
+  });
+  assert.deepEqual(
+    page?.map((row) => [row.block_number, row.event_index]),
+    [
+      [102, 1],
+      [102, 0],
+      [101, 3],
+    ],
+  );
+  assert.deepEqual(
+    await loadChainEventsHeadHotTier(env(), {
+      limit: 3,
+      ceiling: 102,
+      floor: 102,
+      cursorEventIndex: 0,
+    }),
+    [],
+  );
+  const first = await loadChainEventsColdTier(env(), { limit: 3, before: 103 });
+  const second = await loadChainEventsColdTier(env(), {
+    limit: 3,
+    cursor: first?.next_cursor,
+  });
+  assert.deepEqual(
+    first?.events.map((row) => [row.block_number, row.event_index]),
+    [
+      [102, 3],
+      [102, 2],
+      [102, 1],
+    ],
+  );
+  assert.deepEqual(
+    second?.events.map((row) => [row.block_number, row.event_index]),
+    [
+      [102, 0],
+      [101, 3],
+      [101, 2],
+    ],
+  );
 });

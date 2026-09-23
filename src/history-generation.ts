@@ -9,7 +9,10 @@ import {
 } from "../schemas-src/artifacts/history-generation.ts";
 import { ParquetPageIndexSchema } from "../schemas-src/artifacts/parquet-page-index.ts";
 import { findHistoryHash } from "./history-hash-index.ts";
-import { findHistoryBlockRuns } from "./history-block-index.ts";
+import {
+  findHistoryBlockRuns,
+  findHistoryBlockRangeRuns,
+} from "./history-block-index.ts";
 import {
   boundedParquetBuffer,
   readIndexedParquet,
@@ -224,6 +227,14 @@ async function readFileRanges(
   ranges: { start: number; end: number }[],
   budget: ParquetReadBudget,
   sourceIdentity?: string,
+  projection?: {
+    columns: string[];
+    consume(
+      rows: Record<string, unknown>[],
+      start: number,
+      identity: string,
+    ): void;
+  },
 ): Promise<Record<string, unknown>[]> {
   if (
     !Number.isSafeInteger(fileId) ||
@@ -294,16 +305,28 @@ async function readFileRanges(
           );
         indexes.set(part.key, index);
       }
-      rows.push(
-        ...(await readIndexedParquet(
+      // A streaming projection releases each bounded part before reading the
+      // next. Keep the operation's cumulative I/O quota, but bound decoded
+      // memory per live batch instead of treating released rows as resident.
+      const partBudget = projection
+        ? { ...budget, decodedBytes: 0, values: 0 }
+        : budget;
+      let batch: Record<string, unknown>[];
+      try {
+        batch = await readIndexedParquet(
           source,
           index,
           start - part.rowStart,
           end - part.rowStart,
-          Object.keys(index.groups[0].columns),
-          budget,
-        )),
-      );
+          projection?.columns ?? Object.keys(index.groups[0].columns),
+          partBudget,
+        );
+      } finally {
+        budget.bytes = partBudget.bytes;
+        budget.requests = partBudget.requests;
+      }
+      if (projection) projection.consume(batch, start, file.sourceIdentity);
+      else rows.push(...batch);
     }
   return rows;
 }
@@ -365,6 +388,85 @@ export async function readHistoryBlock(
       }
   }
   return result;
+}
+
+/** Project bounded block windows without retaining complete payloads or rows.
+ * Each decoded row is checked against its physical run before it is consumed. */
+export async function scanHistoryBlockRange(
+  source: ParquetRangeSource,
+  input: unknown,
+  scope: Scope,
+  first: number,
+  last: number,
+  columns: string[],
+  budget: ParquetReadBudget,
+  consume: (
+    row: Record<string, unknown>,
+    pointer: HistoryPhysicalPointer,
+  ) => void,
+): Promise<void> {
+  const generation = validateHistoryBlockGeneration(input, scope);
+  const index = await readJson(
+    source,
+    generation.blockIndex,
+    budget,
+    8 * 1024 * 1024,
+  );
+  const runs = await findHistoryBlockRangeRuns(
+    source,
+    index,
+    { ...scope, fileRows: generation.files.map((file) => file.rows) },
+    first,
+    last,
+    budget,
+  );
+  const files = new Map<number, typeof runs>();
+  for (const run of runs) {
+    const group = files.get(run.fileId) ?? [];
+    group.push(run);
+    files.set(run.fileId, group);
+  }
+  const projection = [...new Set(["block_number", "observed_at", ...columns])];
+  for (const [fileId, group] of files) {
+    group.sort((a, b) => a.rowStart - b.rowStart);
+    const ranges: { start: number; end: number }[] = [];
+    for (const run of group) {
+      const previous = ranges.at(-1);
+      if (previous && run.rowStart < previous.end)
+        throw new Error("History block range repeats a physical row");
+      if (previous && run.rowStart === previous.end) previous.end += run.rows;
+      else ranges.push({ start: run.rowStart, end: run.rowStart + run.rows });
+    }
+    let cursor = 0;
+    await readFileRanges(
+      source,
+      generation,
+      scope,
+      fileId,
+      ranges,
+      budget,
+      undefined,
+      {
+        columns: projection,
+        consume(rows, start, sourceIdentity) {
+          rows.forEach((row, offset) => {
+            const ordinal = start + offset;
+            while (group[cursor].rowStart + group[cursor].rows <= ordinal)
+              cursor++;
+            const expected = group[cursor];
+            if (
+              String(row.block_number) !== String(expected.block) ||
+              String(row.observed_at) !== String(expected.observedAt)
+            )
+              throw new Error(
+                "History block pointer identifies a different logical record",
+              );
+            consume(row, { fileId, sourceIdentity, row: ordinal });
+          });
+        },
+      },
+    );
+  }
 }
 
 /** A valid physical pointer is insufficient: verify the decoded logical key. */

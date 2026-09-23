@@ -49,12 +49,14 @@ const metafile = path.join(workdir, "meta.json");
 afterAll(() => rmSync(workdir, { recursive: true, force: true }));
 
 /** data-api's real module graph, from esbuild rather than from a grep. */
-function inputs(): Record<string, { bytes: number }> {
+function inputs(
+  entry = "workers/data-api.ts",
+): Record<string, { bytes: number }> {
   execFileSync(
     "npx",
     [
       "esbuild",
-      "workers/data-api.ts",
+      entry,
       "--bundle",
       "--format=esm",
       "--platform=node",
@@ -114,18 +116,29 @@ describe("data-api's bundle boundary", () => {
     //   after            3280 KiB
     //
     // The graph measured 4,496 KiB in 2026-08 after ordinary feature growth;
-    // Native D1 capture export (#12191) adds a 6,204-byte leaf module;
-    // the measured graph is now 4,731,030 bytes, with no forbidden edges.
-    // 4,740,000 bytes leaves a narrow backstop for another large edge while
-    // the named checks above continue to reject every module from the original
-    // regression directly.
+    // Indexed chain windows (#12281) add 16,140 source bytes: the graph is
+    // 4,755,632 bytes. Extracting capture-floor constants also removes an
+    // eager ingestion dependency, so the compiled bundle grows only 300 bytes
+    // (101 gzip bytes) from main. Keep a narrow source-growth backstop; the
+    // named checks still reject every module from the original regression.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_740_000,
+      firstParty < 4_770_000,
       `first-party source in data-api's bundle is ${(firstParty / 1024).toFixed(0)} KiB; ` +
         `something large was re-imported. See the named checks above.`,
     );
   });
+});
+
+test("indexed chain windows do not import capture cron wiring or route contracts", () => {
+  const graph = inputs("src/indexed-chain-windows.ts");
+  assert.ok(graph["src/raw-capture-floors.ts"]);
+  for (const forbidden of [
+    "src/raw-capture-sync.ts",
+    "src/contracts.ts",
+    "workers/config.ts",
+  ])
+    assert.ok(!graph[forbidden], `history reader imports ${forbidden}`);
 });

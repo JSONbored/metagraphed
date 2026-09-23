@@ -194,20 +194,29 @@ export async function readIndexedParquet(
     const chunks = group.columns.filter((c) =>
       columns.includes(c.meta_data!.path_in_schema[0]),
     );
-    const starts = chunks.map((c) =>
-      Number(
-        c.meta_data!.dictionary_page_offset ?? c.meta_data!.data_page_offset,
-      ),
-    );
-    const start = Math.min(...starts);
-    const end = Math.max(
-      ...chunks.map(
-        (c, i) => starts[i] + Number(c.meta_data!.total_compressed_size),
-      ),
-    );
-    return end - start <= 1024 * 1024
-      ? [{ start, end, bytes: undefined as Promise<ArrayBuffer> | undefined }]
-      : [];
+    if (
+      chunks.some(
+        (chunk) => Number(chunk.meta_data!.total_compressed_size) > 1024 * 1024,
+      )
+    )
+      return [];
+    const ranges: {
+      start: number;
+      end: number;
+      bytes: Promise<ArrayBuffer> | undefined;
+    }[] = [];
+    for (const chunk of chunks) {
+      const start = Number(
+        chunk.meta_data!.dictionary_page_offset ??
+          chunk.meta_data!.data_page_offset,
+      );
+      const end = start + Number(chunk.meta_data!.total_compressed_size);
+      const prior = ranges.at(-1);
+      if (prior && start === prior.end && end - prior.start <= 1024 * 1024)
+        prior.end = end;
+      else ranges.push({ start, end, bytes: undefined });
+    }
+    return ranges;
   });
   const file: AsyncBuffer = {
     byteLength: bounded.byteLength,

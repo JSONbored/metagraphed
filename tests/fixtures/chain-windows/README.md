@@ -1,0 +1,5 @@
+Synthetic native Parquet history for bounded chain-window qualification. No production records or credentials.
+
+`native.json.gz` contains ordinary R2 object bytes and immutable descriptors for mainnet and testnet. Each network has two contiguous generations, each with two source files of 180 rows and two 90-row retained parts per source. Mainnet crosses the 65,536-block shard boundary. PyArrow 25.0.1 wrote ZSTD data-page V2 with 16-row groups; the native publication qualifier generated the page indexes. The production Python block-index producer generated the binary indexes.
+
+Rows deliberately interleave block order, retain repeated logical event keys with different physical ordinals, and include nullable event indexes, pallets and methods. Event payloads carry Unicode, a wide-integer string and a repeated value. The expected-row section omits only that repeated value to keep the fixture small; the test restores it before comparing every selected column and the full payload. The gzip wrapper has a fixed zero timestamp.
