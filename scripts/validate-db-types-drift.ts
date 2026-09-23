@@ -7,8 +7,8 @@
 // the same reason it exists.
 //
 // It CANNOT catch production having moved. Nothing readable from a pull request
-// can. `scripts/snapshot-neon-schema.ts` is that check, and it runs out of band
-// against a real branch.
+// can. `scripts/snapshot-d1-schema.ts` checks physical D1 drift separately
+// against the production D1 database.
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";

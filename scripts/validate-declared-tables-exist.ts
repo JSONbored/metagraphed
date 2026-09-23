@@ -116,7 +116,7 @@ function main(): void {
         missing
           .map((m) => `  - ${m.table} (declared by ${m.declaredBy})`)
           .join("\n") +
-        "\n\nEither the migration never applied -- check the neon-migrate " +
+        "\n\nEither the migration never applied -- check the d1-maintenance " +
         "workflow, and see #9867 for how a file can be recorded as applied " +
         "while its DDL failed -- or the table was renamed without its " +
         "declarations following.",

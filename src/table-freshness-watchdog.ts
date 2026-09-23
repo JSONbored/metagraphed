@@ -776,7 +776,7 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     reason: "capture pointer has no timestamp; no scheduled producer (#12019)",
   },
 
-  // Written by scripts/neon-migrate.ts, once per migration. The same "only
+  // Retained legacy Neon migration history, once per migration. The same "only
   // when a human acts" class as api_keys above.
   schema_migrations: {
     column: "applied_at",

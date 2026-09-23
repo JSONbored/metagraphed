@@ -1,0 +1,1328 @@
+[
+  {
+    "type": "index",
+    "name": "_audit_neuron_coldkey_20260922",
+    "tbl_name": "_audit_neuron_members_20260922",
+    "sql": "CREATE INDEX _audit_neuron_coldkey_20260922 ON _audit_neuron_members_20260922(coldkey)"
+  },
+  {
+    "type": "index",
+    "name": "_audit_neuron_hotkey_20260922",
+    "tbl_name": "_audit_neuron_members_20260922",
+    "sql": "CREATE INDEX _audit_neuron_hotkey_20260922 ON _audit_neuron_members_20260922(hotkey)"
+  },
+  {
+    "type": "index",
+    "name": "account_position_daily_members_account_snapshot_date_idx",
+    "tbl_name": "account_position_daily_members",
+    "sql": "CREATE INDEX account_position_daily_members_account_snapshot_date_idx ON account_position_daily_members(account,snapshot_date)"
+  },
+  {
+    "type": "index",
+    "name": "account_position_daily_members_snapshot_date_netuid_idx",
+    "tbl_name": "account_position_daily_members",
+    "sql": "CREATE INDEX account_position_daily_members_snapshot_date_netuid_idx ON account_position_daily_members(snapshot_date,netuid)"
+  },
+  {
+    "type": "index",
+    "name": "emission_flow_watch_item_observed_idx",
+    "tbl_name": "emission_flow_watch",
+    "sql": "CREATE INDEX emission_flow_watch_item_observed_idx\n  ON emission_flow_watch (item, observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "emission_flow_watch_observed_idx",
+    "tbl_name": "emission_flow_watch",
+    "sql": "CREATE INDEX emission_flow_watch_observed_idx ON emission_flow_watch(observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "emission_gate_param_history_observed_idx",
+    "tbl_name": "emission_gate_param_history",
+    "sql": "CREATE INDEX emission_gate_param_history_observed_idx ON emission_gate_param_history(observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "emission_gate_param_history_param_observed_at_key",
+    "tbl_name": "emission_gate_param_history",
+    "sql": "CREATE UNIQUE INDEX emission_gate_param_history_param_observed_at_key ON emission_gate_param_history(param, observed_at)"
+  },
+  {
+    "type": "index",
+    "name": "emission_gate_param_history_param_observed_idx",
+    "tbl_name": "emission_gate_param_history",
+    "sql": "CREATE INDEX emission_gate_param_history_param_observed_idx\n  ON emission_gate_param_history (param, observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_account_balances_passes_completed",
+    "tbl_name": "account_balances_passes",
+    "sql": "CREATE INDEX idx_account_balances_passes_completed ON account_balances_passes (completed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_account_identity_history_account_observed",
+    "tbl_name": "account_identity_history",
+    "sql": "CREATE INDEX idx_account_identity_history_account_observed ON account_identity_history (account, observed_at DESC, id DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_api_key_blocks_one_active_per_account",
+    "tbl_name": "api_key_blocks",
+    "sql": "CREATE UNIQUE INDEX idx_api_key_blocks_one_active_per_account\n  ON api_key_blocks (account_kind, account_id) WHERE unblocked_at IS NULL"
+  },
+  {
+    "type": "index",
+    "name": "idx_api_key_usage_daily_account_day",
+    "tbl_name": "api_key_usage_daily",
+    "sql": "CREATE INDEX idx_api_key_usage_daily_account_day\n  ON api_key_usage_daily (account_kind, account_id, day DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_api_keys_account_id",
+    "tbl_name": "api_keys",
+    "sql": "CREATE INDEX idx_api_keys_account_id\n  ON api_keys (account_id) WHERE account_id IS NOT NULL"
+  },
+  {
+    "type": "index",
+    "name": "idx_api_keys_prefix",
+    "tbl_name": "api_keys",
+    "sql": "CREATE INDEX idx_api_keys_prefix ON api_keys (prefix)"
+  },
+  {
+    "type": "index",
+    "name": "idx_api_keys_unkey_key_id",
+    "tbl_name": "api_keys",
+    "sql": "CREATE UNIQUE INDEX idx_api_keys_unkey_key_id\n  ON api_keys (unkey_key_id) WHERE unkey_key_id IS NOT NULL"
+  },
+  {
+    "type": "index",
+    "name": "idx_api_usage_rollup_day",
+    "tbl_name": "api_usage_rollup",
+    "sql": "CREATE INDEX idx_api_usage_rollup_day\n  ON api_usage_rollup (day DESC, request_count DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_api_usage_rollup_shape",
+    "tbl_name": "api_usage_rollup",
+    "sql": "CREATE INDEX idx_api_usage_rollup_shape\n  ON api_usage_rollup (cost_shape, day DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_attribution_candidates_last_seen",
+    "tbl_name": "attribution_candidates",
+    "sql": "CREATE INDEX idx_attribution_candidates_last_seen ON attribution_candidates (last_seen DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_attribution_candidates_netuid_last",
+    "tbl_name": "attribution_candidates",
+    "sql": "CREATE INDEX idx_attribution_candidates_netuid_last ON attribution_candidates (netuid, last_seen DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_attribution_sweeps_swept_at",
+    "tbl_name": "attribution_sweeps",
+    "sql": "CREATE INDEX idx_attribution_sweeps_swept_at ON attribution_sweeps (swept_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_blocks_head_hash_lower",
+    "tbl_name": "blocks_head",
+    "sql": "CREATE INDEX idx_blocks_head_hash_lower ON blocks_head (lower(block_hash))"
+  },
+  {
+    "type": "index",
+    "name": "idx_blocks_head_observed",
+    "tbl_name": "blocks_head",
+    "sql": "CREATE INDEX idx_blocks_head_observed ON blocks_head (observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_cad_trigger_delivered_at",
+    "tbl_name": "chain_alert_deliveries",
+    "sql": "CREATE INDEX idx_cad_trigger_delivered_at\n  ON chain_alert_deliveries (trigger_id, delivered_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_cat_active",
+    "tbl_name": "chain_alert_triggers",
+    "sql": "CREATE INDEX idx_cat_active\n  ON chain_alert_triggers (active) WHERE active"
+  },
+  {
+    "type": "index",
+    "name": "idx_cat_owner_ss58_active",
+    "tbl_name": "chain_alert_triggers",
+    "sql": "CREATE INDEX idx_cat_owner_ss58_active\n  ON chain_alert_triggers (owner_ss58)\n  WHERE owner_ss58 IS NOT NULL AND active"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_concentration_daily_day",
+    "tbl_name": "chain_concentration_daily",
+    "sql": "CREATE INDEX idx_chain_concentration_daily_day ON chain_concentration_daily (day DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_account_events_coldkey_observed",
+    "tbl_name": "chain_detail_account_events",
+    "sql": "CREATE INDEX idx_chain_detail_account_events_coldkey_observed ON chain_detail_account_events (coldkey, observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_account_events_extrinsic",
+    "tbl_name": "chain_detail_account_events",
+    "sql": "CREATE INDEX idx_chain_detail_account_events_extrinsic ON chain_detail_account_events (block_number, extrinsic_index)"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_account_events_hotkey_observed",
+    "tbl_name": "chain_detail_account_events",
+    "sql": "CREATE INDEX idx_chain_detail_account_events_hotkey_observed ON chain_detail_account_events (hotkey, observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_account_events_observed",
+    "tbl_name": "chain_detail_account_events",
+    "sql": "CREATE INDEX idx_chain_detail_account_events_observed ON chain_detail_account_events (observed_at)"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_blocks_hash",
+    "tbl_name": "chain_detail_blocks",
+    "sql": "CREATE INDEX idx_chain_detail_blocks_hash ON chain_detail_blocks (block_hash)"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_chain_events_extrinsic",
+    "tbl_name": "chain_detail_chain_events",
+    "sql": "CREATE INDEX idx_chain_detail_chain_events_extrinsic ON chain_detail_chain_events (block_number, extrinsic_index)"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_chain_events_observed",
+    "tbl_name": "chain_detail_chain_events",
+    "sql": "CREATE INDEX idx_chain_detail_chain_events_observed ON chain_detail_chain_events (observed_at)"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_extrinsics_hash_lower",
+    "tbl_name": "chain_detail_extrinsics",
+    "sql": "CREATE INDEX idx_chain_detail_extrinsics_hash_lower ON chain_detail_extrinsics (lower(extrinsic_hash))"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_extrinsics_module_observed",
+    "tbl_name": "chain_detail_extrinsics",
+    "sql": "CREATE INDEX idx_chain_detail_extrinsics_module_observed\n ON chain_detail_extrinsics(call_module, observed_at DESC, block_number DESC, extrinsic_index DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_chain_detail_extrinsics_observed",
+    "tbl_name": "chain_detail_extrinsics",
+    "sql": "CREATE INDEX idx_chain_detail_extrinsics_observed ON chain_detail_extrinsics (observed_at)"
+  },
+  {
+    "type": "index",
+    "name": "idx_compute_declarations_observed_at",
+    "tbl_name": "compute_declarations",
+    "sql": "CREATE INDEX idx_compute_declarations_observed_at ON compute_declarations (observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_github_accounts_github_user_id",
+    "tbl_name": "github_accounts",
+    "sql": "CREATE INDEX idx_github_accounts_github_user_id\n  ON github_accounts (github_user_id)"
+  },
+  {
+    "type": "index",
+    "name": "idx_hotkey_alpha_captured",
+    "tbl_name": "hotkey_alpha",
+    "sql": "CREATE INDEX idx_hotkey_alpha_captured ON hotkey_alpha (captured_at)"
+  },
+  {
+    "type": "index",
+    "name": "idx_hotkey_alpha_netuid",
+    "tbl_name": "hotkey_alpha",
+    "sql": "CREATE INDEX idx_hotkey_alpha_netuid ON hotkey_alpha (netuid, total_alpha DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_hotkey_alpha_passes_completed",
+    "tbl_name": "hotkey_alpha_passes",
+    "sql": "CREATE INDEX idx_hotkey_alpha_passes_completed ON hotkey_alpha_passes (completed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_lane_health_gaps",
+    "tbl_name": "lane_health_clocks",
+    "sql": "CREATE INDEX idx_lane_health_gaps ON lane_health_clocks (lane, gap DESC, checked_at DESC, previous_at)"
+  },
+  {
+    "type": "index",
+    "name": "idx_lane_health_lane_checked",
+    "tbl_name": "lane_health",
+    "sql": "CREATE INDEX idx_lane_health_lane_checked ON lane_health (lane, checked_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_lane_health_stale",
+    "tbl_name": "lane_health",
+    "sql": "CREATE INDEX idx_lane_health_stale ON lane_health (checked_at DESC) WHERE verdict = 'stale'"
+  },
+  {
+    "type": "index",
+    "name": "idx_lane_health_time",
+    "tbl_name": "lane_health",
+    "sql": "CREATE INDEX idx_lane_health_time ON lane_health (checked_at, lane, verdict)"
+  },
+  {
+    "type": "index",
+    "name": "idx_lane_health_verdict",
+    "tbl_name": "lane_health",
+    "sql": "CREATE INDEX idx_lane_health_verdict ON lane_health (lane, verdict, checked_at)"
+  },
+  {
+    "type": "index",
+    "name": "idx_nominator_positions_capture_pool",
+    "tbl_name": "nominator_positions",
+    "sql": "CREATE INDEX idx_nominator_positions_capture_pool ON nominator_positions(captured_at, hotkey, netuid)"
+  },
+  {
+    "type": "index",
+    "name": "idx_nominator_positions_hotkey",
+    "tbl_name": "nominator_positions",
+    "sql": "CREATE INDEX idx_nominator_positions_hotkey ON nominator_positions (hotkey, netuid)"
+  },
+  {
+    "type": "index",
+    "name": "idx_nominator_positions_passes_completed",
+    "tbl_name": "nominator_positions_passes",
+    "sql": "CREATE INDEX idx_nominator_positions_passes_completed ON nominator_positions_passes (completed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_origin_reachability_checked_at",
+    "tbl_name": "origin_reachability",
+    "sql": "CREATE INDEX idx_origin_reachability_checked_at ON origin_reachability (checked_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_origin_reachability_verdict",
+    "tbl_name": "origin_reachability",
+    "sql": "CREATE INDEX idx_origin_reachability_verdict ON origin_reachability (verdict, checked_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_revenue_failures_netuid",
+    "tbl_name": "revenue_probe_failures",
+    "sql": "CREATE INDEX idx_revenue_failures_netuid ON revenue_probe_failures (netuid, observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_revenue_obs_netuid_period",
+    "tbl_name": "revenue_observations",
+    "sql": "CREATE INDEX idx_revenue_obs_netuid_period ON revenue_observations (netuid, period DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_revenue_obs_period",
+    "tbl_name": "revenue_observations",
+    "sql": "CREATE INDEX idx_revenue_obs_period ON revenue_observations (period DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_rpc_accounts_ss58",
+    "tbl_name": "rpc_accounts",
+    "sql": "CREATE INDEX idx_rpc_accounts_ss58 ON rpc_accounts (ss58)"
+  },
+  {
+    "type": "index",
+    "name": "idx_subnet_burn_history_observed",
+    "tbl_name": "subnet_burn_history",
+    "sql": "CREATE INDEX idx_subnet_burn_history_observed ON subnet_burn_history (observed_at)"
+  },
+  {
+    "type": "index",
+    "name": "idx_subnet_dereg_daily_date",
+    "tbl_name": "subnet_deregistration_daily",
+    "sql": "CREATE INDEX idx_subnet_dereg_daily_date ON subnet_deregistration_daily(snapshot_date DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_subnet_dereg_daily_netuid_date",
+    "tbl_name": "subnet_deregistration_daily",
+    "sql": "CREATE INDEX idx_subnet_dereg_daily_netuid_date ON subnet_deregistration_daily(netuid,snapshot_date DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_subnet_hyperparams_history_netuid_observed",
+    "tbl_name": "subnet_hyperparams_history",
+    "sql": "CREATE INDEX idx_subnet_hyperparams_history_netuid_observed ON subnet_hyperparams_history (netuid, observed_at DESC, id DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_subnet_lifecycle_netuid_time",
+    "tbl_name": "subnet_lifecycle",
+    "sql": "CREATE INDEX idx_subnet_lifecycle_netuid_time ON subnet_lifecycle (netuid, observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_subnet_lifecycle_time",
+    "tbl_name": "subnet_lifecycle",
+    "sql": "CREATE INDEX idx_subnet_lifecycle_time ON subnet_lifecycle (observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_subnet_snapshots_date_netuid",
+    "tbl_name": "subnet_snapshots",
+    "sql": "CREATE INDEX idx_subnet_snapshots_date_netuid ON subnet_snapshots(snapshot_date,netuid)"
+  },
+  {
+    "type": "index",
+    "name": "idx_subnets_source",
+    "tbl_name": "subnets",
+    "sql": "CREATE INDEX idx_subnets_source ON subnets (source)"
+  },
+  {
+    "type": "index",
+    "name": "idx_surface_checks_netuid_time",
+    "tbl_name": "surface_checks",
+    "sql": "CREATE INDEX idx_surface_checks_netuid_time ON surface_checks(netuid,checked_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_surface_checks_time",
+    "tbl_name": "surface_checks",
+    "sql": "CREATE INDEX idx_surface_checks_time ON surface_checks(checked_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_surface_failure_day",
+    "tbl_name": "surface_failure_daily",
+    "sql": "CREATE INDEX idx_surface_failure_day ON surface_failure_daily(day DESC,netuid)"
+  },
+  {
+    "type": "index",
+    "name": "idx_surface_failure_key",
+    "tbl_name": "surface_failure_daily",
+    "sql": "CREATE UNIQUE INDEX idx_surface_failure_key ON surface_failure_daily(day,COALESCE(netuid,-1),kind,classification)"
+  },
+  {
+    "type": "index",
+    "name": "idx_surface_history_subnet",
+    "tbl_name": "surface_history",
+    "sql": "CREATE INDEX idx_surface_history_subnet ON surface_history (subnet_netuid, recorded_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_surface_history_surface",
+    "tbl_name": "surface_history",
+    "sql": "CREATE INDEX idx_surface_history_surface ON surface_history (surface_id, recorded_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_surface_status_key",
+    "tbl_name": "surface_status",
+    "sql": "CREATE UNIQUE INDEX idx_surface_status_key ON surface_status(surface_key) WHERE surface_key IS NOT NULL"
+  },
+  {
+    "type": "index",
+    "name": "idx_surface_status_netuid",
+    "tbl_name": "surface_status",
+    "sql": "CREATE INDEX idx_surface_status_netuid ON surface_status(netuid)"
+  },
+  {
+    "type": "index",
+    "name": "idx_surface_uptime_key_day",
+    "tbl_name": "surface_uptime_daily",
+    "sql": "CREATE UNIQUE INDEX idx_surface_uptime_key_day ON surface_uptime_daily(surface_key,day) WHERE surface_key IS NOT NULL"
+  },
+  {
+    "type": "index",
+    "name": "idx_surface_uptime_netuid_day",
+    "tbl_name": "surface_uptime_daily",
+    "sql": "CREATE INDEX idx_surface_uptime_netuid_day ON surface_uptime_daily(netuid,day DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_surfaces_probe",
+    "tbl_name": "surfaces",
+    "sql": "CREATE INDEX idx_surfaces_probe ON surfaces (probe_eligible, review_state) WHERE probe_eligible"
+  },
+  {
+    "type": "index",
+    "name": "idx_surfaces_provider",
+    "tbl_name": "surfaces",
+    "sql": "CREATE INDEX idx_surfaces_provider ON surfaces (provider_id)"
+  },
+  {
+    "type": "index",
+    "name": "idx_tao_usd_index_observed",
+    "tbl_name": "tao_usd_index",
+    "sql": "CREATE INDEX idx_tao_usd_index_observed ON tao_usd_index (observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_treasury_readings_netuid_state",
+    "tbl_name": "treasury_readings",
+    "sql": "CREATE INDEX idx_treasury_readings_netuid_state ON treasury_readings (netuid, review_state)"
+  },
+  {
+    "type": "index",
+    "name": "idx_validator_nominator_counts_passes_completed",
+    "tbl_name": "validator_nominator_counts_passes",
+    "sql": "CREATE INDEX idx_validator_nominator_counts_passes_completed ON validator_nominator_counts_passes (completed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "idx_wps_address",
+    "tbl_name": "watch_push_subscriptions",
+    "sql": "CREATE INDEX idx_wps_address\n  ON watch_push_subscriptions (address, created_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "neuron_daily_members_coldkey_idx",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE INDEX neuron_daily_members_coldkey_idx ON neuron_daily_members(coldkey)"
+  },
+  {
+    "type": "index",
+    "name": "neuron_daily_members_hotkey_idx",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE INDEX neuron_daily_members_hotkey_idx ON neuron_daily_members(hotkey)"
+  },
+  {
+    "type": "index",
+    "name": "neuron_daily_members_snapshot_date_netuid_idx",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE INDEX neuron_daily_members_snapshot_date_netuid_idx ON neuron_daily_members(snapshot_date,netuid)"
+  },
+  {
+    "type": "index",
+    "name": "neuron_daily_members_subnet_day_shard_idx",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE INDEX neuron_daily_members_subnet_day_shard_idx ON neuron_daily_members(netuid,snapshot_date DESC,shard,uid,hotkey,coldkey)"
+  },
+  {
+    "type": "index",
+    "name": "neurons_members_coldkey_idx",
+    "tbl_name": "neurons_members",
+    "sql": "CREATE INDEX neurons_members_coldkey_idx ON neurons_members(coldkey)"
+  },
+  {
+    "type": "index",
+    "name": "neurons_members_hotkey_idx",
+    "tbl_name": "neurons_members",
+    "sql": "CREATE INDEX neurons_members_hotkey_idx ON neurons_members(hotkey)"
+  },
+  {
+    "type": "index",
+    "name": "neurons_passes_completed_idx",
+    "tbl_name": "neurons_passes",
+    "sql": "CREATE INDEX neurons_passes_completed_idx ON neurons_passes(completed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "nominator_positions_coldkey_source_captured_idx",
+    "tbl_name": "nominator_positions",
+    "sql": "CREATE INDEX nominator_positions_coldkey_source_captured_idx ON nominator_positions (coldkey, source, captured_at)"
+  },
+  {
+    "type": "index",
+    "name": "root_basket_capture_page_cursors",
+    "tbl_name": "root_basket_capture_pages",
+    "sql": "CREATE UNIQUE INDEX root_basket_capture_page_cursors ON root_basket_capture_pages (capture_id,coalesce(start_after,''))"
+  },
+  {
+    "type": "index",
+    "name": "root_basket_capture_terminal_page",
+    "tbl_name": "root_basket_capture_pages",
+    "sql": "CREATE UNIQUE INDEX root_basket_capture_terminal_page ON root_basket_capture_pages (capture_id) WHERE next_after IS NULL"
+  },
+  {
+    "type": "index",
+    "name": "root_basket_captures_export",
+    "tbl_name": "root_basket_captures",
+    "sql": "CREATE INDEX root_basket_captures_export ON root_basket_captures\n  (network, network_genesis_hash, decoder_version, capture_id)"
+  },
+  {
+    "type": "index",
+    "name": "root_basket_captures_history",
+    "tbl_name": "root_basket_captures",
+    "sql": "CREATE INDEX root_basket_captures_history ON root_basket_captures (network_genesis_hash, length(finalized_block) DESC, finalized_block DESC)"
+  },
+  {
+    "type": "index",
+    "name": "root_basket_fund_address_history",
+    "tbl_name": "root_basket_fund_snapshots",
+    "sql": "CREATE INDEX root_basket_fund_address_history ON root_basket_fund_snapshots (hotkey,capture_id)"
+  },
+  {
+    "type": "index",
+    "name": "subnet_emission_enabled_history_netuid_observed_at_key",
+    "tbl_name": "subnet_emission_enabled_history",
+    "sql": "CREATE UNIQUE INDEX subnet_emission_enabled_history_netuid_observed_at_key ON subnet_emission_enabled_history(netuid, observed_at)"
+  },
+  {
+    "type": "index",
+    "name": "subnet_emission_enabled_history_netuid_observed_idx",
+    "tbl_name": "subnet_emission_enabled_history",
+    "sql": "CREATE INDEX subnet_emission_enabled_history_netuid_observed_idx\n  ON subnet_emission_enabled_history (netuid, observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "subnet_emission_enabled_history_observed_idx",
+    "tbl_name": "subnet_emission_enabled_history",
+    "sql": "CREATE INDEX subnet_emission_enabled_history_observed_idx ON subnet_emission_enabled_history(observed_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "subnet_identity_captured_at_idx",
+    "tbl_name": "subnet_identity",
+    "sql": "CREATE INDEX subnet_identity_captured_at_idx ON subnet_identity (captured_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "subnet_identity_history_netuid_hash_idx",
+    "tbl_name": "subnet_identity_history",
+    "sql": "CREATE UNIQUE INDEX subnet_identity_history_netuid_hash_idx ON subnet_identity_history (netuid, identity_hash)"
+  },
+  {
+    "type": "index",
+    "name": "subnet_identity_history_netuid_observed_idx",
+    "tbl_name": "subnet_identity_history",
+    "sql": "CREATE INDEX subnet_identity_history_netuid_observed_idx ON subnet_identity_history (netuid, observed_at DESC, id DESC)"
+  },
+  {
+    "type": "index",
+    "name": "subnet_identity_history_observed_idx",
+    "tbl_name": "subnet_identity_history",
+    "sql": "CREATE INDEX subnet_identity_history_observed_idx ON subnet_identity_history (observed_at DESC, id DESC)"
+  },
+  {
+    "type": "index",
+    "name": "subnet_ownership_captured_at_idx",
+    "tbl_name": "subnet_ownership",
+    "sql": "CREATE INDEX subnet_ownership_captured_at_idx ON subnet_ownership (captured_at DESC)"
+  },
+  {
+    "type": "index",
+    "name": "subnet_ownership_history_netuid_captured_at_idx",
+    "tbl_name": "subnet_ownership_history",
+    "sql": "CREATE INDEX subnet_ownership_history_netuid_captured_at_idx ON subnet_ownership_history (netuid, captured_at)"
+  },
+  {
+    "type": "index",
+    "name": "subnet_ownership_history_netuid_owner_idx",
+    "tbl_name": "subnet_ownership_history",
+    "sql": "CREATE UNIQUE INDEX subnet_ownership_history_netuid_owner_idx ON subnet_ownership_history (netuid, owner_hotkey, owner_coldkey)"
+  },
+  {
+    "type": "table",
+    "name": "_audit_neuron_docs_20260922",
+    "tbl_name": "_audit_neuron_docs_20260922",
+    "sql": "CREATE TABLE _audit_neuron_docs_20260922(netuid INTEGER PRIMARY KEY NOT NULL,payload BLOB NOT NULL,stamp INTEGER NOT NULL)"
+  },
+  {
+    "type": "table",
+    "name": "_audit_neuron_members_20260922",
+    "tbl_name": "_audit_neuron_members_20260922",
+    "sql": "CREATE TABLE _audit_neuron_members_20260922(netuid INTEGER NOT NULL,uid INTEGER NOT NULL,hotkey TEXT NOT NULL,coldkey TEXT,PRIMARY KEY(netuid,uid)) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "_migration_capture_governance",
+    "tbl_name": "_migration_capture_governance",
+    "sql": "CREATE TABLE _migration_capture_governance(table_name TEXT NOT NULL,row_key TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(table_name,row_key))"
+  },
+  {
+    "type": "table",
+    "name": "_migration_capture_governance_phase",
+    "tbl_name": "_migration_capture_governance_phase",
+    "sql": "CREATE TABLE _migration_capture_governance_phase(id INTEGER PRIMARY KEY,status TEXT NOT NULL)"
+  },
+  {
+    "type": "table",
+    "name": "_migration_user_state",
+    "tbl_name": "_migration_user_state",
+    "sql": "CREATE TABLE _migration_user_state(table_name TEXT NOT NULL,row_key TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(table_name,row_key))"
+  },
+  {
+    "type": "table",
+    "name": "_migration_user_state_phase",
+    "tbl_name": "_migration_user_state_phase",
+    "sql": "CREATE TABLE _migration_user_state_phase(id INTEGER PRIMARY KEY,status TEXT NOT NULL)"
+  },
+  {
+    "type": "table",
+    "name": "account_balances",
+    "tbl_name": "account_balances",
+    "sql": "CREATE TABLE account_balances(\n ss58 TEXT NOT NULL,\n free_tao REAL NOT NULL,\n reserved_tao REAL NOT NULL,\n captured_at INTEGER NOT NULL,\n PRIMARY KEY (ss58)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "account_balances_passes",
+    "tbl_name": "account_balances_passes",
+    "sql": "CREATE TABLE account_balances_passes(\n captured_at INTEGER NOT NULL,\n expected_rows INTEGER NOT NULL,\n received_rows INTEGER NOT NULL DEFAULT 0,\n completed_at INTEGER,\n scanned INTEGER,\n outcome TEXT,\n PRIMARY KEY (captured_at)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "account_identity",
+    "tbl_name": "account_identity",
+    "sql": "CREATE TABLE account_identity(\n account TEXT NOT NULL,\n name TEXT,\n url TEXT,\n github TEXT,\n image TEXT,\n discord TEXT,\n description TEXT,\n additional TEXT,\n captured_at INTEGER NOT NULL,\n PRIMARY KEY (account)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "account_identity_history",
+    "tbl_name": "account_identity_history",
+    "sql": "CREATE TABLE account_identity_history(\n id INTEGER PRIMARY KEY AUTOINCREMENT,\n account TEXT NOT NULL,\n observed_at INTEGER NOT NULL,\n name TEXT,\n url TEXT,\n github TEXT,\n image TEXT,\n discord TEXT,\n description TEXT,\n additional TEXT,\n identity_hash TEXT NOT NULL,\n UNIQUE (account, observed_at)\n)"
+  },
+  {
+    "type": "table",
+    "name": "account_position_daily_documents",
+    "tbl_name": "account_position_daily_documents",
+    "sql": "CREATE TABLE account_position_daily_documents (\n netuid INTEGER NOT NULL, day TEXT NOT NULL, shard INTEGER NOT NULL,\n stamp INTEGER NOT NULL CHECK(stamp >= 1000000000000),\n payload BLOB NOT NULL CHECK(length(payload) <= 524288 AND json_valid(payload,8)),\n PRIMARY KEY(netuid,day,shard)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "account_position_daily_members",
+    "tbl_name": "account_position_daily_members",
+    "sql": "CREATE TABLE account_position_daily_members (account TEXT NOT NULL,netuid INTEGER NOT NULL,snapshot_date TEXT NOT NULL,shard INTEGER NOT NULL,PRIMARY KEY(account,netuid,snapshot_date)) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "api_key_blocks",
+    "tbl_name": "api_key_blocks",
+    "sql": "CREATE TABLE api_key_blocks (\n  id             INTEGER PRIMARY KEY AUTOINCREMENT,\n  account_id     INTEGER NOT NULL,\n  reason_code    TEXT    NOT NULL,\n  note           TEXT,\n  blocked_at     INTEGER NOT NULL,\n  blocked_by     TEXT,\n  unblocked_at   INTEGER,\n  unblocked_note TEXT,\n  account_kind TEXT NOT NULL DEFAULT 'rpc' CHECK (account_kind IN ('rpc', 'github'))\n)"
+  },
+  {
+    "type": "table",
+    "name": "api_key_usage_daily",
+    "tbl_name": "api_key_usage_daily",
+    "sql": "CREATE TABLE api_key_usage_daily (\n  account_id     INTEGER NOT NULL,\n  day            TEXT    NOT NULL,\n  route          TEXT    NOT NULL,\n  request_count  INTEGER NOT NULL DEFAULT 0,\n  rejected_count INTEGER NOT NULL DEFAULT 0,\n  account_kind TEXT NOT NULL DEFAULT 'rpc' CHECK (account_kind IN ('rpc', 'github')),\n  PRIMARY KEY (account_kind, account_id, day, route)\n)"
+  },
+  {
+    "type": "table",
+    "name": "api_keys",
+    "tbl_name": "api_keys",
+    "sql": "CREATE TABLE api_keys (\n  id            INTEGER PRIMARY KEY AUTOINCREMENT,\n  prefix        TEXT UNIQUE,\n  secret_hash   TEXT,\n  owner_contact TEXT    NOT NULL,\n  tier          TEXT    NOT NULL DEFAULT 'keyed',\n  created_at    INTEGER NOT NULL,\n  revoked_at    INTEGER,\n  last_used_at  INTEGER,\n  account_id    INTEGER,\n  unkey_key_id  TEXT,\n  revocation_requested_at INTEGER\n)"
+  },
+  {
+    "type": "table",
+    "name": "api_quota_daily",
+    "tbl_name": "api_quota_daily",
+    "sql": "CREATE TABLE api_quota_daily (\n  account_id  INTEGER NOT NULL,\n  day         TEXT    NOT NULL,\n  units_spent INTEGER NOT NULL DEFAULT 0,\n  updated_at  INTEGER NOT NULL,\n  account_kind TEXT NOT NULL DEFAULT 'rpc' CHECK (account_kind IN ('rpc', 'github')),\n  PRIMARY KEY (account_kind, account_id, day)\n)"
+  },
+  {
+    "type": "table",
+    "name": "api_usage_rollup",
+    "tbl_name": "api_usage_rollup",
+    "sql": "CREATE TABLE api_usage_rollup (\n  day           TEXT    NOT NULL,\n  route_family  TEXT    NOT NULL,\n  cost_shape    TEXT    NOT NULL,\n  request_count INTEGER NOT NULL DEFAULT 0,\n  keyed_count   INTEGER NOT NULL DEFAULT 0,\n  PRIMARY KEY (day, route_family, cost_shape)\n)"
+  },
+  {
+    "type": "table",
+    "name": "archive_export_revisions",
+    "tbl_name": "archive_export_revisions",
+    "sql": "CREATE TABLE archive_export_revisions (\n table_name TEXT PRIMARY KEY NOT NULL,\n revision INTEGER NOT NULL CHECK(revision >= 0)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "attribution_candidates",
+    "tbl_name": "attribution_candidates",
+    "sql": "CREATE TABLE attribution_candidates (\n  netuid INTEGER NOT NULL,\n  ss58 TEXT NOT NULL,\n  source_url TEXT NOT NULL,\n  first_seen INTEGER NOT NULL CHECK (first_seen >= 1000000000000),\n  last_seen INTEGER NOT NULL CHECK (last_seen >= 1000000000000),\n  PRIMARY KEY (netuid, ss58, source_url)\n)"
+  },
+  {
+    "type": "table",
+    "name": "attribution_sweeps",
+    "tbl_name": "attribution_sweeps",
+    "sql": "CREATE TABLE attribution_sweeps (\n  netuid INTEGER PRIMARY KEY NOT NULL,\n  swept_at INTEGER NOT NULL CHECK (swept_at >= 1000000000000),\n  sources_checked INTEGER NOT NULL,\n  sources_read INTEGER NOT NULL,\n  candidates INTEGER NOT NULL,\n  verdict TEXT NOT NULL CHECK (verdict IN ('none-published', 'candidates-found', 'unreachable', 'no-sources', 'listings-only')),\n  CHECK (sources_checked >= 0 AND sources_read >= 0 AND sources_read <= sources_checked AND candidates >= 0)\n)"
+  },
+  {
+    "type": "table",
+    "name": "blocks_head",
+    "tbl_name": "blocks_head",
+    "sql": "CREATE TABLE blocks_head(\n block_number INTEGER NOT NULL,\n block_hash TEXT NOT NULL,\n parent_hash TEXT,\n extrinsic_count INTEGER,\n event_count INTEGER,\n author TEXT,\n observed_at INTEGER NOT NULL,\n PRIMARY KEY (block_number)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "chain_alert_deliveries",
+    "tbl_name": "chain_alert_deliveries",
+    "sql": "CREATE TABLE chain_alert_deliveries (\n  id               INTEGER PRIMARY KEY AUTOINCREMENT,\n  trigger_id       INTEGER NOT NULL\n    REFERENCES chain_alert_triggers(id) ON DELETE CASCADE,\n  delivered_at     INTEGER NOT NULL,\n  success          INTEGER NOT NULL CHECK (success IN (0, 1)),\n  status_code      INTEGER,\n  retry_count      INTEGER NOT NULL DEFAULT 0,\n  response_snippet TEXT\n)"
+  },
+  {
+    "type": "table",
+    "name": "chain_alert_triggers",
+    "tbl_name": "chain_alert_triggers",
+    "sql": "CREATE TABLE chain_alert_triggers (\n  id              INTEGER PRIMARY KEY AUTOINCREMENT,\n  owner_token     TEXT    NOT NULL,\n  name            TEXT,\n  table_filter    TEXT,\n  netuid          INTEGER,\n  event_kind      TEXT,\n  account         TEXT,\n  min_amount_tao  REAL,\n  channel         TEXT    NOT NULL\n    CHECK (channel IN ('webhook', 'email', 'telegram', 'discord', 'webpush')),\n  destination     TEXT    NOT NULL,\n  active          INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),\n  created_at      INTEGER NOT NULL,\n  updated_at      INTEGER NOT NULL,\n  last_matched_at INTEGER,\n  match_count     INTEGER NOT NULL DEFAULT 0,\n  condition       TEXT,\n  owner_ss58      TEXT\n)"
+  },
+  {
+    "type": "table",
+    "name": "chain_concentration_daily",
+    "tbl_name": "chain_concentration_daily",
+    "sql": "CREATE TABLE chain_concentration_daily(\n day TEXT NOT NULL,\n neuron_count INTEGER NOT NULL,\n card TEXT NOT NULL,\n source_captured_at INTEGER,\n computed_at INTEGER NOT NULL,\n builder_version INTEGER NOT NULL,\n PRIMARY KEY (day)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "chain_detail_account_events",
+    "tbl_name": "chain_detail_account_events",
+    "sql": "CREATE TABLE chain_detail_account_events(\n block_number INTEGER NOT NULL,\n event_index INTEGER NOT NULL,\n extrinsic_index INTEGER,\n event_kind TEXT NOT NULL,\n hotkey TEXT,\n coldkey TEXT,\n netuid INTEGER,\n uid INTEGER,\n amount_tao TEXT,\n alpha_amount TEXT,\n observed_at INTEGER NOT NULL,\n PRIMARY KEY (block_number, event_index)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "chain_detail_blocks",
+    "tbl_name": "chain_detail_blocks",
+    "sql": "CREATE TABLE chain_detail_blocks(\n block_number INTEGER NOT NULL,\n block_hash TEXT NOT NULL,\n spec_version INTEGER,\n extrinsic_count INTEGER NOT NULL,\n chain_event_count INTEGER NOT NULL,\n account_event_count INTEGER NOT NULL,\n observed_at INTEGER NOT NULL,\n synced_at INTEGER NOT NULL,\n native_transfer_tao TEXT,\n stake_flow_tao TEXT,\n economic_activity_tao TEXT,\n fee_tao TEXT,\n tip_tao TEXT,\n issuance_tao TEXT,\n subnet_ids TEXT NOT NULL DEFAULT '[]',\n economics_complete INTEGER NOT NULL DEFAULT 0 CHECK(economics_complete IN(0,1)),\n PRIMARY KEY (block_number)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "chain_detail_chain_events",
+    "tbl_name": "chain_detail_chain_events",
+    "sql": "CREATE TABLE chain_detail_chain_events(\n block_number INTEGER NOT NULL,\n event_index INTEGER NOT NULL,\n pallet TEXT NOT NULL,\n method TEXT NOT NULL,\n args TEXT,\n phase TEXT NOT NULL,\n extrinsic_index INTEGER,\n observed_at INTEGER NOT NULL,\n PRIMARY KEY (block_number, event_index)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "chain_detail_extrinsics",
+    "tbl_name": "chain_detail_extrinsics",
+    "sql": "CREATE TABLE chain_detail_extrinsics(\n block_number INTEGER NOT NULL,\n extrinsic_index INTEGER NOT NULL,\n extrinsic_hash TEXT,\n signer TEXT,\n call_module TEXT,\n call_function TEXT,\n success INTEGER CHECK(success IN(0,1)),\n fee_tao TEXT,\n tip_tao TEXT,\n call_args TEXT,\n observed_at INTEGER NOT NULL,\n PRIMARY KEY (block_number, extrinsic_index)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "compute_declarations",
+    "tbl_name": "compute_declarations",
+    "sql": "CREATE TABLE compute_declarations (\n  netuid INTEGER NOT NULL,\n  source_url TEXT NOT NULL,\n  read_at_sha TEXT NOT NULL,\n  observed_at INTEGER NOT NULL CHECK (observed_at >= 1000000000000),\n  first_seen INTEGER NOT NULL CHECK (first_seen >= 1000000000000),\n  found INTEGER NOT NULL CHECK (found IN (0, 1)),\n  spec_version TEXT,\n  miner TEXT CHECK (miner IS NULL OR (json_valid(miner) AND json_type(miner) = 'object')),\n  validator TEXT CHECK (validator IS NULL OR (json_valid(validator) AND json_type(validator) = 'object')),\n  unscoped TEXT CHECK (unscoped IS NULL OR (json_valid(unscoped) AND json_type(unscoped) = 'object')),\n  PRIMARY KEY (netuid, source_url),\n  CHECK (found = 0 OR miner IS NOT NULL OR validator IS NOT NULL OR unscoped IS NOT NULL),\n  CHECK (found = 1 OR (miner IS NULL AND validator IS NULL AND unscoped IS NULL))\n)"
+  },
+  {
+    "type": "table",
+    "name": "d1_migrations",
+    "tbl_name": "d1_migrations",
+    "sql": "CREATE TABLE \"d1_migrations\"(\n\t\tid         INTEGER PRIMARY KEY AUTOINCREMENT,\n\t\tname       TEXT UNIQUE,\n\t\tapplied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n)"
+  },
+  {
+    "type": "table",
+    "name": "emission_flow_watch",
+    "tbl_name": "emission_flow_watch",
+    "sql": "CREATE TABLE emission_flow_watch (\n  id               INTEGER PRIMARY KEY AUTOINCREMENT,\n  item             TEXT    NOT NULL\n    CHECK (item IN ('net_tao_flow_enabled', 'flow_norm_exponent',\n                    'tao_flow_cutoff', 'flow_ema_smoothing_factor',\n                    'subnet_ema_tao_flow')),\n  netuid           INTEGER,\n  is_set           INTEGER NOT NULL CHECK (is_set IN (0, 1)),\n  ema_block        INTEGER,\n  block_number     INTEGER,\n  observed_at      INTEGER NOT NULL,\n  predates_capture INTEGER NOT NULL DEFAULT 0 CHECK (predates_capture IN (0, 1)),\n  CHECK (\n    (item = 'subnet_ema_tao_flow' AND netuid IS NOT NULL AND ema_block IS NOT NULL)\n    OR (item <> 'subnet_ema_tao_flow' AND netuid IS NULL AND ema_block IS NULL)\n  )\n)"
+  },
+  {
+    "type": "table",
+    "name": "emission_gate_param_history",
+    "tbl_name": "emission_gate_param_history",
+    "sql": "CREATE TABLE emission_gate_param_history (\n  id               INTEGER PRIMARY KEY AUTOINCREMENT,\n  param            TEXT    NOT NULL,\n  value            REAL,\n  previous_value   REAL,\n  source           TEXT    NOT NULL\n    CHECK (source IN ('governance', 'runtime_recomputed')),\n  block_number     INTEGER,\n  observed_at      INTEGER NOT NULL,\n  predates_capture INTEGER NOT NULL DEFAULT 0 CHECK (predates_capture IN (0, 1))\n)"
+  },
+  {
+    "type": "table",
+    "name": "github_accounts",
+    "tbl_name": "github_accounts",
+    "sql": "CREATE TABLE github_accounts (\n  id             INTEGER PRIMARY KEY AUTOINCREMENT,\n  github_user_id INTEGER NOT NULL UNIQUE,\n  github_login   TEXT    NOT NULL,\n  tier           TEXT    NOT NULL DEFAULT 'free',\n  created_at     INTEGER NOT NULL,\n  last_login_at  INTEGER\n)"
+  },
+  {
+    "type": "table",
+    "name": "hotkey_alpha",
+    "tbl_name": "hotkey_alpha",
+    "sql": "CREATE TABLE hotkey_alpha(\n hotkey TEXT NOT NULL,\n netuid INTEGER NOT NULL,\n total_alpha REAL NOT NULL,\n captured_at INTEGER NOT NULL,\n PRIMARY KEY (hotkey, netuid)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "hotkey_alpha_passes",
+    "tbl_name": "hotkey_alpha_passes",
+    "sql": "CREATE TABLE hotkey_alpha_passes(\n captured_at INTEGER NOT NULL,\n expected_rows INTEGER NOT NULL,\n received_rows INTEGER NOT NULL DEFAULT 0,\n completed_at INTEGER,\n PRIMARY KEY (captured_at)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "lane_health",
+    "tbl_name": "lane_health",
+    "sql": "CREATE TABLE lane_health (\n    lane TEXT NOT NULL,\n    verdict TEXT NOT NULL,\n    age_ms INTEGER,\n    detail TEXT,\n    checked_at INTEGER NOT NULL,\n    _source_tid TEXT UNIQUE\n)"
+  },
+  {
+    "type": "table",
+    "name": "lane_health_clocks",
+    "tbl_name": "lane_health_clocks",
+    "sql": "CREATE TABLE lane_health_clocks (\n    lane TEXT NOT NULL,\n    checked_at INTEGER NOT NULL,\n    occurrences INTEGER NOT NULL,\n    previous_at INTEGER,\n    gap INTEGER GENERATED ALWAYS AS (checked_at - previous_at) STORED,\n    PRIMARY KEY (lane, checked_at)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "lane_health_current",
+    "tbl_name": "lane_health_current",
+    "sql": "CREATE TABLE lane_health_current (\n    lane TEXT PRIMARY KEY,\n    verdict TEXT NOT NULL,\n    age_ms INTEGER,\n    detail TEXT,\n    checked_at INTEGER NOT NULL,\n    _history_rowid INTEGER NOT NULL\n)"
+  },
+  {
+    "type": "table",
+    "name": "lane_health_verdict_latest",
+    "tbl_name": "lane_health_verdict_latest",
+    "sql": "CREATE TABLE lane_health_verdict_latest (\n    lane TEXT NOT NULL, verdict TEXT NOT NULL, checked_at INTEGER NOT NULL,\n    PRIMARY KEY (lane, verdict)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "neuron_daily_documents",
+    "tbl_name": "neuron_daily_documents",
+    "sql": "CREATE TABLE neuron_daily_documents (\n netuid INTEGER NOT NULL, day TEXT NOT NULL, shard INTEGER NOT NULL,\n stamp INTEGER NOT NULL CHECK(stamp >= 1000000000000),\n payload BLOB NOT NULL CHECK(length(payload) <= 524288 AND json_valid(payload,8)),\n PRIMARY KEY(netuid,day,shard)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "neuron_daily_members",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE TABLE neuron_daily_members (netuid INTEGER NOT NULL,uid INTEGER NOT NULL,snapshot_date TEXT NOT NULL,hotkey TEXT,coldkey TEXT,shard INTEGER NOT NULL,PRIMARY KEY(netuid,uid,snapshot_date)) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "neurons_documents",
+    "tbl_name": "neurons_documents",
+    "sql": "CREATE TABLE neurons_documents (\n netuid INTEGER NOT NULL, day TEXT NOT NULL, shard INTEGER NOT NULL,\n stamp INTEGER NOT NULL CHECK(stamp >= 1000000000000),\n payload BLOB NOT NULL CHECK(length(payload) <= 524288 AND json_valid(payload,8)),\n PRIMARY KEY(netuid,day,shard)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "neurons_members",
+    "tbl_name": "neurons_members",
+    "sql": "CREATE TABLE neurons_members (netuid INTEGER NOT NULL,uid INTEGER NOT NULL,hotkey TEXT,coldkey TEXT,shard INTEGER NOT NULL,PRIMARY KEY(netuid,uid)) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "neurons_passes",
+    "tbl_name": "neurons_passes",
+    "sql": "CREATE TABLE neurons_passes(captured_at INTEGER PRIMARY KEY NOT NULL,expected_rows INTEGER NOT NULL,received_rows INTEGER NOT NULL DEFAULT 0,completed_at INTEGER)"
+  },
+  {
+    "type": "table",
+    "name": "nominator_positions",
+    "tbl_name": "nominator_positions",
+    "sql": "CREATE TABLE nominator_positions(\n coldkey TEXT NOT NULL,\n hotkey TEXT NOT NULL,\n netuid INTEGER NOT NULL,\n share_fraction REAL,\n captured_at INTEGER NOT NULL,\n shares TEXT,\n source TEXT NOT NULL DEFAULT 'alpha',\n PRIMARY KEY (coldkey, hotkey, netuid)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "nominator_positions_passes",
+    "tbl_name": "nominator_positions_passes",
+    "sql": "CREATE TABLE nominator_positions_passes(\n captured_at INTEGER NOT NULL,\n expected_rows INTEGER NOT NULL,\n received_rows INTEGER NOT NULL DEFAULT 0,\n completed_at INTEGER,\n PRIMARY KEY (captured_at)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "nominator_scan_receipts",
+    "tbl_name": "nominator_scan_receipts",
+    "sql": "CREATE TABLE nominator_scan_receipts(\n captured_at INTEGER NOT NULL,\n coldkey TEXT NOT NULL,\n row_count INTEGER NOT NULL,\n PRIMARY KEY (captured_at, coldkey),\n CHECK ((row_count > 0))\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "origin_reachability",
+    "tbl_name": "origin_reachability",
+    "sql": "CREATE TABLE origin_reachability (\n  origin TEXT PRIMARY KEY NOT NULL,\n  checked_at INTEGER NOT NULL CHECK (checked_at >= 1000000000000),\n  surface_count INTEGER NOT NULL CHECK (surface_count >= 0),\n  samples INTEGER NOT NULL CHECK (samples >= 0),\n  verdict TEXT NOT NULL CHECK (verdict IN ('serving', 'unreachable', 'not-routing', 'indeterminate'))\n)"
+  },
+  {
+    "type": "table",
+    "name": "providers",
+    "tbl_name": "providers",
+    "sql": "CREATE TABLE providers(\n id TEXT NOT NULL,\n overlay TEXT NOT NULL,\n source_commit TEXT NOT NULL,\n updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec')*1000 AS INTEGER)),\n PRIMARY KEY (id)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "raw_capture_state",
+    "tbl_name": "raw_capture_state",
+    "sql": "CREATE TABLE raw_capture_state (\n network TEXT PRIMARY KEY NOT NULL,\n last_contiguous_block INTEGER NOT NULL,\n updated_at INTEGER NOT NULL,\n stopped_at INTEGER,\n last_error TEXT\n)"
+  },
+  {
+    "type": "table",
+    "name": "revenue_observations",
+    "tbl_name": "revenue_observations",
+    "sql": "CREATE TABLE revenue_observations(\n surface_id TEXT NOT NULL,\n netuid INTEGER NOT NULL,\n period TEXT NOT NULL,\n grain TEXT NOT NULL,\n amount REAL NOT NULL,\n currency TEXT NOT NULL,\n provenance TEXT NOT NULL,\n response_hash TEXT NOT NULL,\n observed_at INTEGER NOT NULL,\n CHECK ((observed_at >= 1000000000000)),\n PRIMARY KEY (surface_id, period),\n CHECK ((provenance IN ('probe-derived', 'chain-verified')))\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "revenue_probe_failures",
+    "tbl_name": "revenue_probe_failures",
+    "sql": "CREATE TABLE revenue_probe_failures(\n surface_id TEXT NOT NULL,\n netuid INTEGER NOT NULL,\n reason TEXT NOT NULL,\n observed_at INTEGER NOT NULL,\n CHECK ((observed_at >= 1000000000000)),\n PRIMARY KEY (surface_id, observed_at)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "root_basket_capture_completions",
+    "tbl_name": "root_basket_capture_completions",
+    "sql": "CREATE TABLE root_basket_capture_completions (\n  capture_id TEXT NOT NULL PRIMARY KEY REFERENCES root_basket_captures (capture_id) CHECK(length(capture_id) = 36),\n  content_sha256 TEXT  NOT NULL CHECK(content_sha256 IS NULL OR (length(content_sha256) = 66 AND substr(content_sha256,1,2) = '0x' AND substr(content_sha256,3) NOT GLOB '*[^0-9a-f]*')),\n  accepted_at_ms TEXT  NOT NULL CHECK(accepted_at_ms IS NULL OR (typeof(accepted_at_ms) = 'text' AND (accepted_at_ms = '0' OR (accepted_at_ms GLOB '[1-9]*' AND accepted_at_ms NOT GLOB '*[^0-9]*')) AND (length(accepted_at_ms), accepted_at_ms) <= (20, '18446744073709551615')))\n)"
+  },
+  {
+    "type": "table",
+    "name": "root_basket_capture_pages",
+    "tbl_name": "root_basket_capture_pages",
+    "sql": "CREATE TABLE root_basket_capture_pages (\n  capture_id TEXT  NOT NULL REFERENCES root_basket_captures (capture_id) CHECK(length(capture_id) = 36),\n  page_index INTEGER  NOT NULL CHECK(typeof(page_index) = 'integer' AND page_index BETWEEN 0 AND 4294967295),\n  start_after TEXT  CHECK(start_after IS NULL OR (length(start_after) = 66 AND substr(start_after,1,2) = '0x' AND substr(start_after,3) NOT GLOB '*[^0-9a-f]*')),\n  next_after TEXT  CHECK(next_after IS NULL OR (length(next_after) = 66 AND substr(next_after,1,2) = '0x' AND substr(next_after,3) NOT GLOB '*[^0-9a-f]*')),\n  response_sha256 TEXT  NOT NULL CHECK(response_sha256 IS NULL OR (length(response_sha256) = 66 AND substr(response_sha256,1,2) = '0x' AND substr(response_sha256,3) NOT GLOB '*[^0-9a-f]*')),\n  fund_count INTEGER  NOT NULL CHECK (fund_count <= 256) CHECK(typeof(fund_count) = 'integer' AND fund_count BETWEEN 0 AND 65535),\n  PRIMARY KEY (capture_id, page_index),\n  CHECK ((page_index = 0) = (start_after IS NULL)),\n  CHECK (start_after IS NULL OR next_after IS NULL OR start_after <> next_after)\n)"
+  },
+  {
+    "type": "table",
+    "name": "root_basket_captures",
+    "tbl_name": "root_basket_captures",
+    "sql": "CREATE TABLE root_basket_captures (\n  content_sha256 TEXT NOT NULL CHECK(length(content_sha256) = 66 AND substr(content_sha256,1,2) = '0x' AND substr(content_sha256,3) NOT GLOB '*[^0-9a-f]*'),\n  capture_id TEXT NOT NULL PRIMARY KEY CHECK(length(capture_id) = 36),\n  network TEXT NOT NULL CHECK (network IN ('finney', 'test', 'local')),\n  network_genesis_hash TEXT  NOT NULL CHECK(network_genesis_hash IS NULL OR (length(network_genesis_hash) = 66 AND substr(network_genesis_hash,1,2) = '0x' AND substr(network_genesis_hash,3) NOT GLOB '*[^0-9a-f]*')),\n  finalized_block_hash TEXT  NOT NULL CHECK(finalized_block_hash IS NULL OR (length(finalized_block_hash) = 66 AND substr(finalized_block_hash,1,2) = '0x' AND substr(finalized_block_hash,3) NOT GLOB '*[^0-9a-f]*')),\n  finalized_block TEXT  NOT NULL CHECK(finalized_block IS NULL OR (typeof(finalized_block) = 'text' AND (finalized_block = '0' OR (finalized_block GLOB '[1-9]*' AND finalized_block NOT GLOB '*[^0-9]*')) AND (length(finalized_block), finalized_block) <= (20, '18446744073709551615'))),\n  runtime_spec_version INTEGER  NOT NULL CHECK (runtime_spec_version = 454) CHECK(typeof(runtime_spec_version) = 'integer' AND runtime_spec_version BETWEEN 0 AND 4294967295),\n  runtime_api_version INTEGER  NOT NULL CHECK (runtime_api_version = 3) CHECK(typeof(runtime_api_version) = 'integer' AND runtime_api_version BETWEEN 0 AND 65535),\n  decoder_version TEXT NOT NULL CHECK (decoder_version = 'subtensor-v454-14cde641-v1'),\n  metadata_sha256 TEXT  NOT NULL CHECK(metadata_sha256 IS NULL OR (length(metadata_sha256) = 66 AND substr(metadata_sha256,1,2) = '0x' AND substr(metadata_sha256,3) NOT GLOB '*[^0-9a-f]*')),\n  started_at_ms TEXT  NOT NULL CHECK(started_at_ms IS NULL OR (typeof(started_at_ms) = 'text' AND (started_at_ms = '0' OR (started_at_ms GLOB '[1-9]*' AND started_at_ms NOT GLOB '*[^0-9]*')) AND (length(started_at_ms), started_at_ms) <= (20, '18446744073709551615'))),\n  finished_at_ms TEXT  NOT NULL CHECK ((length(finished_at_ms), finished_at_ms) >= (length(started_at_ms), started_at_ms)) CHECK(finished_at_ms IS NULL OR (typeof(finished_at_ms) = 'text' AND (finished_at_ms = '0' OR (finished_at_ms GLOB '[1-9]*' AND finished_at_ms NOT GLOB '*[^0-9]*')) AND (length(finished_at_ms), finished_at_ms) <= (20, '18446744073709551615'))),\n  expected_pages INTEGER  NOT NULL CHECK (expected_pages > 0) CHECK(typeof(expected_pages) = 'integer' AND expected_pages BETWEEN 0 AND 4294967295),\n  expected_funds INTEGER  NOT NULL CHECK(typeof(expected_funds) = 'integer' AND expected_funds BETWEEN 0 AND 4294967295),\n  index_status TEXT NOT NULL CHECK (index_status IN ('published', 'not_published')),\n  index_completed_block TEXT  CHECK(index_completed_block IS NULL OR (typeof(index_completed_block) = 'text' AND (index_completed_block = '0' OR (index_completed_block GLOB '[1-9]*' AND index_completed_block NOT GLOB '*[^0-9]*')) AND (length(index_completed_block), index_completed_block) <= (20, '18446744073709551615'))),\n  bag_index_q64_bits TEXT  NOT NULL CHECK(bag_index_q64_bits IS NULL OR (typeof(bag_index_q64_bits) = 'text' AND (bag_index_q64_bits = '0' OR (bag_index_q64_bits GLOB '[1-9]*' AND bag_index_q64_bits NOT GLOB '*[^0-9]*')) AND (length(bag_index_q64_bits), bag_index_q64_bits) <= (39, '340282366920938463463374607431768211455'))),\n  stake_index_q64_bits TEXT  NOT NULL CHECK(stake_index_q64_bits IS NULL OR (typeof(stake_index_q64_bits) = 'text' AND (stake_index_q64_bits = '0' OR (stake_index_q64_bits GLOB '[1-9]*' AND stake_index_q64_bits NOT GLOB '*[^0-9]*')) AND (length(stake_index_q64_bits), stake_index_q64_bits) <= (39, '340282366920938463463374607431768211455'))),\n  CHECK (\n    (index_status = 'published' AND index_completed_block IS NOT NULL AND (length(index_completed_block), index_completed_block) <= (length(finalized_block), finalized_block))\n    OR (index_status = 'not_published' AND index_completed_block IS NULL\n      AND bag_index_q64_bits = '18446744073709551616' AND stake_index_q64_bits = '18446744073709551616')\n  ),\n  UNIQUE (network_genesis_hash, finalized_block_hash, decoder_version)\n)"
+  },
+  {
+    "type": "table",
+    "name": "root_basket_current",
+    "tbl_name": "root_basket_current",
+    "sql": "CREATE TABLE root_basket_current (\n  network_genesis_hash TEXT  NOT NULL CHECK(network_genesis_hash IS NULL OR (length(network_genesis_hash) = 66 AND substr(network_genesis_hash,1,2) = '0x' AND substr(network_genesis_hash,3) NOT GLOB '*[^0-9a-f]*')),\n  decoder_version TEXT NOT NULL,\n  capture_id TEXT  NOT NULL REFERENCES root_basket_capture_completions (capture_id) CHECK(length(capture_id) = 36),\n  PRIMARY KEY (network_genesis_hash, decoder_version)\n)"
+  },
+  {
+    "type": "table",
+    "name": "root_basket_fund_snapshots",
+    "tbl_name": "root_basket_fund_snapshots",
+    "sql": "CREATE TABLE root_basket_fund_snapshots (\n  capture_id TEXT  NOT NULL CHECK(length(capture_id) = 36),\n  hotkey TEXT  NOT NULL CHECK(hotkey IS NULL OR (length(hotkey) = 66 AND substr(hotkey,1,2) = '0x' AND substr(hotkey,3) NOT GLOB '*[^0-9a-f]*')),\n  page_index INTEGER  NOT NULL CHECK(typeof(page_index) = 'integer' AND page_index BETWEEN 0 AND 4294967295),\n  shares_atomic TEXT  NOT NULL CHECK (shares_atomic <> '0') CHECK(shares_atomic IS NULL OR (typeof(shares_atomic) = 'text' AND (shares_atomic = '0' OR (shares_atomic GLOB '[1-9]*' AND shares_atomic NOT GLOB '*[^0-9]*')) AND (length(shares_atomic), shares_atomic) <= (20, '18446744073709551615'))),\n  spot_nav_rao TEXT  NOT NULL CHECK(spot_nav_rao IS NULL OR (typeof(spot_nav_rao) = 'text' AND (spot_nav_rao = '0' OR (spot_nav_rao GLOB '[1-9]*' AND spot_nav_rao NOT GLOB '*[^0-9]*')) AND (length(spot_nav_rao), spot_nav_rao) <= (20, '18446744073709551615'))),\n  realizable_nav_rao TEXT  NOT NULL CHECK(realizable_nav_rao IS NULL OR (typeof(realizable_nav_rao) = 'text' AND (realizable_nav_rao = '0' OR (realizable_nav_rao GLOB '[1-9]*' AND realizable_nav_rao NOT GLOB '*[^0-9]*')) AND (length(realizable_nav_rao), realizable_nav_rao) <= (20, '18446744073709551615'))),\n  deposited_rao TEXT  NOT NULL CHECK(deposited_rao IS NULL OR (typeof(deposited_rao) = 'text' AND (deposited_rao = '0' OR (deposited_rao GLOB '[1-9]*' AND deposited_rao NOT GLOB '*[^0-9]*')) AND (length(deposited_rao), deposited_rao) <= (20, '18446744073709551615'))),\n  redeemed_rao TEXT  NOT NULL CHECK(redeemed_rao IS NULL OR (typeof(redeemed_rao) = 'text' AND (redeemed_rao = '0' OR (redeemed_rao GLOB '[1-9]*' AND redeemed_rao NOT GLOB '*[^0-9]*')) AND (length(redeemed_rao), redeemed_rao) <= (20, '18446744073709551615'))),\n  raw_spot_price_q64_bits TEXT  NOT NULL CHECK(raw_spot_price_q64_bits IS NULL OR (typeof(raw_spot_price_q64_bits) = 'text' AND (raw_spot_price_q64_bits = '0' OR (raw_spot_price_q64_bits GLOB '[1-9]*' AND raw_spot_price_q64_bits NOT GLOB '*[^0-9]*')) AND (length(raw_spot_price_q64_bits), raw_spot_price_q64_bits) <= (39, '340282366920938463463374607431768211455'))),\n  display_price_q64_bits TEXT  NOT NULL CHECK(display_price_q64_bits IS NULL OR (typeof(display_price_q64_bits) = 'text' AND (display_price_q64_bits = '0' OR (display_price_q64_bits GLOB '[1-9]*' AND display_price_q64_bits NOT GLOB '*[^0-9]*')) AND (length(display_price_q64_bits), display_price_q64_bits) <= (39, '340282366920938463463374607431768211455'))),\n  display_shares_q64_bits TEXT  NOT NULL CHECK(display_shares_q64_bits IS NULL OR (typeof(display_shares_q64_bits) = 'text' AND (display_shares_q64_bits = '0' OR (display_shares_q64_bits GLOB '[1-9]*' AND display_shares_q64_bits NOT GLOB '*[^0-9]*')) AND (length(display_shares_q64_bits), display_shares_q64_bits) <= (39, '340282366920938463463374607431768211455'))),\n  stake_price_q64_bits TEXT  NOT NULL CHECK(stake_price_q64_bits IS NULL OR (typeof(stake_price_q64_bits) = 'text' AND (stake_price_q64_bits = '0' OR (stake_price_q64_bits GLOB '[1-9]*' AND stake_price_q64_bits NOT GLOB '*[^0-9]*')) AND (length(stake_price_q64_bits), stake_price_q64_bits) <= (39, '340282366920938463463374607431768211455'))),\n  staker_twr_q64_bits TEXT  NOT NULL CHECK(staker_twr_q64_bits IS NULL OR (typeof(staker_twr_q64_bits) = 'text' AND (staker_twr_q64_bits = '0' OR (staker_twr_q64_bits GLOB '[1-9]*' AND staker_twr_q64_bits NOT GLOB '*[^0-9]*')) AND (length(staker_twr_q64_bits), staker_twr_q64_bits) <= (39, '340282366920938463463374607431768211455'))),\n  pending_entitlement_q64_bits TEXT  NOT NULL CHECK(pending_entitlement_q64_bits IS NULL OR (typeof(pending_entitlement_q64_bits) = 'text' AND (pending_entitlement_q64_bits = '0' OR (pending_entitlement_q64_bits GLOB '[1-9]*' AND pending_entitlement_q64_bits NOT GLOB '*[^0-9]*')) AND (length(pending_entitlement_q64_bits), pending_entitlement_q64_bits) <= (39, '340282366920938463463374607431768211455'))),\n  provisional INTEGER  NOT NULL CHECK(provisional IN (0,1)),\n  first_block TEXT  NOT NULL CHECK(first_block IS NULL OR (typeof(first_block) = 'text' AND (first_block = '0' OR (first_block GLOB '[1-9]*' AND first_block NOT GLOB '*[^0-9]*')) AND (length(first_block), first_block) <= (20, '18446744073709551615'))),\n  price_divisor_q64_bits TEXT  CHECK(price_divisor_q64_bits IS NULL OR (typeof(price_divisor_q64_bits) = 'text' AND (price_divisor_q64_bits = '0' OR (price_divisor_q64_bits GLOB '[1-9]*' AND price_divisor_q64_bits NOT GLOB '*[^0-9]*')) AND (length(price_divisor_q64_bits), price_divisor_q64_bits) <= (39, '340282366920938463463374607431768211455'))),\n  rate0_q32_bits TEXT  CHECK(rate0_q32_bits IS NULL OR (CASE WHEN substr(rate0_q32_bits,1,1) = '-' THEN substr(rate0_q32_bits,2) <> '0' AND (typeof(substr(rate0_q32_bits,2)) = 'text' AND (substr(rate0_q32_bits,2) = '0' OR (substr(rate0_q32_bits,2) GLOB '[1-9]*' AND substr(rate0_q32_bits,2) NOT GLOB '*[^0-9]*')) AND (length(substr(rate0_q32_bits,2)), substr(rate0_q32_bits,2)) <= (39, '170141183460469231731687303715884105728')) ELSE typeof(rate0_q32_bits) = 'text' AND (rate0_q32_bits = '0' OR (rate0_q32_bits GLOB '[1-9]*' AND rate0_q32_bits NOT GLOB '*[^0-9]*')) AND (length(rate0_q32_bits), rate0_q32_bits) <= (39, '170141183460469231731687303715884105727') END)),\n  tr_splice_q64_bits TEXT  CHECK(tr_splice_q64_bits IS NULL OR (typeof(tr_splice_q64_bits) = 'text' AND (tr_splice_q64_bits = '0' OR (tr_splice_q64_bits GLOB '[1-9]*' AND tr_splice_q64_bits NOT GLOB '*[^0-9]*')) AND (length(tr_splice_q64_bits), tr_splice_q64_bits) <= (39, '340282366920938463463374607431768211455'))),\n  holdings_count INTEGER  NOT NULL CHECK(typeof(holdings_count) = 'integer' AND holdings_count BETWEEN 0 AND 4294967295),\n  targets_count INTEGER  NOT NULL CHECK(typeof(targets_count) = 'integer' AND targets_count BETWEEN 0 AND 4294967295),\n  PRIMARY KEY (capture_id, hotkey),\n  FOREIGN KEY (capture_id, page_index) REFERENCES root_basket_capture_pages (capture_id, page_index),\n  CHECK (\n    (provisional = 1 AND first_block = '0' AND price_divisor_q64_bits IS NULL AND rate0_q32_bits IS NULL AND tr_splice_q64_bits IS NULL)\n    OR (provisional = 0 AND first_block <> '0' AND price_divisor_q64_bits IS NOT NULL AND price_divisor_q64_bits <> '0'\n      AND rate0_q32_bits IS NOT NULL AND tr_splice_q64_bits IS NOT NULL AND tr_splice_q64_bits <> '0')\n  )\n)"
+  },
+  {
+    "type": "table",
+    "name": "root_basket_holdings",
+    "tbl_name": "root_basket_holdings",
+    "sql": "CREATE TABLE root_basket_holdings (\n  capture_id TEXT  NOT NULL CHECK(length(capture_id) = 36),\n  hotkey TEXT  NOT NULL CHECK(hotkey IS NULL OR (length(hotkey) = 66 AND substr(hotkey,1,2) = '0x' AND substr(hotkey,3) NOT GLOB '*[^0-9a-f]*')),\n  netuid INTEGER  NOT NULL CHECK(typeof(netuid) = 'integer' AND netuid BETWEEN 0 AND 65535),\n  quantity_atomic TEXT  NOT NULL CHECK(quantity_atomic IS NULL OR (typeof(quantity_atomic) = 'text' AND (quantity_atomic = '0' OR (quantity_atomic GLOB '[1-9]*' AND quantity_atomic NOT GLOB '*[^0-9]*')) AND (length(quantity_atomic), quantity_atomic) <= (20, '18446744073709551615'))),\n  quantity_unit TEXT NOT NULL,\n  spot_value_rao TEXT  NOT NULL CHECK(spot_value_rao IS NULL OR (typeof(spot_value_rao) = 'text' AND (spot_value_rao = '0' OR (spot_value_rao GLOB '[1-9]*' AND spot_value_rao NOT GLOB '*[^0-9]*')) AND (length(spot_value_rao), spot_value_rao) <= (20, '18446744073709551615'))),\n  realizable_value_rao TEXT  NOT NULL CHECK(realizable_value_rao IS NULL OR (typeof(realizable_value_rao) = 'text' AND (realizable_value_rao = '0' OR (realizable_value_rao GLOB '[1-9]*' AND realizable_value_rao NOT GLOB '*[^0-9]*')) AND (length(realizable_value_rao), realizable_value_rao) <= (20, '18446744073709551615'))),\n  PRIMARY KEY (capture_id, hotkey, netuid),\n  FOREIGN KEY (capture_id, hotkey) REFERENCES root_basket_fund_snapshots (capture_id, hotkey),\n  CHECK ((netuid = 0 AND quantity_unit = 'rao') OR (netuid > 0 AND quantity_unit = 'alpha_atomic'))\n)"
+  },
+  {
+    "type": "table",
+    "name": "root_basket_targets",
+    "tbl_name": "root_basket_targets",
+    "sql": "CREATE TABLE root_basket_targets (\n  capture_id TEXT  NOT NULL CHECK(length(capture_id) = 36),\n  hotkey TEXT  NOT NULL CHECK(hotkey IS NULL OR (length(hotkey) = 66 AND substr(hotkey,1,2) = '0x' AND substr(hotkey,3) NOT GLOB '*[^0-9a-f]*')),\n  netuid INTEGER  NOT NULL CHECK(typeof(netuid) = 'integer' AND netuid BETWEEN 0 AND 65535),\n  weight INTEGER  NOT NULL CHECK(typeof(weight) = 'integer' AND weight BETWEEN 0 AND 65535),\n  PRIMARY KEY (capture_id, hotkey, netuid),\n  FOREIGN KEY (capture_id, hotkey) REFERENCES root_basket_fund_snapshots (capture_id, hotkey)\n)"
+  },
+  {
+    "type": "table",
+    "name": "rpc_accounts",
+    "tbl_name": "rpc_accounts",
+    "sql": "CREATE TABLE rpc_accounts (\n  id            INTEGER PRIMARY KEY AUTOINCREMENT,\n  ss58          TEXT    NOT NULL UNIQUE,\n  tier          TEXT    NOT NULL DEFAULT 'free',\n  created_at    INTEGER NOT NULL,\n  last_login_at INTEGER\n)"
+  },
+  {
+    "type": "table",
+    "name": "self_health_checks",
+    "tbl_name": "self_health_checks",
+    "sql": "CREATE TABLE self_health_checks(\n component TEXT NOT NULL,\n checked_at_ms INTEGER NOT NULL,\n ok INTEGER NOT NULL CHECK(ok IN (0,1)),\n http_status INTEGER,\n latency_ms INTEGER,\n PRIMARY KEY (component, checked_at_ms)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "self_health_daily",
+    "tbl_name": "self_health_daily",
+    "sql": "CREATE TABLE self_health_daily(\n day TEXT NOT NULL,\n component TEXT NOT NULL,\n checks INTEGER NOT NULL,\n ok_count INTEGER NOT NULL,\n PRIMARY KEY (day, component)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "subnet_burn_history",
+    "tbl_name": "subnet_burn_history",
+    "sql": "CREATE TABLE subnet_burn_history(\n netuid INTEGER NOT NULL,\n observed_at INTEGER NOT NULL,\n burn_tao REAL NOT NULL,\n PRIMARY KEY (netuid, observed_at)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "subnet_deregistration_daily",
+    "tbl_name": "subnet_deregistration_daily",
+    "sql": "CREATE TABLE subnet_deregistration_daily (\n netuid INTEGER NOT NULL,\n snapshot_date TEXT NOT NULL,\n moving_price REAL,\n registered_at_block INTEGER,\n subnet_mechanism INTEGER,\n network_immunity_period INTEGER,\n pinned_block INTEGER,\n captured_at INTEGER NOT NULL CHECK(captured_at >= 1000000000000),\n PRIMARY KEY(netuid, snapshot_date)\n)"
+  },
+  {
+    "type": "table",
+    "name": "subnet_emission_enabled_history",
+    "tbl_name": "subnet_emission_enabled_history",
+    "sql": "CREATE TABLE subnet_emission_enabled_history (\n  id               INTEGER PRIMARY KEY AUTOINCREMENT,\n  netuid           INTEGER NOT NULL,\n  enabled          INTEGER NOT NULL CHECK (enabled IN (0, 1)),\n  previous_enabled INTEGER CHECK (previous_enabled IN (0, 1)),\n  block_number     INTEGER,\n  observed_at      INTEGER NOT NULL,\n  predates_capture INTEGER NOT NULL DEFAULT 0 CHECK (predates_capture IN (0, 1))\n)"
+  },
+  {
+    "type": "table",
+    "name": "subnet_hyperparams",
+    "tbl_name": "subnet_hyperparams",
+    "sql": "CREATE TABLE subnet_hyperparams(\n netuid INTEGER NOT NULL,\n kappa_ratio REAL,\n immunity_period INTEGER,\n min_allowed_weights INTEGER,\n max_weight_limit_ratio REAL,\n tempo INTEGER,\n weights_version TEXT,\n weights_rate_limit REAL,\n activity_cutoff INTEGER,\n activity_cutoff_factor INTEGER,\n registration_allowed INTEGER CHECK (registration_allowed IN (0,1)),\n target_regs_per_interval INTEGER,\n min_burn_tao REAL,\n max_burn_tao REAL,\n burn_half_life INTEGER,\n burn_increase_mult REAL,\n bonds_moving_avg_raw TEXT,\n max_regs_per_block INTEGER,\n serving_rate_limit INTEGER,\n max_validators INTEGER,\n commit_reveal_period INTEGER,\n commit_reveal_enabled INTEGER CHECK (commit_reveal_enabled IN (0,1)),\n alpha_high_ratio REAL,\n alpha_low_ratio REAL,\n liquid_alpha_enabled INTEGER CHECK (liquid_alpha_enabled IN (0,1)),\n alpha_sigmoid_steepness REAL,\n yuma_version INTEGER,\n subnet_is_active INTEGER CHECK (subnet_is_active IN (0,1)),\n transfers_enabled INTEGER CHECK (transfers_enabled IN (0,1)),\n bonds_reset_enabled INTEGER CHECK (bonds_reset_enabled IN (0,1)),\n user_liquidity_enabled INTEGER CHECK (user_liquidity_enabled IN (0,1)),\n owner_cut_enabled INTEGER CHECK (owner_cut_enabled IN (0,1)),\n owner_cut_auto_lock_enabled INTEGER CHECK (owner_cut_auto_lock_enabled IN (0,1)),\n min_childkey_take_ratio REAL,\n block_number INTEGER,\n captured_at INTEGER NOT NULL,\n PRIMARY KEY (netuid)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "subnet_hyperparams_history",
+    "tbl_name": "subnet_hyperparams_history",
+    "sql": "CREATE TABLE subnet_hyperparams_history(\n id INTEGER PRIMARY KEY AUTOINCREMENT,\n netuid INTEGER NOT NULL,\n block_number INTEGER,\n observed_at INTEGER NOT NULL,\n kappa_ratio REAL,\n immunity_period INTEGER,\n min_allowed_weights INTEGER,\n max_weight_limit_ratio REAL,\n tempo INTEGER,\n weights_version TEXT,\n weights_rate_limit REAL,\n activity_cutoff INTEGER,\n activity_cutoff_factor INTEGER,\n registration_allowed INTEGER CHECK (registration_allowed IN (0,1)),\n target_regs_per_interval INTEGER,\n min_burn_tao REAL,\n max_burn_tao REAL,\n burn_half_life INTEGER,\n burn_increase_mult REAL,\n bonds_moving_avg_raw TEXT,\n max_regs_per_block INTEGER,\n serving_rate_limit INTEGER,\n max_validators INTEGER,\n commit_reveal_period INTEGER,\n commit_reveal_enabled INTEGER CHECK (commit_reveal_enabled IN (0,1)),\n alpha_high_ratio REAL,\n alpha_low_ratio REAL,\n liquid_alpha_enabled INTEGER CHECK (liquid_alpha_enabled IN (0,1)),\n alpha_sigmoid_steepness REAL,\n yuma_version INTEGER,\n subnet_is_active INTEGER CHECK (subnet_is_active IN (0,1)),\n transfers_enabled INTEGER CHECK (transfers_enabled IN (0,1)),\n bonds_reset_enabled INTEGER CHECK (bonds_reset_enabled IN (0,1)),\n user_liquidity_enabled INTEGER CHECK (user_liquidity_enabled IN (0,1)),\n owner_cut_enabled INTEGER CHECK (owner_cut_enabled IN (0,1)),\n owner_cut_auto_lock_enabled INTEGER CHECK (owner_cut_auto_lock_enabled IN (0,1)),\n min_childkey_take_ratio REAL,\n hyperparams_hash TEXT NOT NULL,\n UNIQUE (netuid, observed_at)\n)"
+  },
+  {
+    "type": "table",
+    "name": "subnet_identity",
+    "tbl_name": "subnet_identity",
+    "sql": "CREATE TABLE subnet_identity(\n netuid INTEGER NOT NULL,\n block_number INTEGER NOT NULL,\n captured_at INTEGER NOT NULL,\n subnet_name TEXT,\n symbol TEXT,\n description TEXT,\n github_repo TEXT,\n subnet_url TEXT,\n discord TEXT,\n logo_url TEXT,\n identity_hash TEXT,\n PRIMARY KEY (netuid)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "subnet_identity_history",
+    "tbl_name": "subnet_identity_history",
+    "sql": "CREATE TABLE subnet_identity_history(\n id INTEGER PRIMARY KEY AUTOINCREMENT,\n netuid INTEGER NOT NULL,\n block_number INTEGER NOT NULL,\n observed_at INTEGER NOT NULL,\n subnet_name TEXT,\n symbol TEXT,\n description TEXT,\n github_repo TEXT,\n subnet_url TEXT,\n discord TEXT,\n logo_url TEXT,\n identity_hash TEXT NOT NULL\n)"
+  },
+  {
+    "type": "table",
+    "name": "subnet_lifecycle",
+    "tbl_name": "subnet_lifecycle",
+    "sql": "CREATE TABLE subnet_lifecycle(\n id INTEGER PRIMARY KEY AUTOINCREMENT,\n netuid INTEGER NOT NULL,\n event TEXT NOT NULL,\n block_number INTEGER,\n observed_at INTEGER NOT NULL,\n predates_capture INTEGER NOT NULL DEFAULT 0 CHECK (predates_capture IN (0,1)), _invalidated_at INTEGER, _invalidation_reason TEXT,\n CHECK(event IN ('registered','deregistered')),\n CHECK(observed_at>=1000000000000)\n)"
+  },
+  {
+    "type": "table",
+    "name": "subnet_ownership",
+    "tbl_name": "subnet_ownership",
+    "sql": "CREATE TABLE subnet_ownership(\n netuid INTEGER NOT NULL,\n owner_hotkey TEXT NOT NULL,\n owner_coldkey TEXT NOT NULL,\n captured_at INTEGER NOT NULL,\n PRIMARY KEY (netuid)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "subnet_ownership_history",
+    "tbl_name": "subnet_ownership_history",
+    "sql": "CREATE TABLE subnet_ownership_history(\n id INTEGER PRIMARY KEY AUTOINCREMENT,\n netuid INTEGER NOT NULL,\n owner_hotkey TEXT NOT NULL,\n owner_coldkey TEXT NOT NULL,\n captured_at INTEGER NOT NULL\n)"
+  },
+  {
+    "type": "table",
+    "name": "subnet_snapshots",
+    "tbl_name": "subnet_snapshots",
+    "sql": "CREATE TABLE subnet_snapshots(\n netuid INTEGER NOT NULL,\n snapshot_date TEXT NOT NULL,\n completeness_score INTEGER,\n surface_count INTEGER,\n endpoint_count INTEGER,\n monitored_count INTEGER,\n candidate_count INTEGER,\n captured_at INTEGER,\n validator_count INTEGER,\n miner_count INTEGER,\n total_stake_tao REAL,\n alpha_price_tao REAL,\n emission_share REAL,\n tao_in_pool_tao REAL,\n alpha_in_pool REAL,\n alpha_out_pool REAL,\n subnet_volume_tao REAL,\n tao_in_emission_tao REAL,\n excess_tao REAL,\n alpha_in_emission REAL,\n alpha_out_emission REAL,\n miner_burned_fraction REAL,\n emission_enabled INTEGER CHECK (emission_enabled IN (0,1)),\n subtoken_enabled INTEGER CHECK (subtoken_enabled IN (0,1)),\n first_emission_block INTEGER,\n pipeline_block INTEGER,\n pipeline_block_hash TEXT,\n PRIMARY KEY(netuid,snapshot_date)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "subnets",
+    "tbl_name": "subnets",
+    "sql": "CREATE TABLE subnets(\n netuid INTEGER NOT NULL,\n slug TEXT NOT NULL,\n name TEXT NOT NULL,\n source TEXT NOT NULL DEFAULT 'community',\n overlay TEXT NOT NULL,\n source_commit TEXT NOT NULL,\n updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec')*1000 AS INTEGER)),\n PRIMARY KEY (netuid),\n UNIQUE (slug)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "surface_checks",
+    "tbl_name": "surface_checks",
+    "sql": "CREATE TABLE surface_checks(\n surface_id TEXT NOT NULL,\n surface_key TEXT,\n netuid INTEGER,\n kind TEXT,\n status TEXT,\n classification TEXT,\n latency_ms INTEGER,\n status_code INTEGER,\n ok INTEGER CHECK (ok IN (0,1)),\n checked_at INTEGER NOT NULL,\n PRIMARY KEY(surface_id,checked_at)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "surface_failure_daily",
+    "tbl_name": "surface_failure_daily",
+    "sql": "CREATE TABLE surface_failure_daily(\n day TEXT NOT NULL,\n netuid INTEGER,\n kind TEXT NOT NULL,\n classification TEXT NOT NULL,\n checks INTEGER NOT NULL,\n updated_at INTEGER NOT NULL\n)"
+  },
+  {
+    "type": "table",
+    "name": "surface_history",
+    "tbl_name": "surface_history",
+    "sql": "CREATE TABLE surface_history(\n id INTEGER PRIMARY KEY AUTOINCREMENT,\n surface_id TEXT,\n subnet_netuid INTEGER NOT NULL,\n action TEXT NOT NULL,\n overlay TEXT NOT NULL,\n source_commit TEXT NOT NULL,\n recorded_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec')*1000 AS INTEGER))\n)"
+  },
+  {
+    "type": "table",
+    "name": "surface_status",
+    "tbl_name": "surface_status",
+    "sql": "CREATE TABLE surface_status(\n surface_id TEXT NOT NULL,\n surface_key TEXT,\n netuid INTEGER,\n kind TEXT,\n url TEXT,\n provider TEXT,\n status TEXT,\n classification TEXT,\n latency_ms INTEGER,\n status_code INTEGER,\n last_checked INTEGER,\n last_ok INTEGER,\n consecutive_failures INTEGER NOT NULL DEFAULT 0,\n updated_at INTEGER,\n PRIMARY KEY(surface_id)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "surface_uptime_daily",
+    "tbl_name": "surface_uptime_daily",
+    "sql": "CREATE TABLE surface_uptime_daily(\n surface_id TEXT NOT NULL,\n surface_key TEXT,\n netuid INTEGER,\n day TEXT NOT NULL,\n samples INTEGER NOT NULL,\n ok_count INTEGER NOT NULL,\n uptime_ratio REAL,\n avg_latency_ms INTEGER,\n status TEXT,\n latency_samples INTEGER,\n p50_latency_ms INTEGER,\n p95_latency_ms INTEGER,\n p99_latency_ms INTEGER,\n updated_at INTEGER,\n PRIMARY KEY(surface_id,day)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "surfaces",
+    "tbl_name": "surfaces",
+    "sql": "CREATE TABLE surfaces(\n id TEXT NOT NULL,\n subnet_netuid INTEGER NOT NULL,\n provider_id TEXT,\n surface_key TEXT NOT NULL,\n kind TEXT NOT NULL,\n url TEXT NOT NULL,\n authority TEXT NOT NULL DEFAULT 'community',\n review_state TEXT NOT NULL DEFAULT 'community-submitted',\n probe_eligible INTEGER NOT NULL DEFAULT 0 CHECK(probe_eligible IN (0,1)),\n public_safe INTEGER NOT NULL DEFAULT 1 CHECK(public_safe IN (0,1)),\n overlay TEXT NOT NULL,\n source_commit TEXT NOT NULL,\n updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec')*1000 AS INTEGER)),\n PRIMARY KEY (id),\n UNIQUE (subnet_netuid, kind, url)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "tao_usd_index",
+    "tbl_name": "tao_usd_index",
+    "sql": "CREATE TABLE tao_usd_index(\n block_number INTEGER NOT NULL,\n observed_at INTEGER NOT NULL,\n usd_per_tao REAL,\n price_basis TEXT NOT NULL,\n eth_usd REAL,\n pool_count INTEGER NOT NULL,\n pools TEXT NOT NULL DEFAULT '[]',\n CHECK ((((price_basis = 'insufficient_pools') AND (usd_per_tao IS NULL)) OR ((price_basis <> 'insufficient_pools') AND (usd_per_tao IS NOT NULL)))),\n PRIMARY KEY (block_number, observed_at),\n CHECK ((pool_count >= 0)),\n CHECK ((price_basis IN ('wrapped_onchain_median', 'insufficient_pools')))\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "treasury_readings",
+    "tbl_name": "treasury_readings",
+    "sql": "CREATE TABLE treasury_readings(\n netuid INTEGER NOT NULL,\n source_url TEXT NOT NULL,\n read_at_sha TEXT NOT NULL,\n observed_at INTEGER NOT NULL,\n first_seen INTEGER NOT NULL,\n found INTEGER NOT NULL CHECK (found IN (0,1)),\n declared_share REAL,\n treasury_address TEXT,\n applies_to TEXT,\n evidence_path TEXT,\n review_state TEXT NOT NULL DEFAULT 'candidate',\n reviewed_at INTEGER,\n CHECK (((found = false) OR (declared_share IS NOT NULL) OR (treasury_address IS NOT NULL))),\n CHECK ((first_seen >= 1000000000000)),\n CHECK (((found = true) OR ((declared_share IS NULL) AND (treasury_address IS NULL)))),\n CHECK ((observed_at >= 1000000000000)),\n PRIMARY KEY (netuid, source_url),\n CHECK ((review_state IN ('candidate', 'reviewed', 'rejected'))),\n CHECK (((declared_share IS NULL) OR ((declared_share >= (0)) AND (declared_share <= (1)))))\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "validator_nominator_counts",
+    "tbl_name": "validator_nominator_counts",
+    "sql": "CREATE TABLE validator_nominator_counts(\n hotkey TEXT NOT NULL,\n nominator_count INTEGER NOT NULL,\n captured_at INTEGER NOT NULL,\n PRIMARY KEY (hotkey)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "validator_nominator_counts_passes",
+    "tbl_name": "validator_nominator_counts_passes",
+    "sql": "CREATE TABLE validator_nominator_counts_passes(\n captured_at INTEGER NOT NULL,\n expected_rows INTEGER NOT NULL,\n received_rows INTEGER NOT NULL DEFAULT 0,\n completed_at INTEGER,\n PRIMARY KEY (captured_at)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "watch_push_subscriptions",
+    "tbl_name": "watch_push_subscriptions",
+    "sql": "CREATE TABLE watch_push_subscriptions (\n  id           INTEGER PRIMARY KEY AUTOINCREMENT,\n  address      TEXT    NOT NULL,\n  endpoint     TEXT    NOT NULL UNIQUE,\n  p256dh       TEXT    NOT NULL,\n  auth         TEXT    NOT NULL,\n  user_agent   TEXT,\n  created_at   INTEGER NOT NULL,\n  last_used_at INTEGER\n)"
+  },
+  {
+    "type": "trigger",
+    "name": "lane_health_clocks_delete",
+    "tbl_name": "lane_health",
+    "sql": "CREATE TRIGGER lane_health_clocks_delete AFTER DELETE ON lane_health BEGIN\n    UPDATE lane_health_clocks SET occurrences = occurrences - 1 WHERE lane = OLD.lane AND checked_at = OLD.checked_at;\n    DELETE FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at = OLD.checked_at AND occurrences = 0;\n    UPDATE lane_health_clocks SET previous_at =\n        (SELECT MAX(checked_at) FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at < OLD.checked_at)\n    WHERE lane = OLD.lane AND previous_at = OLD.checked_at\n        AND NOT EXISTS (SELECT 1 FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at = OLD.checked_at);\n\n    DELETE FROM lane_health_verdict_latest WHERE lane = OLD.lane AND verdict = OLD.verdict AND checked_at = OLD.checked_at;\n    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at)\n    SELECT lane, verdict, MAX(checked_at) FROM lane_health WHERE lane = OLD.lane AND verdict = OLD.verdict GROUP BY lane, verdict\n    ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at\n    WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "lane_health_clocks_insert",
+    "tbl_name": "lane_health",
+    "sql": "CREATE TRIGGER lane_health_clocks_insert AFTER INSERT ON lane_health BEGIN\n    INSERT INTO lane_health_clocks (lane, checked_at, occurrences, previous_at)\n    VALUES (NEW.lane, NEW.checked_at, 1,\n        (SELECT MAX(checked_at) FROM lane_health_clocks WHERE lane = NEW.lane AND checked_at < NEW.checked_at))\n    ON CONFLICT(lane, checked_at) DO UPDATE SET occurrences = occurrences + 1;\n    UPDATE lane_health_clocks SET previous_at = NEW.checked_at\n    WHERE lane = NEW.lane AND checked_at = (SELECT MIN(checked_at) FROM lane_health_clocks WHERE lane = NEW.lane AND checked_at > NEW.checked_at)\n        AND previous_at IS NOT NEW.checked_at;\n\n    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at) VALUES (NEW.lane, NEW.verdict, NEW.checked_at)\n    ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at\n    WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "lane_health_clocks_update",
+    "tbl_name": "lane_health",
+    "sql": "CREATE TRIGGER lane_health_clocks_update AFTER UPDATE OF lane, checked_at ON lane_health\nWHEN OLD.lane IS NOT NEW.lane OR OLD.checked_at IS NOT NEW.checked_at BEGIN\n    UPDATE lane_health_clocks SET occurrences = occurrences - 1 WHERE lane = OLD.lane AND checked_at = OLD.checked_at;\n    DELETE FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at = OLD.checked_at AND occurrences = 0;\n    UPDATE lane_health_clocks SET previous_at =\n        (SELECT MAX(checked_at) FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at < OLD.checked_at)\n    WHERE lane = OLD.lane AND previous_at = OLD.checked_at\n        AND NOT EXISTS (SELECT 1 FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at = OLD.checked_at);\n\n    INSERT INTO lane_health_clocks (lane, checked_at, occurrences, previous_at)\n    VALUES (NEW.lane, NEW.checked_at, 1,\n        (SELECT MAX(checked_at) FROM lane_health_clocks WHERE lane = NEW.lane AND checked_at < NEW.checked_at))\n    ON CONFLICT(lane, checked_at) DO UPDATE SET occurrences = occurrences + 1;\n    UPDATE lane_health_clocks SET previous_at = NEW.checked_at\n    WHERE lane = NEW.lane AND checked_at = (SELECT MIN(checked_at) FROM lane_health_clocks WHERE lane = NEW.lane AND checked_at > NEW.checked_at)\n        AND previous_at IS NOT NEW.checked_at;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "lane_health_current_delete",
+    "tbl_name": "lane_health",
+    "sql": "CREATE TRIGGER lane_health_current_delete AFTER DELETE ON lane_health\nWHEN EXISTS (SELECT 1 FROM lane_health_current WHERE _history_rowid = OLD.rowid AND lane = OLD.lane) BEGIN\n    DELETE FROM lane_health_current WHERE lane = OLD.lane;\n    INSERT INTO lane_health_current (lane, verdict, age_ms, detail, checked_at, _history_rowid)\n    SELECT lane, verdict, age_ms, detail, checked_at, rowid FROM lane_health WHERE lane = OLD.lane\n    ORDER BY checked_at DESC, CASE verdict WHEN 'stale' THEN 2 WHEN 'ok' THEN 0 ELSE 1 END DESC, rowid LIMIT 1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "lane_health_current_insert",
+    "tbl_name": "lane_health",
+    "sql": "CREATE TRIGGER lane_health_current_insert AFTER INSERT ON lane_health BEGIN\n    INSERT INTO lane_health_current (lane, verdict, age_ms, detail, checked_at, _history_rowid)\n    VALUES (NEW.lane, NEW.verdict, NEW.age_ms, NEW.detail, NEW.checked_at, NEW.rowid)\n    ON CONFLICT(lane) DO UPDATE SET verdict=excluded.verdict, age_ms=excluded.age_ms,\n        detail=excluded.detail, checked_at=excluded.checked_at, _history_rowid=excluded._history_rowid\n    WHERE excluded.checked_at > lane_health_current.checked_at OR\n        (excluded.checked_at = lane_health_current.checked_at AND\n            CASE excluded.verdict WHEN 'stale' THEN 2 WHEN 'ok' THEN 0 ELSE 1 END >\n            CASE lane_health_current.verdict WHEN 'stale' THEN 2 WHEN 'ok' THEN 0 ELSE 1 END);\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "lane_health_current_update",
+    "tbl_name": "lane_health",
+    "sql": "CREATE TRIGGER lane_health_current_update AFTER UPDATE ON lane_health BEGIN\n    DELETE FROM lane_health_current WHERE lane IN (OLD.lane, NEW.lane);\n    INSERT INTO lane_health_current (lane, verdict, age_ms, detail, checked_at, _history_rowid)\n    SELECT lane, verdict, age_ms, detail, checked_at, history_rowid FROM (\n        SELECT lane, verdict, age_ms, detail, checked_at, rowid AS history_rowid,\n               ROW_NUMBER() OVER (PARTITION BY lane ORDER BY checked_at DESC,\n                   CASE verdict WHEN 'stale' THEN 2 WHEN 'ok' THEN 0 ELSE 1 END DESC, rowid) AS position\n        FROM lane_health WHERE lane IN (OLD.lane, NEW.lane)\n    ) WHERE position = 1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "lane_health_verdict_update",
+    "tbl_name": "lane_health",
+    "sql": "CREATE TRIGGER lane_health_verdict_update AFTER UPDATE OF lane, verdict, checked_at ON lane_health\nWHEN OLD.lane IS NOT NEW.lane OR OLD.verdict IS NOT NEW.verdict OR OLD.checked_at IS NOT NEW.checked_at BEGIN\n    DELETE FROM lane_health_verdict_latest WHERE lane = OLD.lane AND verdict = OLD.verdict AND checked_at = OLD.checked_at;\n    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at)\n    SELECT lane, verdict, MAX(checked_at) FROM lane_health WHERE lane = OLD.lane AND verdict = OLD.verdict GROUP BY lane, verdict\n    ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at\n    WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;\n\n    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at) VALUES (NEW.lane, NEW.verdict, NEW.checked_at)\n    ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at\n    WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_capture_pages_immutable_delete",
+    "tbl_name": "root_basket_capture_pages",
+    "sql": "CREATE TRIGGER root_basket_capture_pages_immutable_delete BEFORE DELETE ON root_basket_capture_pages\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_capture_pages_immutable_insert",
+    "tbl_name": "root_basket_capture_pages",
+    "sql": "CREATE TRIGGER root_basket_capture_pages_immutable_insert BEFORE INSERT ON root_basket_capture_pages\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (NEW.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_capture_pages_immutable_update",
+    "tbl_name": "root_basket_capture_pages",
+    "sql": "CREATE TRIGGER root_basket_capture_pages_immutable_update BEFORE UPDATE ON root_basket_capture_pages\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id,NEW.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_captures_immutable_delete",
+    "tbl_name": "root_basket_captures",
+    "sql": "CREATE TRIGGER root_basket_captures_immutable_delete BEFORE DELETE ON root_basket_captures\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_captures_immutable_update",
+    "tbl_name": "root_basket_captures",
+    "sql": "CREATE TRIGGER root_basket_captures_immutable_update BEFORE UPDATE ON root_basket_captures\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id,NEW.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_check_completion",
+    "tbl_name": "root_basket_capture_completions",
+    "sql": "CREATE TRIGGER root_basket_check_completion BEFORE INSERT ON root_basket_capture_completions BEGIN\n SELECT RAISE(ABORT,'root basket persisted capture is incomplete') WHERE NOT EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id AND content_sha256 = NEW.content_sha256)\n OR EXISTS (SELECT 1 FROM root_basket_captures m WHERE m.capture_id = NEW.capture_id AND (\n   (SELECT count(*) FROM root_basket_capture_pages WHERE capture_id = m.capture_id) <> m.expected_pages\n   OR (SELECT count(*) FROM root_basket_fund_snapshots WHERE capture_id = m.capture_id) <> m.expected_funds\n   OR EXISTS (SELECT 1 FROM root_basket_capture_pages p LEFT JOIN root_basket_capture_pages previous ON previous.capture_id = p.capture_id AND previous.page_index = p.page_index - 1\n     WHERE p.capture_id = m.capture_id AND (p.page_index >= m.expected_pages\n       OR (p.page_index = m.expected_pages - 1) <> (p.next_after IS NULL)\n       OR (p.page_index > 0 AND (previous.page_index IS NULL OR p.start_after IS NOT previous.next_after))\n       OR p.fund_count <> (SELECT count(*) FROM root_basket_fund_snapshots f WHERE f.capture_id = m.capture_id AND f.page_index = p.page_index)))\n   OR EXISTS (SELECT 1 FROM root_basket_fund_snapshots f WHERE f.capture_id = m.capture_id AND (\n     (length(f.first_block), f.first_block) > (length(m.finalized_block), m.finalized_block)\n     OR f.holdings_count <> (SELECT count(*) FROM root_basket_holdings h WHERE h.capture_id = m.capture_id AND h.hotkey = f.hotkey)\n     OR f.targets_count <> (SELECT count(*) FROM root_basket_targets t WHERE t.capture_id = m.capture_id AND t.hotkey = f.hotkey)))));\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_check_replay",
+    "tbl_name": "root_basket_captures",
+    "sql": "CREATE TRIGGER root_basket_check_replay BEFORE INSERT ON root_basket_captures BEGIN\n SELECT RAISE(ABORT,'ROOT_BASKET_CAPTURE_CONFLICT: attempt ID already belongs to another observation') WHERE EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id\n   AND (network_genesis_hash <> NEW.network_genesis_hash OR finalized_block_hash <> NEW.finalized_block_hash OR decoder_version <> NEW.decoder_version));\n SELECT RAISE(ABORT,'ROOT_BASKET_CAPTURE_CONFLICT: finalized height has a different hash') WHERE EXISTS (SELECT 1 FROM root_basket_captures WHERE network_genesis_hash = NEW.network_genesis_hash\n   AND decoder_version = NEW.decoder_version AND finalized_block = NEW.finalized_block AND finalized_block_hash <> NEW.finalized_block_hash);\n SELECT RAISE(ABORT,'ROOT_BASKET_CAPTURE_CONFLICT: observation is incomplete or content differs') WHERE EXISTS (SELECT 1 FROM root_basket_captures c LEFT JOIN root_basket_capture_completions r ON r.capture_id = c.capture_id\n   WHERE c.network_genesis_hash = NEW.network_genesis_hash AND c.finalized_block_hash = NEW.finalized_block_hash AND c.decoder_version = NEW.decoder_version\n   AND (r.capture_id IS NULL OR r.content_sha256 <> NEW.content_sha256));\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_completion_immutable_delete",
+    "tbl_name": "root_basket_capture_completions",
+    "sql": "CREATE TRIGGER root_basket_completion_immutable_delete BEFORE DELETE ON root_basket_capture_completions BEGIN SELECT RAISE(ABORT,'root basket completion is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_completion_immutable_update",
+    "tbl_name": "root_basket_capture_completions",
+    "sql": "CREATE TRIGGER root_basket_completion_immutable_update BEFORE UPDATE ON root_basket_capture_completions BEGIN SELECT RAISE(ABORT,'root basket completion is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_current_ordered_insert",
+    "tbl_name": "root_basket_current",
+    "sql": "CREATE TRIGGER root_basket_current_ordered_insert BEFORE INSERT ON root_basket_current BEGIN\n SELECT RAISE(ABORT,'root basket current scope mismatch') WHERE NOT EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id AND network_genesis_hash = NEW.network_genesis_hash AND decoder_version = NEW.decoder_version);\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_current_ordered_update",
+    "tbl_name": "root_basket_current",
+    "sql": "CREATE TRIGGER root_basket_current_ordered_update BEFORE UPDATE ON root_basket_current BEGIN\n SELECT RAISE(ABORT,'root basket current scope mismatch') WHERE NOT EXISTS (SELECT 1 FROM root_basket_captures WHERE capture_id = NEW.capture_id AND network_genesis_hash = NEW.network_genesis_hash AND decoder_version = NEW.decoder_version);\n SELECT RAISE(ABORT,'root basket current source order cannot regress') WHERE NEW.network_genesis_hash <> OLD.network_genesis_hash OR NEW.decoder_version <> OLD.decoder_version\n  OR (SELECT length(finalized_block),finalized_block FROM root_basket_captures WHERE capture_id = NEW.capture_id)\n   < (SELECT length(finalized_block),finalized_block FROM root_basket_captures WHERE capture_id = OLD.capture_id)\n  OR (NEW.capture_id <> OLD.capture_id AND (SELECT finalized_block FROM root_basket_captures WHERE capture_id = NEW.capture_id) = (SELECT finalized_block FROM root_basket_captures WHERE capture_id = OLD.capture_id));\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_fund_snapshots_immutable_delete",
+    "tbl_name": "root_basket_fund_snapshots",
+    "sql": "CREATE TRIGGER root_basket_fund_snapshots_immutable_delete BEFORE DELETE ON root_basket_fund_snapshots\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_fund_snapshots_immutable_insert",
+    "tbl_name": "root_basket_fund_snapshots",
+    "sql": "CREATE TRIGGER root_basket_fund_snapshots_immutable_insert BEFORE INSERT ON root_basket_fund_snapshots\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (NEW.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_fund_snapshots_immutable_update",
+    "tbl_name": "root_basket_fund_snapshots",
+    "sql": "CREATE TRIGGER root_basket_fund_snapshots_immutable_update BEFORE UPDATE ON root_basket_fund_snapshots\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id,NEW.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_holdings_immutable_delete",
+    "tbl_name": "root_basket_holdings",
+    "sql": "CREATE TRIGGER root_basket_holdings_immutable_delete BEFORE DELETE ON root_basket_holdings\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_holdings_immutable_insert",
+    "tbl_name": "root_basket_holdings",
+    "sql": "CREATE TRIGGER root_basket_holdings_immutable_insert BEFORE INSERT ON root_basket_holdings\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (NEW.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_holdings_immutable_update",
+    "tbl_name": "root_basket_holdings",
+    "sql": "CREATE TRIGGER root_basket_holdings_immutable_update BEFORE UPDATE ON root_basket_holdings\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id,NEW.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_receipt_immutable",
+    "tbl_name": "root_basket_capture_pages",
+    "sql": "CREATE TRIGGER root_basket_receipt_immutable BEFORE UPDATE ON root_basket_capture_pages BEGIN SELECT RAISE(ABORT,'root basket receipt is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_targets_immutable_delete",
+    "tbl_name": "root_basket_targets",
+    "sql": "CREATE TRIGGER root_basket_targets_immutable_delete BEFORE DELETE ON root_basket_targets\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_targets_immutable_insert",
+    "tbl_name": "root_basket_targets",
+    "sql": "CREATE TRIGGER root_basket_targets_immutable_insert BEFORE INSERT ON root_basket_targets\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (NEW.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "root_basket_targets_immutable_update",
+    "tbl_name": "root_basket_targets",
+    "sql": "CREATE TRIGGER root_basket_targets_immutable_update BEFORE UPDATE ON root_basket_targets\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id,NEW.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "surface_status_alias_insert",
+    "tbl_name": "surface_status",
+    "sql": "CREATE TRIGGER surface_status_alias_insert BEFORE INSERT ON surface_status\nWHEN NEW.surface_key IS NOT NULL AND NEW.surface_key <> ''\nBEGIN\n SELECT RAISE(IGNORE) WHERE EXISTS(SELECT 1 FROM surface_status newer\n   WHERE (newer.surface_key=NEW.surface_key OR (newer.surface_id=NEW.surface_id AND newer.surface_key IS NOT NEW.surface_key)) AND newer.last_checked > NEW.last_checked);\n UPDATE surface_status SET surface_id='history:'||surface_key\n   WHERE surface_id=NEW.surface_id AND surface_key IS NOT NULL AND surface_key IS NOT NEW.surface_key\n     AND COALESCE(last_checked,0)<=NEW.last_checked;\n DELETE FROM surface_status WHERE surface_id=NEW.surface_id AND surface_key IS NULL AND COALESCE(last_checked,0)<=NEW.last_checked;\nEND"
+  },
+  {
+    "type": "view",
+    "name": "_audit_neurons_20260922",
+    "tbl_name": "_audit_neurons_20260922",
+    "sql": "CREATE VIEW _audit_neurons_20260922 AS SELECT m.netuid AS netuid,m.uid AS uid,m.hotkey AS hotkey,m.coldkey AS coldkey,json_extract(d.payload,'$.\"'||m.uid||'\".active') AS active,json_extract(d.payload,'$.\"'||m.uid||'\".validator_permit') AS validator_permit,json_extract(d.payload,'$.\"'||m.uid||'\".rank') AS rank,json_extract(d.payload,'$.\"'||m.uid||'\".trust') AS trust,json_extract(d.payload,'$.\"'||m.uid||'\".validator_trust') AS validator_trust,json_extract(d.payload,'$.\"'||m.uid||'\".consensus') AS consensus,json_extract(d.payload,'$.\"'||m.uid||'\".incentive') AS incentive,json_extract(d.payload,'$.\"'||m.uid||'\".dividends') AS dividends,json_extract(d.payload,'$.\"'||m.uid||'\".emission_tao') AS emission_tao,json_extract(d.payload,'$.\"'||m.uid||'\".stake_tao') AS stake_tao,json_extract(d.payload,'$.\"'||m.uid||'\".registered_at_block') AS registered_at_block,json_extract(d.payload,'$.\"'||m.uid||'\".is_immunity_period') AS is_immunity_period,json_extract(d.payload,'$.\"'||m.uid||'\".axon') AS axon,json_extract(d.payload,'$.\"'||m.uid||'\".block_number') AS block_number,json_extract(d.payload,'$.\"'||m.uid||'\".captured_at') AS captured_at,json_extract(d.payload,'$.\"'||m.uid||'\".take') AS take FROM _audit_neuron_members_20260922 m JOIN _audit_neuron_docs_20260922 d ON d.netuid=m.netuid"
+  },
+  {
+    "type": "view",
+    "name": "account_position_daily",
+    "tbl_name": "account_position_daily",
+    "sql": "CREATE VIEW account_position_daily AS SELECT m.account AS account,m.netuid AS netuid,m.snapshot_date AS snapshot_date,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".uid') AS uid,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".coldkey') AS coldkey,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".active') AS active,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".validator_permit') AS validator_permit,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".rank') AS rank,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".trust') AS trust,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".incentive') AS incentive,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".dividends') AS dividends,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".stake_tao') AS stake_tao,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".emission_tao') AS emission_tao,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".captured_at') AS captured_at,json_extract(d.payload,'$.\"'||('k'||hex(m.account))||'\".updated_at') AS updated_at FROM account_position_daily_members m JOIN account_position_daily_documents d ON d.netuid=m.netuid AND d.day=m.snapshot_date AND d.shard=m.shard"
+  },
+  {
+    "type": "view",
+    "name": "neuron_daily",
+    "tbl_name": "neuron_daily",
+    "sql": "CREATE VIEW neuron_daily AS SELECT m.netuid AS netuid,m.uid AS uid,m.hotkey AS hotkey,m.coldkey AS coldkey,json_extract(d.payload,'$.\"'||m.uid||'\".active') AS active,json_extract(d.payload,'$.\"'||m.uid||'\".validator_permit') AS validator_permit,json_extract(d.payload,'$.\"'||m.uid||'\".rank') AS rank,json_extract(d.payload,'$.\"'||m.uid||'\".trust') AS trust,json_extract(d.payload,'$.\"'||m.uid||'\".validator_trust') AS validator_trust,json_extract(d.payload,'$.\"'||m.uid||'\".consensus') AS consensus,json_extract(d.payload,'$.\"'||m.uid||'\".incentive') AS incentive,json_extract(d.payload,'$.\"'||m.uid||'\".dividends') AS dividends,json_extract(d.payload,'$.\"'||m.uid||'\".emission_tao') AS emission_tao,json_extract(d.payload,'$.\"'||m.uid||'\".stake_tao') AS stake_tao,json_extract(d.payload,'$.\"'||m.uid||'\".registered_at_block') AS registered_at_block,json_extract(d.payload,'$.\"'||m.uid||'\".is_immunity_period') AS is_immunity_period,json_extract(d.payload,'$.\"'||m.uid||'\".axon') AS axon,json_extract(d.payload,'$.\"'||m.uid||'\".block_number') AS block_number,json_extract(d.payload,'$.\"'||m.uid||'\".captured_at') AS captured_at,json_extract(d.payload,'$.\"'||m.uid||'\".take') AS take,m.snapshot_date AS snapshot_date,json_extract(d.payload,'$.\"'||m.uid||'\".updated_at') AS updated_at FROM neuron_daily_members m JOIN neuron_daily_documents d ON d.netuid=m.netuid AND d.day=m.snapshot_date AND d.shard=m.shard"
+  },
+  {
+    "type": "view",
+    "name": "neurons",
+    "tbl_name": "neurons",
+    "sql": "CREATE VIEW neurons AS SELECT m.netuid AS netuid,m.uid AS uid,m.hotkey AS hotkey,m.coldkey AS coldkey,json_extract(d.payload,'$.\"'||m.uid||'\".active') AS active,json_extract(d.payload,'$.\"'||m.uid||'\".validator_permit') AS validator_permit,json_extract(d.payload,'$.\"'||m.uid||'\".rank') AS rank,json_extract(d.payload,'$.\"'||m.uid||'\".trust') AS trust,json_extract(d.payload,'$.\"'||m.uid||'\".validator_trust') AS validator_trust,json_extract(d.payload,'$.\"'||m.uid||'\".consensus') AS consensus,json_extract(d.payload,'$.\"'||m.uid||'\".incentive') AS incentive,json_extract(d.payload,'$.\"'||m.uid||'\".dividends') AS dividends,json_extract(d.payload,'$.\"'||m.uid||'\".emission_tao') AS emission_tao,json_extract(d.payload,'$.\"'||m.uid||'\".stake_tao') AS stake_tao,json_extract(d.payload,'$.\"'||m.uid||'\".registered_at_block') AS registered_at_block,json_extract(d.payload,'$.\"'||m.uid||'\".is_immunity_period') AS is_immunity_period,json_extract(d.payload,'$.\"'||m.uid||'\".axon') AS axon,json_extract(d.payload,'$.\"'||m.uid||'\".block_number') AS block_number,json_extract(d.payload,'$.\"'||m.uid||'\".captured_at') AS captured_at,json_extract(d.payload,'$.\"'||m.uid||'\".take') AS take FROM neurons_members m JOIN neurons_documents d ON d.netuid=m.netuid AND d.day='' AND d.shard=m.shard"
+  }
+]
