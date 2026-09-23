@@ -56,6 +56,37 @@ interface DirectoryNominatorRow extends Record<string, unknown> {
   scan_at: number | null;
 }
 
+// A partial pass can still exceed the lifecycle lane's netuid coverage floor.
+// Delivery counters may include retries, so require both a completed receipt
+// and exactly its expected number of distinct current memberships. Never use
+// an older complete receipt to certify a newer, incomplete snapshot.
+export async function readCompleteNeuronRows(
+  env: unknown,
+): Promise<Record<string, unknown>[] | null> {
+  const store = selectedD1Store(env, ["neurons", "neurons_passes"]);
+  if (!store) return null;
+  return store.query(`WITH current AS MATERIALIZED (
+    SELECT m.netuid, json_extract(j.value,'$.captured_at') AS captured_at,
+      json_extract(j.value,'$.block_number') AS block_number
+    FROM neurons_documents d
+    CROSS JOIN json_each(d.payload) j
+    CROSS JOIN neurons_members m
+    WHERE d.day='' AND m.netuid=d.netuid
+      AND m.uid=CAST(j.key AS INTEGER) AND m.shard=d.shard
+  ), complete AS (
+    SELECT n.captured_at FROM current n
+    JOIN neurons_passes p ON p.captured_at=n.captured_at
+    WHERE n.captured_at=(SELECT MAX(captured_at) FROM current)
+    GROUP BY n.captured_at
+    HAVING COUNT(*)=MAX(p.expected_rows)
+      AND MAX(p.received_rows)>=MAX(p.expected_rows)
+      AND MAX(p.completed_at) IS NOT NULL
+  )
+  SELECT n.netuid,MAX(n.block_number) AS block_number
+  FROM current n JOIN complete p ON p.captured_at=n.captured_at
+  GROUP BY n.netuid ORDER BY n.netuid`);
+}
+
 // The D1 caller has already read the permitted validator memberships. Bind
 // their keys as one JSON value instead of scanning the neurons view again.
 // LEFT JOIN and the whole-table scan stamp preserve confirmed-zero semantics.

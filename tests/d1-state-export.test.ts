@@ -18,7 +18,7 @@ const runtime = new Miniflare({
   d1Databases: ["DB"],
 });
 let db: D1Database;
-const tables = Object.keys(D1_EXPORT_TABLES).join(",");
+const tables = [...Object.keys(D1_EXPORT_TABLES), "neurons_passes"].join(",");
 const env = () => ({
   D1_STATE: db,
   D1_STATE_TABLES: tables,
@@ -553,6 +553,11 @@ test("price and lifecycle writers advance export revisions through their native 
     (await get({ table: "tao_usd_index", kind: "revision" })).revision,
     1,
   );
+  await db
+    .prepare(
+      "INSERT INTO neurons_passes SELECT MAX(captured_at),COUNT(*),COUNT(*),MAX(captured_at)+1 FROM neurons",
+    )
+    .run();
   const result = await runSubnetLifecycleLane(dataApiEnv(env()), {
     coverageFloor: 1,
     now: () => 1790000000000,
