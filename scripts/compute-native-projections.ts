@@ -9,6 +9,8 @@ import { projectionComputeEnv } from "../src/projection-compute-context.ts";
 import { chainTable } from "../src/chain-network.ts";
 import type { ChainNetworkId } from "../src/chain-network.ts";
 import type { R2SqlReader } from "../src/r2-sql.ts";
+import { topHoldersFlowSql } from "../src/top-holders-flow-tier.ts";
+import { TopHoldersFlowFactsSchema } from "../schemas-src/projection-artifact.ts";
 
 export const MAX_PROTOCOL_BYTES = 32 * 1024 * 1024;
 
@@ -27,6 +29,11 @@ export async function computeNativeProjections(
   for (const lane of PROJECTION_LANES) {
     const body = await lane.compute(env, network);
     if (body === null) throw new Error(`Projection declined: ${lane.name}`);
+    if (lane.name === "chain-stake-flow") {
+      body.top_holders_flow_rows = TopHoldersFlowFactsSchema.parse(
+        await query(env, topHoldersFlowSql(now, network)),
+      );
+    }
     if (["chain-calls", "chain-fees", "chain-signers"].includes(lane.name)) {
       if (modules === undefined) {
         const census = await query(

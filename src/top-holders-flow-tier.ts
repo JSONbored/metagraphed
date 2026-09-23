@@ -1,67 +1,6 @@
-// The LIVE leg of GET /api/v1/accounts/top-holders: net_flow_7d/30d/90d,
-// recomputed from chain.account_events on its own daily cron (#9469).
-//
-// WHAT THIS FIXES. The route answers from src/top-holders-artifact.ts, a
-// one-shot materialization of the retired Postgres query taken 2026-08-02.
-// Its `net_flow_*` cells are null for EVERY row -- the `wallet_flow_daily`
-// rollup those columns were LEFT JOINed from never made it into the
-// materialization -- so `compareTopHoldersSort` put every row in the
-// non-number bucket and tie-broke on `ss58`. Verified live 2026-08-05:
-// `?sort=net_flow_30d` returned 5C4jr9g..., 5C4stSN..., 5C4zv89..., 5C523K1...
-// -- lexicographic address order -- while the envelope echoed
-// `"sort": "net_flow_30d"`. A ranking that is not a ranking, announced as one.
-//
-// THIS LANE NO LONGER OWNS THE HOLDINGS CADENCE (#9632). It still WRITES both
-// halves -- a daily run refreshes everything at once -- but
-// src/top-holders-holdings-refresh.ts rewrites the store-backed columns over
-// this lane's row set every three hours in between, on the same artifact key.
-// Two writers, one object, and the two vintages are carried separately:
-// `generated_at` / a row's `captured_at` are the SCAN's, `holdings_generated_at`
-// / a row's `holdings_captured_at` are the store's. Nothing here may stamp the
-// latter from this lane's clock on a row it did not recompute.
-//
-// THE HOLDINGS COLUMNS ARE COMPOSED HERE TOO (#9502), beside the flow ones:
-// free_tao, delegated_tao and total_tao come from src/top-holders-holdings.ts,
-// which prices `nominator_positions` against the `hotkey_alpha` pool totals
-// #9502 captured and reads `account_balances` for the free side. That module's
-// header carries the pricing rule, the exclude-rather-than-zero rule for an
-// unpriceable netuid, and why total_tao is ranked across the full tables rather
-// than summed over the other two legs' capped rows.
-//
-// EACH LEG IS PROVEN SEPARATELY AND THE ARTIFACT SAYS WHICH ONES RAN. The two
-// legs fail independently -- the lakehouse can answer while the store's ledgers are
-// unproven, and the reverse is equally possible -- so "which sorts does this
-// artifact rank" is a property of the written object (`sorts`) rather than a
-// constant in this file. That is the decline-while-unproven switch #9292
-// established, applied to LEGS rather than whole tiers, and it is what let
-// free_tao and delegated_tao become live on different days with no deploy.
-//
-// A DECLINED LEG LEAVES THE FROZEN ARTIFACT ANSWERING, which is why declining
-// is not a degradation: src/top-holders-artifact.ts still carries real (if
-// fixed-date) holdings, and falling through to it beats publishing a column
-// this tier cannot prove. The holdings columns come back null on a flow-sorted
-// page (src/top-holders.ts) rather than zeroed -- a zero here would read as
-// "this account holds nothing", which is the confident-wrong-zero this repo
-// keeps removing (#9066/#9273/#9305).
-//
-// WHY A CRON AND NOT A REQUEST-TIME READ -- and what it costs. Priced against
-// production before it was written, per #9469's own instruction. The aggregate
-// is the high-cardinality shape R2 SQL rejects with 40015, so the number was
-// measured rather than assumed: `GROUP BY coldkey` over the 90-day window
-// scans **1.65 GB in 7.1 s** and returns 32,007 coldkeys. It does NOT trip the
-// scan budget -- the 40015 case is `COUNT(DISTINCT ...)` under a GROUP BY, and
-// this has neither -- so the precomputed `wallet_flow_daily`-style rollup
-// #9469 anticipated is not needed. 7.1 s and 1.65 GB per request is, though:
-// that is a cron, and at the shared 30-minute PROJECTION_LANES_CRON it would
-// be 79 GB/day, so this lane declares its own daily cadence
-// (TOP_HOLDERS_FLOW_CRON) for **1.65 GB/day**. All three windows come out of
-// that ONE scan via conditional aggregation rather than three scans of the
-// same files, which is where the other 2/3 of the cost went.
-//
-// It reuses runProjectionLane (src/projection-lanes.ts) for the write, so it
-// inherits that runner's all-or-nothing posture verbatim: a declined compute
-// leaves the previous artifact in place and records one exception, and a
-// caller keeps yesterday's ranking rather than getting a plausible blank.
+// Top-holder flows come from qualified native analytics facts. Holdings join
+// the complete coldkey population on their own D1 refresh cadence; each leg
+// retains its own capture timestamp and supported ranking keys.
 
 import { artifactBucket } from "./projection-store.ts";
 
@@ -71,6 +10,7 @@ import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./chain-stake-flow.ts";
 import { DEFAULT_CHAIN_NETWORK, chainTable } from "./chain-network.ts";
 import type { ChainNetworkId } from "./chain-network.ts";
 import { r2SqlQuery } from "./r2-sql.ts";
+import { loadNativeTopHoldersFlow } from "./top-holders-native-flow.ts";
 import { buildTopHoldersList } from "./top-holders.ts";
 import {
   TOP_HOLDERS_DELEGATED_SORT,
@@ -269,10 +209,15 @@ export async function computeTopHoldersFlow(
   env: Env,
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
-  const rows = await r2SqlQuery(env, topHoldersFlowSql(generatedAt, network), {
-    timeoutMs: PROJECTION_QUERY_TIMEOUT_MS,
-  });
+  const now = Date.now();
+  const native = await loadNativeTopHoldersFlow(env, network, now);
+  if (native === null) return null;
+  const generatedAt = native?.generatedAt ?? now;
+  const rows =
+    native?.rows ??
+    (await r2SqlQuery(env, topHoldersFlowSql(now, network), {
+      timeoutMs: PROJECTION_QUERY_TIMEOUT_MS,
+    }));
   // The FLOW leg is required: it is the one this lane was built for, and an
   // artifact without it would silently un-rank the net_flow_* sorts.
   if (rows === null) return null;
@@ -304,9 +249,7 @@ export async function computeTopHoldersFlow(
     // src/top-holders-staleness-watchdog.ts, and that question must not be
     // answerable by a producer that stopped. The data's own age is the row
     // stamp.
-    ...(holdings
-      ? { holdings_generated_at: new Date(generatedAt).toISOString() }
-      : {}),
+    ...(holdings ? { holdings_generated_at: new Date(now).toISOString() } : {}),
     row_count: shaped.length,
     // WHICH SORTS THIS BODY CAN RANK, declared by the writer rather than
     // assumed by the reader. The legs fail independently and each holdings

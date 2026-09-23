@@ -54,6 +54,24 @@ export type ProjectionRow = z.infer<typeof ProjectionRowSchema>;
 /** A stored row array. Every element must be an object or the read declines. */
 export const ProjectionRowsSchema = z.array(ProjectionRowSchema);
 
+/** Complete coldkey population, before holdings and flow rankings are joined. */
+export const TopHoldersFlowFactsSchema = z
+  .array(
+    z.object({
+      coldkey: z.string(),
+      net_flow_7d: z.number().nullable(),
+      net_flow_30d: z.number().nullable(),
+      net_flow_90d: z.number().nullable(),
+    }),
+  )
+  .max(250_000);
+
+export const NativeTopHoldersFlowSchema = z.object({
+  schema_version: z.literal(1),
+  generated_at: z.iso.datetime(),
+  top_holders_flow_rows: TopHoldersFlowFactsSchema,
+});
+
 /**
  * A chain-wide aggregate cell.
  *
