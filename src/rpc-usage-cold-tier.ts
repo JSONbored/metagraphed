@@ -1,49 +1,11 @@
-// RPC reverse-proxy usage analytics, served from the lakehouse.
-//
-// `rpc_proxy_events` was Postgres-only, so with the box gone
-// /api/v1/rpc/usage served a schema-stable empty payload -- honest, but
-// useless when 578,682 verified rows of it sit in the lakehouse. This tier
-// serves them through the SAME formatter the Postgres tier fed
-// (`formatRpcUsage`), so a caller cannot tell which tier answered.
-//
-// FOUR AGGREGATES, NOT ONE SCAN. R2 SQL is a second-scale engine with no
-// indexes, and this table is the largest thing any request-time reader here
-// touches. Each rollup is its own GROUP BY over the same windowed predicate
-// rather than one wide scan re-aggregated in JS: the engine reads the column
-// projection it needs per query, and a JS re-aggregation of 578k rows would
-// not fit a request either way.
-//
-// PERCENTILES ARE MEASURED AGAIN. They were declined here from 2026-08-03,
-// when `approx_percentile` was rejected outright and computing them in JS
-// meant pulling every latency in the window -- 578,507 rows for 7d, not a
-// request-time read. So the route reported p50/p95 as null, honestly.
-//
-// `PERCENTILE_CONT(x) WITHIN GROUP (ORDER BY ...)` is accepted now. Verified
-// against a positive control before it was trusted: p50 over a contiguous
-// 8000000..8000100 block range returns exactly 8000050, so the engine is
-// computing the percentile rather than approximating something near it.
-//
-// They ride on the totals query rather than adding a fifth: measured on the
-// live table, adding both percentiles left the scan at 2.46 MB across 15
-// files -- byte for byte what the same query cost without them, because the
-// column is already being read for `avg(latency_ms)`. At the widest window
-// the route offers (90d, 1,467,264 rows) the whole statement is 7.21 MB.
-//
-// EXACT, not approximate, for the reason `distinct_registrants` is exact
-// elsewhere in this codebase: a published percentile that is quietly an
-// estimate is a data defect wearing a performance argument.
-//
-// THE TABLE IS FROZEN, and the window is still honest about it. The proxy
-// that wrote these rows died with the box, so the newest row is fixed at the
-// export. A 7d window still covers real traffic today and will cover
-// progressively less until it covers none -- at which point this returns the
-// same empty payload it replaced, without ever having claimed the traffic
-// was current. `observed_at` in the response is the data's own newest
-// reading, so freshness stays visible rather than implied.
+// RPC usage over the historical portion not covered by live telemetry.
+// Selected native snapshots preserve complete weighted observations; legacy
+// deployments retain their SQL reader until a verified snapshot is published.
 import { ANALYTICS_WINDOW_DAYS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
 import { formatRpcUsage } from "./health-serving.ts";
 import { r2SqlQuery } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
+import { loadRpcUsageNative } from "./rpc-usage-native.ts";
 
 type Row = Record<string, unknown>;
 
@@ -132,6 +94,16 @@ export async function loadRpcUsageColdTier(
   const where =
     `WHERE observed_at >= ${cutoff}` +
     (ceiling === null ? "" : ` AND observed_at < ${ceiling}`);
+
+  const native = await loadRpcUsageNative(env, {
+    window: windowLabel,
+    cutoff,
+    bucketMs,
+    granularity,
+    until: ceiling,
+    now,
+  });
+  if (native !== undefined) return native;
 
   const [totalsRows, endpointRows, networkRows, bucketRows] = await Promise.all(
     [
