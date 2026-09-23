@@ -1,14 +1,6 @@
-// Subnet-hyperparameter reads served from the lakehouse when the Postgres
-// tier misses. Same posture as the sibling cold tiers (blocks, extrinsics,
-// events): rows feed the SAME formatters the Postgres tier feeds, filters
-// decline rather than degrade, and history pages on data-api's exact cursor
-// token so paging survives a tier transition.
-//
-// THE SNAPSHOT IS FROZEN AT THE EXPORT, and that is fine. subnet_hyperparams
-// was refreshed by a box-side poller that died with the box, so this tier
-// serves the last verified capture rather than a live read -- captured_at
-// says exactly how current the answer is, and serving that beats serving the
-// schema-stable null these routes would otherwise degrade to.
+import { readD1Metadata } from "./d1-metadata-read.ts";
+// Subnet hyperparameter readers prefer the current D1 owner, preserving the
+// canonical parameter format, nullable values, filters, and timeline cursor.
 
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
@@ -50,10 +42,19 @@ export async function loadSubnetHyperparamsColdTier(
   // it must pass the integer guard -- refused rather than escaped.
   const n = safeBlockNumber(netuid);
   if (n === null) return null;
-  const rows = await r2SqlQuery(
+  const native = await readD1Metadata(
     env,
-    `SELECT ${LATEST_COLUMNS} FROM chain.subnet_hyperparams WHERE netuid = ${n} LIMIT 1`,
+    "subnet_hyperparams",
+    `SELECT ${LATEST_COLUMNS} FROM subnet_hyperparams WHERE netuid = ? LIMIT 1`,
+    [n],
   );
+  const rows =
+    native !== undefined
+      ? native
+      : await r2SqlQuery(
+          env,
+          `SELECT ${LATEST_COLUMNS} FROM chain.subnet_hyperparams WHERE netuid = ${n} LIMIT 1`,
+        );
   if (rows === null) return null;
   // A confirmed absence is an ANSWER: hyperparameters:null is the same payload
   // the Postgres tier produces for an unknown netuid, not a tier failure.
@@ -76,7 +77,6 @@ export async function loadSubnetHyperparamsHistoryColdTier(
     return null;
   // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
   // reasonable trade and declining beats serving a page that is quietly wrong.
-  if (offsetBeyondEmulationCap(offset)) return null;
 
   const where = [`netuid = ${n}`];
   const cursor = decodeCursor(query.cursor, CURSOR_ARITY);
@@ -89,17 +89,29 @@ export async function loadSubnetHyperparamsHistoryColdTier(
   // pages), mirroring data-api's `OFFSET only when no cursor`.
   const paged = cursor ? 0 : offset;
 
-  const rows = await r2SqlQuery(
+  const native = await readD1Metadata(
     env,
-    `SELECT ${HISTORY_COLUMNS} FROM chain.subnet_hyperparams_history` +
-      ` WHERE ${where.join(" AND ")}` +
-      // EXACTLY data-api's order: the cursor token encodes this composite
-      // key, so a different order would mis-seek its tokens.
-      ` ORDER BY observed_at DESC, id DESC LIMIT ${limit + paged}`,
+    "subnet_hyperparams_history",
+    `SELECT ${HISTORY_COLUMNS} FROM subnet_hyperparams_history WHERE netuid = ?` +
+      (cursor ? " AND (observed_at, id) < (?, ?)" : "") +
+      " ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
+    [n, ...(cursor ?? []), limit, paged],
   );
+  if (native === undefined && offsetBeyondEmulationCap(offset)) return null;
+  const rows =
+    native !== undefined
+      ? native
+      : await r2SqlQuery(
+          env,
+          `SELECT ${HISTORY_COLUMNS} FROM chain.subnet_hyperparams_history` +
+            ` WHERE ${where.join(" AND ")}` +
+            // EXACTLY data-api's order: the cursor token encodes this composite
+            // key, so a different order would mis-seek its tokens.
+            ` ORDER BY observed_at DESC, id DESC LIMIT ${limit + paged}`,
+        );
   if (rows === null) return null;
 
-  const page = paged > 0 ? rows.slice(paged) : rows;
+  const page = native === undefined && paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
   // The SAME token the Postgres tier emits for this row, so a client can page
   // seamlessly across a tier transition in either direction.

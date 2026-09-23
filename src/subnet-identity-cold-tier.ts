@@ -1,13 +1,6 @@
-// Subnet-identity-history reads served from the lakehouse when the Postgres
-// tier misses -- both the per-subnet timeline and the network-wide feed read
-// the same subnet_identity_history table, so both live here. Same posture as
-// the sibling cold tiers: rows feed the SAME formatters the Postgres tier
-// feeds, filters decline rather than degrade, and the per-subnet timeline
-// pages on data-api's exact cursor token.
-//
-// The table is append-only and frozen at the export: identity changes after
-// the box died are not recorded anywhere, so this tier serves the verified
-// history as-is -- observed_at on each entry says how current it is.
+import { readD1Metadata } from "./d1-metadata-read.ts";
+// Subnet identity timelines and the network feed select their current D1
+// owner before the archived tier. Both stores share canonical formatters.
 
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
@@ -49,7 +42,6 @@ export async function loadSubnetIdentityHistoryColdTier(
     return null;
   // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
   // reasonable trade and declining beats serving a page that is quietly wrong.
-  if (offsetBeyondEmulationCap(offset)) return null;
 
   const where = [`netuid = ${n}`];
   const cursor = decodeCursor(query.cursor, CURSOR_ARITY);
@@ -64,15 +56,27 @@ export async function loadSubnetIdentityHistoryColdTier(
   // `IDENTITY_COLUMNS` is every column of the generated row except `netuid`,
   // and this read is already scoped to one -- so that column would be a
   // constant in every row. `Omit` names which one is missing and why.
-  const rows = await r2SqlQuery<Omit<SubnetIdentityHistoryRow, "netuid">>(
+  const native = await readD1Metadata<Omit<SubnetIdentityHistoryRow, "netuid">>(
     env,
-    `SELECT ${IDENTITY_COLUMNS} FROM chain.subnet_identity_history` +
-      ` WHERE ${where.join(" AND ")}` +
-      ` ORDER BY observed_at DESC, id DESC LIMIT ${limit + paged}`,
+    "subnet_identity_history",
+    `SELECT ${IDENTITY_COLUMNS} FROM subnet_identity_history WHERE netuid = ?` +
+      (cursor ? " AND (observed_at, id) < (?, ?)" : "") +
+      " ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
+    [n, ...(cursor ?? []), limit, paged],
   );
+  if (native === undefined && offsetBeyondEmulationCap(offset)) return null;
+  const rows =
+    native !== undefined
+      ? native
+      : await r2SqlQuery<Omit<SubnetIdentityHistoryRow, "netuid">>(
+          env,
+          `SELECT ${IDENTITY_COLUMNS} FROM chain.subnet_identity_history` +
+            ` WHERE ${where.join(" AND ")}` +
+            ` ORDER BY observed_at DESC, id DESC LIMIT ${limit + paged}`,
+        );
   if (rows === null) return null;
 
-  const page = paged > 0 ? rows.slice(paged) : rows;
+  const page = native === undefined && paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
   // The SAME token the Postgres tier emits for this row, so paging survives a
   // tier transition in either direction.
@@ -107,13 +111,22 @@ export async function loadChainIdentityHistoryColdTier(
 
   // The network feed puts `netuid` back, so this one is the whole generated
   // row -- the same list, differing by exactly the column the scoped read drops.
-  const rows = await r2SqlQuery<SubnetIdentityHistoryRow>(
+  const native = await readD1Metadata<SubnetIdentityHistoryRow>(
     env,
-    `SELECT netuid, ${IDENTITY_COLUMNS} FROM chain.subnet_identity_history` +
-      // data-api's exact feed order: newest block first, netuid as a stable
-      // tiebreak, id last so same-block rows keep a total order.
-      ` ORDER BY block_number DESC, netuid ASC, id DESC LIMIT ${cap}`,
+    "subnet_identity_history",
+    `SELECT netuid, ${IDENTITY_COLUMNS} FROM subnet_identity_history ORDER BY block_number DESC, netuid ASC, id DESC LIMIT ?`,
+    [cap],
   );
+  const rows =
+    native !== undefined
+      ? native
+      : await r2SqlQuery<SubnetIdentityHistoryRow>(
+          env,
+          `SELECT netuid, ${IDENTITY_COLUMNS} FROM chain.subnet_identity_history` +
+            // data-api's exact feed order: newest block first, netuid as a stable
+            // tiebreak, id last so same-block rows keep a total order.
+            ` ORDER BY block_number DESC, netuid ASC, id DESC LIMIT ${cap}`,
+        );
   if (rows === null) return null;
   return buildChainIdentityHistory(rows, { limit: cap });
 }
