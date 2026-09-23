@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { loadIndexedAccountFeedPage } from "../src/indexed-account-feeds.ts";
+import { Miniflare } from "miniflare";
+import {
+  loadIndexedAccountFeedPage,
+  loadIndexedAccountFeedGroups,
+} from "../src/indexed-account-feeds.ts";
+import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
+import type { AccountFeedGroup } from "../src/history-account-feed-groups.ts";
 import type { HistoryAccountFeed } from "../schemas-src/artifacts/history-account-feed.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
@@ -129,6 +135,140 @@ function archive(network: "mainnet" | "testnet" = "mainnet") {
 }
 
 describe("selected account feed serving", () => {
+  it("folds complete native windows with SQLite aggregate parity and inclusive time boundaries", async () => {
+    const runtime = new Miniflare({
+      modules: true,
+      script: "export default {fetch(){return new Response('test')}}",
+      compatibilityDate: "2026-06-06",
+      d1Databases: ["DB"],
+    });
+    try {
+      const db = await runtime.getD1Database("DB");
+      await db
+        .prepare(
+          `CREATE TABLE events(${ACCOUNT_EVENTS_COLUMNS.map((name) => `${name} ${["event_kind", "hotkey", "coldkey"].includes(name) ? "TEXT" : "NUMERIC"}`).join(",")})`,
+        )
+        .run();
+      await db.batch(
+        fixture.rows.map((row) =>
+          db
+            .prepare(
+              `INSERT INTO events VALUES(${ACCOUNT_EVENTS_COLUMNS.map(() => "?").join(",")})`,
+            )
+            .bind(...ACCOUNT_EVENTS_COLUMNS.map((column) => row[column])),
+        ),
+      );
+      const order = <T extends { event_kind: unknown; netuid: unknown }>(
+        rows: T[],
+      ) =>
+        rows.sort((a, b) =>
+          JSON.stringify([a.event_kind, a.netuid]).localeCompare(
+            JSON.stringify([b.event_kind, b.netuid]),
+          ),
+        );
+      for (const [start, end] of [
+        [0, 10000],
+        [9910, 9970],
+        [9999, 10000],
+        [10000, 10000],
+        [10001, 11000],
+      ]) {
+        const a = archive();
+        const wanted = ["StakeAdded", "Transfer"].flatMap((kind) =>
+          selectors.map((selector) => ({
+            ...selector,
+            kind,
+            observedStart: start,
+            observedEnd: end,
+          })),
+        );
+        const indexed = await loadIndexedAccountFeedGroups(a.env, wanted);
+        const expected = await db
+          .prepare(
+            `SELECT event_kind,netuid,COUNT(*) AS event_count,SUM(amount_tao) AS total_tao,SUM(alpha_amount) AS total_alpha,
+          MIN(block_number) AS first_block,MAX(block_number) AS last_block,MIN(observed_at) AS first_observed,MAX(observed_at) AS last_observed
+          FROM events WHERE (hotkey=? OR coldkey=?) AND observed_at>=? AND observed_at<=? GROUP BY event_kind,netuid`,
+          )
+          .bind("account-0", "account-0", start, end)
+          .all<AccountFeedGroup>();
+        expect(indexed).not.toBeNull();
+        expect(order(indexed!)).toEqual(order(expected.results));
+        expect(
+          a.get.mock.calls.filter(([key]) => key.endsWith(".bin")).length,
+        ).toBeLessThan(8);
+      }
+      const a = archive();
+      const expected = fixture.rows
+        .filter(
+          (row) => row.hotkey === "account-0" || row.coldkey === "account-0",
+        )
+        .sort(
+          (a, b) =>
+            b.observed_at! - a.observed_at! ||
+            b.block_number! - a.block_number! ||
+            b.event_index! - a.event_index!,
+        );
+      const cursor = expected[3];
+      const selected = selectors.map((s) => ({
+        ...s,
+        observedStart: 9950,
+        observedEnd: 9995,
+        cursor: [
+          cursor.observed_at!,
+          cursor.block_number!,
+          cursor.event_index!,
+        ] as [number, number, number],
+      }));
+      expect(await loadIndexedAccountFeedPage(a.env, selected, 100)).toEqual(
+        expected
+          .slice(4)
+          .filter(
+            (row) => row.observed_at! >= 9950 && row.observed_at! <= 9995,
+          ),
+      );
+      expect(
+        await loadIndexedAccountFeedGroups(
+          a.env,
+          selectors.map((s) => ({ ...s, observedStart: 10001 })),
+        ),
+      ).toEqual([]);
+      expect(
+        await loadIndexedAccountFeedGroups(
+          a.env,
+          selectors.map((s) => ({ ...s, observedEnd: 0 })),
+        ),
+      ).toEqual([]);
+      expect(
+        await loadIndexedAccountFeedGroups(
+          a.env,
+          selectors.map((s) => ({
+            ...s,
+            observedStart: 10001,
+            observedEnd: 9990,
+          })),
+        ),
+      ).toEqual([]);
+      expect(
+        await loadIndexedAccountFeedGroups(
+          a.env,
+          selectors.map((s) => ({ ...s, observedStart: -1 })),
+        ),
+      ).toBeNull();
+      expect(
+        await loadIndexedAccountFeedGroups(a.env, [
+          ...selectors,
+          ...selectors,
+          selectors[0],
+        ]),
+      ).toBeNull();
+      expect(
+        await loadIndexedAccountFeedGroups(undefined, selectors),
+      ).toBeUndefined();
+    } finally {
+      await runtime.dispose();
+    }
+  });
+
   it("serves native physical rows, filters, offsets and cursors through conditional R2 ranges", async () => {
     const a = archive();
     const expected = fixture.rows

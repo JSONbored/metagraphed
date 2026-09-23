@@ -118,7 +118,10 @@ import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { readStore } from "./read-store.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
-import { loadIndexedAccountFeedPage } from "./indexed-account-feeds.ts";
+import {
+  loadIndexedAccountFeedPage,
+  loadIndexedAccountFeedGroups,
+} from "./indexed-account-feeds.ts";
 import type { AccountFeedSelector } from "./history-account-feed.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
@@ -131,6 +134,31 @@ const EVENT_COLUMNS = ACCOUNT_EVENTS_COLUMNS.join(", ");
  * mis-seeks on. */
 const FEED_ORDER =
   "ORDER BY observed_at DESC, block_number DESC, event_index DESC";
+
+/** Equality views bound the physical reads; the timestamp range is inclusive,
+ * matching the existing aggregate predicates. No pagination cap enters totals. */
+function indexedAccountWindow(
+  env: unknown,
+  account: string,
+  kinds: string[],
+  cutoff: number,
+  hotkeyOnly = false,
+) {
+  const sides: AccountFeedSelector["side"][] = hotkeyOnly
+    ? ["hotkey"]
+    : ["hotkey", "coldkey"];
+  return loadIndexedAccountFeedGroups(
+    env,
+    kinds.flatMap((kind) =>
+      sides.map((side) => ({
+        side,
+        account,
+        kind,
+        observedStart: cutoff,
+      })),
+    ),
+  );
+}
 
 /** The 3-part key the transfer feed pages on, mirroring data-api. */
 const CURSOR_ARITY = 3;
@@ -353,15 +381,28 @@ export async function loadAccountStakeFlowColdTier(
   // pricing a TAO figure into them would put a reconstruction where the
   // reconciliation needs a reading. `buildAccountStakeFlow` ignores the extra
   // column, so the published stake-flow card is unchanged.
-  const rows = await r2SqlQuery(
+  const indexed = await indexedAccountWindow(
     env,
-    `SELECT netuid, event_kind, SUM(amount_tao) AS total_tao, ` +
-      `SUM(alpha_amount) AS total_alpha, ` +
-      `COUNT(*) AS event_count, MAX(observed_at) AS last_observed ` +
-      `FROM chain.account_events ` +
-      `WHERE (hotkey = '${addr}' OR coldkey = '${addr}') AND ${kind} ` +
-      `AND observed_at >= ${cutoff} GROUP BY netuid, event_kind`,
+    ss58,
+    direction === "in"
+      ? [STAKE_ADDED_KIND]
+      : direction === "out"
+        ? [STAKE_REMOVED_KIND]
+        : [STAKE_ADDED_KIND, STAKE_REMOVED_KIND],
+    cutoff,
   );
+  const rows =
+    indexed !== undefined
+      ? indexed
+      : await r2SqlQuery(
+          env,
+          `SELECT netuid, event_kind, SUM(amount_tao) AS total_tao, ` +
+            `SUM(alpha_amount) AS total_alpha, ` +
+            `COUNT(*) AS event_count, MAX(observed_at) AS last_observed ` +
+            `FROM chain.account_events ` +
+            `WHERE (hotkey = '${addr}' OR coldkey = '${addr}') AND ${kind} ` +
+            `AND observed_at >= ${cutoff} GROUP BY netuid, event_kind`,
+        );
   if (rows === null) return null;
   // data-api wraps the SUM in COALESCE(..., 0); replicate that client-side
   // rather than lean on the beta engine's function coverage -- an all-null
@@ -399,14 +440,24 @@ export async function loadAccountStakeMovesColdTier(
     DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
     query.window,
   );
-  const rows = await r2SqlQuery(
+  const indexed = await indexedAccountWindow(
     env,
-    `SELECT netuid, COUNT(*) AS movements, MIN(observed_at) AS first_observed, ` +
-      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
-      `WHERE (hotkey = '${addr}' OR coldkey = '${addr}') ` +
-      `AND event_kind = '${STAKE_MOVED_EVENT_KIND}' ` +
-      `AND observed_at >= ${cutoff} GROUP BY netuid`,
+    ss58,
+    [STAKE_MOVED_EVENT_KIND],
+    cutoff,
   );
+  const rows =
+    indexed !== undefined
+      ? (indexed?.map((row) => ({ ...row, movements: row.event_count })) ??
+        null)
+      : await r2SqlQuery(
+          env,
+          `SELECT netuid, COUNT(*) AS movements, MIN(observed_at) AS first_observed, ` +
+            `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+            `WHERE (hotkey = '${addr}' OR coldkey = '${addr}') ` +
+            `AND event_kind = '${STAKE_MOVED_EVENT_KIND}' ` +
+            `AND observed_at >= ${cutoff} GROUP BY netuid`,
+        );
   // A CONFIGURED lakehouse that could not answer is a decline, not an empty
   // card (#11424). This route was measured at 15,429ms -- i.e. AT the 15s
   // `QUERY_TIMEOUT_MS` -- on 2026-08-16, so the failed read is routine, and a
@@ -417,7 +468,7 @@ export async function loadAccountStakeMovesColdTier(
   // With NO lakehouse bound (a self-hoster, CI) the null stands: there is no
   // chain history to read, so the caller's empty card is correct.
   if (rows === null) {
-    return isR2SqlConfigured(env)
+    return indexed !== undefined || isR2SqlConfigured(env)
       ? {
           data: declineAccountStakeMoves(ss58, label),
           // No read, so no reading instant -- never `new Date()`, which would
@@ -525,13 +576,24 @@ export async function loadAccountRegistrationsColdTier(
     DEFAULT_REGISTRATION_WINDOW,
     query.window,
   );
-  const rows = await r2SqlQuery(
+  const indexed = await indexedAccountWindow(
     env,
-    `SELECT netuid, COUNT(*) AS registrations, MIN(observed_at) AS first_observed, ` +
-      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
-      `WHERE hotkey = '${addr}' AND event_kind = '${REGISTRATION_EVENT_KIND}' ` +
-      `AND observed_at >= ${cutoff} GROUP BY netuid`,
+    ss58,
+    [REGISTRATION_EVENT_KIND],
+    cutoff,
+    true,
   );
+  const rows =
+    indexed !== undefined
+      ? (indexed?.map((row) => ({ ...row, registrations: row.event_count })) ??
+        null)
+      : await r2SqlQuery(
+          env,
+          `SELECT netuid, COUNT(*) AS registrations, MIN(observed_at) AS first_observed, ` +
+            `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+            `WHERE hotkey = '${addr}' AND event_kind = '${REGISTRATION_EVENT_KIND}' ` +
+            `AND observed_at >= ${cutoff} GROUP BY netuid`,
+        );
   if (rows === null) return null;
   return {
     data: buildAccountRegistrations(rows, ss58, { window: label }),
@@ -560,13 +622,24 @@ export async function loadAccountServingColdTier(
     DEFAULT_SERVING_WINDOW,
     query.window,
   );
-  const rows = await r2SqlQuery(
+  const indexed = await indexedAccountWindow(
     env,
-    `SELECT netuid, COUNT(*) AS announcements, MIN(observed_at) AS first_observed, ` +
-      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
-      `WHERE hotkey = '${addr}' AND event_kind = '${SERVING_EVENT_KIND}' ` +
-      `AND observed_at >= ${cutoff} GROUP BY netuid`,
+    ss58,
+    [SERVING_EVENT_KIND],
+    cutoff,
+    true,
   );
+  const rows =
+    indexed !== undefined
+      ? (indexed?.map((row) => ({ ...row, announcements: row.event_count })) ??
+        null)
+      : await r2SqlQuery(
+          env,
+          `SELECT netuid, COUNT(*) AS announcements, MIN(observed_at) AS first_observed, ` +
+            `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+            `WHERE hotkey = '${addr}' AND event_kind = '${SERVING_EVENT_KIND}' ` +
+            `AND observed_at >= ${cutoff} GROUP BY netuid`,
+        );
   if (rows === null) return null;
   return {
     data: buildAccountServing(rows, ss58, { window: label }),
@@ -598,13 +671,24 @@ export async function loadAccountPrometheusColdTier(
     DEFAULT_PROMETHEUS_WINDOW,
     query.window,
   );
-  const rows = await r2SqlQuery(
+  const indexed = await indexedAccountWindow(
     env,
-    `SELECT netuid, COUNT(*) AS announcements, MIN(observed_at) AS first_observed, ` +
-      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
-      `WHERE hotkey = '${addr}' AND event_kind = '${PROMETHEUS_EVENT_KIND}' ` +
-      `AND observed_at >= ${cutoff} GROUP BY netuid`,
+    ss58,
+    [PROMETHEUS_EVENT_KIND],
+    cutoff,
+    true,
   );
+  const rows =
+    indexed !== undefined
+      ? (indexed?.map((row) => ({ ...row, announcements: row.event_count })) ??
+        null)
+      : await r2SqlQuery(
+          env,
+          `SELECT netuid, COUNT(*) AS announcements, MIN(observed_at) AS first_observed, ` +
+            `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+            `WHERE hotkey = '${addr}' AND event_kind = '${PROMETHEUS_EVENT_KIND}' ` +
+            `AND observed_at >= ${cutoff} GROUP BY netuid`,
+        );
   if (rows === null) return null;
   return {
     data: buildAccountPrometheus(rows, ss58, {
