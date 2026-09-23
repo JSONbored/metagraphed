@@ -17,6 +17,11 @@
 // (one lane's throw never skips the next) and each failure records exactly
 // one exception under `projection:<name>` so a silently dead lane is visible.
 
+import {
+  projectionNow,
+  projectionQuery,
+} from "./projection-compute-context.ts";
+
 import { CHAIN_OWNERSHIP_PROJECTION_KEY } from "./subnet-ownership-artifact.ts";
 import { fetchOwnershipChangeRows } from "./subnet-ownership-cold-tier.ts";
 
@@ -158,6 +163,9 @@ export const PROJECTION_QUERY_TIMEOUT_MS = 4 * QUERY_TIMEOUT_MS;
  * asserts against the source that none creeps back in.
  */
 function laneQuery(env: Env, sql: string) {
+  const native = projectionQuery(env);
+  if (native)
+    return native(env, sql, { timeoutMs: PROJECTION_QUERY_TIMEOUT_MS });
   return r2SqlQuery(env, sql, { timeoutMs: PROJECTION_QUERY_TIMEOUT_MS });
 }
 
@@ -268,7 +276,7 @@ async function computeChainTransfers(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(CHAIN_TRANSFER_WINDOWS)) {
@@ -335,7 +343,7 @@ async function computeChainStakeFlow(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(STAKE_FLOW_PROJECTION_WINDOWS)) {
@@ -424,7 +432,7 @@ async function computeChainActivity(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
@@ -513,7 +521,7 @@ async function computeChainCalls(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
@@ -597,7 +605,7 @@ async function computeChainFees(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
@@ -689,7 +697,7 @@ async function computeChainSigners(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
@@ -729,7 +737,7 @@ async function computeChainAlphaVolume(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const cutoff = generatedAt - DAY_MS;
   const rows = await laneQuery(
     env,
@@ -894,7 +902,7 @@ async function computeChainStakeTransfers(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(CHAIN_STAKE_TRANSFERS_WINDOWS)) {
@@ -959,11 +967,13 @@ async function computeChainOwnership(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const rows = await fetchOwnershipChangeRows(env, network);
+  const rows = await fetchOwnershipChangeRows(env, network, (_env, sql) =>
+    laneQuery(env, sql),
+  );
   if (rows === null) return null;
   return {
     schema_version: 1,
-    generated_at: new Date().toISOString(),
+    generated_at: new Date(projectionNow(env)).toISOString(),
     row_count: rows.length,
     rows,
   };
@@ -986,7 +996,7 @@ async function computeChainWeightSetters(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
@@ -1001,6 +1011,7 @@ async function computeChainWeightSetters(
         // reason no caller could see.
         limit: ROLLUP_POPULATION_CAP,
         network,
+        query: (_env, sql) => laneQuery(env, sql),
       },
     );
     // `empty` is a MEASURED quiet window and stores as one. Only a `gap` or a
@@ -1071,7 +1082,7 @@ async function computeAnalyticsDistinctLanes(
   network: ChainNetworkId,
   spec: ChainEventRollupSpec,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
@@ -1114,7 +1125,7 @@ async function computeChainStakeMoves(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(CHAIN_STAKE_MOVES_WINDOWS)) {
@@ -1186,7 +1197,7 @@ async function computeChainTransferPairs(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(CHAIN_TRANSFER_PAIR_WINDOWS)) {
@@ -1235,7 +1246,7 @@ async function computeBlocksSummary(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const rows = await laneQuery(
     env,
     `SELECT ${BLOCKS_SUMMARY_READ_COLUMNS} FROM ${chainTable("blocks", network)} ` +
@@ -1282,7 +1293,7 @@ async function computeChainRegistrations(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(CHAIN_REGISTRATIONS_WINDOWS)) {
@@ -1407,7 +1418,7 @@ async function computeChainDeregistrations(
   env: Env,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const generatedAt = Date.now();
+  const generatedAt = projectionNow(env);
   const lookbackDays = Math.max(
     ...Object.values(CHAIN_DEREGISTRATIONS_WINDOWS),
   );
