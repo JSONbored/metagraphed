@@ -69,8 +69,6 @@ interface RuntimeSecretEnv {
    * scheduled sweeps. Absent on a deployment that has not provisioned it, in
    * which case no probe marker is ever honoured -- see mcpProbeName. */
   MCP_PROBE_TOKEN?: string;
-  /** Select only fully published native projection generations. */
-  NATIVE_PROJECTIONS?: string;
   /** #9208: gates POST /api/v1/internal/chain-detail-sync and its head GET --
    * the live-follow decode lane's write path into the chain-detail hot tier.
    * Set via `wrangler secret put` on BOTH Workers (api.ts proxies, data-api.ts
