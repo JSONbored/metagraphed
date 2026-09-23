@@ -1,6 +1,6 @@
-import { readD1Metadata } from "./d1-metadata-read.ts";
-// Subnet identity timelines and the network feed select their current D1
-// owner before the archived tier. Both stores share canonical formatters.
+import type { ArtifactStoreEnv } from "./projection-store.ts";
+import { readStateArchiveRows } from "./state-archive-read.ts";
+// Subnet identity timelines retain their original archived row IDs and ordering.
 
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
@@ -29,7 +29,7 @@ const CURSOR_ARITY = 2;
  * lakehouse cannot answer, so the caller keeps its schema-stable empty.
  */
 export async function loadSubnetIdentityHistoryColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   netuid: unknown,
   query: { limit: number; offset?: number | null; cursor?: unknown },
 ): Promise<ReturnType<typeof buildSubnetIdentityHistory> | null> {
@@ -56,14 +56,25 @@ export async function loadSubnetIdentityHistoryColdTier(
   // `IDENTITY_COLUMNS` is every column of the generated row except `netuid`,
   // and this read is already scoped to one -- so that column would be a
   // constant in every row. `Omit` names which one is missing and why.
-  const native = await readD1Metadata<Omit<SubnetIdentityHistoryRow, "netuid">>(
-    env,
-    "subnet_identity_history",
-    `SELECT ${IDENTITY_COLUMNS} FROM subnet_identity_history WHERE netuid = ?` +
-      (cursor ? " AND (observed_at, id) < (?, ?)" : "") +
-      " ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
-    [n, ...(cursor ?? []), limit, paged],
-  );
+  const archive = await readStateArchiveRows(env, "subnet_identity_history");
+  const native =
+    archive == null
+      ? archive
+      : archive
+          .filter(
+            (row) =>
+              Number(row.netuid) === n &&
+              (!cursor ||
+                Number(row.observed_at) < cursor[0] ||
+                (Number(row.observed_at) === cursor[0] &&
+                  Number(row.id) < cursor[1])),
+          )
+          .sort(
+            (a, b) =>
+              Number(b.observed_at) - Number(a.observed_at) ||
+              Number(b.id) - Number(a.id),
+          )
+          .slice(paged, paged + limit);
   if (native === undefined && offsetBeyondEmulationCap(offset)) return null;
   const rows =
     native !== undefined
@@ -95,7 +106,7 @@ export async function loadSubnetIdentityHistoryColdTier(
  * data-api's own single-shot LIMIT query.
  */
 export async function loadChainIdentityHistoryColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   query: { limit?: unknown } = {},
 ): Promise<ReturnType<typeof buildChainIdentityHistory> | null> {
   // An absent limit takes the route default, exactly as data-api resolves it.
@@ -111,12 +122,18 @@ export async function loadChainIdentityHistoryColdTier(
 
   // The network feed puts `netuid` back, so this one is the whole generated
   // row -- the same list, differing by exactly the column the scoped read drops.
-  const native = await readD1Metadata<SubnetIdentityHistoryRow>(
-    env,
-    "subnet_identity_history",
-    `SELECT netuid, ${IDENTITY_COLUMNS} FROM subnet_identity_history ORDER BY block_number DESC, netuid ASC, id DESC LIMIT ?`,
-    [cap],
-  );
+  const archive = await readStateArchiveRows(env, "subnet_identity_history");
+  const native =
+    archive == null
+      ? archive
+      : archive
+          .sort(
+            (a, b) =>
+              Number(b.block_number) - Number(a.block_number) ||
+              Number(a.netuid) - Number(b.netuid) ||
+              Number(b.id) - Number(a.id),
+          )
+          .slice(0, cap);
   const rows =
     native !== undefined
       ? native

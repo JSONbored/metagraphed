@@ -1,3 +1,5 @@
+import type { ArtifactStoreEnv } from "./projection-store.ts";
+import { readStateArchiveRows } from "./state-archive-read.ts";
 import { readD1Metadata } from "./d1-metadata-read.ts";
 // Subnet hyperparameter readers prefer the current D1 owner, preserving the
 // canonical parameter format, nullable values, filters, and timeline cursor.
@@ -35,7 +37,7 @@ const CURSOR_ARITY = 2;
  * answer, so the caller keeps its existing schema-stable fallback.
  */
 export async function loadSubnetHyperparamsColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   netuid: unknown,
 ): Promise<ReturnType<typeof buildSubnetHyperparams> | null> {
   // netuid reaches a string-built query (R2 SQL has no bound parameters), so
@@ -66,7 +68,7 @@ export async function loadSubnetHyperparamsColdTier(
  * exact order, columns, cursor token, and OFFSET-only-without-cursor rule.
  */
 export async function loadSubnetHyperparamsHistoryColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   netuid: unknown,
   query: { limit: number; offset?: number | null; cursor?: unknown },
 ): Promise<ReturnType<typeof buildSubnetHyperparamsHistory> | null> {
@@ -89,14 +91,28 @@ export async function loadSubnetHyperparamsHistoryColdTier(
   // pages), mirroring data-api's `OFFSET only when no cursor`.
   const paged = cursor ? 0 : offset;
 
-  const native = await readD1Metadata(
+  const archived = await readStateArchiveRows(
     env,
     "subnet_hyperparams_history",
-    `SELECT ${HISTORY_COLUMNS} FROM subnet_hyperparams_history WHERE netuid = ?` +
-      (cursor ? " AND (observed_at, id) < (?, ?)" : "") +
-      " ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
-    [n, ...(cursor ?? []), limit, paged],
   );
+  const native =
+    archived == null
+      ? archived
+      : archived
+          .filter(
+            (row) =>
+              row.netuid === n &&
+              (!cursor ||
+                Number(row.observed_at) < Number(cursor[0]) ||
+                (row.observed_at === cursor[0] &&
+                  Number(row.id) < Number(cursor[1]))),
+          )
+          .sort(
+            (a, b) =>
+              Number(b.observed_at) - Number(a.observed_at) ||
+              Number(b.id) - Number(a.id),
+          )
+          .slice(paged, paged + limit);
   if (native === undefined && offsetBeyondEmulationCap(offset)) return null;
   const rows =
     native !== undefined

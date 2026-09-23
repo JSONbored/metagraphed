@@ -1,3 +1,5 @@
+import type { ArtifactStoreEnv } from "./projection-store.ts";
+import { readStateArchiveRows } from "./state-archive-read.ts";
 import { readD1Metadata } from "./d1-metadata-read.ts";
 // Account identity readers prefer the current D1 owner. Unselected deployments
 // retain the archived tier; both use the same canonical formatters and cursor.
@@ -28,7 +30,7 @@ const CURSOR_ARITY = 2;
  * answer, so the caller keeps its schema-stable "no identity" fallback.
  */
 export async function loadAccountIdentityColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountIdentity> | null> {
   // An unusable address is a decline, not an unfiltered scan: it reaches a
@@ -64,7 +66,7 @@ export async function loadAccountIdentityColdTier(
  * order, columns, cursor token, and OFFSET-only-without-cursor rule.
  */
 export async function loadAccountIdentityHistoryColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   ss58: string,
   query: { limit: number; offset?: number | null; cursor?: unknown },
 ): Promise<ReturnType<typeof buildAccountIdentityHistory> | null> {
@@ -90,16 +92,25 @@ export async function loadAccountIdentityHistoryColdTier(
   // adds the diff hash, which is `AccountIdentityHistoryRow` minus `account` --
   // and the read is already scoped to one account, so that column would be a
   // constant. `Omit` states which one and why, rather than widening the type.
-  const native = await readD1Metadata<
-    Omit<AccountIdentityHistoryRow, "account">
-  >(
-    env,
-    "account_identity_history",
-    `SELECT ${HISTORY_COLUMNS} FROM account_identity_history WHERE account = ?` +
-      (cursor ? " AND (observed_at, id) < (?, ?)" : "") +
-      " ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
-    [addr, ...(cursor ?? []), limit, paged],
-  );
+  const archived = await readStateArchiveRows(env, "account_identity_history");
+  const native =
+    archived == null
+      ? archived
+      : archived
+          .filter(
+            (row) =>
+              row.account === addr &&
+              (!cursor ||
+                Number(row.observed_at) < Number(cursor[0]) ||
+                (row.observed_at === cursor[0] &&
+                  Number(row.id) < Number(cursor[1]))),
+          )
+          .sort(
+            (a, b) =>
+              Number(b.observed_at) - Number(a.observed_at) ||
+              Number(b.id) - Number(a.id),
+          )
+          .slice(paged, paged + limit);
   if (native === undefined && offsetBeyondEmulationCap(offset)) return null;
   const rows =
     native !== undefined

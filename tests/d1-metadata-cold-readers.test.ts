@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
+import { readStateArchiveRows } from "../src/state-archive-read.ts";
 import { beforeAll, afterAll, afterEach, test, vi } from "vitest";
 import { Miniflare } from "miniflare";
 import {
@@ -30,7 +32,38 @@ const now = Date.UTC(2026, 8, 23, 12);
 let db: D1Database;
 const tables =
   "account_identity,account_identity_history,subnet_hyperparams,subnet_hyperparams_history,subnet_identity_history,subnet_ownership_history,self_health_checks,self_health_daily";
+type FixtureObject = { raw: string; etag: string; size: number };
+const objects: Record<string, FixtureObject> = JSON.parse(
+  gunzipSync(
+    readFileSync(
+      new URL(
+        "./fixtures/native-projections/state-archive.json.gz",
+        import.meta.url,
+      ),
+    ),
+  ).toString(),
+);
+function archiveFixture() {
+  const records = structuredClone(objects);
+  return {
+    records,
+    bucket: {
+      async get(key: string) {
+        const object = records[key];
+        return object
+          ? {
+              ...object,
+              async json() {
+                return JSON.parse(object.raw);
+              },
+            }
+          : null;
+      },
+    },
+  };
+}
 const env = () => ({
+  METAGRAPH_ARCHIVE: archiveFixture().bucket,
   D1_STATE: db,
   D1_STATE_TABLES: tables,
   R2_SQL_TOKEN: "cfut_test",
@@ -239,7 +272,7 @@ test("native histories keep exact tuple pagination, offset and confirmed empty s
   );
   assert.equal(fetch.mock.calls.length, 0);
 });
-test("network identity ordering and ownership observations use the current owner", async () => {
+test("network identity ordering and ownership observations retain the archived history", async () => {
   const fetch = forbidSql();
   const chain = await loadChainIdentityHistoryColdTier(env(), { limit: 2 });
   assert.deepEqual(
@@ -252,13 +285,13 @@ test("network identity ordering and ownership observations use the current owner
       [7, "subnet-3"],
     ],
   );
-  assert.deepEqual(
-    await loadSubnetOwnerObservations(env(), 7),
-    [1, 2, 3].map((n) => ({
+  assert.deepEqual(await loadSubnetOwnerObservations(env(), 7), [
+    { owner_coldkey: "legacy", captured_at: now - 60 * 86400000 },
+    ...[1, 2, 3].map((n) => ({
       owner_coldkey: `cold-${n}`,
       captured_at: now + n,
     })),
-  );
+  ]);
   assert.deepEqual(await loadSubnetOwnerObservations(env(), 999), []);
   assert.equal(await loadSubnetOwnerObservations(env(), -1), null);
   assert.equal(fetch.mock.calls.length, 0);
@@ -288,21 +321,7 @@ test("selected missing and failing bindings decline without archived queries", a
   };
   for (const e of [missing, failing]) {
     assert.equal(await loadAccountIdentityColdTier(e, account), null);
-    assert.equal(
-      await loadAccountIdentityHistoryColdTier(e, account, { limit: 1 }),
-      null,
-    );
     assert.equal(await loadSubnetHyperparamsColdTier(e, 7), null);
-    assert.equal(
-      await loadSubnetHyperparamsHistoryColdTier(e, 7, { limit: 1 }),
-      null,
-    );
-    assert.equal(
-      await loadSubnetIdentityHistoryColdTier(e, 7, { limit: 1 }),
-      null,
-    );
-    assert.equal(await loadChainIdentityHistoryColdTier(e), null);
-    assert.equal(await loadSubnetOwnerObservations(e, 7), null);
     assert.equal(await loadSelfHealthColdTier(e, now), null);
   }
   assert.equal(
@@ -315,5 +334,175 @@ test("selected missing and failing bindings decline without archived queries", a
   );
   const partial = { ...env(), D1_STATE_TABLES: "self_health_daily" };
   assert.equal(await loadSelfHealthColdTier(partial, now), null);
+  assert.equal(fetch.mock.calls.length, 0);
+});
+
+test("legacy records absent from D1 preserve original IDs and exact pagination", async () => {
+  const fetch = forbidSql();
+  assert.equal(
+    (
+      await loadAccountIdentityHistoryColdTier(env(), account, {
+        limit: 1,
+        cursor: encodeCursor([now + 1, 1]),
+      })
+    )?.entries[0]?.name,
+    "legacy",
+  );
+  assert.equal(
+    (
+      (
+        await loadSubnetIdentityHistoryColdTier(env(), 7, {
+          limit: 1,
+          cursor: encodeCursor([now, 1]),
+        })
+      )?.entries as { subnet_name: string }[]
+    )[0]?.subnet_name,
+    "legacy",
+  );
+  const hp = await loadSubnetHyperparamsHistoryColdTier(env(), 7, {
+    limit: 1,
+    cursor: encodeCursor([now + 1, 1]),
+  });
+  assert.equal(
+    (hp?.entries as { hyperparameters: { tempo: number } }[])[0]
+      ?.hyperparameters.tempo,
+    77,
+  );
+  assert.equal(fetch.mock.calls.length, 0);
+});
+test("archive selection requires complete source census, immutable identity and canonical rows", async () => {
+  const table = "account_identity_history";
+  const pointer = `metagraph/state-archive/v1/${table}/current.json`;
+  assert.equal(await readStateArchiveRows({}, table), undefined);
+  assert.equal(
+    await readStateArchiveRows(
+      {
+        METAGRAPH_ARCHIVE: {
+          async get() {
+            return null;
+          },
+        },
+      },
+      table,
+    ),
+    undefined,
+  );
+  assert.equal(
+    await readStateArchiveRows(
+      {
+        METAGRAPH_ARCHIVE: {
+          async get() {
+            throw Error("unavailable");
+          },
+        },
+      },
+      table,
+    ),
+    null,
+  );
+  const edits: ((
+    records: Record<string, FixtureObject>,
+    manifest: {
+      version: number;
+      table: string;
+      rowCount: number;
+      object: { key: string };
+      source: { sources: { table: string }[] };
+    },
+    body: {
+      version: number;
+      table: string;
+      generation: string;
+      rows: Record<string, unknown>[];
+    },
+  ) => void)[] = [
+    (r) => {
+      delete (r[pointer] as Partial<FixtureObject>).size;
+    },
+    (r) => {
+      r[pointer].size = 0;
+    },
+    (r) => {
+      r[pointer].size = 1024 * 1024 + 1;
+    },
+    (_r, m) => {
+      m.version = 2;
+    },
+    (_r, m) => {
+      m.table = "other";
+    },
+    (_r, m) => {
+      m.object.key = "escape";
+    },
+    (_r, m) => {
+      m.source.sources[0].table = "other";
+    },
+    (_r, m) => {
+      m.rowCount++;
+    },
+    (r, m) => {
+      delete r[m.object.key];
+    },
+    (r, m) => {
+      r[m.object.key].etag = "changed";
+    },
+    (r, m) => {
+      r[m.object.key].size++;
+    },
+    (_r, _m, b) => {
+      b.version = 2;
+    },
+    (_r, _m, b) => {
+      b.table = "other";
+    },
+    (_r, _m, b) => {
+      b.generation = "changed";
+    },
+    (_r, _m, b) => {
+      b.rows.pop();
+    },
+    (_r, _m, b) => {
+      b.rows[0].observed_at = "bad";
+    },
+    (_r, _m, b) => {
+      delete b.rows[0].identity_hash;
+    },
+  ];
+  for (const edit of edits) {
+    const f = archiveFixture();
+    const m = JSON.parse(f.records[pointer].raw);
+    const key = m.object.key;
+    const b = JSON.parse(f.records[key].raw);
+    edit(f.records, m, b);
+    f.records[pointer].raw = JSON.stringify(m);
+    if (f.records[key]) f.records[key].raw = JSON.stringify(b);
+    assert.equal(
+      await readStateArchiveRows({ METAGRAPH_ARCHIVE: f.bucket }, table),
+      null,
+    );
+  }
+  const broken = {
+    ...env(),
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        throw Error("broken");
+      },
+    },
+  };
+  const fetch = forbidSql();
+  assert.equal(
+    await loadAccountIdentityHistoryColdTier(broken, account, { limit: 1 }),
+    null,
+  );
+  assert.equal(
+    await loadSubnetIdentityHistoryColdTier(broken, 7, { limit: 1 }),
+    null,
+  );
+  assert.equal(
+    await loadSubnetHyperparamsHistoryColdTier(broken, 7, { limit: 1 }),
+    null,
+  );
+  assert.equal(await loadChainIdentityHistoryColdTier(broken), null);
+  assert.equal(await loadSubnetOwnerObservations(broken, 7), null);
   assert.equal(fetch.mock.calls.length, 0);
 });

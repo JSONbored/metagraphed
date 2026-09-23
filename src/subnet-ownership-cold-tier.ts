@@ -1,4 +1,4 @@
-import { readD1Metadata } from "./d1-metadata-read.ts";
+import { readStateArchiveRows } from "./state-archive-read.ts";
 // Subnet-ownership reads served from the lakehouse when the Postgres tier
 // misses.
 //
@@ -74,7 +74,7 @@ const OWNERSHIP_EVENT_COLUMNS =
  * ownership transfers are rare chain-wide events, not a feed.
  */
 export async function fetchOwnershipChangeRows(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   network?: ChainNetworkId,
   query: R2SqlReader = r2SqlQuery,
 ): Promise<Record<string, unknown>[] | null> {
@@ -189,18 +189,22 @@ const OWNER_OBSERVATION_COLUMNS = "owner_coldkey, captured_at";
 
 /** Owner changes observed by the poller, ordered by their original capture. */
 export async function loadSubnetOwnerObservations(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   netuid: number,
 ): Promise<Record<string, unknown>[] | null> {
   const n = safeBlockNumber(netuid);
   if (n === null) return null;
-  const native = await readD1Metadata(
-    env,
-    "subnet_ownership_history",
-    `SELECT ${OWNER_OBSERVATION_COLUMNS} FROM subnet_ownership_history WHERE netuid = ? ORDER BY captured_at ASC`,
-    [n],
-  );
-  if (native !== undefined) return native;
+  const archive = await readStateArchiveRows(env, "subnet_ownership_history");
+  if (archive !== undefined)
+    return archive === null
+      ? null
+      : archive
+          .filter((row) => Number(row.netuid) === n)
+          .sort((a, b) => Number(a.captured_at) - Number(b.captured_at))
+          .map(({ owner_coldkey, captured_at }) => ({
+            owner_coldkey,
+            captured_at,
+          }));
   return await r2SqlQuery(
     env,
     `SELECT ${OWNER_OBSERVATION_COLUMNS} FROM chain.subnet_ownership_history` +
